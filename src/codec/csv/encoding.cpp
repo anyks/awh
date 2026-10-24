@@ -30,7 +30,16 @@
  */
 #include <sys/log.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/csv/encoding.hpp>
+
+/**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
 
 /**
  * Используем стандартное пространство имён
@@ -115,6 +124,7 @@ namespace {
 		 *       оснасток постоянную в таком замыкании видит, часть - нет, и отвечает
 		 *       отказом о невозможности захватить её. Собственное хранение снимает
 		 *       вопрос захвата: за телом такая постоянная не числится
+		 *
 		 */
 		static constexpr uint64_t HIGH = 0x8080808080808080ull;
 		// Разметка младших семи битов всех байтов слова
@@ -131,9 +141,9 @@ namespace {
 		 * @brief Метод получения разметки байтов, равных нулю
 		 *
 		 * @details Метка ставится в старший бит всякого нулевого байта. Разметка ведётся
-		 * сложением младших семи битов с их наибольшим значением: перенос за пределы
-		 * байта при таком сложении невозможен, и метка всякого байта зависит лишь от
-		 * него самого
+		 *          сложением младших семи битов с их наибольшим значением: перенос за пределы
+		 *          байта при таком сложении невозможен, и метка всякого байта зависит лишь от
+		 *          него самого.
 		 *
 		 * @note Приём с вычитанием единицы, известный по обиходу, здесь непригоден:
 		 *       заём при вычитании переходит в соседний байт и ставит ложную метку у
@@ -156,6 +166,7 @@ namespace {
 		 * @note Байты слова здесь заведомо меньше 0x80, и добавление 0x60 переводит
 		 *       старший бит в признак «не меньше пробела»: переноса за пределы байта
 		 *       при таком сложении не бывает
+		 *
 		 */
 		const uint64_t control = (~(word + (ONES * 0x60)) & HIGH);
 		/**
@@ -169,14 +180,13 @@ namespace {
 		 *
 		 * @note Проверка эта стоит впереди намеренно: управляющих знаков в тексте
 		 *       немного, и подавляющее большинство слов оканчивает разбор здесь
+		 *
 		 */
 		if(control == 0)
 			// Выводим признак допустимости байтов слова
 			return true;
 		// Разметка байтов, управляющими знаками признаваемых
-		const uint64_t allowed = (
-			zeros(word ^ (ONES * 0x09)) | zeros(word ^ (ONES * 0x0A)) | zeros(word ^ (ONES * 0x0D))
-		);
+		const uint64_t allowed = (zeros(word ^ (ONES * 0x09)) | zeros(word ^ (ONES * 0x0A)) | zeros(word ^ (ONES * 0x0D)));
 		// Выводим признак допустимости байтов слова
 		return ((control & ~allowed) == 0);
 	}
@@ -205,7 +215,7 @@ namespace {
 	 */
 	static size_t length(const uint8_t letter) noexcept {
 		// Выводим длину общим телом, лежащим в единице трансляции кодировщика
-		return awh::utf8::sequence(letter);
+		return utf8::sequence(letter);
 	}
 };
 
@@ -221,10 +231,11 @@ bool awh::codec::csv::isChar(const uint32_t code) noexcept {
 	 * Выводим суждение встраиваемого посредника
 	 *
 	 * @note Тела своего метод не несёт намеренно: суждение о знаке живёт одним
-	 *       определением в заголовке, откуда его встраивают горячие дороги записи и
-	 *       разбора. Два тела разошлись бы со временем
+	 *       определением во внутреннем заголовке модуля, откуда его встраивают
+	 *       горячие дороги записи и разбора. Два тела разошлись бы со временем
+	 *
 	 */
-	return awh::codec::csv::suitableChar(code);
+	return codec::csv::suitableChar(code);
 }
 /**
  * @brief Метод чтения кодового значения из текста в кодировке UTF-8
@@ -240,8 +251,9 @@ uint32_t awh::codec::csv::decode(const char * buffer, const size_t size, size_t 
 	 * Выводим прочитанное встраиваемым посредником
 	 *
 	 * @note Довод общий с `isChar()`: определение одно, входов два
+	 *
 	 */
-	return awh::codec::csv::readCode(buffer, size, length);
+	return codec::csv::readCode(buffer, size, length);
 }
 /**
  * @brief Метод записи кодового значения в кодировке UTF-8
@@ -305,28 +317,29 @@ bool awh::codec::csv::encode(const uint32_t code, string & result) noexcept {
  *
  */
 bool awh::codec::csv::Decoder::sniff() noexcept {
-	// Получаем удержанные байты начала текста в беззнаковом виде
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
-	// Получаем количество удержанных байтов начала текста
-	const size_t size = this->_prolog.size();
 	// Количество байтов метки порядка байтов
 	size_t length = 0;
+	// Получаем количество удержанных байтов начала текста
+	const size_t size = this->_prolog.size();
+	// Получаем удержанные байты начала текста в беззнаковом виде
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
 	// Кодировка, определённая по метке порядка байтов
 	encoding_t encoding = encoding_t::NONE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-8
 	 */
 	if((size >= 3) && (data[0] == 0xEF) && (data[1] == 0xBB) && (data[2] == 0xBF)){
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF8;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 3;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF8;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-32
 	 *
 	 * @note Кодировка эта не поддерживается, но метка её начинается с метки UTF-16,
 	 *       и различить их можно лишь по следующим за нею байтам. Без такой проверки
 	 *       текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками между настоящими
+	 *
 	 */
 	} else if((size >= 4) && (((data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)) ||
 	                          ((data[0] == 0xFF) && (data[1] == 0xFE) && (data[2] == 0x00) && (data[3] == 0x00)))) {
@@ -336,8 +349,19 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 		if(!this->_forced){
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+			#endif
 			// Выводим признак незавершённого определения кодировки
 			return false;
 		}
@@ -345,18 +369,18 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с прямым порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFE) && (data[1] == 0xFF)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16BE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16BE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с обратным порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFF) && (data[1] == 0xFE)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16LE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16LE;
 	}
 	/**
 	 * Если метка порядка байтов в начале текста обнаружена
@@ -374,11 +398,11 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 		 * Если метка порядка байтов принятой кодировке противоречит
 		 *
 		 * @details Метка эта - свидетельство о кодировке САМОГО ТЕКСТА, и расходится она
-		 * с навязанной лишь тогда, когда одна из двух неверна. Какая именно - приведению
-		 * знать неоткуда, а приведение по навязанной даёт при том мусор: замер дал текст
-		 * `аб,вг` с меткой UTF-8, разбираемый навязанной UTF-16LE, - разбор отвечал
-		 * УСПЕХОМ, выдавая двадцать один байт мусора одним полем вместо двух, и
-		 * разделитель пропадал вовсе
+		 *          с навязанной лишь тогда, когда одна из двух неверна. Какая именно - приведению
+		 *          знать неоткуда, а приведение по навязанной даёт при том мусор: замер дал текст
+		 *          `аб,вг` с меткой UTF-8, разбираемый навязанной UTF-16LE, - разбор отвечал
+		 *          УСПЕХОМ, выдавая двадцать один байт мусора одним полем вместо двух, и
+		 *          разделитель пропадал вовсе.
 		 *
 		 * @note Прежде метка чужой кодировки оставалась частью текста намеренно, с
 		 *       доводом «снятие её означало бы доверие к метке, которой вызывающий уже
@@ -391,12 +415,24 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 		 *
 		 * @note Разбор разметки XML отвечает на то же противоречие тем же отказом, и
 		 *       расходиться с ним здесь нечем
+		 *
 		 */
 		if(this->_forced && (this->_encoding != encoding)){
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+			#endif
 			// Выводим признак незавершённого определения кодировки
 			return false;
 		}
@@ -405,6 +441,7 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 		 *
 		 * @note Метка снимается всегда, коли дошло до сюда: расхождение отвергнуто выше,
 		 *       и принятая кодировка метке отвечает
+		 *
 		 */
 		this->_prolog.erase(0, length);
 	/**
@@ -434,9 +471,9 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(this->_encoding){
+	switch(static_cast <uint8_t> (this->_encoding)){
 		// Если кодировкой является UTF-8
-		case encoding_t::UTF8: {
+		case static_cast <uint8_t> (encoding_t::UTF8): {
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
 			/**
@@ -461,8 +498,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -479,8 +527,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -490,8 +549,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -514,6 +584,7 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					 * @note Однобайтовые знаки переносятся отрезком, а не поодиночке: в
 					 *       тексте настроек их подавляющее большинство, и перенос знака за
 					 *       знаком стоил пятой доли всего времени чтения
+					 *
 					 */
 					const size_t begin = offset;
 					/**
@@ -526,6 +597,7 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 						 * @note Проход этот и есть ускорение: проверка знака за знаком
 						 *       стоила трети всего времени чтения, а слово целиком
 						 *       проверяется немногим дороже одного знака
+						 *
 						 */
 						while((offset + sizeof(uint64_t)) <= size){
 							// Очередные восемь байтов исходного текста
@@ -558,12 +630,24 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 							 *       посреди отрезка отбросил бы уже разобранное его начало.
 							 *       Разбор выдаёт события по приведённому тексту, и потеря
 							 *       начала отрезка отняла бы у него события целых строк
+							 *
 							 */
 							result.append(buffer + begin, (offset - begin));
 							// Запоминаем код ошибки приведения
 							this->_error = error_t::INVALID_CHARACTER;
-							// Выполняем вывод сообщения об отказе в лог
-							this->report();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+							#endif
 							// Выводим отрицательный результат выполнения операции
 							return false;
 						}
@@ -583,8 +667,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(count == 0){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -598,8 +693,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -622,8 +728,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -633,8 +750,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -645,9 +773,9 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 			}
 		} break;
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case encoding_t::UTF16LE:
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case encoding_t::UTF16BE: {
+		case static_cast <uint8_t> (encoding_t::UTF16BE): {
 			// Получаем признак обратного порядка байтов кодировки
 			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			// Положение разбираемого байта в переданном буфере
@@ -655,7 +783,7 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 			/**
 			 * Выполняем перебор пар байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Значение очередной пары байтов исходного текста
 				uint16_t unit = 0;
 				/**
@@ -702,8 +830,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -724,12 +863,24 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 *
 				 * @note Младшая половина без предшествующей старшей означает испорченный
 				 *       текст: подставить вместо неё знак замены значило бы скрыть порчу
+				 *
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Если прочитанная пара байтов суррогатной не является
@@ -740,15 +891,25 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 				/**
 				 * Если запись знака в кодировке UTF-8 выполнить не удалось
-				 */
-				/**
+				 *
 				 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: запись знака
 				 *       отвергает суррогаты и значения свыше `MAX_CODEPOINT`, а
 				 *       ровно их же отвергает признание знака `isChar`, стоящее
@@ -759,12 +920,24 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Снимать его нельзя: он оберегает договор самой записи, а
 				 *          не эту дорогу. Место вызова, знак не проверившее, молча
 				 *          собрало бы негодную последовательность
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -784,15 +957,25 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
 		} break;
-		// Если кодировкой является ISO-8859-1
 		// Если кодировкой является Windows-1252
-		case encoding_t::CP1252: {
+		case static_cast <uint8_t> (encoding_t::CP1252): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -803,6 +986,7 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Область 0x80-0x9F читается по перекодировочной таблице, а всё
 				 *       прочее совпадает с ISO-8859-1, где кодовое значение знака равно
 				 *       значению его байта
+				 *
 				 */
 				const uint32_t code = (((data[i] >= 0x80) && (data[i] <= 0x9F)) ? CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i]));
 				/**
@@ -811,15 +995,25 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if((code == 0) || !isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 				/**
 				 * Если запись знака в кодировке UTF-8 выполнить не удалось
-				 */
-				/**
+				 *
 				 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: запись знака
 				 *       отвергает суррогаты и значения свыше `MAX_CODEPOINT`, а
 				 *       ровно их же отвергает признание знака `isChar`, стоящее
@@ -830,18 +1024,31 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Снимать его нельзя: он оберегает договор самой записи, а
 				 *          не эту дорогу. Место вызова, знак не проверившее, молча
 				 *          собрало бы негодную последовательность
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 			}
 		} break;
-		case encoding_t::LATIN1: {
+		// Если кодировкой является ISO-8859-1
+		case static_cast <uint8_t> (encoding_t::LATIN1): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -852,8 +1059,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -863,8 +1081,7 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Кодовое значение знака в кодировке ISO-8859-1 совпадает со
 				 *       значением его байта: перекодировочная таблица этой кодировке
 				 *       не нужна вовсе
-				 */
-				/**
+				 *
 				 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт, но довод у него СВОЙ,
 				 *       отличный от двух заслонов записи выше: подаётся сюда не кодовое
 				 *       значение из последовательности, а ЗНАЧЕНИЕ ОДНОГО БАЙТА - от нуля
@@ -882,19 +1099,31 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				 *       со знаком. Стой здесь `char` знаковый, байт свыше `7F` обратился бы
 				 *       значением свыше `MAX_CODEPOINT`, и заслон ожил бы на всяком таком
 				 *       байте - довод пал бы целиком
+				 *
 				 */
 				if(!encode(data[i], result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 			}
 		} break;
 		// Если кодировкой является US-ASCII
-		case encoding_t::ASCII: {
+		case static_cast <uint8_t> (encoding_t::ASCII): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -905,8 +1134,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(data[i] >= 0x80){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -916,8 +1156,19 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -928,21 +1179,32 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 		/**
 		 * Если кодировка исходного текста не определена
 		 *
-		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: разбор доходит сюда лишь при
-		 *       опознанной либо назначенной кодировке, а всякий вид перечня разобран
-		 *       ветвями выше поимённо. Замерено щупом по местам отказа 04.09.2026 -
-		 *       подмена кода здесь не красит ни одной проверки
+		 * @note Общий перечень шире поддерживаемого кодеком: UTF-32 и SINGLE приходят
+		 *       сюда от потребителя, задавшего их настройкой, и получают отказ. Довод
+		 *       о недостижимости относился к перечню из семи видов и силы более не имеет
 		 *
 		 * @warning Снимать ветвь нельзя, и молчание щупа тому не довод: заведи в перечень
 		 *          новый вид кодировки, ветви ему не написав, - и текст пошёл бы в разбор
 		 *          НЕПРИВЕДЁННЫМ, молча и без отказа. Ветвь эта и стережёт именно такую
 		 *          оплошность, а не ошибку потребителя
+		 *
 		 */
 		default: {
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -959,9 +1221,12 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 	 * @warning Снимать сеть нельзя: она держит договор приведения общим для всех
 	 *          кодировок, и заведение кодировки, обрыв свой не ловящей, отвечало бы
 	 *          не молчаливой утратой хвоста, а отказом
+	 *
 	 */
 	if(end && (this->_length != 0)){
 		/**
+		 * Запоминаем код ошибки приведения
+		 *
 		 * @note Заслон этот - СЕТЬ БЕЗОПАСНОСТИ, и ныне он недостижим: обрыв
 		 *       последовательности ловят заслоны выше, свои у каждой кодировки, и до
 		 *       конца приведения незакрытая длина не доживает. Замерено 04.09.2026
@@ -972,11 +1237,22 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 		 * @warning Снимать его нельзя, и молчание щупа тому не довод: заведи кодировку,
 		 *          обрыв свой не ловящую, - и утрата хвоста пошла бы молча, без отказа
 		 *          вовсе. Заслон стоит последним и стережёт именно эту оплошность
+		 *
 		 */
-		// Запоминаем код ошибки приведения
 		this->_error = error_t::INVALID_ENCODING;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::csv::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV encoding failed: %s", log::flag_t::WARNING, codec::csv::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1070,6 +1346,7 @@ bool awh::codec::csv::Decoder::convert(const void * buffer, const size_t size, c
 		 * @note Наибольшая метка порядка байтов занимает четыре байта, и до их
 		 *       прихода определять кодировку нельзя: метка UTF-32 начинается с
 		 *       метки UTF-16, и по двум первым байтам их не различить
+		 *
 		 */
 		if((this->_prolog.size() < 4) && !end)
 			// Выводим положительный результат выполнения операции
@@ -1105,46 +1382,40 @@ awh::codec::csv::error_t awh::codec::csv::Decoder::error() const noexcept {
  *
  */
 void awh::codec::csv::Decoder::reset() noexcept {
-	// Выполняем сброс кода ошибки приведения
-	this->_error = error_t::NONE;
+	// Выполняем сброс количества удержанных байтов
+	this->_length = 0;
+	// Выполняем сброс удержанной старшей половины суррогатной пары
+	this->_surrogate = 0;
 	// Выполняем сброс признака обнаружения метки порядка байтов
 	this->_signed = false;
 	// Выполняем сброс признака обработки метки порядка байтов
 	this->_marked = false;
 	// Выполняем сброс признака начала приведения текста
 	this->_started = false;
+	// Выполняем сброс кода ошибки приведения
+	this->_error = error_t::NONE;
 	// Выполняем сброс удержанного начала текста
 	this->_prolog.clear();
-	// Выполняем сброс количества удержанных байтов
-	this->_length = 0;
-	// Выполняем сброс удержанной старшей половины суррогатной пары
-	this->_surrogate = 0;
 	/**
 	 * Если кодировка исходного текста извне не навязана
 	 *
 	 * @note Навязанная кодировка сброс переживает намеренно: устанавливается она
 	 *       вызывающим до разбора, и потеря её при сбросе означала бы молчаливый
 	 *       переход разбора на кодировку по умолчанию
+	 *
 	 */
 	if(!this->_forced)
 		// Выполняем сброс определённой кодировки исходного текста
 		this->_encoding = encoding_t::NONE;
 }
 /**
- * @brief Метод вывода сообщения об отказе в лог
- *
- */
-void awh::codec::csv::Decoder::report() const noexcept {
-	// Выполняем вывод сообщения об отказе
-	awh::log::print("CSV encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
-}
-/**
  * @brief Конструктор
  *
  */
 awh::codec::csv::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
+ _forced(false), _marked(false), _signed(false),
+ _started(false), _length(0), _surrogate(0),
+ _error(error_t::NONE), _encoding(encoding_t::NONE) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака
 	this->_pending[0] = 0;
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

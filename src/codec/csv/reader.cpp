@@ -22,9 +22,13 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <encoding/ascii.hpp>
-#include <codec/csv/reader.hpp>
 #include <sys/log.hpp>
+#include <encoding/ascii.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/csv/reader.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -42,22 +46,13 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Знаки, проверяемые при определении разделителя по содержимому
-	 *
-	 * @details Порядок значим: при равном достоинстве побеждает знак, стоящий раньше.
-	 * Первой стоит запятая, названная договором, за нею точка с запятой, принятая в
-	 * местностях, где запятая занята под десятичный знак, затем знак табуляции и
-	 * вертикальная черта
-	 *
-	 */
-	/**
 	 * @brief Предел роста хранилища знаков записи
 	 *
 	 * @details Смещения полей внутри хранилища - начало поля, границы его значащей части -
-	 * хранятся четырьмя байтами, и хранилище, за эту ширину вышедшее, обращает их по кругу
-	 * молча: запись длиною `2^32 + N` отдавала поле длиною ровно `N`, а четыре гигабайта
-	 * содержимого пропадали БЕЗ отказа. Замерено 31.08.2026 тремя прогонами - `N` равнялось
-	 * поданному сверх предела знак в знак
+	 *          хранятся четырьмя байтами, и хранилище, за эту ширину вышедшее, обращает их по кругу
+	 *          молча: запись длиною `2^32 + N` отдавала поле длиною ровно `N`, а четыре гигабайта
+	 *          содержимого пропадали БЕЗ отказа. Замерено 31.08.2026 тремя прогонами - `N` равнялось
+	 *          поданному сверх предела знак в знак.
 	 *
 	 * @note Предел этот - ШИРИНА ПОЛЯ, а не пожелание, оттого сторож при нём безусловен и
 	 *       настройками не снимается: `maxRecord` и `maxField` объявлены выключаемыми нулём,
@@ -78,31 +73,40 @@ namespace {
 	 *          не имеет вовсе. Держится он замером - `лишку` 1, 3 и 7 МиБ давали поле ровно
 	 *          такой длины до правки и отказ после. Сказано это прямо, чтобы отсутствие
 	 *          проверки не сочли недосмотром и сторожа не сняли как ничем не закреплённого
+	 *
 	 */
 	static constexpr size_t LIMIT = static_cast <size_t> (0xFFFFFFFFu);
-
+	/**
+	 * @brief Знаки, проверяемые при определении разделителя по содержимому
+	 *
+	 * @details Порядок значим: при равном достоинстве побеждает знак, стоящий раньше.
+	 *          Первой стоит запятая, названная договором, за нею точка с запятой, принятая в
+	 *          местностях, где запятая занята под десятичный знак, затем знак табуляции и
+	 *          вертикальная черта.
+	 *
+	 */
 	static constexpr char CANDIDATES[] = {',', ';', '\t', '|'};
-}
+};
 
 /**
  * @brief Конструктор
  *
- */
-/**
  * @note Терпимость к рваным записям (`ragged_t::ALLOW`) взята умолчанием НАМЕРЕННО:
  *       RFC 4180 говорит о равенстве числа полей словом «should», а не «MUST», и
  *       таблицы из обихода расхождение это несут постоянно. Строгость доступна
  *       настройкою - `ragged_t::ERROR` прекращает разбор отказом, - и отдельно её
  *       включает `strict`. Записано, чтобы разбор умолчания не открывался заново:
  *       выбор здесь не упущение, а решение
+ *
  */
 awh::codec::csv::Reader::Settings::Settings() noexcept :
- separator(','), quote('"'), comment('\0'),
- escape(escape_t::DOUBLE), header(header_t::NONE), trim(trim_t::NONE),
- ragged(ragged_t::ALLOW), encoding(encoding_t::NONE), strict(false),
- emitBlanks(false), emitComments(false), duplicates(true),
- maxField(MAX_FIELD), maxRecord(MAX_RECORD), maxFields(MAX_FIELDS),
- detect(DETECT_RECORDS) {}
+ strict(false), duplicates(true), emitBlanks(false),
+ emitComments(false), quote('"'), comment('\0'),
+ separator(','), detect(DETECT_RECORDS), maxField(MAX_FIELD),
+ maxRecord(MAX_RECORD), maxFields(MAX_FIELDS), trim(trim_t::NONE),
+ ragged(ragged_t::ALLOW), escape(escape_t::DOUBLE), header(header_t::NONE),
+ encoding(encoding_t::NONE) {}
+
 /**
  * @brief Метод занесения ошибки разбора
  *
@@ -113,10 +117,10 @@ awh::codec::csv::Reader::Settings::Settings() noexcept :
 bool awh::codec::csv::Reader::fail(const error_t error) noexcept {
 	// Место отказа в исходном тексте
 	location_t location;
-	// Запоминаем смещение отказа от начала текста
-	location.offset = this->_offset;
 	// Запоминаем номер строки, в которой произошёл отказ
 	location.line = this->_line;
+	// Запоминаем смещение отказа от начала текста
+	location.offset = this->_offset;
 	// Запоминаем положение в строке, в котором произошёл отказ
 	location.column = this->_column;
 	// Выводим итог занесения ошибки разбора с указанием места
@@ -126,8 +130,8 @@ bool awh::codec::csv::Reader::fail(const error_t error) noexcept {
  * @brief Метод занесения ошибки разбора с указанием места
  *
  * @details Место указывается там, где знак, отказ вызвавший, к мигу обнаружения отказа
- * уже пройден: предел, сличаемый по накопленному, узнаёт о переполнении лишь по
- * дописывании знака, а указывать обязан на сам знак
+ *          уже пройден: предел, сличаемый по накопленному, узнаёт о переполнении лишь по
+ *          дописывании знака, а указывать обязан на сам знак.
  *
  * @param error    код ошибки разбора
  * @param location место ошибки в исходном тексте
@@ -140,20 +144,19 @@ bool awh::codec::csv::Reader::fail(const error_t error, const location_t & locat
 	 *
 	 * @note Первая ошибка сохраняется, а последующие отбрасываются: разбор после
 	 *       отказа не продолжается, и всякая следующая ошибка была бы её следствием
+	 *
 	 */
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = error;
-		// Запоминаем положение ошибки в исходном тексте
-		this->_position.offset = location.offset;
-		// Запоминаем номер строки, в которой произошла ошибка
-		this->_position.line = location.line;
-		// Запоминаем положение в строке, в котором произошла ошибка
-		this->_position.column = location.column;
 		// Запоминаем место обнаружения отказа отдельным полем
 		this->_errorLocation = location;
-		// Выполняем вывод сообщения об отказе разбора текста
-		awh::log::print("CSV parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::csv::message(error), this->_position.line, this->_position.column);
+		// Запоминаем номер строки, в которой произошла ошибка
+		this->_position.line = location.line;
+		// Запоминаем положение ошибки в исходном тексте
+		this->_position.offset = location.offset;
+		// Запоминаем положение в строке, в котором произошла ошибка
+		this->_position.column = location.column;
 	}
 	// Переводим разбор в состояние отказа
 	this->_phase = phase_t::FAILED;
@@ -164,8 +167,8 @@ bool awh::codec::csv::Reader::fail(const error_t error, const location_t & locat
  * @brief Метод снятия обвязки с накопленного содержимого поля
  *
  * @details Обвязка снимается лишь у полей без кавычек либо у всех - смотря по
- * настройкам. Договор велит хранить содержимое поля неизменным, потому умолчанием
- * обвязка сохраняется
+ *          настройкам. Договор велит хранить содержимое поля неизменным, потому умолчанием
+ *          обвязка сохраняется.
  *
  * @param offset смещение начала содержимого в хранилище записи
  * @return       отрезок содержимого без обвязки
@@ -208,9 +211,9 @@ awh::codec::csv::span_t awh::codec::csv::Reader::trim(const uint32_t offset) noe
  * @brief Метод учёта значащей части поля по вновь накопленным знакам
  *
  * @details Границы значащей части отслеживаются по ходу разбора: предел длины поля
- * обязан отвечать отказом там, где он переполнен, а не по окончании поля, когда то
- * уже осело в памяти целиком. Обвязка предела не расходует, и потому запоминаются
- * границы значащей части, а не длина накопленного
+ *          обязан отвечать отказом там, где он переполнен, а не по окончании поля, когда то
+ *          уже осело в памяти целиком. Обвязка предела не расходует, и потому запоминаются
+ *          границы значащей части, а не длина накопленного.
  *
  * @param offset размер хранилища записи до дописывания знаков
  *
@@ -220,9 +223,9 @@ void awh::codec::csv::Reader::significant(const size_t offset) noexcept {
 	 * Если обвязка не снимается вовсе, значащая часть не ведётся
 	 *
 	 * @details Границы значащей части нужны сличению с пределом длины поля ПО ХОДУ
-	 * накопления, а при выключенной обвязке `extent()` берёт длину накопленного целиком и
-	 * границ не спрашивает вовсе. Учёт же идёт на КАЖДЫЙ дописанный знак и стоит прохода
-	 * по вновь накопленному
+	 *          накопления, а при выключенной обвязке `extent()` берёт длину накопленного целиком и
+	 *          границ не спрашивает вовсе. Учёт же идёт на КАЖДЫЙ дописанный знак и стоит прохода
+	 *          по вновь накопленному.
 	 *
 	 * @note Чем именно ведает этот учёт, установлено щупом 06.09.2026, и ответ оказался
 	 *       уже ожидаемого: отключённый нацело, он оставляет ПРИГОВОР прежним - предел
@@ -240,6 +243,7 @@ void awh::codec::csv::Reader::significant(const size_t offset) noexcept {
 	 * @warning Заведено замером (06.09.2026): сличение среза от 23.08.2026 с нынешним
 	 *          показало падение чтения крупной таблицы со 190 до 153 МБ/с, и учёт этот -
 	 *          заведённый 24.08.2026 вместе со снятием обвязки - оказался ему причиной
+	 *
 	 */
 	if(this->_settings.trim == trim_t::NONE)
 		// Выходим из учёта значащей части поля
@@ -251,6 +255,7 @@ void awh::codec::csv::Reader::significant(const size_t offset) noexcept {
 	 *
 	 * @note Завершение поля переносит начало вперёд, и дописанные до того знаки
 	 *       принадлежат полю прежнему: учитывать их текущему полю нельзя
+	 *
 	 */
 	if((size <= offset) || (offset < static_cast <size_t> (this->_begin)))
 		// Выходим из учёта значащей части поля
@@ -279,7 +284,7 @@ void awh::codec::csv::Reader::significant(const size_t offset) noexcept {
  * @brief Метод получения длины поля, пределом ограничиваемой
  *
  * @details Обвязка снимается лишь у полей без кавычек либо у всех - смотря по
- * настройкам, - и там, где она сохраняется, предел считается по накопленному целиком
+ *          настройкам, - и там, где она сохраняется, предел считается по накопленному целиком.
  *
  * @return длина текущего поля в байтах
  *
@@ -298,8 +303,8 @@ uint32_t awh::codec::csv::Reader::extent() const noexcept {
  * @brief Метод проверки нахождения разбора внутри поля
  *
  * @details Хранилище записи копит не одни лишь поля: строка примечания ложится туда
- * же, полем не являясь. Предел длины поля её не касается, и сличаться он обязан лишь
- * пока разбор внутри поля
+ *          же, полем не являясь. Предел длины поля её не касается, и сличаться он обязан лишь
+ *          пока разбор внутри поля.
  *
  * @return признак того, что разбор находится внутри поля
  *
@@ -308,17 +313,17 @@ bool awh::codec::csv::Reader::inside() const noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_phase){
-		// Если разбор находится внутри поля без кавычек
-		case phase_t::UNQUOTED:
-		// Если разбор находится внутри поля в кавычках
-		case phase_t::QUOTED:
-		// Если разбор встретил кавычку внутри поля в кавычках
-		case phase_t::QUOTE_IN_FIELD:
+	switch(static_cast <uint8_t> (this->_phase)){
 		// Если разбор встретил знак отмены внутри поля в кавычках
-		case phase_t::ESCAPE:
+		case static_cast <uint8_t> (phase_t::ESCAPE):
+		// Если разбор находится внутри поля в кавычках
+		case static_cast <uint8_t> (phase_t::QUOTED):
+		// Если разбор находится внутри поля без кавычек
+		case static_cast <uint8_t> (phase_t::UNQUOTED):
+		// Если разбор встретил кавычку внутри поля в кавычках
+		case static_cast <uint8_t> (phase_t::QUOTE_IN_FIELD):
 		// Если разбор встретил знак отмены внутри поля без кавычек
-		case phase_t::ESCAPE_UNQUOTED:
+		case static_cast <uint8_t> (phase_t::ESCAPE_UNQUOTED):
 			// Выводим признак нахождения внутри поля
 			return true;
 		/**
@@ -328,14 +333,14 @@ bool awh::codec::csv::Reader::inside() const noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 *
 		 */
-		case phase_t::RECORD_START:
-		case phase_t::FIELD_START:
-		case phase_t::AFTER_CR:
-		case phase_t::PENDING_CR:
-		case phase_t::COMMENT:
-		case phase_t::FAILED:
-		break;
+		case static_cast <uint8_t> (phase_t::FAILED):
+		case static_cast <uint8_t> (phase_t::COMMENT):
+		case static_cast <uint8_t> (phase_t::AFTER_CR):
+		case static_cast <uint8_t> (phase_t::PENDING_CR):
+		case static_cast <uint8_t> (phase_t::FIELD_START):
+		case static_cast <uint8_t> (phase_t::RECORD_START): break;
 	}
 	// Выводим признак нахождения вне поля
 	return false;
@@ -348,17 +353,19 @@ bool awh::codec::csv::Reader::inside() const noexcept {
  */
 bool awh::codec::csv::Reader::trimming() const noexcept {
 	// Выводим признак снятия обвязки у текущего поля
-	return !((this->_settings.trim == trim_t::NONE) ||
-	         ((this->_settings.trim == trim_t::UNQUOTED) && this->_quoted));
+	return !(
+		(this->_settings.trim == trim_t::NONE) ||
+		((this->_settings.trim == trim_t::UNQUOTED) && this->_quoted)
+	);
 }
 /**
  * @brief Метод получения длины поля, какою она станет при значащем знаке следом
  *
  * @details Пробельные знаки, накопленные полем, обвязкою остаются лишь до тех пор,
- * пока за ними не встал знак значащий: встав, он обращает их в середину значащей
- * части, и длина поля прирастает разом на всю их череду. Остаток предела считается
- * потому по худшему случаю - иначе быстрый проход перескакивал бы предел на длину
- * этой череды, и отказ приходился бы на знак позднейший, нежели предел переполнивший
+ *          пока за ними не встал знак значащий: встав, он обращает их в середину значащей
+ *          части, и длина поля прирастает разом на всю их череду. Остаток предела считается
+ *          потому по худшему случаю - иначе быстрый проход перескакивал бы предел на длину
+ *          этой череды, и отказ приходился бы на знак позднейший, нежели предел переполнивший.
  *
  * @return длина текущего поля в байтах по худшему случаю
  *
@@ -375,6 +382,7 @@ uint32_t awh::codec::csv::Reader::pending() const noexcept {
 	 *
 	 * @note Всё накопленное - обвязка начальная, и знак значащий, встав следом,
 	 *       откроет значащую часть с себя самого
+	 *
 	 */
 	if(this->_till == this->_begin)
 		// Выводим нулевую длину поля
@@ -386,8 +394,8 @@ uint32_t awh::codec::csv::Reader::pending() const noexcept {
  * @brief Метод завершения текущего поля
  *
  * @details Поле заголовка не выдаётся событием поля: имя его переносится в хранилище
- * имён, а событие выдаётся видом заголовка. Хранилище записи при этом не годится:
- * имена живут до конца разбора, а хранилище записи очищается
+ *          имён, а событие выдаётся видом заголовка. Хранилище записи при этом не годится:
+ *          имена живут до конца разбора, а хранилище записи очищается.
  *
  * @return признак продолжения разбора
  *
@@ -398,15 +406,43 @@ bool awh::codec::csv::Reader::complete() noexcept {
 	/**
 	 * Если длина поля превышает допустимую
 	 */
-	if((this->_settings.maxField > 0) && (content.length > this->_settings.maxField))
-		// Выводим ошибку превышения длины поля
+	if((this->_settings.maxField > 0) && (content.length > this->_settings.maxField)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::FIELD_TOO_LONG), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::FIELD_TOO_LONG), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::FIELD_TOO_LONG);
+	}
 	/**
 	 * Если количество полей в записи превышает допустимое
 	 */
-	if((this->_settings.maxFields > 0) && (this->_count >= this->_settings.maxFields))
-		// Выводим ошибку превышения количества полей
+	if((this->_settings.maxFields > 0) && (this->_count >= this->_settings.maxFields)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::TOO_MANY_FIELDS), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::TOO_MANY_FIELDS), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::TOO_MANY_FIELDS);
+	}
 	// Собираемое событие разбора
 	item_t item;
 	// Запоминаем указание на содержимое события
@@ -430,10 +466,25 @@ bool awh::codec::csv::Reader::complete() noexcept {
 		 *
 		 * @note Пустое имя поля обращением по имени недостижимо, и молчаливое его
 		 *       принятие оставило бы столбец без доступа. Отказ здесь честнее
+		 *
 		 */
-		if(name.empty())
-			// Выводим ошибку пустого имени поля заголовка
+		if(name.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::EMPTY_HEADER), this->_line, this->_column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::EMPTY_HEADER), this->_line, this->_column);
+			#endif
+			// Объявляем отказ
 			return this->fail(error_t::EMPTY_HEADER);
+		}
 		/**
 		 * Если проверка повторного объявления имён включена
 		 */
@@ -441,9 +492,23 @@ bool awh::codec::csv::Reader::complete() noexcept {
 			/**
 			 * Если имя поля в заголовке уже объявлено
 			 */
-			if(this->_unique.find(string(name)) != this->_unique.end())
-				// Выводим ошибку повторного объявления имени поля
+			if(this->_unique.find(string(name)) != this->_unique.end()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::DUPLICATE_HEADER), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::DUPLICATE_HEADER), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				return this->fail(error_t::DUPLICATE_HEADER);
+			}
 		}
 		// Запоминаем указание на имя поля в хранилище имён
 		const span_t stored(static_cast <uint32_t> (this->_names.size()), content.length);
@@ -455,6 +520,7 @@ bool awh::codec::csv::Reader::complete() noexcept {
 		 *       в памяти, обесценив всякую ссылку в него. Прежде имена заносились по
 		 *       окончании заголовка, а сверка велась по ходу его разбора - то есть с
 		 *       набором, всегда пустым, и повтор не ловился вовсе
+		 *
 		 */
 		if(this->_settings.duplicates)
 			// Заносим имя поля в набор для проверки повторного объявления
@@ -497,7 +563,7 @@ bool awh::codec::csv::Reader::complete() noexcept {
  * @brief Метод завершения текущей записи
  *
  * @details Пустая строка записью не считается: договор такую запись не описывает, а
- * обиход единодушно её пропускает. Выдача её событием - настройка
+ *          обиход единодушно её пропускает. Выдача её событием - настройка.
  *
  * @return признак продолжения разбора
  *
@@ -509,6 +575,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 	 * @note Пустой строкой считается запись из единственного поля, пустого и не
 	 *       заключённого в кавычки: запись «""» пустой строкой не является и даёт
 	 *       запись с единственным пустым полем
+	 *
 	 */
 	if((this->_count == 1) && !this->_started && this->_items.back().content.length == 0 && !this->_items.back().quoted){
 		// Убираем событие поля из очереди выдачи
@@ -552,8 +619,10 @@ bool awh::codec::csv::Reader::commit() noexcept {
 		 *       него назначает первая запись: договор велит записям обладать
 		 *       одинаковым количеством полей независимо от наличия заголовка, и
 		 *       бездействие настройки без заголовка было бы её молчаливым отключением
+		 *
 		 */
-		const uint32_t expected = (this->_settings.header == header_t::PRESENT ?
+		const uint32_t expected = (
+			this->_settings.header == header_t::PRESENT ?
 			static_cast <uint32_t> (this->_header.size()) : this->_expected
 		);
 		/**
@@ -569,14 +638,29 @@ bool awh::codec::csv::Reader::commit() noexcept {
 			/**
 			 * Если расхождение прекращает разбор ошибкой
 			 */
-			if(this->_settings.ragged == ragged_t::ERROR)
-				// Выводим ошибку расхождения количества полей
+			if(this->_settings.ragged == ragged_t::ERROR){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::FIELD_COUNT_MISMATCH), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::FIELD_COUNT_MISMATCH), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				return this->fail(error_t::FIELD_COUNT_MISMATCH);
+			}
 			/**
 			 * Выполняем дополнение записи недостающими полями
 			 *
 			 * @note Лишние поля не отбрасываются: отбросить их значило бы потерять
 			 *       данные молча, тогда как дополнение недостающих ничего не теряет
+			 *
 			 */
 			while(this->_count < expected){
 				// Собираемое событие разбора
@@ -619,6 +703,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 	 *
 	 * @note Заголовок номера записи не занимает: записи считаются от первой записи
 	 *       со значениями, и номер этот отвечает тому, что видит потребитель
+	 *
 	 */
 	if((this->_settings.header != header_t::PRESENT) || (this->_record > 0) || this->_headed)
 		// Увеличиваем номер текущей записи
@@ -632,17 +717,6 @@ bool awh::codec::csv::Reader::commit() noexcept {
 	// Выводим признак продолжения разбора
 	return true;
 }
-/**
- * @brief Метод разбора очередного знака текста
- *
- * @details Знак, чьё значение зависит от следующего за ним, лишь переводит разбор в
- * отдельное состояние, а решение принимается уже следующим знаком. Иначе нарезка
- * текста ровно между такими знаками меняла бы выдачу
- *
- * @param letter разбираемый знак
- * @return       признак продолжения разбора
- *
- */
 /**
  * @brief Метод перестроения разметки знаков, разбор прерывающих
  *
@@ -664,6 +738,7 @@ void awh::codec::csv::Reader::marking() noexcept {
 	 *       признаёт её обыкновенным знаком, но отметка эта лишь возвращает знак
 	 *       разбору по знакам, а тот его и признаёт. Разделять здесь два случая
 	 *       значило бы держать две разметки ради знака, в поле без кавычек редкого
+	 *
 	 */
 	this->_breakUnquoted[static_cast <uint8_t> (this->_separator)] = true;
 	// Отмечаем знак кавычки прерывающим поле без кавычек
@@ -677,6 +752,7 @@ void awh::codec::csv::Reader::marking() noexcept {
 	 *
 	 * @note Возврат каретки здесь не отмечается: внутри кавычек он содержимым поля и
 	 *       является. Перевод строки отмечается затем, что он двигает номер строки
+	 *
 	 */
 	this->_breakQuoted[static_cast <uint8_t> (this->_settings.quote)] = true;
 	// Отмечаем перевод строки прерывающим поле в кавычках
@@ -694,6 +770,7 @@ void awh::codec::csv::Reader::marking() noexcept {
 		 *       строки - иначе поле разорвало бы запись надвое, - и чтение обязано
 		 *       снимать эти отмены. Без отметки быстрый проход глотал бы знак отмены,
 		 *       не отдавая его разбору по знакам
+		 *
 		 */
 		this->_breakUnquoted[static_cast <uint8_t> ('\\')] = true;
 	}
@@ -712,22 +789,23 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_phase){
-		// Если разбор находится внутри поля без кавычек
-		case phase_t::UNQUOTED:
-			// Получаем разметку знаков поля без кавычек
-			marks = this->_breakUnquoted;
-		break;
+	switch(static_cast <uint8_t> (this->_phase)){
 		// Если разбор находится внутри поля в кавычках
-		case phase_t::QUOTED:
+		case static_cast <uint8_t> (phase_t::QUOTED):
 			// Получаем разметку знаков поля в кавычках
 			marks = this->_breakQuoted;
+		break;
+		// Если разбор находится внутри поля без кавычек
+		case static_cast <uint8_t> (phase_t::UNQUOTED):
+			// Получаем разметку знаков поля без кавычек
+			marks = this->_breakUnquoted;
 		break;
 		/**
 		 * Если разбор находится в любом другом состоянии
 		 *
 		 * @note Прочие состояния занимают по одному-два знака, и проходить их разом
 		 *       нечего: всякий знак в них меняет состояние
+		 *
 		 */
 		default: return 0;
 	}
@@ -751,6 +829,7 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 	 * @note Проход укорачивается до остатка предела, а знак, предел переполняющий,
 	 *       достаётся разбору по знакам - тот и отвечает отказом в том же самом месте,
 	 *       где ответил бы без прохода
+	 *
 	 */
 	if(this->_settings.maxRecord > 0){
 		// Получаем остаток предела длины записи
@@ -776,6 +855,7 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 	 *       отвечает отказом в том же самом месте, где ответил бы без прохода. Обвязка
 	 *       предела не расходует, и поле из одних пробельных знаков идёт дальше по
 	 *       знакам, оставаясь под пределом длины записи
+	 *
 	 */
 	if(this->_settings.maxField > 0){
 		// Получаем длину поля по худшему случаю
@@ -800,6 +880,7 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 	 *
 	 * @note Знак, разрядность переполняющий, достаётся разбору по знакам ровно так же, как
 	 *       и у пределов длины, и тот отвечает отказом в том же самом месте
+	 *
 	 */
 	{
 		// Получаем остаток разрядности хранилища
@@ -815,6 +896,7 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 		 *
 		 * @warning Снимать укорочение нельзя: без него проход уходит за предел смещения, и
 		 *          поле указывает на чужие знаки в начале хранилища - порча без признака
+		 *
 		 */
 		if(length > room)
 			// Укорачиваем проход до остатка разрядности
@@ -854,19 +936,19 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
  * @return     признак продолжения разбора
  *
  */
-bool awh::codec::csv::Reader::process(const string & text) noexcept {
+bool awh::codec::csv::Reader::process(const char * text, const size_t size) noexcept {
 	// Смещение по разбираемому куску текста
 	size_t offset = 0;
 	/**
 	 * Выполняем разбор всего куска текста
 	 */
-	while(offset < text.size()){
+	while(offset < size){
 		// Выполняем быстрый проход по знакам, состояния не меняющим
-		offset += this->bulk(text.data() + offset, text.size() - offset);
+		offset += this->bulk(text + offset, size - offset);
 		/**
 		 * Если кусок текста исчерпан проходом
 		 */
-		if(offset >= text.size())
+		if(offset >= size)
 			// Выводим признак продолжения разбора
 			break;
 		/**
@@ -898,6 +980,7 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	 * @note Состояние QUOTE_IN_FIELD исключению НЕ подлежит: кавычка, за которой стоит
 	 *       знак конца строки, поле закрыла, и знак этот запись завершает. Исключив
 	 *       и его, предел требовал бы у поля в кавычках на знак больше
+	 *
 	 */
 	const bool terminator = (
 		((letter == '\r') || (letter == '\n')) &&
@@ -913,20 +996,48 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	 *          несоразмерная. Сторож остаётся ради устройства, а не ради замера:
 	 *          без него переполнение УСЕКАЕТ смещение молча, и поля указывают на
 	 *          чужое содержимое, отказа при этом нет никакого
-	 */
-	/**
+	 *
 	 * Если знак входит в содержимое записи, а хранилище исчерпано шириной смещений
 	 *
 	 * @note Сторож этот стоит ПРЕЖДЕ пределов длины: те выключаются нулём, а ширина
 	 *       смещений не выключается ничем
+	 *
 	 */
-	if(!terminator && (this->_storage.size() >= ::LIMIT))
-		// Выводим ошибку исчерпания разрядности хранилища
+	if(!terminator && (this->_storage.size() >= ::LIMIT)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::STORAGE_EXHAUSTED), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::STORAGE_EXHAUSTED), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::STORAGE_EXHAUSTED);
+	}
 	// Проверяем превышение предела длины записи
-	if(!terminator && (this->_settings.maxRecord > 0) && (this->_length >= this->_settings.maxRecord))
-		// Выводим ошибку превышения длины записи
+	if(!terminator && (this->_settings.maxRecord > 0) && (this->_length >= this->_settings.maxRecord)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::RECORD_TOO_LONG), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::RECORD_TOO_LONG), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::RECORD_TOO_LONG);
+	}
 	/**
 	 * Если знак входит в содержимое записи
 	 */
@@ -961,11 +1072,25 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	 *       Отвод по одному лишь состоянию примечания отвергал его длиною свыше предела
 	 *       кодом отказа о поле, какого в записи нет. Поле же, завершившееся своим
 	 *       порядком, сличается там же, где и прежде, - в завершении поля
+	 *
 	 */
-	if(result && this->inside() &&
-	   (this->_settings.maxField > 0) && (this->extent() > this->_settings.maxField))
-		// Выводим ошибку превышения длины поля в месте знака, предел переполнившего
+	if(result && this->inside() && (this->_settings.maxField > 0) && (this->extent() > this->_settings.maxField)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::FIELD_TOO_LONG), place.line, place.column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::FIELD_TOO_LONG), place.line, place.column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::FIELD_TOO_LONG, place);
+	}
 	// Выводим признак продолжения разбора
 	return result;
 }
@@ -973,9 +1098,9 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
  * @brief Метод разбора знака состоянием разбора
  *
  * @details Знак, сменивший состояние, разбирается заново уже новым состоянием, и разбор
- * потому вызывает себя повторно тем же знаком. Учёт длины записи вынесен наружу именно
- * поэтому: считаемый здесь, он рос бы на всякий заход и отсекал запись прежде
- * положенного предела - тем более прежде, чем больше состояний знак сменил
+ *          потому вызывает себя повторно тем же знаком. Учёт длины записи вынесен наружу именно
+ *          поэтому: считаемый здесь, он рос бы на всякий заход и отсекал запись прежде
+ *          положенного предела - тем более прежде, чем больше состояний знак сменил.
  *
  * @param letter разбираемый знак
  * @return       признак продолжения разбора
@@ -1012,6 +1137,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 *
 		 * @warning Разомкнись она - и ветвь станет достижимой немедля: довольно завести
 		 *          вызов `fail()` с кодом, взятым из переменной и не проверенным на пустоту
+		 *
 		 */
 		case phase_t::FAILED:
 			// Выводим признак прекращения разбора
@@ -1022,6 +1148,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 * @note Возврат каретки завершает запись сам по себе, а следующий за ним
 		 *       перевод строки лишь дополняет его. Оттого запись завершается здесь, а
 		 *       перевод строки, если он пришёл, поглощается без последствий
+		 *
 		 */
 		case phase_t::PENDING_CR: {
 			/**
@@ -1030,6 +1157,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * @note Пара сложилась: только здесь запись и завершается. Место отказа,
 			 *       буде пара не сложится, указывает на сам возврат каретки, а не на
 			 *       пришедший за ним знак: из грамматики выпал именно он
+			 *
 			 */
 			if(letter == '\n'){
 				/**
@@ -1046,18 +1174,34 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 					return false;
 				// Переводим разбор в состояние начала записи
 				this->_phase = phase_t::RECORD_START;
-				// Увеличиваем смещение от начала текста
-				this->_offset++;
 				// Увеличиваем номер текущей строки
 				this->_line++;
+				// Увеличиваем смещение от начала текста
+				this->_offset++;
 				// Сбрасываем положение в текущей строке
 				this->_column = 1;
 				// Выводим признак продолжения разбора
 				return true;
 			}
-			// Выводим ошибку негодного конца записи
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+			#endif
+			// Объявляем отказ
 			return this->fail(error_t::BARE_LINE_BREAK);
 		}
+		/**
+		 * Если разбор находится в состоянии возврата каретки
+		 */
 		case phase_t::AFTER_CR: {
 			// Переводим разбор в состояние начала записи
 			this->_phase = phase_t::RECORD_START;
@@ -1065,10 +1209,10 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * Если знаком является перевод строки
 			 */
 			if(letter == '\n'){
-				// Увеличиваем смещение от начала текста
-				this->_offset++;
 				// Увеличиваем номер текущей строки
 				this->_line++;
+				// Увеличиваем смещение от начала текста
+				this->_offset++;
 				// Сбрасываем положение в текущей строке
 				this->_column = 1;
 				// Выводим признак продолжения разбора
@@ -1085,10 +1229,10 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * Если знак начинает строку примечания
 			 */
 			if((this->_settings.comment != '\0') && (letter == this->_settings.comment)){
-				// Запоминаем положение начала примечания в исходном тексте
-				this->_position.offset = this->_offset;
 				// Запоминаем номер строки начала примечания
 				this->_position.line = this->_line;
+				// Запоминаем положение начала примечания в исходном тексте
+				this->_position.offset = this->_offset;
 				// Запоминаем положение в строке начала примечания
 				this->_position.column = this->_column;
 				// Запоминаем номер записи начала примечания
@@ -1138,12 +1282,12 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 					// Заносим собранное событие в очередь выдачи
 					this->_items.push_back(::move(item));
 				}
-				// Сбрасываем длину текущей записи
-				this->_length = 0;
 				// Увеличиваем смещение от начала текста
 				this->_offset++;
 				// Увеличиваем положение в текущей строке
 				this->_column++;
+				// Сбрасываем длину текущей записи
+				this->_length = 0;
 				/**
 				 * Если знаком является возврат каретки
 				 */
@@ -1223,13 +1367,14 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * Если знаком является знак отмены и способ записи его признаёт
 			 *
 			 * @details Запись без кавычек (`quoting_t::NONE`) предваряет знаком отмены
-			 * разделитель, знаки конца строки и сам знак отмены: иначе поле разорвало бы
-			 * запись надвое. Чтение снимало эти отмены лишь ВНУТРИ кавычек, и записанное
-			 * без кавычек прочитывалось не тем, чем записано, - причём молча: поле
-			 * `a,b` уходило текстом `a\\,b`, а читалось двумя полями `a\\` и `b`
+			 *          разделитель, знаки конца строки и сам знак отмены: иначе поле разорвало бы
+			 *          запись надвое. Чтение снимало эти отмены лишь ВНУТРИ кавычек, и записанное
+			 *          без кавычек прочитывалось не тем, чем записано, - причём молча: поле
+			 *          `a,b` уходило текстом `a\\,b`, а читалось двумя полями `a\\` и `b`.
 			 *
 			 * @note Так же поступает и обиход: `escapechar` модуля `csv` языка Python
 			 *       при чтении снимает особое значение со следующего знака
+			 *
 			 */
 			if((letter == '\\') && ((this->_settings.escape == escape_t::BACKSLASH) || (this->_settings.escape == escape_t::BOTH))){
 				// Переводим разбор в состояние знака отмены внутри поля без кавычек
@@ -1265,6 +1410,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				 *       и тогда знака этого не будет вовсе, а завершение последнего поля
 				 *       возьмёт смещение прежнего - выдав содержимое предыдущего поля
 				 *       вторично
+				 *
 				 */
 				this->_begin = static_cast <uint32_t> (this->_storage.size());
 				// Сбрасываем границы значащей части заводимого поля
@@ -1286,10 +1432,25 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				 * @note Договор велит завершать запись возвратом каретки с переводом
 				 *       строки. Одиночный перевод строки признаётся послаблением,
 				 *       поскольку так пишут все системы семейства UNIX
+				 *
 				 */
-				if(this->_settings.strict && (letter == '\n'))
-					// Выводим ошибку негодного конца записи
+				if(this->_settings.strict && (letter == '\n')){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+					#endif
+					// Объявляем отказ
 					return this->fail(error_t::BARE_LINE_BREAK);
+				}
 				/**
 				 * Если разбор ведётся строго по договору
 				 *
@@ -1298,6 +1459,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				 *       откладывается до подтверждения пары переводом строки, ибо
 				 *       возврат каретки, парою не подтверждённый, из грамматики выпадает,
 				 *       и отказ обязан прийти ДО выдачи записи, а не после неё
+				 *
 				 */
 				if(this->_settings.strict){
 					// Увеличиваем смещение от начала текста
@@ -1352,10 +1514,25 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 *       неё отказом, а обиходный признаёт кавычку обыкновенным знаком:
 			 *       отвергать такую запись значило бы отвергать файлы, которые пишут
 			 *       и читают все прочие
+			 *
 			 */
-			if((letter == this->_settings.quote) && this->_settings.strict)
-				// Выводим ошибку неэкранированной кавычки
+			if((letter == this->_settings.quote) && this->_settings.strict){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::UNESCAPED_QUOTE), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::UNESCAPED_QUOTE), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				return this->fail(error_t::UNESCAPED_QUOTE);
+			}
 			// Запоминаем признак наличия полей у записи
 			this->_started = true;
 			// Дописываем знак к содержимому поля
@@ -1403,6 +1580,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * @note Перевод строки внутри поля в кавычках договором дозволен и хранится
 			 *       ровно таким, каким записан: приведение его к единому виду испортило
 			 *       бы значения, где знаки эти значащие
+			 *
 			 */
 			if(letter == '\n'){
 				// Увеличиваем номер текущей строки
@@ -1421,12 +1599,12 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		}
 		/**
 		 * Если разбор находится в состоянии знака отмены
-		 */
-		/**
+		 *
 		 * Если разбор находится в состоянии знака отмены внутри поля без кавычек
 		 *
 		 * @note Знак, следующий за отменою, особого значения не имеет: и разделитель, и
 		 *       знак конца строки ложатся в содержимое поля как есть
+		 *
 		 */
 		case phase_t::ESCAPE_UNQUOTED: {
 			// Дописываем знак к содержимому поля
@@ -1464,6 +1642,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 * @note Значение кавычки решает следующий за нею знак: кавычка означает
 		 *       кавычку в содержимом, разделитель либо знак конца строки - конец поля,
 		 *       а всё прочее договором не описано
+		 *
 		 */
 		case phase_t::QUOTE_IN_FIELD: {
 			/**
@@ -1505,6 +1684,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				 *       и тогда знака этого не будет вовсе, а завершение последнего поля
 				 *       возьмёт смещение прежнего - выдав содержимое предыдущего поля
 				 *       вторично
+				 *
 				 */
 				this->_begin = static_cast <uint32_t> (this->_storage.size());
 				// Сбрасываем границы значащей части заводимого поля
@@ -1523,9 +1703,23 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				/**
 				 * Если разбор ведётся строго по договору, а знаком является одиночный перевод строки
 				 */
-				if(this->_settings.strict && (letter == '\n'))
-					// Выводим ошибку негодного конца записи
+				if(this->_settings.strict && (letter == '\n')){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+					#endif
+					// Объявляем отказ
 					return this->fail(error_t::BARE_LINE_BREAK);
+				}
 				/**
 				 * Если разбор ведётся строго по договору
 				 *
@@ -1534,6 +1728,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				 *       откладывается до подтверждения пары переводом строки, ибо
 				 *       возврат каретки, парою не подтверждённый, из грамматики выпадает,
 				 *       и отказ обязан прийти ДО выдачи записи, а не после неё
+				 *
 				 */
 				if(this->_settings.strict){
 					// Увеличиваем смещение от начала текста
@@ -1587,10 +1782,25 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 * @note Знаки за закрывающей кавычкой договором не описаны. Обиходный
 			 *       разбор дописывает их к содержимому поля, полагая кавычку закрытой
 			 *       не там, где она стоит
+			 *
 			 */
-			if(this->_settings.strict)
-				// Выводим ошибку знаков за закрывающей кавычкой
+			if(this->_settings.strict){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::TRAILING_CHARACTERS), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::TRAILING_CHARACTERS), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				return this->fail(error_t::TRAILING_CHARACTERS);
+			}
 			// Дописываем знак к содержимому поля
 			this->_storage.push_back(letter);
 			/**
@@ -1601,6 +1811,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			 *       же в состояние поля в кавычках сделал бы разделитель содержимым, и
 			 *       запись «"a"b,c» дала бы одно поле вместо двух, а текст без второй
 			 *       закрывающей кавычки - отказ «незакрытое поле»
+			 *
 			 */
 			this->_phase = phase_t::UNQUOTED;
 			// Увеличиваем смещение от начала текста
@@ -1611,6 +1822,19 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			return true;
 		}
 	}
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, codec::csv::message(error_t::INTERNAL), this->_line, this->_column);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::INTERNAL), this->_line, this->_column);
+	#endif
 	/**
 	 * Выводим ошибку внутреннего отказа разбора
 	 *
@@ -1625,6 +1849,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 	 *       `FAILED`, `ESCAPE_UNQUOTED` и `PENDING_CR`. Сличать надлежит и члены, и случаи:
 	 *       перечень стерегут ключи сборки `-Wswitch`, а вот приведение извне не стережёт
 	 *       ничто, и ветвь эта стоит ровно на него
+	 *
 	 */
 	return this->fail(error_t::INTERNAL);
 }
@@ -1632,14 +1857,14 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
  * @brief Метод завершения разбора текста
  *
  * @details Доводит до конца то, что осталось незавершённым: последнее поле без знака
- * конца строки, последнюю запись и отложенное состояние возврата каретки
+ *          конца строки, последнюю запись и отложенное состояние возврата каретки.
  *
  */
 void awh::codec::csv::Reader::finish() noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_phase){
+	switch(static_cast <uint8_t> (this->_phase)){
 		/**
 		 * Если разбор находится в состоянии отказа
 		 *
@@ -1653,8 +1878,9 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 		 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 		 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+		 *
 		 */
-		case phase_t::FAILED:
+		case static_cast <uint8_t> (phase_t::FAILED):
 			// Выходим из метода, разбор уже прекращён
 			return;
 		/**
@@ -1663,11 +1889,25 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 * @note Поле в кавычках, не закрытое до конца текста, отказом договора не
 		 *       описано, но принять его значило бы принять и текст, оборванный посреди
 		 *       передачи, за целый
+		 *
 		 */
-		case phase_t::QUOTED:
+		case static_cast <uint8_t> (phase_t::QUOTED):
 		// Если разбор находится в состоянии знака отмены
-		case phase_t::ESCAPE:
-			// Заносим ошибку незакрытого поля в кавычках
+		case static_cast <uint8_t> (phase_t::ESCAPE):
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::UNTERMINATED_QUOTE), this->_line, this->_column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::UNTERMINATED_QUOTE), this->_line, this->_column);
+			#endif
+			// Объявляем отказ
 			this->fail(error_t::UNTERMINATED_QUOTE);
 			// Выходим из метода
 			return;
@@ -1675,18 +1915,35 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 * Если разбор находится в состоянии возврата каретки
 		 *
 		 * @note Запись здесь уже завершена самим возвратом каретки: довершать нечего
+		 *
 		 */
-		case phase_t::PENDING_CR:
+		case static_cast <uint8_t> (phase_t::PENDING_CR):
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+			#endif
 			/**
 			 * @note Хвостовой конец записи договор дозволяет, но лишь полною парою:
 			 *       текст, оборванный на возврате каретки, выпадает из грамматики так
 			 *       же, как и возврат каретки посреди текста
+			 *
 			 */
-			// Заносим ошибку негодного конца записи
 			this->fail(error_t::BARE_LINE_BREAK);
 			// Выходим из метода
 			return;
-		case phase_t::AFTER_CR:
+		/**
+		 * Если разбор находится в состоянии возврата каретки
+		 */
+		case static_cast <uint8_t> (phase_t::AFTER_CR):
 			/**
 			 * Если разбор ведётся строго по договору
 			 *
@@ -1694,7 +1951,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 			 *          с переводом строки, - и текст, оборванный на возврате каретки,
 			 *          выпадает из грамматики: перевода строки за ним не будет уже
 			 *          никогда. Вольный разбор такой возврат принимает концом записи, и
-			 *          половина эта его не касается
+			 *          половина эта его не касается.
 			 *
 			 * @warning Прежде строгий разбор отвечал такому тексту ВНУТРЕННЕЙ ОШИБКОЙ:
 			 *          состояние переводилось в начало записи, а отказ приходил позже, из
@@ -1727,9 +1984,23 @@ void awh::codec::csv::Reader::finish() noexcept {
 			 *          разбор, доведись сюда дойти, перевёл бы состояние в начало записи
 			 *          и отказал бы позже внутренней ошибкой - тем самым изъяном, ради
 			 *          устранения которого место и правилось
+			 *
 			 */
 			if(this->_settings.strict){
-				// Заносим ошибку негодного конца записи
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::BARE_LINE_BREAK), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				this->fail(error_t::BARE_LINE_BREAK);
 				// Выходим из метода
 				return;
@@ -1741,7 +2012,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 		/**
 		 * Если разбор находится в состоянии строки примечания
 		 */
-		case phase_t::COMMENT: {
+		case static_cast <uint8_t> (phase_t::COMMENT): {
 			/**
 			 * Если выдача событий примечаний включена
 			 */
@@ -1767,24 +2038,40 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 *
 		 * @note Текст, оканчивающийся знаком конца строки, довершать нечем: запись уже
 		 *       завершена, и добавлять пустую здесь значило бы выдумывать её
+		 *
 		 */
-		case phase_t::RECORD_START:
+		case static_cast <uint8_t> (phase_t::RECORD_START):
 			/**
 			 * Если заголовок затребован настройками, а разобран не был
 			 *
 			 * @details Пустой текст заголовка не несёт, и требование его остаётся
-			 * неисполненным: потребитель, затребовавший имена полей, получал таблицу
-			 * без единого имени и без единого слова о причине. Отказ этот заведён
-			 * кодом `NO_HEADER` с самого начала, а выдавался НИКЕМ - обнаружено
-			 * покрытием, показавшим код, не достижимый ни одним путём
+			 *          неисполненным: потребитель, затребовавший имена полей, получал таблицу
+			 *          без единого имени и без единого слова о причине. Отказ этот заведён
+			 *          кодом `NO_HEADER` с самого начала, а выдавался НИКЕМ - обнаружено
+			 *          покрытием, показавшим код, не достижимый ни одним путём.
 			 *
 			 * @note Сличение идёт по признаку разобранного заголовка, а не по пустоте
 			 *       текста: текст из одних примечаний заголовка тоже не несёт, и отказ
 			 *       ему тот же
+			 *
 			 */
-			if((this->_settings.header == header_t::PRESENT) && !this->_headed)
-				// Заносим ошибку отсутствия затребованного заголовка
+			if((this->_settings.header == header_t::PRESENT) && !this->_headed){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::csv::message(error_t::NO_HEADER), this->_line, this->_column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::NO_HEADER), this->_line, this->_column);
+				#endif
+				// Объявляем отказ
 				this->fail(error_t::NO_HEADER);
+			}
 			// Выходим из метода
 			return;
 		/**
@@ -1794,12 +2081,12 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 *
 		 */
-		case phase_t::FIELD_START:
-		case phase_t::UNQUOTED:
-		case phase_t::QUOTE_IN_FIELD:
-		case phase_t::ESCAPE_UNQUOTED:
-		break;
+		case static_cast <uint8_t> (phase_t::UNQUOTED):
+		case static_cast <uint8_t> (phase_t::FIELD_START):
+		case static_cast <uint8_t> (phase_t::QUOTE_IN_FIELD):
+		case static_cast <uint8_t> (phase_t::ESCAPE_UNQUOTED): break;
 	}
 	/**
 	 * Если завершить последнее поле удалось
@@ -1814,8 +2101,8 @@ void awh::codec::csv::Reader::finish() noexcept {
  * @brief Метод подсчёта полей при заданном разделителе
  *
  * @details Подсчёт ведётся тем же прочтением кавычек, что и разбор: разделитель
- * внутри поля в кавычках полем не является, и подсчёт, того не учитывающий, выбрал бы
- * разделителем знак, часто встречающийся в значениях
+ *          внутри поля в кавычках полем не является, и подсчёт, того не учитывающий, выбрал бы
+ *          разделителем знак, часто встречающийся в значениях.
  *
  * @param separator знак-разделитель для проверки
  * @param counts    количество полей по записям
@@ -1833,21 +2120,23 @@ bool awh::codec::csv::Reader::count(const char separator, vector <uint32_t> & co
 	 * Граница просматриваемой части отложенного текста
 	 *
 	 * @details Просмотр обрывается сразу за переводом строки, завершающим последнюю из
-	 * записей, по каким ведётся определение
+	 *          записей, по каким ведётся определение.
 	 *
 	 * @note Граница эта нужна ради независимости определения от нарезки текста на
 	 *       куски: при подаче кусками отложенный текст обрывается на пороге определения,
 	 *       а при подаче целиком содержит всю таблицу. Считая по всему отложенному, две
 	 *       подачи брали образцы разной длины и вправе были выбрать разные разделители
+	 *
 	 */
 	size_t limit = this->_pending.size();
 	/**
 	 * Признак того, что граница просмотра задана достаточным количеством записей
 	 *
 	 * @details Признак этот отличает обрыв просмотра на пороге определения от просмотра,
-	 * дошедшего до конца отложенного текста: сличения одной лишь границы с размером
-	 * отложенного для того НЕ хватает - при подаче кусками текст обрывается ровно на том
-	 * переводе строки, что задал границу, и они совпадают
+	 *          дошедшего до конца отложенного текста: сличения одной лишь границы с размером
+	 *          отложенного для того НЕ хватает - при подаче кусками текст обрывается ровно на том
+	 *          переводе строки, что задал границу, и они совпадают.
+	 *
 	 */
 	bool bounded = false;
 	{
@@ -1966,6 +2255,7 @@ bool awh::codec::csv::Reader::count(const char separator, vector <uint32_t> & co
 	 *          подаваемый кусками ещё нет, - и незавершённая запись попадала в образец
 	 *          лишь у одной из них. Разделитель выходил РАЗНЫМ на одном и том же тексте:
 	 *          знак табуляции при подаче целиком против запятой при подаче по байту
+	 *
 	 */
 	if(this->_last && !bounded && (fields > 1))
 		// Заносим количество полей незавершённой записи
@@ -1977,9 +2267,9 @@ bool awh::codec::csv::Reader::count(const char separator, vector <uint32_t> & co
  * @brief Метод определения разделителя по отложенному тексту
  *
  * @details Достоинством разделителя считается постоянство количества полей в записях,
- * а не частота знака: частота обманывается текстом, где запятых в значениях больше,
- * чем разделителей. Побеждает знак, дающий наибольшее количество записей с одним и тем
- * же числом полей, а при равенстве - знак, дающий больше полей
+ *          а не частота знака: частота обманывается текстом, где запятых в значениях больше,
+ *          чем разделителей. Побеждает знак, дающий наибольшее количество записей с одним и тем
+ *          же числом полей, а при равенстве - знак, дающий больше полей.
  *
  * @return признак успешного определения
  *
@@ -2003,10 +2293,10 @@ void awh::codec::csv::Reader::detect() noexcept {
 		if(!this->count(candidate, counts))
 			// Переходим к следующему проверяемому знаку
 			continue;
-		// Наиболее частое количество полей
-		uint32_t common = 0;
 		// Достоинство проверяемого разделителя
 		uint32_t score = 0;
+		// Наиболее частое количество полей
+		uint32_t common = 0;
 		/**
 		 * Выполняем перебор всех полученных количеств полей
 		 */
@@ -2034,6 +2324,7 @@ void awh::codec::csv::Reader::detect() noexcept {
 		 *
 		 * @note Знак, дающий одно поле на запись, разделителем не является: таким же
 		 *       достоинством обладает всякий знак, в тексте не встречающийся
+		 *
 		 */
 		if(common < 2)
 			// Переходим к следующему проверяемому знаку
@@ -2056,6 +2347,7 @@ void awh::codec::csv::Reader::detect() noexcept {
 	 * @note Текст в один столбец разделителя не содержит вовсе, и отказывать ему
 	 *       незачем: разделителем берётся запятая, названная договором. Отличить
 	 *       такой текст от неразбираемого нельзя ни одним способом
+	 *
 	 */
 	if(result == '\0')
 		// Устанавливаем разделитель, названный договором
@@ -2074,14 +2366,14 @@ void awh::codec::csv::Reader::detect() noexcept {
  *
  */
 void awh::codec::csv::Reader::reset() noexcept {
-	// Переводим разбор в состояние начала записи
-	this->_phase = phase_t::RECORD_START;
 	// Сбрасываем код ошибки разбора
 	this->_error = error_t::NONE;
-	// Сбрасываем место обнаружения отказа разбора
-	this->_errorLocation = location_t();
 	// Сбрасываем кодировку исходного текста
 	this->_encoding = encoding_t::NONE;
+	// Переводим разбор в состояние начала записи
+	this->_phase = phase_t::RECORD_START;
+	// Сбрасываем место обнаружения отказа разбора
+	this->_errorLocation = location_t();
 	// Устанавливаем разделитель полей, заданный настройками
 	this->_separator = this->_settings.separator;
 	// Запоминаем признак того, задан ли разделитель настройками
@@ -2091,64 +2383,65 @@ void awh::codec::csv::Reader::reset() noexcept {
 	 *
 	 * @note Перестроение идёт при всяком сбросе, а не однажды при заведении: знаки эти
 	 *       зависят от настроек, а настройки устанавливаются именно сбросом
+	 *
 	 */
 	this->marking();
-	// Сбрасываем признак разбора метки порядка байтов
-	this->_marked = false;
-	// Сбрасываем признак подачи текста целиком
-	this->_last = false;
-	// Сбрасываем количество полей, назначенное первой записью
-	this->_expected = 0;
-	// Сбрасываем признак разбора заголовка
-	this->_headed = false;
-	// Сбрасываем признак заключения поля в кавычки
-	this->_quoted = false;
-	// Сбрасываем признак изменения содержимого поля разбором
-	this->_modified = false;
-	// Сбрасываем признак наличия полей у записи
-	this->_started = false;
-	// Очищаем хранилище знаков текущей записи
-	this->_storage.clear();
-	// Очищаем хранилище имён полей заголовка
-	this->_names.clear();
-	// Очищаем хранилище отложенных байтов
-	this->_pending.clear();
-	// Очищаем хранилище перекодированного текста
-	this->_decoded.clear();
-	// Очищаем указания на имена полей заголовка
-	this->_header.clear();
-	// Очищаем имена полей заголовка
-	this->_unique.clear();
-	// Очищаем очередь собранных событий разбора
-	this->_items.clear();
 	// Сбрасываем указание на первое невыданное событие
 	this->_head = 0;
-	// Сбрасываем событие разбора, выданное последним
-	this->_current = item_t();
-	// Сбрасываем положение начала текущего поля
-	this->_position = location_t();
-	// Сбрасываем смещение от начала текста
-	this->_offset = 0;
-	// Устанавливаем номер текущей строки
-	this->_line = 1;
-	// Устанавливаем положение в текущей строке
-	this->_column = 1;
-	// Сбрасываем номер текущей записи
-	this->_record = 0;
-	// Сбрасываем номер текущего поля в записи
-	this->_field = 0;
-	// Сбрасываем количество полей, накопленное записью
-	this->_count = 0;
-	// Сбрасываем длину текущей записи
-	this->_length = 0;
-	// Сбрасываем смещение начала текущего поля в хранилище знаков
-	this->_begin = 0;
 	// Сбрасываем границы значащей части заводимого поля
 	this->_from = 0;
 	// Сбрасываем правую границу значащей части заводимого поля
 	this->_till = 0;
+	// Сбрасываем номер текущего поля в записи
+	this->_field = 0;
+	// Сбрасываем количество полей, накопленное записью
+	this->_count = 0;
+	// Сбрасываем смещение начала текущего поля в хранилище знаков
+	this->_begin = 0;
+	// Сбрасываем номер текущей записи
+	this->_record = 0;
+	// Сбрасываем длину текущей записи
+	this->_length = 0;
+	// Сбрасываем смещение от начала текста
+	this->_offset = 0;
+	// Сбрасываем количество полей, назначенное первой записью
+	this->_expected = 0;
+	// Устанавливаем номер текущей строки
+	this->_line = 1;
+	// Устанавливаем положение в текущей строке
+	this->_column = 1;
+	// Сбрасываем признак подачи текста целиком
+	this->_last = false;
+	// Сбрасываем признак разбора метки порядка байтов
+	this->_marked = false;
+	// Сбрасываем признак разбора заголовка
+	this->_headed = false;
+	// Сбрасываем признак заключения поля в кавычки
+	this->_quoted = false;
+	// Сбрасываем признак наличия полей у записи
+	this->_started = false;
+	// Сбрасываем признак изменения содержимого поля разбором
+	this->_modified = false;
+	// Очищаем хранилище имён полей заголовка
+	this->_names.clear();
+	// Очищаем очередь собранных событий разбора
+	this->_items.clear();
+	// Очищаем указания на имена полей заголовка
+	this->_header.clear();
+	// Очищаем имена полей заголовка
+	this->_unique.clear();
+	// Очищаем хранилище знаков текущей записи
+	this->_storage.clear();
+	// Очищаем хранилище отложенных байтов
+	this->_pending.clear();
+	// Очищаем хранилище перекодированного текста
+	this->_decoded.clear();
 	// Сбрасываем приведение исходного текста к кодировке UTF-8
 	this->_decoder.reset();
+	// Сбрасываем событие разбора, выданное последним
+	this->_current = item_t();
+	// Сбрасываем положение начала текущего поля
+	this->_position = location_t();
 	/**
 	 * Если кодировка навязана извне
 	 */
@@ -2179,23 +2472,52 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 *       записями: ошибка вызывающей стороны выдавалась за целый текст. Кодеки
 	 *       JSON и XML такую подачу отвергают, и расходиться с ними здесь нечем -
 	 *       повторное употребление чтения ведётся через reset()
+	 *
 	 */
-	if(this->_last && (size > 0))
-		// Выводим ошибку подачи после объявленного конца текста
+	if(this->_last && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(error_t::TEXT_ALREADY_ENDED), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::TEXT_ALREADY_ENDED), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::TEXT_ALREADY_ENDED);
+	}
 	/**
 	 * Если разделитель задан настройками, а для разбора непригоден
 	 */
-	if(this->_detected && !suitable(this->_separator, this->_settings.quote))
-		// Выводим ошибку непригодного разделителя
+	if(this->_detected && !suitable(this->_separator, this->_settings.quote)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(error_t::SEPARATOR_CONFLICT), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::SEPARATOR_CONFLICT), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::SEPARATOR_CONFLICT);
+	}
 	/**
 	 * Если настройки навязывают кодировку, а приведение уже ведётся иною
 	 *
 	 * @details Сменить кодировку посреди подачи нельзя: разобранное разобрано прежней, и
-	 * склеить с ним текст, приведённый иною, значило бы разбирать вслепую. Прежде указание
-	 * это снималось из настроек МОЛЧА - просьба принималась, а исполнить её было нельзя, и
-	 * звучащий о том не узнавал вовсе
+	 *          склеить с ним текст, приведённый иною, значило бы разбирать вслепую. Прежде указание
+	 *          это снималось из настроек МОЛЧА - просьба принималась, а исполнить её было нельзя, и
+	 *          звучащий о том не узнавал вовсе.
 	 *
 	 * @note Заслон правлен 08.09.2026 решением закрыть расхождения кодеков: все
 	 *       три кодека - JSON, XML и CSV - отвечают ныне отказом при ближайшей подаче, и
@@ -2203,11 +2525,25 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 *
 	 * @warning Снимать заслон нельзя: он и есть страж того, что смена кодировки посреди
 	 *          подачи будет отвергнута, а не разобрана вслепую
+	 *
 	 */
-	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) &&
-	   !this->_decoder.encoding(this->_settings.encoding))
-		// Выводим ошибку смены кодировки посреди подачи текста
+	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) && !this->_decoder.encoding(this->_settings.encoding)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(error_t::ENCODING_ALREADY_CHOSEN), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::ENCODING_ALREADY_CHOSEN), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(error_t::ENCODING_ALREADY_CHOSEN);
+	}
 	// Запоминаем признак подачи текста целиком
 	this->_last = (this->_last || end);
 	/**
@@ -2216,16 +2552,17 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 * @note Хранилище очищается лишь тогда, когда события его уже выданы: события
 	 *       ссылаются в него смещениями, и очистка при неопустевшей очереди обесценила
 	 *       бы ссылки уже собранных событий
+	 *
 	 */
 	if((this->_head >= this->_items.size()) && (this->_begin == static_cast <uint32_t> (this->_storage.size()))){
-		// Очищаем хранилище знаков текущей записи
-		this->_storage.clear();
-		// Сбрасываем смещение начала текущего поля в хранилище знаков
-		this->_begin = 0;
 		// Сбрасываем границы значащей части заводимого поля
 		this->_from = 0;
 		// Сбрасываем правую границу значащей части заводимого поля
 		this->_till = 0;
+		// Сбрасываем смещение начала текущего поля в хранилище знаков
+		this->_begin = 0;
+		// Очищаем хранилище знаков текущей записи
+		this->_storage.clear();
 	}
 	// Очищаем хранилище перекодированного текста
 	this->_decoded.clear();
@@ -2238,6 +2575,7 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 *       текста на куски: та же ошибка при подаче помельче выдавалась бы иной.
 	 *       Оттого приведённое прежде места обрыва разбирается, и лишь потом
 	 *       объявляется ошибка приведения
+	 *
 	 */
 	error_t deferred = error_t::NONE;
 	/**
@@ -2248,15 +2586,16 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		 * Запоминаем код отказа приведения как есть
 		 *
 		 * @details Приведение различает три причины - неподдерживаемую кодировку,
-		 * негодную последовательность байтов и знак, тексту таблицы недопустимый, - а
-		 * наружу прежде выходили лишь две: всё, кроме неподдерживаемой кодировки,
-		 * схлопывалось в негодную последовательность. Причина от этого выходила ЛОЖНАЯ:
-		 * запись `0xC2 0x85` есть вполне годная последовательность UTF-8, и негоден там
-		 * сам знак U+0085 области C1, а потребителю докладывалось, что байты не отвечают
-		 * объявленной кодировке, - и он искал беду в кодировке, которая верна
+		 *          негодную последовательность байтов и знак, тексту таблицы недопустимый, - а
+		 *          наружу прежде выходили лишь две: всё, кроме неподдерживаемой кодировки,
+		 *          схлопывалось в негодную последовательность. Причина от этого выходила ЛОЖНАЯ:
+		 *          запись `0xC2 0x85` есть вполне годная последовательность UTF-8, и негоден там
+		 *          сам знак U+0085 области C1, а потребителю докладывалось, что байты не отвечают
+		 *          объявленной кодировке, - и он искал беду в кодировке, которая верна.
 		 *
 		 * @note Тот же знак, поданный однобайтовой кодировкой, отвечал `INVALID_CHARACTER`
 		 *       через разбор: причина зависела от кодировки подачи, а не от самой беды
+		 *
 		 */
 		deferred = this->_decoder.error();
 		/**
@@ -2267,6 +2606,7 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		 *       подающий. Без этого определение разделителя брало бы образец
 		 *       по-разному - при подаче целиком признак стоял бы, а при подаче кусками
 		 *       на том же самом тексте не стоял, и разделитель выходил бы разным
+		 *
 		 */
 		this->_last = true;
 	}
@@ -2276,17 +2616,88 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 * Если разделитель ещё не определён
 	 */
 	if(!this->_detected){
-		// Откладываем перекодированный текст до определения разделителя
-		this->_pending.append(this->_decoded);
+		/**
+		 * Количество записей, отложенных до определения разделителя
+		 *
+		 * @note Отложенное обрывается на пороге определения, и потому пересчёт его
+		 *       дёшев: за порогом в нём не остаётся ничего
+		 *
+		 */
+		uint32_t stored = 0;
+		/**
+		 * Выполняем подсчёт отложенных записей
+		 */
+		for(size_t i = 0; i < this->_pending.size(); i++){
+			/**
+			 * Если знаком является перевод строки
+			 */
+			if(this->_pending[i] == '\n')
+				// Увеличиваем количество отложенных записей
+				stored++;
+		}
+		/**
+		 * Количество записей, до которого текст откладывается
+		 *
+		 * @note Ноль в настройке означает одну запись, а не отсутствие предела:
+		 *       соседние пределы нулём выключаются, а этот - ужесточается
+		 *
+		 */
+		const uint32_t required = ((this->_settings.detect > 0) ? this->_settings.detect : 1);
+		/**
+		 * Длина откладываемой части поданного куска
+		 *
+		 * @details Отложению подлежит лишь начало куска, добирающее записи до порога
+		 *          определения. Прежде откладывался кусок целиком: при подаче таблицы
+		 *          целиком это была лишняя выдача и лишний перенос на весь её размер,
+		 *          а на крупной таблице - ещё и круг распределителя по крупной
+		 *          области. Выбор разделителя от того не меняется: просмотр и прежде
+		 *          обрывался на том же переводе строки.
+		 *
+		 */
+		size_t staged = this->_decoded.size();
+		/**
+		 * Если записей для определения ещё недостаточно
+		 */
+		if(stored < required){
+			/**
+			 * Выполняем поиск перевода строки, добирающего записи до порога
+			 */
+			for(size_t i = 0; i < this->_decoded.size(); i++){
+				/**
+				 * Если знаком является перевод строки
+				 */
+				if(this->_decoded[i] == '\n'){
+					// Увеличиваем количество отложенных записей
+					stored++;
+					/**
+					 * Если записей для определения набралось довольно
+					 */
+					if(stored >= required){
+						// Запоминаем длину откладываемой части куска
+						staged = (i + 1);
+						// Прекращаем поиск
+						break;
+					}
+				}
+			}
+		/**
+		 * Если записей для определения уже довольно
+		 */
+		} else staged = 0;
 		// Количество знаков конца строки в отложенном тексте
 		uint32_t lines = 0;
 		// Длина последней строки отложенного текста в байтах
 		uint32_t length = 0;
 		/**
+		 * Откладываем найденную часть перекодированного текста
+		 */
+		this->_pending.append(this->_decoded.data(), staged);
+		/**
 		 * Место знака, переполнившего предел длины записи
 		 *
 		 * @note Смещение внутри отложенного текста и есть смещение от начала исходного
 		 *       текста: откладывается его начало, и разбор до сих пор не сдвинулся
+		 *
 		 */
 		location_t place;
 		// Признак переполнения предела длины записи отложенным текстом
@@ -2312,6 +2723,7 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 				 *          чего при подаче кусками в этот миг ещё нет, и отвечает отказом
 				 *          там, где подача кусками успевает разобрать текст обычным
 				 *          порядком: коды отказа у двух подач выходили разные
+				 *
 				 */
 				if(lines >= this->_settings.detect)
 					// Прекращаем просмотр отложенного текста
@@ -2325,15 +2737,16 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 			 * Если длина последней строки превышает предел длины записи
 			 *
 			 * @details Отложенный текст ждёт перевода строки, а тот может не прийти
-			 * вовсе: текст без единого перевода строки копился в памяти БЕЗ ПРЕДЕЛА -
-			 * 128 мегабайт при пределе записи в четыре килобайта, - ибо разбор к нему
-			 * ещё не приступал, и пределы разбора его не стерегли
+			 *          вовсе: текст без единого перевода строки копился в памяти БЕЗ ПРЕДЕЛА -
+			 *          128 мегабайт при пределе записи в четыре килобайта, - ибо разбор к нему
+			 *          ещё не приступал, и пределы разбора его не стерегли.
 			 *
 			 * @note Строка меряется здесь знаками исходного текста, а разбор мерил бы
 			 *       содержимым записи: перевод строки внутри поля в кавычках записи
 			 *       принадлежит, и счёт по строкам длину записи ЗАНИЖАЕТ. Занижение
 			 *       безопасно - отказ следует не раньше, чем ответил бы разбор, - а
 			 *       завышение отвергало бы правильную запись
+			 *
 			 */
 			if(!overlong && (this->_settings.maxRecord > 0) && (length > this->_settings.maxRecord)){
 				// Запоминаем смещение знака, переполнившего предел
@@ -2349,9 +2762,23 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		/**
 		 * Если отложенный текст переполнил предел длины записи
 		 */
-		if(overlong)
-			// Выводим ошибку превышения длины записи
+		if(overlong){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(error_t::RECORD_TOO_LONG), place.line, place.column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(error_t::RECORD_TOO_LONG), place.line, place.column);
+			#endif
+			// Объявляем отказ
 			return this->fail(error_t::RECORD_TOO_LONG, place);
+		}
 		/**
 		 * Если записей для определения разделителя ещё недостаточно
 		 */
@@ -2366,25 +2793,52 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		 *       способом - разделителем такому тексту берётся запятая, названная
 		 *       договором. Отказ здесь прежде объявлялся кодом, поднять который было
 		 *       нечем: потребитель писал бы отвод, не срабатывающий никогда
+		 *
 		 */
 		this->detect();
 		/**
 		 * Если разбор отложенного текста не удался
 		 */
-		if(!this->process(this->_pending))
+		if(!this->process(this->_pending.data(), this->_pending.size()))
 			// Выводим признак неудачного разбора
 			return false;
 		// Очищаем хранилище отложенных байтов
 		this->_pending.clear();
 		/**
+		 * Остаток поданного куска разбирается сразу
+		 *
+		 * @details Разделитель уже назван, и откладывать остаток нечего: второй буфер
+		 *          на весь кусок стоил бы ровно того, что здесь сберегается.
+		 *
+		 */
+		if((staged < this->_decoded.size()) &&
+		   !this->process(this->_decoded.data() + staged, this->_decoded.size() - staged))
+			// Выводим признак неудачного разбора
+			return false;
+		/**
 		 * Если приведение текста оборвалось ошибкой
 		 *
 		 * @note Разбор здесь не довершается: текста за местом обрыва нет, и довершить
 		 *       последнюю запись значило бы выдать оборванное за целое
+		 *
 		 */
-		if(deferred != error_t::NONE)
-			// Выводим отложенную ошибку приведения
+		if(deferred != error_t::NONE){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(deferred), this->_line, this->_column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(deferred), this->_line, this->_column);
+			#endif
+			// Объявляем отказ
 			return this->fail(deferred);
+		}
 		/**
 		 * Если текст подан целиком
 		 */
@@ -2410,13 +2864,14 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		 *       хранилище отложенных байтов, покуда разделитель не назван, и завершение
 		 *       разбора приходит сюда. Оттого дефект и не был виден у настроек с
 		 *       разделителем названным
+		 *
 		 */
 		return (this->_error == error_t::NONE);
 	}
 	/**
 	 * Если разбор перекодированного текста не удался
 	 */
-	if(!this->process(this->_decoded))
+	if(!this->process(this->_decoded.data(), this->_decoded.size()))
 		// Выводим признак неудачного разбора
 		return false;
 	/**
@@ -2424,10 +2879,25 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 	 *
 	 * @note Разбор здесь не довершается: текста за местом обрыва нет, и довершить
 	 *       последнюю запись значило бы выдать оборванное за целое
+	 *
 	 */
-	if(deferred != error_t::NONE)
-		// Выводим отложенную ошибку приведения
+	if(deferred != error_t::NONE){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(deferred), this->_line, this->_column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::csv::message(deferred), this->_line, this->_column);
+		#endif
+		// Объявляем отказ
 		return this->fail(deferred);
+	}
 	/**
 	 * Если текст подан целиком
 	 */
@@ -2471,20 +2941,19 @@ bool awh::codec::csv::Reader::next() noexcept {
 		return false;
 	}
 	// Получаем очередное событие разбора
-	this->_current = this->_items[this->_head];
-	// Убираем полученное событие из очереди выдачи
-	this->_head++;
+	this->_current = this->_items[this->_head++];
 	/**
 	 * Если выданы все собранные события
 	 *
 	 * @note Очередь очищается целиком, а выделенное под неё остаётся: перечень память
 	 *       не освобождает, и следующая таблица разбирается уже без выделений
+	 *
 	 */
 	if(this->_head >= this->_items.size()){
-		// Очищаем очередь собранных событий разбора
-		this->_items.clear();
 		// Сбрасываем указание на первое невыданное событие
 		this->_head = 0;
+		// Очищаем очередь собранных событий разбора
+		this->_items.clear();
 	}
 	// Выводим признак наличия события
 	return true;
@@ -2511,8 +2980,7 @@ awh::codec::csv::field_t awh::codec::csv::Reader::field() const noexcept {
 	/**
 	 * Если текущее событие содержимого не имеет
 	 */
-	if((this->_current.event == event_t::NONE) || (this->_current.event == event_t::FINISH) ||
-	   (this->_current.event == event_t::RECORD))
+	if((this->_current.event == event_t::NONE) || (this->_current.event == event_t::FINISH) || (this->_current.event == event_t::RECORD))
 		// Выводим поле без содержимого
 		return result;
 	// Запоминаем содержимое поля
@@ -2550,6 +3018,7 @@ const awh::codec::csv::location_t & awh::codec::csv::Reader::location() const no
 	 *       прежде все они отчитывались местом отказа вместо собственного. Расхождение
 	 *       это зависело от нарезки текста - при подаче кусками очередь опустошалась
 	 *       до отказа, и события успевали выдать свои места верно
+	 *
 	 */
 	if((this->_error != error_t::NONE) && (this->_current.event == event_t::NONE))
 		// Выводим положение отказа в исходном тексте
@@ -2579,6 +3048,7 @@ awh::codec::csv::state_t awh::codec::csv::Reader::state() const noexcept {
 	 *
 	 * @note Отказ старше прочего: очередь может нести события, собранные ДО отказа,
 	 *       и наличие их состоянием `READY` заслонило бы отказ от потребителя
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим состояние прекращённого отказом разбора
@@ -2662,13 +3132,13 @@ const awh::codec::csv::Reader::settings_t & awh::codec::csv::Reader::settings() 
  * @brief Метод установки настроек разбора текста
  *
  * @details Установка настроек сбрасывает состояние разбора: настройки задают само
- * прочтение текста, и смена их посреди разбора дала бы текст, прочтённый двумя
- * разными способами
+ *          прочтение текста, и смена их посреди разбора дала бы текст, прочтённый двумя
+ *          разными способами.
  *
  * @param settings настройки разбора текста
  *
  */
-void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
+bool awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки разбора текста
 	this->_settings = settings;
 	/**
@@ -2676,20 +3146,21 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 	 *
 	 * @note Сброс идёт только до начала разбора: настройки ставятся перед подачей, и
 	 *       для этого хода поведение прежнее
+	 *
 	 */
 	if(this->_offset == 0){
 		// Выполняем сброс состояния разбора
 		this->reset();
 		// Выходим из метода
-		return;
+		return true;
 	}
 	/**
 	 * Выполняем перестроение разметки знаков по новым настройкам
 	 *
 	 * @details Разбор, уже начатый, сбросу НЕ подлежит: сброс уничтожал разобранное
-	 * молча, а остаток подачи разбирался затем как новый текст - и отказывал по причине,
-	 * к содержимому таблицы отношения не имеющей. Замер дал потерю двух записей и
-	 * отказ «field is too long» на остатке
+	 *          молча, а остаток подачи разбирался затем как новый текст - и отказывал по причине,
+	 *          к содержимому таблицы отношения не имеющей. Замер дал потерю двух записей и
+	 *          отказ «field is too long» на остатке.
 	 *
 	 * @note Разделитель и признак его определённости не трогаем: разделитель посреди
 	 *       текста либо задан настройками с самого начала, либо уже определён образцом,
@@ -2697,35 +3168,41 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 	 *
 	 * @note Новые настройки вступают в силу с ближайшего разбираемого знака, ровно как
 	 *       у кодека JSON: разобранное прежними настройками остаётся разобранным
+	 *
 	 */
 	this->marking();
 	/**
 	 * Если настройки навязывают кодировку исходного текста
 	 *
 	 * @details Приведение к UTF-8 кодировку посреди текста не меняет и указание такое
-	 * отвергает. Прежде указание это молча пропадало: применялось оно лишь сбросом, а
-	 * `settings()` объявляли навязанную кодировку и после - настройки лгали о том, чего
-	 * на деле не происходит, и звучащий был введён в заблуждение собственной же просьбой.
-	 * Щуп: настройки отвечали `UTF16LE`, приведение вело `UTF8`, отказа не было вовсе
+	 *          отвергает. Прежде указание это молча пропадало: применялось оно лишь сбросом, а
+	 *          `settings()` объявляли навязанную кодировку и после - настройки лгали о том, чего
+	 *          на деле не происходит, и звучащий был введён в заблуждение собственной же просьбой.
+	 *          Щуп: настройки отвечали `UTF16LE`, приведение вело `UTF8`, отказа не было вовсе.
 	 *
 	 * @note Правлено 08.09.2026 решением закрыть расхождения кодеков: несбывшееся
 	 *       указание более НЕ снимается молча, а стоит текста - отказом при ближайшей подаче,
 	 *       кодом `ENCODING_ALREADY_CHOSEN`. Так отвечают ныне все три кодека, и разметка XML
 	 *       правлена тем же ходом; прежде отказом отвечал один лишь JSON
+	 *
 	 */
 	if(this->_settings.encoding != encoding_t::NONE)
 		// Выполняем попытку установки навязанной кодировки исходного текста
 		this->_decoder.encoding(this->_settings.encoding);
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::csv::Reader::Reader() noexcept :
- _phase(phase_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
- _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
- _modified(false), _started(false), _decoder(), _head(0), _offset(0), _line(1), _column(1),
- _record(0), _field(0), _count(0), _length(0), _begin(0), _from(0), _till(0), _detected(true) {
+ _last(false), _marked(false), _headed(false),
+ _quoted(false), _started(false), _detected(true),
+ _modified(false), _separator(','), _phase(phase_t::RECORD_START),
+ _error(error_t::NONE), _decoder(), _encoding(encoding_t::NONE),
+ _head(0), _from(0), _till(0), _line(1), _field(0), _count(0),
+ _begin(0), _length(0), _column(1), _record(0), _expected(0), _offset(0) {
 	// Выполняем сброс состояния разбора
 	this->reset();
 }
@@ -2735,13 +3212,14 @@ awh::codec::csv::Reader::Reader() noexcept :
  * @param settings настройки разбора текста
  *
  */
-awh::codec::csv::Reader::Reader(const settings_t & settings) noexcept :
- Reader() {
+awh::codec::csv::Reader::Reader(const settings_t & settings) noexcept : Reader() {
 	// Выполняем установку настроек разбора текста
 	this->settings(settings);
 }
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::csv::Reader::Item::Item() noexcept : event(event_t::NONE), quoted(false), modified(false) {}
+awh::codec::csv::Reader::Item::Item() noexcept :
+ quoted(false), modified(false), event(event_t::NONE) {}

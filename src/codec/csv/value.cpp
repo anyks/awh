@@ -19,32 +19,72 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/csv/value.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstdio>
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/numeric.hpp>
+#include <codec/csv/value.hpp>
+
 /**
  * Подключаем заголовочный файл модуля разбора чисел
  *
  * @note Разбор записи числа ведётся им, а не средствами рамки языка: те судят запись по
  *       локали, и десятичный знак берут у неё
+ *
  */
 #include <num/lexical/lexical.hpp>
-#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Инкапсулируем статическую функцию проверки каталога в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param fs   объект работы с файловой системой
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool writable(const fs_t & fs, const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (fs.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+	}
+};
 
 /**
  * @brief Метод получения пустого значения общего пользования
@@ -58,8 +98,9 @@ const awh::codec::csv::Value & awh::codec::csv::Value::scrap() noexcept {
 	 *       промаху обращения. Заводить его при каждом промахе значило бы плодить
 	 *       значения без счёта, а отдавать ссылку на местное - выдавать ссылку на
 	 *       разрушенное
+	 *
 	 */
-	static const Value result;
+	static const value_t result;
 	// Выводим пустое значение общего пользования
 	return result;
 }
@@ -74,36 +115,14 @@ bool awh::codec::csv::Value::valid() const noexcept {
 	return (this->_type != type_t::NONE);
 }
 /**
- * @brief Метод получения кода отказа последней работы над значением
+ * @brief Оператор приведения к логическому типу
  *
- * @return код отказа последней работы
- *
- */
-/**
- * @brief Функция проверки годности каталога, куда ложится файл
- *
- * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
- * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
- * записи отвергают нулевой размер и файла не заводят
- *
- * @note Путь без разделителя означает каталог текущий, и он годен всегда
- *
- * @param fs   объект работы с файловой системой
- * @param path путь к заводимому файлу
- * @return     признак того, что каталог для записи годен
+ * @return признак действительности значения
  *
  */
-static bool writable(const awh::fs_t & fs, const string & path) noexcept {
-	// Положение последнего разделителя пути
-	const size_t slash = path.find_last_of("/\\");
-	/**
-	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
-	 */
-	if(slash == string::npos)
-		// Выводим признак годности каталога текущего
-		return true;
-	// Выводим признак того, что каталог назначения каталогом и является
-	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
+awh::codec::csv::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
 }
 /**
  * @brief Метод получения кода отказа последней работы
@@ -185,19 +204,14 @@ bool awh::codec::csv::Value::empty() const noexcept {
  *
  */
 void awh::codec::csv::Value::clear() noexcept {
-	// Выполняем сброс вида хранимого значения
-	this->_type = type_t::NONE;
 	// Выполняем очистку содержимого поля
 	this->_text.clear();
 	// Выполняем очистку имён столбцов таблицы
 	this->_header.clear();
 	// Выполняем очистку вложенных значений
 	this->_items.clear();
-	/**
-	 * @note Очистка донесения ЗДЕСЬ не ведётся намеренно: разбор, отказавший,
-	 *       зовёт очистку содержимого и следом ставит код отказа, и сброс кода
-	 *       очисткою стирал бы его немедля
-	 */
+	// Выполняем сброс вида хранимого значения
+	this->_type = type_t::NONE;
 }
 /**
  * @brief Метод извлечения содержимого поля
@@ -240,6 +254,7 @@ bool awh::codec::csv::Value::header(const vector <string> & names) noexcept {
 	 *       свободна от расхода на разбор, ради которого послабление и заводят,
 	 *       а столбец, по имени недостижимый, молчал бы. Уклад этот один с
 	 *       `Document::header`
+	 *
 	 */
 	for(size_t i = 0; i < names.size(); i++){
 		/**
@@ -263,8 +278,9 @@ bool awh::codec::csv::Value::header(const vector <string> & names) noexcept {
 	 *       записей, и после них. Раздай мы имена лишь при добавлении, розыск по имени у
 	 *       записей, добавленных раньше, молчал бы - и молчал бы РАЗНО в зависимости от
 	 *       порядка вызовов, чего потребителю не видно вовсе
+	 *
 	 */
-	for(Value & item : this->_items){
+	for(value_t & item : this->_items){
 		/**
 		 * Если вложенное значение записью является
 		 */
@@ -321,7 +337,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::operator [] (const size_t
 	 */
 	if(index >= this->_items.size())
 		// Выводим пустое значение общего пользования
-		return Value::scrap();
+		return value_t::scrap();
 	// Выводим искомое вложенное значение
 	return this->_items[index];
 }
@@ -340,7 +356,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::operator [] (const string
 	 */
 	if(index == SIZE_MAX)
 		// Выводим пустое значение общего пользования
-		return Value::scrap();
+		return value_t::scrap();
 	// Выводим поле записи по номеру найденного столбца
 	return (* this)[index];
 }
@@ -351,7 +367,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::operator [] (const string
  * @return     найденное значение
  *
  */
-const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) const noexcept {
+const awh::codec::csv::value_t & awh::codec::csv::Value::at(const string & path) const noexcept {
 	/**
 	 * Если путь пуст, обход ведёт к самому значению
 	 *
@@ -363,12 +379,13 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 	 * @note У таблицы столбца с пустым именем не бывает вовсе - заголовок такой
 	 *       отвергается кодом `EMPTY_HEADER`, - оттого «/» ведёт в никуда всегда.
 	 *       Итог тот же, что у документа без поля с пустым именем
+	 *
 	 */
 	if(path.empty())
 		// Выводим само хранимое значение
 		return (* this);
 	// Текущее значение обхода пути
-	const Value * current = this;
+	const value_t * current = this;
 	// Положение начала очередного звена пути
 	size_t offset = ((path.front() == '/') ? 1 : 0);
 	/**
@@ -391,7 +408,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 		 * @details Имя столбца таблицы содержать может ЧТО УГОДНО - RFC 4180 знаков
 		 *          имени не ограничивает вовсе, - а разделителем звеньев пути служит
 		 *          косая черта. Столбец, косую черту в имени несущий, был недостижим
-		 *          путём НИКАК: звено рвалось надвое, и обе половины искались порознь
+		 *          путём НИКАК: звено рвалось надвое, и обе половины искались порознь.
 		 *
 		 * @note Записи взяты из RFC 6901 и те же, что у указателя JSON: `~1` означает
 		 *       косую черту, `~0` - саму тильду. Ось путей у кодеков общая, и заводить
@@ -405,20 +422,22 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 		 *       тильдой разыскивалось дословно, а имя с косой чертой не разыскивалось
 		 *       никак. У разметки XML беды этой нет и записи эти не нужны: имя узла
 		 *       косой черты не допускает по самому стандарту XML
+		 *
 		 */
 		if(item.find('~') != string::npos){
 			/**
-			 * @brief Метод снятия одной отменяющей записи со звена пути
-			 *
-			 * @param text   звено пути, отменяющие записи несущее
-			 * @param escape снимаемая отменяющая запись
-			 * @param letter знак, отменяющей записью означенный
+			 * @brief Функция снятия одной отменяющей записи со звена пути
 			 *
 			 * @warning Место продолжения розыска обязано сдвигаться ЗА поставленный
 			 *          знак, а не оставаться на нём: снятие `~0` у записанного `~001`
 			 *          даёт `~01`, и розыск, с того же места продолженный, снял бы
 			 *          записанное ПОВТОРНО, обратив итог в `~1`. Замерено проверкой
 			 *          порядка - половина эта одна и покраснела
+			 *
+			 * @param text   звено пути, отменяющие записи несущее
+			 * @param escape снимаемая отменяющая запись
+			 * @param letter знак, отменяющей записью означенный
+			 *
 			 */
 			const auto unescape = [](string & text, const char * escape, const char letter) noexcept -> void {
 				// Место продолжения розыска отменяющей записи
@@ -443,7 +462,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 		 */
 		if(item.empty())
 			// Выводим пустое значение общего пользования
-			return Value::scrap();
+			return value_t::scrap();
 		// Признак того, что звено является числом
 		bool numeric = true;
 		/**
@@ -479,6 +498,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 			 *
 			 * @note Место указано со стороны 08.09.2026; правка ведёт себя тем
 			 *       же образцом, каким переведены извлечения числа у поля таблицы
+			 *
 			 */
 			const lexical_t::result_t <char> res = lexical_t::fromChars(item.data(), (item.data() + item.size()), index);
 			/**
@@ -497,10 +517,11 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 			 *
 			 * @warning Снимать половину эту нельзя: она стережёт своё - согласие с местом,
 			 *          где та же запись разбирается БЕЗ предварительной проверки на цифры
+			 *
 			 */
 			if(!static_cast <bool> (res) || (res.ptr != (item.data() + item.size())))
 				// Выводим пустое значение общего пользования
-				return Value::scrap();
+				return value_t::scrap();
 			// Выполняем переход к вложенному значению по номеру
 			current = &(* current)[static_cast <size_t> (index)];
 		}
@@ -510,6 +531,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 		 * @note Имена столбцов принадлежат ТАБЛИЦЕ, а запись их не знает - оттого
 		 *       сличение имени ведётся у ТОГО значения, у которого заголовок есть,
 		 *       а спуск по нему идёт к вложенному значению текущего
+		 *
 		 */
 		else {
 			// Получаем номер столбца по имени звена у самого значения
@@ -519,7 +541,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 			 */
 			if(index == SIZE_MAX)
 				// Выводим пустое значение общего пользования
-				return Value::scrap();
+				return value_t::scrap();
 			// Выполняем переход к вложенному значению по номеру столбца
 			current = &(* current)[index];
 		}
@@ -528,7 +550,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
 		 */
 		if(!current->valid())
 			// Выводим пустое значение общего пользования
-			return Value::scrap();
+			return value_t::scrap();
 		// Выполняем переход к началу следующего звена пути
 		offset = (finish + 1);
 	}
@@ -542,7 +564,7 @@ const awh::codec::csv::Value & awh::codec::csv::Value::at(const string & path) c
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::csv::Value::push(const Value & value) noexcept {
+bool awh::codec::csv::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если хранимое значение перечнем не является
 	 */
@@ -561,9 +583,9 @@ bool awh::codec::csv::Value::push(const Value & value) noexcept {
 	 * Если в таблицу добавлена запись, а имена столбцов у таблицы заведены
 	 *
 	 * @details Запись получает имена столбцов таблицы СВОЕЙ памятью: розыск поля по имени
-	 * столбца ведётся у ЗАПИСИ, а имена держит таблица, и без передачи их розыск не работал
-	 * бы НИ НА ОДНОЙ дороге - у записи имён нет, а завести их ей нечем, ибо `header()`
-	 * отвергает всё, кроме таблицы
+	 *          столбца ведётся у ЗАПИСИ, а имена держит таблица, и без передачи их розыск не работал
+	 *          бы НИ НА ОДНОЙ дороге - у записи имён нет, а завести их ей нечем, ибо `header()`
+	 *          отвергает всё, кроме таблицы.
 	 *
 	 * @note Правлено 08.09.2026: дефект вскрыт картой покрытия. Ветвь «имя столбца найдено»
 	 *       стояла непокрытой, и оказалась она не просто непроверенной - недостижимой ВОВСЕ.
@@ -571,6 +593,7 @@ bool awh::codec::csv::Value::push(const Value & value) noexcept {
 	 *
 	 * @note Передаются имена лишь ЗАПИСИ и лишь при заведённом заголовке: поле имён не
 	 *       держит, а таблица в таблицу не вкладывается
+	 *
 	 */
 	if((this->_type == type_t::TABLE) && (value._type == type_t::RECORD) && !this->_header.empty())
 		// Выполняем передачу имён столбцов таблицы добавленной записи
@@ -598,15 +621,19 @@ bool awh::codec::csv::Value::erase(const size_t index) noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения числового значения поля
+ * @brief Шаблон метода извлечения числового значения поля
  *
- * @tparam T     вид числа, к какому ведётся извлечение
+ * @tparam T вид числа, к какому ведётся извлечение
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения числового значения поля
  *
  * @param result извлекаемое значение
  * @return       признак успешности извлечения
  *
  */
-template <typename T>
 bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	/**
 	 * Если хранимое значение полем не является либо пусто
@@ -618,7 +645,7 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	 * Выполняем разбор записи числа сперва целым, и лишь при неудаче дробным
 	 *
 	 * @details Целое, разобранное дробным, теряло бы точность у больших чисел: дробное
-	 * двойной точности хранит верно лишь 53 разряда
+	 *          двойной точности хранит верно лишь 53 разряда.
 	 *
 	 * @warning Разбор ведётся модулем разбора чисел, а НЕ `stoll`/`stod`: те судят запись
 	 *          по локали, и десятичный знак берут у неё. Замерено 08.09.2026 под
@@ -631,14 +658,13 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	 *       шло модулем разбора с давних пор, а извлечение у владеющего значения - локалью
 	 *
 	 * @note Исключений разбор более не бросает, и перехват их снят вместе с ними
+	 *
 	 */
 	{
 		// Разобранное целое число, выходной переменной ещё не отданное
 		int64_t integer = 0;
 		// Выполняем разбор записи целого числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(
-			this->_text.data(), (this->_text.data() + this->_text.size()), integer
-		);
+		const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), integer);
 		/**
 		 * Если запись разобрана целиком
 		 */
@@ -647,6 +673,7 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 			 * @note Сужение ведётся приведением ЯЗЫКА: целое, в затребованный вид не
 			 *       помещающееся, заворачивается по кругу. Уклад этот взят у кодеков
 			 *       JSON и XML слово в слово
+			 *
 			 */
 			result = static_cast <T> (integer);
 			// Выводим признак успешного извлечения
@@ -656,9 +683,7 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	// Разобранное дробное число, выходной переменной ещё не отданное
 	double number = 0.;
 	// Выполняем разбор записи дробного числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(
-		this->_text.data(), (this->_text.data() + this->_text.size()), number
-	);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 	/**
 	 * Если запись разобрана не целиком
 	 */
@@ -670,8 +695,9 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	 *       лежит за пределами вида, выдаётся пределом этого вида, ибо у языка там поведение
 	 *       неопределено. Пиши мы своё приведение, и расхождение вышло бы у краёв вида - там,
 	 *       где его никто не ищет
+	 *
 	 */
-	result = awh::codec::convert <T> (number);
+	result = codec::convert <T> (number);
 	// Выводим признак успешного извлечения
 	return true;
 }
@@ -805,6 +831,7 @@ bool awh::codec::csv::Value::value(uint64_t & result) const noexcept {
 	 * @note Запись со знаком минус отвергается ЗДЕСЬ, а не отдаётся разбору:
 	 *       разбор беззнакового числа обращает минус по кругу молча, и «-1»
 	 *       выходило бы наибольшим числом вида вместо отказа
+	 *
 	 */
 	if(this->_text.front() == '-')
 		// Выводим признак неудачного извлечения
@@ -818,14 +845,13 @@ bool awh::codec::csv::Value::value(uint64_t & result) const noexcept {
 	 *          локали не зависит и зависеть не должен
 	 *
 	 * @note Исключений разбор не бросает, и перехват их снят вместе с ними
+	 *
 	 */
 	{
 		// Разобранное число, выходной переменной ещё не отданное
 		uint64_t number = 0;
 		// Выполняем разбор записи беззнакового целого числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(
-			this->_text.data(), (this->_text.data() + this->_text.size()), number
-		);
+		const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 		/**
 		 * Если запись разобрана не целиком
 		 */
@@ -874,6 +900,7 @@ bool awh::codec::csv::Value::value(string & result) const noexcept {
 	 * @note Извлечение строкою отвечает отказом у значений иных видов, а не склейкою
 	 *       полей: всякая склейка требовала бы разделителя, а разделитель есть дело
 	 *       настроек записи, не значения
+	 *
 	 */
 	if(this->_type != type_t::FIELD)
 		// Выводим признак неудачного извлечения
@@ -890,25 +917,27 @@ bool awh::codec::csv::Value::value(string & result) const noexcept {
  * @return         признак успешности снятия
  *
  */
-bool awh::codec::csv::Value::absorb(const Document & document) noexcept {
+bool awh::codec::csv::Value::absorb(const document_t & document) noexcept {
 	// Выполняем очистку прежнего содержимого значения
 	this->clear();
+	// Устанавливаем видом хранимого значения таблицу
+	this->_type = type_t::TABLE;
 	/**
 	 * @note Донесение сбрасывается В НАЧАЛЕ работы, а не при её успехе: оставь мы
 	 *       прежний код, и потребитель, сличающий его после успешной работы, читал
 	 *       бы отказ работы ПРЕДЫДУЩЕЙ - молча и без знака
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс места отказа прежней работы
 	this->_errorLocation = location_t();
-	// Устанавливаем видом хранимого значения таблицу
-	this->_type = type_t::TABLE;
 	/**
 	 * Выполняем перебор всех имён столбцов таблицы
 	 *
 	 * @note Снятие идёт СОБСТВЕННОЙ памятью: виды в хранилище знаков таблицы
 	 *       копируются знак в знак, ибо хранилище это переезжает при росте, и
 	 *       вид, его переживший, читает чужое содержимое молча
+	 *
 	 */
 	for(const auto & name : document.header())
 		// Выполняем добавление имени столбца собственной памятью
@@ -920,18 +949,19 @@ bool awh::codec::csv::Value::absorb(const Document & document) noexcept {
 	 */
 	for(size_t i = 0; i < rows; i++){
 		// Собираемое значение очередной записи
-		Value record(type_t::RECORD);
+		value_t record(type_t::RECORD);
 		/**
 		 * Выполняем перебор всех полей очередной записи
 		 */
 		for(const auto & field : document.row(i))
 			// Выполняем добавление поля записи собственной памятью
-			record._items.push_back(Value(string(field)));
+			record._items.push_back(value_t(string(field)));
 		/**
 		 * Выполняем передачу имён столбцов таблицы собранной записи
 		 *
 		 * @note Розыск поля по имени столбца ведётся у ЗАПИСИ, и без имён он не работает.
 		 *       Память своя по тому же доводу, что и у самой таблицы выше
+		 *
 		 */
 		record._header = this->_header;
 		// Выполняем добавление записи в таблицу
@@ -947,7 +977,7 @@ bool awh::codec::csv::Value::absorb(const Document & document) noexcept {
  * @return         признак успешности прививки
  *
  */
-bool awh::codec::csv::Value::graft(Document & document) const noexcept {
+bool awh::codec::csv::Value::graft(document_t & document) const noexcept {
 	/**
 	 * Если хранимое значение таблицею не является
 	 */
@@ -971,6 +1001,7 @@ bool awh::codec::csv::Value::graft(Document & document) const noexcept {
 		 * @warning Снимать отказ нельзя: имена берутся у значения, а кладутся в таблицу, и
 		 *          разойдись эти два сита - повтор ушёл бы в таблицу молча, а столбец,
 		 *          по имени недостижимый, молчал бы вместе с ним
+		 *
 		 */
 		if(!document.header(this->_header))
 			// Выводим признак неудачной прививки
@@ -995,6 +1026,7 @@ bool awh::codec::csv::Value::graft(Document & document) const noexcept {
 		 *       отвергается таблицею на месте, а не пустою строкою при записи текста.
 		 *       Донесение о нём обязано дойти сюда, иначе значение отвечало бы пустотою при
 		 *       коде `NONE` - отказом, себя не называющим
+		 *
 		 */
 		if(!document.append(fields))
 			// Выводим признак неудачной прививки
@@ -1010,9 +1042,9 @@ bool awh::codec::csv::Value::graft(Document & document) const noexcept {
  * @return     признак успешности разбора
  *
  */
-bool awh::codec::csv::Value::parse(const string & text) noexcept {
+bool awh::codec::csv::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
 	// Объект таблицы для разбора текста
-	document_t document;
+	document_t document(settings);
 	/**
 	 * Если разбор текста таблицы завершился отказом
 	 */
@@ -1030,15 +1062,26 @@ bool awh::codec::csv::Value::parse(const string & text) noexcept {
 	return this->absorb(document);
 }
 /**
+ * @brief Метод разбора текста таблицы
+ *
+ * @param text исходный текст таблицы
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::csv::Value::parse(const string & text) noexcept {
+	// Выполняем разбор текста настройками по умолчанию
+	return this->parse(text, document_t::settings_t());
+}
+/**
  * @brief Метод чтения таблицы из файла
  *
  * @param filename адрес файла таблицы
  * @return         признак успешности чтения
  *
  */
-bool awh::codec::csv::Value::load(const string & filename) noexcept {
+bool awh::codec::csv::Value::load(const string & filename, const document_t::settings_t & settings) noexcept {
 	// Объект таблицы для чтения файла
-	document_t document;
+	document_t document(settings);
 	/**
 	 * Если чтение файла таблицы завершилось отказом
 	 */
@@ -1054,6 +1097,17 @@ bool awh::codec::csv::Value::load(const string & filename) noexcept {
 	}
 	// Выводим итог снятия значения с прочитанной таблицы
 	return this->absorb(document);
+}
+/**
+ * @brief Метод чтения таблицы из файла
+ *
+ * @param filename адрес файла таблицы
+ * @return         признак успешности чтения
+ *
+ */
+bool awh::codec::csv::Value::load(const string & filename) noexcept {
+	// Выполняем чтение таблицы настройками по умолчанию
+	return this->load(filename, document_t::settings_t());
 }
 /**
  * @brief Метод сохранения таблицы в файл
@@ -1077,6 +1131,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *
 	 * @note Пара оставлена целой намеренно: начало работы читается как сброс донесения,
 	 *       и снятие половины ради опрятности сделало бы место темнее, а не чище
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс места отказа прежней работы
@@ -1087,8 +1142,28 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	if(filename.empty()){
 		// Запоминаем код отказа сохранения таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CSV value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CSV value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1100,7 +1175,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 * @details Сохранение обязано СПРОСИТЬ итог сборки, а не полагаться на её текст:
 	 *          отказ записи даёт текст пустой, и файл ушёл бы пустым при ответе об
 	 *          успехе. Замерено 04.09.2026 - таблица с полем, несущим управляющий знак,
-	 *          сохранялась успешно, оставляя на диске пустой файл ВМЕСТО прежнего
+	 *          сохранялась успешно, оставляя на диске пустой файл ВМЕСТО прежнего.
 	 *
 	 * @warning Порядок здесь важен: спрашивать надо ДО открытия временного файла. Спроси
 	 *          мы после - целевой файл был бы уже подменён пустым, и отказ пришёл бы к
@@ -1108,6 +1183,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *
 	 * @note Код отказа заново не ставится: `dump()` его уже выставил, и всякая правка
 	 *       здесь лишь исказила бы причину, названную самой записью
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим признак неудачного сохранения
@@ -1121,40 +1197,60 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 * @note Временный файл кладётся РЯДОМ с целевым, а не во временный каталог
 	 *       системы: переименование неделимо лишь в пределах одной файловой
 	 *       системы, а каталог временных файлов может лежать на иной
+	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Объект для работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
 	 *
 	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
 	 *       и остаток прежнего сохранения, длиною превзошедший нынешнее, торчал бы хвостом
 	 *       за концом записанного. Прежде усечение делал сам поток признаком `trunc`
+	 *
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (this->_fs.unlink(temporary));
 	/**
 	 * Выполняем запись собранного текста таблицы
 	 *
 	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 *
 	 */
-	const bool written = fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = this->_fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(fs, temporary)){
+	if(!::writable(this->_fs, temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CSV value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CSV value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного сохранения
 		return false;
 	}
 	/**
 	 * Если запись текста таблицы завершилась отказом
-	 */
-	/**
+	 *
 	 * @note Сличается ВЕЛИЧИНА записанного, а не признак потока: ходы записи файловой
 	 *       системы объявлены `void` и отказ оглашают одним лишь журналом. Запись,
 	 *       оборванная посреди, оставляет файл налицо и КОРОЧЕ поданного, и по одному
@@ -1167,14 +1263,35 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 * @warning Снимать ветвь нельзя: без неё усечённая запись выдаётся за таблицу ЦЕЛУЮ -
 	 *          вызов отвечает успехом, а в файле недостаёт записей. Хуже того, временный файл
 	 *          был бы переименован в цель, и прежнее её содержимое пропало бы безвозвратно
+	 *
 	 */
 	if(!written){
 		// Выполняем снос временного файла записи
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (this->_fs.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CSV value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CSV value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1182,25 +1299,46 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
-	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
-	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
-	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
-	 * и заведён
+	 *          лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 *          указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 *          у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 *          и заведён.
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
-	static_cast <void> (fs.flush(temporary, true));
+	static_cast <void> (this->_fs.flush(temporary, true));
 	/**
 	 * Если подмена целевого файла временным завершилась отказом
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!this->_fs.replaceAddress(temporary, filename)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (this->_fs.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CSV value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CSV value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1213,18 +1351,25 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
  * @return собранный текст таблицы
  *
  */
-string awh::codec::csv::Value::dump() const noexcept {
+string awh::codec::csv::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
 	// Выполняем сброс места отказа прежней работы
 	this->_errorLocation = location_t();
 	// Объект таблицы для сборки текста
-	Document document;
+	document_t document;
+	// Настройки таблицы, несущие настройки записи
+	document_t::settings_t dialect;
+	// Устанавливаем настройки записи текста таблицы
+	dialect.writer = settings;
+	// Выполняем установку настроек таблицы
+	document.settings(dialect);
 	/**
 	 * Если прививка значения к таблице завершилась отказом
 	 *
 	 * @note Без кода отказа пустой текст выдачи неотличим от значения пустого - ровно
 	 *       та беда, ради которой канал донесения у значений и заведён
+	 *
 	 */
 	if(!this->graft(document)){
 		/**
@@ -1240,10 +1385,11 @@ string awh::codec::csv::Value::dump() const noexcept {
 		 *       Довод против своего кода был «не расширять перечень ради одного места», и
 		 *       довод тот оказался дорогим: ложная причина стоит времени всякого, кто её
 		 *       прочтёт, а прочтя обвинение кодеку - пойдёт искать порчу
+		 *
 		 */
 		this->_error = ((document.error() != error_t::NONE) ? document.error() : error_t::UNREPRESENTABLE_VALUE);
 		// Выводим пустой текст таблицы
-		return string();
+		return "";
 	}
 	// Собранный текст таблицы
 	string result = document.dump();
@@ -1263,15 +1409,26 @@ string awh::codec::csv::Value::dump() const noexcept {
 	 * @note Найдено сличением с кодеком CEF: там запись при отказе отдавала
 	 *       ЧАСТИЧНО собранный текст, у меня - пустой, но причина одна и та же - итог
 	 *       записи не проверялся вовсе
+	 *
 	 */
 	if(document.error() != error_t::NONE){
 		// Запоминаем код отказа, вынесенный сборкой текста таблицы
 		this->_error = document.error();
 		// Выводим пустой текст таблицы
-		return string();
+		return "";
 	}
 	// Выводим собранный текст таблицы
 	return result;
+}
+/**
+ * @brief Метод выдачи текста таблицы
+ *
+ * @return собранный текст таблицы
+ *
+ */
+string awh::codec::csv::Value::dump() const noexcept {
+	// Выводим собранный текст таблицы настройками по умолчанию
+	return this->dump(writer_t::settings_t());
 }
 /**
  * @brief Оператор сличения значений
@@ -1280,7 +1437,7 @@ string awh::codec::csv::Value::dump() const noexcept {
  * @return      признак равенства значений
  *
  */
-bool awh::codec::csv::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::csv::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если виды сличаемых значений не совпадают
 	 */
@@ -1309,7 +1466,7 @@ bool awh::codec::csv::Value::operator == (const Value & value) const noexcept {
  * @return      признак неравенства значений
  *
  */
-bool awh::codec::csv::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::csv::Value::operator != (const value_t & value) const noexcept {
 	// Выводим обратное итогу сличения на равенство
 	return !((* this) == value);
 }
@@ -1317,31 +1474,36 @@ bool awh::codec::csv::Value::operator != (const Value & value) const noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::csv::Value::Value() noexcept : _type(type_t::NONE), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value() noexcept :
+ _type(type_t::NONE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор вида значения
  *
  * @param type вид заводимого значения
  *
  */
-awh::codec::csv::Value::Value(const type_t type) noexcept : _type(type), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value(const type_t type) noexcept :
+ _type(type), _error(error_t::NONE) {}
 /**
  * @brief Конструктор поля
  *
  * @param text содержимое заводимого поля
  *
  */
-awh::codec::csv::Value::Value(const string & text) noexcept : _type(type_t::FIELD), _text(text), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value(const string & text) noexcept :
+ _type(type_t::FIELD), _text(text), _error(error_t::NONE) {}
 /**
  * @brief Конструктор снятия значения с таблицы
  *
  * @param document таблица, с которой снимается значение
  *
  */
-awh::codec::csv::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _error(error_t::NONE) {
+awh::codec::csv::Value::Value(const document_t & document) noexcept :
+ _type(type_t::NONE), _error(error_t::NONE) {
 	// Выполняем снятие значения с таблицы
 	this->absorb(document);
 }
+
 /**
  * @brief Метод объявления имён столбцов таблицы
  *
@@ -1355,6 +1517,7 @@ bool awh::codec::csv::Builder::header(const vector <string> & names) noexcept {
 	 *
 	 * @note Заголовок объявляется ДО первой записи: записи, поданные прежде, столбцов
 	 *       не знали бы, и обращение по имени доставало бы у них пустоту
+	 *
 	 */
 	if(!this->_result.empty() || this->_opened)
 		// Выводим признак неудачного объявления имён столбцов
@@ -1373,7 +1536,7 @@ bool awh::codec::csv::Builder::field(const string & text) noexcept {
 	// Устанавливаем признак того, что запись открыта подачею поля
 	this->_opened = true;
 	// Выводим итог добавления поля в собираемую запись
-	return this->_record.push(Value(text));
+	return this->_record.push(value_t(text));
 }
 /**
  * @brief Метод подачи поля записи целым значением
@@ -1384,7 +1547,7 @@ bool awh::codec::csv::Builder::field(const string & text) noexcept {
  */
 bool awh::codec::csv::Builder::field(const int64_t number) noexcept {
 	// Выводим итог подачи поля записью числа
-	return this->field(std::to_string(number));
+	return this->field(::to_string(number));
 }
 /**
  * @brief Метод подачи поля записи дробным значением
@@ -1398,8 +1561,9 @@ bool awh::codec::csv::Builder::field(const double number) noexcept {
 	 * @note Запись дробного собирается ходом рамки, а не собственным: уклад записи
 	 *       обязан совпасть с укладом записи таблицы, иначе одно и то же число
 	 *       выходило бы в тексте по-разному в зависимости от дороги
+	 *
 	 */
-	string text = std::to_string(number);
+	string text = ::to_string(number);
 	/**
 	 * Выполняем отсечение незначащих нулей хвоста записи
 	 */
@@ -1443,6 +1607,7 @@ bool awh::codec::csv::Builder::close() noexcept {
 	 *
 	 * @note Пустая запись в таблицу НЕ ложится: у наречия она неотличима от записи с
 	 *       одним пустым полем, и ложись она в таблицу - круг разошёлся бы
+	 *
 	 */
 	if(!this->_opened)
 		// Выводим признак неудачного завершения записи
@@ -1460,12 +1625,13 @@ bool awh::codec::csv::Builder::close() noexcept {
 	 * @warning Снимать отказ нельзя: он держит договор между сборщиком и вместилищем, и
 	 *          разойдись слои - запись пропала бы из таблицы МОЛЧА, а завершение отчиталось
 	 *          бы успехом
+	 *
 	 */
 	if(!this->_result.push(this->_record))
 		// Выводим признак неудачного завершения записи
 		return false;
 	// Выполняем очистку собираемой записи
-	this->_record = Value(Value::type_t::RECORD);
+	this->_record = value_t(value_t::type_t::RECORD);
 	// Снимаем признак открытой записи
 	this->_opened = false;
 	// Выводим признак успешного завершения записи
@@ -1494,10 +1660,11 @@ awh::codec::csv::Value awh::codec::csv::Builder::finish() noexcept {
 	 * @note Отвечаем ОТКАЗОМ, а не закрываем её сами: закрой мы её молча, и потеря
 	 *       вызова `close` у потребителя проходила бы незамеченной, а таблица выходила
 	 *       бы верной по виду с записью, полей недобравшей
+	 *
 	 */
 	if(this->_opened)
 		// Выводим непригодное значение признаком отказа
-		return Value();
+		return value_t();
 	// Выводим собранное значение таблицы
 	return this->_result;
 }
@@ -1507,9 +1674,9 @@ awh::codec::csv::Value awh::codec::csv::Builder::finish() noexcept {
  */
 void awh::codec::csv::Builder::reset() noexcept {
 	// Выполняем сброс собираемой таблицы
-	this->_result = Value(Value::type_t::TABLE);
+	this->_result = value_t(value_t::type_t::TABLE);
 	// Выполняем сброс собираемой записи
-	this->_record = Value(Value::type_t::RECORD);
+	this->_record = value_t(value_t::type_t::RECORD);
 	// Снимаем признак открытой записи
 	this->_opened = false;
 }
@@ -1518,4 +1685,6 @@ void awh::codec::csv::Builder::reset() noexcept {
  *
  */
 awh::codec::csv::Builder::Builder() noexcept :
- _result(Value::type_t::TABLE), _record(Value::type_t::RECORD), _opened(false) {}
+ _opened(false),
+ _result(value_t::type_t::TABLE),
+ _record(value_t::type_t::RECORD) {}

@@ -21,15 +21,19 @@
  */
 
 /**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
+#include <limits>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <limits>
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочный файлй модуля
+ */
 #include <codec/csv/common.hpp>
 
 /**
@@ -48,11 +52,11 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
-	 * Записи логического значения знаками US-ASCII ограничены, и привлекать сюда
-	 * правила местности незачем
+	 *          Записи логического значения знаками US-ASCII ограничены, и привлекать сюда
+	 *          правила местности незачем.
 	 *
 	 * @param first  первая последовательность знаков для сличения
 	 * @param second вторая последовательность знаков для сличения
@@ -81,7 +85,7 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Метод снятия пробельной обвязки с последовательности знаков
+	 * @brief Функция снятия пробельной обвязки с последовательности знаков
 	 *
 	 * @param text последовательность знаков для снятия обвязки
 	 * @return     последовательность знаков без обвязки
@@ -107,7 +111,7 @@ namespace {
 		// Выводим последовательность знаков без обвязки
 		return text.substr(begin, end - begin);
 	}
-}
+};
 
 /**
  * @brief Метод получения сообщения об ошибке разбора
@@ -130,92 +134,111 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 	 * @warning Возвращать приведение нельзя: сторожем тут выступает собиратель, а не
 	 *          проверка. Проверка описаний перечень перебрать не может - о том, что код
 	 *          объявлен, ей узнать неоткуда
+	 *
 	 */
-	switch(error){
+	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case error_t::NONE:
+		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим описание кода ошибки
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case error_t::INTERNAL:
+		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим описание кода ошибки
 			return "internal parser error";
 		// Если значение таблицею не является
-		case error_t::UNREPRESENTABLE_VALUE:
+		case static_cast <uint8_t> (error_t::UNREPRESENTABLE_VALUE):
+			// Выводим описание кода ошибки
 			return "the value cannot be expressed as a CSV table";
 		// Если обработчик записей не передан
-		case error_t::MISSING_CALLBACK:
+		case static_cast <uint8_t> (error_t::MISSING_CALLBACK):
+			// Выводим описание кода ошибки
 			return "the handler of the records has not been given";
 		// Если знак недопустим в тексте
-		case error_t::INVALID_CHARACTER:
+		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
+			// Выводим описание кода ошибки
 			return "invalid character";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case error_t::INVALID_ENCODING:
+		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+			// Выводим описание кода ошибки
 			return "invalid byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case error_t::UNSUPPORTED_ENCODING:
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
+			// Выводим описание кода ошибки
 			return "unsupported encoding";
 		// Если поле в кавычках не закрыто до конца текста
-		case error_t::UNTERMINATED_QUOTE:
+		case static_cast <uint8_t> (error_t::UNTERMINATED_QUOTE):
+			// Выводим описание кода ошибки
 			return "unterminated quoted field";
 		// Если внутри поля без кавычек встретилась одиночная кавычка
-		case error_t::UNESCAPED_QUOTE:
+		case static_cast <uint8_t> (error_t::UNESCAPED_QUOTE):
+			// Выводим описание кода ошибки
 			return "unescaped quote in unquoted field";
 		// Если за закрывающей кавычкой поля обнаружены знаки
-		case error_t::TRAILING_CHARACTERS:
+		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS):
+			// Выводим описание кода ошибки
 			return "characters after closing quote";
 		// Если длина поля превышает допустимую
-		case error_t::FIELD_TOO_LONG:
+		case static_cast <uint8_t> (error_t::FIELD_TOO_LONG):
+			// Выводим описание кода ошибки
 			return "field is too long";
 		// Если длина записи превышает допустимую
-		case error_t::RECORD_TOO_LONG:
+		case static_cast <uint8_t> (error_t::RECORD_TOO_LONG):
+			// Выводим описание кода ошибки
 			return "record is too long";
 		// Если количество полей в записи превышает допустимое
-		case error_t::TOO_MANY_FIELDS:
+		case static_cast <uint8_t> (error_t::TOO_MANY_FIELDS):
+			// Выводим описание кода ошибки
 			return "too many fields in record";
 		// Если количество полей записи расходится с количеством полей заголовка
-		case error_t::FIELD_COUNT_MISMATCH:
+		case static_cast <uint8_t> (error_t::FIELD_COUNT_MISMATCH):
+			// Выводим описание кода ошибки
 			return "field count differs from expected";
 		// Если разделитель не задан вовсе либо совпадает с занятым разбором знаком
-		case error_t::SEPARATOR_CONFLICT:
+		case static_cast <uint8_t> (error_t::SEPARATOR_CONFLICT):
+			// Выводим описание кода ошибки
 			return "field separator is unset or conflicts with quote or newline";
 		// Если заголовок объявлен пустым именем поля
-		case error_t::EMPTY_HEADER:
+		case static_cast <uint8_t> (error_t::EMPTY_HEADER):
+			// Выводим описание кода ошибки
 			return "empty field name in header";
 		// Если имя поля в заголовке объявлено повторно
-		case error_t::DUPLICATE_HEADER:
+		case static_cast <uint8_t> (error_t::DUPLICATE_HEADER):
+			// Выводим описание кода ошибки
 			return "duplicate field name in header";
 		// Если заголовок затребован, а текст пуст
-		case error_t::NO_HEADER:
+		case static_cast <uint8_t> (error_t::NO_HEADER):
+			// Выводим описание кода ошибки
 			return "header requested but input is empty";
 		// Если подача продолжена после объявленного конца текста
-		case error_t::TEXT_ALREADY_ENDED:
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
 			// Выводим описание кода ошибки
 			return "feeding continued after the text was declared complete";
 		// Если файл таблицы открыть не удалось
-		case error_t::FILE_NOT_OPENED:
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the table file";
 		// Если текст таблицы записать в файл не удалось
-		case error_t::FILE_NOT_WRITTEN:
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
 			// Выводим описание кода ошибки
 			return "cannot write the table file";
 		// Если содержимое поля установленными настройками записи непредставимо
-		case error_t::UNWRITABLE_FIELD:
+		case static_cast <uint8_t> (error_t::UNWRITABLE_FIELD):
 			// Выводим описание кода ошибки
 			return "unwritable field";
 		// Если файл таблицы прочитать не удалось
-		case error_t::FILE_NOT_READ:
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ):
 			// Выводим описание кода ошибки
 			return "cannot read the table file";
 		// Если кодировка сменена посреди подачи текста
-		case error_t::ENCODING_ALREADY_CHOSEN:
+		case static_cast <uint8_t> (error_t::ENCODING_ALREADY_CHOSEN):
 			// Выводим описание кода ошибки
 			return "the encoding cannot be changed in the middle of the feed";
 		// Если разбираемая таблица не помещается в разрядность хранилища
-		case error_t::STORAGE_EXHAUSTED:
+		case static_cast <uint8_t> (error_t::STORAGE_EXHAUSTED):
 			// Выводим описание кода ошибки
 			return "the text does not fit the width of the parser storage";
 		// Если конец записи не отвечает договору при строгом разборе
-		case error_t::BARE_LINE_BREAK:
+		case static_cast <uint8_t> (error_t::BARE_LINE_BREAK):
 			// Выводим описание кода ошибки
 			return "bare line break instead of CRLF";
 	}
@@ -233,28 +256,47 @@ const char * awh::codec::csv::name(const encoding_t encoding) noexcept {
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(encoding){
+	switch(static_cast <uint8_t> (encoding)){
 		// Если кодировка не определена
-		case encoding_t::NONE:
+		case static_cast <uint8_t> (encoding_t::NONE):
+			// Выводим название кодировки
 			return "none";
 		// Если кодировкой является UTF-8
-		case encoding_t::UTF8:
+		case static_cast <uint8_t> (encoding_t::UTF8):
+			// Выводим название кодировки
 			return "UTF-8";
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case encoding_t::UTF16LE:
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
+			// Выводим название кодировки
 			return "UTF-16LE";
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case encoding_t::UTF16BE:
+		case static_cast <uint8_t> (encoding_t::UTF16BE):
+			// Выводим название кодировки
 			return "UTF-16BE";
 		// Если кодировкой является ISO-8859-1
-		case encoding_t::LATIN1:
+		case static_cast <uint8_t> (encoding_t::LATIN1):
+			// Выводим название кодировки
 			return "ISO-8859-1";
 		// Если кодировкой является US-ASCII
-		case encoding_t::ASCII:
+		case static_cast <uint8_t> (encoding_t::ASCII):
+			// Выводим название кодировки
 			return "US-ASCII";
 		// Если кодировкой является Windows-1252
-		case encoding_t::CP1252:
+		case static_cast <uint8_t> (encoding_t::CP1252):
+			// Выводим название кодировки
 			return "windows-1252";
+		// Если кодировкой является UTF-32 с обратным порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32LE):
+			// Выводим название кодировки
+			return "UTF-32LE";
+		// Если кодировкой является UTF-32 с прямым порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32BE):
+			// Выводим название кодировки
+			return "UTF-32BE";
+		// Если кодировка однобайтовая, взятая таблицею
+		case static_cast <uint8_t> (encoding_t::SINGLE):
+			// Выводим название кодировки
+			return "single-byte";
 	}
 	// Выводим название неизвестной кодировки
 	return "unknown";
@@ -263,12 +305,12 @@ const char * awh::codec::csv::name(const encoding_t encoding) noexcept {
  * @brief Метод определения кодировки по метке порядка байтов
  *
  * @details Метки сличаются от длинной к короткой намеренно: метка UTF-32 с обратным
- * порядком байтов начинается теми же двумя байтами, что и метка UTF-16 с обратным
- * порядком, и сличение от короткой опознало бы её неверно
+ *          порядком байтов начинается теми же двумя байтами, что и метка UTF-16 с обратным
+ *          порядком, и сличение от короткой опознало бы её неверно.
  *
  * @warning Метка UTF-32 выводится отсутствием кодировки, а не кодировкой UTF-16:
- * поддержки UTF-32 разбор не имеет, и назвать такой текст разбираемым значило бы
- * прочесть его знаками вперемешку с пустыми. Отказ выдаётся разбором отдельно
+ *          поддержки UTF-32 разбор не имеет, и назвать такой текст разбираемым значило бы
+ *          прочесть его знаками вперемешку с пустыми. Отказ выдаётся разбором отдельно
  *
  * @param text начало исходного текста
  * @return     определённая кодировка, UTF-8 при отсутствии метки либо отсутствие
@@ -333,16 +375,19 @@ string_view awh::codec::csv::newline(const newline_t newline) noexcept {
 	/**
 	 * Определяем вид знака конца строки
 	 */
-	switch(newline){
-		// Если знаком конца строки является возврат каретки с переводом строки
-		case newline_t::CRLF:
-			return "\r\n";
-		// Если знаком конца строки является перевод строки
-		case newline_t::LF:
-			return "\n";
+	switch(static_cast <uint8_t> (newline)){
 		// Если знаком конца строки является одиночный возврат каретки
-		case newline_t::CR:
+		case static_cast <uint8_t> (newline_t::CR):
+			// Выводим перевод строки
 			return "\r";
+		// Если знаком конца строки является перевод строки
+		case static_cast <uint8_t> (newline_t::LF):
+			// Выводим перевод строки
+			return "\n";
+		// Если знаком конца строки является возврат каретки с переводом строки
+		case static_cast <uint8_t> (newline_t::CRLF):
+			// Выводим перевод строки
+			return "\r\n";
 	}
 	/**
 	 * Выводим знак конца строки, принятый договором
@@ -354,6 +399,7 @@ string_view awh::codec::csv::newline(const newline_t newline) noexcept {
 	 *
 	 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ 08.09.2026: у `newline_t` три члена - `CRLF`, `LF`
 	 *       и `CR`, - и все три стоят случаями выбора выше
+	 *
 	 */
 	return "\r\n";
 }
@@ -377,6 +423,7 @@ bool awh::codec::csv::suitable(const char separator, const char quote) noexcept 
 	 *
 	 * @note Совпадение это делает текст неразбираемым: знак не может означать
 	 *       одновременно и границу поля, и границу записи
+	 *
 	 */
 	if((separator == quote) || (separator == '\r') || (separator == '\n'))
 		// Выводим признак непригодности
@@ -416,6 +463,7 @@ bool awh::codec::csv::quotable(const string_view text, const char separator, con
 	 *       Прежде правило «все, кроме чисел» отвечало прежде такой проверки, и поле
 	 *       вида «\t\r\n0», признанное числом, записывалось без кавычек - разрывая
 	 *       запись надвое
+	 *
 	 */
 	bool necessary = false;
 	/**
@@ -424,6 +472,7 @@ bool awh::codec::csv::quotable(const string_view text, const char separator, con
 	 * @note Пустое поле кавычек не требует: договор отличает поле пустое от поля,
 	 *       записанного пустыми кавычками, лишь при особом уговоре, и умолчанием
 	 *       такого отличия нет
+	 *
 	 */
 	if(!text.empty()){
 		/**
@@ -431,6 +480,7 @@ bool awh::codec::csv::quotable(const string_view text, const char separator, con
 		 *
 		 * @note Обвязка без кавычек теряется у тех читающих, что снимают её сами, -
 		 *       кавычки здесь сохраняют значащие пробелы
+		 *
 		 */
 		if(ascii::isSpace(text.front()) || ascii::isSpace(text.back()))
 			// Запоминаем признак необходимости кавычек
@@ -438,7 +488,7 @@ bool awh::codec::csv::quotable(const string_view text, const char separator, con
 		/**
 		 * Выполняем перебор всех знаков поля
 		 */
-		else for(const char letter : text){
+		else for(const char letter : text) {
 			/**
 			 * Если знак является разделителем, кавычкой либо знаком конца строки
 			 */
@@ -486,13 +536,14 @@ bool awh::codec::csv::integer(const string_view text, int64_t & result) noexcept
 	 *
 	 * @details Разбор `fromChars` следует правилам языка и плюса не принимает вовсе,
 	 *          тогда как обиход таблиц пишет `+5` наравне с `5`. Оттого плюс снимается
-	 *          здесь, и разбору достаётся остаток
+	 *          здесь, и разбору достаётся остаток.
 	 *
 	 * @note Договора о видах у таблиц нет вовсе - RFC 4180 знает лишь поля-строки, - и
 	 *       приведение поля к числу есть услуга звучащему. Мерою её взят кодек XML, где
 	 *       ведущий плюс дозволен договором XSD: расхождение двух кодеков на одном и том
 	 *       же поле было бы ловушкой тем более опасной, что молчаливой. Замер 16.09.2026:
 	 *       `+5` принималось разметкой и отвергалось таблицей - всеми тремя входами
+	 *
 	 */
 	if(digits.front() == '+')
 		// Выполняем снятие ведущего знака плюса
@@ -517,6 +568,7 @@ bool awh::codec::csv::integer(const string_view text, int64_t & result) noexcept
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
@@ -549,6 +601,7 @@ bool awh::codec::csv::integer(const string_view text, uint64_t & result) noexcep
 	 *
 	 * @note Число отрицательное в тип без знака не приводится: запрошенный тип и есть
 	 *       указание на ожидаемую запись
+	 *
 	 */
 	if(value.front() == '-')
 		// Выводим признак неудачного приведения
@@ -560,13 +613,14 @@ bool awh::codec::csv::integer(const string_view text, uint64_t & result) noexcep
 	 *
 	 * @details Разбор `fromChars` следует правилам языка и плюса не принимает вовсе,
 	 *          тогда как обиход таблиц пишет `+5` наравне с `5`. Оттого плюс снимается
-	 *          здесь, и разбору достаётся остаток
+	 *          здесь, и разбору достаётся остаток.
 	 *
 	 * @note Договора о видах у таблиц нет вовсе - RFC 4180 знает лишь поля-строки, - и
 	 *       приведение поля к числу есть услуга звучащему. Мерою её взят кодек XML, где
 	 *       ведущий плюс дозволен договором XSD: расхождение двух кодеков на одном и том
 	 *       же поле было бы ловушкой тем более опасной, что молчаливой. Замер 16.09.2026:
 	 *       `+5` принималось разметкой и отвергалось таблицей - всеми тремя входами
+	 *
 	 */
 	if(digits.front() == '+')
 		// Выполняем снятие ведущего знака плюса
@@ -591,6 +645,7 @@ bool awh::codec::csv::integer(const string_view text, uint64_t & result) noexcep
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
@@ -623,17 +678,18 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 *
 	 * @details Написания эти взяты у кодека XML, где их даёт договор XSD (W3C XML Schema
 	 *          Part 2, §3.2.5): `INF`, `+INF`, `-INF` и `NaN`, и РЕГИСТР В НИХ ЗНАЧИМ.
-	 *          Договора о видах у таблиц нет вовсе, и мерою взят соседний кодек
+	 *          Договора о видах у таблиц нет вовсе, и мерою взят соседний кодек.
 	 *
 	 * @warning Сличение ведётся ТОЧНОЕ и ДО общего разбора намеренно: разбор `fromChars`
 	 *          следует правилам языка и принимает `inf`, `nan`, `infinity` в любом
 	 *          написании. Замер 16.09.2026: поле `nan` таблица читала нечислом, а
 	 *          разметка тот же текст числом не признавала вовсе - и поле с таким текстом
 	 *          (сокращение, имя, обозначение) молча оборачивалось числом
+	 *
 	 */
 	if((value.compare("INF") == 0) || (value.compare("+INF") == 0)){
 		// Запоминаем положительную бесконечность
-		result = std::numeric_limits <double>::infinity();
+		result = numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -641,7 +697,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("-INF") == 0) {
 		// Запоминаем отрицательную бесконечность
-		result = -std::numeric_limits <double>::infinity();
+		result = -numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -649,7 +705,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("NaN") == 0) {
 		// Запоминаем нечисло
-		result = std::numeric_limits <double>::quiet_NaN();
+		result = numeric_limits <double>::quiet_NaN();
 		// Выводим признак успешного приведения
 		return true;
 	}
@@ -660,6 +716,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 *
 	 * @note Знак снимается ради заставы ниже: судить о первом знаке записи надо по
 	 *       тому, что стоит ЗА знаком числа
+	 *
 	 */
 	if((digits.front() == '+') || (digits.front() == '-'))
 		// Выполняем снятие ведущего знака числа
@@ -676,26 +733,28 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 * @note Застава эта отсекает написания, разбором языка принимаемые, а договором - нет:
 	 *       `inf`, `nan`, `infinity` и всякое их написание. Особые значения разобраны выше
 	 *       точным сличением, и сюда доходить им не положено
+	 *
 	 */
 	if(!awh::ascii::isDigit(digits.front()) && (digits.front() != '.'))
 		// Выводим признак неудачного приведения
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	double number = 0;
 	/**
 	 * Содержимое, разбору отдаваемое
 	 *
 	 * @details Разбор `fromChars` следует правилам языка и ведущего плюса не принимает
 	 *          вовсе, тогда как обиход таблиц пишет `+5` наравне с `5`. Оттого плюс
-	 *          разбору не показывается, а минус остаётся при числе
+	 *          разбору не показывается, а минус остаётся при числе.
 	 *
 	 * @note Договора о видах у таблиц нет вовсе - RFC 4180 знает лишь поля-строки, - и
 	 *       приведение поля к числу есть услуга звучащему. Мерою её взят кодек XML, где
 	 *       ведущий плюс дозволен договором XSD: расхождение двух кодеков на одном и том
 	 *       же поле было бы ловушкой тем более опасной, что молчаливой. Замер 16.09.2026:
 	 *       `+5` принималось разметкой и отвергалось таблицей - всеми тремя входами
+	 *
 	 */
 	const string_view parsed = ((value.front() == '+') ? digits : value);
-	// Разобранное значение, выходной переменной ещё не отданное
-	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
 	const lexical_t::result_t <char> res = lexical_t::fromChars(parsed.data(), parsed.data() + parsed.length(), number);
 	/**
@@ -708,6 +767,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (parsed.data() + parsed.length()))){
 		// Запоминаем разобранное значение
@@ -722,9 +782,8 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
  * @brief Метод приведения содержимого поля к логическому значению
  *
  * @details Признаются записи, сложившиеся на деле: «true» и «false», «yes» и «no»,
- * «on» и «off», единица и ноль - в любом регистре. Наречия здесь нет: у CSV нет
- * договора о записи логического значения вовсе, и признавать приходится всё
- * употребимое
+ *          «on» и «off», единица и ноль - в любом регистре. Наречия здесь нет: у CSV нет
+ *          договора о записи логического значения вовсе, и признавать приходится всё употребимое.
  *
  * @param text   содержимое поля
  * @param result полученное значение
@@ -761,29 +820,17 @@ bool awh::codec::csv::boolean(const string_view text, bool & result) noexcept {
 	// Выводим признак неудачного приведения
 	return false;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::codec::csv::Span::Span() noexcept : offset(0), length(0) {}
 
-/**
- * @brief Конструктор
- *
- * @param offset смещение начала отрезка в хранилище знаков
- * @param length длина отрезка в байтах
- *
- */
-awh::codec::csv::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
 /**
  * @brief Конструктор
  *
  */
 awh::codec::csv::Location::Location() noexcept :
- offset(NO_OFFSET), line(0), column(0),
- record(0), field(NO_INDEX) {}
+ field(NO_INDEX), record(0) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::csv::Field::Field() noexcept : quoted(false), modified(false) {}
+awh::codec::csv::Field::Field() noexcept :
+ quoted(false), modified(false) {}
