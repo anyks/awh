@@ -169,12 +169,11 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа разбора
  *
- * @param method имя метода, объявившего отказ
- * @param error  код отказа разбора
- * @return       признак успешности разбора, всегда ложь
+ * @param error код отказа разбора
+ * @return      признак успешности разбора, всегда ложь
  *
  */
-bool awh::codec::abc::Reader::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа разбора
 	this->_error = error;
 	// Выполняем перевод разбора в состояние отказа
@@ -185,34 +184,6 @@ bool awh::codec::abc::Reader::fail([[maybe_unused]] const char * method, const e
 	this->_location.depth = static_cast <uint32_t> (this->_stack.size());
 	// Запоминаем положение обнаруженного отказа
 	this->_failure = this->_location;
-	/**
-	 * Если объект логирования отдан, доносим об отказе разбора.
-	 *
-	 * Донесение идёт отсюда, из единственного места объявления отказа: разбор
-	 * отвечает отказом двумя десятками путей, и запись в каждом из них разошлась бы
-	 * с прочими. Потребителю остаётся код отказа, а сводить записи со всей рамки
-	 * в одну точку - работа журнала, а не его
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error), this->_location.offset, this->_location.depth}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что разбор отвечен отказом
 	return false;
 }
@@ -438,15 +409,43 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 	 * Если значение собирается кусками, всякое иное значение внутри него негодно:
 	 * куски выдаются своим путём, а сюда попадает лишь то, что кусками не является
 	 */
-	if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED))
-		// Выполняем объявление отказа разбора
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+	if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_SEGMENT);
+	}
 	// Выполняем получение предела количества узлов документа
 	const uint32_t limit = ((this->_settings.maxNodes > 0) ? this->_settings.maxNodes : MAX_NODES);
 	// Если количество узлов документа превышает допустимое
-	if(++this->_nodes > limit)
-		// Выполняем объявление отказа разбора
-		return this->fail(__PRETTY_FUNCTION__, error_t::TOO_MANY_NODES);
+	if(++this->_nodes > limit){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::TOO_MANY_NODES));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::TOO_MANY_NODES));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::TOO_MANY_NODES);
+	}
 	// Если стек вместимых не пуст
 	if(!this->_stack.empty()){
 		// Выполняем получение верхнего звена стека вместимых
@@ -492,9 +491,23 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 						// Выполняем сличение записей имён по их длине
 						compare = ((frame.key.size() < key.size()) ? -1 : ((frame.key.size() > key.size()) ? 1 : 0));
 					// Если имена полей отображения идут не по возрастанию
-					if(compare >= 0)
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::UNORDERED_KEY);
+					if(compare >= 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNORDERED_KEY));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNORDERED_KEY));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::UNORDERED_KEY);
+					}
 				}
 				// Выполняем запоминание записи имени поля отображения
 				frame.key.swap(key);
@@ -554,8 +567,21 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 				if(this->_pool.size() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 					// Выполняем возврат вместилища октетов к прежнему виду
 					this->_pool.resize(offset);
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_LENGTH);
 				}
 				// Длина записи имени поля отображения
 				const size_t length = (this->_pool.size() - offset);
@@ -578,8 +604,21 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 				if(this->duplicated(frame, offset, length, digest)){
 					// Выполняем возврат вместилища октетов к прежнему виду
 					this->_pool.resize(offset);
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::DUPLICATE_KEY);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::DUPLICATE_KEY);
 				}
 				// Выполняем запоминание отрезка записи уложенного имени поля
 				this->_spans.emplace_back(static_cast <uint32_t> (offset), static_cast <uint32_t> (length), digest);
@@ -682,9 +721,23 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 		 *       усекается по мере разбора, и смещение в нём от нарезки на куски зависит
 		 *
 		 */
-		if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (this->_offset))))
-			// Выполняем объявление отказа разбора
-			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+		if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (this->_offset)))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INVALID_LENGTH);
+		}
 		// Собираемое событие конца вместимого
 		record_t record;
 		// Выполняем установку вида события конца вместимого
@@ -792,8 +845,21 @@ bool awh::codec::abc::Reader::process() noexcept {
 						if(this->_settings.malformed == malformed_t::REFUSE){
 							// Выполняем сдвиг смещения разбора к негодной последовательности
 							this->_offset += position;
-							// Выполняем объявление отказа разбора
-							return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_ENCODING);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_ENCODING));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_ENCODING));
+							#endif
+							// Объявляем отказ
+							return this->fail(error_t::INVALID_ENCODING);
 						}
 						// Исправленное содержимое строки
 						vector <uint8_t> patched;
@@ -989,25 +1055,82 @@ bool awh::codec::abc::Reader::process() noexcept {
 					if(error == error_t::UNEXPECTED_EOF)
 						// Сообщаем, что разбор успешен
 						return true;
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_DECIMAL);
 				}
 				// Если десятичный порядок является целым без знака
 				if(unit.group == group_t::UNSIGNED){
 					// Если порядок видом целого со знаком не представим
-					if(unit.value > static_cast <uint64_t> (numeric_limits <int64_t>::max()))
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
+					if(unit.value > static_cast <uint64_t> (numeric_limits <int64_t>::max())){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::INVALID_DECIMAL);
+					}
 					// Выполняем установку десятичного порядка величины
 					this->_exponent = static_cast <int64_t> (unit.value);
 				// Если десятичный порядок является целым со знаком
 				} else if(unit.group == group_t::NEGATIVE) {
 					// Если обратить запись дополнения до −1 не удалось
-					if(!abc::negative(unit.value, this->_exponent))
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
+					if(!abc::negative(unit.value, this->_exponent)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::INVALID_DECIMAL);
+					}
 				// Если на месте десятичного порядка стоит иное
-				} else return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_DECIMAL));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_DECIMAL);
+				}
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем перевод разбора в ожидание длины октетов величины
@@ -1046,9 +1169,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 *       круглым числом
 				 *
 				 */
-				if(width > (numeric_limits <uint64_t>::max() - place))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				if(width > (numeric_limits <uint64_t>::max() - place)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_LENGTH);
+				}
 				// Выполняем установку размаха вместимого, стоящего следом
 				this->_span = width;
 				/**
@@ -1083,8 +1220,21 @@ bool awh::codec::abc::Reader::process() noexcept {
 					if(error == error_t::UNEXPECTED_EOF)
 						// Сообщаем, что разбор успешен
 						return true;
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_BIGNUM);
 				}
 				/**
 				 * Если на месте длины октетов величины стоит иное
@@ -1095,9 +1245,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 *       неограниченной ширины не было закреплено ни одного
 				 *
 				 */
-				if(unit.group != group_t::UNSIGNED)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+				if(unit.group != group_t::UNSIGNED){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_BIGNUM);
+				}
 				/**
 				 * Если длина октетов величины превышает допустимую
 				 *
@@ -1106,9 +1270,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 *       обращалась бы в отведение любого размера по чужому слову
 				 *
 				 */
-				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::BLOB_TOO_LONG);
+				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::BLOB_TOO_LONG));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::BLOB_TOO_LONG));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::BLOB_TOO_LONG);
+				}
 				/**
 				 * Если объявленная длина октетов величины шире отрезка события
 				 *
@@ -1119,9 +1297,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 *       тридцати четырёх миллиардах разрядов, и тесным предел назвать нельзя
 				 *
 				 */
-				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max())){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_LENGTH);
+				}
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку количества недостающих октетов
@@ -1140,13 +1332,41 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем снятие октета знака величины
 				const uint8_t sign = this->_buffer.at(this->_offset);
 				// Если знак величины не опознан
-				if(sign > 1)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+				if(sign > 1){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_BIGNUM);
+				}
 				// Если величина объявлена отрицательным нулём
-				if((sign == 1) && (this->_pending == 0))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+				if((sign == 1) && (this->_pending == 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_BIGNUM);
+				}
 				// Выполняем установку признака отрицательности величины
 				this->_negative = (sign == 1);
 				// Выполняем сдвиг смещения разбора
@@ -1171,9 +1391,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 					// Сообщаем, что разбор успешен
 					return true;
 				// Если старший октет величины нулевой
-				if((this->_pending > 0) && (this->_buffer.at(this->_offset + static_cast <size_t> (this->_pending) - 1) == 0))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+				if((this->_pending > 0) && (this->_buffer.at(this->_offset + static_cast <size_t> (this->_pending) - 1) == 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_BIGNUM);
+				}
 				// Собираемое событие разбора
 				record_t record;
 				// Выполняем установку вида события числа
@@ -1231,13 +1465,40 @@ bool awh::codec::abc::Reader::process() noexcept {
 					if(error == error_t::UNEXPECTED_EOF)
 						// Сообщаем, что разбор успешен
 						return true;
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_EXTENSION);
 				}
 				// Если на месте номера подвида расширения стоит иное
-				if(unit.group != group_t::UNSIGNED)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
+				if(unit.group != group_t::UNSIGNED){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_EXTENSION);
+				}
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку номера подвида расширения
@@ -1267,17 +1528,58 @@ bool awh::codec::abc::Reader::process() noexcept {
 					if(error == error_t::UNEXPECTED_EOF)
 						// Сообщаем, что разбор успешен
 						return true;
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_EXTENSION);
 				}
 				// Если на месте длины октетов расширения стоит иное
-				if(unit.group != group_t::UNSIGNED)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
+				if(unit.group != group_t::UNSIGNED){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_EXTENSION));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_EXTENSION);
+				}
 				// Если длина октетов расширения превышает допустимую
-				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::BLOB_TOO_LONG);
+				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::BLOB_TOO_LONG));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::BLOB_TOO_LONG));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::BLOB_TOO_LONG);
+				}
 				/**
 				 * Если объявленная длина октетов величины шире отрезка события
 				 *
@@ -1288,9 +1590,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 *       тридцати четырёх миллиардах разрядов, и тесным предел назвать нельзя
 				 *
 				 */
-				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max())){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_LENGTH);
+				}
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку количества недостающих октетов
@@ -1350,9 +1666,23 @@ bool awh::codec::abc::Reader::process() noexcept {
 					// Сообщаем, что разбор успешен
 					return true;
 				// Если разбор потока документов не затребован
-				if(!this->_settings.stream)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::TRAILING_OCTETS);
+				if(!this->_settings.stream){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::TRAILING_OCTETS));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::TRAILING_OCTETS));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::TRAILING_OCTETS);
+				}
 				/**
 				 * Выполняем сброс счёта узлов документа
 				 *
@@ -1402,8 +1732,21 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Сообщаем, что разбор успешен: единица дождётся следующей подачи
 			return true;
 		}
-		// Выполняем объявление отказа разбора
-		return this->fail(__PRETTY_FUNCTION__, error);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+		#endif
+		// Объявляем отказ
+		return this->fail(error);
 	}
 	/**
 	 * Если вид записи строгий, снятая единица поверяется на единственность записи
@@ -1420,13 +1763,41 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 	 */
 	if(this->_settings.canonical){
 		// Если единица объявлена неопределённой длины
-		if(unit.indefinite)
-			// Выполняем объявление отказа разбора
-			return this->fail(__PRETTY_FUNCTION__, error_t::INDEFINITE_REFUSED);
+		if(unit.indefinite){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INDEFINITE_REFUSED);
+		}
 		// Если подробность метки шире наименьшей, вмещающей значение
-		if((unit.group != group_t::SINGLE) && (unit.group != group_t::EXTEND) && (unit.detail != abc::fit(unit.value)))
-			// Выполняем объявление отказа разбора
-			return this->fail(__PRETTY_FUNCTION__, error_t::NON_MINIMAL_TAG);
+		if((unit.group != group_t::SINGLE) && (unit.group != group_t::EXTEND) && (unit.detail != abc::fit(unit.value))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::NON_MINIMAL_TAG));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::NON_MINIMAL_TAG));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::NON_MINIMAL_TAG);
+		}
 	}
 	/**
 	 * Если ведущие октеты единицы понадобятся сличению имён полей
@@ -1521,9 +1892,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Обращённое число со знаком
 			int64_t value = 0;
 			// Если запись дополнения до −1 видом целого со знаком не представима
-			if(!abc::negative(unit.value, value))
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, error_t::NUMBER_OUT_OF_RANGE);
+			if(!abc::negative(unit.value, value)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::NUMBER_OUT_OF_RANGE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::NUMBER_OUT_OF_RANGE));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::NUMBER_OUT_OF_RANGE);
+			}
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку вида события числа
@@ -1560,9 +1945,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 * Если значение, собираемое кусками, стоит внутри такого же:
 					 * вложенности здесь нет, кусок обязан быть определённой длины
 					 */
-					if(frame.segment != type_t::UNDEFINED)
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+					if(frame.segment != type_t::UNDEFINED){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::INVALID_SEGMENT);
+					}
 					/**
 					 * Если значение, собираемое кусками, стоит именем поля отображения:
 					 * имя обязано быть цельным, иначе строгий вид записи невозможен
@@ -1586,9 +1985,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 *       вида и сломал бы сборку дерева
 					 *
 					 */
-					if(frame.mapping && frame.expectKey)
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
+					if(frame.mapping && frame.expectKey){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::INVALID_KEY);
+					}
 				}
 				// Выполняем получение предела глубины вложенности
 				const uint32_t depth = (
@@ -1597,9 +2010,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH
 				);
 				// Если глубина вложенности превышает допустимую
-				if(static_cast <uint32_t> (this->_stack.size() + 1) > depth)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
+				if(static_cast <uint32_t> (this->_stack.size() + 1) > depth){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::DEPTH_EXCEEDED);
+				}
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку вида события начала значения
@@ -1630,9 +2057,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			/**
 			 * Если значение собирается кусками, кусок обязан быть того же вида
 			 */
-			if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED) && (this->_stack.back().segment != segment))
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+			if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED) && (this->_stack.back().segment != segment)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::INVALID_SEGMENT);
+			}
 			// Выполняем получение предела длины значения
 			const uint64_t limit = (text ? this->_settings.maxString : this->_settings.maxBlob);
 			/**
@@ -1650,9 +2091,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 */
 			const uint64_t length = (piece ? (this->_stack.back().gathered + unit.value) : unit.value);
 			// Если длина значения превышает допустимую
-			if((limit > 0) && (length > limit))
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG);
+			if((limit > 0) && (length > limit)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG));
+				#endif
+				// Объявляем отказ
+				return this->fail(text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG);
+			}
 			/**
 			 * Если объявленная длина значения шире отрезка события
 			 *
@@ -1672,9 +2127,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 *       шире хранилища. Молчаливое усечение здесь было бы третьим случаем одного вида
 			 *
 			 */
-			if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+			if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max())){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::INVALID_LENGTH);
+			}
 			/**
 			 * Если кусок принадлежит значению неопределённой длины, выполняем учёт длины его
 			 */
@@ -1707,13 +2176,41 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				 * Если вместимое стоит внутри значения, собираемого кусками: кусками
 				 * собираются лишь строка и двоичные данные, вместимого там быть не может
 				 */
-				if(frame.segment != type_t::UNDEFINED)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+				if(frame.segment != type_t::UNDEFINED){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_SEGMENT);
+				}
 				// Если вместимое стоит именем поля отображения
-				if(frame.mapping && frame.expectKey)
-					// Выполняем объявление отказа разбора
-					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
+				if(frame.mapping && frame.expectKey){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+					#endif
+					// Объявляем отказ
+					return this->fail(error_t::INVALID_KEY);
+				}
 			}
 			// Выполняем получение предела глубины вложенности
 			const uint32_t limit = (
@@ -1722,9 +2219,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH
 			);
 			// Если глубина вложенности превышает допустимую
-			if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
+			if(static_cast <uint32_t> (this->_stack.size() + 1) > limit){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::DEPTH_EXCEEDED);
+			}
 			// Выполняем получение предела количества узлов документа
 			const uint32_t nodes = ((this->_settings.maxNodes > 0) ? this->_settings.maxNodes : MAX_NODES);
 			/**
@@ -1737,9 +2248,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 *       прошла бы предел насквозь
 			 *
 			 */
-			if(++this->_nodes > nodes)
-				// Выполняем объявление отказа разбора
-				return this->fail(__PRETTY_FUNCTION__, error_t::TOO_MANY_NODES);
+			if(++this->_nodes > nodes){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::TOO_MANY_NODES));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::TOO_MANY_NODES));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::TOO_MANY_NODES);
+			}
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку вида события начала вместимого
@@ -1898,9 +2423,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				 */
 				case static_cast <uint8_t> (single_t::BREAK): {
 					// Если стек вместимых пуст
-					if(this->_stack.empty())
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_BREAK);
+					if(this->_stack.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_BREAK));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_BREAK));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::UNBALANCED_BREAK);
+					}
 					// Выполняем получение верхнего звена стека вместимых
 					const frame_t & frame = this->_stack.back();
 					/**
@@ -1928,13 +2467,41 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						return this->finalize(record);
 					}
 					// Если длина вместимого объявлена
-					if(!frame.indefinite)
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_BREAK);
+					if(!frame.indefinite){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_BREAK));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_BREAK));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::UNBALANCED_BREAK);
+					}
 					// Если отображение оборвалось на имени поля
-					if(frame.mapping && !frame.expectKey)
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::MISSING_VALUE);
+					if(frame.mapping && !frame.expectKey){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_VALUE));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_VALUE));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::MISSING_VALUE);
+					}
 					/**
 					 * Если объявленный размах с настоящим концом вместимого не сошёлся
 					 *
@@ -1950,9 +2517,23 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 *       так же, как и его значения
 					 *
 					 */
-					if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (offset))))
-						// Выполняем объявление отказа разбора
-						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+					if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (offset)))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+						#endif
+						// Объявляем отказ
+						return this->fail(error_t::INVALID_LENGTH);
+					}
 					// Признак того, что закрываемое вместимое является отображением
 					const bool mapping = frame.mapping;
 					// Выполняем сдвиг смещения разбора
@@ -2005,6 +2586,19 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				}
 			}
 			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::RESERVED_TAG));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::RESERVED_TAG));
+			#endif
+			/**
 			 * Выполняем объявление отказа разбора
 			 *
 			 * @note Место это ПЕРЕКРЫТО заслоном, стоящим раньше: отложенные подробности
@@ -2018,7 +2612,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 *       снятия единицы, а не здесь
 			 *
 			 */
-			return this->fail(__PRETTY_FUNCTION__, error_t::RESERVED_TAG);
+			return this->fail(error_t::RESERVED_TAG);
 		}
 		/**
 		 * Если значение является расширением
@@ -2056,6 +2650,19 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		}
 	}
 	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("ABC: %s", __PRETTY_FUNCTION__, {done}, log::flag_t::WARNING, codec::abc::message(error_t::UNKNOWN_TAG));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNKNOWN_TAG));
+	#endif
+	/**
 	 * Выполняем объявление отказа разбора
 	 *
 	 * @note Место это НЕДОСТИЖИМО по устройству, и оттого проверкою не стережётся: все
@@ -2073,7 +2680,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 	 *       того же захода оказались достижимы и закреплены
 	 *
 	 */
-	return this->fail(__PRETTY_FUNCTION__, error_t::UNKNOWN_TAG);
+	return this->fail(error_t::UNKNOWN_TAG);
 }
 /**
  * @brief Метод усечения разобранной части буфера
@@ -2136,10 +2743,23 @@ bool awh::codec::abc::Reader::digest(const bool last) noexcept {
 	// Если поданный кусок записи последний
 	if(last){
 		// Если разбор оборвался посреди значения
-		if(this->_state != phase_t::FINISHED)
-			// Выполняем объявление отказа разбора
-			return this->fail(__PRETTY_FUNCTION__, (this->_buffer.empty() && !this->_document) ?
-			 error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF);
+		if(this->_state != phase_t::FINISHED){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {last}, log::flag_t::WARNING, codec::abc::message((this->_buffer.empty() && !this->_document) ? error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message((this->_buffer.empty() && !this->_document) ? error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF));
+			#endif
+			// Объявляем отказ
+			return this->fail((this->_buffer.empty() && !this->_document) ? error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF);
+		}
 		// Собираемое событие окончания записи
 		record_t record;
 		// Выполняем установку вида события окончания записи
@@ -2269,9 +2889,23 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	 *       проверке доказана щупом привязки: проверка одна, и валит её этот заслон
 	 *
 	 */
-	if((buffer == nullptr) && (size > 0))
-		// Выполняем объявление отказа разбора
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, last}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	/**
 	 * Если неснятых событий накопилось свыше предела
 	 *
@@ -2470,9 +3104,23 @@ bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcep
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	// Если принятых октетов больше, чем места было выдано
-	if(size > this->_reserved)
-		// Выполняем объявление отказа разбора
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if(size > this->_reserved){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {size, last}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	/**
 	 * Выполняем возврат невостребованной части выданного места. Принято бывает меньше
 	 * запрошенного, и хвост выданного места содержимым записи не является вовсе

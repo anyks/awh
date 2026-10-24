@@ -105,43 +105,15 @@ awh::codec::abc::Writer::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа сборки
  *
- * @param method имя метода, объявившего отказ
- * @param error  код отказа сборки
- * @return       признак успешности сборки, всегда ложь
+ * @param error код отказа сборки
+ * @return      признак успешности сборки, всегда ложь
  *
  */
-bool awh::codec::abc::Writer::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа сборки
 	this->_error = error;
 	// Выполняем установку признака отказа сборки
 	this->_failed = true;
-	/**
-	 * Если объект логирования отдан, доносим об отказе сборки.
-	 *
-	 * Донесение идёт отсюда, из единственного места объявления отказа: сборка
-	 * отвечает отказом множеством путей, и запись в каждом из них разошлась бы с
-	 * прочими
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error), this->_record.size()}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что сборка отвечена отказом
 	return false;
 }
@@ -179,20 +151,62 @@ bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 	 * Если значение собирается кусками, всякое иное значение внутри него негодно:
 	 * куски ложатся своим путём и сюда не приходят
 	 */
-	if(frame.segment != type_t::UNDEFINED)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+	if(frame.segment != type_t::UNDEFINED){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {container}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_SEGMENT);
+	}
 	// Если ожидается имя поля отображения
 	if(frame.mapping && frame.expectKey){
 		// Если именем поля стоит вместимое
-		if(container)
-			// Выполняем объявление отказа сборки
-			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
+		if(container){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {container}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INVALID_KEY);
+		}
 	}
 	// Если значений вместимого уложено больше объявленного
-	if(!frame.indefinite && (frame.remain == 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::CONTAINER_OVERFLOW);
+	if(!frame.indefinite && (frame.remain == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {container}, log::flag_t::WARNING, codec::abc::message(error_t::CONTAINER_OVERFLOW));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::CONTAINER_OVERFLOW));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::CONTAINER_OVERFLOW);
+	}
 	// Сообщаем, что место укладки годно
 	return true;
 }
@@ -413,13 +427,41 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 				// Выполняем сличение записей имён по их длине
 				compare = ((previous < length) ? -1 : ((previous > length) ? 1 : 0));
 			// Если имена полей отображения совпали
-			if((compare == 0) && this->_settings.duplicates)
-				// Выполняем объявление отказа сборки
-				return this->fail(__PRETTY_FUNCTION__, error_t::DUPLICATE_KEY);
+			if((compare == 0) && this->_settings.duplicates){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {start}, log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::DUPLICATE_KEY);
+			}
 			// Если имена полей идут не по возрастанию при строгом виде записи
-			if((compare >= 0) && this->_settings.canonical)
-				// Выполняем объявление отказа сборки
-				return this->fail(__PRETTY_FUNCTION__, error_t::UNORDERED_KEY);
+			if((compare >= 0) && this->_settings.canonical){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {start}, log::flag_t::WARNING, codec::abc::message(error_t::UNORDERED_KEY));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNORDERED_KEY));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::UNORDERED_KEY);
+			}
 		}
 		/**
 		 * Если запись выросла шире отрезка, каким запоминается имя поля
@@ -450,9 +492,23 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 		 *       по местам отказа 04.09.2026
 		 *
 		 */
-		if(this->length() > static_cast <size_t> (numeric_limits <uint32_t>::max()))
-			// Выполняем объявление отказа сборки
-			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+		if(this->length() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {start}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INVALID_LENGTH);
+		}
 		/**
 		 * Если повторы отвергаются вне строгого вида, сличаем имя со ВСЕМИ прежними
 		 *
@@ -484,9 +540,23 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 			 */
 			const uint64_t digest = ::digest(this->_record.data() + start, length);
 			// Если имя поля отображения в этом вместимом уже было
-			if(this->duplicated(frame, start, length, digest))
-				// Выполняем объявление отказа сборки
-				return this->fail(__PRETTY_FUNCTION__, error_t::DUPLICATE_KEY);
+			if(this->duplicated(frame, start, length, digest)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {start}, log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DUPLICATE_KEY));
+				#endif
+				// Объявляем отказ
+				return this->fail(error_t::DUPLICATE_KEY);
+			}
 			// Выполняем запоминание отрезка записи уложенного имени поля
 			this->_keys.emplace_back(static_cast <uint32_t> (start), static_cast <uint32_t> (length), digest);
 		}
@@ -525,15 +595,43 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если неопределённая длина уложена при строгом виде записи
-	if(indefinite && this->_settings.canonical)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INDEFINITE_REFUSED);
+	if(indefinite && this->_settings.canonical){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping, count, indefinite}, log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INDEFINITE_REFUSED);
+	}
 	// Выполняем получение предела глубины вложенности
 	const uint32_t limit = ((this->_settings.maxDepth > 0) ? ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
 	// Если глубина вложенности превышает допустимую
-	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
+	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping, count, indefinite}, log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::DEPTH_EXCEEDED);
+	}
 	// Выполняем получение крупного вида укладываемого вместимого
 	const group_t group = (mapping ? group_t::MAP : group_t::ARRAY);
 	// Смещение отведённого места записи размаха вместимого
@@ -591,23 +689,79 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если закрывать нечего
-	if(this->_stack.empty())
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_CONTAINER);
+	if(this->_stack.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	}
 	// Выполняем получение верхнего звена стека вместимых
 	const frame_t & frame = this->_stack.back();
 	// Если закрывается вместимое иного вида, нежели открытое
-	if(frame.mapping != mapping)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_CONTAINER);
+	if(frame.mapping != mapping){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	}
 	// Если отображение закрывается на имени поля
-	if(frame.mapping && !frame.expectKey)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::MISSING_VALUE);
+	if(frame.mapping && !frame.expectKey){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_VALUE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_VALUE));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::MISSING_VALUE);
+	}
 	// Если значений вместимого уложено меньше объявленного
-	if(!frame.indefinite && (frame.remain > 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_CONTAINER);
+	if(!frame.indefinite && (frame.remain > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {mapping}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	}
 	// Смещение отведённого места записи размаха закрываемого вместимого
 	const size_t spanned = frame.spanned;
 	// Признак неопределённой длины закрываемого вместимого
@@ -679,9 +833,23 @@ bool awh::codec::abc::Writer::segment(const bool string) noexcept {
 	 * Если вид записи строгий, неопределённая длина отвергается: длина обязана быть
 	 * объявлена, иначе запись одного и того же значения выйдет разной
 	 */
-	if(this->_settings.canonical)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INDEFINITE_REFUSED);
+	if(this->_settings.canonical){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {string}, log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INDEFINITE_REFUSED));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INDEFINITE_REFUSED);
+	}
 	/**
 	 * Если значение стоит именем поля отображения: имя обязано быть цельным, иначе
 	 * сличение имён по записи станет невозможным
@@ -690,16 +858,44 @@ bool awh::codec::abc::Writer::segment(const bool string) noexcept {
 		// Выполняем получение верхнего звена стека вместимых
 		const frame_t & frame = this->_stack.back();
 		// Если ожидается имя поля отображения
-		if(frame.mapping && frame.expectKey)
-			// Выполняем объявление отказа сборки
-			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
+		if(frame.mapping && frame.expectKey){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {string}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_KEY));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INVALID_KEY);
+		}
 	}
 	// Выполняем получение предела глубины вложенности
 	const uint32_t limit = ((this->_settings.maxDepth > 0) ? ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
 	// Если глубина вложенности превышает допустимую
-	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
+	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {string}, log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::DEPTH_EXCEEDED);
+	}
 	// Выполняем укладку метки значения неопределённой длины
 	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB), static_cast <uint8_t> (single_t::BREAK));
 	// Заводимое звено стека вместимых
@@ -739,9 +935,23 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	/**
 	 * Если стек вместимых пуст либо закрывается не значение, собираемое кусками
 	 */
-	if(this->_stack.empty() || (this->_stack.back().segment != (string ? type_t::STRING : type_t::BLOB)))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_CONTAINER);
+	if(this->_stack.empty() || (this->_stack.back().segment != (string ? type_t::STRING : type_t::BLOB))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {string}, log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNBALANCED_CONTAINER));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	}
 	/**
 	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
 	 *
@@ -1069,9 +1279,23 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 	/**
 	 * Если кусок ложится внутрь двоичных данных, собираемых кусками
 	 */
-	if(chunk && (this->_stack.back().segment != type_t::STRING))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+	if(chunk && (this->_stack.back().segment != type_t::STRING)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_SEGMENT);
+	}
 	// Если место укладки значения негодно
 	if(!chunk && !this->prepare(false))
 		// Сообщаем, что сборка отвечена отказом
@@ -1081,9 +1305,23 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 		// Смещение первой негодной последовательности
 		size_t position = 0;
 		// Если строка кодировке UTF-8 не отвечает
-		if(!abc::utf8(reinterpret_cast <const uint8_t *> (value.data()), value.size(), position))
-			// Выполняем объявление отказа сборки
-			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_ENCODING);
+		if(!abc::utf8(reinterpret_cast <const uint8_t *> (value.data()), value.size(), position)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ
+			return this->fail(error_t::INVALID_ENCODING);
+		}
 	}
 	/**
 	 * Выполняем получение признака имени поля отображения: имя копируется всегда,
@@ -1132,17 +1370,45 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 	/**
 	 * Если кусок ложится внутрь строки, собираемой кусками
 	 */
-	if(chunk && (this->_stack.back().segment != type_t::BLOB))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
+	if(chunk && (this->_stack.back().segment != type_t::BLOB)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_SEGMENT));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_SEGMENT);
+	}
 	// Если место укладки значения негодно
 	if(!chunk && !this->prepare(false))
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если буфер укладываемых данных не существует, а октеты объявлены
-	if((buffer == nullptr) && (size > 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	// Выполняем получение признака имени поля отображения
 	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
 	// Выполняем получение смещения начала записи значения
@@ -1199,13 +1465,41 @@ bool awh::codec::abc::Writer::uuid(const void * buffer, const size_t size) noexc
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если буфер укладываемого опознавателя не существует
-	if(buffer == nullptr)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if(buffer == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	// Если размер укладываемого опознавателя недопустим
-	if(size != UUID_WIDTH)
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+	if(size != UUID_WIDTH){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_LENGTH);
+	}
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки опознавателя
@@ -1246,19 +1540,61 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если буфер октетов величины не существует, а октеты объявлены
-	if((buffer == nullptr) && (size > 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, negative, exponent}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	// Выполняем получение указателя на октеты величины
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	// Если старший октет величины нулевой
-	if((size > 0) && (octets[size - 1] == 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+	if((size > 0) && (octets[size - 1] == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, negative, exponent}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_BIGNUM);
+	}
 	// Если величина объявлена отрицательным нулём
-	if(negative && (size == 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
+	if(negative && (size == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, negative, exponent}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_BIGNUM));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INVALID_BIGNUM);
+	}
 	// Признак того, что число является десятичным
 	const bool fraction = (exponent != 0);
 	// Выполняем получение смещения начала записи значения
@@ -1295,9 +1631,23 @@ bool awh::codec::abc::Writer::custom(const uint64_t subtype, const void * buffer
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если буфер октетов расширения не существует, а октеты объявлены
-	if((buffer == nullptr) && (size > 0))
-		// Выполняем объявление отказа сборки
-		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {subtype, buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		return this->fail(error_t::INTERNAL);
+	}
 	// Выполняем получение признака имени поля отображения
 	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
 	// Выполняем получение смещения начала записи значения

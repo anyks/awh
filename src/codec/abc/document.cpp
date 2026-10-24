@@ -26,14 +26,18 @@
 #include <cstring>
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
  * Подключаем заголовочный файл общего для кодеков приведения чисел
  */
 #include <codec/numeric.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
  */
-#include <sys/log.hpp>
 #include <codec/abc/document.hpp>
 
 /**
@@ -394,7 +398,11 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 		// Выполняем переход к следующей паре отображения
 		child = next;
 	}
+	// Признак того, что хотя бы одна пара из отображения выбыла
+	bool dropped = false;
 	/**
+	 * Признаки того, что пара в отображении остаётся
+	 *
 	 * @note **Отсев повторов молчит ВЕСЬ, и молчит законно.** Щуп нужности 08.09.2026
 	 *       обесточил порознь все шесть заслонов этой работы - пропуск выбывшей пары
 	 *       при обходе внешнем и внутреннем, прекращение обхода при правиле `LAST` и
@@ -410,10 +418,7 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 	 *          стеречь стоимость утверждением о правильности
 	 *
 	 */
-	// Признаки того, что пара в отображении остаётся
 	vector <bool> living(pairs.size(), true);
-	// Признак того, что хотя бы одна пара из отображения выбыла
-	bool dropped = false;
 	/**
 	 * Выполняем обход пар отображения в поиске повторяющихся имён
 	 */
@@ -483,12 +488,11 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 /**
  * @brief Метод объявления отказа разбора документа
  *
- * @param method имя метода, объявившего отказ
- * @param error  объявляемый код отказа
- * @return       признак успешности, всегда ложь
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Document::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 	/**
 	 * Выполняем установку кода отказа
 	 *
@@ -505,29 +509,6 @@ bool awh::codec::abc::Document::fail([[maybe_unused]] const char * method, const
 	 *
 	 */
 	this->_error = error;
-	/**
-	 * Если объект логирования отдан, доносим об отказе.
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что работа отвечена отказом
 	return false;
 }
@@ -611,8 +592,21 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		const reader_t::value_t chunk = reader.value();
 		// Если кусок значения в хранилище октетов не умещается
 		if(!::room(self->_storage.size(), chunk.data.size())){
-			// Выполняем установку кода отказа недопустимой длины
-			self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {context, self}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			#endif
+			// Объявляем отказ
+			self->fail(error_t::INVALID_LENGTH);
 			// Сообщаем, что сборка дерева отвечена отказом
 			return false;
 		}
@@ -631,8 +625,21 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 	if((event == event_t::ARRAY_END) || (event == event_t::MAP_END)){
 		// Если закрывать нечего
 		if(state->stack.empty()){
-			// Выполняем установку кода внутреннего отказа
-			self->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {context, self}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+			#endif
+			// Объявляем отказ
+			self->fail(error_t::INTERNAL);
 			// Сообщаем, что разбор отвечен отказом
 			return false;
 		}
@@ -652,18 +659,31 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		// Сообщаем, что событие принято
 		return true;
 	}
-	// Выполняем получение значения текущего события
-	const reader_t::value_t value = reader.value();
 	// Заводимый узел дерева документа
 	node_t node;
+	// Выполняем получение значения текущего события
+	const reader_t::value_t value = reader.value();
 	/**
 	 * Если событием является начало значения, собираемого кусками
 	 */
 	if((event == event_t::STRING_BEGIN) || (event == event_t::BLOB_BEGIN)){
 		// Если хранилище октетов исчерпано, смещение содержимого узлу негодно
 		if(!::room(self->_storage.size(), 0)){
-			// Выполняем установку кода отказа недопустимой длины
-			self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {context, self}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+			#endif
+			// Объявляем отказ
+			self->fail(error_t::INVALID_LENGTH);
 			// Сообщаем, что сборка дерева отвечена отказом
 			return false;
 		}
@@ -704,13 +724,26 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		/**
 		 * Если значение является строкой, двоичными данными либо опознавателем
 		 */
-		case static_cast <uint32_t> (type_t::STRING):
 		case static_cast <uint32_t> (type_t::BLOB):
-		case static_cast <uint32_t> (type_t::UUID): {
+		case static_cast <uint32_t> (type_t::UUID):
+		case static_cast <uint32_t> (type_t::STRING): {
 			// Если содержимое значения в хранилище октетов не умещается
 			if(!::room(self->_storage.size(), value.data.size())){
-				// Выполняем установку кода отказа недопустимой длины
-				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {context, self}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				#endif
+				// Объявляем отказ
+				self->fail(error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
@@ -728,17 +761,30 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		case static_cast <uint32_t> (type_t::EXTENDED): {
 			// Если величина вместе с порядком в хранилище октетов не умещается
 			if(!::room(self->_storage.size(), value.data.size() + 8)){
-				// Выполняем установку кода отказа недопустимой длины
-				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {context, self}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				#endif
+				// Объявляем отказ
+				self->fail(error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
+			// Выполняем установку признака отрицательности величины
+			node.negative = value.negative;
 			// Выполняем установку смещения содержимого в хранилище
 			node.offset = static_cast <uint32_t> (self->_storage.size());
 			// Выполняем установку длины октетов величины
 			node.length(static_cast <uint32_t> (value.data.size()));
-			// Выполняем установку признака отрицательности величины
-			node.negative = value.negative;
 			// Разрядная запись десятичного порядка величины
 			const uint64_t exponent = static_cast <uint64_t> (value.exponent);
 			/**
@@ -759,8 +805,21 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		case static_cast <uint32_t> (type_t::CUSTOM): {
 			// Если расширение вместе с номером подвида в хранилище не умещается
 			if(!::room(self->_storage.size(), value.data.size() + 8)){
-				// Выполняем установку кода отказа недопустимой длины
-				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {context}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+				#endif
+				// Объявляем отказ
+				self->fail(error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
@@ -803,8 +862,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 				// Выполняем снятие разрядной записи дробного значения
 				::memcpy(&bits, &real, sizeof(bits));
 			// Если значение является целым со знаком либо отметкой времени
-			} else if((static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::SIGNED)) ||
-			          (value.type == type_t::TIME))
+			} else if((static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::SIGNED)) || (value.type == type_t::TIME))
 				// Выполняем снятие разрядной записи целого со знаком
 				bits = static_cast <uint64_t> (value.integer);
 			// Выполняем снятие разрядной записи целого без знака
@@ -918,8 +976,21 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) no
 		this->discard();
 		// Выполняем перенос места, где отказ произошёл
 		this->_location = this->_reader.location();
-		// Выполняем установку кода внутреннего отказа
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
@@ -940,8 +1011,21 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) no
 	if(this->_nodes.empty()){
 		// Выполняем перенос места, где отказ произошёл
 		this->_location = this->_reader.location();
-		// Выполняем установку кода отказа пустой записи
-		this->fail(__PRETTY_FUNCTION__, error_t::EMPTY_RECORD);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::EMPTY_RECORD));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::EMPTY_RECORD));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::EMPTY_RECORD);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
@@ -1015,8 +1099,8 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 			/**
 			 * Если значение является целым неограниченной ширины либо десятичным
 			 */
-			case static_cast <uint32_t> (type_t::EXTENDED):
-			case static_cast <uint32_t> (type_t::DECIMAL): {
+			case static_cast <uint32_t> (type_t::DECIMAL):
+			case static_cast <uint32_t> (type_t::EXTENDED): {
 				// Разрядная запись десятичного порядка величины
 				uint64_t bits = 0;
 				/**

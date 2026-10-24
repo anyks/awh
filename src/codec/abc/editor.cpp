@@ -76,44 +76,13 @@ awh::codec::abc::Editor::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа правки контейнера
  *
- * @param method имя метода, объявившего отказ
- * @param error  объявляемый код отказа
- * @return       признак успешности, всегда ложь
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Editor::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Editor::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
-	/**
-	 * Если объект логирования отдан, доносим об отказе.
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 * @note Закреплено `TheRefusalFunnelReportsItsCauseToTheJournal`: щуп нужности
-	 *       08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Набор спрашивал `error()`, а журнала не
-	 *       спрашивал никто, и обесточенное объявление оставило бы его зелёным при том,
-	 *       что всякий отказ правщика стал бы для стороннего наблюдателя невидим.
-	 *       Проверка утверждает ОБЕ половины: причина доносится при отказе и НЕ доносится
-	 *       при успехе
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что работа отвечена отказом
 	return false;
 }
@@ -160,8 +129,21 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 *
 	 */
 	if(origin >= this->_header.length){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {origin}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -171,8 +153,21 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 * Если вычитать заголовок кадра не вышло
 	 */
 	if(!this->_source(HEADER_LENGTH + origin, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {origin}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -194,8 +189,21 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 *
 	 */
 	if((this->_header.length - origin) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {origin}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -206,8 +214,21 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 */
 	if(!this->_source(HEADER_LENGTH + origin, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {origin}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -250,8 +271,21 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 * Если вычитать заголовок кадра не вышло
 		 */
 		if(!this->_source(HEADER_LENGTH + offset, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -267,8 +301,21 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 *
 		 */
 		if((this->_header.length - offset) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
-			// Выполняем установку кода отказа повреждённого кадра
-			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::INVALID_CHUNK);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -279,8 +326,21 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 */
 		if(!this->_source(HEADER_LENGTH + offset, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 		  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -300,8 +360,21 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 *
 		 */
 		if(!this->_merkle.add(buffer.data(), buffer.size())){
-			// Выполняем установку кода отказа выработки свёртки
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -375,8 +448,21 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 * Если контейнер ещё не открыт
 	 */
 	if(!this->_opened){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), added, number}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -384,8 +470,21 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 * Если запись нам не передана
 	 */
 	if((buffer == nullptr) || (size == 0)){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(__PRETTY_FUNCTION__, error_t::EMPTY_RECORD);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), added, number}, log::flag_t::WARNING, codec::abc::message(error_t::EMPTY_RECORD));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::EMPTY_RECORD));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::EMPTY_RECORD);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -403,8 +502,21 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 *
 	 */
 	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), added, number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_LENGTH);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -439,6 +551,10 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 			// Выводим признак неудачного накопления записи
 			return false;
 	}
+	// Заводимая правка оглавления
+	edit_t mark;
+	// Выполняем установку вида содержимого накопленных записей
+	this->_kind = kind;
 	/**
 	 * Признак незакреплённых правок, каким он был до накопления
 	 *
@@ -448,22 +564,18 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 *
 	 */
 	const bool dirty = this->_dirty;
-	// Выполняем установку вида содержимого накопленных записей
-	this->_kind = kind;
-	// Заводимая правка оглавления
-	edit_t mark;
-	// Выполняем установку смещения записи в содержимом кадра
-	mark.entry.offset = static_cast <uint32_t> (this->_pending.size());
-	// Выполняем установку длины накопляемой записи
-	mark.entry.length = static_cast <uint32_t> (size);
 	// Выполняем установку признака того, что запись вносится, а не правится
 	mark.added = added;
 	// Выполняем установку номера правимой строки оглавления
 	mark.number = number;
 	// Выполняем объявление того, что запись кадром ещё не уложена
 	mark.batch = numeric_limits <size_t>::max();
+	// Выполняем установку длины накопляемой записи
+	mark.entry.length = static_cast <uint32_t> (size);
+	// Выполняем установку смещения записи в содержимом кадра
+	mark.entry.offset = static_cast <uint32_t> (this->_pending.size());
 	// Выполняем внесение заведённой правки оглавления
-	this->_marks.push_back(mark);
+	this->_marks.push_back(::move(mark));
 	// Выполняем накопление поданной записи
 	this->_pending.insert(this->_pending.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 	// Выполняем объявление наличия незакреплённых правок
@@ -568,8 +680,21 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
 	 *
 	 */
 	if((crypto != nullptr) && !this->_opened){
-		// Выполняем установку кода отказа объявления подписи
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {crypto, name, static_cast <uint16_t> (hash)}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачно объявленной подписи
 		return false;
 	}
@@ -643,25 +768,51 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 * Если работы чтения либо записи октетов контейнера нам не переданы
 	 */
 	if((source == nullptr) || (sink == nullptr)){
-		// Выполняем установку кода отказа открытия контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
+	// Буфер вычитанных октетов заголовка опознания контейнера
+	vector <uint8_t> buffer;
 	// Выполняем установку полной длины контейнера на носителе
 	this->_length = length;
 	// Выполняем установку работы записи октетов контейнера
 	this->_sink = ::move(sink);
 	// Выполняем установку работы чтения октетов контейнера
 	this->_source = ::move(source);
-	// Буфер вычитанных октетов заголовка опознания контейнера
-	vector <uint8_t> buffer;
 	/**
 	 * Если вычитать головной заголовок опознания контейнера не вышло
 	 */
 	if(!this->_source(0, HEADER_LENGTH, buffer) || (buffer.size() < HEADER_LENGTH)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -696,17 +847,44 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		/**
 		 * Если снять заголовок опознания контейнера не вышло
 		 */
-		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
-			// Выводим признак неудачного открытия контейнера
-			return this->fail(__PRETTY_FUNCTION__, error);
+		if(!this->_header.unpack(buffer.data(), buffer.size(), error)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+			#endif
+			// Объявляем отказ
+			return this->fail(error);
+		}
 	}
 	/**
 	 * Если оглавление контейнера заголовком не объявлено, правка невозможна:
 	 * без оглавления неведомо, где какая запись лежит
 	 */
 	if(this->_header.index == 0){
-		// Выполняем установку кода отказа отсутствия оглавления
-		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::MISSING_INDEX);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -716,8 +894,21 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 * Если вычитать заголовок кадра оглавления не вышло
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -731,8 +922,21 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 *
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачи
 		return false;
 	}
@@ -774,8 +978,21 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if((this->_header.index > this->_length) ||
 	  ((this->_length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -786,17 +1003,30 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
 	  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
+	// Сведения о снятом кадре оглавления
+	chunk_t chunk;
 	// Смещение снятия кадра оглавления
 	size_t offset = 0;
 	// Содержимое снятого кадра оглавления
 	vector <uint8_t> payload;
-	// Сведения о снятом кадре оглавления
-	chunk_t chunk;
 	/**
 	 * Если снять кадр оглавления не вышло
 	 *
@@ -823,9 +1053,23 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		/**
 		 * Если снять оглавление контейнера не вышло
 		 */
-		if(!this->_index.unpack(payload.data(), payload.size(), error))
-			// Выводим признак неудачного открытия контейнера
-			return this->fail(__PRETTY_FUNCTION__, error);
+		if(!this->_index.unpack(payload.data(), payload.size(), error)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+			#endif
+			// Объявляем отказ
+			return this->fail(error);
+		}
 	}
 	/**
 	 * Выполняем счёт мусора, УЖЕ лежащего на носителе
@@ -956,14 +1200,26 @@ bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer
 	 *          накопленное сперва ложится кадром, а правится уже обычным путём
 	 *
 	 */
-	if(this->_opened && (number >= static_cast <uint64_t> (this->_index.size())) &&
-	  (number < this->records()) && !this->commit())
+	if(this->_opened && (number >= static_cast <uint64_t> (this->_index.size())) && (number < this->records()) && !this->commit())
 		// Выводим признак неудачной правки записи
 		return false;
 	// Проверяем, открыт ли контейнер и входит ли номер в перечень записей
 	if(!this->_opened || (number >= static_cast <uint64_t> (this->_index.size()))){
-		// Выполняем установку кода отказа правки записи
-		this->fail(__PRETTY_FUNCTION__, this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number, buffer, size, static_cast <uint16_t> (kind)}, log::flag_t::WARNING, codec::abc::message(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
 		// Выводим признак неудачной правки записи
 		return false;
 	}
@@ -999,8 +1255,21 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 * Если сносимой записи в контейнере нет
 	 */
 	if(!this->_opened || (number >= static_cast <uint64_t> (this->_index.size()))){
-		// Выполняем установку кода отказа сноса записи
-		this->fail(__PRETTY_FUNCTION__, this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
 		// Выводим признак неудачного сноса записи
 		return false;
 	}
@@ -1059,8 +1328,21 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 * поверен выше, и отказ здесь означал бы расхождение оглавления с самим собою
 	 */
 	if(!this->_index.replace(number, entry)){
-		// Выполняем установку кода отказа правки строки оглавления
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачного сноса записи
 		return false;
 	}
@@ -1098,16 +1380,29 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
  *
  */
 bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & result) noexcept {
-	// Выполняем сброс кода отказа правки контейнера
-	this->_error = error_t::NONE;
 	// Выполняем очистку буфера выбираемой записи
 	result.clear();
+	// Выполняем сброс кода отказа правки контейнера
+	this->_error = error_t::NONE;
 	/**
 	 * Если контейнер ещё не открыт
 	 */
 	if(!this->_opened){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1195,8 +1490,21 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 			 *
 			 */
 			if((static_cast <uint64_t> (mark.entry.offset) + mark.entry.length) > static_cast <uint64_t> (payload.size())){
-				// Выполняем установку кода отказа выборки записи
-				this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+				#endif
+				// Объявляем отказ
+				this->fail(error_t::INVALID_INDEX);
 				// Выводим признак неудачной выборки записи
 				return false;
 			}
@@ -1232,8 +1540,21 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 * Если затребованной записи в оглавлении контейнера нет
 	 */
 	if(number >= static_cast <uint64_t> (this->_index.size())){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1243,8 +1564,21 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 * Если затребованная запись снесена правкой контейнера
 	 */
 	if(entry.is(mark_t::ERASED)){
-		// Выполняем установку кода отказа выборки снесённой записи
-		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_RECORD);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_RECORD));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_RECORD));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::MISSING_RECORD);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1266,8 +1600,21 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 *
 	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1300,8 +1647,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * Если контейнер ещё не открыт
 	 */
 	if(!this->_opened){
-		// Выполняем установку кода отказа фиксации правок
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1318,19 +1678,20 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		// Выводим признак неудачной фиксации правок
 		return false;
 	/**
-	 * Снимок состояния, правимого фиксацией, вместе с работой отката
+	 * Заголовок опознания контейнера, каким он был до фиксации
 	 *
 	 * @details Фиксация вносит строки в оглавление ПО ХОДУ записи кадров: смещение кадра
 	 *          известно лишь по записи его. Отказ посреди фиксации оставлял внесённое
 	 *          жить, а накопленные правки при том не снимались, и повторная фиксация
 	 *          вносила их ЗАНОВО - записи двоились молча. Замер 25.08.2026: шесть записей
-	 *          плюс четыре дописанных давали четырнадцать, и все четырнадцать читались
+	 *          плюс четыре дописанных давали четырнадцать, и все четырнадцать читались.
+	 *
+	 * @note Снимок состояния, правимого фиксацией, вместе с работой отката
 	 *
 	 * @note Откат ведётся ЖУРНАЛОМ, а не копией оглавления: правок за фиксацию немного, а
 	 *       строк в оглавлении бывают миллионы, и копия стоила бы всякой фиксации
 	 *
 	 */
-	// Заголовок опознания контейнера, каким он был до фиксации
 	const header_t header = this->_header;
 	// Количество октетов мусора, каким оно было до фиксации
 	const uint64_t garbage = this->_garbage;
@@ -1351,10 +1712,10 @@ bool awh::codec::abc::Editor::commit() noexcept {
 			(void) this->_index.replace(undo.at(i - 1).first, undo.at(i - 1).second);
 		// Выполняем усечение оглавления до прежнего количества строк
 		this->_index.truncate(rows);
-		// Выполняем возврат количества октетов мусора
-		this->_garbage = garbage;
 		// Выполняем возврат заголовка опознания контейнера
 		this->_header = header;
+		// Выполняем возврат количества октетов мусора
+		this->_garbage = garbage;
 		/**
 		 * Если контейнер подписывается, дерево свёрток собирается наново
 		 *
@@ -1416,8 +1777,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * Если вычитать заголовок кадра прежнего оглавления не вышло
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1438,8 +1812,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 *
 	 */
 	if(!this->_sink(this->_header.index + CHUNK_FLAGS, &marked, 1)){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1453,8 +1840,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 *
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачи
 		return false;
 	}
@@ -1485,8 +1885,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если вычитать заголовок кадра прежней записи подписи не вышло
 		 */
 		if(!this->_source(this->_header.signature, CHUNK_HEADER, record) || (record.size() < CHUNK_HEADER)){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1498,8 +1911,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если вычитать кадр прежней записи подписи целиком не вышло
 		 */
 		if(!this->_source(this->_header.signature, static_cast <size_t> (CHUNK_HEADER + width), stale) || (stale.size() < static_cast <size_t> (CHUNK_HEADER + width))){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1535,8 +1961,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), waste) ||
 		  (waste.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1547,8 +1986,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * какой он принял пометкой: свёртка обязана отвечать октетам на носителе
 		 */
 		if(!this->_merkle.add(waste.data(), waste.size())){
-			// Выполняем установку кода отказа выработки свёртки
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1562,8 +2014,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 *
 		 */
 		if(!stale.empty() && !this->_merkle.add(stale.data(), stale.size())){
-			// Выполняем установку кода отказа выработки свёртки
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1578,8 +2043,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если записать очередной кадр на носитель не вышло
 		 */
 		if(!this->_sink(offset, this->_batches.at(i).data(), this->_batches.at(i).size())){
-			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNWRITABLE_SINK);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1593,8 +2071,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 			 * Если внести кадр свёрткой в дерево не вышло
 			 */
 			if(!this->_merkle.add(this->_batches.at(i).data(), this->_batches.at(i).size())){
-				// Выполняем установку кода отказа выработки свёртки
-				this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				#endif
+				// Объявляем отказ
+				this->fail(error_t::SIGNING_FAILED);
 				// Выполняем откат состояния, правимого фиксацией
 				rollback();
 				// Выводим признак неудачной фиксации правок
@@ -1639,8 +2130,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 				 * расхождение оглавления с накопленными правками
 				 */
 				if(!this->_index.replace(mark.number, mark.entry)){
-					// Выполняем установку кода отказа правки строки оглавления
-					this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+					#endif
+					// Объявляем отказ
+					this->fail(error_t::INVALID_INDEX);
 					// Выполняем откат состояния, правимого фиксацией
 					rollback();
 					// Выводим признак неудачной фиксации правок
@@ -1677,8 +2181,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * Если записать кадр оглавления на носитель не вышло
 	 */
 	if(!this->_sink(offset, tail.data(), tail.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выполняем откат состояния, правимого фиксацией
 		rollback();
 		// Выводим признак неудачной фиксации правок
@@ -1703,8 +2220,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * фиксации он ляжет наново, и осевшую свёртку пришлось бы править задним числом
 		 */
 		if(!this->_merkle.root(sign.root, tail.data(), tail.size())){
-			// Выполняем установку кода отказа выработки свёртки
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1715,8 +2245,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
-			// Выполняем установку кода отказа выработки подписи
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1732,8 +2275,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 *
 		 */
 		if(!abc::pack(sign, signature)){
-			// Выполняем установку кода отказа выработки подписи
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1746,8 +2302,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если обернуть запись подписи кадром не вышло
 		 */
 		if(!abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation + 1))){
-			// Выполняем установку кода отказа подписи
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1757,8 +2326,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если записать подпись владельца на носитель не вышло
 		 */
 		if(!this->_sink(offset + static_cast <uint64_t> (tail.size()), signature.data(), signature.size())){
-			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNWRITABLE_SINK);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1815,8 +2397,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * заголовок нового поколения к тому времени уже цел
 	 */
 	if(!this->_sink(offset + static_cast <uint64_t> (tail.size() + signature.size()), head.data(), head.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выполняем откат состояния, правимого фиксацией
 		rollback();
 		// Выводим признак неудачной фиксации правок
@@ -1826,8 +2421,21 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * Если записать головной заголовок опознания не вышло
 	 */
 	if(!this->_sink(0, head.data(), head.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		/**
 		 * Выполняем возврат прежних октетов заголовка записи подписи
 		 *
@@ -1842,8 +2450,6 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
-	// Выполняем установку полной длины контейнера на носителе
-	this->_length = (offset + static_cast <uint64_t> (tail.size() + signature.size()) + HEADER_LENGTH);
 	// Выполняем установку признака наличия хвостового заголовка
 	this->_tailed = true;
 	// Выполняем снятие признака наличия незакреплённых правок
@@ -1854,6 +2460,8 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	this->_marks.clear();
 	// Выполняем очистку уложенных кадров, ожидавших записи
 	this->_batches.clear();
+	// Выполняем установку полной длины контейнера на носителе
+	this->_length = (offset + static_cast <uint64_t> (tail.size() + signature.size()) + HEADER_LENGTH);
 	/**
 	 * Выполняем перелив счёта накопленного сноса в счёт мусора на носителе
 	 *
@@ -1892,8 +2500,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 *
 	 */
 	if(!this->_opened || (target == nullptr)){
-		// Выполняем установку кода отказа уборки контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -1975,8 +2596,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если записать уложенный кадр на носитель не вышло
 		 */
 		if(!target(offset, chunk.data(), chunk.size())){
-			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNWRITABLE_SINK);
 			// Выводим признак неудачной укладки накопленных записей
 			return false;
 		}
@@ -1984,8 +2618,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если контейнер подписан, выполняем внесение кадра в дерево свёрток уборки
 		 */
 		if((this->_signer != nullptr) && !merkle.add(chunk.data(), chunk.size())){
-			// Выполняем установку кода отказа подписания контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной укладки накопленных записей
 			return false;
 		}
@@ -2008,20 +2655,33 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 *
 			 */
 			if(!index.replace(mark, entry)){
-				// Выполняем установку кода отказа правки строки оглавления
-				this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+				#endif
+				// Объявляем отказ
+				this->fail(error_t::INVALID_INDEX);
 				// Выводим признак неудачной укладки накопленных записей
 				return false;
 			}
 		}
+		// Выполняем увеличение порядкового номера следующего кадра
+		number++;
 		// Выполняем очистку строк оглавления накопленных записей
 		marks.clear();
 		// Выполняем очистку накопленных записей
 		pending.clear();
 		// Выполняем сдвиг смещения записи на длину записанного кадра
 		offset += static_cast <uint64_t> (chunk.size());
-		// Выполняем увеличение порядкового номера следующего кадра
-		number++;
 		// Выводим признак успешной укладки накопленных записей
 		return true;
 	};
@@ -2107,12 +2767,12 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			// Выводим признак неудачной уборки контейнера
 			return false;
 	}
+	// Буфер уложенного кадра оглавления
+	vector <uint8_t> tail;
 	// Буфер уложенного оглавления убранного контейнера
 	vector <uint8_t> entries;
 	// Выполняем укладку оглавления убранного контейнера в октеты
 	index.pack(entries);
-	// Буфер уложенного кадра оглавления
-	vector <uint8_t> tail;
 	/**
 	 * Если уложить оглавление кадром не вышло
 	 *
@@ -2133,8 +2793,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 * Если записать кадр оглавления на носитель не вышло
 	 */
 	if(!target(offset, tail.data(), tail.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -2156,8 +2829,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если снять свёртку по кадрам убранного контейнера не вышло
 		 */
 		if(!merkle.root(sign.root, tail.data(), tail.size())){
-			// Выполняем установку кода отказа подписания контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2166,8 +2852,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
-			// Выполняем установку кода отказа подписания контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2181,8 +2880,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 *
 		 */
 		if(!abc::pack(sign, signature)){
-			// Выполняем установку кода отказа выработки подписи
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2190,8 +2902,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если обернуть запись подписи кадром убранного контейнера не вышло
 		 */
 		if(!abc::envelope(signature, number, 0)){
-			// Выполняем установку кода отказа подписи
-			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2199,17 +2924,30 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если записать запись подписи на носитель не вышло
 		 */
 		if(!target(offset + static_cast <uint64_t> (tail.size()), signature.data(), signature.size())){
-			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNWRITABLE_SINK);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
+		// Буфер усечённого отпечатка открытого ключа владельца
+		vector <uint8_t> print;
 		// Выполняем установку смещения записи подписи убранного контейнера
 		header.signature = (offset + static_cast <uint64_t> (tail.size()));
 		// Выполняем объявление убранного контейнера подписанным
 		header.set(flag_t::SIGNED, true);
-		// Буфер усечённого отпечатка открытого ключа владельца
-		vector <uint8_t> print;
 		/**
 		 * Если отпечаток открытого ключа владельца выработан
 		 *
@@ -2264,8 +3002,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 * Если записать хвостовой заголовок опознания не вышло
 	 */
 	if(!target(offset + static_cast <uint64_t> (tail.size() + signature.size()), head.data(), head.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -2273,8 +3024,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 * Если записать головной заголовок опознания не вышло
 	 */
 	if(!target(0, head.data(), head.size())){
-		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}

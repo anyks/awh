@@ -284,42 +284,13 @@ bool awh::codec::abc::Index::unpack(const void * buffer, const size_t size, erro
 /**
  * @brief Метод объявления отказа выборки записи
  *
- * @param method имя метода, объявившего отказ
- * @param error  объявляемый код отказа
- * @return       признак успешности, всегда ложь
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Fetcher::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
-	/**
-	 * Если объект логирования отдан, доносим об отказе.
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 * @note Закреплено `IndexFixture.TheFetcherFunnelReportsItsCauseToTheJournal`: щуп
-	 *       нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Набор спрашивал `error()`, а
-	 *       журнала не спрашивал никто. Близнец её у правщика молчал тем же молчанием и
-	 *       закреплён порознь: воронки РАЗНЫЕ, и закрепление одной другую не стережёт
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что работа отвечена отказом
 	return false;
 }
@@ -357,8 +328,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 * Если работа чтения октетов контейнера нам не передана
 	 */
 	if(source == nullptr){
-		// Выполняем установку кода отказа открытия контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -370,8 +354,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 * Если вычитать заголовок опознания контейнера не вышло
 	 */
 	if(!this->_source(0, HEADER_LENGTH, buffer) || (buffer.size() < HEADER_LENGTH)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -392,17 +389,44 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 *       причине заголовка и НЕ равна причине соседа
 		 *
 		 */
-		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
-			// Выводим признак неудачного открытия контейнера
-			return this->fail(__PRETTY_FUNCTION__, error);
+		if(!this->_header.unpack(buffer.data(), buffer.size(), error)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+			#endif
+			// Объявляем отказ
+			return this->fail(error);
+		}
 	}
 	/**
 	 * Если оглавление контейнера заголовком не объявлено, выборка по номеру
 	 * невозможна: без оглавления до записи добираются лишь снятием всех кадров
 	 */
 	if(this->_header.index == 0){
-		// Выполняем установку кода отказа отсутствия оглавления
-		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::MISSING_INDEX);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -412,8 +436,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 * Если вычитать заголовок кадра оглавления не вышло
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -438,8 +475,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 *
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
-		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -467,8 +517,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 * Если кадр оглавления в контейнер не умещается
 		 */
 		if((this->_header.index > length) || ((length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
-			// Выполняем установку кода отказа повреждённого кадра
-			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::INVALID_CHUNK);
 			// Выводим признак неудачного открытия контейнера
 			return false;
 		}
@@ -480,8 +543,21 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
 	  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
-		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -525,9 +601,23 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 *       отказа, а не причину
 		 *
 		 */
-		if(!this->_index.unpack(payload.data(), payload.size(), error))
-			// Выводим признак неудачного открытия контейнера
-			return this->fail(__PRETTY_FUNCTION__, error);
+		if(!this->_index.unpack(payload.data(), payload.size(), error)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::WARNING, codec::abc::message(error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+			#endif
+			// Объявляем отказ
+			return this->fail(error);
+		}
 	}
 	// Выполняем установку признака открытого контейнера
 	this->_opened = true;
@@ -543,16 +633,29 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
  *
  */
 bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & result) noexcept {
-	// Выполняем сброс кода отказа выборки записи
-	this->_error = error_t::NONE;
 	// Выполняем очистку буфера выбираемой записи
 	result.clear();
+	// Выполняем сброс кода отказа выборки записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если контейнер ещё не открыт
 	 */
 	if(!this->_opened){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -560,8 +663,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 * Если затребованной записи в оглавлении контейнера нет
 	 */
 	if(number >= static_cast <uint64_t> (this->_index.size())){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -571,8 +687,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 * Если затребованная запись снесена правкой контейнера
 	 */
 	if(entry.is(mark_t::ERASED)){
-		// Выполняем установку кода отказа выборки снесённой записи
-		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_RECORD);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::MISSING_RECORD));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::MISSING_RECORD));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::MISSING_RECORD);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -595,8 +724,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 *
 		 */
 		if(entry.chunk >= this->_header.length){
-			// Выполняем установку кода отказа повреждённой записи оглавления
-			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::INVALID_CHUNK);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -606,8 +748,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 * Если вычитать заголовок кадра не вышло
 		 */
 		if(!this->_source(HEADER_LENGTH + entry.chunk, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -632,8 +787,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 *
 		 */
 		if((this->_header.length - entry.chunk) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
-			// Выполняем установку кода отказа повреждённой записи оглавления
-			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::INVALID_CHUNK);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -644,8 +812,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 */
 		if(!this->_source(HEADER_LENGTH + entry.chunk, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 		  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
-			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -679,8 +860,21 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 * Если строка оглавления указывает за содержимое снятого кадра
 	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
-		// Выполняем установку кода отказа выборки записи
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {number}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_INDEX));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}

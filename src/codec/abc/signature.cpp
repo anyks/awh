@@ -73,44 +73,6 @@ namespace {
 };
 
 /**
- * @brief Метод объявления отказа работы с деревом свёрток
- *
- * @details Своего кода отказа у дерева нет - вызовы его отвечают одною лишь ложью, -
- *          оттого воронка эта доносит текстом. Место у неё единственное по той же
- *          причине, что и у прочих: запись в каждом пути разошлась бы с остальными
- *
- * @param method   имя метода, объявившего отказ
- * @param message  текст объявляемого отказа
- * @return         признак успешности, всегда ложь
- *
- */
-bool awh::codec::abc::Merkle::fail([[maybe_unused]] const char * method, const char * message) const noexcept {
-	/**
-	 * Если включён режим отладки
-	 *
-	 * @note Закреплено `SignatureFixture.TheMerkleFunnelReportsItsTroubleToTheJournal`:
-	 *       щуп нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Здесь молчание дороже, чем у
-	 *       близнецов: кода отказа у дерева нет вовсе, и журнал не второй путь наружу, а
-	 *       ЕДИНСТВЕННЫЙ - зовущий видит одну ложь возврата и спросить причину не может
-	 *       ничем. Воронки `Editor::fail` и `Fetcher::fail` молчали тем же молчанием и
-	 *       закреплены каждая своею проверкою: работы разные, и закрепление одной другую
-	 *       не стережёт
-	 *
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем ошибку в лог
-		log::debug("ABC: %s", method, {this->_leaves.size()}, log::flag_t::WARNING, message);
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем ошибку в лог
-		log::print("ABC: %s", log::flag_t::WARNING, message);
-	#endif
-	// Сообщаем, что работа с деревом отвечена отказом
-	return false;
-}
-/**
  * @brief Метод установки модуля шифрования
  *
  * @param value устанавливаемый модуль шифрования, ноль - снятие модуля
@@ -132,9 +94,23 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	/**
 	 * Если модуль шифрования не отдан либо кадр не передан
 	 */
-	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0))
-		// Выводим признак неудачного внесения кадра
-		return this->fail(__PRETTY_FUNCTION__, "Merkle tree: the module of the encryption or the chunk is not given");
+	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, "Merkle tree: the module of the encryption or the chunk is not given");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, "Merkle tree: the module of the encryption or the chunk is not given");
+		#endif
+		// Объявляем отказ
+		return false;
+	}
 	/**
 	 * Выполняем сборку буфера свёртки листа с приставкой: без приставки узел
 	 * можно было бы выдать за лист, а лист за узел
@@ -182,9 +158,23 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	 *       тем, а беду искали бы в подписи
 	 *
 	 */
-	if(result.size() != DIGEST_LENGTH)
-		// Выводим признак неудачного внесения кадра
-		return this->fail(__PRETTY_FUNCTION__, "Merkle tree: the digest of a leaf is of a wrong length");
+	if(result.size() != DIGEST_LENGTH){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, "Merkle tree: the digest of a leaf is of a wrong length");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, "Merkle tree: the digest of a leaf is of a wrong length");
+		#endif
+		// Объявляем отказ
+		return false;
+	}
 	// Выполняем внесение свёртки листа в дерево
 	this->_leaves.push_back(::move(result));
 	// Выводим признак успешного внесения кадра
@@ -216,9 +206,23 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffe
 	 *       и довод был шире правды - трёхдоводного сведения без оснастки не звал никто
 	 *
 	 */
-	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0))
-		// Выводим признак неудачного сведения дерева
-		return this->fail(__PRETTY_FUNCTION__, "Merkle tree: the module of the encryption or the appended chunk is not given");
+	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, "Merkle tree: the module of the encryption or the appended chunk is not given");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, "Merkle tree: the module of the encryption or the appended chunk is not given");
+		#endif
+		// Объявляем отказ
+		return false;
+	}
 	// Дерево свёрток с приданным кадром
 	merkle_t merkle;
 	// Выполняем установку модуля шифрования дереву свёрток
@@ -247,9 +251,23 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 	/**
 	 * Если модуль шифрования не отдан либо кадров в дереве нет
 	 */
-	if((this->_crypto == nullptr) || this->_leaves.empty())
-		// Выводим признак неудачного сведения дерева
-		return this->fail(__PRETTY_FUNCTION__, "Merkle tree: the module of the encryption is not given or the tree is empty");
+	if((this->_crypto == nullptr) || this->_leaves.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, "Merkle tree: the module of the encryption is not given or the tree is empty");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, "Merkle tree: the module of the encryption is not given or the tree is empty");
+		#endif
+		// Объявляем отказ
+		return false;
+	}
 	// Свёртки нынешнего яруса дерева
 	vector <vector <uint8_t>> tier = this->_leaves;
 	/**
@@ -291,9 +309,23 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 			/**
 			 * Если свёртка узла выработана не той длины
 			 */
-			if(node.size() != DIGEST_LENGTH)
-				// Выводим признак неудачного сведения дерева
-				return this->fail(__PRETTY_FUNCTION__, "Merkle tree: the digest of a node is of a wrong length");
+			if(node.size() != DIGEST_LENGTH){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("ABC: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, "Merkle tree: the digest of a node is of a wrong length");
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("ABC: %s", log::flag_t::WARNING, "Merkle tree: the digest of a node is of a wrong length");
+				#endif
+				// Объявляем отказ
+				return false;
+			}
 			// Выполняем внесение свёртки узла в следующий ярус
 			next.push_back(::move(node));
 		}

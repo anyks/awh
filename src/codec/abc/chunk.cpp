@@ -19,17 +19,6 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/abc/chunk.hpp>
-#include <codec/abc/encoding.hpp>
-
-/**
- * Подключаем заголовочный файл выработки свёрток: кадр несёт контрольную сумму
- */
-#include <cryptography/hash.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <limits>
@@ -39,6 +28,17 @@
  * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/abc/chunk.hpp>
+#include <codec/abc/encoding.hpp>
+
+/**
+ * Подключаем заголовочный файл выработки свёрток: кадр несёт контрольную сумму
+ */
+#include <cryptography/hash.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -92,43 +92,13 @@ awh::codec::abc::Packer::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа укладки либо снятия кадра
  *
- * @param method имя метода, объявившего отказ
- * @param error  объявляемый код отказа
- * @return       признак успешности, всегда ложь
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Packer::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
+bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
-	/**
-	 * Если объект логирования отдан, доносим об отказе.
-	 *
-	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
-	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
-	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 *
-	 * @note Закреплено `ChunkFixture.ThePackerFunnelReportsItsCauseToTheJournal`: щуп
-	 *       нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Она ЧЕТВЁРТАЯ в своём роду -
-	 *       вместе с `Editor::fail`, `Fetcher::fail` и `Merkle::fail`, - и все четыре
-	 *       молчали об одном: набор спрашивал причину работою `error()`, а журнала не
-	 *       спрашивал никто. Закреплены порознь: работы разные
-	 *
-	 */
-	if(error != error_t::NONE){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
-		#endif
-	}
 	// Сообщаем, что работа отвечена отказом
 	return false;
 }
@@ -186,6 +156,8 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
 	// Выполняем получение указателя на октеты кадра
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	/**
+	 * Если кадр короче заголовка своего
+	 *
 	 * @note Закреплено `ChunkFixture.TheDigestOfAShortChunkIsEmpty`: щуп нужности
 	 *       08.09.2026 нашёл место МОЛЧАЩИМ. Работа отвечает ЧИСЛОМ, а не отказом, и
 	 *       заслон - единственное, что стоит между коротким буфером и переносом
@@ -194,7 +166,6 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
 	 *       сличение её с уложенной отказывало бы то и дело
 	 *
 	 */
-	// Если кадр короче заголовка своего
 	if((octets == nullptr) || (size < CHUNK_HEADER))
 		// Выводим пустую контрольную сумму
 		return 0;
@@ -210,11 +181,11 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
 	// Выполняем обнуление места самой контрольной суммы: в себя она не входит
 	::memset(head + CHUNK_DIGEST, 0, 8);
 	// Выработанная контрольная сумма заголовка кадра
-	uint64_t result = awh::hashing::generate(head, CHUNK_HEADER, __awh_seed__);
+	uint64_t result = hashing::generate(head, CHUNK_HEADER, __awh_seed__);
 	// Если у кадра есть содержимое
 	if(size > CHUNK_HEADER)
 		// Выполняем выработку суммы по содержимому кадра с зерном заголовка
-		result = awh::hashing::generate(octets + CHUNK_HEADER, size - CHUNK_HEADER, result);
+		result = hashing::generate(octets + CHUNK_HEADER, size - CHUNK_HEADER, result);
 	// Выводим выработанную контрольную сумму кадра
 	return result;
 }
@@ -284,15 +255,41 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	this->_error = error_t::NONE;
 	// Если буфер укладываемого содержимого не существует, а октеты объявлены
 	if((buffer == nullptr) && (size > 0)){
-		// Выполняем установку кода внутреннего отказа
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, kind, number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
 	// Если длина укладываемого содержимого не вмещается в запись кадра
 	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
-		// Выполняем установку кода отказа длины
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_LENGTH);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
@@ -320,7 +317,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 			 */
 			if(!compressed.empty() && (compressed.size() < payload.size())){
 				// Выполняем перенесение сжатого содержимого
-				payload = std::move(compressed);
+				payload = ::move(compressed);
 				// Выполняем установку метода сжатия содержимого
 				method = suggested;
 			}
@@ -332,8 +329,21 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	if(this->_settings.encrypt){
 		// Если модуль шифрования не отдан
 		if(this->_crypto == nullptr){
-			// Выполняем установку кода отказа шифрования
-			this->fail(__PRETTY_FUNCTION__, error_t::ENCRYPTION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation} log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что укладка отвечена отказом
 			return false;
 		}
@@ -355,13 +365,26 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		 *
 		 */
 		if(secured.empty() && !payload.empty()){
-			// Выполняем установку кода отказа шифрования
-			this->fail(__PRETTY_FUNCTION__, error_t::ENCRYPTION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что укладка отвечена отказом
 			return false;
 		}
 		// Выполняем перенесение зашифрованного содержимого
-		payload = std::move(secured);
+		payload = ::move(secured);
 		// Выполняем установку признака зашифрованности содержимого
 		encrypted = true;
 	}
@@ -380,8 +403,21 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	 *
 	 */
 	if(payload.size() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
-		// Выполняем установку кода отказа длины
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_LENGTH));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_LENGTH);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
@@ -405,7 +441,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	// Выполняем укладку метода сжатия содержимого кадра
 	head[0] = static_cast <uint8_t> (method);
 	// Выполняем укладку разрядов кадра
-	head[1] = static_cast <uint8_t> (encrypted ?  __awh_encrypted__ : 0x00);
+	head[1] = static_cast <uint8_t> (encrypted ? __awh_encrypted__ : 0x00);
 	// Выполняем укладку длины уложенного содержимого кадра
 	abc::fixed(head + 4, static_cast <uint64_t> (payload.size()), 4);
 	// Выполняем укладку длины исходного содержимого кадра
@@ -438,23 +474,49 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
  *
  */
 bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept {
-	// Выполняем сброс кода отказа снятия
-	this->_error = error_t::NONE;
 	// Выполняем очистку буфера содержимого кадра
 	result.clear();
 	// Выполняем сброс снятых сведений о кадре
 	chunk = chunk_t();
+	// Выполняем сброс кода отказа снятия
+	this->_error = error_t::NONE;
 	// Если буфер поданных октетов не существует
 	if(buffer == nullptr){
-		// Выполняем установку кода внутреннего отказа
-		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
 	// Если поданных октетов недостаёт на заголовок кадра
 	if((size < offset) || ((size - offset) < CHUNK_HEADER)){
-		// Выполняем установку кода отказа обрыва кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::TRUNCATED_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::TRUNCATED_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::TRUNCATED_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::TRUNCATED_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -464,8 +526,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	const uint8_t flags = head[1];
 	// Если разряды кадра несут неведомое
 	if((flags & static_cast <uint8_t> (~(__awh_encrypted__ | __awh_waste__))) != 0){
-		// Выполняем установку кода отказа опознания кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -477,8 +552,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 * строки оглавления: поле приходит с провода и обязано быть опознано
 	 */
 	if(abc::gather(head + 2, 2) != 0){
-		// Выполняем установку кода отказа опознания кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -486,8 +574,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	const uint32_t length = static_cast <uint32_t> (abc::gather(head + 4, 4));
 	// Если содержимого кадра в поданных октетах недостаёт
 	if((size - offset - CHUNK_HEADER) < static_cast <size_t> (length)){
-		// Выполняем установку кода отказа обрыва кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::TRUNCATED_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::TRUNCATED_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::TRUNCATED_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::TRUNCATED_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -501,8 +602,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 *
 	 */
 	if(abc::gather(head + CHUNK_DIGEST, 8) != abc::digest(head, static_cast <size_t> (CHUNK_HEADER + length))){
-		// Выполняем установку кода отказа несошедшейся суммы
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHECKSUM);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHECKSUM));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHECKSUM));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHECKSUM);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -516,19 +630,32 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 * в этом октете числился бы годным
 	 */
 	if(head[0] > static_cast <uint8_t> (compressor::method_t::DENSITY)){
-		// Выполняем установку кода отказа опознания кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
-	// Выполняем снятие метода сжатия содержимого кадра
-	chunk.method = static_cast <compressor::method_t> (head[0]);
 	// Выполняем установку длины уложенного содержимого кадра
 	chunk.length = length;
-	// Выполняем снятие длины исходного содержимого кадра
-	chunk.origin = static_cast <uint32_t> (abc::gather(head + 8, 4));
 	// Выполняем снятие порядкового номера кадра
 	chunk.number = abc::gather(head + 12, 8);
+	// Выполняем снятие метода сжатия содержимого кадра
+	chunk.method = static_cast <compressor::method_t> (head[0]);
+	// Выполняем снятие длины исходного содержимого кадра
+	chunk.origin = static_cast <uint32_t> (abc::gather(head + 8, 4));
 	// Выполняем снятие поколения записи кадра
 	chunk.generation = static_cast <uint32_t> (abc::gather(head + 20, 4));
 	// Выполняем установку признака зашифрованности содержимого
@@ -543,8 +670,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	if(chunk.encrypted){
 		// Если модуль шифрования не отдан
 		if(this->_crypto == nullptr){
-			// Выполняем установку кода отказа шифрования
-			this->fail(__PRETTY_FUNCTION__, error_t::ENCRYPTION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -559,13 +699,26 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *
 		 */
 		if(opened.empty() && (chunk.origin > 0)){
-			// Выполняем установку кода отказа шифрования
-			this->fail(__PRETTY_FUNCTION__, error_t::ENCRYPTION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
 		// Выполняем перенесение расшифрованного содержимого
-		content = std::move(opened);
+		content = ::move(opened);
 	}
 	// Если содержимое кадра сжато
 	if(chunk.method != compressor::method_t::NONE){
@@ -584,8 +737,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *
 		 */
 		if(this->_compressor == nullptr){
-			// Выполняем установку кода отказа сжатия
-			this->fail(__PRETTY_FUNCTION__, error_t::COMPRESSION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::COMPRESSION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::COMPRESSION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::COMPRESSION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -605,8 +771,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *
 		 */
 		if(chunk.origin == 0){
-			// Выполняем установку кода отказа опознания кадра
-			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::INVALID_CHUNK);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -635,13 +814,26 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *
 		 */
 		if(opened.empty() && (chunk.origin > 0)){
-			// Выполняем установку кода отказа сжатия
-			this->fail(__PRETTY_FUNCTION__, error_t::COMPRESSION_FAILED);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::COMPRESSION_FAILED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::COMPRESSION_FAILED));
+			#endif
+			// Объявляем отказ
+			this->fail(error_t::COMPRESSION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
 		// Выполняем перенесение разжатого содержимого
-		content = std::move(opened);
+		content = ::move(opened);
 	}
 	/**
 	 * Если длина снятого содержимого разошлась с объявленной.
@@ -650,13 +842,26 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 * содержимое иной длины означает, что кадр собран не тем, чем разбирается
 	 */
 	if(content.size() != static_cast <size_t> (chunk.origin)){
-		// Выполняем установку кода отказа опознания кадра
-		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, offset}, log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::INVALID_CHUNK));
+		#endif
+		// Объявляем отказ
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
 	// Выполняем перенесение снятого содержимого кадра
-	result = std::move(content);
+	result = ::move(content);
 	// Выполняем сдвиг смещения на снятый кадр
 	offset += (CHUNK_HEADER + static_cast <size_t> (length));
 	// Сообщаем, что кадр снят
