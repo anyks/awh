@@ -45,9 +45,8 @@
 #include "container.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
-#include "../../sys/fs.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -290,9 +289,6 @@ namespace awh {
 				private:
 					// Полная длина контейнера на носителе
 					uint64_t _length;
-				private:
-					// Объект работы с файловой системой
-					fs_t _fs;
 				private:
 					/**
 					 * \~russian

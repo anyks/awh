@@ -47,11 +47,6 @@
 #include "writer.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -1457,17 +1452,6 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _generation;
-				private:
-					/**
-					 * \~russian
-					 * Объект работы с файловой системой
-					 *
-					 * \~english
-					 * Object of the work with the filesystem
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					// Схема, над разбором действовавшая
 					schema_t _schema;

@@ -47,11 +47,6 @@
 #include "writer.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
@@ -1221,25 +1216,6 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с файловой системой
-					 *
-					 * @note Изменяемость его намеренна: сохранение дерева объявлено НЕИЗМЕНЯЮЩИМ,
-					 *       а подмена целевого файла временным константным ходом у файловой
-					 *       системы не является
-					 *
-					 * \~english
-					 * Object for working with the file system
-					 *
-					 * @note Its mutability is deliberate: the saving of a tree is declared NOT CHANGING
-					 *       it, while the substitution of a target file by a temporary one is not a
-					 *       constant step of the file system
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					/**
 					 * \~russian

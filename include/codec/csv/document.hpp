@@ -49,11 +49,6 @@
 #include "writer.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -183,27 +178,6 @@ namespace awh {
 					 * \~
 					 */
 					bool _opened;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с файловой системой
-					 *
-					 * @note Изменяемость его намеренна: сохранение таблицы объявлено НЕИЗМЕНЯЮЩИМ
-					 *       - оно таблицы не трогает, - а подмена целевого файла временным
-					 *       константным ходом у файловой системы не является. Состоянием
-					 *       таблицы объект этот не служит, и неизменность её он не нарушает
-					 *
-					 * \~english
-					 * Object for working with the file system
-					 *
-					 * @note Its mutability is deliberate: the saving of the table is declared NON-MUTATING - it does
-					 *       not touch the table, - and the replacement of the target file by a temporary one is not a
-					 *       constant method of a file system. This object does not serve as a state of the table, and
-					 *       it does not violate its immutability
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					/**
 					 * \~russian

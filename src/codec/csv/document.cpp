@@ -26,8 +26,9 @@
 #include <cstdio>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/log.hpp>
 
 /**
@@ -55,6 +56,12 @@ namespace {
 	 * Используем пространство имён библиотеки
 	 */
 	using namespace awh;
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
 
 	/**
 	 * @brief Размер куска, каким читается файл таблицы
@@ -155,12 +162,11 @@ namespace {
 	 * @note Путь без разделителя означает каталог текущий, и он годен всегда: отсечение
 	 *       имени дало бы пустую строку, а её разряд не опознаётся ничем
 	 *
-	 * @param fs   объект работы с файловой системой
 	 * @param path путь к заводимому файлу
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const fs_t & fs, const string & path) noexcept {
+	static bool writable(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -170,7 +176,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (fs.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
 	}
 	/**
 	 * @brief Функция выдачи событий разбора записями обработчику
@@ -663,7 +669,7 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
 	 * кодами отказа
 	 */
-	const fs_t::type_t type = this->_fs.type(filename);
+	const fs_t::type_t type = ::__awh_fs__.type(filename);
 	/**
 	 * Если адрес указывает на каталог
 	 *
@@ -742,7 +748,7 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 *       величины оборванное чтение было бы неотличимо от файла, вправду короткого
 	 *
 	 */
-	const uintmax_t expected = this->_fs.size(filename);
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	/**
 	 * Выполняем чтение файла таблицы кусками
 	 *
@@ -751,7 +757,7 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 *       искажённым - кириллический адрес при этом не находился бы ничем
 	 *
 	 */
-	this->_fs.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+	::__awh_fs__.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
 		// Пропускаем смещение куска, чтению оно не нужно
 		static_cast <void> (offset);
 		// Наращиваем количество байтов, поданных разбору
@@ -909,7 +915,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
 	 * кодами отказа
 	 */
-	const fs_t::type_t type = this->_fs.type(filename);
+	const fs_t::type_t type = ::__awh_fs__.type(filename);
 	/**
 	 * Если адрес указывает на каталог
 	 *
@@ -994,7 +1000,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 *       величины оборванное чтение было бы неотличимо от файла, вправду короткого
 	 *
 	 */
-	const uintmax_t expected = this->_fs.size(filename);
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	/**
 	 * Выполняем чтение файла таблицы кусками
 	 *
@@ -1003,7 +1009,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 *       искажённым - кириллический адрес при этом не находился бы ничем
 	 *
 	 */
-	this->_fs.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+	::__awh_fs__.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
 		// Пропускаем смещение куска, чтению оно не нужно
 		static_cast <void> (offset);
 		// Наращиваем количество байтов, поданных разбору
@@ -1287,7 +1293,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       усечение делал сам поток признаком `trunc`
 	 *
 	 */
-	static_cast <void> (this->_fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Объект временного файла таблицы, дозаписи её обслуживающий
 	 *
@@ -1301,7 +1307,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       тот файл, каким объект открыт
 	 *
 	 */
-	const auto handle = this->_fs.handleFile();
+	const auto handle = ::__awh_fs__.handleFile();
 	/**
 	 * Если каталог, куда ложится временный файл таблицы, для записи недоступен
 	 *
@@ -1314,7 +1320,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       оглашает отказ кодом `FILE_NOT_OPENED`
 	 *
 	 */
-	if(!::writable(this->_fs, temporary)){
+	if(!::writable(temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -1353,7 +1359,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			 */
 			if(!this->_writer.field(string_view(this->_names.data() + name.offset, name.length))){
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
-				static_cast <void> (this->_fs.unlink(temporary));
+				static_cast <void> (::__awh_fs__.unlink(temporary));
 				// Запоминаем код отказа сохранения таблицы
 				if(this->_error == error_t::NONE)
 					// Запоминаем код отказа записи с запасным FILE_NOT_WRITTEN
@@ -1374,7 +1380,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		 */
 		if(this->_writer.error() != error_t::NONE){
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
-			static_cast <void> (this->_fs.unlink(temporary));
+			static_cast <void> (::__awh_fs__.unlink(temporary));
 			/**
 			 * Запоминаем код отказа сохранения таблицы
 			 *
@@ -1406,7 +1412,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			// Если очередное поле записи записать не удалось
 			if(!this->_writer.field(this->get(this->_fields.at(j)))){
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
-				static_cast <void> (this->_fs.unlink(temporary));
+				static_cast <void> (::__awh_fs__.unlink(temporary));
 				// Запоминаем код отказа сохранения таблицы
 				if(this->_error == error_t::NONE)
 					// Запоминаем код отказа записи с запасным FILE_NOT_WRITTEN
@@ -1427,7 +1433,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		 */
 		if(this->_writer.error() != error_t::NONE){
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
-			static_cast <void> (this->_fs.unlink(temporary));
+			static_cast <void> (::__awh_fs__.unlink(temporary));
 			/**
 			 * Запоминаем код отказа сохранения таблицы
 			 *
@@ -1448,7 +1454,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			// Изымаем собранный текст
 			const string text = this->_writer.take();
 			// Дописываем изъятый текст в хвост файла таблицы
-			written = this->_fs.append(temporary, text.data(), text.size(), handle);
+			written = ::__awh_fs__.append(temporary, text.data(), text.size(), handle);
 			/**
 			 * Если доля записана не сполна, дальнейшая запись бессмысленна
 			 */
@@ -1468,7 +1474,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 */
 	if(written)
 		// Дописываем остаток собранного текста в хвост файла таблицы
-		written = this->_fs.append(temporary, text.data(), text.size(), handle);
+		written = ::__awh_fs__.append(temporary, text.data(), text.size(), handle);
 	/**
 	 * Если запись текста таблицы в файл не удалась
 	 *
@@ -1488,7 +1494,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла таблицы
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1517,7 +1523,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       разницу берёт на себя
 	 *
 	 */
-	static_cast <void> (this->_fs.flush(temporary, true, handle));
+	static_cast <void> (::__awh_fs__.flush(temporary, true, handle));
 	/**
 	 * Если перенос собранной таблицы на место цели не удался
 	 *
@@ -1525,11 +1531,11 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       либо становится новой таблицей целиком, а половины её не видно никогда
 	 *
 	 */
-	if(!this->_fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переименования временного файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла таблицы
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */

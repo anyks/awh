@@ -29,10 +29,19 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <num/lexical/lexical.hpp>
-#include <codec/json/encoding.hpp>
-#include <codec/json/writer.hpp>
 #include <sys/log.hpp>
+#include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/json/writer.hpp>
+#include <codec/json/encoding.hpp>
+
+/**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
 
 /**
  * Используем стандартное пространство имён
@@ -44,6 +53,11 @@ using namespace std;
  *
  */
 namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Функция записи кодовой точки отменяющей последовательностью
 	 *
@@ -92,7 +106,7 @@ namespace {
 			// Признак годности разобранной последовательности
 			bool valid = false;
 			// Выполняем разбор очередной последовательности содержимого
-			i += awh::codec::json::readSequence(text, i, code, valid);
+			i += codec::json::readSequence(text, i, code, valid);
 			/**
 			 * Если разобранная последовательность негодна
 			 */
@@ -103,66 +117,46 @@ namespace {
 		// Выводим признак соответствия содержимого кодировке
 		return true;
 	}
-}
+};
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::json::Writer::Settings::Settings() noexcept :
- format(format_t::COMPACT), escape(escape_t::MINIMAL), malformed(malformed_t::REPLACE),
- indent(2), allowInfinityAndNan(false), stream(false) {}
+codec::json::Writer::Settings::Settings() noexcept :
+ stream(false), allowInfinityAndNan(false), indent(2),
+ format(format_t::COMPACT), escape(escape_t::MINIMAL),
+ malformed(malformed_t::REPLACE) {}
+
 /**
- * @brief Конструктор
+ * @brief Метод отказа записи с сообщением о доводе его в журнал
+ *
+ * @param error код отказа записи
+ * @return      всегда ложь, ради возврата им из места отказа
  *
  */
-bool awh::codec::json::Writer::refuse(const error_t error) noexcept {
+bool codec::json::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код отказа записи
 	this->_error = error;
-	// Получаем описание кода отказа записи
-	const char * reason = awh::codec::json::message(error);
-	/**
-	 * Выполняем запись об отказе записи в журнал
-	 *
-	 * @note Отказ записи беда КРИТИЧЕСКАЯ: записывается то, что собрало само приложение,
-	 *       и негодное здесь означает дефект у потребителя, а не чужой негодный ввод
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем отказ записи в журнал работы
-		log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {},
-		                  log::flag_t::CRITICAL, reason);
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем отказ записи в журнал работы
-		log::print("JSON writing refused: %s", log::flag_t::CRITICAL, reason);
-	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
 /**
- * @brief Конструктор
- *
- */
-awh::codec::json::Writer::Writer() noexcept :
- _empty(true), _keyed(false),
- _error(error_t::NONE), _started(false), _separated(false), _taken(0) {}
-/**
  * @brief Метод записи разделителя перед очередным значением
  *
  * @details Записывает запятую, перевод строки и отступ - в объёме,
- * заданном настройками оформления
+ *          заданном настройками оформления.
  *
  * @return признак допустимости записи значения в этом месте
  *
  */
-bool awh::codec::json::Writer::separate() noexcept {
+bool codec::json::Writer::separate() noexcept {
 	/**
 	 * Если значение записывается за именем поля объекта
 	 *
 	 * @note Разделитель при этом уже записан самим именем поля, и записывать его
 	 *       второй раз означало бы вставить запятую между именем и значением
+	 *
 	 */
 	if(this->_keyed)
 		// Выводим признак допустимости записи значения
@@ -170,27 +164,71 @@ bool awh::codec::json::Writer::separate() noexcept {
 	/**
 	 * Если запись ведётся внутри объекта
 	 */
-	if(!this->_nesting.empty() && (this->_nesting.back() == kind_t::OBJECT))
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(!this->_nesting.empty() && (this->_nesting.back() == kind_t::OBJECT)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_KEY));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_KEY));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::EXPECTED_KEY);
+	}
 	/**
 	 * Если запись ведётся вне вместилищ, а значение уже записано
 	 *
 	 * @note Второе значение подряд образовало бы два документа в одном тексте, а
 	 *       такое допустимо лишь потоком NDJSON, отделяющим документы друг от друга
+	 *
 	 */
-	if(this->_nesting.empty() && !this->_empty)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.empty() && !this->_empty){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::MULTIPLE_ROOTS));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::MULTIPLE_ROOTS));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::MULTIPLE_ROOTS);
+	}
 	/**
 	 * Если вне вместилищ начинается второй документ, а документы ничем не разделены
 	 *
 	 * @note Без разделителя два документа склеились бы в одну последовательность
 	 *       знаков, разбор какой распался бы на границе между ними
+	 *
 	 */
-	if(this->_nesting.empty() && this->_started && !this->_separated)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.empty() && this->_started && !this->_separated){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::TEXT_ALREADY_ENDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::TEXT_ALREADY_ENDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::TEXT_ALREADY_ENDED);
+	}
 	/**
 	 * Если вместилище уже содержит значения
 	 */
@@ -213,15 +251,15 @@ bool awh::codec::json::Writer::separate() noexcept {
  * @brief Метод записи строки с экранированием
  *
  * @details Знаки, отмены не требующие, переносятся в текст отрезками целиком, а не знак
- * за знаком: строка, из таких знаков и состоящая, переносится одним копированием. В
- * отрезок входят и правильные последовательности UTF-8, коль скоро запись кодовыми
- * значениями не затребована, - разбор их при том ведётся всё равно, ибо байты,
- * кодировке не отвечающие, обязаны быть опознаны при любом правиле экранирования
+ *          за знаком: строка, из таких знаков и состоящая, переносится одним копированием. В
+ *          отрезок входят и правильные последовательности UTF-8, коль скоро запись кодовыми
+ *          значениями не затребована, - разбор их при том ведётся всё равно, ибо байты,
+ *          кодировке не отвечающие, обязаны быть опознаны при любом правиле экранирования.
  *
  * @param text записываемая строка
  *
  */
-void awh::codec::json::Writer::quoted(const string & text) noexcept {
+void codec::json::Writer::quoted(const string & text) noexcept {
 	// Записываем открывающую кавычку
 	this->_result.push_back('"');
 	/**
@@ -232,10 +270,10 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 		size_t offset = i;
 		// Кодовая точка разбираемой последовательности
 		uint32_t code = 0;
-		// Признак годности разобранной последовательности
-		bool valid = false;
 		// Длина разобранной последовательности
 		size_t length = 0;
+		// Признак годности разобранной последовательности
+		bool valid = false;
 		/**
 		 * Выполняем поиск конца отрезка знаков, записи как есть подлежащих
 		 */
@@ -253,7 +291,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 					// Прекращаем поиск конца отрезка
 					break;
 				// Выполняем разбор последовательности UTF-8
-				length = awh::codec::json::readSequence(text, offset, code, valid);
+				length = codec::json::readSequence(text, offset, code, valid);
 				/**
 				 * Если разобранная последовательность негодна
 				 */
@@ -270,6 +308,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 			 *
 			 * @note Косая черта отмены требует лишь тогда, когда отмена её затребована
 			 *       настройками: стандарт её отменять не велит
+			 *
 			 */
 			if((next < 0x20) || (next == '"') || (next == '\\') ||
 			   ((next == '/') && (this->_settings.escape != escape_t::MINIMAL)))
@@ -343,6 +382,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 				 *
 				 * @note Стандарт запрещает такие знаки внутри строки без отмены, и
 				 *       сокращённой записи у оставшихся из них нет
+				 *
 				 */
 				if(letter < 0x20)
 					// Выполняем запись управляющего знака кодовым значением
@@ -358,6 +398,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 				 *
 				 * @note Отрезок оборвался на нём по одной из двух причин: либо запись
 				 *       затребована кодовыми значениями, либо последовательность негодна
+				 *
 				 */
 				else if(letter > 0x7F) {
 					/**
@@ -365,7 +406,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 					 */
 					if(this->_settings.escape == escape_t::ASCII)
 						// Выполняем разбор последовательности UTF-8
-						length = awh::codec::json::readSequence(text, i, code, valid);
+						length = codec::json::readSequence(text, i, code, valid);
 					/**
 					 * Если разобранная последовательность негодна, а пропуск её не затребован
 					 */
@@ -394,6 +435,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 					 *
 					 * @note Пропуск негодной последовательности пишет её байт за байтом:
 					 *       кодовой точки у неё нет вовсе, и записать её значением нельзя
+					 *
 					 */
 					else this->_result.append(text.data() + i, (valid ? length : 1));
 					// Выполняем переход к следующей последовательности записываемой строки
@@ -424,6 +466,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 				 * @warning Условия эти РАЗНЫЕ по записи, и оттого сличать их надо покрытием,
 				 *          а не глазом: тождество записей проверяется дёшево, а согласие
 				 *          двух разных условий - лишь разбором всех случаев поимённо
+				 *
 				 */
 				} else this->_result.push_back(static_cast <char> (letter));
 			}
@@ -435,19 +478,14 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 	this->_result.push_back('"');
 }
 /**
- * @brief Метод сброса состояния записи
+ * @brief Метод сброса записи в исходное состояние
  *
- * @details Сброс возвращает сборщик к пустому тексту, а выделенную память
- * удерживает
+ * @details Сброс возвращает сборщик к пустому тексту, а выделенную память удерживает.
  *
  */
-void awh::codec::json::Writer::clear() noexcept {
-	// Выполняем сброс кода отказа записи
-	this->_error = error_t::NONE;
-	// Выполняем очистку собранного текста
-	this->_result.clear();
-	// Выполняем очистку стека видов открытых вместилищ
-	this->_nesting.clear();
+void codec::json::Writer::reset() noexcept {
+	// Выполняем сброс количества изъятых из сборщика байтов
+	this->_taken = 0;
 	// Снимаем признак наличия значений у вместилища
 	this->_empty = true;
 	// Снимаем признак записи имени поля объекта
@@ -456,8 +494,12 @@ void awh::codec::json::Writer::clear() noexcept {
 	this->_started = false;
 	// Снимаем признак разделённости записанных документов
 	this->_separated = false;
-	// Выполняем сброс количества изъятых из сборщика байтов
-	this->_taken = 0;
+	// Выполняем очистку собранного текста
+	this->_result.clear();
+	// Выполняем очистку стека видов открытых вместилищ
+	this->_nesting.clear();
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод открытия объекта
@@ -465,15 +507,29 @@ void awh::codec::json::Writer::clear() noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::json::Writer::object() noexcept {
+bool codec::json::Writer::object() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
 	 * Если глубина вложенности превышает допустимую
 	 */
-	if(this->_nesting.size() >= MAX_DEPTH)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.size() >= MAX_DEPTH){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::DEPTH_EXCEEDED);
+	}
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -497,15 +553,29 @@ bool awh::codec::json::Writer::object() noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::json::Writer::array() noexcept {
+bool codec::json::Writer::array() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
 	 * Если глубина вложенности превышает допустимую
 	 */
-	if(this->_nesting.size() >= MAX_DEPTH)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.size() >= MAX_DEPTH){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::DEPTH_EXCEEDED);
+	}
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -529,15 +599,29 @@ bool awh::codec::json::Writer::array() noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::json::Writer::close() noexcept {
+bool codec::json::Writer::close() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
 	 * Если открытых вместилищ нет вовсе
 	 */
-	if(this->_nesting.empty())
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::NO_CONTAINER_OPEN));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::NO_CONTAINER_OPEN));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::NO_CONTAINER_OPEN);
+	}
 	/**
 	 * Если имя поля объекта записано, а значение его - ещё нет
 	 *
@@ -546,10 +630,25 @@ bool awh::codec::json::Writer::close() noexcept {
 	 *       `DUPLICATE_KEY` договором отведён повторённому ИМЕНИ поля, и разбор
 	 *       выставляет его именно в этом смысле: один код на два разных случая лишил бы
 	 *       звучащего возможности отличить порчу данных от своей же ошибки обращения
+	 *
 	 */
-	if(this->_keyed)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_keyed){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_VALUE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_VALUE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::EXPECTED_VALUE);
+	}
 	// Получаем вид закрываемого вместилища
 	const kind_t kind = this->_nesting.back();
 	// Удаляем вид закрываемого вместилища из стека
@@ -559,6 +658,7 @@ bool awh::codec::json::Writer::close() noexcept {
 	 *
 	 * @note Пустое вместилище закрывается вплотную: перевод строки внутри него
 	 *       ничего не разделяет, а место занимает
+	 *
 	 */
 	if((this->_settings.format == format_t::PRETTY) && !this->_empty){
 		// Записываем знак перевода строки
@@ -582,7 +682,7 @@ bool awh::codec::json::Writer::close() noexcept {
  * @return     признак успешности записи
  *
  */
-bool awh::codec::json::Writer::key(const string & name) noexcept {
+bool codec::json::Writer::key(const string & name) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -602,34 +702,93 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
 	 *       вместилища от записи внутри массива и от повторной записи имени. Кодек CSV
 	 *       чинен в своё время от того же изъяна - причина обязана следовать за бедою,
 	 *       а не за местом сличения
+	 *
 	 */
-	if(this->_nesting.empty())
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::json::message(error_t::NO_CONTAINER_OPEN));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::NO_CONTAINER_OPEN));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::NO_CONTAINER_OPEN);
+	}
 	/**
 	 * Если запись ведётся не внутри объекта
 	 */
-	if(this->_nesting.back() != kind_t::OBJECT)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_nesting.back() != kind_t::OBJECT){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::json::message(error_t::KEY_OUTSIDE_OBJECT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::KEY_OUTSIDE_OBJECT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::KEY_OUTSIDE_OBJECT);
+	}
 	/**
 	 * Если имя поля объекта уже записано
 	 *
 	 * @note Отказ этот - `EXPECTED_VALUE` по тому же доводу, что и у закрытия объекта:
 	 *       имена эти могут быть и вовсе разными, а недостаёт здесь значения
+	 *
 	 */
-	if(this->_keyed)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(this->_keyed){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_VALUE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::EXPECTED_VALUE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::EXPECTED_VALUE);
+	}
 	/**
 	 * Если отказ на негодную кодировку затребован, а имя поля ей не отвечает
 	 *
 	 * @note Имя поля проверяется наравне со значением: оно ложится в текст той же
 	 *       записью с экранированием и негодный байт в нём портит текст ровно так же
+	 *
 	 */
-	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(name))
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(name)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_ENCODING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_ENCODING));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_ENCODING);
+	}
 	/**
 	 * Если объект уже содержит поля
 	 */
@@ -666,7 +825,7 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::json::Writer::null() noexcept {
+bool codec::json::Writer::null() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -675,12 +834,12 @@ bool awh::codec::json::Writer::null() noexcept {
 	if(!this->separate())
 		// Выводим признак неуспешности записи
 		return false;
-	// Записываем пустое значение
-	this->_result.append("null");
 	// Устанавливаем признак наличия значений у вместилища
 	this->_empty = false;
 	// Снимаем признак записи имени поля объекта
 	this->_keyed = false;
+	// Записываем пустое значение
+	this->_result.append("null");
 	// Выводим признак успешности записи
 	return true;
 }
@@ -691,7 +850,7 @@ bool awh::codec::json::Writer::null() noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const bool value) noexcept {
+bool codec::json::Writer::value(const bool value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -700,12 +859,12 @@ bool awh::codec::json::Writer::value(const bool value) noexcept {
 	if(!this->separate())
 		// Выводим признак неуспешности записи
 		return false;
-	// Записываем логическое значение
-	this->_result.append(value ? "true" : "false");
 	// Устанавливаем признак наличия значений у вместилища
 	this->_empty = false;
 	// Снимаем признак записи имени поля объекта
 	this->_keyed = false;
+	// Записываем логическое значение
+	this->_result.append(value ? "true" : "false");
 	// Выводим признак успешности записи
 	return true;
 }
@@ -716,7 +875,7 @@ bool awh::codec::json::Writer::value(const bool value) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const char * value) noexcept {
+bool codec::json::Writer::value(const char * value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -724,6 +883,7 @@ bool awh::codec::json::Writer::value(const char * value) noexcept {
 	 *
 	 * @note Пустое указание записывается пустым значением, а не пустой строкой: строки
 	 *       в языке Си пустого указания не имеют, и означает оно отсутствие значения
+	 *
 	 */
 	if(value == nullptr)
 		// Выполняем запись пустого значения
@@ -738,7 +898,7 @@ bool awh::codec::json::Writer::value(const char * value) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const string & value) noexcept {
+bool codec::json::Writer::value(const string & value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -749,42 +909,61 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
 	 */
 	if(&value == &this->_result)
 		// Повторяем операцию с независимой копией входной строки
-		return this->value(string(value));
+		return this->value(value);
 	/**
 	 * Если отказ на негодную кодировку затребован, а содержимое ей не отвечает
 	 *
 	 * @note Проверка идёт прежде всякой записи намеренно: отказ посреди записи оставил
 	 *       бы в тексте имя поля без значения его, а это хуже негодного байта
+	 *
 	 */
-	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(value))
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(value)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_ENCODING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_ENCODING));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_ENCODING);
+	}
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
 	if(!this->separate())
 		// Выводим признак неуспешности записи
 		return false;
-	// Выполняем запись строкового значения с экранированием
-	this->quoted(value);
 	// Устанавливаем признак наличия значений у вместилища
 	this->_empty = false;
 	// Снимаем признак записи имени поля объекта
 	this->_keyed = false;
+	// Выполняем запись строкового значения с экранированием
+	this->quoted(value);
 	// Выводим признак успешности записи
 	return true;
 }
 /**
- * @brief Шаблон записи целого числа записи любой
+ * @brief Шаблон метода записи целого числа
  *
- * @tparam T     вид записываемого целого числа
- *
- * @param number записываемое целое число
- * @return       признак успешности записи
+ * @tparam T вид записываемого целого числа
  *
  */
 template <typename T, typename>
-bool awh::codec::json::Writer::value(const T number) noexcept {
+/**
+ * @brief Метод записи целого числа
+ *
+ * @param value записываемое целое число
+ * @return      признак успешности записи
+ *
+ */
+bool codec::json::Writer::value(const T number) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -792,6 +971,7 @@ bool awh::codec::json::Writer::value(const T number) noexcept {
 	 *
 	 * @note Ветвь решается на СБОРКЕ, а не в работе: `is_signed` есть постоянная
 	 *       времени сборки, и лишней ветви в порождённом коде не остаётся
+	 *
 	 */
 	if(std::is_signed <T>::value)
 		// Выполняем запись целого числа со знаком
@@ -802,6 +982,8 @@ bool awh::codec::json::Writer::value(const T number) noexcept {
 /**
  * Порождение ведётся видами ЯЗЫКА, а не разрядными обозначениями
  *
+ * @details Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun.
+ *
  * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ: у macOS ARM64 `uint64_t`
  *          есть `unsigned long long`, а `size_t` — `unsigned long`, и перечень
  *          разрядный оставлял бы `size_t` без порождения. Виды языка между собою не
@@ -809,9 +991,6 @@ bool awh::codec::json::Writer::value(const T number) noexcept {
  *
  * @note `bool` и `char` не порождаются намеренно: у `bool` есть свой приём точным
  *       видом, а `char` записал бы знак числом молча
- */
-/**
- * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
  *
  * @warning Вид `char` НЕ СОВПАДАЕТ ни с `signed char`, ни с `unsigned char` - это третий,
  *          самостоятельный вид языка. Обыкновенно `int8_t` есть псевдоним `signed char`, и
@@ -826,17 +1005,17 @@ bool awh::codec::json::Writer::value(const T number) noexcept {
  *       система, и решает по-разному
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <char, void> (const char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <signed char, void> (const signed char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned char, void> (const unsigned char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <short, void> (const short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned short, void> (const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <int, void> (const int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned int, void> (const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <long, void> (const long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned long, void> (const unsigned long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <long long, void> (const long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
+template bool codec::json::Writer::value <char, void> (const char) noexcept;
+template bool codec::json::Writer::value <signed char, void> (const signed char) noexcept;
+template bool codec::json::Writer::value <unsigned char, void> (const unsigned char) noexcept;
+template bool codec::json::Writer::value <short, void> (const short) noexcept;
+template bool codec::json::Writer::value <unsigned short, void> (const unsigned short) noexcept;
+template bool codec::json::Writer::value <int, void> (const int) noexcept;
+template bool codec::json::Writer::value <unsigned int, void> (const unsigned int) noexcept;
+template bool codec::json::Writer::value <long, void> (const long) noexcept;
+template bool codec::json::Writer::value <unsigned long, void> (const unsigned long) noexcept;
+template bool codec::json::Writer::value <long long, void> (const long long) noexcept;
+template bool codec::json::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
 /**
  * @brief Метод записи целого числа
  *
@@ -844,13 +1023,13 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned lo
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const int64_t value) noexcept {
+bool codec::json::Writer::value(const int64_t value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	// Хранилище записи целого числа
 	char buffer[32];
 	// Выполняем запись целого числа
-	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись целого числа выполнить не удалось
 	 *
@@ -861,6 +1040,7 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: он оберегает от переноса неполной записи числа,
 	 *          и уменьшение хранилища сделало бы его достижимым
+	 *
 	 */
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
@@ -875,13 +1055,13 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
+bool codec::json::Writer::value(const uint64_t value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	// Хранилище записи беззнакового целого числа
 	char buffer[32];
 	// Выполняем запись беззнакового целого числа
-	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись целого числа выполнить не удалось
 	 *
@@ -892,6 +1072,7 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: он оберегает от переноса неполной записи числа,
 	 *          и уменьшение хранилища сделало бы его достижимым
+	 *
 	 */
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
@@ -903,19 +1084,19 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
  * @brief Метод записи числа с плавающей запятой
  *
  * @details Записывается кратчайшей записью, читающейся обратно тем же числом.
- * Количество значащих цифр вычисляется модулем разбора чисел сразу, без подбора
- * точности с обратным чтением проб: запись «0.1» выходит как «0.1», а не как
- * «0.10000000000000001», какую дала бы запись наибольшей точностью
+ *          Количество значащих цифр вычисляется модулем разбора чисел сразу, без подбора
+ *          точности с обратным чтением проб: запись «0.1» выходит как «0.1», а не как
+ *          «0.10000000000000001», какую дала бы запись наибольшей точностью.
  *
  * @note Число записывается по правилам местности «C» и от установленной в
- * приложении местности не зависит: разделитель дробной части местности сделал бы
- * текст неразбираемым
+ *       приложении местности не зависит: разделитель дробной части местности сделал бы
+ *       текст неразбираемым
  *
  * @param value записываемое число с плавающей запятой
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::value(const double value) noexcept {
+bool codec::json::Writer::value(const double value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -923,45 +1104,55 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 *
 	 * @note Стандарт таких чисел не знает вовсе, и записываются они лишь при
 	 *       явном на то дозволении настроек
+	 *
 	 */
 	if(::isnan(value) || ::isinf(value)){
 		/**
 		 * Если запись таких чисел настройками не дозволена
 		 */
-		if(!this->_settings.allowInfinityAndNan)
+		if(!this->_settings.allowInfinityAndNan){
 			/**
-			 * Выполняем отказ записи с сообщением о доводе его в журнал
-			 *
-			 * @note Отказ этот о НАСТРОЙКЕ, а не о данных: дробное подано верное, а
-			 *       записать его нечем при снятом дозволении. Прежде отвечалось
-			 *       `INVALID_NUMBER`, и зовущий искал бы изъян в своих данных
+			 * Если включён режим отладки
 			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::json::message(error_t::UNWRITABLE_VALUE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::UNWRITABLE_VALUE));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::UNWRITABLE_VALUE);
+		}
 		/**
 		 * Если запись значения в этом месте недопустима
 		 */
 		if(!this->separate())
 			// Выводим признак неуспешности записи
 			return false;
-		// Записываем число словами
-		this->_result.append(::isnan(value) ? "NaN" : (value > 0. ? "Infinity" : "-Infinity"));
 		// Устанавливаем признак наличия значений у вместилища
 		this->_empty = false;
 		// Снимаем признак записи имени поля объекта
 		this->_keyed = false;
+		// Записываем число словами
+		this->_result.append(::isnan(value) ? "NaN" : (value > 0. ? "Infinity" : "-Infinity"));
 		// Выводим признак успешности записи
 		return true;
 	}
 	// Хранилище записи числа с плавающей запятой
-	char buffer[awh::lexical::maxRecordLength <double> ()];
+	char buffer[lexical::maxRecordLength <double> ()];
 	/**
 	 * Выполняем запись числа кратчайшим обратимым представлением
 	 *
 	 * @details Подбор точности с обратным чтением каждой пробы более не нужен:
-	 * модуль разбора чисел вычисляет количество значащих цифр сразу, отчего запись
-	 * числа обходится одним проходом вместо семнадцати записей и семнадцати разборов
+	 *          модуль разбора чисел вычисляет количество значащих цифр сразу, отчего запись
+	 *          числа обходится одним проходом вместо семнадцати записей и семнадцати разборов.
+	 *
 	 */
-	awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись числа с плавающей запятой выполнить не удалось
 	 *
@@ -972,6 +1163,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: он оберегает от переноса неполной записи числа,
 	 *          и уменьшение хранилища сделало бы его достижимым
+	 *
 	 */
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
@@ -982,26 +1174,26 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 * Выполняем поиск буквы порядка в записи числа
 	 *
 	 * @details Выбор вида записи идёт по её длине и на числе 100 даёт «1e+02»:
-	 * запись эта короче записи целым. Целому же числу приличествует запись целым -
-	 * и когда она короче записи с порядком, как «100», и когда длиннее, как
-	 * «1000000» против «1e+06»: запись целого порядком отвечает стандарту, но
-	 * обманывает ожидание читающего и ломает тех, кто разбирает целые числа по виду
-	 * записи
+	 *          запись эта короче записи целым. Целому же числу приличествует запись целым -
+	 *          и когда она короче записи с порядком, как «100», и когда длиннее, как
+	 *          «1000000» против «1e+06»: запись целого порядком отвечает стандарту, но
+	 *          обманывает ожидание читающего и ломает тех, кто разбирает целые числа по виду записи.
 	 *
 	 * @note Проверка эта дешева и делается лишь при наличии буквы порядка: у записей
 	 *       без неё вида «-3.5» выбор вида кратчайшую и даёт
+	 *
 	 */
 	const char * power = static_cast <const char *> (::memchr(buffer, 'e', static_cast <size_t> (length)));
 	/**
 	 * Если запись числа содержит букву порядка
 	 */
 	if(power != nullptr){
-		// Конец записи числа с плавающей запятой
-		const char * const finish = (buffer + length);
-		// Место чтения значения порядка записи числа
-		const char * position = (power + 1);
 		// Знак значения порядка записи числа
 		int32_t sign = 1;
+		// Место чтения значения порядка записи числа
+		const char * position = (power + 1);
+		// Конец записи числа с плавающей запятой
+		const char * const finish = (buffer + length);
 		/**
 		 * Если запись порядка начинается со знака
 		 */
@@ -1011,20 +1203,20 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 			// Выполняем переход к первой цифре порядка
 			position++;
 		}
-		// Значение порядка записи числа
-		int32_t exponent = 0;
 		// Признак того, что цифры порядка прочитаны
 		bool digits = false;
+		// Значение порядка записи числа
+		int32_t exponent = 0;
 		/**
 		 * Выполняем чтение цифр порядка В ГРАНИЦАХ записи числа
 		 *
 		 * @details Прежде порядок снимался работою «atoi», а та границы не знает и идёт,
-		 * пока встречает цифры. Запись же нулём НЕ ЗАВЕРШАЕТСЯ, и буфер - местный массив,
-		 * ничем не заполненный: чтение уходило за запись, в неопределённую память кадра.
-		 * Замер 01.09.2026 с кадром, заполненным цифрою «7»: запись «1e+06» длиною пять
-		 * октетов давала порядок −1 вместо 6 - «atoi» читал «+0677777…» и переполнялся.
-		 * Сторож «exponent >= 0» такого порядка не пропускал, перезапись в развёрнутый вид
-		 * не звалась вовсе, и наружу шло «1e+06» вместо «1000000.0»
+		 *          пока встречает цифры. Запись же нулём НЕ ЗАВЕРШАЕТСЯ, и буфер - местный массив,
+		 *          ничем не заполненный: чтение уходило за запись, в неопределённую память кадра.
+		 *          Замер 01.09.2026 с кадром, заполненным цифрою «7»: запись «1e+06» длиною пять
+		 *          октетов давала порядок −1 вместо 6 - «atoi» читал «+0677777…» и переполнялся.
+		 *          Сторож «exponent >= 0» такого порядка не пропускал, перезапись в развёрнутый вид
+		 *          не звалась вовсе, и наружу шло «1e+06» вместо «1000000.0».
 		 *
 		 * @note Чтение за концом шло ВНУТРИ границ массива, и слежение за обращениями к
 		 *       памяти к нему слепо по устройству: ловится оно слежением за
@@ -1033,6 +1225,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		 * @warning Накопление ограничено сверху намеренно: порядок двойной точности
 		 *          трёхзначен, и цифры сверх того означают мусор, а не число - продолжать
 		 *          счёт по ним значило бы переполнить разрядность повторно
+		 *
 		 */
 		while((position < finish) && (position[0] >= '0') && (position[0] <= '9') && (exponent <= 1000)){
 			// Выполняем накопление значения порядка записи числа
@@ -1050,12 +1243,11 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		 * @note Предел взят по числу значащих цифр вида с плавающей запятой: за ним
 		 *       запись без порядка состояла бы из значащих цифр вперемешку с нулями,
 		 *       каких в самом числе нет, и вводила бы читающего в заблуждение о точности
+		 *
 		 */
 		if(digits && (exponent >= 0) && (exponent < static_cast <int32_t> (numeric_limits <double>::max_digits10))){
 			// Выполняем запись числа без порядка
-			output = awh::lexical_t::toChars(
-				buffer, buffer + sizeof(buffer), value, awh::lexical::format_t::FIXED
-			);
+			output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value, lexical::format_t::FIXED);
 			/**
 			 * Если запись числа без порядка выполнена
 			 *
@@ -1067,6 +1259,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 			 *          этот недостижим. Иное поведение средства записи чисел даст здесь
 			 *          расхождение вида, отказом не отмеченное; при розыске плавающего
 			 *          вида записи смотреть надлежит сюда
+			 *
 			 */
 			if(static_cast <bool> (output))
 				// Запоминаем длину записи числа без порядка
@@ -1077,12 +1270,13 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 * Если запись числа дробной части и порядка не содержит вовсе
 	 *
 	 * @details Число `1.0` кратчайшей записью выходит как `1`, а это уже не дробное
-	 * число, а целое: потребитель, читающий собранный текст, увидит вид, какого в
-	 * записанном значении не было. Дробное записывается дробным - разделителем с нулём
+	 *          число, а целое: потребитель, читающий собранный текст, увидит вид, какого в
+	 *          записанном значении не было. Дробное записывается дробным - разделителем с нулём.
 	 *
 	 * @note Правило это не спорит с предпочтением целой записи перед записью порядком:
 	 *       там выбиралось между `1e+06` и `1000000`, то есть между двумя записями
 	 *       одного и того же целого, а здесь - между целым и дробным видом
+	 *
 	 */
 	if((length > 0) && (::memchr(buffer, '.', static_cast <size_t> (length)) == nullptr) &&
 	   (::memchr(buffer, 'e', static_cast <size_t> (length)) == nullptr) &&
@@ -1100,8 +1294,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 *       библиотеками «.5» - уже нет, и целую часть ей приходится дописывать.
 	 *       Сличения со стандартом здесь не требуется: недостача целой части видна
 	 *       по первому знаку записи, а иных отступлений преобразование не делает
-	 */
-	/**
+	 *
 	 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: запись дробного числа средствами
 	 *       разбора чисел ведущий ноль целой части выставляет сама, и записи вида `.5`
 	 *       либо `-.5` она не даёт. Проверено подачею `0.5`, `-0.5` и `1e-320`
@@ -1109,6 +1302,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	 * @warning Снимать ветвь нельзя: договор JSON ведущий ноль ТРЕБУЕТ, и запись без него
 	 *          дала бы текст, разбору не подлежащий. Ветвь эта и есть страж того, что
 	 *          средство записи чисел своего договора не переменит
+	 *
 	 */
 	if((length > 0) && ((buffer[0] == '.') || ((length > 1) && (buffer[0] == '-') && (buffer[1] == '.')))){
 		// Собираемая запись числа с плавающей запятой
@@ -1122,25 +1316,11 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	return this->produced(buffer, static_cast <size_t> (length));
 }
 /**
- * @brief Метод записи числа его готовой записью
- *
- * @details Запись переносится в текст как есть, минуя преобразование. Служит для
- * переноса чисел, разобранных чтением, без потери точности
- *
- * @note Запись перед переносом сличается со стандартом: сборщик обещает
- * правильность собранного текста, а перенос записи как есть - единственное место,
- * где негодное содержимое пришло бы извне готовым
- *
- * @param value записываемая запись числа
- * @return      признак успешности записи
- *
- */
-/**
  * @brief Метод переноса готовой записи числа в текст документа
  *
  * @details Запись переносится без сличения со стандартом: сюда попадает лишь то, что
- * писатель произвёл сам, а произвести негодную запись преобразование числа не может.
- * Сличается только запись, пришедшая извне, - для неё есть отдельный способ `raw()`
+ *          писатель произвёл сам, а произвести негодную запись преобразование числа не может.
+ *          Сличается только запись, пришедшая извне, - для неё есть отдельный способ `raw()`.
  *
  * @note Путь этот заведён замером: перезапись документа сличала со стандартом всякое
  *       собственное число, то есть разбирала заново запись, только что ею собранную
@@ -1150,11 +1330,10 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::json::Writer::produced(const char * value, const size_t size) noexcept {
+bool codec::json::Writer::produced(const char * value, const size_t size) noexcept {
 	/**
 	 * Если длина записи числа превышает допустимую
-	 */
-	/**
+	 *
 	 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: всякое из четырёх мест вызова подаёт
 	 *       запись короче предела в 1024 знака. Молчание карты покрытия означает здесь
 	 *       недостижимость, а не непроверенность
@@ -1162,7 +1341,7 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
 	 * @warning Довод, здесь прежде стоявший, гласил «все четыре подают запись, собранную в
 	 *          хранилище на 32 байта», и был НЕТОЧЕН. Проверено чтением всех четырёх мест
 	 *          07.09.2026: хранилищ три разных - два по 32 байта у записи целых, одно на
-	 *          346 байт (`awh::lexical::maxRecordLength <double> ()`) у записи дробного, а
+	 *          346 байт (`lexical::maxRecordLength <double> ()`) у записи дробного, а
 	 *          четвёртое место подаёт строку, из того же хранилища собранную со вставкою
 	 *          ведущего нуля, длиною до 347. Заключение от того не пало - 347 меньше 1024, -
 	 *          но рассуждение было ложно в части, и заведи кто вид с записью длиннее предела,
@@ -1174,29 +1353,48 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
 	 *
 	 * @warning Снимать заслон нельзя: он оберегает предел, общий с разбором, и место
 	 *          вызова, подающее запись из хранилища большего размера, обратилось бы к нему
+	 *
 	 */
-	if(size > MAX_NUMBER)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(size > MAX_NUMBER){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value, size}, log::flag_t::CRITICAL, codec::json::message(error_t::NUMBER_TOO_LONG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::NUMBER_TOO_LONG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::NUMBER_TOO_LONG);
+	}
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
 	if(!this->separate())
 		// Выводим признак неуспешности записи
 		return false;
-	// Записываем запись числа как есть
-	this->_result.append(value, size);
 	// Устанавливаем признак наличия значений у вместилища
 	this->_empty = false;
 	// Снимаем признак записи имени поля объекта
 	this->_keyed = false;
+	// Записываем запись числа как есть
+	this->_result.append(value, size);
 	// Выводим признак успешности записи
 	return true;
 }
 /**
  * @brief Метод записи числа его готовой записью
+ *
+ * @param value записываемая запись числа
+ * @return      признак успешности записи
+ *
  */
-bool awh::codec::json::Writer::raw(const string & value) noexcept {
+bool codec::json::Writer::raw(const string & value) noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
@@ -1217,39 +1415,83 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
 		 *
 		 * @note Здесь отказ О ДАННЫХ: поданное числом не является ни при каких
 		 *       настройках, и `INVALID_NUMBER` суждение верное
+		 *
 		 */
-		if((value != "NaN") && (value != "Infinity") && (value != "-Infinity"))
-			// Выполняем отказ записи с сообщением о доводе его в журнал
+		if((value != "NaN") && (value != "Infinity") && (value != "-Infinity")){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_NUMBER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::INVALID_NUMBER));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_NUMBER);
+		}
 		/**
 		 * Если запись таких чисел настройками не дозволена
 		 *
 		 * @note А здесь отказ О НАСТРОЙКЕ: слово подано верное, и с поднятым дозволением
 		 *       оно пишется исправно. Прежде оба случая сливались в одно условие и
 		 *       отвечали `INVALID_NUMBER` - суждением, для второго из них ложным
+		 *
 		 */
-		if(!this->_settings.allowInfinityAndNan)
-			// Выполняем отказ записи с сообщением о доводе его в журнал
+		if(!this->_settings.allowInfinityAndNan){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::json::message(error_t::UNWRITABLE_VALUE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::UNWRITABLE_VALUE));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::UNWRITABLE_VALUE);
+		}
 	}
 	/**
 	 * Если длина записи числа превышает допустимую
 	 */
-	if(value.size() > MAX_NUMBER)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(value.size() > MAX_NUMBER){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::json::message(error_t::NUMBER_TOO_LONG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::NUMBER_TOO_LONG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::NUMBER_TOO_LONG);
+	}
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
 	if(!this->separate())
 		// Выводим признак неуспешности записи
 		return false;
-	// Записываем запись числа как есть
-	this->_result.append(value);
 	// Устанавливаем признак наличия значений у вместилища
 	this->_empty = false;
 	// Снимаем признак записи имени поля объекта
 	this->_keyed = false;
+	// Записываем запись числа как есть
+	this->_result.append(value);
 	// Выводим признак успешности записи
 	return true;
 }
@@ -1259,21 +1501,39 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::json::Writer::finish() noexcept {
+bool codec::json::Writer::finish() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	/**
 	 * Если открытые вместилища ещё не закрыты либо документ пуст
 	 */
-	if(!this->_nesting.empty() || this->_empty)
-		// Выполняем отказ записи с сообщением о доводе его в журнал
+	if(!this->_nesting.empty() || this->_empty){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::json::message(error_t::UNEXPECTED_EOF));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON writing refused: %s", log::flag_t::CRITICAL, codec::json::message(error_t::UNEXPECTED_EOF));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_EOF);
+	}
 	/**
 	 * Если документы разделяются переводом строки
 	 */
 	if(this->_settings.stream)
 		// Записываем знак-разделитель документов
 		this->_result.push_back('\n');
+	// Снимаем признак наличия значений у вместилища, открывая запись следующего документа
+	this->_empty = true;
+	// Устанавливаем признак наличия записанных документов
+	this->_started = true;
 	/**
 	 * Запоминаем, разделён ли записанный документ от следующего
 	 *
@@ -1282,12 +1542,9 @@ bool awh::codec::json::Writer::finish() noexcept {
 	 *       уже иной, и спрашивать её значило бы судить о написанном по несвязанному с
 	 *       ним. Замер: включение потока после завершения первого документа давало
 	 *       `{"a":1}{` при успехе записи
+	 *
 	 */
 	this->_separated = this->_settings.stream;
-	// Устанавливаем признак наличия записанных документов
-	this->_started = true;
-	// Снимаем признак наличия значений у вместилища, открывая запись следующего документа
-	this->_empty = true;
 	// Выводим признак успешности записи
 	return true;
 }
@@ -1297,7 +1554,7 @@ bool awh::codec::json::Writer::finish() noexcept {
  * @return собранный текст
  *
  */
-const string & awh::codec::json::Writer::text() const noexcept {
+const string & codec::json::Writer::text() const noexcept {
 	// Выводим собранный текст
 	return this->_result;
 }
@@ -1305,12 +1562,12 @@ const string & awh::codec::json::Writer::text() const noexcept {
  * @brief Метод изъятия собранного текста
  *
  * @details Отдаёт собранное и оставляет сборщик готовым продолжать: строение
- * документа при этом сохраняется, а память освобождается
+ *          документа при этом сохраняется, а память освобождается.
  *
  * @return изъятый собранный текст
  *
  */
-string awh::codec::json::Writer::take() noexcept {
+string codec::json::Writer::take() noexcept {
 	// Увеличиваем количество изъятых из сборщика байтов
 	this->_taken += static_cast <uint64_t> (this->_result.size());
 	// Выполняем изъятие собранного текста
@@ -1326,7 +1583,7 @@ string awh::codec::json::Writer::take() noexcept {
  * @return код отказа последней операции записи
  *
  */
-awh::codec::json::error_t awh::codec::json::Writer::error() const noexcept {
+codec::json::error_t codec::json::Writer::error() const noexcept {
 	// Выводим код отказа последней операции записи
 	return this->_error;
 }
@@ -1336,7 +1593,7 @@ awh::codec::json::error_t awh::codec::json::Writer::error() const noexcept {
  * @return размер собранного текста в байтах
  *
  */
-size_t awh::codec::json::Writer::size() const noexcept {
+size_t codec::json::Writer::size() const noexcept {
 	// Выводим размер собранного текста
 	return this->_result.size();
 }
@@ -1346,7 +1603,7 @@ size_t awh::codec::json::Writer::size() const noexcept {
  * @return текущая глубина вложенности
  *
  */
-uint32_t awh::codec::json::Writer::depth() const noexcept {
+uint32_t codec::json::Writer::depth() const noexcept {
 	// Выводим текущую глубину вложенности
 	return static_cast <uint32_t> (this->_nesting.size());
 }
@@ -1356,7 +1613,7 @@ uint32_t awh::codec::json::Writer::depth() const noexcept {
  * @return настройки записи текста
  *
  */
-const awh::codec::json::Writer::settings_t & awh::codec::json::Writer::settings() const noexcept {
+const codec::json::Writer::settings_t & codec::json::Writer::settings() const noexcept {
 	// Выводим настройки записи текста
 	return this->_settings;
 }
@@ -1364,9 +1621,30 @@ const awh::codec::json::Writer::settings_t & awh::codec::json::Writer::settings(
  * @brief Метод установки настроек записи текста
  *
  * @param settings устанавливаемые настройки записи текста
+ * @return         признак принятия настроек записи
  *
  */
-void awh::codec::json::Writer::settings(const settings_t & settings) noexcept {
+bool codec::json::Writer::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек записи текста
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+codec::json::Writer::Writer() noexcept :
+ _empty(true), _keyed(false),
+ _started(false), _separated(false),
+ _error(error_t::NONE), _taken(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста
+ *
+ */
+codec::json::Writer::Writer(const settings_t & settings) noexcept : Writer() {
+	// Выполняем установку настроек записи текста
+	this->settings(settings);
 }

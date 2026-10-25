@@ -51,11 +51,6 @@
 #include "writer.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
@@ -1543,25 +1538,6 @@ namespace awh {
 					 * \~
 					 */
 					uint64_t _pointer;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с файловой системой
-					 *
-					 * @note Изменяемость его намеренна: сохранение документа объявлено НЕИЗМЕНЯЮЩИМ
-					 *       - оно документа не трогает, - а подмена целевого файла временным
-					 *       константным ходом у файловой системы не является
-					 *
-					 * \~english
-					 * Object for working with the file system
-					 *
-					 * @note Its mutability is deliberate: the saving of a document is declared NON-MUTATING
-					 *       - it does not touch the document - while the replacement of the target file by a
-					 *       temporary one is not a constant method of the file system
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					/**
 					 * \~russian

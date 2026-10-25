@@ -51,11 +51,6 @@
 #include "writer.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -545,17 +540,6 @@ namespace awh {
 				private:
 					// Общее хранилище знаков имён и значений
 					string _store;
-				private:
-					/**
-					 * \~russian
-					 * Объект работы с файловой системой
-					 *
-					 * \~english
-					 * Object of the work with the filesystem
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					/**
 					 * \~russian

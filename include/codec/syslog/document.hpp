@@ -49,7 +49,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../abc/value.hpp"
-#include "../../sys/fs.hpp"
 #include "../../sys/chrono.hpp"
 #include "../../sys/macro/global.hpp"
 
@@ -420,26 +419,6 @@ namespace awh {
 						// Настройки разбора сообщений
 						reader_t::settings_t reader;
 					} settings_t;
-				private:
-					/**
-					 * \~russian
-					 * @brief Объект работы с файловой системой
-					 *
-					 * @details Держится ПОЛЕМ, а не заводится в теле хода: так устроены и
-					 *          прочие опоры документа - чтение, запись, дата, - и так же поступают
-					 *          прочие модули рамки, «awh::args» в их числе.
-					 *
-					 * \~english
-					 * @brief Filesystem object
-					 *
-					 * @details It persists as a FIELD rather than being embedded within the
-					 *          execution flow; this is how other document supports—such as read,
-					 *          write, and date—are structured, and other framework modules,
-					 *          including "awh::args," operate in the same way.
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					// Дерево разобранной записи контейнером ABC
 					abc::value_t _root;

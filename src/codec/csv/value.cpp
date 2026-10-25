@@ -24,8 +24,9 @@
 #include <cstdio>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/log.hpp>
 
 /**
@@ -59,6 +60,12 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+
+	/**
 	 * @brief Функция проверки годности каталога, куда ложится файл
 	 *
 	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
@@ -67,12 +74,11 @@ namespace {
 	 *
 	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
 	 *
-	 * @param fs   объект работы с файловой системой
 	 * @param path путь к заводимому файлу
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const fs_t & fs, const string & path) noexcept {
+	static bool writable(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -82,7 +88,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (fs.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
 	}
 };
 
@@ -1210,7 +1216,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       за концом записанного. Прежде усечение делал сам поток признаком `trunc`
 	 *
 	 */
-	static_cast <void> (this->_fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Выполняем запись собранного текста таблицы
 	 *
@@ -1218,11 +1224,11 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
 	 *
 	 */
-	const bool written = this->_fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(this->_fs, temporary)){
+	if(!::writable(temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -1269,7 +1275,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 */
 	if(!written){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
@@ -1310,13 +1316,13 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       разницу берёт на себя
 	 *
 	 */
-	static_cast <void> (this->_fs.flush(temporary, true));
+	static_cast <void> (::__awh_fs__.flush(temporary, true));
 	/**
 	 * Если подмена целевого файла временным завершилась отказом
 	 */
-	if(!this->_fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**

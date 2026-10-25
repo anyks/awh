@@ -31,10 +31,15 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
+#include <sys/log.hpp>
 #include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/numeric.hpp>
 #include <codec/json/value.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,15 +52,26 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+
+	/**
 	 * @brief Предел роста вместилища обращением по номеру
 	 *
 	 * @details Значение по умолчанию взято с запасом над всяким разумным обращением по
-	 * номеру и стоит около шести мегабайтов памяти. Соперники предела такого не знают
-	 * вовсе - и `nlohmann/json`, и указатели `RapidJSON` растят перечень до затребованного
-	 * номера, ничем того не стерегая, - зато обычай предохранителя с настройкою у разборщиков
-	 * разметки заведён давно: `libxml2` держит предел текста в 10 000 000 знаков со снятием
-	 * его признаком `XML_PARSE_HUGE`, `Xerces` - предел развёртывания сущностей в 50 000,
-	 * `simdjson` - предел вложенности в 1024
+	 *          номеру и стоит около шести мегабайтов памяти. Соперники предела такого не знают
+	 *          вовсе - и `nlohmann/json`, и указатели `RapidJSON` растят перечень до затребованного
+	 *          номера, ничем того не стерегая, - зато обычай предохранителя с настройкою у разборщиков
+	 *          разметки заведён давно: `libxml2` держит предел текста в 10 000 000 знаков со снятием
+	 *          его признаком `XML_PARSE_HUGE`, `Xerces` - предел развёртывания сущностей в 50 000,
+	 *          `simdjson` - предел вложенности в 1024.
 	 *
 	 * @note Хранится оно беззнаковым числом с упорядоченным доступом: ставится предел единожды
 	 *       при заведении приложения, а читается всяким потоком, обращающимся по номеру
@@ -63,10 +79,19 @@ namespace {
 	 */
 	static atomic <size_t> LIMIT(0x10000);
 	/**
+	 * @brief Наибольшее смещение, вместимое указанием на содержимое узла
+	 *
+	 * @note Постоянная та же, какой стережёт себя сборка дерева из разбора: смещение
+	 *       содержимого узла занимает четыре байта
+	 *
+	 */
+	static constexpr size_t STORAGE_LIMIT = static_cast <size_t> (0xFFFFFFFFu);
+
+	/**
 	 * @brief Функция извлечения пустой строки
 	 *
 	 * @details Строка эта одна на все отказы выдачи содержимого: метод обязан выдать
-	 * ссылку, а ссылки на несуществующее не бывает
+	 *          ссылку, а ссылки на несуществующее не бывает.
 	 *
 	 * @return пустая строка
 	 *
@@ -81,7 +106,7 @@ namespace {
 	 * @brief Функция разбора указателя JSON Pointer на звенья
 	 *
 	 * @details Указатель разбирается по RFC 6901: `/response/users/0/id`. Отменяющие
-	 * записи `~1` и `~0` снимаются, а пустой указатель отдаёт пустой перечень звеньев
+	 *          записи `~1` и `~0` снимаются, а пустой указатель отдаёт пустой перечень звеньев.
 	 *
 	 * @note Порядок снятия отменяющих записей предписан стандартом: снятие `~0` прежде
 	 *       `~1` обратило бы записанное `~01` в косую черту вместо `~1`
@@ -168,6 +193,7 @@ namespace {
 		 *
 		 * @note Запись номера с ведущим нулём стандартом запрещена: номер `01` номером
 		 *       не является вовсе, а является именем поля
+		 *
 		 */
 		if(token.empty() || ((token.size() > 1) && (token.front() == '0')))
 			// Выводим признак того, что звено номером значения не является
@@ -188,12 +214,12 @@ namespace {
 			 * Если добавление разряда выведет номер за предел разрядности
 			 *
 			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
-			 * заворотом: `18446744073709551617` обращалось бы единицей, и обращение по
-			 * такому пути отдавало бы соседнее значение молча. Вместилища такой длины не
-			 * бывает вовсе - номер этот номером не является
+			 *          заворотом: `18446744073709551617` обращалось бы единицей, и обращение по
+			 *          такому пути отдавало бы соседнее значение молча. Вместилища такой длины не
+			 *          бывает вовсе - номер этот номером не является.
 			 *
 			 */
-			if(result > ((std::numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
+			if(result > ((numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
 				// Выводим признак того, что звено номером не является
 				return false;
 			// Добавляем разряд к номеру значения массива
@@ -202,14 +228,39 @@ namespace {
 		// Выводим признак того, что звено является номером значения
 		return true;
 	}
-}
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool writable(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+	}
+};
 
 /**
  * @brief Метод розыска номера поля объекта по имени
  *
  * @details Мелкий объект разыскивается перебором имён, крупный - отображением,
  *          заводимым при первом же обращении. Порог тот же, каким заводит отображение
- *          документ: и там, и здесь речь об одном и том же выборе
+ *          документ: и там, и здесь речь об одном и том же выборе.
  *
  * @note Отображение хранит ПЕРВОЕ вхождение имени: добавление поля повтор имени
  *       допускает намеренно, а перебор находит первое, и отображению надлежит
@@ -259,46 +310,6 @@ size_t awh::codec::json::Value::lookup(const string & name) const noexcept {
 	return static_cast <size_t> (~0ull);
 }
 /**
- * @brief Метод получения кода отказа последней работы над значением
- *
- * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор текста, чтение
- * файла, выдача текста и запись его в файл ставят его заново каждая. Прежде канала
- * отказа у значения не было вовсе, и пустой текст выдачи был неотличим от значения
- * пустого
- *
- * @note Договор этот ОБЩИЙ у кодеков: владеющее значение разметки XML и таблица CSV
- *       отвечают тем же кодом и тем же порядком
- *
- * @return код отказа последней работы
- *
- */
-/**
- * @brief Функция проверки годности каталога, куда ложится файл
- *
- * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
- * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
- * записи отвергают нулевой размер и файла не заводят
- *
- * @note Путь без разделителя означает каталог текущий, и он годен всегда
- *
- * @param fs   объект работы с файловой системой
- * @param path путь к заводимому файлу
- * @return     признак того, что каталог для записи годен
- *
- */
-static bool writable(const awh::fs_t & fs, const string & path) noexcept {
-	// Положение последнего разделителя пути
-	const size_t slash = path.find_last_of("/\\");
-	/**
-	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
-	 */
-	if(slash == string::npos)
-		// Выводим признак годности каталога текущего
-		return true;
-	// Выводим признак того, что каталог назначения каталогом и является
-	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
-}
-/**
  * @brief Метод учёта заведённого поля объекта в отображении имён
  *
  * @note Метод зовётся ПОСЛЕ добавления имени в перечень: номером служит место, какое
@@ -327,52 +338,53 @@ void awh::codec::json::Value::reindex() const noexcept {
 	this->_indexed = false;
 }
 /**
- * @brief Шаблонный метод извлечения числа затребованным видом
+ * @brief Шаблон метода извлечения числа затребованным видом
  *
- * @details Извлечение сличает само значение с пределами затребованного вида, а не вид
- * хранения с видом затребованным: значение, хранящее `INT8`, извлекается и как `double`,
- * и как `uint64_t`. Отказом извлечение завершается лишь тогда, когда значение числом не
- * является вовсе
- *
- * @tparam T      затребованный вид числа
- *
- * @param  result переменная, куда помещается извлечённое значение
- * @return        признак успешности извлечения
+ * @tparam T затребованный вид числа
  *
  */
 template <typename T>
+/**
+ * @brief Метод извлечения числа затребованным видом
+ *
+ * @details Извлечение сличает само значение с пределами затребованного вида, а не вид
+ *          хранения с видом затребованным: значение, хранящее `INT8`, извлекается и как `double`,
+ *          и как `uint64_t`. Отказом извлечение завершается лишь тогда, когда значение числом не
+ *          является вовсе.
+ *
+ */
 bool awh::codec::json::Value::extract(T & result) const noexcept {
 	/**
 	 * Определяем вид хранения значения
 	 */
-	switch(this->_type){
+	switch(static_cast <uint16_t> (this->_type)){
 		// Если значение является целым со знаком любой ширины
-		case type_t::INT8:
-		case type_t::INT16:
-		case type_t::INT32:
-		case type_t::INT64:
+		case static_cast <uint16_t> (type_t::INT8):
+		case static_cast <uint16_t> (type_t::INT16):
+		case static_cast <uint16_t> (type_t::INT32):
+		case static_cast <uint16_t> (type_t::INT64):
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (this->_number.integer);
 		break;
 		// Если значение является целым без знака любой ширины
-		case type_t::UINT8:
-		case type_t::UINT16:
-		case type_t::UINT32:
-		case type_t::UINT64:
+		case static_cast <uint16_t> (type_t::UINT8):
+		case static_cast <uint16_t> (type_t::UINT16):
+		case static_cast <uint16_t> (type_t::UINT32):
+		case static_cast <uint16_t> (type_t::UINT64):
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (this->_number.natural);
 		break;
 		// Если значение является дробным одинарной точности
-		case type_t::FLOAT:
+		case static_cast <uint16_t> (type_t::FLOAT):
 		// Если значение является дробным двойной точности
-		case type_t::DOUBLE:
+		case static_cast <uint16_t> (type_t::DOUBLE):
 			// Устанавливаем извлечённое значение приведением дробного
-			result = awh::codec::convert <T> (this->_number.real);
+			result = convert <T> (this->_number.real);
 		break;
 		/**
 		 * Если значение является числом, не вместимым ни в один родной вид
 		 */
-		case type_t::EXTENDED: {
+		case static_cast <uint16_t> (type_t::EXTENDED): {
 			// Разбираемое дробное число
 			double number = 0.;
 			/**
@@ -380,15 +392,15 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 			 *
 			 * @note Разбор здесь неизбежен: число это в родной вид не вместилось, оттого
 			 *       и хранится записью. Таких чисел на документ приходятся единицы
+			 *
 			 */
 			lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 			// Устанавливаем извлечённое значение приведением дробного
-			result = awh::codec::convert <T> (number);
+			result = convert <T> (number);
 		} break;
 		/**
 		 * Если значение числом не является вовсе
-		 */
-		/**
+		 *
 		 * Если видом хранения число не является вовсе
 		 *
 		 * @note Перечислены виды НАМЕРЕННО вместо `default`: ветвь `default` глушит
@@ -397,18 +409,19 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 		 *
 		 * @note Составные имена перечня собирают по нескольку разрядов сразу и видом
 		 *       хранения отдельного значения не бывают никогда
+		 *
 		 */
-		case type_t::UNDEFINED:
-		case type_t::NUL:
-		case type_t::BOOL:
-		case type_t::STRING:
-		case type_t::ARRAY:
-		case type_t::OBJECT:
-		case type_t::SIGNED:
-		case type_t::UNSIGNED:
-		case type_t::INT:
-		case type_t::REAL:
-		case type_t::NUMBER:
+		case static_cast <uint16_t> (type_t::INT):
+		case static_cast <uint16_t> (type_t::NIL):
+		case static_cast <uint16_t> (type_t::BOOL):
+		case static_cast <uint16_t> (type_t::REAL):
+		case static_cast <uint16_t> (type_t::ARRAY):
+		case static_cast <uint16_t> (type_t::OBJECT):
+		case static_cast <uint16_t> (type_t::SIGNED):
+		case static_cast <uint16_t> (type_t::STRING):
+		case static_cast <uint16_t> (type_t::NUMBER):
+		case static_cast <uint16_t> (type_t::UNSIGNED):
+		case static_cast <uint16_t> (type_t::UNDEFINED):
 			// Выводим признак неудачного извлечения
 			return false;
 	}
@@ -426,42 +439,43 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 	/**
 	 * Определяем вид хранимого значения
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		/**
 		 * Если значение ещё не определено
 		 *
 		 * @note Значения неопределённого стандарт не знает вовсе, и записывается оно
 		 *       пустым значением: иного вида, годного ему, в стандарте нет
+		 *
 		 */
-		case kind_t::NONE:
+		case static_cast <uint8_t> (kind_t::NONE):
 		// Если значение является пустым
-		case kind_t::NUL:
+		case static_cast <uint8_t> (kind_t::NIL):
 			// Выводим признак успешности записи пустого значения
 			return writer.null();
 		// Если значение является логическим
-		case kind_t::BOOL:
+		case static_cast <uint8_t> (kind_t::BOOL):
 			// Выводим признак успешности записи логического значения
 			return writer.value(this->_number.flag);
 		/**
 		 * Если значение является числом
 		 */
-		case kind_t::NUMBER: {
+		case static_cast <uint8_t> (kind_t::NUMBER): {
 			/**
 			 * Определяем вид хранения числа
 			 */
-			switch(this->_type){
+			switch(static_cast <uint16_t> (this->_type)){
 				// Если число является целым со знаком любой ширины
-				case type_t::INT8:
-				case type_t::INT16:
-				case type_t::INT32:
-				case type_t::INT64:
+				case static_cast <uint16_t> (type_t::INT8):
+				case static_cast <uint16_t> (type_t::INT16):
+				case static_cast <uint16_t> (type_t::INT32):
+				case static_cast <uint16_t> (type_t::INT64):
 					// Выводим признак успешности записи целого числа со знаком
 					return writer.value(this->_number.integer);
 				// Если число является целым без знака любой ширины
-				case type_t::UINT8:
-				case type_t::UINT16:
-				case type_t::UINT32:
-				case type_t::UINT64:
+				case static_cast <uint16_t> (type_t::UINT8):
+				case static_cast <uint16_t> (type_t::UINT16):
+				case static_cast <uint16_t> (type_t::UINT32):
+				case static_cast <uint16_t> (type_t::UINT64):
 					// Выводим признак успешности записи целого числа без знака
 					return writer.value(this->_number.natural);
 				/**
@@ -470,38 +484,40 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 				 * @note Число одинарной точности хранится дробным двойной точности, а
 				 *       вид его - лишь памятью о записи, какою оно пришло: сужение до
 				 *       `float` и обратно точного значения не меняет вовсе
+				 *
 				 */
-				case type_t::FLOAT:
-				case type_t::DOUBLE:
+				case static_cast <uint16_t> (type_t::FLOAT):
+				case static_cast <uint16_t> (type_t::DOUBLE):
 					// Выводим признак успешности записи дробного числа
 					return writer.value(this->_number.real);
 				// Если число в родной вид не вместилось
-				case type_t::EXTENDED:
+				case static_cast <uint16_t> (type_t::EXTENDED):
 					// Выводим признак успешности записи числа его записью
 					return writer.raw(this->_text);
-			/**
-			 * Если видом хранения число не является
-			 *
-			 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
-			 *       места его не достигают. Составные же имена перечня собирают по нескольку
-			 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
-			 *
-			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
-			 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
-			 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
-			 */
-			case type_t::UNDEFINED:
-			case type_t::NUL:
-			case type_t::BOOL:
-			case type_t::STRING:
-			case type_t::ARRAY:
-			case type_t::OBJECT:
-			case type_t::SIGNED:
-			case type_t::UNSIGNED:
-			case type_t::INT:
-			case type_t::REAL:
-			case type_t::NUMBER:
-			break;
+				/**
+				 * Если видом хранения число не является
+				 *
+				 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
+				 *       места его не достигают. Составные же имена перечня собирают по нескольку
+				 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
+				 *
+				 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+				 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+				 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
+				 *
+				 */
+				
+				case static_cast <uint16_t> (type_t::NIL):
+				case static_cast <uint16_t> (type_t::INT):
+				case static_cast <uint16_t> (type_t::BOOL):
+				case static_cast <uint16_t> (type_t::REAL):
+				case static_cast <uint16_t> (type_t::ARRAY):
+				case static_cast <uint16_t> (type_t::NUMBER):
+				case static_cast <uint16_t> (type_t::STRING):
+				case static_cast <uint16_t> (type_t::OBJECT):
+				case static_cast <uint16_t> (type_t::SIGNED):
+				case static_cast <uint16_t> (type_t::UNSIGNED):
+				case static_cast <uint16_t> (type_t::UNDEFINED): break;
 			}
 			/**
 			 * Выводим признак неуспешности записи числа неопознанного вида хранения
@@ -516,21 +532,21 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 			 *
 			 * @warning Снимать выход нельзя: он и есть страж того, что новый вид хранения,
 			 *          заведённый значением, не пройдёт мимо записи молча
+			 *
 			 */
 			return false;
 		}
 		// Если значение является строкой
-		case kind_t::STRING:
+		case static_cast <uint8_t> (kind_t::STRING):
 			// Выводим признак успешности записи строкового значения
 			return writer.value(this->_text);
 		/**
 		 * Если значение является массивом
 		 */
-		case kind_t::ARRAY: {
+		case static_cast <uint8_t> (kind_t::ARRAY): {
 			/**
 			 * Если открытие массива завершилось отказом
-			 */
-			/**
+			 *
 			 * @note Отказ этот НЕДОСТИЖИМ и оттого не покрыт: открытие вместилища отвергается
 			 *       отделителем, а тот отказывает лишь второму значению верхнего уровня.
 			 *       Запись же дерева ведётся своим потоком, где верхний уровень свободен, и
@@ -545,6 +561,7 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 			 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 			 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 			 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+			 *
 			 */
 			if(!writer.array())
 				// Выводим признак неуспешности записи
@@ -566,11 +583,10 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 		/**
 		 * Если значение является объектом
 		 */
-		case kind_t::OBJECT: {
+		case static_cast <uint8_t> (kind_t::OBJECT): {
 			/**
 			 * Если открытие объекта завершилось отказом
-			 */
-			/**
+			 *
 			 * @warning Довод, здесь прежде стоявший, звал отказ НЕДОСТИЖИМЫМ, ибо «отделитель
 			 *          отвергает лишь второе значение верхнего уровня», и был НЕПОЛОН: открытие
 			 *          вместилища отвергает ДВУМЯ дорогами, а довод знал одну. Вторая - предел
@@ -588,6 +604,7 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 			 *
 			 * @warning Снимать отказ нельзя: запись вправе вестись и общим потоком, и там
 			 *          второе значение верхнего уровня возможно
+			 *
 			 */
 			if(!writer.object())
 				// Выводим признак неуспешности записи
@@ -624,6 +641,7 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 	 *
 	 * @warning Снимать выход нельзя: он и есть страж того, что новый вид значения не
 	 *          пройдёт мимо записи молча
+	 *
 	 */
 	return false;
 }
@@ -633,7 +651,7 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
  * @param value ссылка на узел документа
  *
  */
-void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
+void awh::codec::json::Value::absorb(const document_t::value_t & value) noexcept {
 	// Выполняем очистку прежнего содержимого значения
 	this->clear();
 	/**
@@ -650,6 +668,7 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 	 *       она не зависит от чужого устройства: заведись у ручки прямое чтение узла
 	 *       мимо `kind()`, застава останется единственным заходом. Та же картина
 	 *       у INI, TOML и YAML
+	 *
 	 */
 	if(!value.valid())
 		// Выходим из метода, оставляя значение неопределённым
@@ -661,39 +680,39 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 	/**
 	 * Определяем вид хранимого значения
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		// Если значение является логическим
-		case kind_t::BOOL:
+		case static_cast <uint8_t> (kind_t::BOOL):
 			// Выполняем извлечение логического значения
 			value.value(this->_number.flag);
 		break;
 		/**
 		 * Если значение является числом
 		 */
-		case kind_t::NUMBER: {
+		case static_cast <uint8_t> (kind_t::NUMBER): {
 			/**
 			 * Определяем вид хранения числа
 			 */
-			switch(this->_type){
+			switch(static_cast <uint16_t> (this->_type)){
 				// Если число является целым со знаком любой ширины
-				case type_t::INT8:
-				case type_t::INT16:
-				case type_t::INT32:
-				case type_t::INT64:
+				case static_cast <uint16_t> (type_t::INT8):
+				case static_cast <uint16_t> (type_t::INT16):
+				case static_cast <uint16_t> (type_t::INT32):
+				case static_cast <uint16_t> (type_t::INT64):
 					// Выполняем извлечение целого числа со знаком
 					value.value(this->_number.integer);
 				break;
 				// Если число является целым без знака любой ширины
-				case type_t::UINT8:
-				case type_t::UINT16:
-				case type_t::UINT32:
-				case type_t::UINT64:
+				case static_cast <uint16_t> (type_t::UINT8):
+				case static_cast <uint16_t> (type_t::UINT16):
+				case static_cast <uint16_t> (type_t::UINT32):
+				case static_cast <uint16_t> (type_t::UINT64):
 					// Выполняем извлечение целого числа без знака
 					value.value(this->_number.natural);
 				break;
 				// Если число является дробным любой точности
-				case type_t::FLOAT:
-				case type_t::DOUBLE:
+				case static_cast <uint16_t> (type_t::FLOAT):
+				case static_cast <uint16_t> (type_t::DOUBLE):
 					// Выполняем извлечение дробного числа
 					value.value(this->_number.real);
 				break;
@@ -702,38 +721,39 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 				 *
 				 * @note Число такое снимается записью своей: разобрать его не во что,
 				 *       а записать обратно обязано ровно тем, чем оно пришло
+				 *
 				 */
-				case type_t::EXTENDED:
+				case static_cast <uint16_t> (type_t::EXTENDED):
 					// Выполняем снятие записи числа
 					this->_text = value.raw();
 				break;
-			/**
-			 * Если видом хранения число не является
-			 *
-			 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
-			 *       места его не достигают. Составные же имена перечня собирают по нескольку
-			 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
-			 *
-			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
-			 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
-			 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
-			 */
-			case type_t::UNDEFINED:
-			case type_t::NUL:
-			case type_t::BOOL:
-			case type_t::STRING:
-			case type_t::ARRAY:
-			case type_t::OBJECT:
-			case type_t::SIGNED:
-			case type_t::UNSIGNED:
-			case type_t::INT:
-			case type_t::REAL:
-			case type_t::NUMBER:
-			break;
+				/**
+				 * Если видом хранения число не является
+				 *
+				 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
+				 *       места его не достигают. Составные же имена перечня собирают по нескольку
+				 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
+				 *
+				 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+				 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+				 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
+				 *
+				 */
+				case static_cast <uint16_t> (type_t::NIL):
+				case static_cast <uint16_t> (type_t::INT):
+				case static_cast <uint16_t> (type_t::BOOL):
+				case static_cast <uint16_t> (type_t::REAL):
+				case static_cast <uint16_t> (type_t::ARRAY):
+				case static_cast <uint16_t> (type_t::STRING):
+				case static_cast <uint16_t> (type_t::OBJECT):
+				case static_cast <uint16_t> (type_t::SIGNED):
+				case static_cast <uint16_t> (type_t::NUMBER):
+				case static_cast <uint16_t> (type_t::UNSIGNED):
+				case static_cast <uint16_t> (type_t::UNDEFINED): break;
 			}
 		} break;
 		// Если значение является строкой
-		case kind_t::STRING: {
+		case static_cast <uint8_t> (kind_t::STRING): {
 			// Получаем строковое содержимое узла документа
 			const string_view text = value.text();
 			// Выполняем снятие строкового содержимого собственной памятью
@@ -742,8 +762,8 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 		/**
 		 * Если значение является массивом либо объектом
 		 */
-		case kind_t::ARRAY:
-		case kind_t::OBJECT: {
+		case static_cast <uint8_t> (kind_t::ARRAY):
+		case static_cast <uint8_t> (kind_t::OBJECT): {
 			// Выполняем выделение памяти под значения вместилища
 			this->_items.reserve(value.size());
 			/**
@@ -755,7 +775,7 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 			/**
 			 * Выполняем перебор всех значений вместилища
 			 */
-			for(Document::value_t item = value.begin(); item.valid(); item = item.next()){
+			for(document_t::value_t item = value.begin(); item.valid(); item = item.next()){
 				/**
 				 * Если значение является объектом
 				 */
@@ -775,6 +795,7 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 			 *
 			 * @note Наполнение идёт перечнем напрямую, минуя учёт: отображение,
 			 *       заведённое прежде снятия, отвечало бы о полях, каких уже нет
+			 *
 			 */
 			this->reindex();
 		} break;
@@ -785,24 +806,24 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NONE:
-		case kind_t::NUL:
-		break;
+		case static_cast <uint8_t> (kind_t::NIL):
+		case static_cast <uint8_t> (kind_t::NONE): break;
 	}
 }
 /**
  * @brief Метод извлечения значения неопределённого
  *
  * @details Значение это одно на все отказы обращения только для чтения: метод обязан
- * выдать ссылку, а ссылки на несуществующее не бывает
+ *          выдать ссылку, а ссылки на несуществующее не бывает.
  *
  * @return значение неопределённое
  *
  */
 const awh::codec::json::Value & awh::codec::json::Value::undefined() noexcept {
 	// Значение неопределённое, выдаваемое при неудачном обращении
-	static const Value result;
+	static const value_t result;
 	// Выводим значение неопределённое
 	return result;
 }
@@ -810,8 +831,8 @@ const awh::codec::json::Value & awh::codec::json::Value::undefined() noexcept {
  * @brief Метод извлечения значения мусорного
  *
  * @details Значение это принимает на себя запись при неудачном обращении изменяемом:
- * выдать ссылку метод обязан, а завести значение по неверному пути не вправе. Записанное
- * в него пропадает при следующем же неудачном обращении, и полагаться на него нельзя
+ *          выдать ссылку метод обязан, а завести значение по неверному пути не вправе. Записанное
+ *          в него пропадает при следующем же неудачном обращении, и полагаться на него нельзя.
  *
  * @note Значение это своё у всякого потока: одно на приложение оно обратило бы отказ
  *       обращения в состязание за общую память
@@ -821,7 +842,7 @@ const awh::codec::json::Value & awh::codec::json::Value::undefined() noexcept {
  */
 awh::codec::json::Value & awh::codec::json::Value::scrap() noexcept {
 	// Значение мусорное, принимающее на себя запись при неудачном обращении
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем очистку значения мусорного от записанного прежде
 	result.clear();
 	// Выводим значение мусорное
@@ -858,9 +879,19 @@ bool awh::codec::json::Value::valid() const noexcept {
 	return (this->_kind != kind_t::NONE);
 }
 /**
- * @brief Метод получения кода отказа последней работы
+ * @brief Оператор приведения к логическому типу
  *
- * @return код отказа последней работы над значением
+ * @return признак действительности значения
+ *
+ */
+awh::codec::json::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
+}
+/**
+ * @brief Метод получения кода отказа последней работы над значением
+ *
+ * @return код отказа последней работы
  *
  */
 awh::codec::json::error_t awh::codec::json::Value::error() const noexcept {
@@ -868,9 +899,19 @@ awh::codec::json::error_t awh::codec::json::Value::error() const noexcept {
 	return this->_error;
 }
 /**
- * @brief Метод извлечения вида значения
+ * @brief Метод получения места отказа последней работы над значением
  *
- * @return вид хранимого значения
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::json::location_t & awh::codec::json::Value::errorLocation() const noexcept {
+	// Выводим место отказа последней работы над значением
+	return this->_errorLocation;
+}
+/**
+ * @brief Метод извлечения вида узла значения
+ *
+ * @return вид узла значения
  *
  */
 awh::codec::json::kind_t awh::codec::json::Value::kind() const noexcept {
@@ -900,6 +941,7 @@ bool awh::codec::json::Value::is(const type_t type) const noexcept {
 	 *
 	 * @note Отсутствие значения разряда своего не имеет вовсе - оно есть пустота
 	 *       разрядов, и наложением проверено быть не может
+	 *
 	 */
 	if(type == type_t::UNDEFINED)
 		// Выводим признак отсутствия значения
@@ -932,6 +974,16 @@ bool awh::codec::json::Value::empty() const noexcept {
  *
  */
 void awh::codec::json::Value::clear() noexcept {
+	// Выполняем сброс отображения имён полей объекта
+	this->reindex();
+	// Выполняем очистку содержимого значения
+	this->_text.clear();
+	// Выполняем очистку имён полей объекта
+	this->_names.clear();
+	// Выполняем очистку значений вместилища
+	this->_items.clear();
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
 	// Выполняем сброс вида хранимого значения
 	this->_kind = kind_t::NONE;
 	/**
@@ -939,20 +991,13 @@ void awh::codec::json::Value::clear() noexcept {
 	 *
 	 * @note Очистка возвращает значение к первозданному виду, и код отказа, её
 	 *       пережив, указывал бы на причину, которой более нет
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс вида хранения значения
 	this->_type = type_t::UNDEFINED;
-	// Выполняем сброс хранимого числа
-	this->_number.natural = 0;
-	// Выполняем очистку содержимого значения
-	this->_text.clear();
-	// Выполняем очистку имён полей объекта
-	this->_names.clear();
-	// Выполняем сброс отображения имён полей объекта
-	this->reindex();
-	// Выполняем очистку значений вместилища
-	this->_items.clear();
+	// Выполняем сброс положения отказа последней работы
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Метод извлечения строкового содержимого значения
@@ -982,7 +1027,7 @@ string awh::codec::json::Value::raw() const noexcept {
 	 */
 	if(this->_kind != kind_t::NUMBER)
 		// Выводим отсутствие записи числа
-		return string();
+		return "";
 	// Объект записи текста документа
 	writer_t writer;
 	// Выполняем запись числа, хранимого значением
@@ -1014,7 +1059,7 @@ const awh::codec::json::Value & awh::codec::json::Value::operator [] (const stri
 	 */
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим значение неопределённое
-		return Value::undefined();
+		return value_t::undefined();
 	// Выполняем розыск номера поля объекта по имени
 	const size_t offset = this->lookup(name);
 	/**
@@ -1024,7 +1069,7 @@ const awh::codec::json::Value & awh::codec::json::Value::operator [] (const stri
 		// Выводим ссылку на значение поля объекта
 		return this->_items.at(offset);
 	// Выводим значение неопределённое
-	return Value::undefined();
+	return value_t::undefined();
 }
 /**
  * @brief Метод обращения к полю объекта по имени с заведением недостающего
@@ -1040,6 +1085,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & n
 	 * @note Перерождению подлежит лишь значение неопределённое: обращение по имени к
 	 *       числу либо к строке есть промах потребителя, и молча сносить его значение
 	 *       обращение не вправе
+	 *
 	 */
 	if(this->_kind == kind_t::NONE){
 		// Устанавливаем вид значения объектом
@@ -1052,7 +1098,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & n
 	 */
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	// Выполняем розыск номера поля объекта по имени
 	const size_t offset = this->lookup(name);
 	/**
@@ -1077,9 +1123,9 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & n
  * @return      ссылка на значение вместилища
  *
  */
-const awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::json::value_t & awh::codec::json::Value::operator [] (const size_t index) const noexcept {
 	// Выводим ссылку на значение вместилища, если значение с таким номером заведено
-	return ((index < this->_items.size()) ? this->_items.at(index) : Value::undefined());
+	return ((index < this->_items.size()) ? this->_items.at(index) : value_t::undefined());
 }
 /**
  * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
@@ -1088,7 +1134,7 @@ const awh::codec::json::Value & awh::codec::json::Value::operator [] (const size
  * @return      ссылка на значение вместилища
  *
  */
-awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t index) noexcept {
+awh::codec::json::value_t & awh::codec::json::Value::operator [] (const size_t index) noexcept {
 	/**
 	 * Если значение ещё не определено
 	 */
@@ -1109,16 +1155,18 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t ind
 	 *
 	 * @note Рост объекта обращением по номеру невозможен: имени у заводимого поля
 	 *       взять неоткуда
+	 *
 	 */
 	if(this->_kind != kind_t::ARRAY)
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	/**
 	 * Если рост вместилища выйдет за поставленный предел
 	 *
 	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
 	 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
 	 *       его вовсе - см. `Value::limit`
+	 *
 	 */
 	{
 		// Получаем поставленный предел роста вместилища
@@ -1128,7 +1176,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t ind
 		 */
 		if((limit > 0) && (index >= limit))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 	}
 	/**
 	 * Выполняем рост массива до затребованного номера значениями неопределёнными
@@ -1165,9 +1213,9 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 	 */
 	if(!::tokens(path, parts))
 		// Выводим значение неопределённое
-		return Value::undefined();
+		return value_t::undefined();
 	// Ссылка на разыскиваемое значение
-	const Value * result = this;
+	const value_t * result = this;
 	/**
 	 * Выполняем разбор пути звено за звеном
 	 */
@@ -1175,9 +1223,9 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 		/**
 		 * Определяем вид значения, к какому обращается очередное звено пути
 		 */
-		switch(result->_kind){
+		switch(static_cast <uint8_t> (result->_kind)){
 			// Если звено пути обращается к значению массива
-			case kind_t::ARRAY: {
+			case static_cast <uint8_t> (kind_t::ARRAY): {
 				// Номер значения массива, разыскиваемый звеном пути
 				size_t index = 0;
 				/**
@@ -1186,12 +1234,12 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 				 */
 				if(!::numbered(token, index) || (index >= result->_items.size()))
 					// Выводим значение неопределённое
-					return Value::undefined();
+					return value_t::undefined();
 				// Выполняем переход к значению массива
 				result = &result->_items.at(index);
 			} break;
 			// Если звено пути обращается к полю объекта
-			case kind_t::OBJECT: {
+			case static_cast <uint8_t> (kind_t::OBJECT): {
 				// Выполняем розыск номера поля объекта по имени
 				const size_t index = result->lookup(token);
 				/**
@@ -1199,7 +1247,7 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 				 */
 				if(index == static_cast <size_t> (~0ull))
 					// Выводим значение неопределённое
-					return Value::undefined();
+					return value_t::undefined();
 				// Выполняем переход к значению поля объекта
 				result = &result->_items.at(index);
 			} break;
@@ -1208,7 +1256,7 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 			 */
 			default:
 				// Выводим значение неопределённое
-				return Value::undefined();
+				return value_t::undefined();
 		}
 	}
 	// Выводим ссылку на разысканное значение
@@ -1229,15 +1277,15 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 	 */
 	if(!::tokens(path, parts))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	/**
 	 * Если путь заводит вложенность глубже, чем её умеет запись
 	 *
 	 * @details Заведение по пути идёт последовательно и стека не берёт вовсе, зато его
-	 * берут размножение дерева, снятие его и запись: работы эти возвратны, и дерево
-	 * небывалой глубины срывает на них стек. Запись такое дерево и без того отвергает
-	 * пределом своей вложенности, оттого предел заведения ему и равен - дерево, записать
-	 * которое нельзя, заводить незачем
+	 *          берут размножение дерева, снятие его и запись: работы эти возвратны, и дерево
+	 *          небывалой глубины срывает на них стек. Запись такое дерево и без того отвергает
+	 *          пределом своей вложенности, оттого предел заведения ему и равен - дерево, записать
+	 *          которое нельзя, заводить незачем.
 	 *
 	 * @note Замер срыва: у рабочей машины при стеке 8 МБ размножение валится около
 	 *       65 000 уровней, у NetBSD при стеке 4 МБ - около 30 000. Предел в 1024
@@ -1246,9 +1294,9 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 	 */
 	if(parts.size() > static_cast <size_t> (MAX_DEPTH))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	// Ссылка на разыскиваемое значение
-	Value * result = this;
+	value_t * result = this;
 	/**
 	 * Выполняем разбор пути звено за звеном
 	 */
@@ -1263,6 +1311,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 		 * @note Значение простое, встреченное на пути вместо вместилища, перерождается
 		 *       вместилищем: путь заведения ведёт до конца своего, и останавливать его
 		 *       на полдороге означало бы заводить половину пути
+		 *
 		 */
 		if(result->_kind != (numbered ? kind_t::ARRAY : kind_t::OBJECT)){
 			// Выполняем очистку прежнего содержимого значения
@@ -1282,6 +1331,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 			 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
 			 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
 			 *       его вовсе - см. `Value::limit`
+			 *
 			 */
 			{
 				// Получаем поставленный предел роста массива
@@ -1291,7 +1341,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 				 */
 				if((limit > 0) && (index >= limit))
 					// Выводим значение мусорное
-					return Value::scrap();
+					return value_t::scrap();
 			}
 			/**
 			 * Выполняем рост массива до затребованного номера значениями неопределёнными
@@ -1334,7 +1384,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::json::Value::push(const Value & value) noexcept {
+bool awh::codec::json::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если значение ещё не определено
 	 */
@@ -1363,7 +1413,7 @@ bool awh::codec::json::Value::push(const Value & value) noexcept {
  * @return      признак успешности установки
  *
  */
-bool awh::codec::json::Value::insert(const string & name, const Value & value) noexcept {
+bool awh::codec::json::Value::insert(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если значение ещё не определено
 	 */
@@ -1403,11 +1453,11 @@ bool awh::codec::json::Value::insert(const string & name, const Value & value) n
  * @brief Метод добавления поля объекта с удержанием повтора
  *
  * @param name  имя добавляемого поля объекта
- * @param value добавляемое значение поля объекта
+ * @param value добавляемое значение поля
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::json::Value::append(const string & name, const Value & value) noexcept {
+bool awh::codec::json::Value::append(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если значение ещё не определено
 	 */
@@ -1428,6 +1478,7 @@ bool awh::codec::json::Value::append(const string & name, const Value & value) n
 	 *
 	 * @note Имя, уже заведённое, поиском не отыскивается вовсе: в том и разница с
 	 *       установкой, что поле кладётся рядом, а не поверх
+	 *
 	 */
 	this->_names.push_back(name);
 	/**
@@ -1436,6 +1487,7 @@ bool awh::codec::json::Value::append(const string & name, const Value & value) n
 	 * @note Повтор имени отображение оставит за ПЕРВЫМ вхождением: `emplace` занятого
 	 *       ключа не перезаписывает, и розыск отвечает тем же номером, каким отвечал
 	 *       бы перебор
+	 *
 	 */
 	this->indexed(name);
 	// Добавляем значение поля в объект
@@ -1472,6 +1524,7 @@ bool awh::codec::json::Value::erase(const string & name) noexcept {
 		 *
 		 * @note Сброс здесь обязателен: снятие поля сдвигает номера всех следующих
 		 *       за ним, и отображение, пережившее сдвиг, отвечало бы номером соседа
+		 *
 		 */
 		this->reindex();
 		// Выводим признак успешного снятия
@@ -1528,7 +1581,7 @@ bool awh::codec::json::Value::value(bool & result) const noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения числа видом `int8_t`
+ * @brief Метод извлечения числа
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
@@ -1659,8 +1712,9 @@ bool awh::codec::json::Value::value(string & result) const noexcept {
 /**
  * @brief Метод разбора текста JSON во владеющее значение
  *
- * @param text разбираемый текст JSON
- * @return     признак успешности разбора
+ * @param text     разбираемый текст JSON
+ * @param settings настройки разбора текста JSON
+ * @return         признак успешности разбора
  *
  */
 bool awh::codec::json::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
@@ -1681,31 +1735,29 @@ bool awh::codec::json::Value::parse(const string & text, const document_t::setti
 		 *
 		 * @note Код снимается ДО очистки, а ставится после неё: очистка канал отказа
 		 *       сбрасывает наравне с содержимым, и обратный порядок терял бы код
+		 *
 		 */
 		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Выполняем снятие разобранного дерева собственной памятью
 	this->absorb(document.root());
-	/**
-	 * Выполняем раздачу объекта фреймворка вложенным значениям
-	 *
-	 * @note Раздача идёт наравне с журналом и по той же причине: вложенные заводятся
-	 *       разбором, объекта у них нет вовсе, и сохранение вложенного значения без него
-	 *       отвечало бы отказом там, где корень сохраняется исправно
-	 */
-	/**
-	 * Раздаём журнал вглубь наравне с фреймворком
-	 *
-	 * @warning Без этого узлы, разбором заведённые, журнала не имеют вовсе, и отказ на
-	 *          вложенном узле разыменовывает пустоту: ход записи заводит объект работы с
-	 *          файловой системой журналом своего узла, а тот пустого указателя не терпит.
-	 *          Прежде беду скрывал ручной зов назначения журнала в проверках - замерено
-	 *          падением 13.09.2026, `Logging::allowed(this=0x0)`
-	 */
 	// Выводим признак успешного разбора
 	return true;
+}
+/**
+ * @brief Метод разбора текста настроек
+ *
+ * @param text разбираемый текст настроек
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::json::Value::parse(const string & text) noexcept {
+	// Выполняем разбор текста настройками по умолчанию
+	return this->parse(text, document_t::settings_t());
 }
 /**
  * @brief Метод разбора текста JSON из файла
@@ -1741,27 +1793,13 @@ bool awh::codec::json::Value::load(const string & filename, const document_t::se
 		this->clear();
 		// Запоминаем код отказа чтения файла
 		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Выполняем снятие разобранного дерева собственной памятью
 	this->absorb(document.root());
-	/**
-	 * Выполняем раздачу объекта фреймворка вложенным значениям
-	 *
-	 * @note Раздача идёт наравне с журналом и по той же причине: вложенные заводятся
-	 *       разбором, объекта у них нет вовсе, и сохранение вложенного значения без него
-	 *       отвечало бы отказом там, где корень сохраняется исправно
-	 */
-	/**
-	 * Раздаём журнал вглубь наравне с фреймворком
-	 *
-	 * @warning Без этого узлы, разбором заведённые, журнала не имеют вовсе, и отказ на
-	 *          вложенном узле разыменовывает пустоту: ход записи заводит объект работы с
-	 *          файловой системой журналом своего узла, а тот пустого указателя не терпит.
-	 *          Прежде беду скрывал ручной зов назначения журнала в проверках - замерено
-	 *          падением 13.09.2026, `Logging::allowed(this=0x0)`
-	 */
 	// Выводим признак успешного разбора
 	return true;
 }
@@ -1784,9 +1822,9 @@ string awh::codec::json::Value::dump(const format_t format) const noexcept {
  * @brief Метод перезаписи значения в текст JSON с указанными настройками
  *
  * @details Отказ записи хотя бы одного значения отдаёт текст пустым: текст усечённый,
- * с именем поля без значения его, негоден вовсе, а выдавать негодное молча кодек не
- * вправе. Случай этот один - число, стандарту неведомое, при запрете записи таких
- * чисел настройками
+ *          с именем поля без значения его, негоден вовсе, а выдавать негодное молча кодек не
+ *          вправе. Случай этот один - число, стандарту неведомое, при запрете записи таких
+ *          чисел настройками.
  *
  * @param settings настройки записи текста
  * @return         текст JSON, пустой - записать значение не удалось
@@ -1795,6 +1833,8 @@ string awh::codec::json::Value::dump(const format_t format) const noexcept {
 string awh::codec::json::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Поток записи текста значения
 	writer_t writer;
 	// Выполняем установку настроек записи текста
@@ -1807,15 +1847,16 @@ string awh::codec::json::Value::dump(const writer_t::settings_t & settings) cons
 		 * Запоминаем код отказа записи
 		 *
 		 * @details Отказ идёт от записи, и код у неё свой: значение лишь передаёт его
-		 * своему звучащему. Прежде отказ этот пропадал вовсе - выдача отвечала пустым
-		 * текстом, а отличить её от значения пустого было нечем
+		 *          своему звучащему. Прежде отказ этот пропадал вовсе - выдача отвечала пустым
+		 *          текстом, а отличить её от значения пустого было нечем.
 		 *
 		 * @note Отказ без кода означал бы изъян самой записи, и обойти его молчанием
 		 *       нельзя: код `INTERNAL` стоит здесь сторожем этого случая
+		 *
 		 */
 		this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 		// Выводим пустой текст значения
-		return string();
+		return "";
 	}
 	// Выводим собранный текст значения
 	return writer.take();
@@ -1849,10 +1890,11 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 * Получаем собранный текст значения
 	 *
 	 * @details Текст собирается ДО открытия файла нарочно: прежде файл усекался первым,
-	 * и значение, записи не подлежащее, оставляло на его месте файл ПУСТОЙ, а запись
-	 * отвечала при том успехом. Замер: значение с именем поля из негодной
-	 * последовательности UTF-8 при правиле `REFUSE` сносило прежнее содержимое файла
-	 * начисто. Разметка XML тем же порядком уже пользуется
+	 *          и значение, записи не подлежащее, оставляло на его месте файл ПУСТОЙ, а запись
+	 *          отвечала при том успехом. Замер: значение с именем поля из негодной
+	 *          последовательности UTF-8 при правиле `REFUSE` сносило прежнее содержимое файла
+	 *          начисто. Разметка XML тем же порядком уже пользуется.
+	 *
 	 */
 	const string text = this->dump(settings);
 	/**
@@ -1860,6 +1902,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 *
 	 * @note Выдача текста код отказа уже поставила, коли отказала: здесь он лишь
 	 *       дополняется случаем значения ПУСТОГО, где записывать попросту нечего
+	 *
 	 */
 	if(text.empty()){
 		/**
@@ -1878,6 +1921,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 		 *
 		 * @warning Снимать ветвь нельзя: без неё сохранение отвечало бы неудачей с кодом
 		 *          `NONE`, а это худший из исходов - отказ, себя не называющий
+		 *
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код отказа записи пустого значения, текста не дающего
@@ -1889,101 +1933,165 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 * Адрес временного файла, куда собирается текст
 	 *
 	 * @details Текст пишется рядом с целью и переносится на неё лишь по успешном
-	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
-	 * записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
-	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
-	 * как вызов отвечал отказом. Тем же порядком пользуются сохранения обоих документов
-	 * да таблицы CSV
+	 *          завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
+	 *          записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
+	 *          ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
+	 *          как вызов отвечал отказом. Тем же порядком пользуются сохранения обоих документов
+	 *          да таблицы CSV.
+	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Объект для работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
 	 *
 	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
 	 *       и остаток прежнего сохранения торчал бы хвостом за концом записанного
+	 *
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Выполняем запись текста значения во временный файл
 	 *
 	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 *
 	 */
-	const bool written = fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(fs, temporary)){
+	if(!::writable(temporary)){
 		// Запоминаем код отказа открытия файла значения
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"JSON value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"JSON value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		#endif
 		/**
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 *
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
-		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
 	 * Если запись файла значения не удалась
 	 *
 	 * @details Исход спрашивается у САМОЙ записи: ход её отдаёт признак успеха, и успехом
-	 * считается запись всего буфера - частичная есть тот же отказ
+	 *          считается запись всего буфера - частичная есть тот же отказ.
+	 *
 	 */
 	if(!written){
 		// Запоминаем код отказа записи файла значения
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"JSON value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"JSON value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		#endif
 		/**
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 *
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
-		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
-	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
-	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
-	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
-	 * и заведён
+	 *          лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 *          указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 *          у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 *          и заведён.
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
-	static_cast <void> (fs.flush(temporary, true));
+	static_cast <void> (::__awh_fs__.flush(temporary, true));
 	/**
 	 * Если перенос собранного текста на место цели не удался
 	 *
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
+	 *
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"JSON value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"JSON value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		#endif
 		/**
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 *
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
-		// Выводим признак неудачной записи
 		return false;
 	}
 	// Выводим признак успешности записи
@@ -1993,14 +2101,14 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
  * @brief Метод сличения значений
  *
  * @details Числа сличаются величиной своей, а не видом хранения, объекты - по именам
- * полей и значениям их, а порядок полей сличению не подлежит: стандарт порядка полей
- * не предписывает вовсе, и два объекта, разнящиеся лишь порядком, одинаковы по сути
+ *          полей и значениям их, а порядок полей сличению не подлежит: стандарт порядка полей
+ *          не предписывает вовсе, и два объекта, разнящиеся лишь порядком, одинаковы по сути.
  *
  * @param value сличаемое значение
  * @return      признак совпадения значений
  *
  */
-bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::json::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если виды сличаемых значений разнятся
 	 */
@@ -2010,24 +2118,24 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 	/**
 	 * Определяем вид сличаемых значений
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		// Если значения не определены либо являются пустыми
-		case kind_t::NONE:
-		case kind_t::NUL:
+		case static_cast <uint8_t> (kind_t::NIL):
+		case static_cast <uint8_t> (kind_t::NONE):
 			// Выводим признак совпадения значений
 			return true;
 		// Если значения являются логическими
-		case kind_t::BOOL:
+		case static_cast <uint8_t> (kind_t::BOOL):
 			// Выводим признак совпадения логических значений
 			return (this->_number.flag == value._number.flag);
 		// Если значения являются строками
-		case kind_t::STRING:
+		case static_cast <uint8_t> (kind_t::STRING):
 			// Выводим признак совпадения строковых значений
 			return (this->_text.compare(value._text) == 0);
 		/**
 		 * Если значения являются числами
 		 */
-		case kind_t::NUMBER: {
+		case static_cast <uint8_t> (kind_t::NUMBER): {
 			/**
 			 * Если оба числа являются целыми со знаком
 			 */
@@ -2045,6 +2153,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Сличение таких чисел дробным видом дало бы промах у величин,
 			 *       дробным видом точно не представимых, оттого знак сличается отдельно
+			 *
 			 */
 			if(this->is(type_t::INT) && value.is(type_t::INT)){
 				// Получаем число со знаком из сличаемых чисел
@@ -2055,9 +2164,9 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 				return ((integer >= 0) && (static_cast <uint64_t> (integer) == natural));
 			}
 			// Извлекаемое дробное значение текущего числа
-			double first = 0.;
+			double first = .0;
 			// Извлекаемое дробное значение сличаемого числа
-			double second = 0.;
+			double second = .0;
 			// Выполняем извлечение дробного значения текущего числа
 			this->value(first);
 			// Выполняем извлечение дробного значения сличаемого числа
@@ -2068,6 +2177,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 			 * @note Сличать такие числа равенством нельзя: `NaN` не равно самому себе по
 			 *       устройству дробного вида, и значение, сличённое само с собою, вышло бы
 			 *       себе не равным. Сличаются они признаком, а не величиной
+			 *
 			 */
 			if(::isnan(first) && ::isnan(second))
 				// Выводим признак совпадения чисел, числами не являющихся
@@ -2078,7 +2188,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 		/**
 		 * Если значения являются массивами
 		 */
-		case kind_t::ARRAY: {
+		case static_cast <uint8_t> (kind_t::ARRAY): {
 			/**
 			 * Если количество значений массивов разнится
 			 */
@@ -2102,7 +2212,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 		/**
 		 * Если значения являются объектами
 		 */
-		case kind_t::OBJECT: {
+		case static_cast <uint8_t> (kind_t::OBJECT): {
 			/**
 			 * Если количество полей объектов разнится
 			 */
@@ -2113,10 +2223,11 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 			 * Признаки полей сличаемого объекта, уже нашедших себе пару
 			 *
 			 * @details Перечень этот нужен ради имён повторяющихся: правило `duplicate_t::KEEP`
-			 * оставляет в дереве оба поля, и сличение поиском по имени сличало бы оба
-			 * поля текущего объекта с одним и тем же первым полем сличаемого
+			 *          оставляет в дереве оба поля, и сличение поиском по имени сличало бы оба
+			 *          поля текущего объекта с одним и тем же первым полем сличаемого.
 			 *
 			 * @note Без него `{"a":1,"a":2}` не равнялось бы даже самому себе
+			 *
 			 */
 			vector <bool> taken(value._items.size(), false);
 			/**
@@ -2147,10 +2258,10 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 					if(this->_items.at(i) != value._items.at(j))
 						// Выполняем переход к следующему полю сличаемого объекта
 						continue;
-					// Отмечаем поле сличаемого объекта нашедшим себе пару
-					taken.at(j) = true;
 					// Запоминаем, что поле нашло себе пару
 					found = true;
+					// Отмечаем поле сличаемого объекта нашедшим себе пару
+					taken.at(j) = true;
 					// Прекращаем перебор полей сличаемого объекта
 					break;
 				}
@@ -2172,7 +2283,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 	 *       единого, а сличаются лишь значения совпавшего вида - расхождение видов отсеяно
 	 *       прежде
 	 *
-	 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ 08.09.2026: у `kind_t` семь членов - `NONE`, `NUL`,
+	 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ 08.09.2026: у `kind_t` семь членов - `NONE`, `NIL`,
 	 *       `BOOL`, `NUMBER`, `STRING`, `ARRAY` и `OBJECT`, - и все семь стоят ветвями выбора
 	 *       выше. Тождество это и есть доказательство: выход берётся лишь видом, ветви не
 	 *       имеющим, а такого вида у значения нет
@@ -2186,6 +2297,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	return false;
 }
@@ -2196,7 +2308,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
  * @return      признак несовпадения значений
  *
  */
-bool awh::codec::json::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::json::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак несовпадения значений
 	return !((* this) == value);
 }
@@ -2207,7 +2319,7 @@ bool awh::codec::json::Value::operator != (const Value & value) const noexcept {
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & value) noexcept {
+awh::codec::json::value_t & awh::codec::json::Value::operator = (const value_t & value) noexcept {
 	/**
 	 * Если значение присваивается само себе
 	 */
@@ -2218,14 +2330,14 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & val
 	this->_kind = value._kind;
 	// Выполняем копирование вида хранения значения
 	this->_type = value._type;
-	// Выполняем копирование хранимого числа
-	this->_number = value._number;
 	// Выполняем копирование содержимого значения
 	this->_text = value._text;
 	// Выполняем копирование имён полей объекта
 	this->_names = value._names;
 	// Выполняем копирование значений вместилища
 	this->_items = value._items;
+	// Выполняем копирование хранимого числа
+	this->_number = value._number;
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
 	// Выводим ссылку на текущее значение
@@ -2238,7 +2350,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & val
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) noexcept {
+awh::codec::json::value_t & awh::codec::json::Value::operator = (value_t && value) noexcept {
 	/**
 	 * Если значение присваивается само себе
 	 */
@@ -2269,17 +2381,20 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
  *
  */
 awh::codec::json::Value::Value() noexcept :
- _indexed(false), _kind(kind_t::NONE),
+ _indexed(false),
+ _kind(kind_t::NONE),
  _type(type_t::UNDEFINED),
  _error(error_t::NONE), _text{""} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+	/**
+	 * Обнуляем хранимое число
+	 *
+	 * @note Поле это есть объединение, и обнуление ведётся САМЫМ ШИРОКИМ членом его:
+	 *       запись в член узкий обнулила бы лишь свои байты, а соседние оставила
+	 *       прежними. Следом за обнулением идёт запись самого числа - другого порядка
+	 *       эти две записи не терпят, и обратный затирал бы уже положенное
+	 *
+	 */
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 }
 /**
  * @brief Конструктор значения указанного вида
@@ -2291,40 +2406,34 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept :
  _indexed(false), _kind(kind),
  _type(type_t::UNDEFINED),
  _error(error_t::NONE), _text{""} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	/**
 	 * Определяем вид заводимого значения
 	 */
-	switch(kind){
+	switch(static_cast <uint8_t> (kind)){
 		// Если значение является пустым
-		case kind_t::NUL:
+		case static_cast <uint8_t> (kind_t::NIL):
 			// Устанавливаем вид хранения пустого значения
-			this->_type = type_t::NUL;
+			this->_type = type_t::NIL;
 		break;
 		// Если значение является логическим
-		case kind_t::BOOL:
+		case static_cast <uint8_t> (kind_t::BOOL):
 			// Устанавливаем вид хранения логического значения
 			this->_type = type_t::BOOL;
 		break;
 		// Если значение является строкой
-		case kind_t::STRING:
+		case static_cast <uint8_t> (kind_t::STRING):
 			// Устанавливаем вид хранения строкового значения
 			this->_type = type_t::STRING;
 		break;
 		// Если значение является массивом
-		case kind_t::ARRAY:
+		case static_cast <uint8_t> (kind_t::ARRAY):
 			// Устанавливаем вид хранения массива
 			this->_type = type_t::ARRAY;
 		break;
 		// Если значение является объектом
-		case kind_t::OBJECT:
+		case static_cast <uint8_t> (kind_t::OBJECT):
 			// Устанавливаем вид хранения объекта
 			this->_type = type_t::OBJECT;
 		break;
@@ -2334,8 +2443,9 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept :
 		 * @note Вид числа в отдельности видом своего хранения не обладает: заводится
 		 *       такое значение целым без знака, а точный вид его определяется числом,
 		 *       какое в него положат
+		 *
 		 */
-		case kind_t::NUMBER:
+		case static_cast <uint8_t> (kind_t::NUMBER):
 			// Устанавливаем вид хранения числа наиболее узким
 			this->_type = type_t::UINT8;
 		break;
@@ -2346,8 +2456,9 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept :
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NONE: break;
+		case static_cast <uint8_t> (kind_t::NONE): break;
 	}
 }
 /**
@@ -2357,14 +2468,12 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept :
  *
  */
 awh::codec::json::Value::Value(const bool value) noexcept :
- _indexed(false), _kind(kind_t::BOOL),
- _type(type_t::BOOL), _error(error_t::NONE), _text{""} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+ _indexed(false),
+ _kind(kind_t::BOOL),
+ _type(type_t::BOOL),
+ _error(error_t::NONE), _text{""} {
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
 	// Устанавливаем заводимое логическое значение
 	this->_number.flag = value;
 }
@@ -2372,22 +2481,20 @@ awh::codec::json::Value::Value(const bool value) noexcept :
  * @brief Конструктор целого значения со знаком
  *
  * @details Вид хранения выбирается самый узкий из вмещающих, ровно как его выбирает
- * разбор текста: число `1` со знаком получает вид `INT8`
+ *          разбор текста: число `1` со знаком получает вид `INT8`.
  *
  * @param value заводимое значение
  *
  */
 awh::codec::json::Value::Value(const int64_t value) noexcept :
- _indexed(false), _kind(kind_t::NUMBER),
- _type(type_t::INT64), _error(error_t::NONE), _text{""} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+ _indexed(false),
+ _kind(kind_t::NUMBER),
+ _type(type_t::INT64),
+ _error(error_t::NONE), _text{""} {
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
 	// Устанавливаем заводимое целое число
 	this->_number.integer = value;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	/**
 	 * Устанавливаем самый узкий из вмещающих видов числа
 	 */
@@ -2406,16 +2513,12 @@ awh::codec::json::Value::Value(const int64_t value) noexcept :
  *
  */
 awh::codec::json::Value::Value(const uint64_t value) noexcept :
- _indexed(false), _kind(kind_t::NUMBER),
- _type(type_t::UINT64), _error(error_t::NONE), _text{""}  {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
+ _indexed(false),
+ _kind(kind_t::NUMBER),
+ _type(type_t::UINT64),
+ _error(error_t::NONE), _text{""}  {
 	// Устанавливаем заводимое хранимое число
 	this->_number.natural = value;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	/**
 	 * Устанавливаем самый узкий из вмещающих видов числа
 	 */
@@ -2431,23 +2534,19 @@ awh::codec::json::Value::Value(const uint64_t value) noexcept :
  * @brief Конструктор дробного значения
  *
  * @details Вид `FLOAT` число получает тогда, и только тогда, когда одинарной точности
- * довольно для точного его представления. Проверяется это обращением туда и обратно, а
- * не количеством знаков записи: `0.5` представимо точно, а `0.1` - нет
+ *          довольно для точного его представления. Проверяется это обращением туда и обратно, а
+ *          не количеством знаков записи: `0.5` представимо точно, а `0.1` - нет.
  *
  * @param value заводимое значение
  *
  */
 awh::codec::json::Value::Value(const double value) noexcept :
- _indexed(false), _kind(kind_t::NUMBER),
- _type(type_t::DOUBLE), _error(error_t::NONE), _text{""} {
+ _indexed(false),
+ _kind(kind_t::NUMBER),
+ _type(type_t::DOUBLE),
+ _error(error_t::NONE), _text{""} {
 	// Устанавливаем заводимое дробное число
 	this->_number.real = value;
-	// Устанавливаем заводимое хранимое число
-	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	/**
 	 * Если одинарной точности довольно для точного представления числа
 	 */
@@ -2459,45 +2558,45 @@ awh::codec::json::Value::Value(const double value) noexcept :
  * @brief Конструктор значения из одного знака
  *
  * @details Знак заводится СТРОКОЮ из одного знака: вида для знака у JSON нет вовсе, а
- * различие с `"z"`, дающим строку, свелось бы к одной кавычке. Без этого заводителя
- * `'z'` доводился до `int` и молча становился числом 122
+ *          различие с `"z"`, дающим строку, свелось бы к одной кавычке. Без этого заводителя
+ *          `'z'` доводился до `int` и молча становился числом 122.
  *
  * @param value заводимый знак
  *
  */
-awh::codec::json::Value::Value(const char value) noexcept : Value(string(1, value)) {}
+awh::codec::json::Value::Value(const char value) noexcept : value_t(string(1, value)) {}
 /**
  * @brief Конструкторы целого значения прочих разрядностей
  *
  * @details Заводители эти сводятся к паре `int64_t`/`uint64_t` и ничего нового не
- * хранят. Нужны они одному: без них разряд `int` доводился до `int64_t`, `uint64_t`
- * и `double` одинаково, и `Value v = 1;` не собиралось вовсе
+ *          хранят. Нужны они одному: без них разряд `int` доводился до `int64_t`, `uint64_t`
+ *          и `double` одинаково, и `Value v = 1;` не собиралось вовсе.
  *
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const short value) noexcept : Value(static_cast <int64_t> (value)) {}
+awh::codec::json::Value::Value(const short value) noexcept : value_t(static_cast <int64_t> (value)) {}
 /**
  * @brief Конструктор целого значения без знака малой разрядности
  *
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const unsigned short value) noexcept : Value(static_cast <uint64_t> (value)) {}
+awh::codec::json::Value::Value(const unsigned short value) noexcept : value_t(static_cast <uint64_t> (value)) {}
 /**
  * @brief Конструктор целого значения со знаком обычной разрядности
  *
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const int value) noexcept : Value(static_cast <int64_t> (value)) {}
+awh::codec::json::Value::Value(const int value) noexcept : value_t(static_cast <int64_t> (value)) {}
 /**
  * @brief Конструктор целого значения без знака обычной разрядности
  *
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const unsigned int value) noexcept : Value(static_cast <uint64_t> (value)) {}
+awh::codec::json::Value::Value(const unsigned int value) noexcept : value_t(static_cast <uint64_t> (value)) {}
 /**
  * @brief Конструктор целого значения со знаком длинной разрядности
  *
@@ -2508,7 +2607,8 @@ awh::codec::json::Value::Value(const unsigned int value) noexcept : Value(static
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const std::conditional <std::is_same <int64_t, long>::value, long long, long>::type value) noexcept : Value(static_cast <int64_t> (value)) {}
+awh::codec::json::Value::Value(const std::conditional <std::is_same <int64_t, long>::value, long long, long>::type value) noexcept :
+ value_t(static_cast <int64_t> (value)) {}
 /**
  * @brief Конструктор целого значения без знака длинной разрядности
  *
@@ -2517,7 +2617,8 @@ awh::codec::json::Value::Value(const std::conditional <std::is_same <int64_t, lo
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const std::conditional <std::is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type value) noexcept : Value(static_cast <uint64_t> (value)) {}
+awh::codec::json::Value::Value(const std::conditional <std::is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type value) noexcept :
+ value_t(static_cast <uint64_t> (value)) {}
 /**
  * @brief Конструктор строкового значения
  *
@@ -2527,14 +2628,8 @@ awh::codec::json::Value::Value(const std::conditional <std::is_same <uint64_t, u
 awh::codec::json::Value::Value(const string & value) noexcept :
  _indexed(false), _kind(kind_t::STRING),
  _type(type_t::STRING), _error(error_t::NONE), _text(value) {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 }
 /**
  * @brief Конструктор строкового значения, поданного строкой языка Си
@@ -2543,16 +2638,12 @@ awh::codec::json::Value::Value(const string & value) noexcept :
  *
  */
 awh::codec::json::Value::Value(const char * value) noexcept :
- _indexed(false), _kind(kind_t::STRING),
- _type(type_t::STRING), _error(error_t::NONE), _text{} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+ _indexed(false),
+ _kind(kind_t::STRING),
+ _type(type_t::STRING),
+ _error(error_t::NONE), _text{} {
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	/**
 	 * Если строковое значение подано
 	 */
@@ -2567,16 +2658,12 @@ awh::codec::json::Value::Value(const char * value) noexcept :
  *
  */
 awh::codec::json::Value::Value(const document_t::value_t & value) noexcept :
- _indexed(false), _kind(kind_t::NONE),
- _type(type_t::UNDEFINED),  _text{""} {
-	// Устанавливаем заводимое дробное число
-	this->_number.real = .0;
-	// Устанавливаем заводимое хранимое число
+ _indexed(false),
+ _kind(kind_t::NONE),
+ _type(type_t::UNDEFINED),
+ _error(error_t::NONE), _text{""} {
+	// Обнуляем хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число
-	this->_number.integer = 0;
-	// Устанавливаем заводимое логическое значение
-	this->_number.flag = false;
 	// Выполняем снятие значения со ссылки на узел документа
 	this->absorb(value);
 }
@@ -2586,7 +2673,7 @@ awh::codec::json::Value::Value(const document_t::value_t & value) noexcept :
  * @param value копируемое значение
  *
  */
-awh::codec::json::Value::Value(const Value & value) noexcept :
+awh::codec::json::Value::Value(const value_t & value) noexcept :
  _indexed(false), _kind(value._kind),
  _type(value._type), _number(value._number),
  _error(value._error), _text(value._text),
@@ -2598,7 +2685,7 @@ awh::codec::json::Value::Value(const Value & value) noexcept :
  * @param value переносимое значение
  *
  */
-awh::codec::json::Value::Value(Value && value) noexcept :
+awh::codec::json::Value::Value(value_t && value) noexcept :
  _indexed(false), _kind(value._kind),
  _type(value._type), _number(value._number),
  _error(value._error), _text(::move(value._text)),
@@ -2607,12 +2694,7 @@ awh::codec::json::Value::Value(Value && value) noexcept :
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
-/**
- * @brief Конструктор
- *
- */
-awh::codec::json::Builder::Builder() noexcept :
- _keyed(false), _appended(false) {}
+
 /**
  * @brief Метод помещения собранного значения на своё место
  *
@@ -2656,9 +2738,9 @@ awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & va
 	 *          дорогу к отказу - хоть предел числа членов, хоть отказ на занятое имя при
 	 *          строгих настройках, - и достижимыми станут они все пятеро разом. Правку
 	 *          принимающих вести с оглядкою СЮДА
-	 */
-	/**
+	 *
 	 * Если ни одного вместилища ещё не открыто
+	 *
 	 */
 	if(this->_nesting.empty()){
 		/**
@@ -2666,6 +2748,7 @@ awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & va
 		 *
 		 * @note Двух значений на корне не бывает: стандарт знает один документ - одно
 		 *       значение, а поток из многих документов собирается сборщиком заново
+		 *
 		 */
 		if(this->_result.valid())
 			// Выводим признак неудачного помещения
@@ -2702,6 +2785,7 @@ awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & va
 			 *       помещения: вместилищем здесь служит узел, открытый последним, а тот
 			 *       приходит открытием объекта либо массива и значений принять не может не
 			 *       быть в состоянии. Там же и замер сличением двух сборок от 07.09.2026
+			 *
 			 */
 			if(!parent->append(this->_name, value))
 				// Выводим признак неудачного помещения
@@ -2711,17 +2795,18 @@ awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & va
 			 *
 			 * @note Указание берётся по номеру, а не по имени: обращение по имени отдало
 			 *       бы поле первое, а добавленное лежит последним
+			 *
 			 */
 			return &(* parent)[parent->size() - 1];
 		}
 		/**
 		 * Если установка поля объекта завершилась отказом
-		 */
-		/**
+		 *
 		 * @note Отказ этот НЕДОСТИЖИМ - довод изложен у начала помещения, и там же записано,
 		 *       чем он проверен: чтением обоих принимающих 08.09.2026. Ссылочный довод своего
 		 *       замера не имеет и иметь не должен - у общего основания и запись общая, - но и
 		 *       переносить чужой замер на себя ему нельзя: он лишь указывает, где искать
+		 *
 		 */
 		if(!parent->insert(this->_name, value))
 			// Выводим признак неудачного помещения
@@ -2731,9 +2816,9 @@ awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & va
 	}
 	/**
 	 * Если добавление значения в массив завершилось отказом
-	 */
-	/**
+	 *
 	 * @note Отказ этот НЕДОСТИЖИМ - довод изложен у начала помещения
+	 *
 	 */
 	if(!parent->push(value))
 		// Выводим признак неудачного помещения
@@ -2753,9 +2838,9 @@ bool awh::codec::json::Builder::object() noexcept {
 	/**
 	 * @note Отказ ниже НЕДОСТИЖИМ и оттого не покрыт: помещение объекта отвергнуто быть не
 	 *       может - довод изложен у самого помещения
-	 */
-	/**
+	 *
 	 * Если помещение объекта завершилось отказом
+	 *
 	 */
 	if(result == nullptr)
 		// Выводим признак неудачного открытия
@@ -2777,9 +2862,9 @@ bool awh::codec::json::Builder::array() noexcept {
 	/**
 	 * @note Отказ ниже НЕДОСТИЖИМ и оттого не покрыт: помещение массива отвергнуто быть не
 	 *       может - довод изложен у самого помещения
-	 */
-	/**
+	 *
 	 * Если помещение массива завершилось отказом
+	 *
 	 */
 	if(result == nullptr)
 		// Выводим признак неудачного открытия
@@ -2865,7 +2950,7 @@ bool awh::codec::json::Builder::append(const string & name) noexcept {
  */
 bool awh::codec::json::Builder::null() noexcept {
 	// Выводим признак успешности записи пустого значения
-	return (this->attach(value_t(kind_t::NUL)) != nullptr);
+	return (this->attach(value_t(kind_t::NIL)) != nullptr);
 }
 /**
  * @brief Метод записи логического значения
@@ -2959,16 +3044,16 @@ size_t awh::codec::json::Builder::depth() const noexcept {
  *
  */
 void awh::codec::json::Builder::reset() noexcept {
-	// Выполняем очистку собираемого значения
-	this->_result.clear();
-	// Выполняем очистку стека открытых вместилищ
-	this->_nesting.clear();
-	// Выполняем очистку имени поля объекта
-	this->_name.clear();
 	// Снимаем признак записанного имени поля объекта
 	this->_keyed = false;
 	// Снимаем признак того, что поле объекта кладётся рядом
 	this->_appended = false;
+	// Выполняем очистку имени поля объекта
+	this->_name.clear();
+	// Выполняем очистку собираемого значения
+	this->_result.clear();
+	// Выполняем очистку стека открытых вместилищ
+	this->_nesting.clear();
 }
 /**
  * @brief Метод завершения сборки и изъятия собранного значения
@@ -2985,12 +3070,12 @@ awh::codec::json::value_t awh::codec::json::Builder::finish() noexcept {
 	return result;
 }
 /**
- * @brief Наибольшее смещение, вместимое указанием на содержимое узла
+ * @brief Конструктор
  *
- * @note Постоянная та же, какой стережёт себя сборка дерева из разбора: смещение
- *       содержимого узла занимает четыре байта
  */
-static constexpr size_t STORAGE_LIMIT = static_cast <size_t> (0xFFFFFFFFu);
+awh::codec::json::Builder::Builder() noexcept :
+ _keyed(false), _appended(false) {}
+
 /**
  * @brief Метод переноса владеющего значения в перечень узлов дерева
  *
@@ -3000,14 +3085,14 @@ static constexpr size_t STORAGE_LIMIT = static_cast <size_t> (0xFFFFFFFFu);
  * @return      количество узлов перенесённого поддерева
  *
  */
-uint32_t awh::codec::json::Document::transplant(const json::Value & value, const string * name, vector <node_t> & nodes, const uint32_t depth) noexcept {
+uint32_t awh::codec::json::Document::transplant(const json::value_t & value, const string * name, vector <node_t> & nodes, const uint32_t depth) noexcept {
 	/**
 	 * Если глубина вложенности переносимого значения превышает допустимую
 	 *
 	 * @details Предел `MAX_DEPTH` у документа ТВЁРДЫЙ и настройкою не поднимается: разбор
-	 * текста огранивает им настройку `maxDepth` сам, а запись отвергает вместилище глубже
-	 * него отказом `DEPTH_EXCEEDED`. Дерево же, собранное руками, до 08.09.2026 предела
-	 * этого не знало вовсе
+	 *          текста огранивает им настройку `maxDepth` сам, а запись отвергает вместилище глубже
+	 *          него отказом `DEPTH_EXCEEDED`. Дерево же, собранное руками, до 08.09.2026 предела
+	 *          этого не знало вовсе.
 	 *
 	 * @note Найдено 08.09.2026 чтением довода недостижимости у записи объекта: довод звал
 	 *       непроходимым лишь отделитель, а `object()` отвергает ДВУМЯ дорогами, и вторая -
@@ -3038,10 +3123,10 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		 * Если имя поля объекта в разрядность хранилища знаков уже не помещается
 		 *
 		 * @details Смещение содержимого узла занимает четыре байта, и переполнение его
-		 * молча УСЕКАЕТ смещение: содержимое, за четвёртым гигабайтом лежащее, указывало
-		 * бы в начало хранилища - на чужие знаки. Сборка дерева из разбора это место
-		 * стережёт отказом `STORAGE_EXHAUSTED`, а прививка значения не стерегла: тот же
-		 * дефект жил во втором пути роста дерева
+		 *          молча УСЕКАЕТ смещение: содержимое, за четвёртым гигабайтом лежащее, указывало
+		 *          бы в начало хранилища - на чужие знаки. Сборка дерева из разбора это место
+		 *          стережёт отказом `STORAGE_EXHAUSTED`, а прививка значения не стерегла: тот же
+		 *          дефект жил во втором пути роста дерева.
 		 *
 		 * @note Заслон НЕДОСТИЖИМ проверкой и оттого не покрыт: предел этот -
 		 *       разрядность смещения, четыре гигабайта, - и настройкой не выключается
@@ -3053,6 +3138,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		 * @warning Снимать заслон нельзя: без него смещение усекается МОЛЧА, и узел
 		 *          указывает на чужие знаки в начале хранилища - порча данных без
 		 *          всякого признака отказа
+		 *
 		 */
 		if((this->_storage.size() + name->size()) > ::STORAGE_LIMIT){
 			// Запоминаем код отказа переноса значения
@@ -3072,6 +3158,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 	 *
 	 * @note Смещение это стоит сразу за именем поля намеренно: имя разыскивается по
 	 *       нему же, отступя назад на свою длину
+	 *
 	 */
 	nodes.at(index).offset = static_cast <uint32_t> (this->_storage.size());
 	// Устанавливаем вид хранения значения
@@ -3079,24 +3166,26 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 	/**
 	 * Определяем вид переносимого значения
 	 */
-	switch(value.kind()){
+	switch(static_cast <uint8_t> (value.kind())){
 		/**
 		 * Если значение ещё не определено
 		 *
 		 * @note Значения неопределённого стандарт не знает вовсе, и ложится оно в дерево
 		 *       пустым значением: иного вида, годного ему, в стандарте нет
+		 *
 		 */
-		case kind_t::NONE:
+		case static_cast <uint8_t> (kind_t::NONE):
 			// Устанавливаем вид хранения пустого значения
-			nodes.at(index).type = type_t::NUL;
+			nodes.at(index).type = type_t::NIL;
 		break;
 		/**
 		 * Если значение является логическим
 		 *
 		 * @note Логическое значение хранится длиною записи своей: `true` длиною в четыре
 		 *       знака, `false` - в пять. Ровно так его кладёт и разбор
+		 *
 		 */
-		case kind_t::BOOL: {
+		case static_cast <uint8_t> (kind_t::BOOL): {
 			// Извлекаемое логическое значение
 			bool flag = false;
 			// Выполняем извлечение логического значения
@@ -3107,7 +3196,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является строкой
 		 */
-		case kind_t::STRING: {
+		case static_cast <uint8_t> (kind_t::STRING): {
 			/**
 			 * Если содержимое строки в разрядность хранилища знаков уже не помещается
 			 *
@@ -3120,6 +3209,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 			 *       ОДИН раз при общем основании - у сторожа имени поля выше, - а здесь
 			 *       лишь указано, где её искать. Там же стоит и замер щупом по местам
 			 *       отказа от 04.09.2026
+			 *
 			 */
 			if((this->_storage.size() + value.text().size()) > ::STORAGE_LIMIT){
 				// Запоминаем код отказа переноса значения
@@ -3135,13 +3225,13 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является числом
 		 */
-		case kind_t::NUMBER: {
+		case static_cast <uint8_t> (kind_t::NUMBER): {
 			/**
 			 * Если число хранится записью своей
 			 */
 			if(value.type() == type_t::EXTENDED){
 				// Получаем запись числа
-				const string record = value.raw();
+				const string & record = value.raw();
 				/**
 				 * Если запись числа в разрядность хранилища знаков уже не помещается
 				 *
@@ -3155,6 +3245,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 				 *          причине, что и два его собрата: четыре гигабайта - разрядность
 				 *          смещения. Доказанная подмена кода (06.09.2026) не красит ни
 				 *          одной проверки
+				 *
 				 */
 				if((this->_storage.size() + record.size()) > ::STORAGE_LIMIT){
 					// Запоминаем код отказа переноса значения
@@ -3192,6 +3283,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 			 * @note Число это хранится узлом видом `float`, а владеющим значением - видом
 			 *       `double`: сужение точного значения не меняет, а вид узла оттого и
 			 *       совпадает с видом, каким его кладёт разбор
+			 *
 			 */
 			} else if(value.type() == type_t::FLOAT) {
 				// Извлекаемое дробное число одинарной точности
@@ -3215,8 +3307,8 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является массивом либо объектом
 		 */
-		case kind_t::ARRAY:
-		case kind_t::OBJECT: {
+		case static_cast <uint8_t> (kind_t::ARRAY):
+		case static_cast <uint8_t> (kind_t::OBJECT): {
 			// Устанавливаем количество детей вместилища
 			nodes.at(index).length(static_cast <uint32_t> (value.size()));
 			// Количество узлов поддерева вместилища, считая само вместилище
@@ -3241,9 +3333,9 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NUL:
-		break;
+		case static_cast <uint8_t> (kind_t::NIL): break;
 	}
 	// Выводим количество узлов перенесённого поддерева
 	return 1;
@@ -3334,25 +3426,26 @@ bool awh::codec::json::Document::locate(const vector <string> & parts, uint32_t 
 	return true;
 }
 /**
- * @brief Метод правки дерева документа по указателю
+ * @brief Метод прививки владеющего значения в дерево документа
  *
- * @param pointer указатель на правимое место
- * @param value   устанавливаемое владеющее значение
- * @return        признак успешности правки
+ * @param pointer указатель на прививаемое место по RFC 6901
+ * @param value   прививаемое владеющее значение
+ * @return        признак успешности прививки
  *
  */
-bool awh::codec::json::Document::set(const string & pointer, const json::Value & value) noexcept {
+bool awh::codec::json::Document::set(const string & pointer, const json::value_t & value) noexcept {
 	/**
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
-	 * иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы
-	 * его за отказ её. Замер: разбор отказывал, следом удавалась прививка, а `error()`
-	 * отвечал кодом разбора - вместе с положением в тексте, которого более нет
+	 *          иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы
+	 *          его за отказ её. Замер: разбор отказывал, следом удавалась прививка, а `error()`
+	 *          отвечал кодом разбора - вместе с положением в тексте, которого более нет.
 	 *
 	 * @note Отказ самой прививки кода не ставит: указатель, ведущий в никуда, оглашается
 	 *       возвратом `false`, и он потребителю виден прямо. Код отведён работам, чей
 	 *       отказ иначе неотличим от пустого исхода
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -3380,12 +3473,13 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 *
 	 * @note Розыск ведётся общею работой: правка, снос и обращение к значению обязаны
 	 *       разыскивать по указателю по одним правилам
+	 *
 	 */
 	if(!parts.empty() && !this->locate(parts, target, ancestors))
 		// Выводим признак неудачной прививки
 		return false;
 	// Имя поля объекта, каким прививаемое место числится у родителя своего
-	string name;
+	string name = "";
 	// Признак того, что прививаемое место является полем объекта
 	bool keyed = false;
 	/**
@@ -3401,6 +3495,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 		 *
 		 * @note Имя поля снимается копией намеренно: перенос значения дописывает
 		 *       хранилище знаков, а дописывание вправе переселить его в памяти целиком
+		 *
 		 */
 		if(keyed)
 			// Выполняем снятие имени поля объекта копией
@@ -3414,7 +3509,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 * Если перенос прививаемого значения завершился отказом
 	 *
 	 * @details Отказ переноса оставляет перечень узлов НЕПОЛНЫМ, и вставка такого перечня в
-	 * дерево обратила бы его порчею: размахи поддеревьев разошлись бы с числом узлов
+	 *          дерево обратила бы его порчею: размахи поддеревьев разошлись бы с числом узлов.
 	 *
 	 * @warning Проверка эта стоит ДО правки дерева, и порядок существен: прежде она
 	 *          отсутствовала вовсе, и неполное поддерево вставлялось молча, а прививка
@@ -3422,6 +3517,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 *
 	 * @note Дерево при отказе остаётся нетронутым: ни один узел его к этому мигу не снят и
 	 *       не переставлен
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим признак неудачной прививки
@@ -3442,6 +3538,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 *
 	 * @note Количество детей у предков не меняется вовсе: поддерево заменено поддеревом,
 	 *       а не добавлено к ним
+	 *
 	 */
 	for(auto & ancestor : ancestors)
 		// Выполняем правку размаха предка на разницу размахов поддеревьев
@@ -3451,6 +3548,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 *
 	 * @note Отображение это хранит имена полей ссылками на хранилище знаков и номерами
 	 *       узлов: прививка сдвигает и то и другое, оттого отображение и негодно
+	 *
 	 */
 	this->_index.clear();
 	/**
@@ -3460,6 +3558,7 @@ bool awh::codec::json::Document::set(const string & pointer, const json::Value &
 	 *       здесь ссылки, снятые до прививки, отвечали бы действительностью и отдавали
 	 *       бы чужое значение. Замер: вид на строковое значение после прививки читал
 	 *       испорченное содержимое, а узел отвечал годным
+	 *
 	 */
 	this->_stamp++;
 	// Выводим признак успешной прививки
@@ -3479,8 +3578,9 @@ bool awh::codec::json::Document::reset(const string & pointer) noexcept {
 	 * @note Сброс отдельной работой не заводится намеренно: он есть та же правка, а
 	 *       значением её стоит `null`. Заведись у него свой розыск по указателю - и у
 	 *       одного кодека стало бы два списка правил на один и тот же вид пути
+	 *
 	 */
-	return this->set(pointer, json::Value(json::kind_t::NUL));
+	return this->set(pointer, json::value_t(json::kind_t::NIL));
 }
 /**
  * @brief Метод сноса значения дерева документа по указателю
@@ -3494,6 +3594,7 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @note Договор велит ставить код заново всякой работе, а не одному разбору
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -3512,6 +3613,7 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
 	 * @note Снос корня отвергается: дерево без корня значением не является вовсе, и
 	 *       опустошается оно ходом `clear()`. Отказ этот отличает снос от правки,
 	 *       какая корень заменить вправе
+	 *
 	 */
 	if(parts.empty())
 		// Выводим признак неудачного сноса
@@ -3552,6 +3654,7 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
 	 *
 	 * @note Правится лишь НЕПОСРЕДСТВЕННЫЙ родитель: у предков дальше по цепочке число
 	 *       детей не меняется вовсе, снос убавляет его лишь у того, кто узел держал
+	 *
 	 */
 	if(!ancestors.empty())
 		// Выполняем убавление количества детей державшего вместилища
@@ -3561,6 +3664,7 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
 	 *
 	 * @note Отображение хранит имена полей ссылками на хранилище знаков и номерами
 	 *       узлов: снос сдвигает номера, оттого отображение и негодно
+	 *
 	 */
 	this->_index.clear();
 	/**
@@ -3569,43 +3673,48 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
 	 * @note Снос нумерацию узлов сдвигает, а через очистку не проходит: без клейма
 	 *       ссылки, снятые до сноса, отвечали бы действительностью и отдавали бы
 	 *       чужое значение
+	 *
 	 */
 	this->_stamp++;
 	// Выводим признак успешного сноса
 	return true;
 }
 /**
+ * @brief Шаблон метода обращения к полю объекта по написанию знака
+ *
+ * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
+ */
+template <typename T>
+/**
  * @brief Метод обращения к полю объекта по написанию знака
  *
  * @details Написание знака есть ТЕКСТ: разыскивается имя из одного знака, а не номер.
- * Без этого метода `v['z']` молча обращался к элементу под номером 122
- *
- * @tparam T разряд обращения, ограда пропускает ровно знак
+ *          Без этого метода `v['z']` молча обращался к элементу под номером 122
  *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на значение поля объекта
  *
  */
-template <typename T>
-typename std::enable_if <std::is_same <T, char>::value, const awh::codec::json::Value &>::type
-// Оператор чтения поля объекта по имени из одного знака
-awh::codec::json::Value::operator [] (const T name) const noexcept {
+typename std::enable_if <std::is_same <T, char>::value, const awh::codec::json::value_t &>::type awh::codec::json::Value::operator [] (const T name) const noexcept {
 	// Выполняем обращение к полю объекта по имени из одного знака
 	return (* this)[string(1, name)];
 }
 /**
- * @brief Метод обращения к полю объекта по написанию знака с заведением недостающего
+ * @brief Шаблон метода обращения к полю объекта по написанию знака с заведением недостающего
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод обращения к полю объекта по написанию знака с заведением недостающего
  *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на значение поля объекта
  *
  */
-template <typename T>
-typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::Value &>::type
-// Оператор неконстантного обращения к полю объекта по имени из одного знака
-awh::codec::json::Value::operator [] (const T name) noexcept {
+typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::value_t &>::type awh::codec::json::Value::operator [] (const T name) noexcept {
 	// Выполняем обращение к полю объекта по имени из одного знака
 	return (* this)[string(1, name)];
 }
@@ -3613,9 +3722,7 @@ awh::codec::json::Value::operator [] (const T name) noexcept {
  * Выполняем создание шаблонов обращения по написанию знака
  *
  * @note Создание идёт ровно по разряду `char`: ограда прочих не пропускает
+ *
  */
-template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, const awh::codec::json::Value &>::type
-awh::codec::json::Value::operator [] <char> (const char) const noexcept;
-// Явное заведение обращения к полю объекта по имени из одного знака
-template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Value &>::type
-awh::codec::json::Value::operator [] <char> (const char) noexcept;
+template typename std::enable_if <std::is_same <char, char>::value, const awh::codec::json::value_t &>::type awh::codec::json::Value::operator [] <char> (const char) const noexcept;
+template typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::value_t &>::type awh::codec::json::Value::operator [] <char> (const char) noexcept;

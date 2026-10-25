@@ -20,15 +20,20 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <codec/json/reader.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/json/common.hpp>
+#include <codec/json/reader.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -41,14 +46,22 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Единицы во всяком байте слова
+	 */
+	static constexpr uint64_t ONES = 0x0101010101010101ULL;
+	/**
+	 * Старший бит всякого байта слова
+	 */
+	static constexpr uint64_t HIGH = 0x8080808080808080ULL;
+	/**
 	 * @brief Предел роста хранилища знаков разбора
 	 *
 	 * @details События разбора несут смещение и длину содержимого ЧЕТЫРЬМЯ байтами
-	 * (`emit(const event_t, const uint32_t, const uint32_t)`), а смещение вычисляется
-	 * усечением размера хранилища. Хранилище, за эту ширину вышедшее, обращает их по
-	 * кругу молча: строка длиною `2^32 + N` выдавалась событием длиною ровно `N`, а
-	 * четыре гигабайта содержимого пропадали БЕЗ отказа. Замерено 31.08.2026 двумя
-	 * прогонами - `N` равнялось поданному сверх предела знак в знак
+	 *          (`emit(const event_t, const uint32_t, const uint32_t)`), а смещение вычисляется
+	 *          усечением размера хранилища. Хранилище, за эту ширину вышедшее, обращает их по
+	 *          кругу молча: строка длиною `2^32 + N` выдавалась событием длиною ровно `N`, а
+	 *          четыре гигабайта содержимого пропадали БЕЗ отказа. Замерено 31.08.2026 двумя
+	 *          прогонами - `N` равнялось поданному сверх предела знак в знак.
 	 *
 	 * @note Предел этот - ШИРИНА ПОЛЯ, а не пожелание, оттого сторож при нём безусловен
 	 *       и настройками не снимается: `maxString`, `maxNumber` и `maxDepth` объявлены
@@ -71,28 +84,21 @@ namespace {
 	 *          ему четыре гигабайта дороже, чем стоит весь набор, а половина стендов
 	 *          такой памяти не имеет вовсе. Держится он замером. Сказано это прямо,
 	 *          чтобы отсутствие проверки не сочли недосмотром и сторожа не сняли
+	 *
 	 */
 	static constexpr size_t STORAGE_LIMIT = static_cast <size_t> (0xFFFFFFFFu);
-	/**
-	 * Единицы во всяком байте слова
-	 */
-	static constexpr uint64_t ONES = 0x0101010101010101ULL;
-	/**
-	 * Старший бит всякого байта слова
-	 */
-	static constexpr uint64_t HIGH = 0x8080808080808080ULL;
 
 	/**
 	 * @brief Функция чтения восьми байтов исходного текста словом
 	 *
 	 * @details Слово читается переносом, а не приведением указания: приведение указания
-	 *          к слову нарушает и правило соответствия видов, и требование выравнивания
+	 *          к слову нарушает и правило соответствия видов, и требование выравнивания.
 	 *
 	 * @param buffer буфер читаемых байтов исходного текста
 	 * @return       прочитанное слово
 	 *
 	 */
-	static inline uint64_t reading(const char * buffer) noexcept {
+	static AWH_JSON_INLINE uint64_t reading(const char * buffer) noexcept {
 		// Прочитанное слово
 		uint64_t result = 0;
 		// Выполняем чтение восьми байтов исходного текста
@@ -108,7 +114,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static inline uint64_t lesser(const uint64_t word, const uint64_t bound) noexcept {
+	static AWH_JSON_INLINE uint64_t lesser(const uint64_t word, const uint64_t bound) noexcept {
 		// Выводим отметки байтов, меньших заданной границы
 		return ((word - (ONES * bound)) & ~word);
 	}
@@ -125,7 +131,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static inline uint64_t above(const uint64_t word, const uint64_t bound) noexcept {
+	static AWH_JSON_INLINE uint64_t above(const uint64_t word, const uint64_t bound) noexcept {
 		// Выводим отметки байтов, больших заданной границы
 		return ((word + (ONES * (0x7F - bound))) | word);
 	}
@@ -137,7 +143,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static inline uint64_t equal(const uint64_t word, const uint64_t match) noexcept {
+	static AWH_JSON_INLINE uint64_t equal(const uint64_t word, const uint64_t match) noexcept {
 		// Получаем слово, обнулённое в местах совпадения байтов
 		const uint64_t found = (word ^ match);
 		// Выводим отметки байтов, равных разыскиваемому
@@ -149,13 +155,13 @@ namespace {
 	 * @details Стандарт числит пробельными ровно четыре знака: пробел, знак табуляции,
 	 *          перевод строки и возврат каретки. Прочие знаки, какие в обиходе зовут
 	 *          пробельными, - вертикальная табуляция, перевод страницы, неразрывный
-	 *          пробел - стандартом пробельными не числятся вовсе
+	 *          пробел - стандартом пробельными не числятся вовсе.
 	 *
 	 * @param letter проверяемый знак
 	 * @return       признак принадлежности знака к пробельным
 	 *
 	 */
-	static inline bool spacing(const char letter) noexcept {
+	static AWH_JSON_INLINE bool spacing(const char letter) noexcept {
 		// Выводим признак принадлежности знака к пробельным
 		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r'));
 	}
@@ -167,7 +173,7 @@ namespace {
 	 * @return       признак того, что знак является шестнадцатеричным
 	 *
 	 */
-	static inline bool hexadecimal(const char letter, uint32_t & result) noexcept {
+	static AWH_JSON_INLINE bool hexadecimal(const char letter, uint32_t & result) noexcept {
 		/**
 		 * Если знак является десятичной цифрой
 		 */
@@ -244,25 +250,26 @@ namespace {
 			result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
 		}
 	}
-}
+};
 
 /**
  * @brief Конструктор
  *
  */
 awh::codec::json::Reader::Settings::Settings() noexcept :
- encoding(encoding_t::NONE), strict(false),
- allowComments(false), allowTrailingCommas(false),
- allowInfinityAndNan(false), allowSingleQuotes(false),
- stream(false), emitComments(false),
- maxString(MAX_STRING), maxNumber(MAX_NUMBER), maxDepth(MAX_DEPTH) {}
+ strict(false), stream(false),
+ emitComments(false), allowComments(false),
+ allowSingleQuotes(false), allowTrailingCommas(false),
+ allowInfinityAndNan(false), maxDepth(MAX_DEPTH),
+ maxString(MAX_STRING), maxNumber(MAX_NUMBER),
+ encoding(encoding_t::NONE) {}
 
 /**
  * @brief Метод заполнения разметки знаков, прерывающих быстрый проход
  *
  * @details Отмечаются знаки, чьё значение разбор обязан рассмотреть: кавычки,
  *          закрывающие строку, знак отмены и управляющие знаки, стандартом внутри
- *          строки запрещённые. Прочие знаки содержимым строки и являются
+ *          строки запрещённые. Прочие знаки содержимым строки и являются.
  *
  */
 void awh::codec::json::Reader::marking() noexcept {
@@ -289,6 +296,7 @@ void awh::codec::json::Reader::marking() noexcept {
 	 *
 	 * @note При запрете одинарных кавычек образец повторяет первый: повторная проверка
 	 *       ничего не портит, а ветвление внутри прохода обошлось бы дороже
+	 *
 	 */
 	this->_breakWord[1] = (::ONES * static_cast <uint64_t> (this->_settings.allowSingleQuotes ? '\'' : '"'));
 }
@@ -298,11 +306,11 @@ void awh::codec::json::Reader::marking() noexcept {
  * @details Проход берёт два вида отрезков. Внутри строки это знаки, в разметке не
  *          отмеченные: они содержимым строки и являются. Внутри записи числа это
  *          цифры, стоящие там, где цифра состояния не меняет - в целой части, в
- *          дробной и в порядке
+ *          дробной и в порядке.
  *
  * @details Отрезок переносится в хранилище одним действием, а учёт положения ведётся
  *          сложением: без такого прохода всякий знак содержимого шёл бы через
- *          переключатель на тридцать три состояния
+ *          переключатель на тридцать три состояния.
  *
  * @note Договор о независимости выдачи от нарезки текста проход этот не задевает:
  *       знаки, чьё значение зависит от следующего за ними, отрезком не берутся, а
@@ -319,18 +327,18 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_phase){
+	switch(static_cast <uint8_t> (this->_phase)){
 		/**
 		 * Если разбор находится внутри строки
 		 */
-		case phase_t::STRING: {
+		case static_cast <uint8_t> (phase_t::STRING): {
 			/**
 			 * Выполняем проход по восьми байтам разом
 			 *
 			 * @details Знаки, прерывающие проход, разыскиваются в слове целочисленными
-			 * действиями: управляющий знак - как байт меньше пробела, кавычки и знак
-			 * отмены - как байт, равный образцу. Обращение к разметке на всякий байт
-			 * при этом не делается вовсе
+			 *          действиями: управляющий знак - как байт меньше пробела, кавычки и знак
+			 *          отмены - как байт, равный образцу. Обращение к разметке на всякий байт
+			 *          при этом не делается вовсе.
 			 *
 			 * @note Байты со старшим битом проход не прерывают: продолжение знака
 			 *       кодировки UTF-8 строке принадлежит, а поиск меньшего их не отмечает
@@ -339,6 +347,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 			 *       знакам: имена полей в обиходе коротки - два-три знака, - и чтение слова
 			 *       ради них обходится дороже самого просмотра. Замером на дереве из коротких
 			 *       имён проход этот стоил пятой части всего разбора
+			 *
 			 */
 			while((length < size) && !this->_breakString[static_cast <uint8_t> (buffer[length])]){
 				// Выполняем переход к следующему знаку
@@ -351,12 +360,13 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 					 * Выполняем проход по восьми байтам разом
 					 *
 					 * @details Знаки, прерывающие проход, разыскиваются в слове целочисленными
-					 * действиями: управляющий знак - как байт меньше пробела, кавычки и знак
-					 * отмены - как байт, равный образцу. Обращение к разметке на всякий байт
-					 * при этом не делается вовсе
+					 *          действиями: управляющий знак - как байт меньше пробела, кавычки и знак
+					 *          отмены - как байт, равный образцу. Обращение к разметке на всякий байт
+					 *          при этом не делается вовсе.
 					 *
 					 * @note Байты со старшим битом проход не прерывают: продолжение знака
 					 *       кодировки UTF-8 строке принадлежит, а поиск меньшего их не отмечает
+					 *
 					 */
 					while((length + sizeof(uint64_t)) <= size){
 						// Выполняем чтение очередных восьми байтов исходного текста
@@ -392,14 +402,15 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		/**
 		 * Если разбор находится внутри записи числа там, где цифра состояния не меняет
 		 */
-		case phase_t::NUMBER_INTEGER:
-		case phase_t::NUMBER_FRACTION:
-		case phase_t::NUMBER_POWER: {
+		case static_cast <uint8_t> (phase_t::NUMBER_POWER):
+		case static_cast <uint8_t> (phase_t::NUMBER_INTEGER):
+		case static_cast <uint8_t> (phase_t::NUMBER_FRACTION): {
 			/**
 			 * Выполняем проход по цифрам записи числа
 			 *
 			 * @note Проход начинается побайтно намеренно: числа в обиходе коротки, а
 			 *       проверка целого слова на пробеге короче восьми цифр - чистый убыток
+			 *
 			 */
 			while((length < size) && (buffer[length] >= '0') && (buffer[length] <= '9')){
 				// Выполняем переход к следующему знаку
@@ -415,6 +426,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 					 *       байт меньше нуля и байт больше девятки. Байты со старшим
 					 *       битом отмечаются вторым поиском и проход прерывают, как и
 					 *       подобает
+					 *
 					 */
 					while((length + sizeof(uint64_t)) <= size){
 						// Выполняем чтение очередных восьми байтов исходного текста
@@ -470,6 +482,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 			 *
 			 * @note Знак, разрядность переполняющий, достаётся разбору по знакам ровно
 			 *       так же, как и у пределов длины, и тот отвечает отказом в том же месте
+			 *
 			 */
 			{
 				// Получаем остаток разрядности события
@@ -486,6 +499,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 				 *
 				 * @warning Снимать укорочение нельзя: без него длина события усекается МОЛЧА,
 				 *          и событие указывает на чужие знаки - порча без признака отказа
+				 *
 				 */
 				if(length > room)
 					// Укорачиваем проход до остатка разрядности
@@ -510,8 +524,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		}
 		/**
 		 * Если разбор находится в состоянии, отрезком не проходимом
-		 */
-		/**
+		 *
 		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: быстрый проход зовётся лишь для
 		 *       состояний, входящих в его разряды, и состояния сверх них сюда не доходят
 		 *
@@ -530,6 +543,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 		 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 		 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+		 *
 		 */
 		default: return 0;
 	}
@@ -571,6 +585,7 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		 *       что и у прохода по знакам числа выше: предел в четыре гигабайта настройкой
 		 *       не понижается. Довод ССЫЛОЧНЫЙ, и общее основание с замером щупом стоит у
 		 *       сторожа переполнения хранилища в `src/codec/json/value.cpp` от 04.09.2026
+		 *
 		 */
 		if(length > room)
 			// Укорачиваем проход до остатка разрядности
@@ -606,12 +621,13 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 	 * Разряды состояний разбора, у каких быстрый проход берёт отрезок
 	 *
 	 * @details Проверка эта стоит впереди вызова быстрого прохода: у дерева из коротких
-	 * имён половина знаков приходится на строение - скобки, запятые и двоеточия, - и
-	 * отрезка состояния их не дают вовсе. Вызов ради возврата нуля обходился дороже
-	 * самой проверки
+	 *          имён половина знаков приходится на строение - скобки, запятые и двоеточия, - и
+	 *          отрезка состояния их не дают вовсе. Вызов ради возврата нуля обходился дороже
+	 *          самой проверки.
 	 *
 	 * @note Разряды заданы числом, а не таблицей: состояний разбора тридцать три, и все
 	 *       они умещаются в одно слово
+	 *
 	 */
 	static constexpr uint64_t BULK = (
 		(1ULL << static_cast <uint8_t> (phase_t::STRING)) |
@@ -630,6 +646,7 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 		 *
 		 * @note Прекращение запрашивается обработчиком прямой выдачи событий прямо
 		 *       посреди куска текста, и разбор обязан остановиться немедля
+		 *
 		 */
 		if(this->_stopped)
 			// Выводим признак неудачного разбора
@@ -644,10 +661,25 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 		 *       предел их - четыре гигабайта, - настройкой не понижается, и добыть отказ
 		 *       значило бы подать разбору текст такого размера. Замерено щупом по местам
 		 *       отказа 04.09.2026; те же сторожа с тем же доводом стоят у сборки дерева
+		 *
 		 */
-		if(this->_storage.size() >= ::STORAGE_LIMIT)
-			// Выводим ошибку исчерпания разрядности хранилища
+		if(this->_storage.size() >= ::STORAGE_LIMIT){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {text, size}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STORAGE_EXHAUSTED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STORAGE_EXHAUSTED));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::STORAGE_EXHAUSTED);
+		}
 		/**
 		 * Если длина собираемого значения исчерпала разрядность события
 		 *
@@ -662,10 +694,25 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 		 *          не красит ни одной проверки, а достижим порог лишь значением
 		 *          соответствующего размера - держать такое в наборе значит требовать
 		 *          четырёх гигабайтов памяти от всякой машины стенда
+		 *
 		 */
-		if(this->_length >= ::STORAGE_LIMIT)
-			// Выводим ошибку исчерпания разрядности хранилища
+		if(this->_length >= ::STORAGE_LIMIT){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {text, size}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STORAGE_EXHAUSTED));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STORAGE_EXHAUSTED));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::STORAGE_EXHAUSTED);
+		}
 		/**
 		 * Если состояние разбора отрезок дать способно
 		 */
@@ -697,6 +744,7 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 	 * @note Успех судится состоянием, а не исчерпанием текста: прекращение разбора
 	 *       по требованию потребителя случается и на последнем знаке куска, а тогда
 	 *       перебор оканчивается сам собою и проверки в начале круга не доходит
+	 *
 	 */
 	return !this->_stopped;
 }
@@ -721,6 +769,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 *
 	 * @note Прекращение кода отказа не устанавливает, и одной проверки кода отказа
 	 *       для отсева продолжения разбора недостаточно
+	 *
 	 */
 	if(this->_stopped)
 		// Выводим признак неудачного разбора
@@ -729,18 +778,19 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * Если подача продолжена после объявленного конца текста
 	 *
 	 * @details Отказ этот от лишних знаков в тексте ОТЛИЧАЕТСЯ, и код у него свой:
-	 * прежде отвечалось кодом лишних знаков за документом, тогда как документ цел, а
-	 * ошибся вызывающий - объявив конец текста, он продолжил подачу. Отправлять его
-	 * искать изъян в тексте неверно
+	 *          прежде отвечалось кодом лишних знаков за документом, тогда как документ цел, а
+	 *          ошибся вызывающий - объявив конец текста, он продолжил подачу. Отправлять его
+	 *          искать изъян в тексте неверно.
 	 *
 	 * @note Пустая подача отказом не является: она ничего к тексту не добавляет, и
 	 *       вызывающий вправе повторить объявление конца
+	 *
 	 */
 	if(this->_last && (size > 0)){
 		// Запоминаем код отказа разбора
 		this->_error = error_t::TEXT_ALREADY_ENDED;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON parsing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON parsing failed: %s", log::flag_t::CRITICAL, codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -752,6 +802,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * @note Хранилище очищается лишь тогда, когда события его уже выданы: события
 	 *       ссылаются в него смещениями, и очистка при неопустевшей очереди обесценила
 	 *       бы ссылки уже собранных событий
+	 *
 	 */
 	if(!this->_keeping && (this->_head >= this->_items.size()) && (this->_length == 0)){
 		// Очищаем очередь собранных событий разбора
@@ -771,8 +822,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * @note Кодировка навязывается лишь однажды: сменить её посреди текста нельзя,
 	 *       и повторное указание той же кодировки отвергалось бы отказом, обращая
 	 *       подачу текста кусками в ошибку неподдерживаемой кодировки
-	 */
-	/**
+	 *
 	 * @warning Довод, здесь прежде стоявший, гласил «заслон НЕДОСТИЖИМ: приведение принимает
 	 *          всякий вид, какой настройки способны задать», и был ЛОЖЕН дважды. Во-первых,
 	 *          приведение по ВИДУ не отвергает вовсе - установка вида отвечает отказом лишь
@@ -797,16 +847,31 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 *
 	 * @warning Снимать заслон нельзя: он и есть страж того, что смена кодировки посреди
 	 *          подачи будет отвергнута, а не разобрана вслепую
+	 *
 	 */
-	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) &&
-	   !this->_decoder.encoding(this->_settings.encoding))
-		// Выводим ошибку смены кодировки посреди подачи текста
+	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) && !this->_decoder.encoding(this->_settings.encoding)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::ENCODING_ALREADY_CHOSEN));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::ENCODING_ALREADY_CHOSEN));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::ENCODING_ALREADY_CHOSEN);
+	}
 	/**
 	 * Если поданный текст уже отвечает кодировке UTF-8
 	 *
 	 * @note Приводить в таком случае нечего: текст проверяется на месте и разбирается
 	 *       прямо из поданного буфера, не перенося ни байта в отдельное хранилище
+	 *
 	 */
 	if(this->_decoder.direct()){
 		// Кусок текста, проверенного на месте
@@ -819,8 +884,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		if((chunk.head != nullptr) && (chunk.count > 0)){
 			/**
 			 * Если разбор доведённого знака завершился отказом
-			 */
-			/**
+			 *
 			 * @note Отказ этот ДОСТИЖИМ: ворошитель за 60 000 подач берёт его 609 раз. Довод,
 			 *       здесь прежде стоявший, утверждал обратное - будто обработка куска отвечает
 			 *       отказом лишь на прекращение разбора потребителем либо на отказ разбора, оба
@@ -834,6 +898,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 			 *
 			 * @warning Снимать отказ нельзя: приведение кодировки вправе отдать несколько кусков
 			 *          разом, и прекращение разбора на первом из них обязано остановить остальные
+			 *
 			 */
 			if(!this->process(chunk.head, chunk.count))
 				// Выводим признак неудачного разбора
@@ -845,6 +910,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		 * @note Разбор ведётся прежде выдачи отказа проверки намеренно: отказ разбора,
 		 *       случившийся раньше в тексте, обязан быть выдан раньше, иначе положение
 		 *       отказа зависело бы от нарезки текста на куски
+		 *
 		 */
 		if((chunk.body != nullptr) && (chunk.length > 0)){
 			/**
@@ -859,6 +925,19 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		 */
 		if(!result){
 			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(this->_decoder.error()));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(this->_decoder.error()));
+			#endif
+			/**
 			 * Выводим отказ проверки кодировки вместе с местом его
 			 *
 			 * @note Место отказа проставляется общим путём намеренно: без него оно
@@ -866,6 +945,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 			 *       негодного байта и место его знает. Разбор к этому времени прошёл
 			 *       весь годный текст, а число пройденных знаков от нарезки текста на
 			 *       куски не зависит - оттого и место отказа выходит одинаковым
+			 *
 			 */
 			return this->fail(this->_decoder.error());
 		}
@@ -883,20 +963,33 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 			 * @note Разбор ведётся прежде выдачи отказа приведения намеренно: отказ разбора,
 			 *       случившийся раньше в тексте, обязан быть выдан раньше, иначе положение
 			 *       отказа зависело бы от нарезки текста на куски
+			 *
 			 */
 			this->process(this->_decoded.data(), this->_decoded.size());
 			/**
 			 * Если разбор отказа не выдал
 			 */
-			if(this->_error == error_t::NONE)
+			if(this->_error == error_t::NONE){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(this->_decoder.error()));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(this->_decoder.error()));
+				#endif
 				/**
 				 * Выводим отказ приведения кодировки вместе с местом его
 				 *
 				 * @note Место отказа проставляется общим путём намеренно: без него оно
 				 *       осталось бы неизвестным (`NO_OFFSET`), тогда как разбор дошёл до
 				 *       негодного байта и место его знает
-				 */
-				/**
+				 *
 				 * @note Выход этот ДОСТИЖИМ, и набор берёт его 114 раз за прогон. Довод, здесь прежде
 				 *       стоявший, утверждал обратное: будто приведение кодировки отвечает отказом лишь
 				 *       установив код отказа, и ветвь выше его подхватывает. Замерено 07.09.2026 печатью
@@ -909,8 +1002,10 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 				 *
 				 * @warning Снимать выход нельзя: отказ приведения без кода отказа обратился бы разбором,
 				 *          прекращённым молча и без причины
+				 *
 				 */
 				return this->fail(this->_decoder.error());
+			}
 			// Выводим признак неудачного разбора
 			return false;
 		}
@@ -927,8 +1022,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * @note Проверка эта стоит прежде разбора конца текста намеренно: прекращение
 	 *       случается и на последнем знаке куска, а тогда разбор конца текста выдал
 	 *       бы свой отказ поверх чужой причины прекращения
-	 */
-	/**
+	 *
 	 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: прекращение разбора внутри подачи
 	 *       доходит до вызывающего отказом обработки куска, а тот стоит выше и прекращает
 	 *       подачу прежде. Оттого признак прекращения к этому мигу непременно снят
@@ -943,6 +1037,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	if(this->_stopped)
 		// Выводим признак неудачного разбора
@@ -957,6 +1052,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		 * @note Примечание это закрывающего знака не имеет: концом его служит перевод
 		 *       строки либо конец текста. Оттого оно закрывается прежде разбора
 		 *       состояния, а разбор судит уже по тому, к чему примечание вернулось
+		 *
 		 */
 		if(this->_phase == phase_t::COMMENT_LINE){
 			/**
@@ -969,59 +1065,102 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		/**
 		 * Определяем состояние разбора текста
 		 */
-		switch(this->_phase){
+		switch(static_cast <uint8_t> (this->_phase)){
 			// Если разбор находится внутри записи числа
-			case phase_t::NUMBER_ZERO:
-			case phase_t::NUMBER_INTEGER:
-			case phase_t::NUMBER_FRACTION:
-			case phase_t::NUMBER_POWER:
+			case static_cast <uint8_t> (phase_t::NUMBER_ZERO):
+			case static_cast <uint8_t> (phase_t::NUMBER_POWER):
+			case static_cast <uint8_t> (phase_t::NUMBER_INTEGER):
+			case static_cast <uint8_t> (phase_t::NUMBER_FRACTION): {
 				/**
 				 * Завершаем запись числа концом текста
 				 *
 				 * @note Число - единственное значение, у какого нет закрывающего знака:
 				 *       окончанием его служит всякий знак, числу не принадлежащий, либо
 				 *       конец текста
+				 *
 				 */
 				if(!this->parse(' ') || this->_stopped)
 					// Выводим признак неудачного разбора
 					return false;
-			break;
+			} break;
 			// Если разбор находится в начале документа
-			case phase_t::DOCUMENT_START:
-				// Выводим ошибку пустого текста
+			case static_cast <uint8_t> (phase_t::DOCUMENT_START): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EMPTY_TEXT));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EMPTY_TEXT));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EMPTY_TEXT);
+			}
 			/**
 			 * Если разбор находится внутри строки
 			 *
 			 * @note Обрыв текста внутри строки описан отдельным кодом отказа: он
 			 *       указывает на незакрытую кавычку прямо, а общий обрыв текста
 			 *       заставил бы разыскивать причину самому
+			 *
 			 */
-			case phase_t::STRING:
-			case phase_t::ESCAPE:
-			case phase_t::UNICODE_1:
-			case phase_t::UNICODE_2:
-			case phase_t::UNICODE_3:
-			case phase_t::UNICODE_4:
-			case phase_t::SURROGATE_SLASH:
-			case phase_t::SURROGATE_U:
-			case phase_t::SURROGATE_1:
-			case phase_t::SURROGATE_2:
-			case phase_t::SURROGATE_3:
-			case phase_t::SURROGATE_4:
-				// Выводим ошибку незакрытой строки
+			case static_cast <uint8_t> (phase_t::STRING):
+			case static_cast <uint8_t> (phase_t::ESCAPE):
+			case static_cast <uint8_t> (phase_t::UNICODE_1):
+			case static_cast <uint8_t> (phase_t::UNICODE_2):
+			case static_cast <uint8_t> (phase_t::UNICODE_3):
+			case static_cast <uint8_t> (phase_t::UNICODE_4):
+			case static_cast <uint8_t> (phase_t::SURROGATE_U):
+			case static_cast <uint8_t> (phase_t::SURROGATE_1):
+			case static_cast <uint8_t> (phase_t::SURROGATE_2):
+			case static_cast <uint8_t> (phase_t::SURROGATE_3):
+			case static_cast <uint8_t> (phase_t::SURROGATE_4):
+			case static_cast <uint8_t> (phase_t::SURROGATE_SLASH): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNTERMINATED_STRING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNTERMINATED_STRING));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNTERMINATED_STRING);
+			}
 			// Если разбор находится внутри примечания в скобках
-			case phase_t::SLASH:
-			case phase_t::COMMENT_BLOCK:
-			case phase_t::COMMENT_STAR:
-				// Выводим ошибку незакрытого примечания
+			case static_cast <uint8_t> (phase_t::SLASH):
+			case static_cast <uint8_t> (phase_t::COMMENT_STAR):
+			case static_cast <uint8_t> (phase_t::COMMENT_BLOCK): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNTERMINATED_COMMENT));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNTERMINATED_COMMENT));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNTERMINATED_COMMENT);
-			// Если разбор окончен
-			case phase_t::DOCUMENT_END:
+			}
 			// Если разбор прекращён отказом
-			case phase_t::FAILED:
-			break;
+			case static_cast <uint8_t> (phase_t::FAILED):
+			// Если разбор окончен
+			case static_cast <uint8_t> (phase_t::DOCUMENT_END): break;
 			/**
 			 * Если разбор находится посреди значения
 			 */
@@ -1030,18 +1169,46 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 				 * Если разбор находится внутри незакрытого вместилища
 				 *
 				 * @details Код называет ВИД незакрытого вместилища, а не общий обрыв
-				 * текста: потребитель, ввод чинящий, из общего кода не узнавал, чем
-				 * дописывать текст, - строка свой код имела, а массив с объектом нет.
-				 * Заведены коды решением от 01.09.2026
+				 *          текста: потребитель, ввод чинящий, из общего кода не узнавал, чем
+				 *          дописывать текст, - строка свой код имела, а массив с объектом нет.
+				 *          Заведены коды решением от 01.09.2026
 				 *
 				 * @note Вид берётся у ВЕРХА стека вложенности: незакрытым числится то
 				 *       вместилище, что открыто последним, - его и обязан закрыть
 				 *       потребитель прежде прочих
+				 *
 				 */
-				if(!this->_nesting.empty())
-					// Выводим ошибку незакрытого вместилища
+				if(!this->_nesting.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY);
-				// Выводим ошибку обрыва текста
+				}
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNEXPECTED_EOF));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNEXPECTED_EOF));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNEXPECTED_EOF);
 			}
 		}
@@ -1050,16 +1217,32 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		 *
 		 * @note Код называет вид незакрытого вместилища ровно как и заслон выше: место
 		 *       это ловит обрыв на границе значений, а тот - обрыв посреди значения
+		 *
 		 */
-		if(!this->_nesting.empty())
-			// Выводим ошибку незакрытого вместилища
+		if(!this->_nesting.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail((this->_nesting.back() == kind_t::OBJECT) ? error_t::UNCLOSED_OBJECT : error_t::UNCLOSED_ARRAY);
+		}
 		/**
 		 * Выполняем выдачу события исчерпания подаваемого текста
 		 *
 		 * @note Событие это отличает исчерпание текста от простого опустения очереди
 		 *       событий: потоковому разбору без него неоткуда узнать, ждать ли ещё
 		 *       документов
+		 *
 		 */
 		this->emit(event_t::FINISH, 0, 0);
 	}
@@ -1069,6 +1252,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	 * @note Успех судится признаком прекращения, а не исчерпанием текста: разбор
 	 *       конца текста сам выдаёт события - завершение числа, окончание документа
 	 *       и исчерпание подаваемого текста, - и прекращение случается на любом из них
+	 *
 	 */
 	return !this->_stopped;
 }
@@ -1088,56 +1272,56 @@ bool awh::codec::json::Reader::feed(const string_view text) noexcept {
  *
  */
 void awh::codec::json::Reader::reset() noexcept {
-	// Сбрасываем состояние разбора текста
-	this->_phase = phase_t::DOCUMENT_START;
-	// Снимаем признак прекращения разбора по требованию потребителя
-	this->_stopped = false;
-	// Сбрасываем код отказа разбора
-	this->_error = error_t::NONE;
-	// Сбрасываем признак подачи последнего куска текста
-	this->_last = false;
-	// Сбрасываем признак разбора имени поля объекта
-	this->_keyed = false;
-	// Сбрасываем признак изменения содержимого разбором
-	this->_modified = false;
 	// Устанавливаем признак того, что вместилище ещё не получило значений
 	this->_empty = true;
+	// Сбрасываем признак подачи последнего куска текста
+	this->_last = false;
 	// Сбрасываем признак прочитанной запятой
 	this->_comma = false;
+	// Сбрасываем признак разбора имени поля объекта
+	this->_keyed = false;
+	// Снимаем признак прекращения разбора по требованию потребителя
+	this->_stopped = false;
+	// Сбрасываем признак изменения содержимого разбором
+	this->_modified = false;
+	// Сбрасываем указание на голову очереди собранных событий
+	this->_head = 0;
 	// Сбрасываем счёт байтов, выброшенных из хранилища знаков
 	this->_origin = 0;
+	// Сбрасываем смещение от начала текста
+	this->_offset = 0;
+	// Сбрасываем длину собираемого значения
+	this->_length = 0;
+	// Сбрасываем собираемый знак Юникода
+	this->_unicode = 0;
+	// Сбрасываем количество разобранных знаков литерала
+	this->_matched = 0;
+	// Сбрасываем удержанный старший суррогат
+	this->_surrogate = 0;
+	// Устанавливаем номер первой строки текста
+	this->_line = 1;
+	// Устанавливаем первое положение в строке
+	this->_column = 1;
+	// Очищаем очередь собранных событий разбора
+	this->_items.clear();
 	// Очищаем хранилище знаков собираемого значения
 	this->_storage.clear();
 	// Очищаем хранилище перекодированного текста
 	this->_decoded.clear();
 	// Очищаем стек видов вместилищ
 	this->_nesting.clear();
-	// Очищаем очередь собранных событий разбора
-	this->_items.clear();
-	// Сбрасываем указание на голову очереди собранных событий
-	this->_head = 0;
+	// Сбрасываем разбираемый литерал
+	this->_literal = nullptr;
+	// Сбрасываем код отказа разбора
+	this->_error = error_t::NONE;
+	// Сбрасываем состояние разбора текста
+	this->_phase = phase_t::DOCUMENT_START;
 	// Сбрасываем текущее выданное событие
 	this->_current = item_t();
 	// Сбрасываем положение текущего события в исходном тексте
 	this->_position = location_t();
 	// Сбрасываем положение обнаруженного отказа в исходном тексте
 	this->_failure = location_t();
-	// Сбрасываем смещение от начала текста
-	this->_offset = 0;
-	// Устанавливаем номер первой строки текста
-	this->_line = 1;
-	// Устанавливаем первое положение в строке
-	this->_column = 1;
-	// Сбрасываем длину собираемого значения
-	this->_length = 0;
-	// Сбрасываем собираемый знак Юникода
-	this->_unicode = 0;
-	// Сбрасываем удержанный старший суррогат
-	this->_surrogate = 0;
-	// Сбрасываем количество разобранных знаков литерала
-	this->_matched = 0;
-	// Сбрасываем разбираемый литерал
-	this->_literal = nullptr;
 	// Выполняем сброс состояния приведения кодировки
 	this->_decoder.reset();
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
@@ -1182,37 +1366,37 @@ awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexce
 	/**
 	 * Определяем вид текущего события
 	 */
-	switch(this->_current.event){
+	switch(static_cast <uint8_t> (this->_current.event)){
 		// Если событие является именем поля объекта либо строкой
-		case event_t::KEY:
-		case event_t::STRING:
+		case static_cast <uint8_t> (event_t::KEY):
+		case static_cast <uint8_t> (event_t::STRING):
 			// Устанавливаем вид значения
 			result.kind = kind_t::STRING;
 		break;
 		// Если событие является пустым значением
-		case event_t::NUL:
+		case static_cast <uint8_t> (event_t::NIL):
 			// Устанавливаем вид значения
-			result.kind = kind_t::NUL;
+			result.kind = kind_t::NIL;
 		break;
 		// Если событие является логическим значением
-		case event_t::BOOL:
+		case static_cast <uint8_t> (event_t::BOOL):
 			// Устанавливаем вид значения
 			result.kind = kind_t::BOOL;
 		break;
 		// Если событие является числом
-		case event_t::NUMBER:
+		case static_cast <uint8_t> (event_t::NUMBER):
 			// Устанавливаем вид значения
 			result.kind = kind_t::NUMBER;
 		break;
 		// Если событие является началом либо концом массива
-		case event_t::ARRAY_BEGIN:
-		case event_t::ARRAY_END:
+		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
+		case static_cast <uint8_t> (event_t::ARRAY_END):
 			// Устанавливаем вид значения
 			result.kind = kind_t::ARRAY;
 		break;
 		// Если событие является началом либо концом объекта
-		case event_t::OBJECT_BEGIN:
-		case event_t::OBJECT_END:
+		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
+		case static_cast <uint8_t> (event_t::OBJECT_END):
 			// Устанавливаем вид значения
 			result.kind = kind_t::OBJECT;
 		break;
@@ -1223,12 +1407,12 @@ awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexce
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 *
 		 */
-		case event_t::NONE:
-		case event_t::COMMENT:
-		case event_t::DOCUMENT:
-		case event_t::FINISH:
-		break;
+		case static_cast <uint8_t> (event_t::NONE):
+		case static_cast <uint8_t> (event_t::FINISH):
+		case static_cast <uint8_t> (event_t::COMMENT):
+		case static_cast <uint8_t> (event_t::DOCUMENT): break;
 	}
 	// Выводим извлечённое значение текущего события
 	return result;
@@ -1256,11 +1440,12 @@ void awh::codec::json::Reader::release(string & storage) noexcept {
 	 * Выполняем обмен хранилищами с потребителем
 	 *
 	 * @details Обмен, а не перенос: при переносе разбор остался бы вовсе без памяти, и
-	 * следующий разобранный тем же объектом текст растил бы хранилище с нуля - через
-	 * все обращения к куче с перекладыванием прежнего содержимого. Обменом же разбор
-	 * получает память, какою потребитель владел прежде, и рост этот случается однажды
+	 *          следующий разобранный тем же объектом текст растил бы хранилище с нуля - через
+	 *          все обращения к куче с перекладыванием прежнего содержимого. Обменом же разбор
+	 *          получает память, какою потребитель владел прежде, и рост этот случается однажды.
 	 *
 	 * @note Знаки при обмене никуда не копируются: меняются местами сами буферы
+	 *
 	 */
 	storage.swap(this->_storage);
 	// Выполняем очистку хранилища знаков разбора
@@ -1294,10 +1479,22 @@ const awh::codec::json::location_t & awh::codec::json::Reader::errorLocation() c
  */
 awh::codec::json::state_t awh::codec::json::Reader::state() const noexcept {
 	/**
+	 * Если разбор прекращён потребителем
+	 *
+	 * @note Прекращение отвечает `FAILED`, а не `FINISHED`: текст не разобран до
+	 *       конца, и `FINISHED` был бы ложью. Признак прекращения отделён от кода
+	 *       отказа намеренно: причины у разбора здесь нет
+	 *
+	 */
+	if(this->_stopped)
+		// Выводим состояние прекращённого разбора
+		return state_t::FAILED;
+	/**
 	 * Если разбор прекращён отказом
 	 *
 	 * @note Отказ старше прочего: очередь может нести события, собранные ДО отказа,
 	 *       и наличие их состоянием `READY` заслонило бы отказ от потребителя
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим состояние прекращённого отказом разбора
@@ -1313,6 +1510,7 @@ awh::codec::json::state_t awh::codec::json::Reader::state() const noexcept {
 	 *
 	 * @note Прекращение по требованию отражается тем же членом: событий разбор больше
 	 *       не даст и продолжения не ждёт, а причина известна тому, кто его затребовал
+	 *
 	 */
 	if(this->_last || this->_stopped)
 		// Выводим состояние разобранного до конца текста
@@ -1364,17 +1562,18 @@ const awh::codec::json::Reader::settings_t & awh::codec::json::Reader::settings(
  * @brief Метод установки настроек разбора текста
  *
  * @param settings устанавливаемые настройки разбора текста
+ * @return         признак принятия настроек разбора
  *
  */
-void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
+bool awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
 	// Устанавливаем настройки разбора текста
 	this->_settings = settings;
 	/**
 	 * Выполняем гашение послаблений при затребованном строгом разборе
 	 *
 	 * @details Признак `strict` есть общий рубильник: он требует разбора ровно по
-	 * RFC 8259, а всякое послабление стандарту противоречит. Гашение идёт ЗДЕСЬ, а
-	 * не у пятнадцати мест чтения: одно место - один повод ошибиться
+	 *          RFC 8259, а всякое послабление стандарту противоречит. Гашение идёт ЗДЕСЬ, а
+	 *          не у пятнадцати мест чтения: одно место - один повод ошибиться.
 	 *
 	 * @note Гашение правит сам хранимый снимок НАМЕРЕННО, а не сличается при чтении:
 	 *       выдача настроек обязана говорить лишь о том, что действует. Оставь мы
@@ -1387,33 +1586,49 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
 	 *       `TRAILING_COMMA` ссылались на «строгий разбор» - перечень отсылал
 	 *       потребителя к настройке, не делавшей ничего. Вскрыто сплошным обходом
 	 *       настроек: читается ли каждая хоть где-нибудь
+	 *
 	 */
 	if(this->_settings.strict){
 		// Выполняем запрет примечаний
 		this->_settings.allowComments = false;
-		// Выполняем запрет запятой перед закрывающей скобкой
-		this->_settings.allowTrailingCommas = false;
 		// Выполняем запрет одинарных кавычек
 		this->_settings.allowSingleQuotes = false;
 		// Выполняем запрет бесконечности и нечисла
 		this->_settings.allowInfinityAndNan = false;
+		// Выполняем запрет запятой перед закрывающей скобкой
+		this->_settings.allowTrailingCommas = false;
 	}
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::json::Reader::Reader() noexcept :
- _phase(phase_t::DOCUMENT_START), _error(error_t::NONE),
- _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
- _origin(0), _head(0), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false),
- _offset(0), _line(1), _column(1), _length(0),
- _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _decoder() {
+ _last(false), _comma(false), _keyed(false),
+ _empty(true), _stopped(false), _keeping(false),
+ _modified(false), _error(error_t::NONE), _handler(nullptr),
+ _phase(phase_t::DOCUMENT_START), _head(0), _line(1),
+ _column(1), _length(0), _unicode(0), _matched(0),
+ _surrogate(0), _origin(0), _offset(0),
+ _context(nullptr), _literal(nullptr) {
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
 }
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора текста
+ *
+ */
+awh::codec::json::Reader::Reader(const settings_t & settings) noexcept : Reader() {
+	// Выполняем установку настроек разбора текста
+	this->settings(settings);
+}
+
 /**
  * @brief Метод установки обработчика прямой выдачи событий разбора
  *
@@ -1436,11 +1651,16 @@ void awh::codec::json::Reader::abort() noexcept {
 	 * Устанавливаем признак прекращения разбора по требованию потребителя
 	 *
 	 * @note Кода отказа не устанавливаем намеренно: причина прекращения известна тому,
-	 *       кто его затребовал, и своей причины у разбора здесь нет. Состоянием разбора
-	 *       прекращение отмечать нельзя: событие выдаётся посреди разбора знака, и
-	 *       состояние по возвращении из обработчика переписывается разбором того же знака
+	 *       кто его затребовал, и своей причины у разбора здесь нет. Состояние выводится
+	 *       по признаку прекращения и отвечает `FAILED`: разбор не дошёл до конца, а
+	 *       `FINISHED` означал бы разобранный текст
+	 *
 	 */
 	this->_stopped = true;
+	// Выполняем очистку очереди собранных событий
+	this->_items.clear();
+	// Выполняем сброс смещения первого невыданного события
+	this->_head = 0;
 	// Устанавливаем смещение прекращения от начала текста
 	this->_position.offset = this->_offset;
 	// Устанавливаем номер строки прекращения
@@ -1451,10 +1671,10 @@ void awh::codec::json::Reader::abort() noexcept {
 	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
 }
 /**
- * @brief Метод отказа разбора с сообщением о нём в журнал
+ * @brief Метод прекращения разбора отказом
  *
- * @param error код ошибки разбора
- * @return      всегда ложь, ради возврата им из места отказа
+ * @param error код отказа разбора
+ * @return      признак успешности разбора, всегда ложь
  *
  */
 bool awh::codec::json::Reader::fail(const error_t error) noexcept {
@@ -1462,10 +1682,10 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	this->_error = error;
 	// Переводим разбор в состояние отказа
 	this->_phase = phase_t::FAILED;
-	// Устанавливаем смещение отказа от начала текста
-	this->_position.offset = this->_offset;
 	// Устанавливаем номер строки отказа
 	this->_position.line = this->_line;
+	// Устанавливаем смещение отказа от начала текста
+	this->_position.offset = this->_offset;
 	// Устанавливаем положение отказа в строке
 	this->_position.column = this->_column;
 	// Устанавливаем глубину вложенности, на какой произошёл отказ
@@ -1478,34 +1698,9 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	 *       место текущего события переписывает - место отказа терялось обычным ходом
 	 *       работы. Замер дал у текста «[1,2,@]» смещение 5 сразу после подачи и 3
 	 *       после снятия трёх событий
+	 *
 	 */
 	this->_failure = this->_position;
-	/**
-	 * Выполняем запись об отказе разбора в журнал
-	 *
-	 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
-	 *       приложения он не рушит. Оттого запись идёт предупреждением
-	 */
-	/**
-	 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
-	 *          доводом отладочной: иначе запись выходит разною по виду сборки, а
-	 *          читающему журнал до вида сборки дела нет
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем отказ разбора в журнал работы
-		awh::log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
-		                  {this->_position.line, this->_position.column}, awh::log::flag_t::WARNING,
-		                  static_cast <unsigned long long> (this->_position.line),
-		                  static_cast <unsigned long long> (this->_position.column), message(error));
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем отказ разбора в журнал работы
-		awh::log::print("JSON parsing failed at line %llu column %llu: %s", awh::log::flag_t::WARNING,
-		                  static_cast <unsigned long long> (this->_position.line),
-		                  static_cast <unsigned long long> (this->_position.column), message(error));
-	#endif
 	// Выводим признак неудачного разбора
 	return false;
 }
@@ -1522,25 +1717,27 @@ void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, 
 	 * Если обработчик прямой выдачи событий установлен
 	 *
 	 * @details Очередь выдачи стоит на пути события к потребителю: событие ложится в
-	 * неё, а потом снимается с неё же копией. Обработчик получает событие прямо из
-	 * разбора, минуя очередь вовсе
+	 *          неё, а потом снимается с неё же копией. Обработчик получает событие прямо из
+	 *          разбора, минуя очередь вовсе.
 	 *
 	 * @note Очередь стоила трети всего времени сборки дерева. Обнаружено разложением
 	 *       стоимости по частям
+	 *
 	 */
 	if(this->_handler != nullptr){
-		// Получаем признак изменения содержимого разбором
-		const bool modified = this->_modified;
-		// Устанавливаем положение текущего события в исходном тексте
-		this->_position = this->_mark;
 		// Сбрасываем признак изменения содержимого разбором
 		this->_modified = false;
+		// Устанавливаем положение текущего события в исходном тексте
+		this->_position = this->_mark;
+		// Получаем признак изменения содержимого разбором
+		const bool modified = this->_modified;
 		/**
 		 * Выполняем выдачу собранного события обработчику
 		 *
 		 * @note Содержимое события передаётся доводами, а не полем текущего события:
 		 *       снятие его обошлось бы вызовами через границу единиц трансляции на
 		 *       всякое событие, а их у события три
+		 *
 		 */
 		(* this->_handler)(this->_context, * this, event, span_t(offset, length), modified);
 		// Выходим из метода
@@ -1550,12 +1747,12 @@ void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, 
 	item_t item;
 	// Устанавливаем вид собранного события
 	item.event = event;
-	// Устанавливаем указание на содержимое события
-	item.content = span_t(offset, length);
 	// Устанавливаем положение события в исходном тексте
 	item.location = this->_mark;
 	// Устанавливаем признак изменения содержимого разбором
 	item.modified = this->_modified;
+	// Устанавливаем указание на содержимое события
+	item.content = span_t(offset, length);
 	// Выполняем постановку собранного события в очередь выдачи
 	this->_items.push_back(::move(item));
 	// Сбрасываем признак изменения содержимого разбором
@@ -1565,7 +1762,7 @@ void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, 
  * @brief Метод перехода к состоянию за окончанием значения
  *
  * @details Значение окончено, и дальше разбор ожидает либо запятой с закрывающей
- *          скобкой - если значение лежало во вместилище, - либо конца документа
+ *          скобкой - если значение лежало во вместилище, - либо конца документа.
  *
  * @return признак успешности разбора
  *
@@ -1587,14 +1784,14 @@ bool awh::codec::json::Reader::settle() noexcept {
 	 * Если значение является документом целиком
 	 */
 	else {
-		// Устанавливаем положение конца документа
-		this->_mark.offset = this->_offset;
+		// Сбрасываем глубину вложенности
+		this->_mark.depth = 0;
 		// Устанавливаем номер строки конца документа
 		this->_mark.line = this->_line;
 		// Устанавливаем положение конца документа в строке
 		this->_mark.column = this->_column;
-		// Сбрасываем глубину вложенности
-		this->_mark.depth = 0;
+		// Устанавливаем положение конца документа
+		this->_mark.offset = this->_offset;
 		// Выполняем выдачу события окончания документа
 		this->emit(event_t::DOCUMENT, 0, 0);
 		// Переводим разбор к состоянию окончания документа
@@ -1611,31 +1808,33 @@ bool awh::codec::json::Reader::settle() noexcept {
  *
  */
 bool awh::codec::json::Reader::begins(const char letter) noexcept {
-	// Устанавливаем смещение начала значения от начала текста
-	this->_mark.offset = this->_offset;
-	// Устанавливаем номер строки начала значения
-	this->_mark.line = this->_line;
-	// Устанавливаем положение начала значения в строке
-	this->_mark.column = this->_column;
-	// Устанавливаем глубину вложенности начала значения
-	this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
 	// Сбрасываем длину собираемого значения
 	this->_length = 0;
 	// Сбрасываем признак изменения содержимого разбором
 	this->_modified = false;
+	// Устанавливаем номер строки начала значения
+	this->_mark.line = this->_line;
+	// Устанавливаем положение начала значения в строке
+	this->_mark.column = this->_column;
+	// Устанавливаем смещение начала значения от начала текста
+	this->_mark.offset = this->_offset;
+	// Устанавливаем глубину вложенности начала значения
+	this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
 	/**
 	 * Определяем знак, начинающий значение
 	 */
 	switch(letter){
 		// Если значение является строкой
 		case '"': {
-			// Запоминаем знак кавычек, открывший строку
-			this->_quote = letter;
 			// Сбрасываем признак разбора имени поля объекта
 			this->_keyed = false;
+			// Запоминаем знак кавычек, открывший строку
+			this->_quote = letter;
 			// Переводим разбор внутрь строки
 			this->_phase = phase_t::STRING;
-		} return true;
+			// Выводим признак успешного разбора
+			return true;
+		}
 		// Если значение является массивом
 		case '[':
 		// Если значение является объектом
@@ -1643,22 +1842,38 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 			/**
 			 * Если глубина вложенности превышает допустимую
 			 */
-			if((this->_settings.maxDepth > 0) && (this->_nesting.size() >= static_cast <size_t> (this->_settings.maxDepth)))
-				// Выводим ошибку превышения глубины вложенности
+			if((this->_settings.maxDepth > 0) && (this->_nesting.size() >= static_cast <size_t> (this->_settings.maxDepth))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::DEPTH_EXCEEDED));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::DEPTH_EXCEEDED));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::DEPTH_EXCEEDED);
+			}
+			// Устанавливаем признак того, что вместилище значений ещё не получило
+			this->_empty = true;
+			// Сбрасываем признак прочитанной запятой
+			this->_comma = false;
 			// Получаем вид открываемого вместилища
 			const kind_t kind = ((letter == '[') ? kind_t::ARRAY : kind_t::OBJECT);
 			// Выполняем выдачу события начала вместилища
 			this->emit(((kind == kind_t::ARRAY) ? event_t::ARRAY_BEGIN : event_t::OBJECT_BEGIN), 0, 0);
 			// Выполняем добавление вида вместилища в стек вложенности
 			this->_nesting.push_back(kind);
-			// Устанавливаем признак того, что вместилище значений ещё не получило
-			this->_empty = true;
-			// Сбрасываем признак прочитанной запятой
-			this->_comma = false;
 			// Переводим разбор к ожиданию имени поля объекта либо значения массива
 			this->_phase = ((kind == kind_t::OBJECT) ? phase_t::KEY_START : phase_t::VALUE_START);
-		} return true;
+			// Выводим признак успешного разбора
+			return true;
+		}
 		// Если значение является литералом истины
 		case 't': {
 			// Устанавливаем разбираемый литерал
@@ -1678,16 +1893,30 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 			// Устанавливаем разбираемый литерал
 			this->_literal = "null";
 			// Устанавливаем вид значения литерала
-			this->_outcome = event_t::NUL;
+			this->_outcome = event_t::NIL;
 		} break;
 		// Если значение является нечислом
 		case 'N': {
 			/**
 			 * Если записи нечисла запрещены настройками разбора
 			 */
-			if(!this->_settings.allowInfinityAndNan)
-				// Выводим ошибку недопустимого знака
+			if(!this->_settings.allowInfinityAndNan){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EXPECTED_VALUE);
+			}
 			// Устанавливаем разбираемый литерал
 			this->_literal = "NaN";
 			// Устанавливаем вид значения литерала
@@ -1698,9 +1927,23 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 			/**
 			 * Если записи бесконечности запрещены настройками разбора
 			 */
-			if(!this->_settings.allowInfinityAndNan)
-				// Выводим ошибку недопустимого знака
+			if(!this->_settings.allowInfinityAndNan){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EXPECTED_VALUE);
+			}
 			// Устанавливаем разбираемый литерал
 			this->_literal = "Infinity";
 			// Устанавливаем вид значения литерала
@@ -1736,18 +1979,31 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 				// Выводим признак успешного разбора
 				return true;
 			}
-			// Выводим ошибку ожидания значения
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_VALUE));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::EXPECTED_VALUE);
 		}
 	}
-	// Устанавливаем количество разобранных знаков литерала
-	this->_matched = 1;
-	// Выполняем добавление первого знака к содержимому литерала
-	this->_storage.push_back(letter);
 	// Устанавливаем длину собираемого значения
 	this->_length = 1;
+	// Устанавливаем количество разобранных знаков литерала
+	this->_matched = 1;
 	// Переводим разбор к разбору литерала
 	this->_phase = phase_t::LITERAL;
+	// Выполняем добавление первого знака к содержимому литерала
+	this->_storage.push_back(letter);
 	// Выводим признак успешного разбора
 	return true;
 }
@@ -1757,7 +2013,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
  * @details Число - единственное значение, у какого нет закрывающего знака: окончанием
  *          его служит всякий знак, числу не принадлежащий. Знак этот разбором не
  *          съедается, а передаётся состоянию за окончанием значения - оттого выдача и
- *          не зависит от того, пришёл ли он в этом куске текста либо в следующем
+ *          не зависит от того, пришёл ли он в этом куске текста либо в следующем.
  *
  * @param letter разбираемый знак
  * @return       признак успешности разбора
@@ -1769,84 +2025,112 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора записи числа
 	 */
-	switch(this->_phase){
+	switch(static_cast <uint8_t> (this->_phase)){
 		// Если прочитан знак минуса
-		case phase_t::NUMBER_MINUS: {
+		case static_cast <uint8_t> (phase_t::NUMBER_MINUS): {
 			/**
 			 * Если за знаком минуса следует нуль
 			 */
 			if(letter == '0'){
-				// Переводим разбор к состоянию ведущего нуля
-				this->_phase = phase_t::NUMBER_ZERO;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию ведущего нуля
+				this->_phase = phase_t::NUMBER_ZERO;
 			/**
 			 * Если за знаком минуса следует цифра
 			 */
 			} else if((letter >= '1') && (letter <= '9')) {
-				// Переводим разбор к состоянию целой части числа
-				this->_phase = phase_t::NUMBER_INTEGER;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию целой части числа
+				this->_phase = phase_t::NUMBER_INTEGER;
 			/**
 			 * Если за знаком минуса следует бесконечность
 			 */
 			} else if(this->_settings.allowInfinityAndNan && (letter == 'I')) {
-				// Устанавливаем разбираемый литерал
-				this->_literal = "Infinity";
-				// Устанавливаем вид значения литерала
-				this->_outcome = event_t::NUMBER;
-				// Устанавливаем количество разобранных знаков литерала
-				this->_matched = 1;
-				// Выполняем добавление знака к записи числа
-				this->_storage.push_back(letter);
 				// Увеличиваем длину собираемого значения
 				this->_length++;
+				// Устанавливаем количество разобранных знаков литерала
+				this->_matched = 1;
+				// Устанавливаем разбираемый литерал
+				this->_literal = "Infinity";
 				// Переводим разбор к разбору литерала
 				this->_phase = phase_t::LITERAL;
+				// Устанавливаем вид значения литерала
+				this->_outcome = event_t::NUMBER;
+				// Выполняем добавление знака к записи числа
+				this->_storage.push_back(letter);
 				// Выводим признак успешного разбора
 				return true;
 			/**
 			 * Если за знаком минуса цифры нет
 			 */
-			} else
-				// Выводим ошибку негодной записи числа
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_NUMBER);
+			}
 		} break;
 		// Если прочитан ведущий нуль
-		case phase_t::NUMBER_ZERO: {
+		case static_cast <uint8_t> (phase_t::NUMBER_ZERO): {
 			/**
 			 * Если за ведущим нулём следует цифра
 			 *
 			 * @note Стандарт этого не допускает: запись `01` числом не является
+			 *
 			 */
-			if((letter >= '0') && (letter <= '9'))
-				// Выводим ошибку негодной записи числа
+			if((letter >= '0') && (letter <= '9')){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_NUMBER);
+			}
 			/**
 			 * Если за целой частью следует точка
 			 */
 			if(letter == '.'){
-				// Переводим разбор к состоянию точки
-				this->_phase = phase_t::NUMBER_POINT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию точки
+				this->_phase = phase_t::NUMBER_POINT;
 			/**
 			 * Если за целой частью следует буква порядка
 			 */
 			} else if((letter == 'e') || (letter == 'E')) {
-				// Переводим разбор к состоянию порядка
-				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию порядка
+				this->_phase = phase_t::NUMBER_EXPONENT;
 			}
 		} break;
 		// Если разбор находится внутри целой части числа
-		case phase_t::NUMBER_INTEGER: {
+		case static_cast <uint8_t> (phase_t::NUMBER_INTEGER): {
 			/**
 			 * Если знак является цифрой
-			 */
-			/**
+			 *
 			 * @note Ветвь эта ДОСТИЖИМА, и набор проверок читателя берёт её трижды за прогон.
 			 *       Довод, здесь прежде стоявший, утверждал обратное: будто состояние входит в
 			 *       разряды быстрого прохода, цифры разбираются отрезком целиком, и до
@@ -1872,6 +2156,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 *
 			 * @warning Снимать ветвь нельзя: изыми состояние из разрядов быстрого прохода - и она
 			 *          оживёт немедля, а без неё цифра осталась бы записи числа не принадлежащей
+			 *
 			 */
 			if((letter >= '0') && (letter <= '9'))
 				// Устанавливаем признак принадлежности знака записи числа
@@ -1880,39 +2165,52 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 * Если за целой частью следует точка
 			 */
 			else if(letter == '.') {
-				// Переводим разбор к состоянию точки
-				this->_phase = phase_t::NUMBER_POINT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию точки
+				this->_phase = phase_t::NUMBER_POINT;
 			/**
 			 * Если за целой частью следует буква порядка
 			 */
 			} else if((letter == 'e') || (letter == 'E')) {
-				// Переводим разбор к состоянию порядка
-				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию порядка
+				this->_phase = phase_t::NUMBER_EXPONENT;
 			}
 		} break;
 		// Если прочитана точка
-		case phase_t::NUMBER_POINT: {
+		case static_cast <uint8_t> (phase_t::NUMBER_POINT): {
 			/**
 			 * Если за точкой не следует цифра
 			 */
-			if((letter < '0') || (letter > '9'))
-				// Выводим ошибку негодной записи числа
+			if((letter < '0') || (letter > '9')){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_NUMBER);
-			// Переводим разбор к состоянию дробной части числа
-			this->_phase = phase_t::NUMBER_FRACTION;
+			}
 			// Устанавливаем признак принадлежности знака записи числа
 			belongs = true;
+			// Переводим разбор к состоянию дробной части числа
+			this->_phase = phase_t::NUMBER_FRACTION;
 		} break;
 		// Если разбор находится внутри дробной части числа
-		case phase_t::NUMBER_FRACTION: {
+		case static_cast <uint8_t> (phase_t::NUMBER_FRACTION): {
 			/**
 			 * Если знак является цифрой
-			 */
-			/**
+			 *
 			 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: состояние это входит в разряды
 			 *       быстрого прохода, и цифры в нём разбираются отрезком целиком, до посимвольного
 			 *       разбора не доходя вовсе. Проверено подачею чисел по одному байту: ветвь молчит
@@ -1920,6 +2218,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 *
 			 * @warning Снимать ветвь нельзя: изыми состояние из разрядов быстрого прохода - и она
 			 *          оживёт немедля, а без неё цифра осталась бы записи числа не принадлежащей
+			 *
 			 */
 			if((letter >= '0') && (letter <= '9'))
 				// Устанавливаем признак принадлежности знака записи числа
@@ -1928,56 +2227,83 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 * Если за дробной частью следует буква порядка
 			 */
 			else if((letter == 'e') || (letter == 'E')) {
-				// Переводим разбор к состоянию порядка
-				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию порядка
+				this->_phase = phase_t::NUMBER_EXPONENT;
 			}
 		} break;
 		// Если прочитана буква порядка
-		case phase_t::NUMBER_EXPONENT: {
+		case static_cast <uint8_t> (phase_t::NUMBER_EXPONENT): {
 			/**
 			 * Если за буквой порядка следует знак
 			 */
 			if((letter == '+') || (letter == '-')){
-				// Переводим разбор к состоянию знака порядка
-				this->_phase = phase_t::NUMBER_SIGN;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию знака порядка
+				this->_phase = phase_t::NUMBER_SIGN;
 			/**
 			 * Если за буквой порядка следует цифра
 			 */
 			} else if((letter >= '0') && (letter <= '9')) {
-				// Переводим разбор к состоянию цифр порядка
-				this->_phase = phase_t::NUMBER_POWER;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
+				// Переводим разбор к состоянию цифр порядка
+				this->_phase = phase_t::NUMBER_POWER;
 			/**
 			 * Если за буквой порядка цифры нет
 			 */
-			} else
-				// Выводим ошибку негодной записи числа
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_NUMBER);
+			}
 		} break;
 		// Если прочитан знак порядка
-		case phase_t::NUMBER_SIGN: {
+		case static_cast <uint8_t> (phase_t::NUMBER_SIGN): {
 			/**
 			 * Если за знаком порядка не следует цифра
 			 */
-			if((letter < '0') || (letter > '9'))
-				// Выводим ошибку негодной записи числа
+			if((letter < '0') || (letter > '9')){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_NUMBER));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_NUMBER);
-			// Переводим разбор к состоянию цифр порядка
-			this->_phase = phase_t::NUMBER_POWER;
+			}
 			// Устанавливаем признак принадлежности знака записи числа
 			belongs = true;
+			// Переводим разбор к состоянию цифр порядка
+			this->_phase = phase_t::NUMBER_POWER;
 		} break;
 		// Если разбор находится внутри цифр порядка
-		case phase_t::NUMBER_POWER: {
+		case static_cast <uint8_t> (phase_t::NUMBER_POWER): {
 			/**
 			 * Если знак является цифрой
-			 */
-			/**
+			 *
 			 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: состояние это входит в разряды
 			 *       быстрого прохода, и цифры в нём разбираются отрезком целиком, до посимвольного
 			 *       разбора не доходя вовсе. Проверено подачею чисел по одному байту: ветвь молчит
@@ -1985,20 +2311,12 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 *
 			 * @warning Снимать ветвь нельзя: изыми состояние из разрядов быстрого прохода - и она
 			 *          оживёт немедля, а без неё цифра осталась бы записи числа не принадлежащей
+			 *
 			 */
 			if((letter >= '0') && (letter <= '9'))
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 		} break;
-		/**
-		 * Если разбор дошёл до прочих членов перечня
-		 *
-		 * @note Прочие состояния разбора обрабатываются своим порядком выше
-		 *
-		 * @warning `default` здесь НАМЕРЕННЫЙ: неохваченных членов слишком много, чтобы
-		 *          перечислять их; ценою тому - молчание `-Wswitch` у этого перебора
-		 */
-		default: break;
 	}
 	/**
 	 * Если знак принадлежит записи числа
@@ -2007,24 +2325,37 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 		/**
 		 * Если длина записи числа превышает допустимую
 		 */
-		if((this->_settings.maxNumber > 0) && (this->_length >= this->_settings.maxNumber))
-			// Выводим ошибку превышения длины записи числа
+		if((this->_settings.maxNumber > 0) && (this->_length >= this->_settings.maxNumber)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::NUMBER_TOO_LONG));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::NUMBER_TOO_LONG));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::NUMBER_TOO_LONG);
-		// Выполняем добавление знака к записи числа
-		this->_storage.push_back(letter);
+		}
 		// Увеличиваем длину собираемого значения
 		this->_length++;
+		// Выполняем добавление знака к записи числа
+		this->_storage.push_back(letter);
 		// Выводим признак успешного разбора
 		return true;
 	}
 	// Получаем смещение записи числа в хранилище знаков
-	const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+	const uint32_t offset = (static_cast <uint32_t> (this->_storage.size()) - this->_length);
 	// Выполняем выдачу события числа
 	this->emit(event_t::NUMBER, offset, this->_length);
 	/**
 	 * Если переход к состоянию за окончанием значения завершился отказом
-	 */
-	/**
+	 *
 	 * @note Отказ этот НЕДОСТИЖИМ и оттого не покрыт: завершение значения отвергает лишь
 	 *       разбор, прекращённый прежде, а до выдачи числа дело в таком разборе не доходит
 	 *
@@ -2036,6 +2367,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	if(!this->settle())
 		// Выводим признак неудачного разбора
@@ -2045,6 +2377,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 	 *
 	 * @note Знак этот разбором не съеден: он окончил число, но принадлежит уже
 	 *       следующему за числом - будь то запятая, закрывающая скобка либо пробел
+	 *
 	 */
 	return this->parse(letter);
 }
@@ -2065,9 +2398,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_phase){
-		// Если разбор прекращён отказом
+	switch(static_cast <uint8_t> (this->_phase)){
 		/**
+		 * Если разбор прекращён отказом
+		 *
 		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: разбор, прекращённый отказом, до
 		 *       завершения значения не доходит - отказ прекращает подачу тотчас
 		 *
@@ -2081,14 +2415,15 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 		 *
 		 * @note Тот же довод с той же цепью стоит у кодека CSV при `case phase_t::FAILED`:
 		 *       устройство их здесь совпадает, и правку вести обоими
+		 *
 		 */
-		case phase_t::FAILED:
+		case static_cast <uint8_t> (phase_t::FAILED):
 			// Выводим признак неудачного разбора
 			return false;
 		// Если разбор находится в начале документа либо ожидает значения
-		case phase_t::DOCUMENT_START:
-		case phase_t::VALUE_START:
-		case phase_t::AFTER_COMMA: {
+		case static_cast <uint8_t> (phase_t::VALUE_START):
+		case static_cast <uint8_t> (phase_t::AFTER_COMMA):
+		case static_cast <uint8_t> (phase_t::DOCUMENT_START): {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2105,10 +2440,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
 				 *       иным в тексте быть не может, и общий отказ на негодный знак
 				 *       заставил бы разыскивать причину самому
+				 *
 				 */
-				if(!this->_settings.allowComments)
-					// Выводим ошибку запрещённого примечания
+				if(!this->_settings.allowComments){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				}
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
 				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
@@ -2123,15 +2473,29 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				/**
 				 * Если массив уже получил значение, а запятая за ним не разрешена
 				 */
-				if(this->_comma && !this->_settings.allowTrailingCommas)
-					// Выводим ошибку запятой перед закрывающей скобкой
+				if(this->_comma && !this->_settings.allowTrailingCommas){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_COMMA));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_COMMA));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::TRAILING_COMMA);
-				// Устанавливаем положение конца массива
-				this->_mark.offset = this->_offset;
+				}
 				// Устанавливаем номер строки конца массива
 				this->_mark.line = this->_line;
 				// Устанавливаем положение конца массива в строке
 				this->_mark.column = this->_column;
+				// Устанавливаем положение конца массива
+				this->_mark.offset = this->_offset;
 				// Выполняем снятие вида вместилища со стека вложенности
 				this->_nesting.pop_back();
 				// Устанавливаем глубину вложенности конца массива
@@ -2151,6 +2515,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 *
 				 * @note Закрывающий знак переводом строки быть не может, оттого строка с
 				 *       положением растёт одним шагом
+				 *
 				 */
 				this->_offset++;
 				// Увеличиваем положение в строке
@@ -2166,7 +2531,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				return false;
 		} break;
 		// Если разбор ожидает имени поля объекта
-		case phase_t::KEY_START: {
+		case static_cast <uint8_t> (phase_t::KEY_START): {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2183,10 +2548,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
 				 *       иным в тексте быть не может, и общий отказ на негодный знак
 				 *       заставил бы разыскивать причину самому
+				 *
 				 */
-				if(!this->_settings.allowComments)
-					// Выводим ошибку запрещённого примечания
+				if(!this->_settings.allowComments){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				}
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
 				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
@@ -2201,9 +2581,23 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				/**
 				 * Если объект уже получил поле, а запятая за ним не разрешена
 				 */
-				if(this->_comma && !this->_settings.allowTrailingCommas)
-					// Выводим ошибку запятой перед закрывающей скобкой
+				if(this->_comma && !this->_settings.allowTrailingCommas){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_COMMA));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_COMMA));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::TRAILING_COMMA);
+				}
 				// Устанавливаем положение конца объекта
 				this->_mark.offset = this->_offset;
 				// Устанавливаем номер строки конца объекта
@@ -2227,32 +2621,45 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если знак открывает имя поля объекта
 			 */
 			if((letter == '"') || (this->_settings.allowSingleQuotes && (letter == '\''))){
-				// Устанавливаем смещение начала имени поля от начала текста
-				this->_mark.offset = this->_offset;
+				// Запоминаем знак кавычек, открывший имя поля
+				this->_quote = letter;
+				// Сбрасываем длину собираемого значения
+				this->_length = 0;
+				// Устанавливаем признак разбора имени поля объекта
+				this->_keyed = true;
+				// Сбрасываем признак изменения содержимого разбором
+				this->_modified = false;
 				// Устанавливаем номер строки начала имени поля
 				this->_mark.line = this->_line;
 				// Устанавливаем положение начала имени поля в строке
 				this->_mark.column = this->_column;
+				// Устанавливаем смещение начала имени поля от начала текста
+				this->_mark.offset = this->_offset;
 				// Устанавливаем глубину вложенности начала имени поля
 				this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
-				// Запоминаем знак кавычек, открывший имя поля
-				this->_quote = letter;
-				// Устанавливаем признак разбора имени поля объекта
-				this->_keyed = true;
-				// Сбрасываем длину собираемого значения
-				this->_length = 0;
-				// Сбрасываем признак изменения содержимого разбором
-				this->_modified = false;
 				// Переводим разбор внутрь строки
 				this->_phase = phase_t::STRING;
 				// Пропускаем знак кавычек
 				break;
 			}
-			// Выводим ошибку ожидания имени поля объекта
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_KEY));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_KEY));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::EXPECTED_KEY);
 		}
 		// Если разбор ожидает двоеточия за именем поля объекта
-		case phase_t::AFTER_KEY: {
+		case static_cast <uint8_t> (phase_t::AFTER_KEY): {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2269,10 +2676,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
 				 *       иным в тексте быть не может, и общий отказ на негодный знак
 				 *       заставил бы разыскивать причину самому
+				 *
 				 */
-				if(!this->_settings.allowComments)
-					// Выводим ошибку запрещённого примечания
+				if(!this->_settings.allowComments){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				}
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
 				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
@@ -2283,14 +2705,28 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			/**
 			 * Если знак не является двоеточием
 			 */
-			if(letter != ':')
-				// Выводим ошибку ожидания двоеточия
+			if(letter != ':'){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_COLON));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_COLON));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EXPECTED_COLON);
+			}
 			// Переводим разбор к ожиданию значения поля объекта
 			this->_phase = phase_t::VALUE_START;
 		} break;
 		// Если разбор ожидает запятой либо закрывающей скобки
-		case phase_t::AFTER_VALUE: {
+		case static_cast <uint8_t> (phase_t::AFTER_VALUE): {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2307,10 +2743,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
 				 *       иным в тексте быть не может, и общий отказ на негодный знак
 				 *       заставил бы разыскивать причину самому
+				 *
 				 */
-				if(!this->_settings.allowComments)
-					// Выводим ошибку запрещённого примечания
+				if(!this->_settings.allowComments){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				}
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
 				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
@@ -2320,8 +2771,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 			/**
 			 * Если разбор находится вне вместилища
-			 */
-			/**
+			 *
 			 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: состояние это разбор принимает лишь
 			 *       внутри вместилища, а внутри вместилища стек вложенности непуст по устройству
 			 *
@@ -2336,16 +2786,29 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 *
 			 * @warning Довод держится на ЕДИНСТВЕННОСТИ присвоения: заведи второе место, где
 			 *          состояние ставится без оглядки на стек, - и заслон оживёт
+			 *
 			 */
-			if(this->_nesting.empty())
-				// Выводим ошибку знаков за окончанием документа
+			if(this->_nesting.empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_CHARACTERS));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_CHARACTERS));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::TRAILING_CHARACTERS);
+			}
 			/**
 			 * Если знак является запятой
 			 */
-			if(letter == ','){
-				// Устанавливаем признак прочитанной запятой
-				this->_comma = true;
+			if((this->_comma = (letter == ','))){
 				// Переводим разбор к ожиданию имени поля объекта либо значения массива
 				this->_phase = ((this->_nesting.back() == kind_t::OBJECT) ? phase_t::KEY_START : phase_t::AFTER_COMMA);
 				// Пропускаем знак запятой
@@ -2358,10 +2821,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			   ((letter == '}') && (this->_nesting.back() == kind_t::OBJECT))){
 				// Получаем вид закрываемого вместилища
 				const kind_t kind = this->_nesting.back();
-				// Устанавливаем положение конца вместилища
-				this->_mark.offset = this->_offset;
 				// Устанавливаем номер строки конца вместилища
 				this->_mark.line = this->_line;
+				// Устанавливаем положение конца вместилища
+				this->_mark.offset = this->_offset;
 				// Устанавливаем положение конца вместилища в строке
 				this->_mark.column = this->_column;
 				// Выполняем снятие вида вместилища со стека вложенности
@@ -2377,11 +2840,24 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Выполняем переход к состоянию за окончанием значения
 				return this->settle();
 			}
-			// Выводим ошибку ожидания запятой либо закрывающей скобки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_COMMA));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::EXPECTED_COMMA));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::EXPECTED_COMMA);
 		}
 		// Если разбор находится внутри строки
-		case phase_t::STRING: {
+		case static_cast <uint8_t> (phase_t::STRING): {
 			/**
 			 * Если знак закрывает строку
 			 */
@@ -2417,34 +2893,61 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 *
 			 * @note Стандарт управляющие знаки внутри строки запрещает: записываться они
 			 *       обязаны отменяющей последовательностью
+			 *
 			 */
-			if(static_cast <uint8_t> (letter) < 0x20)
-				// Выводим ошибку управляющего знака внутри строки
+			if(static_cast <uint8_t> (letter) < 0x20){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::CONTROL_IN_STRING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::CONTROL_IN_STRING));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::CONTROL_IN_STRING);
+			}
 			/**
 			 * Если знак начинает отменяющую последовательность
 			 */
-			if(letter == '\\'){
+			if((this->_modified = (letter == '\\'))){
 				// Переводим разбор к разбору отменяющей последовательности
 				this->_phase = phase_t::ESCAPE;
-				// Устанавливаем признак изменения содержимого разбором
-				this->_modified = true;
 				// Пропускаем знак отмены
 				break;
 			}
 			/**
 			 * Если длина строкового значения превышает допустимую
 			 */
-			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString))
-				// Выводим ошибку превышения длины строкового значения
+			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STRING_TOO_LONG));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STRING_TOO_LONG));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::STRING_TOO_LONG);
-			// Выполняем добавление знака к содержимому строки
-			this->_storage.push_back(letter);
+			}
 			// Увеличиваем длину собираемого значения
 			this->_length++;
+			// Выполняем добавление знака к содержимому строки
+			this->_storage.push_back(letter);
 		} break;
 		// Если разбор находится внутри отменяющей последовательности
-		case phase_t::ESCAPE: {
+		case static_cast <uint8_t> (phase_t::ESCAPE): {
 			// Знак, каким отменяющая последовательность заменяется
 			char replacement = '\0';
 			/**
@@ -2458,9 +2961,23 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					/**
 					 * Если строки разрешено обрамлять одинарными кавычками
 					 */
-					if(!this->_settings.allowSingleQuotes)
-						// Выводим ошибку неопознанной отменяющей последовательности
+					if(!this->_settings.allowSingleQuotes){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_ESCAPE));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_ESCAPE));
+						#endif
+						// Объявляем отказ разбора
 						return this->fail(error_t::INVALID_ESCAPE);
+					}
 					// Устанавливаем знак замены
 					replacement = '\'';
 				} break;
@@ -2491,13 +3008,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * Если последовательность не опознана
 				 */
 				default:
-					// Выводим ошибку неопознанной отменяющей последовательности
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_ESCAPE));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_ESCAPE));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::INVALID_ESCAPE);
 			}
 			/**
 			 * Если длина строкового значения превышает допустимую
-			 */
-			/**
+			 *
 			 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: длина собираемой строки сличается с
 			 *       пределом и при добавлении обычного знака, и при добавлении знака замены, - а
 			 *       эта дорога добавляет знак вслед за отменяющей последовательностью, где предел
@@ -2512,34 +3041,63 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 			 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 			 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+			 *
 			 */
-			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString))
-				// Выводим ошибку превышения длины строкового значения
+			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STRING_TOO_LONG));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::STRING_TOO_LONG));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::STRING_TOO_LONG);
-			// Выполняем добавление знака замены к содержимому строки
-			this->_storage.push_back(replacement);
+			}
 			// Увеличиваем длину собираемого значения
 			this->_length++;
 			// Возвращаем разбор внутрь строки
 			this->_phase = phase_t::STRING;
+			// Выполняем добавление знака замены к содержимому строки
+			this->_storage.push_back(replacement);
 		} break;
 		// Если разбор находится внутри кодового значения знака
-		case phase_t::UNICODE_1:
-		case phase_t::UNICODE_2:
-		case phase_t::UNICODE_3:
-		case phase_t::UNICODE_4:
-		case phase_t::SURROGATE_1:
-		case phase_t::SURROGATE_2:
-		case phase_t::SURROGATE_3:
-		case phase_t::SURROGATE_4: {
+		case static_cast <uint8_t> (phase_t::UNICODE_1):
+		case static_cast <uint8_t> (phase_t::UNICODE_2):
+		case static_cast <uint8_t> (phase_t::UNICODE_3):
+		case static_cast <uint8_t> (phase_t::UNICODE_4):
+		case static_cast <uint8_t> (phase_t::SURROGATE_1):
+		case static_cast <uint8_t> (phase_t::SURROGATE_2):
+		case static_cast <uint8_t> (phase_t::SURROGATE_3):
+		case static_cast <uint8_t> (phase_t::SURROGATE_4): {
 			// Значение шестнадцатеричного знака
 			uint32_t digit = 0;
 			/**
 			 * Если знак шестнадцатеричным не является
 			 */
-			if(!::hexadecimal(letter, digit))
-				// Выводим ошибку негодной записи кодового значения
+			if(!::hexadecimal(letter, digit)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_UNICODE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_UNICODE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_UNICODE);
+			}
 			// Выполняем добавление значения знака к собираемому кодовому значению
 			this->_unicode = ((this->_unicode << 4) | digit);
 			/**
@@ -2558,9 +3116,23 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				/**
 				 * Если прочитанное значение младшим суррогатом не является
 				 */
-				if((this->_unicode < 0xDC00) || (this->_unicode > 0xDFFF))
-					// Выводим ошибку непарного суррогата
+				if((this->_unicode < 0xDC00) || (this->_unicode > 0xDFFF)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::UNPAIRED_SURROGATE);
+				}
 				// Выполняем сборку кодового значения знака из суррогатной пары
 				const uint32_t code = (0x10000 + ((this->_surrogate - 0xD800) << 10) + (this->_unicode - 0xDC00));
 				// Запоминаем размер хранилища знаков прежде записи знака
@@ -2572,6 +3144,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 *
 				 * @note Знак Юникода записывается в кодировке UTF-8 от одного до четырёх
 				 *       байтов, и учитывать их числом знаков записи было бы неверно
+				 *
 				 */
 				this->_length += static_cast <uint32_t> (this->_storage.size() - before);
 				// Сбрасываем удержанный старший суррогат
@@ -2585,16 +3158,17 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если прочитан старший суррогат пары
 			 */
 			if((this->_unicode >= 0xD800) && (this->_unicode <= 0xDBFF)){
-				// Запоминаем старший суррогат пары
-				this->_surrogate = this->_unicode;
 				// Сбрасываем собираемый знак Юникода
 				this->_unicode = 0;
+				// Запоминаем старший суррогат пары
+				this->_surrogate = this->_unicode;
 				/**
 				 * Переводим разбор к ожиданию младшего суррогата
 				 *
 				 * @note Между суррогатами пары вправе пройти граница куска текста, оттого
 				 *       ожидание это и разложено на состояния: иначе выдача зависела бы от
 				 *       того, как текст нарезан
+				 *
 				 */
 				this->_phase = phase_t::SURROGATE_SLASH;
 				// Пропускаем знак кодового значения
@@ -2603,51 +3177,93 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			/**
 			 * Если прочитан младший суррогат без старшего
 			 */
-			if((this->_unicode >= 0xDC00) && (this->_unicode <= 0xDFFF))
-				// Выводим ошибку непарного суррогата
+			if((this->_unicode >= 0xDC00) && (this->_unicode <= 0xDFFF)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNPAIRED_SURROGATE);
+			}
 			// Запоминаем размер хранилища знаков прежде записи знака
 			const size_t before = this->_storage.size();
 			// Выполняем добавление знака к содержимому строки
 			::codepoint(this->_unicode, this->_storage);
-			// Увеличиваем длину собираемого значения на число записанных байтов
-			this->_length += static_cast <uint32_t> (this->_storage.size() - before);
 			// Возвращаем разбор внутрь строки
 			this->_phase = phase_t::STRING;
+			// Увеличиваем длину собираемого значения на число записанных байтов
+			this->_length += static_cast <uint32_t> (this->_storage.size() - before);
 		} break;
 		// Если разбор ожидает знака отмены младшего суррогата
-		case phase_t::SURROGATE_SLASH: {
+		case static_cast <uint8_t> (phase_t::SURROGATE_SLASH): {
 			/**
 			 * Если знак отмены не пришёл
 			 */
-			if(letter != '\\')
-				// Выводим ошибку непарного суррогата
+			if(letter != '\\'){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNPAIRED_SURROGATE);
+			}
 			// Переводим разбор к ожиданию буквы кодового значения
 			this->_phase = phase_t::SURROGATE_U;
 		} break;
 		// Если разбор ожидает буквы кодового значения младшего суррогата
-		case phase_t::SURROGATE_U: {
+		case static_cast <uint8_t> (phase_t::SURROGATE_U): {
 			/**
 			 * Если буква кодового значения не пришла
 			 */
-			if(letter != 'u')
-				// Выводим ошибку непарного суррогата
+			if(letter != 'u'){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::UNPAIRED_SURROGATE));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNPAIRED_SURROGATE);
+			}
 			// Сбрасываем собираемый знак Юникода
 			this->_unicode = 0;
 			// Переводим разбор к разбору кодового значения младшего суррогата
 			this->_phase = phase_t::SURROGATE_1;
 		} break;
 		// Если разбор находится внутри записи числа
-		case phase_t::NUMBER_MINUS:
-		case phase_t::NUMBER_ZERO:
-		case phase_t::NUMBER_INTEGER:
-		case phase_t::NUMBER_POINT:
-		case phase_t::NUMBER_FRACTION:
-		case phase_t::NUMBER_EXPONENT:
-		case phase_t::NUMBER_SIGN:
-		case phase_t::NUMBER_POWER: {
+		case static_cast <uint8_t> (phase_t::NUMBER_SIGN):
+		case static_cast <uint8_t> (phase_t::NUMBER_ZERO):
+		case static_cast <uint8_t> (phase_t::NUMBER_POWER):
+		case static_cast <uint8_t> (phase_t::NUMBER_MINUS):
+		case static_cast <uint8_t> (phase_t::NUMBER_POINT):
+		case static_cast <uint8_t> (phase_t::NUMBER_INTEGER):
+		case static_cast <uint8_t> (phase_t::NUMBER_FRACTION):
+		case static_cast <uint8_t> (phase_t::NUMBER_EXPONENT): {
 			// Запоминаем смещение от начала текста прежде разбора знака
 			const uint64_t offset = this->_offset;
 			/**
@@ -2661,71 +3277,86 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 *
 			 * @note Разбор знака, окончившего число, ведёт учёт положения сам, и учитывать
 			 *       его здесь повторно нельзя
+			 *
 			 */
 			if(this->_offset != offset)
 				// Выводим признак успешного разбора
 				return true;
 		} break;
 		// Если разбор находится внутри литерала
-		case phase_t::LITERAL: {
+		case static_cast <uint8_t> (phase_t::LITERAL): {
 			/**
 			 * Если знак расходится с разбираемым литералом
 			 */
-			if(letter != this->_literal[this->_matched])
-				// Выводим ошибку негодного литерала
+			if(letter != this->_literal[this->_matched]){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_LITERAL));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_LITERAL));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_LITERAL);
-			// Выполняем добавление знака к содержимому литерала
-			this->_storage.push_back(letter);
+			}
 			// Увеличиваем длину собираемого значения
 			this->_length++;
 			// Увеличиваем количество разобранных знаков литерала
 			this->_matched++;
+			// Выполняем добавление знака к содержимому литерала
+			this->_storage.push_back(letter);
 			/**
 			 * Если литерал разобран не до конца
 			 */
 			if(this->_literal[this->_matched] != '\0')
 				// Пропускаем знак литерала
 				break;
-			// Получаем смещение содержимого литерала в хранилище знаков
-			const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
-			// Выполняем выдачу события литерала
-			this->emit(this->_outcome, offset, this->_length);
 			// Увеличиваем смещение от начала текста
 			this->_offset++;
 			// Увеличиваем положение в строке
 			this->_column++;
+			// Получаем смещение содержимого литерала в хранилище знаков
+			const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+			// Выполняем выдачу события литерала
+			this->emit(this->_outcome, offset, this->_length);
 			// Выполняем переход к состоянию за окончанием значения
 			return this->settle();
 		}
 		// Если разбор определяет вид примечания
-		case phase_t::SLASH: {
+		case static_cast <uint8_t> (phase_t::SLASH): {
 			/**
 			 * Определяем знак, задающий вид примечания
 			 */
 			switch(letter){
 				// Если примечание длится до конца строки
 				case '/': {
-					// Устанавливаем положение начала примечания
-					this->_mark.offset = this->_offset;
+					// Сбрасываем длину собираемого значения
+					this->_length = 0;
 					// Устанавливаем номер строки начала примечания
 					this->_mark.line = this->_line;
 					// Устанавливаем положение начала примечания в строке
 					this->_mark.column = this->_column;
-					// Сбрасываем длину собираемого значения
-					this->_length = 0;
+					// Устанавливаем положение начала примечания
+					this->_mark.offset = this->_offset;
 					// Переводим разбор внутрь примечания до конца строки
 					this->_phase = phase_t::COMMENT_LINE;
 				} break;
 				// Если примечание закрывается звёздочкой с косой чертой
 				case '*': {
-					// Устанавливаем положение начала примечания
-					this->_mark.offset = this->_offset;
+					// Сбрасываем длину собираемого значения
+					this->_length = 0;
 					// Устанавливаем номер строки начала примечания
 					this->_mark.line = this->_line;
 					// Устанавливаем положение начала примечания в строке
 					this->_mark.column = this->_column;
-					// Сбрасываем длину собираемого значения
-					this->_length = 0;
+					// Устанавливаем положение начала примечания
+					this->_mark.offset = this->_offset;
 					// Переводим разбор внутрь закрываемого примечания
 					this->_phase = phase_t::COMMENT_BLOCK;
 				} break;
@@ -2733,12 +3364,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * Если за косой чертой стоит иной знак
 				 */
 				default:
-					// Выводим ошибку недопустимого знака
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::INVALID_CHARACTER);
 			}
 		} break;
 		// Если разбор находится внутри примечания до конца строки
-		case phase_t::COMMENT_LINE: {
+		case static_cast <uint8_t> (phase_t::COMMENT_LINE): {
 			/**
 			 * Если примечание окончено переводом строки
 			 */
@@ -2763,14 +3407,14 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если содержимое примечания удерживается для выдачи
 			 */
 			if(this->_settings.emitComments){
-				// Выполняем добавление знака к содержимому примечания
-				this->_storage.push_back(letter);
 				// Увеличиваем длину собираемого значения
 				this->_length++;
+				// Выполняем добавление знака к содержимому примечания
+				this->_storage.push_back(letter);
 			}
 		} break;
 		// Если разбор находится внутри закрываемого примечания
-		case phase_t::COMMENT_BLOCK: {
+		case static_cast <uint8_t> (phase_t::COMMENT_BLOCK): {
 			/**
 			 * Если знак вправе закрывать примечание
 			 */
@@ -2784,14 +3428,14 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если содержимое примечания удерживается для выдачи
 			 */
 			if(this->_settings.emitComments){
-				// Выполняем добавление знака к содержимому примечания
-				this->_storage.push_back(letter);
 				// Увеличиваем длину собираемого значения
 				this->_length++;
+				// Выполняем добавление знака к содержимому примечания
+				this->_storage.push_back(letter);
 			}
 		} break;
 		// Если разбор определяет закрытие примечания
-		case phase_t::COMMENT_STAR: {
+		case static_cast <uint8_t> (phase_t::COMMENT_STAR): {
 			/**
 			 * Если примечание закрыто
 			 */
@@ -2816,10 +3460,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если содержимое примечания удерживается для выдачи
 			 */
 			if(this->_settings.emitComments){
-				// Выполняем добавление звёздочки к содержимому примечания
-				this->_storage.push_back('*');
 				// Увеличиваем длину собираемого значения
 				this->_length++;
+				// Выполняем добавление звёздочки к содержимому примечания
+				this->_storage.push_back('*');
 			}
 			/**
 			 * Если знак вправе закрывать примечание
@@ -2829,17 +3473,17 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * Если содержимое примечания удерживается для выдачи
 				 */
 				if(this->_settings.emitComments){
-					// Выполняем добавление знака к содержимому примечания
-					this->_storage.push_back(letter);
 					// Увеличиваем длину собираемого значения
 					this->_length++;
+					// Выполняем добавление знака к содержимому примечания
+					this->_storage.push_back(letter);
 				}
 				// Возвращаем разбор внутрь закрываемого примечания
 				this->_phase = phase_t::COMMENT_BLOCK;
 			}
 		} break;
 		// Если документ разобран до конца
-		case phase_t::DOCUMENT_END: {
+		case static_cast <uint8_t> (phase_t::DOCUMENT_END): {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2856,10 +3500,25 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
 				 *       иным в тексте быть не может, и общий отказ на негодный знак
 				 *       заставил бы разыскивать причину самому
+				 *
 				 */
-				if(!this->_settings.allowComments)
-					// Выводим ошибку запрещённого примечания
+				if(!this->_settings.allowComments){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::COMMENT_NOT_ALLOWED));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				}
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
 				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
@@ -2884,7 +3543,20 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Пропускаем знак начала документа
 				break;
 			}
-			// Выводим ошибку знаков за окончанием документа
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__, {letter}, log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_CHARACTERS));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON parsing failed at line %llu column %llu: %s", log::flag_t::WARNING, static_cast <unsigned long long> (this->_line), static_cast <unsigned long long> (this->_column), codec::json::message(error_t::TRAILING_CHARACTERS));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::TRAILING_CHARACTERS);
 		}
 	}
@@ -2916,10 +3588,12 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::json::Reader::Value::Value() noexcept : kind(kind_t::NONE), modified(false) {}
+awh::codec::json::Reader::Value::Value() noexcept :
+	kind(kind_t::NONE), modified(false) {}
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::json::Reader::Item::Item() noexcept : event(event_t::NONE), modified(false) {}
+awh::codec::json::Reader::Item::Item() noexcept :
+ modified(false), event(event_t::NONE) {}

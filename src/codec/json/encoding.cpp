@@ -30,7 +30,17 @@
  */
 #include <sys/log.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/json/common.hpp>
 #include <codec/json/encoding.hpp>
+
+/**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
 
 /**
  * Используем стандартное пространство имён
@@ -62,13 +72,12 @@ namespace {
 		0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178
 	};
 
-
 	/**
 	 * @brief Функция проверки восьми байтов на принадлежность к US-ASCII разом
 	 *
 	 * @details Знак US-ASCII занимает один байт и переносится в приведённый текст как
 	 *          есть, отчего отрезок таких знаков переносится целиком, минуя разбор по одному.
-	 *          Проверка ведётся действием над словом целиком и стоит не восьми проверок, а однойю
+	 *          Проверка ведётся действием над словом целиком и стоит не восьми проверок, а однойю.
 	 *
 	 * @note Управляющие знаки отсюда намеренно не изъяты, хотя приведение кодировок
 	 *       прочих кодеков их и отвергает: место управляющего знака решает разбор, а
@@ -82,7 +91,7 @@ namespace {
 	 * @return     признак принадлежности всех восьми байтов к US-ASCII
 	 *
 	 */
-	static inline bool plain(const uint64_t word) noexcept {
+	static AWH_JSON_INLINE bool plain(const uint64_t word) noexcept {
 		// Разметка старших битов всех байтов слова
 		constexpr uint64_t HIGH = 0x8080808080808080ull;
 		// Выводим признак принадлежности всех восьми байтов к US-ASCII
@@ -95,9 +104,9 @@ namespace {
 	 *          кодировщика. Правило ведущего байта оттого и общее, что местные его
 	 *          списки разъехались: этот принимал `C0`, `C1` и байты свыше `F4`
 	 *          ведущими, а общий модуль их отвергает - запись ими длиннее необходимой
-	 *          либо точка свыше U+10FFFF, и никакое продолжение того не выправитю
+	 *          либо точка свыше U+10FFFF, и никакое продолжение того не выправит
 	 *
-	 * @note Зовут method этот оттесю, где решение о держании недочитанного хвоста
+	 * @note Зовут функцию эту оттуда, где решение о держании недочитанного хвоста
 	 *       принимается: байт, ведущим не бывающий, держать для следующего куска
 	 *       незачем, и отказ по нему приходит тотчас
 	 *
@@ -112,12 +121,12 @@ namespace {
 };
 
 /**
- * @brief Метод проверки кодового значения на пригодность к переносу в текст
+ * @brief Функция проверки знака на допустимость в тексте настроек
  *
  * @details Приведение кодировки судит лишь о том, обозначает ли кодовое значение
- * знак вообще. Допустимость же знака в том или ином месте текста решает разбор:
- * стандарт JSON управляющие знаки запрещает внутри строки и дозволяет между
- * значениями, а различить эти места приведению кодировки неоткуда
+ *          знак вообще. Допустимость же знака в том или ином месте текста решает разбор:
+ *          стандарт JSON управляющие знаки запрещает внутри строки и дозволяет между
+ *          значениями, а различить эти места приведению кодировки неоткуда.
  *
  * @note Область C1 и забой отсюда намеренно не изъяты, хотя в тексте настроек
  *       им и не место: RFC 8259 дозволяет их внутри строки без отмены, и отказ
@@ -150,11 +159,11 @@ bool awh::codec::json::isChar(const uint32_t code) noexcept {
 	return true;
 }
 /**
- * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+ * @brief Функция чтения кодового значения из текста в кодировке UTF-8
  *
  * @details Тело общее - `utf8::decode`: правило ведущего октета, пределы
  *          первого продолжающего и длина наибольшей годной части держатся в одном
- *          месте для всех кодековю
+ *          месте для всех кодековю.
  *
  * @note Прежнее местное тело отличалось МЕСТОМ отказа, не его наличием: ведущие `C0`,
  *       `C1` и октеты свыше `F4` оно принимало как начало записи, а отвергало лишь
@@ -174,7 +183,7 @@ uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t
 	return utf8::decode(buffer, size, length);
 }
 /**
- * @brief Метод извлечения кодовой точки из последовательности UTF-8
+ * @brief Функция извлечения кодовой точки из последовательности UTF-8
  *
  * @details Разбор ведётся строго по пределам, отведённым кодировкой ведущему байту:
  *          негодной считается не только оборванная последовательность, но и запись кодовой
@@ -184,7 +193,7 @@ uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t
  * @details При негодной последовательности выдаётся знак замены, а разобранной
  *          считается наибольшая часть её, годная началом последовательности: запись
  *          `C3 28` даёт знак замены и скобку, а не два знака замены. Правило это предписано
- *          кодировкой, и расхождение в нём разошлось бы числом знаков заменыю
+ *          кодировкой, и расхождение в нём разошлось бы числом знаков заменыю.
  *
  * @param text   разбираемое содержимое
  * @param offset положение разбираемого байта в содержимом
@@ -197,12 +206,13 @@ size_t awh::codec::json::decode(const string & text, const size_t offset, uint32
 	/**
 	 * Выводим разобранное встраиваемым посредником
 	 *
-	 * @note Тела своего метод не несёт намеренно: определение одно, входов два
+	 * @note Тела своего функция не несёт намеренно: определение одно, входов два
+	 *
 	 */
-	return awh::codec::json::readSequence(text, offset, code, valid);
+	return readSequence(text, offset, code, valid);
 }
 /**
- * @brief Метод записи кодового значения в кодировке UTF-8
+ * @brief Функция записи кодового значения в кодировке UTF-8
  *
  * @param code   записываемое кодовое значение знака
  * @param result текст, к которому дописывается знак
@@ -220,14 +230,14 @@ bool awh::codec::json::encode(const uint32_t code, string & result) noexcept {
  *
  */
 bool awh::codec::json::Decoder::sniff() noexcept {
-	// Получаем удержанные байты начала текста в беззнаковом виде
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
-	// Получаем количество удержанных байтов начала текста
-	const size_t size = this->_prolog.size();
 	// Количество байтов метки порядка байтов
 	size_t length = 0;
 	// Кодировка, определённая по метке порядка байтов
 	encoding_t encoding = encoding_t::NONE;
+	// Получаем количество удержанных байтов начала текста
+	const size_t size = this->_prolog.size();
+	// Получаем удержанные байты начала текста в беззнаковом виде
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-8
 	 */
@@ -242,6 +252,7 @@ bool awh::codec::json::Decoder::sniff() noexcept {
 	 * @note Кодировка эта не поддерживается, но метка её начинается с метки UTF-16,
 	 *       и различить их можно лишь по следующим за нею байтам. Без такой проверки
 	 *       текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками между настоящими
+	 *
 	 */
 	} else if((size >= 4) && (((data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)) ||
 	                          ((data[0] == 0xFF) && (data[1] == 0xFE) && (data[2] == 0x00) && (data[3] == 0x00)))) {
@@ -249,25 +260,38 @@ bool awh::codec::json::Decoder::sniff() noexcept {
 		 * Если кодировка извне не навязана
 		 */
 		if(!this->_forced){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::json::message(error_t::UNSUPPORTED_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::UNSUPPORTED_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с прямым порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFE) && (data[1] == 0xFF)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16BE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16BE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с обратным порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFF) && (data[1] == 0xFE)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16LE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16LE;
 	}
 	/**
 	 * Если метка порядка байтов в начале текста обнаружена
@@ -285,11 +309,11 @@ bool awh::codec::json::Decoder::sniff() noexcept {
 		 * Если метка порядка байтов принятой кодировке противоречит
 		 *
 		 * @details Метка эта - свидетельство о кодировке САМОГО ТЕКСТА, и расходится она
-		 * с навязанной лишь тогда, когда одна из двух неверна. Какая именно - приведению
-		 * знать неоткуда, а приведение по навязанной даёт при том мусор: замер дал текст
-		 * `a,b` в UTF-16BE с меткой того же порядка, разбираемый навязанной UTF-16LE, -
-		 * приведение отвечало УСПЕХОМ, выдавая двенадцать байтов мусора с подменою
-		 * порядка байтов у всякого знака
+		 *          с навязанной лишь тогда, когда одна из двух неверна. Какая именно - приведению
+		 *          знать неоткуда, а приведение по навязанной даёт при том мусор: замер дал текст
+		 *          `a,b` в UTF-16BE с меткой того же порядка, разбираемый навязанной UTF-16LE, -
+		 *          приведение отвечало УСПЕХОМ, выдавая двенадцать байтов мусора с подменою
+		 *          порядка байтов у всякого знака.
 		 *
 		 * @note Прежде метка чужой кодировки оставалась частью текста намеренно, с
 		 *       доводом «снятие её означало бы доверие к метке, которой вызывающий уже
@@ -299,15 +323,31 @@ bool awh::codec::json::Decoder::sniff() noexcept {
 		 *
 		 * @note Договор этот общий с кодеками CSV и XML: расхождение трёх кодеков на
 		 *       одном и том же тексте было бы ловушкой тем более опасной, что молчаливой
+		 *
 		 */
-		if(this->_forced && (this->_encoding != encoding))
-			// Выполняем отказ приведения с сообщением о нём в журнал
+		if(this->_forced && (this->_encoding != encoding)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_ENCODING);
+		}
 		/**
 		 * Выполняем снятие метки порядка байтов с начала текста
 		 *
 		 * @note Метка снимается всегда, коли дошло до сюда: расхождение отвергнуто выше,
 		 *       и принятая кодировка метке отвечает
+		 *
 		 */
 		this->_prolog.erase(0, length);
 	/**
@@ -337,9 +377,9 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(this->_encoding){
+	switch(static_cast <uint8_t> (this->_encoding)){
 		// Если кодировкой является UTF-8
-		case encoding_t::UTF8: {
+		case static_cast <uint8_t> (encoding_t::UTF8): {
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
 			/**
@@ -362,7 +402,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если переданные байты являются последними
 					 */
 					if(end){
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выводим положительный результат выполнения операции
@@ -376,7 +429,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если удержанная последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -394,9 +460,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление удержанного знака к приведённому тексту
@@ -418,6 +498,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * @note Однобайтовые знаки переносятся отрезком, а не поодиночке: в
 					 *       тексте настроек их подавляющее большинство, и перенос знака за
 					 *       знаком стоил пятой доли всего времени чтения
+					 *
 					 */
 					const size_t begin = offset;
 					/**
@@ -430,6 +511,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 						 * @note Проход этот и есть ускорение: проверка знака за знаком
 						 *       стоила трети всего времени чтения, а слово целиком
 						 *       проверяется немногим дороже одного знака
+						 *
 						 */
 						while((offset + sizeof(uint64_t)) <= size){
 							// Очередные восемь байтов исходного текста
@@ -465,7 +547,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если первый байт последовательности построен ошибочно
 				 */
 				if(count == 0){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -476,7 +571,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если переданные байты являются последними
 					 */
 					if(end){
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					/**
@@ -496,7 +604,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -514,9 +635,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление знака к приведённому тексту
@@ -526,17 +661,17 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			}
 		} break;
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case encoding_t::UTF16LE:
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case encoding_t::UTF16BE: {
-			// Получаем признак обратного порядка байтов кодировки
-			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
+		case static_cast <uint8_t> (encoding_t::UTF16BE): {
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
+			// Получаем признак обратного порядка байтов кодировки
+			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			/**
 			 * Выполняем перебор пар байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Значение очередной пары байтов исходного текста
 				uint16_t unit = 0;
 				/**
@@ -581,7 +716,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если прочитанная пара байтов младшей половиной суррогатной пары не является
 					 */
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Собираем кодовое значение знака из половин суррогатной пары
@@ -601,9 +749,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *
 				 * @note Младшая половина без предшествующей старшей означает испорченный
 				 *       текст: подставить вместо неё знак замены значило бы скрыть порчу
+				 *
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				// Если прочитанная пара байтов суррогатной не является
 				} else code = unit;
@@ -622,9 +784,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
@@ -642,9 +818,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!encode(code, result)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
@@ -652,36 +842,48 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			 * Если в переданном буфере остался одиночный байт пары
 			 */
 			if(offset < size){
-				// Запоминаем удерживаемый байт пары
-				this->_pending[0] = buffer[offset];
 				// Запоминаем количество удержанных байтов
 				this->_length = 1;
+				// Запоминаем удерживаемый байт пары
+				this->_pending[0] = buffer[offset];
 			}
 			/**
 			 * Если текст оборвался посреди пары байтов либо суррогатной пары
 			 */
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
-				// Выполняем отказ приведения с сообщением о нём в журнал
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::INVALID_ENCODING);
 			}
 		} break;
-		// Если кодировкой является ISO-8859-1
 		// Если кодировкой является Windows-1252
-		case encoding_t::CP1252: {
+		case static_cast <uint8_t> (encoding_t::CP1252): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
 			for(size_t i = 0; i < size; i++){
+				// Получаем признак того, что байт лежит в области перекодировочной таблицы
+				const bool tabled = ((data[i] >= 0x80) && (data[i] <= 0x9F));
 				/**
 				 * Получаем кодовое значение знака
 				 *
 				 * @note Область 0x80-0x9F читается по перекодировочной таблице, а всё
 				 *       прочее совпадает с ISO-8859-1, где кодовое значение знака равно
 				 *       значению его байта
+				 *
 				 */
-				// Получаем признак того, что байт лежит в области перекодировочной таблицы
-				const bool tabled = ((data[i] >= 0x80) && (data[i] <= 0x9F));
-				// Получаем кодовое значение знака
 				const uint32_t code = (tabled ? CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i]));
 				/**
 				 * Если знак в кодировке не определён либо в тексте настроек недопустим
@@ -692,9 +894,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *       Прежде отсутствие этой оговорки отвергало нулевой байт у одной
 				 *       Windows-1252, отчего три однобайтовые дороги расходились между
 				 *       собою на одном и том же тексте
+				 *
 				 */
 				if((tabled && (code == 0)) || !isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
@@ -712,14 +928,29 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!encode(code, result)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
 		} break;
-		case encoding_t::LATIN1: {
+		// Если кодировкой является ISO-8859-1
+		case static_cast <uint8_t> (encoding_t::LATIN1): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -732,9 +963,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          не может.
 				 *          Молчание карты покрытия здесь означает недостижимость, а не непроверенность:
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
+				 *
 				 */
 				if(!isChar(data[i])){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
@@ -756,15 +1001,29 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!encode(data[i], result)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
 		} break;
 		// Если кодировкой является US-ASCII
-		case encoding_t::ASCII: {
+		case static_cast <uint8_t> (encoding_t::ASCII): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -773,7 +1032,20 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если байт за пределы кодировки US-ASCII выходит
 				 */
 				if(data[i] >= 0x80){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -784,9 +1056,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          не может.
 				 *          Молчание карты покрытия здесь означает недостижимость, а не непроверенность:
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
+				 *
 				 */
 				if(!isChar(data[i])){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление знака к приведённому тексту
@@ -794,16 +1080,28 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			}
 		} break;
 		/**
-		 * Если кодировка исходного текста не определена
+		 * Если кодировка исходного текста кодеком не поддерживается
 		 *
-		 * @warning Половина эта набором НЕ покрыта: доказанная подмена кода (06.09.2026)
-		 *          не красит ни одной проверки. Кодировка к мигу приведения определена
-		 *          ВСЕГДА - её ставит либо метка порядка байтов, либо распознавание, либо
-		 *          настройка, - и «не определена» остаётся сетью безопасности на случай
-		 *          заведения новой кодировки, для которой приведение забыли завести
+		 * @note Общий перечень шире поддерживаемого кодеком: UTF-32 и SINGLE приходят
+		 *       сюда от потребителя, задавшего их настройкой, и получают отказ. Прежний
+		 *       довод о недостижимости относился к перечню из семи видов
+		 *
 		 */
 		default: {
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::UNSUPPORTED_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::UNSUPPORTED_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	}
@@ -818,9 +1116,23 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 	 * @warning Снимать заслон нельзя: он последний на дороге, и ветвь новой многобайтовой
 	 *          кодировки, заведённая без своей проверки, отдала бы недочитанный хвост за
 	 *          успешно приведённый текст
+	 *
 	 */
 	if(end && (this->_length != 0)){
-		// Выполняем отказ приведения с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+		#endif
+		// Объявляем отказ приведения
 		return this->refuse(error_t::INVALID_ENCODING);
 	}
 	// Выводим положительный результат выполнения операции
@@ -871,10 +1183,10 @@ bool awh::codec::json::Decoder::encoding(const encoding_t encoding) noexcept {
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
-	// Запоминаем навязанную извне кодировку исходного текста
-	this->_encoding = encoding;
 	// Запоминаем признак навязанной извне кодировки
 	this->_forced = true;
+	// Запоминаем навязанную извне кодировку исходного текста
+	this->_encoding = encoding;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -913,6 +1225,7 @@ bool awh::codec::json::Decoder::convert(const void * buffer, const size_t size, 
 		 * @note Наибольшая метка порядка байтов занимает четыре байта, и до их
 		 *       прихода определять кодировку нельзя: метка UTF-32 начинается с
 		 *       метки UTF-16, и по двум первым байтам их не различить
+		 *
 		 */
 		if((this->_prolog.size() < 4) && !end)
 			// Выводим положительный результат выполнения операции
@@ -924,7 +1237,7 @@ bool awh::codec::json::Decoder::convert(const void * buffer, const size_t size, 
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		// Выполняем получение удержанного начала текста
-		const string prolog(std::move(this->_prolog));
+		const string prolog(::move(this->_prolog));
 		// Выполняем освобождение хранилища удержанного начала текста
 		this->_prolog.clear();
 		// Выполняем приведение удержанного начала текста
@@ -964,6 +1277,7 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 				 * @note Проход этот и есть ускорение: проверка знака за знаком
 				 *       стоила трети всего времени чтения, а слово целиком
 				 *       проверяется немногим дороже одного знака
+				 *
 				 */
 				while((offset + sizeof(uint64_t)) <= size){
 					// Очередные восемь байтов исходного текста
@@ -995,15 +1309,16 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * Выполняем проход по двухбайтовым последовательностям знаков
 		 *
 		 * @details Путь этот берёт весь двухбайтовый диапазон - кириллицу, греческое
-		 * письмо, иврит и арабское письмо, - и проверяется он тремя сравнениями на месте
-		 * вместо вызова чтения кодового значения с последующей проверкой допустимости
-		 * знака. Замером на русском тексте проверка кодировки занимала тринадцатую часть
-		 * всего разбора, прерываясь о всякий второй байт
+		 *          письмо, иврит и арабское письмо, - и проверяется он тремя сравнениями на месте
+		 *          вместо вызова чтения кодового значения с последующей проверкой допустимости
+		 *          знака. Замером на русском тексте проверка кодировки занимала тринадцатую часть
+		 *          всего разбора, прерываясь о всякий второй байт.
 		 *
 		 * @note Проверять кодовое значение здесь незачем: двухбайтовая последовательность
 		 *       даёт значения от `0x80` до `0x7FF`, а недопустимы лишь суррогатные,
 		 *       лежащие выше, да выходящие за предел Юникода. Ведущий байт ниже `0xC2`
 		 *       отвергается как избыточная запись - её даёт и общий путь
+		 *
 		 */
 		while(((data[offset] & 0xE0) == 0xC0) && (data[offset] >= 0xC2) && ((offset + 1) < size) && ((data[offset + 1] & 0xC0) == 0x80))
 			// Выполняем переход к следующему знаку исходного текста
@@ -1020,7 +1335,20 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * Если первый байт последовательности построен ошибочно
 		 */
 		if(count == 0){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, offset, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
@@ -1031,7 +1359,20 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Выполняем отказ приведения с сообщением о нём в журнал
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, offset, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			/**
@@ -1039,6 +1380,7 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 			 *
 			 * @note Положение остаётся концом проверенного намеренно: удержанные
 			 *       байты знака целого не составляют и разбору выданы быть не могут
+			 *
 			 */
 			for(size_t index = offset; index < size; index++)
 				// Выполняем добавление очередного байта к удерживаемой последовательности
@@ -1054,7 +1396,20 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * Если последовательность знака построена ошибочно
 		 */
 		if(code == INVALID_CODEPOINT){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, offset, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
@@ -1072,9 +1427,23 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 		 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 		 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+		 *
 		 */
 		if(!isChar(code)){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, offset, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		// Выполняем переход к следующему знаку исходного текста
@@ -1110,12 +1479,12 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Положение разбираемого байта в переданном буфере
+	size_t offset = 0;
 	// Запоминаем признак того, что приведение текста началось
 	this->_started = true;
 	// Получаем буфер переданного куска исходного текста
 	const char * text = reinterpret_cast <const char *> (buffer);
-	// Положение разбираемого байта в переданном буфере
-	size_t offset = 0;
 	/**
 	 * Если от предыдущего куска удержана незавершённая последовательность знака
 	 */
@@ -1128,7 +1497,20 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Выполняем отказ приведения с сообщением о нём в журнал
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			// Выводим положительный результат выполнения операции
@@ -1150,7 +1532,20 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Выполняем отказ приведения с сообщением о нём в журнал
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			// Выводим положительный результат выполнения операции
@@ -1164,7 +1559,20 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 		 * Если удержанная последовательность знака построена ошибочно
 		 */
 		if(code == INVALID_CODEPOINT){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
@@ -1182,25 +1590,40 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 		 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 		 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+		 *
 		 */
 		if(!isChar(code)){
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
+		// Выполняем сброс количества удержанных байтов
+		this->_length = 0;
 		/**
 		 * Выполняем перенос доведённой последовательности знака в отдельный буфер
 		 *
 		 * @note Перенос обязателен: проверка остатка того же куска удерживает в буфере
 		 *       удержанных байтов новый разорванный знак, и указание наружу, оставленное
 		 *       в нём, испортило бы уже выданный знак
+		 *
 		 */
 		::memcpy(this->_complete, this->_pending, length);
-		// Запоминаем буфер доведённой последовательности знака
-		chunk.head = this->_complete;
 		// Запоминаем размер доведённой последовательности знака
 		chunk.count = length;
-		// Выполняем сброс количества удержанных байтов
-		this->_length = 0;
+		// Запоминаем буфер доведённой последовательности знака
+		chunk.head = this->_complete;
 	}
 	/**
 	 * Если кусок исходного текста не передан
@@ -1222,6 +1645,7 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 	 * @note Размер запоминается и при отказе намеренно: проверенное прежде места
 	 *       отказа обязано быть разобрано, иначе положение отказа зависело бы от
 	 *       нарезки текста на куски
+	 *
 	 */
 	chunk.length = (offset - begin);
 	// Выводим результат выполнения операции
@@ -1242,8 +1666,10 @@ awh::codec::json::error_t awh::codec::json::Decoder::error() const noexcept {
  *
  */
 void awh::codec::json::Decoder::reset() noexcept {
-	// Выполняем сброс кода ошибки приведения
-	this->_error = error_t::NONE;
+	// Выполняем сброс количества удержанных байтов
+	this->_length = 0;
+	// Выполняем сброс удержанной старшей половины суррогатной пары
+	this->_surrogate = 0;
 	// Выполняем сброс признака обнаружения метки порядка байтов
 	this->_signed = false;
 	// Выполняем сброс признака обработки метки порядка байтов
@@ -1252,25 +1678,20 @@ void awh::codec::json::Decoder::reset() noexcept {
 	this->_started = false;
 	// Выполняем сброс удержанного начала текста
 	this->_prolog.clear();
-	// Выполняем сброс количества удержанных байтов
-	this->_length = 0;
-	// Выполняем сброс удержанной старшей половины суррогатной пары
-	this->_surrogate = 0;
+	// Выполняем сброс кода ошибки приведения
+	this->_error = error_t::NONE;
 	/**
 	 * Если кодировка исходного текста извне не навязана
 	 *
 	 * @note Навязанная кодировка сброс переживает намеренно: устанавливается она
 	 *       вызывающим до разбора, и потеря её при сбросе означала бы молчаливый
 	 *       переход разбора на кодировку по умолчанию
+	 *
 	 */
 	if(!this->_forced)
 		// Выполняем сброс определённой кодировки исходного текста
 		this->_encoding = encoding_t::NONE;
 }
-/**
- * @brief Конструктор
- *
- */
 /**
  * @brief Метод отказа приведения с сообщением о нём в журнал
  *
@@ -1281,23 +1702,6 @@ void awh::codec::json::Decoder::reset() noexcept {
 bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки приведения
 	this->_error = error;
-	/**
-	 * Выполняем запись об отказе приведения в журнал
-	 *
-	 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
-	 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем отказ приведения в журнал работы
-		awh::log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {},
-		                  awh::log::flag_t::WARNING, message(error));
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем отказ приведения в журнал работы
-		awh::log::print("JSON decoding failed: %s", awh::log::flag_t::WARNING, message(error));
-	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
@@ -1306,8 +1710,9 @@ bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
  *
  */
 awh::codec::json::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
+ _forced(false), _marked(false), _signed(false),
+ _started(false), _length(0), _surrogate(0),
+ _error(error_t::NONE), _encoding(encoding_t::NONE) {
 	// Выполняем сброс байтов доведённой последовательности знака
 	::memset(this->_complete, 0, sizeof(this->_complete));
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака
@@ -1323,4 +1728,5 @@ awh::codec::json::Decoder::Decoder() noexcept :
  * @brief Конструктор
  *
  */
-awh::codec::json::Decoder::Chunk::Chunk() noexcept : head(nullptr), count(0), body(nullptr), length(0) {}
+awh::codec::json::Decoder::Chunk::Chunk() noexcept :
+ count(0), length(0), body(nullptr), head(nullptr) {}

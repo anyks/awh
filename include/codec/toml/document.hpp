@@ -53,11 +53,6 @@
 #include "../value.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include "../../sys/fs.hpp"
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -804,17 +799,6 @@ namespace awh {
 						 */
 						void reset() noexcept;
 					} traversal_t;
-				private:
-					/**
-					 * \~russian
-					 * Объект работы с файловой системой
-					 *
-					 * \~english
-					 * Object of the work with the filesystem
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				private:
 					// Настройки дерева настроек
 					settings_t _settings;

@@ -46,6 +46,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -87,6 +88,12 @@ namespace {
 	 * Пространство имён контейнера CEF
 	 */
 	using namespace awh::codec::cef;
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
 
 	/**
 	 * @brief Имя вместилища пар расширения в дереве события
@@ -339,12 +346,11 @@ namespace {
 	 *          открывается вовсе, и проверка, поставленная после открытия, была бы там
 	 *          мертва - договор разошёлся бы по системам
 	 *
-	 * @param fs       объект работы с файловой системой
 	 * @param filename проверяемый адрес
 	 * @return         признак того, что адрес указывает на каталог
 	 *
 	 */
-	static bool directory(const fs_t & fs, const string & filename) noexcept {
+	static bool directory(const string & filename) noexcept {
 		/**
 		 * Выводим результат проверки того, что адрес указывает на каталог
 		 *
@@ -353,7 +359,7 @@ namespace {
 		 *          здесь значило бы принять ссылку за годный файл
 		 *
 		 */
-		return (fs.type(filename, false) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(filename, false) == fs_t::type_t::DIR);
 	}
 };
 
@@ -1016,7 +1022,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *       вместо отказа, отличить какой потребителю нечем
 	 *
 	 */
-	if(::directory(this->_fs, filename)){
+	if(::directory(filename)){
 		/**
 		 * Запоминаем код ошибки чтения файла
 		 *
@@ -1074,7 +1080,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *       давал без единой жалобы - то есть отказ был выдуман мною, а не системой
 	 *
 	 */
-	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
+	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -1116,9 +1122,9 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *       чтение, не давшее НИЧЕГО, а частичное принимало за успех
 	 *
 	 */
-	const uintmax_t expected = this->_fs.size(filename);
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	// Выполняем чтение содержимого файла записи CEF
-	this->_fs.read(filename, content);
+	::__awh_fs__.read(filename, content);
 	/**
 	 * Если прочитанное с величиною файла не сошлось
 	 */
@@ -1274,11 +1280,11 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *       подан: отсутствующая цель - случай обычный, и сохранение обязано её завести
 	 *
 	 */
-	const string & resolved = this->_fs.fullpath(filename, true);
+	const string & resolved = ::__awh_fs__.fullpath(filename, true);
 	// Адрес цели сохранения: разрешённый путь либо поданный, буде разрешить не удалось
 	const string & target = (resolved.empty() ? filename : resolved);
 	// Создаём уникальный файл с сохранением битов доступа существующей цели под POSIX
-	handle_file_t file = this->_fs.temporary(target, temporary);
+	handle_file_t file = ::__awh_fs__.temporary(target, temporary);
 	/**
 	 * Если запись собранной записи в файл отказом завершилась
 	 *
@@ -1288,7 +1294,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *       этот снят, ибо настоящий ответ теперь есть
 	 *
 	 */
-	if((file == nullptr) || !this->_fs.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
+	if((file == nullptr) || !::__awh_fs__.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
 		/**
 		 * Выполняем снос недописанного временного файла
 		 *
@@ -1300,7 +1306,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 		// Если временный файл был создан
 		if(!temporary.empty())
 			// Удаляем только файл этого сохранения
-			static_cast <void> (this->_fs.unlink(temporary));
+			static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1342,7 +1348,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *       итог его уходит в журнал, а не в отказ сохранения
 	 *
 	 */
-	if(!this->_fs.flush(temporary, true, file)){
+	if(!::__awh_fs__.flush(temporary, true, file)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1369,9 +1375,9 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	// Закрываем объект перед подменой целевого файла
 	file.reset();
 	// Если подмена целевого файла не выполнена
-	if(!this->_fs.replaceAddress(temporary, target)){
+	if(!::__awh_fs__.replaceAddress(temporary, target)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**

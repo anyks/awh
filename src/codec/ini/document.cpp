@@ -61,6 +61,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/log.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
@@ -78,6 +79,12 @@ namespace {
 	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
 
 	/**
 	 * @brief Функция снятия отменяющих записей звена пути
@@ -3441,7 +3448,7 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	 *       «/private/tmp», и без разрешения её каталог опознавался бы ссылкою
 	 *
 	 */
-	if(this->_fs.type(filename, false) == fs_t::type_t::DIR){
+	if(::__awh_fs__.type(filename, false) == fs_t::type_t::DIR){
 		// Выполняем сброс дерева настроек
 		this->clear();
 		// Запоминаем код отказа чтения файла настроек
@@ -3470,7 +3477,7 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	 *       «файл пуст» стали бы неразличимы
 	 *
 	 */
-	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
+	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
 		// Выполняем сброс дерева настроек
 		this->clear();
 		// Запоминаем код отказа чтения файла настроек
@@ -3494,7 +3501,7 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	// Собираемое содержимое читаемого файла настроек
 	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	this->_fs.read(filename, text);
+	::__awh_fs__.read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 *
@@ -3502,7 +3509,7 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	 *       пусто, и одна пустота о причине не говорит ничего
 	 *
 	 */
-	if(text.empty() && (this->_fs.size(filename) > 0)){
+	if(text.empty() && (::__awh_fs__.size(filename) > 0)){
 		// Выполняем сброс дерева настроек
 		this->clear();
 		// Запоминаем код отказа чтения файла настроек
@@ -3567,7 +3574,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 	 *       бы цели при подмене
 	 *
 	 */
-	static_cast <void> (this->_fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Если запись собранного текста настроек во временный файл не удалась
 	 *
@@ -3575,7 +3582,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 	 *       отказ самой работы дают ложь
 	 *
 	 */
-	if(!this->_fs.write(temporary, text.data(), text.size())){
+	if(!::__awh_fs__.write(temporary, text.data(), text.size())){
 		/**
 		 * Запоминаем код отказа записи файла настроек
 		 *
@@ -3586,9 +3593,9 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		 *          удалось» вместо «открыть не удалось»
 		 *
 		 */
-		this->_error = ((this->_fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
+		this->_error = ((::__awh_fs__.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3626,11 +3633,11 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 	 *       до пластины лишь `F_FULLFSYNC`, и каркас это знает
 	 *
 	 */
-	if(!this->_fs.flush(temporary)){
+	if(!::__awh_fs__.flush(temporary)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3663,11 +3670,11 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 	 *       начиналась вовсе
 	 *
 	 */
-	if(!this->_fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
