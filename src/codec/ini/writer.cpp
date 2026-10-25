@@ -43,6 +43,10 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочные файлы Модуля
+ */
 #include <codec/ini/writer.hpp>
 #include <codec/ini/encoding.hpp>
 
@@ -66,6 +70,55 @@ namespace {
 	using namespace awh::codec::ini;
 
 	/**
+	 * @brief Функция проверки знака на нужду в записи управляющей последовательностью
+	 *
+	 * @param letter проверяемый знак значения
+	 * @return       результат проверки
+	 *
+	 */
+	static constexpr bool escapable(const char letter) noexcept {
+		/**
+		 * Выводим результат проверки знака
+		 *
+		 * @note Незримые знаки перечислены наравне со знаком конца строки намеренно:
+		 *       разбор их управляющей последовательностью признаёт, а сами по себе они
+		 *       в тексте настроек недопустимы, и записать их иначе как последовательностью
+		 *       нельзя - прочитать записанное обратно не удалось бы
+		 *
+		 * @note Берутся все управляющие знаки, а не одни лишь имеющие краткое
+		 *       обозначение: разбор отвергает сырыми весь набор ниже пробела вместе со
+		 *       знаком забоя, и знак без краткого обозначения записывается видом `\xNN`
+		 *
+		 */
+		return (
+			(static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F) ||
+		    (letter == '\\') || (letter == '"')
+		);
+	}
+	/**
+	 * @brief Функция проверки записи на склейку со следующей строкой при чтении
+	 *
+	 * @details Читающий склеивает строки по нечётному числу обратных косых черт в
+	 *          конце строки: чётное их число читается управляющими последовательностями
+	 *          самой черты и строку не продолжает.
+	 *
+	 * @param text проверяемая запись
+	 * @return     результат проверки записи
+	 *
+	 */
+	static constexpr bool continued(const string_view text) noexcept {
+		// Количество обратных косых черт в конце записи
+		size_t count = 0;
+		/**
+		 * Выполняем подсчёт обратных косых черт в конце записи
+		 */
+		while((count < text.length()) && (text[text.length() - count - 1] == '\\'))
+			// Выполняем увеличение количества обратных косых черт
+			count++;
+		// Выводим результат проверки записи на нечётность числа черт
+		return ((count % 2) == 1);
+	}
+	/**
 	 * @brief Функция проверки пересечения входного среза с выходным буфером
 	 *
 	 * @param buffer выходной буфер
@@ -73,7 +126,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	bool overlaps(const string & buffer, const string_view text) noexcept {
+	static bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -83,12 +136,11 @@ namespace {
 		// Учитываем также завершающий нулевой байт строки
 		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
 	}
-
 	/**
-	 * @brief Метод проверки значения на нужду в ограждении кавычками
+	 * @brief Функция проверки значения на нужду в ограждении кавычками
 	 *
 	 * @details Ограждения требует значение, которое разбор без кавычек прочитал бы
-	 * иначе: несущее пробельную обвязку, знак примечания либо кавычку
+	 *          иначе: несущее пробельную обвязку, знак примечания либо кавычку.
 	 *
 	 * @param value          проверяемое значение свойства
 	 * @param comments       знаки, которые читающий признаёт началом примечания
@@ -104,6 +156,7 @@ namespace {
 		 *
 		 * @note Пустое значение ограждения не требует: запись «имя =» разбирается
 		 *       обратно в пустое значение всяким наречием
+		 *
 		 */
 		if(value.empty())
 			// Выводим отрицательный результат проверки значения
@@ -113,6 +166,7 @@ namespace {
 		 *
 		 * @note Пробелы начала значения отбрасывает всякий читающий - они неотличимы от
 		 *       отступа за разделителем, - а пробелы конца лишь тот, кому это задано
+		 *
 		 */
 		if(ascii::isSpace(value.front()) || (trimmed && ascii::isSpace(value.back())))
 			// Выводим положительный результат проверки значения
@@ -123,12 +177,12 @@ namespace {
 		for(size_t i = 0; i < value.length(); i++){
 			/**
 			 * Если знаком является кавычка либо знак начала примечания
-			 */
-			/**
+			 *
 			 * Если знаком является кавычка, снимаемая читающим, либо знак примечания
 			 *
 			 * @note Кавычка требует ограждения лишь там, где читающий её снимает: наречию,
 			 *       считающему кавычки частью значения, она обыкновенный знак
+			 *
 			 */
 			if((stripped && (value[i] == '"')) || (inlineComments && commented(value[i], comments)))
 				// Выводим положительный результат проверки значения
@@ -138,54 +192,7 @@ namespace {
 		return false;
 	}
 	/**
-	 * @brief Метод проверки записи на склейку со следующей строкой при чтении
-	 *
-	 * @details Читающий склеивает строки по нечётному числу обратных косых черт в
-	 * конце строки: чётное их число читается управляющими последовательностями
-	 * самой черты и строку не продолжает
-	 *
-	 * @param text проверяемая запись
-	 * @return     результат проверки записи
-	 *
-	 */
-	static bool continued(const string_view text) noexcept {
-		// Количество обратных косых черт в конце записи
-		size_t count = 0;
-		/**
-		 * Выполняем подсчёт обратных косых черт в конце записи
-		 */
-		while((count < text.length()) && (text[text.length() - count - 1] == '\\'))
-			// Выполняем увеличение количества обратных косых черт
-			count++;
-		// Выводим результат проверки записи на нечётность числа черт
-		return ((count % 2) == 1);
-	}
-
-	/**
-	 * @brief Метод проверки знака на нужду в записи управляющей последовательностью
-	 *
-	 * @param letter проверяемый знак значения
-	 * @return       результат проверки
-	 *
-	 */
-	static bool escapable(const char letter) noexcept {
-		/**
-		 * Выводим результат проверки знака
-		 *
-		 * @note Незримые знаки перечислены наравне со знаком конца строки намеренно:
-		 *       разбор их управляющей последовательностью признаёт, а сами по себе они
-		 *       в тексте настроек недопустимы, и записать их иначе как последовательностью
-		 *       нельзя - прочитать записанное обратно не удалось бы
-		 *
-		 * @note Берутся все управляющие знаки, а не одни лишь имеющие краткое
-		 *       обозначение: разбор отвергает сырыми весь набор ниже пробела вместе со
-		 *       знаком забоя, и знак без краткого обозначения записывается видом `\xNN`
-		 */
-		return ((static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F) ||
-		        (letter == '\\') || (letter == '"'));
-	}
-	/**
-	 * @brief Метод записи знака управляющей последовательностью
+	 * @brief Функция записи знака управляющей последовательностью
 	 *
 	 * @param letter записываемый знак значения
 	 * @param result текст, к которому дописывается управляющая последовательность
@@ -249,6 +256,7 @@ namespace {
 				 * `\xNN` двумя знаками шестнадцатеричного числа: разбор читает ровно два,
 				 * и следующий за ними знак, годный в шестнадцатеричные, к числу уже не
 				 * пристаёт. Одна цифра разбором отвергается, и меньше двух писать нельзя
+				 *
 				 */
 				if((static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F)){
 					// Запись знака шестнадцатеричным числом
@@ -269,11 +277,16 @@ namespace {
  *
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
- marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), greedySections(false),
- strictNames(false),
- separators(separator_t::EQUALS), quotes(true), quoting(quoting_t::AUTO),
- subsections(subsection_t::NONE), newline(newline_t::LF), malformed(malformed_t::REPLACE), inlineComments(false), spacedComments(true), comments(marker_t::BOTH),
- spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
+ trim(true), spaces(true), quotes(true),
+ global(true), arrays(false), indent(false),
+ escapes(false), indents(false), valueless(false),
+ separated(true), strictNames(false), trimSections(true),
+ continuations(false), spacedComments(true), greedySections(false),
+ inlineComments(false), marker(';'), separator('='), delimiter('.'),
+ maxName(MAX_NAME), quoting(quoting_t::AUTO), newline(newline_t::LF),
+ comments(marker_t::BOTH), malformed(malformed_t::REPLACE),
+ separators(separator_t::EQUALS), subsections(subsection_t::NONE) {}
+
 /**
  * @brief Метод получения настроек наречия MS Windows
  *
@@ -282,24 +295,25 @@ awh::codec::ini::Writer::Settings::Settings() noexcept :
  */
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() noexcept {
 	// Собираемые настройки записи текста настроек
-	Settings result;
+	settings_t result;
 	// Устанавливаем знак начала примечания
 	result.marker = ';';
-	// Устанавливаем знаки, признаваемые читающим началом примечания
-	result.comments = marker_t::SEMICOLON;
+	// Устанавливаем запрет записи пробелов вокруг разделителя
+	result.spaces = false;
+	// Устанавливаем признак того, что читающий кавычки со значения не снимает
+	result.quotes = false;
+	// Устанавливаем вид знака конца строки собираемого текста
+	result.newline = newline_t::CRLF;
 	/**
 	 * Устанавливаем обращение с ограждением значения кавычками
 	 *
 	 * @note Кавычки этим наречием при чтении не снимаются, и записывать их значило
 	 *       бы отдать читающему значение вместе с ними
+	 *
 	 */
 	result.quoting = quoting_t::NEVER;
-	// Устанавливаем признак того, что читающий кавычки со значения не снимает
-	result.quotes = false;
-	// Устанавливаем вид знака конца строки собираемого текста
-	result.newline = newline_t::CRLF;
-	// Устанавливаем запрет записи пробелов вокруг разделителя
-	result.spaces = false;
+	// Устанавливаем знаки, признаваемые читающим началом примечания
+	result.comments = marker_t::SEMICOLON;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -311,12 +325,23 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() n
  */
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() noexcept {
 	// Собираемые настройки записи текста настроек
-	Settings result;
+	settings_t result;
+	// Устанавливаем знак начала примечания
+	result.marker = '#';
+	// Устанавливаем знак разделителя имени и значения
+	result.separator = '=';
+	// Устанавливаем признак того, что читающий кавычки со значения не снимает
+	result.quotes = false;
+	// Устанавливаем запись многострочного значения продолжением отступом
+	result.indents = true;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	/**
 	 * Снимаем отбрасывание читающим пробельной обвязки имени раздела
 	 *
 	 * @note Разбор этого наречия обвязку сохраняет: «[ раздел ]» есть ему имя с
 	 *       пробелами, - и отвергать такое имя записи не за что
+	 *
 	 */
 	result.trimSections = false;
 	/**
@@ -324,28 +349,20 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() no
 	 *
 	 * @note Разбор этого наречия берёт имя раздела до последней скобки: «[x[]]» есть ему
 	 *       имя «x[]», - и отвергать такое имя записи не за что
+	 *
 	 */
 	result.greedySections = true;
-	// Устанавливаем запись многострочного значения продолжением отступом
-	result.indents = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
-	// Устанавливаем знак начала примечания
-	result.marker = '#';
-	// Устанавливаем знак разделителя имени и значения
-	result.separator = '=';
+	// Устанавливаем обращение с ограждением значения кавычками
+	result.quoting = quoting_t::NEVER;
 	/**
 	 * Устанавливаем признание читающим обоих знаков разделителя
 	 *
 	 * @note Разбор этого наречия признаёт разделителем и равенство, и двоеточие, а
 	 *       записывается знак один. Имя свойства, двоеточие несущее, читающий разрезал
 	 *       бы по нему - и запись такое имя отвергает
+	 *
 	 */
 	result.separators = separator_t::BOTH;
-	// Устанавливаем обращение с ограждением значения кавычками
-	result.quoting = quoting_t::NEVER;
-	// Устанавливаем признак того, что читающий кавычки со значения не снимает
-	result.quotes = false;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -357,11 +374,9 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() no
  */
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::systemd() noexcept {
 	// Собираемые настройки записи текста настроек
-	Settings result;
+	settings_t result;
 	// Устанавливаем знак начала примечания
 	result.marker = '#';
-	// Устанавливаем обращение с ограждением значения кавычками
-	result.quoting = quoting_t::AUTO;
 	// Устанавливаем запись управляющих последовательностей в значении
 	result.escapes = true;
 	// Устанавливаем запрет записи пробелов вокруг разделителя
@@ -370,6 +385,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::systemd() n
 	result.global = false;
 	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
 	result.continuations = true;
+	// Устанавливаем обращение с ограждением значения кавычками
+	result.quoting = quoting_t::AUTO;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -381,17 +398,29 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::systemd() n
  */
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::git() noexcept {
 	// Собираемые настройки записи текста настроек
-	Settings result;
-	// Устанавливаем знак начала примечания
+	settings_t result;
+	// Устанавливаем знак примечания решёткой
+	result.marker = '#';
+	// Устанавливаем запись отступа перед свойствами раздела
+	result.indent = true;
+	// Устанавливаем запись управляющих последовательностей в значении
+	result.escapes = true;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
+	// Устанавливаем признание свойства без значения читающим
+	result.valueless = true;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
+	result.continuations = true;
+	// Устанавливаем признание примечания в конце строки читающим
+	result.inlineComments = true;
 	/**
 	 * Устанавливаем снятие требования пробела перед знаком примечания
 	 *
 	 * @note Разбор этого наречия знак примечания признаёт где угодно, пробела перед ним
 	 *       не требуя: имя со знаком примечания внутри ему не записать вовсе
+	 *
 	 */
 	result.spacedComments = false;
-	// Устанавливаем знак примечания решёткой
-	result.marker = '#';
 	// Устанавливаем обращение с ограждением значения кавычками
 	result.quoting = quoting_t::AUTO;
 	/**
@@ -402,26 +431,15 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::git() noexc
 	 *          расхождение это выходило боком: знак-разделитель в имени раздела запись
 	 *          дозволяла, а обратное чтение резало по нему имя. Раздел `.ab.c.d`
 	 *          записывался как есть, а прочитывался разделом пустым - отказом
-	 *          «empty section name»
+	 *          «empty section name».
 	 *
 	 * @note Записи признак этот не меняет: тело сборки объявления раздела обращает
 	 *       BOTH в QUOTED само. Меняет он одну лишь проверку имени, и та отвергает
 	 *       теперь имя со знаком-разделителем - явным отказом вместо текста, своим же
 	 *       чтением не читаемого. Нашёл это ворошитель круговым ходом перевода наречий
+	 *
 	 */
 	result.subsections = subsection_t::BOTH;
-	// Устанавливаем признание свойства без значения читающим
-	result.valueless = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
-	// Устанавливаем признание примечания в конце строки читающим
-	result.inlineComments = true;
-	// Устанавливаем запись управляющих последовательностей в значении
-	result.escapes = true;
-	// Устанавливаем запись отступа перед свойствами раздела
-	result.indent = true;
-	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
-	result.continuations = true;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -440,8 +458,19 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if(name.empty()){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::EMPTY_SECTION : error_t::EMPTY_KEY);
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -452,8 +481,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *          содержимого: читающий снимает её прежде разбора. Имя, ею начатое и
 	 *          записанное ПЕРВЫМ, теряет её при обратном чтении - свойство возвращается
 	 *          с именем короче на знак. Оградить её нечем: имена управляющими
-	 *          последовательностями не записываются, а кавычками имя свойства не
-	 *          защищается
+	 *          последовательностями не записываются, а кавычками имя свойства не защищается.
 	 *
 	 * @note Порок зависит от МЕСТА записи: то же имя, записанное за разделом либо за
 	 *       свойством другим, круг проходит знак в знак - метка там знаком содержимого
@@ -461,12 +489,24 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *       имени одному: отвергать имя всюду значило бы отвергать годное. Проверено
 	 *       тремя написаниями - имя первым, имя за свойством, имя за разделом.
 	 *       Нашёл это ворошитель кругом снятого значения через перезапись
+	 *
 	 */
 	if(!section && this->_text.empty() && (name.compare(0, 3, "\xEF\xBB\xBF") == 0)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_KEY;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -476,8 +516,19 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if((this->_settings.maxName > 0) && (name.length() > this->_settings.maxName)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::NAME_TOO_LONG;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -492,13 +543,25 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *       наречие python - у него `[ раздел ]` есть имя с пробелами, - и круг
 	 *       «чтение - запись» на нём рвался: разбор текст принимал, а запись дерево
 	 *       отвергала. Нашло это сличение перезаписи с эталоном
+	 *
 	 */
 	if((section ? this->_settings.trimSections : true) &&
 	   (ascii::isSpace(name.front()) || ascii::isSpace(name.back()))){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -507,12 +570,24 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *
 	 * @note Имена управляющими последовательностями не записываются, и оградить
 	 *       такую черту нечем: читающий слил бы имя со следующей строкой
+	 *
 	 */
 	if(this->_settings.continuations && ::continued(name)){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -522,7 +597,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 * @details Наречие Git строит имя раздела из букв, цифр, черты да точки, а имя
 	 *          свойства - из буквы первым знаком да букв, цифр и черты далее. Имена иные
 	 *          средство «git config» отвергает, и читающий, грамматику поверяющий,
-	 *          отвергает их наравне с ним
+	 *          отвергает их наравне с ним.
 	 *
 	 * @warning Зеркала этой настройки у записи прежде не было вовсе: имя `[раздел]`
 	 *          кириллицей записывалось как есть, а обратное чтение тем же наречием
@@ -532,6 +607,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *
 	 * @note Имя подраздела сюда не приходит вовсе: поверку проходит одно лишь имя раздела,
 	 *       а подраздел в кавычках вольным остаётся и у читающего
+	 *
 	 */
 	if(this->_settings.strictNames){
 		/**
@@ -540,8 +616,19 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		if(!section && !ascii::isAlpha(name.front())){
 			// Запоминаем код ошибки записи
 			this->_error = error_t::INVALID_KEY;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -555,12 +642,24 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 			 * @note Точка дозволена имени раздела и запрещена имени свойства: у раздела она
 			 *       разделяет имя подраздела, а у свойства знаком имени не является вовсе -
 			 *       правила эти взяты у читающего знак в знак
+			 *
 			 */
 			if(!ascii::isAlnum(name[i]) && (name[i] != '-') && !(section && (name[i] == '.'))){
 				// Запоминаем код ошибки записи
 				this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -577,9 +676,12 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		 *       обращает всю строку в примечание. Внутри имени, равно как и в имени
 		 *       раздела, он значащим не является - имя раздела стоит в квадратных
 		 *       скобках, а имя свойства читается до разделителя
+		 *
 		 */
-		bool invalid = ((name[i] == '\n') || (name[i] == '\r') ||
-		                (!section && (i == 0) && commented(name[i], this->_settings.comments)));
+		bool invalid = (
+			(name[i] == '\n') || (name[i] == '\r') ||
+			(!section && (i == 0) && commented(name[i], this->_settings.comments))
+		);
 		/**
 		 * Если читающий признаёт примечание в конце строки
 		 *
@@ -588,7 +690,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		 *          есть, а обратный разбор давал свойство «k» с примечанием - значение
 		 *          пропадало; имя раздела с таким знаком обращало объявление в незакрытое.
 		 *          Оградить знак нечем: имена управляющими последовательностями не
-		 *          записываются, а кавычками имя свойства не защищается
+		 *          записываются, а кавычками имя свойства не защищается.
 		 *
 		 * @note Требование то же, что и у читающего, и ведёт его настройка
 		 *       `spacedComments`. Требуя пробела, читающий имя «k;заметка» отдаёт целиком,
@@ -602,9 +704,10 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		 *          перебором настроек: ни один признак поодиночке подмены не давал, и
 		 *          виновником оказалась настройка, зеркала не имевшая. Нашёл это
 		 *          ворошитель переводом дерева настроек из наречия в наречие
+		 *
 		 */
 		if(this->_settings.inlineComments && commented(name[i], this->_settings.comments) &&
-		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(name[i - 1])))
+		  (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(name[i - 1])))
 			// Дополняем признак недопустимости знаком начала примечания
 			invalid = true;
 		/**
@@ -627,15 +730,19 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 			 *       все шесть возвращаются знак в знак. Оговорка о недопустимости
 			 *       открывающей скобки первым знаком стояла здесь догадкою и снята
 			 *       замером
+			 *
 			 */
-			invalid = (invalid || (name[i] == '"') ||
-			 (!this->_settings.greedySections && ((name[i] == '[') || (name[i] == ']'))));
+			invalid = (
+				invalid || (name[i] == '"') ||
+				(!this->_settings.greedySections && ((name[i] == '[') || (name[i] == ']')))
+			);
 			/**
 			 * Если подраздел отделяется знаком-разделителем
 			 *
 			 * @note Знак этот в имени раздела недопустим: читающий режет имя по первому
 			 *       его появлению, и запись «[a.b]» с именем раздела «a.b» прочиталась
 			 *       бы разделом «a» с подразделом «b»
+			 *
 			 */
 			if((static_cast <uint8_t> (this->_settings.subsections) &
 			    static_cast <uint8_t> (subsection_t::DELIMITED)) != 0)
@@ -657,19 +764,33 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		 *       записью принятое, доставалось бы ему с именем пустым. Круг «чтение -
 		 *       запись - чтение» на нём рвался: разбор текст принимал, запись его
 		 *       принимала, а обратное чтение отвергало пустотою имени
+		 *
 		 */
-		else invalid = (invalid || (name[i] == this->_settings.separator) ||
-		 ((this->_settings.separators != separator_t::COLON) && (name[i] == '=')) ||
-		 ((this->_settings.separators != separator_t::EQUALS) && (name[i] == ':')) ||
-		 (this->_settings.arrays && ((name[i] == '[') || (name[i] == ']'))));
+		else invalid = (
+			invalid || (name[i] == this->_settings.separator) ||
+			((this->_settings.separators != separator_t::COLON) && (name[i] == '=')) ||
+			((this->_settings.separators != separator_t::EQUALS) && (name[i] == ':')) ||
+			(this->_settings.arrays && ((name[i] == '[') || (name[i] == ']')))
+		);
 		/**
 		 * Если очередной знак имени недопустим
 		 */
 		if(invalid){
 			// Запоминаем код ошибки записи
 			this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {name, section}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -694,6 +815,7 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 	 *
 	 * @note Правило это оставлено потребителю, кому кодировка безразлична вовсе: разбор
 	 *       такой записи отвечает отказом, и потребитель, правило выбравший, о том знает
+	 *
 	 */
 	if(this->_settings.malformed == malformed_t::PASS){
 		// Выдаём срез исходной записи
@@ -710,6 +832,7 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 	 *
 	 * @note Разбор ведётся тем же телом, каким его ведёт чтение: второе такое тело
 	 *       разошлось бы с первым, и запись выдавала бы то, чего чтение не принимает
+	 *
 	 */
 	while(position < text.size()){
 		// Количество байт, разбором пройденных
@@ -726,6 +849,7 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 			 * @note Годная запись не копируется вовсе до первой негодной последовательности:
 			 *       записи такие составляют подавляющее большинство, и лишний обход их
 			 *       лёг бы платою на всякую запись ради редкого случая
+			 *
 			 */
 			if(malformed)
 				// Выполняем перенос годной последовательности
@@ -740,6 +864,7 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 		 *
 		 * @note Отвергается она **ничего не записав**: отказ посреди записи оставил бы в
 		 *       тексте имя поля без значения, а это хуже негодного байта
+		 *
 		 */
 		if(this->_settings.malformed == malformed_t::REFUSE){
 			/**
@@ -748,10 +873,22 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 			 * @note Код тот же, каким отвечает писатель наречия YAML на ту же подачу: тела
 			 *       разбора кодировки у трёх кодеков сведены к одному, и число знаков
 			 *       замены на одной подаче у них тоже одно
+			 *
 			 */
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {text, result, record}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			#endif
 			// Выводим признак непригодности записи
 			return false;
 		}
@@ -772,12 +909,10 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 		 * @note Длина здесь есть наибольшая часть последовательности, разбором отмеренная,
 		 *       и знак замены положен на неё один. Переход при том обязан двинуться хотя бы
 		 *       на байт: длина нулевая остановила бы обход записи навсегда
+		 *
 		 */
 		position += ((length > 0) ? length : 1);
 	}
-	/**
-	 * Если запись негодных последовательностей не несла вовсе
-	 */
 	// Выдаём срез приведённой записи либо исходной, коли менять было нечего
 	record = (malformed ? string_view(result) : string_view(text));
 	// Выводим признак пригодности записи
@@ -786,22 +921,22 @@ bool awh::codec::ini::Writer::brought(const string_view text, string & result, s
 /**
  * @brief Метод записи значения свойства
  *
- * @param value записываемое значение свойства
- * @return      результат выполнения операции
+ * @param source записываемое значение свойства
+ * @return       результат выполнения операции
  *
  */
 bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	// Накопитель записи, к годной кодировке приведённой
-	string repaired;
+	string repaired = "";
 	// Срез записи, к записи пригодной
-	string_view record;
+	string_view record = "";
 	/**
 	 * Если привести значение к годной кодировке не удалось
 	 *
 	 * @details Читающий этого же наречия негодную кодировку ОТВЕРГАЕТ кодом
 	 *          `INVALID_ENCODING`, и запись такого значения давала текст, которого кодек
 	 *          сам прочесть не может. Прежде оно писалось как есть - молча и
-	 *          правдоподобно, - и беда всплывала лишь при следующем чтении файла
+	 *          правдоподобно, - и беда всплывала лишь при следующем чтении файла.
 	 *
 	 * @note Найдено разбором круга по краевым величинам, а не ворошителем: тот подаёт
 	 *       текст, уже прочтённый деревом, и негодной кодировки в дерево не заносит вовсе
@@ -811,6 +946,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 *       где взято обратное и записано правилом: оно одинаково у ВСЕХ
 	 *       кодеков, а умолчанием ему замена. Выбор оставлен потребителю: `REFUSE`
 	 *       возвращает прежнее обхождение целиком
+	 *
 	 */
 	if(!this->brought(source, repaired, record))
 		// Выводим отрицательный результат выполнения операции
@@ -821,6 +957,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 * @note Тело ниже ведётся по срезу ПРИВЕДЁННОМУ, а не по поданному: при правиле
 	 *       `REPLACE` они разнятся, и запись по поданному выдала бы негодные байты
 	 *       мимо приведения вовсе
+	 *
 	 */
 	const string_view value = record;
 	/**
@@ -829,6 +966,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 * @note Толкование кавычек берётся у читающего, а не у собственной настройки
 	 *       ограждения: запись, кавычек не ставящая, читающему их снимать не запрещает,
 	 *       и значение, кавычкой начинающееся, досталось бы ему без неё
+	 *
 	 */
 	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments, this->_settings.trim, this->_settings.quotes);
 	// Получаем признак ограждения значения кавычками
@@ -853,12 +991,24 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 * @warning Расхождение семи кодеков в суде об одном сочетании настроек ВЫНЕСЕНО
 	 *          отдельным пунктом: оба поведения защитимы порознь, вместе же
 	 *          несогласованны
+	 *
 	 */
 	if(quoted && !this->_settings.quotes){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::CONFLICTING_SETTINGS;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -869,6 +1019,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 *       прочёл бы изменённым: пробельную обвязку он отбросит, а на знаке примечания
 	 *       значение обрежет. Защитить его остаётся лишь управляющими последовательностями,
 	 *       а при выключенной их записи - отвергнуть, что и делается ниже
+	 *
 	 */
 	const bool guarded = (needed && !quoted && this->_settings.escapes);
 	/**
@@ -879,13 +1030,25 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 *       не властна. Пробельная обвязка многострочного значения этим способом не
 	 *       записывается вовсе, а управляющие последовательности здесь запрещены
 	 *       настройками: остаётся отказ
+	 *
 	 */
 	if(!this->_settings.escapes && this->_settings.indents && (value.find('\n') != string_view::npos) &&
-	   (ascii::isSpace(value.front()) || ascii::isSpace(value.back()))){
+	  (ascii::isSpace(value.front()) || ascii::isSpace(value.back()))){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -909,6 +1072,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 		 * @note Обвязка эта защищается лишь у читающего, её отбрасывающего: сохраняющему
 		 *       она достаётся как записана, и запись последовательностями лишь замусорила
 		 *       бы текст настроек
+		 *
 		 */
 		while(this->_settings.trim && (tail > head) && ascii::isSpace(value[tail - 1]))
 			// Выполняем переход к предыдущему знаку значения
@@ -932,12 +1096,24 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 				 * @note Незримый знак без управляющей последовательности записать нечем:
 				 *       разбор отвергает его как недопустимый, и записанное не удалось бы
 				 *       прочитать обратно
+				 *
 				 */
 				if((value[i] != '\t') && (value[i] != '\\') && (value[i] != '"') && !ascii::isSpace(value[i])){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -947,12 +1123,24 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 				 * @note Знак конца строки в значении без управляющей последовательности
 				 *       записать нечем: ограждение кавычками его не спасает, поскольку
 				 *       строка на нём обрывается, и разбор прочитал бы значение иначе
+				 *
 				 */
 				if(((value[i] == '\n') && !this->_settings.indents) || (value[i] == '\r')){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -962,8 +1150,19 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 				if((value[i] == '"') && quoted){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -976,8 +1175,19 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	if(needed && !quoted && !this->_settings.escapes){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -987,12 +1197,24 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 	 * @note При записи управляющих последовательностей черта эта удваивается и строку
 	 *       не продолжает, а без них оградить её нечем - даже кавычками: строки
 	 *       склеиваются прежде, чем читающий доберётся до кавычек
+	 *
 	 */
 	if(this->_settings.continuations && !this->_settings.escapes && ::continued(value)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1013,6 +1235,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 		 *       обвязка значения и знак примечания, значение обрывающий. Пробел внутри
 		 *       значения защиты не требует вовсе, и записывать его последовательностью
 		 *       значило бы обратить читаемый текст настроек в нечитаемый
+		 *
 		 */
 		if(guarded && (((i < head) || (i >= tail)) || (this->_settings.inlineComments && commented(value[i], this->_settings.comments)))){
 			/**
@@ -1027,6 +1250,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 			 * @note Знаки эти сами по себе печатны, и записывать их шестнадцатеричным
 			 *       кодовым значением незачем: разбор признаёт обратную косую черту
 			 *       перед пробелом и знаками примечания
+			 *
 			 */
 			else {
 				// Выполняем запись обратной косой черты управляющей последовательности
@@ -1047,6 +1271,7 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 			 * @note Кавычка вне ограждения значения не портит там, где читающий кавычек
 			 *       не снимает вовсе. Снимающему же достаточно кавычки в начале значения,
 			 *       чтобы прочесть его без неё, и такую записывают последовательностью
+			 *
 			 */
 			if((value[i] == '"') && !quoted && !this->_settings.quotes){
 				// Выполняем запись знака значения
@@ -1073,12 +1298,24 @@ bool awh::codec::ini::Writer::escape(const string_view source) noexcept {
 			 *       обратного чтения. Записать такое значение этим способом нечем, а
 			 *       управляющие последовательности здесь запрещены настройками: остаётся
 			 *       отказ, но не молчаливая потеря
+			 *
 			 */
 			if(((i > 0) && ascii::isSpace(value[i - 1])) || ((i + 1) >= value.length()) || ascii::isSpace(value[i + 1])){
 				// Запоминаем код ошибки записи
 				this->_error = error_t::INVALID_CHARACTER;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -1112,6 +1349,7 @@ void awh::codec::ini::Writer::newline() noexcept {
 	 * @note Запоминается она ЗДЕСЬ, у самой записи, а не спрашивается позже у настроек:
 	 *       настройка вправе смениться между записью строки и допиской к ней, и суд по
 	 *       ней снимал бы не ту последовательность знаков
+	 *
 	 */
 	this->_written = this->_settings.newline;
 	// Выполняем запись знака конца строки
@@ -1138,6 +1376,7 @@ void awh::codec::ini::Writer::guard(const bool blank) noexcept {
 	 *
 	 * @note Пустая строка прекращает склеивание сама по себе, и ставить перед нею
 	 *       вторую значило бы растить текст пустыми строками с каждой перезаписью
+	 *
 	 */
 	if(blank)
 		// Выходим из ограждения примечания
@@ -1159,11 +1398,14 @@ const awh::codec::ini::Writer::settings_t & awh::codec::ini::Writer::settings() 
  * @brief Метод установки настроек записи
  *
  * @param settings настройки записи текста настроек
+ * @return         признак принятия настроек записи
  *
  */
-void awh::codec::ini::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::ini::Writer::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки записи текста настроек
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Метод записи объявления раздела
@@ -1198,8 +1440,19 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	if(!subsection.empty() && (this->_settings.subsections == subsection_t::NONE)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_SUBSECTION;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {section, subsection}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1210,6 +1463,7 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	 *       в собранном тексте начатое объявление: буфер при отказе откатывается к
 	 *       тому, чем был до вызова. Пустая строка, отделяющая раздел от предыдущего,
 	 *       откатывается вместе с ним - объявления, которое она отделяет, не вышло
+	 *
 	 */
 	const size_t position = this->_text.length();
 	/**
@@ -1232,9 +1486,9 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 		 * @note Признание обоих построений разом пишется кавычками: знак-разделитель
 		 *       внутри имени подраздела прочёлся бы вторым уровнем вложенности, а
 		 *       кавычки его ограждают
+		 *
 		 */
-		switch((this->_settings.subsections == subsection_t::BOTH) ?
-		 static_cast <uint8_t> (subsection_t::QUOTED) : static_cast <uint8_t> (this->_settings.subsections)){
+		switch((this->_settings.subsections == subsection_t::BOTH) ? static_cast <uint8_t> (subsection_t::QUOTED) : static_cast <uint8_t> (this->_settings.subsections)){
 			// Если подраздел отделяется знаком-разделителем
 			case static_cast <uint8_t> (subsection_t::DELIMITED): {
 				/**
@@ -1247,8 +1501,19 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == ']') || (subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {section, subsection}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+						#endif
 						// Выполняем откат собранного текста к состоянию до вызова
 						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
@@ -1276,8 +1541,19 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {section, subsection}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+						#endif
 						// Выполняем откат собранного текста к состоянию до вызова
 						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
@@ -1301,37 +1577,20 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	this->_text.push_back(']');
 	// Выполняем запись знака конца строки
 	this->newline();
-	// Запоминаем признак того, что раздел текста настроек объявлен
-	this->_sectioned = true;
 	// Выполняем сброс признака записанного свойства
 	this->_valued = false;
+	// Запоминаем признак того, что раздел текста настроек объявлен
+	this->_sectioned = true;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
 /**
  * @brief Метод записи свойства со значением
  *
- * @param key   имя записываемого свойства
- * @param value значение записываемого свойства
- * @return      результат выполнения операции
- *
- */
-/**
- * @brief Метод записи свойства добавлением к перечню значений
- *
- * @param key    имя записываемого свойства
- * @param value  записываемое значение свойства
- * @param append признак добавления значения к перечню
- * @return       результат выполнения операции
- *
- */
-/**
- * @brief Метод записи свойства со значением
- *
  * @details Запись свойства обычного и запись добавления к перечню значений разнятся
- * лишь двумя местами - проверкой признания перечней читающим да скобками за именем, -
- * а прочее у них общее. Держать их двумя телами значило бы развести своды правил при
- * первой же правке одного из них
+ *          лишь двумя местами - проверкой признания перечней читающим да скобками за именем, -
+ *          а прочее у них общее. Держать их двумя телами значило бы развести своды правил при
+ *          первой же правке одного из них.
  *
  * @param key   имя записываемого свойства
  * @param value значение записываемого свойства
@@ -1355,27 +1614,50 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	 *
 	 * @note Скобки перечня достались бы такому читающему частью имени свойства, и он
 	 *       отверг бы его как ошибочно построенное
+	 *
 	 */
 	if(array && !this->_settings.arrays){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_KEY;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {key, value, array}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
 	/**
-	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств
-	 * не признающем
+	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств не признающем
 	 *
 	 * @note Читающий отвергает такое свойство как объявленное вне раздела, и собранный
 	 *       текст ему не прочитать вовсе
+	 *
 	 */
 	if(!this->_settings.global && !this->_sectioned){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::KEY_OUTSIDE_SECTION;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {key, value, array}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1386,6 +1668,7 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	 *
 	 * @note Проверяется имя без скобок: сами скобки в имени недопустимы, и запись
 	 *       их к имени добавляет уже это тело
+	 *
 	 */
 	if(!this->verify(key, false))
 		// Выводим отрицательный результат выполнения операции
@@ -1399,6 +1682,7 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	 *       он не пишется вовсе: строка с отступом досталась бы такому читающему
 	 *       продолжением значения предыдущего свойства, и свойства раздела слились бы
 	 *       в одно. Украшение уступает сохранности записанного
+	 *
 	 */
 	if(this->_settings.indent && !this->_settings.indents && this->_sectioned)
 		// Выполняем запись отступа перед именем свойства
@@ -1442,14 +1726,25 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	return true;
 }
 /**
- * Запись свойства со значением и признаком добавления
+ * @brief Метод записи свойства добавлением к перечню значений
+ *
+ * @param key    имя записываемого свойства
+ * @param value  записываемое значение свойства
+ * @param append признак добавления значения к перечню
+ * @return       результат выполнения операции
+ *
  */
 bool awh::codec::ini::Writer::property(const string_view key, const string_view value, const bool append) noexcept {
 	// Выполняем запись свойства со значением
 	return this->emit(key, value, append);
 }
 /**
- * Запись свойства со значением
+ * @brief Метод записи свойства со значением
+ *
+ * @param key   имя записываемого свойства
+ * @param value значение записываемого свойства
+ * @return      результат выполнения операции
+ *
  */
 bool awh::codec::ini::Writer::property(const string_view key, const string_view value) noexcept {
 	// Выполняем запись свойства со значением
@@ -1474,27 +1769,50 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	 *
 	 * @note Записанное таким читающим не прочитать вовсе: он отвергает строку по
 	 *       отсутствию разделителя имени и значения
+	 *
 	 */
 	if(!this->_settings.valueless){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::MISSING_SEPARATOR;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {key}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
 	/**
-	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств
-	 * не признающем
+	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств не признающем
 	 *
 	 * @note Читающий отвергает такое свойство как объявленное вне раздела, и собранный
 	 *       текст ему не прочитать вовсе
+	 *
 	 */
 	if(!this->_settings.global && !this->_sectioned){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::KEY_OUTSIDE_SECTION;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {key}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1513,6 +1831,7 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	 *       он не пишется вовсе: строка с отступом досталась бы такому читающему
 	 *       продолжением значения предыдущего свойства, и свойства раздела слились бы
 	 *       в одно. Украшение уступает сохранности записанного
+	 *
 	 */
 	if(this->_settings.indent && !this->_settings.indents && this->_sectioned)
 		// Выполняем запись отступа перед именем свойства
@@ -1544,16 +1863,16 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Положение начала очередной строки примечания
+	size_t offset = 0;
 	// Выполняем сброс признака записанного свойства
 	this->_valued = false;
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(false);
-	// Положение начала очередной строки примечания
-	size_t offset = 0;
 	/**
 	 * Выполняем перебор всех строк примечания
 	 */
-	while(true){
+	for(;;){
 		// Получаем положение конца очередной строки примечания
 		size_t position = text.find('\n', offset);
 		/**
@@ -1588,6 +1907,7 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
 		 *
 		 * @note Признак взводится по каждой строке, а держится по последней: склеить
 		 *       со следующей строкой читающий может лишь её одну
+		 *
 		 */
 		this->_guarded = (this->_settings.continuations && ::continued(line));
 		/**
@@ -1625,9 +1945,8 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *
 	 * @note Примечание дописывается к готовой строке, и продолжение прежней строки
 	 *       оказывается уже не в её конце: ограждать нечего
-	 */
-	/**
-	 * Если примечание к готовой строке дописать нельзя
+	 *
+	 * @note Если примечание к готовой строке дописать нельзя
 	 *
 	 * @note Читающий, примечания в конце строки не признающий, дописанное возьмёт
 	 *       частью значения свойства либо отвергнет как содержимое за объявлением
@@ -1636,6 +1955,7 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *       оно росло бы пробелом при каждом обороте «чтение - запись». Примечание
 	 *       уходит в обоих случаях отдельной строкой - место его украшение, а значение
 	 *       записано потребителем
+	 *
 	 */
 	if(!this->_settings.inlineComments || (!this->_settings.trim && this->_valued))
 		// Выполняем запись примечания отдельной строкой
@@ -1652,17 +1972,28 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 		 * @note Примечание это дописывается к готовой строке, и знак конца строки в
 		 *       нём разорвал бы её надвое: остаток ушёл бы отдельной строкой, которую
 		 *       читающий примечанием уже не сочтёт
+		 *
 		 */
 		if((text[i] == '\n') || (text[i] == '\r')){
 			// Запоминаем код ошибки записи
 			this->_error = error_t::INVALID_CHARACTER;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
 	}
-	// Получаем последовательность знаков конца строки
 	/**
 	 * Получаем последовательность знаков конца строки, ПОСЛЕДНЕЙ записью применённую
 	 *
@@ -1671,8 +2002,9 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *          смене разметки с CRLF на LF дописка снимала один перевод строки из двух
 	 *          знаков и оставляла одинокий возврат каретки ПОСРЕДИ строки, отвечая при
 	 *          том успехом; обратная смена давала отказ кодом INTERNAL
+	 *
 	 */
-	const string_view newline = awh::codec::ini::newline(this->_written);
+	const string_view newline = codec::ini::newline(this->_written);
 	/**
 	 * Если записанного текста для дописывания примечания недостаточно
 	 *
@@ -1686,12 +2018,24 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *          TOML и YAML на том же входе отвечают UNEXPECTED_CONTENT, и расхождение
 	 *          уводило потребителя в сторону. Замерено щупом на трёх кодеках разом,
 	 *          сведено решением о единообразии кодеков
+	 *
 	 */
 	if(this->_text.length() < newline.length()){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1725,12 +2069,24 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if(this->_text.compare(this->_text.length() - newline.length(), newline.length(), newline) != 0){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INTERNAL;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1740,6 +2096,7 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 * @note Примечание дописывается к строке, которая уже закрыта: снять знак её
 	 *       конца и поставить его заново дешевле, чем откладывать закрытие всякой
 	 *       строки в ожидании примечания, которого чаще всего не будет
+	 *
 	 */
 	this->_text.resize(this->_text.length() - newline.length());
 	/**
@@ -1754,6 +2111,7 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *       относится, а пробел ему НЕОБХОДИМ: читающий, требующий пробела перед знаком
 	 *       примечания, без него примечания не признает и заберёт его себе в имя
 	 *       раздела - тем вернее, что закрывающая скобка ищется им до последней в строке
+	 *
 	 */
 	if(this->_settings.trim || !this->_valued)
 		// Выполняем запись пробела перед знаком начала примечания
@@ -1774,6 +2132,7 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *
 	 * @note Дописанное примечание завершает строку наравне с записанным отдельно, и
 	 *       склеивание со следующей строкой грозит ей точно так же
+	 *
 	 */
 	this->_guarded = (this->_settings.continuations && ::continued(text));
 	// Выполняем запись знака конца строки
@@ -1827,44 +2186,20 @@ const string & awh::codec::ini::Writer::text() const noexcept {
  * @brief Метод сброса записи в исходное состояние
  *
  */
-void awh::codec::ini::Writer::clear() noexcept {
-	// Выполняем сброс кода ошибки записи
-	this->_error = error_t::NONE;
-	// Выполняем сброс признака объявления раздела
-	this->_sectioned = false;
+void awh::codec::ini::Writer::reset() noexcept {
 	// Выполняем сброс признака записанного свойства
 	this->_valued = false;
 	// Выполняем сброс признака ожидающего ограждения примечания
 	this->_guarded = false;
+	// Выполняем сброс признака объявления раздела
+	this->_sectioned = false;
+	// Выполняем сброс кода ошибки записи
+	this->_error = error_t::NONE;
 	// Выполняем очистку собранного текста настроек
 	this->_text.clear();
 }
 /**
- * @brief Метод вывода сообщения об отказе в лог
- *
- */
-void awh::codec::ini::Writer::report() const noexcept {
-	// Выполняем вывод сообщения об отказе
-	awh::log::print("INI writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
-}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::ini::Writer::Writer() noexcept :
- _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false),
- _written(newline_t::LF) {}
-/**
- * @brief Конструктор
- *
- * @param settings настройки записи текста настроек
- *
- */
-awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
- _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _written(settings.newline),
- _settings(settings) {}
-/**
- * @brief Шаблон типа записываемого числа
+ * @brief Шаблон метода записи свойства с числовым значением
  *
  * @tparam T тип записываемого числа
  *
@@ -1888,6 +2223,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	 *
 	 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
 	 *       причислен к целым, и без этого истина записалась бы единицей
+	 *
 	 */
 	if constexpr(is_same <T, bool>::value)
 		// Выполняем запись свойства с логическим значением
@@ -1911,6 +2247,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 		 *
 		 * @note Подмена знака десятичной точки локали точкой более не нужна: запись
 		 *       ведётся по правилам местности «C» и от настроек приложения не зависит
+		 *
 		 */
 		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
 			buffer, buffer + sizeof(buffer),
@@ -1944,7 +2281,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	 *
 	 * @note Рассуждение проверено ПО СУЩЕСТВУ чтением, и числа при нём таковы: накопитель
 	 *       `char buffer[64]`; порождено ТРИНАДЦАТЬ видов (число сверено заново 08.09.2026 и
-	 *       пересчитывается розыском `template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <`
+	 *       пересчитывается розыском `template bool awh::codec::ini::Writer::number <`
 	 *       по этому файлу: bool, знаковый и беззнаковый char, short, int, long, long long -
 	 *       по паре на знаковость, - да float с double; `long double` в список НЕ входит),
 	 *       и наибольшая запись у них -
@@ -1975,19 +2312,30 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INTERNAL;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI writing failed: %s", __PRETTY_FUNCTION__, {key, value}, log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI writing failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
 	// Выполняем запись свойства с числовым значением
 	return this->property(key, string_view(buffer, static_cast <size_t> (length)));
 }
-
 /**
  * Выполняем порождение приёма записи пары с числовым значением
  *
@@ -2002,8 +2350,9 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
  *       в него попавший, вышел бы числом 122 молча. Отказ сборки здесь честнее - для знака
  *       есть запись текстом. Виды `signed char` и `unsigned char` порождаются: они берутся
  *       числами осознанно
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <bool> (const string_view, const bool) noexcept;
+template bool awh::codec::ini::Writer::number <bool> (const string_view, const bool) noexcept;
 /**
  * @note Вид `char` порождается наравне с `signed char` и `unsigned char`, и лишним он НЕ
  *       является: у систем Sun вид `int8_t` объявлен КАК `char`, а не как `signed char`
@@ -2021,20 +2370,37 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <bool> (cons
  *          связки `ini::numeric`, где довод при ней и стоит. Пять прочих мест остались, и
  *          вскрылись они лишь раскладкою назавтра. Разряд тот же, что у тел разбора UTF-8:
  *          починка, приложенная к одному списку из нескольких
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <char> (const string_view, const char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <signed char> (const string_view, const signed char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <short> (const string_view, const short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned short> (const string_view, const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <int> (const string_view, const int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned int> (const string_view, const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <long> (const string_view, const long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned long> (const string_view, const unsigned long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <long long> (const string_view, const long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned long long> (const string_view, const unsigned long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <float> (const string_view, const float) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <double> (const string_view, const double) noexcept;
+template bool awh::codec::ini::Writer::number <char> (const string_view, const char) noexcept;
+template bool awh::codec::ini::Writer::number <signed char> (const string_view, const signed char) noexcept;
+template bool awh::codec::ini::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
+template bool awh::codec::ini::Writer::number <short> (const string_view, const short) noexcept;
+template bool awh::codec::ini::Writer::number <unsigned short> (const string_view, const unsigned short) noexcept;
+template bool awh::codec::ini::Writer::number <int> (const string_view, const int) noexcept;
+template bool awh::codec::ini::Writer::number <unsigned int> (const string_view, const unsigned int) noexcept;
+template bool awh::codec::ini::Writer::number <long> (const string_view, const long) noexcept;
+template bool awh::codec::ini::Writer::number <unsigned long> (const string_view, const unsigned long) noexcept;
+template bool awh::codec::ini::Writer::number <long long> (const string_view, const long long) noexcept;
+template bool awh::codec::ini::Writer::number <unsigned long long> (const string_view, const unsigned long long) noexcept;
+template bool awh::codec::ini::Writer::number <float> (const string_view, const float) noexcept;
+template bool awh::codec::ini::Writer::number <double> (const string_view, const double) noexcept;
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Writer::Writer() noexcept :
+ _valued(false), _guarded(false), _sectioned(false),
+ _error(error_t::NONE), _written(newline_t::LF) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста настроек
+ *
+ */
+awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
+ _valued(false), _guarded(false), _sectioned(false),
+ _error(error_t::NONE), _written(settings.newline), _settings(settings) {}
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

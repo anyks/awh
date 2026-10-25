@@ -39,6 +39,7 @@
  *
  * @note Приведение вынесено из шести кодеков в одно место 01.09.2026; своя копия его,
  *       здесь прежде стоявшая, снята - две тождественные копии расходятся молча
+ *
  */
 #include <codec/numeric.hpp>
 
@@ -144,28 +145,6 @@ namespace {
 };
 
 /**
- * @brief Конструктор
- *
- */
-awh::codec::ini::Location::Location() noexcept :
- line(0), column(0), offset(NO_OFFSET) {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::ini::Span::Span() noexcept : offset(0), length(0) {}
-/**
- * @brief Конструктор
- *
- * @param offset смещение начала отрезка в хранилище знаков
- * @param length длина отрезка в байтах
- *
- */
-awh::codec::ini::Span::Span(const uint32_t offset, const uint32_t length) noexcept :
- offset(offset), length(length) {}
-
-/**
  * @brief Метод проверки совпадения имени
  *
  * @param section    имя раздела для сличения
@@ -220,7 +199,7 @@ awh::codec::ini::Comment::Comment() noexcept :
  marker(';'), text{""}, placement(placement_t::OWN) {}
 
 /**
- * @brief Метод получения описания кода ошибки разбора
+ * @brief Функция получения описания кода ошибки разбора
  *
  * @param error код ошибки разбора
  * @return      описание кода ошибки на английском языке
@@ -396,7 +375,7 @@ const char * awh::codec::ini::message(const error_t error) noexcept {
 	return "unknown error";
 }
 /**
- * @brief Метод получения названия кодировки
+ * @brief Функция получения названия кодировки
  *
  * @param encoding кодировка исходного текста
  * @return         общепринятое название кодировки
@@ -438,7 +417,11 @@ const char * awh::codec::ini::name(const encoding_t encoding) noexcept {
 		// Если кодировкой является Windows-1252
 		case static_cast <uint8_t> (encoding_t::CP1252):
 			// Выводим название кодировки
-			return "WINDOWS-1252";
+			return "windows-1252";
+		// Если кодировка однобайтовая, взятая таблицею
+		case static_cast <uint8_t> (encoding_t::SINGLE):
+			// Выводим обозначение вида кодировки
+			return "single-byte";
 		/**
 		 * Если кодировка не определена вовсе
 		 *
@@ -446,6 +429,7 @@ const char * awh::codec::ini::name(const encoding_t encoding) noexcept {
 		 *       «unknown» остаётся значению, членом перечня НЕ ЯВЛЯЮЩЕМУСЯ. Иначе имя
 		 *       кодировки неопределённой неотличимо от имени мусора, и потребитель,
 		 *       имя печатающий, о разнице не узнает
+		 *
 		 */
 		case static_cast <uint8_t> (encoding_t::NONE):
 			// Выводим название неопределённой кодировки
@@ -455,7 +439,7 @@ const char * awh::codec::ini::name(const encoding_t encoding) noexcept {
 	return "unknown";
 }
 /**
- * @brief Метод определения кодировки по её названию
+ * @brief Функция определения кодировки по её названию
  *
  * @param text название кодировки в любом регистре
  * @return     определённая кодировка исходного текста
@@ -492,6 +476,7 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
 	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
 	 *       основание по умолчанию
+	 *
 	 */
 	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
 		// Выводим определённую кодировку
@@ -514,13 +499,13 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
 	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
 	 *       основание по умолчанию - тем же доводом, что и у UTF-16
+	 *
 	 */
 	if(::compare(text, "UTF-32") || ::compare(text, "UTF32"))
 		// Выводим определённую кодировку
 		return encoding_t::UTF32BE;
 	/**
 	 * Если кодировкой является ISO-8859-1
-	 *
 	 */
 	if(::compare(text, "ISO-8859-1") || ::compare(text, "ISO8859-1") || ::compare(text, "LATIN1") || ::compare(text, "L1"))
 		// Выводим определённую кодировку
@@ -533,6 +518,7 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	 *       знаки печатные - денежный знак евро, кавычки-лапки, тире. Разбирать её
 	 *       как ISO-8859-1 значило бы отвечать отказом на всякий текст настроек
 	 *       MS Windows, где эти знаки есть
+	 *
 	 */
 	if(::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252") || ::compare(text, "WINDOWS1252"))
 		// Выводим определённую кодировку
@@ -547,7 +533,7 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	return encoding_t::NONE;
 }
 /**
- * @brief Метод проверки знака на признак начала примечания
+ * @brief Функция проверки знака на признак начала примечания
  *
  * @param letter проверяемый знак
  * @param marker признаваемые знаки начала примечания
@@ -576,7 +562,7 @@ bool awh::codec::ini::commented(const char letter, const marker_t marker) noexce
 	return false;
 }
 /**
- * @brief Метод проверки знака на признак разделителя имени и значения
+ * @brief Функция проверки знака на признак разделителя имени и значения
  *
  * @param letter    проверяемый знак
  * @param separator признаваемые знаки разделителя имени и значения
@@ -605,7 +591,7 @@ bool awh::codec::ini::separated(const char letter, const separator_t separator) 
 	return false;
 }
 /**
- * @brief Метод получения знака конца строки
+ * @brief Функция получения знака конца строки
  *
  * @param newline вид знака конца строки
  * @return        последовательность знаков конца строки
@@ -629,7 +615,7 @@ string_view awh::codec::ini::newline(const newline_t newline) noexcept {
 	return "\n";
 }
 /**
- * @brief Метод разбора целого числа со знаком из значения свойства
+ * @brief Функция разбора целого числа со знаком из значения свойства
  *
  * @param text   разбираемое значение свойства
  * @param result ссылка на результат разбора
@@ -652,11 +638,12 @@ bool awh::codec::ini::integer(const string_view text, int64_t & result) noexcept
 	 *
 	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
 	 *       и приведение такого значения к 52 скрыло бы ошибку в файле настроек
+	 *
 	 */
 	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
 }
 /**
- * @brief Метод разбора целого числа без знака из значения свойства
+ * @brief Функция разбора целого числа без знака из значения свойства
  *
  * @param text   разбираемое значение свойства
  * @param result ссылка на результат разбора
@@ -677,6 +664,7 @@ bool awh::codec::ini::integer(const string_view text, uint64_t & result) noexcep
 	 *
 	 * @note Число со знаком в тип без знака не приводится даже тогда, когда знак
 	 *       положительный: запрошенный тип и есть указание на ожидаемую запись
+	 *
 	 */
 	if((value.front() == '-') || (value.front() == '+'))
 		// Выводим признак неудачного разбора
@@ -687,7 +675,7 @@ bool awh::codec::ini::integer(const string_view text, uint64_t & result) noexcep
 	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
 }
 /**
- * @brief Метод разбора числа с плавающей точкой из значения свойства
+ * @brief Функция разбора числа с плавающей точкой из значения свойства
  *
  * @param text   разбираемое значение свойства
  * @param result ссылка на результат разбора
@@ -712,6 +700,7 @@ bool awh::codec::ini::real(const string_view text, double & result) noexcept {
 	 *       бесконечность, а «1e-400» выдано нулём. Отвергать их значило бы разойтись с
 	 *       прочими кодеками рамки, где такая запись извлекается пределом. Прочие коды
 	 *       отказа остаются отказом: ими помечена запись, числом не являющаяся
+	 *
 	 */
 	if(res.ec == errc::result_out_of_range)
 		// Выводим признак успешного разбора, если число разобрано целиком
@@ -720,7 +709,7 @@ bool awh::codec::ini::real(const string_view text, double & result) noexcept {
 	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
 }
 /**
- * @brief Метод разбора логического значения из значения свойства
+ * @brief Функция разбора логического значения из значения свойства
  *
  * @param text   разбираемое значение свойства
  * @param result ссылка на результат разбора
@@ -742,6 +731,7 @@ bool awh::codec::ini::boolean(const string_view text, bool & result, const boole
 	 *
 	 * @note Регистр записи при строгом разборе учитывается намеренно: строгой она
 	 *       названа по договору XSD, а он иных написаний не допускает
+	 *
 	 */
 	if(forms == boolean_t::STRICT){
 		/**
@@ -770,6 +760,7 @@ bool awh::codec::ini::boolean(const string_view text, bool & result, const boole
 	 *
 	 * @note Регистр записи при расширенном разборе не учитывается: файл настроек
 	 *       пишет человек, и «On» вместе с «ON» встречаются в нём наравне с «on»
+	 *
 	 */
 	if(::compare(value, "true") || ::compare(value, "yes") || ::compare(value, "on") || (value.compare("1") == 0)){
 		// Запоминаем разобранное логическое значение
@@ -790,14 +781,14 @@ bool awh::codec::ini::boolean(const string_view text, bool & result, const boole
 	return false;
 }
 /**
- * @brief Шаблон типа числа результата разбора
+ * @brief Шаблон Функции разбора числа из значения свойства
  *
  * @tparam T тип числа результата разбора
  *
  */
 template <typename T>
 /**
- * @brief Метод разбора числа из значения свойства
+ * @brief Функция разбора числа из значения свойства
  *
  * @param text   разбираемое значение свойства
  * @param result ссылка на результат разбора
@@ -833,6 +824,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 		 *
 		 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
 		 *       причислен к целым, и без этого «on» бы отвергалось
+		 *
 		 */
 		if constexpr(is_same <T, bool>::value)
 			// Выполняем разбор логического значения
@@ -856,6 +848,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 			 *       Отменена она 20.08.2026 доводом о том, что приведение языка не
 			 *       отказывает нигде, а признак успешности разбора отведён одному лишь случаю,
 			 *       когда значение числом не является вовсе
+			 *
 			 */
 			result = static_cast <T> (value);
 			// Выводим признак успешного разбора
@@ -873,6 +866,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 				 * @note Вид со знаком пробуется первым и при запросе вида без знака: запись
 				 *       «-1» тем самым переносится младшими разрядами, ровно как это делает
 				 *       приведение языка, а не сводится к нулю зажимом дробного пути
+				 *
 				 */
 				if(integer(text, value)){
 					// Запоминаем разобранное число
@@ -888,6 +882,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 				 *
 				 * @note Заход этот берёт записи, в вид со знаком не вместившиеся, - вроде
 				 *       «18446744073709551615»
+				 *
 				 */
 				if(integer(text, value)){
 					// Запоминаем разобранное число
@@ -910,6 +905,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 			 * @note Заход этот берёт записи дробные - «1.5», «1e3» - и записи, ни в один целый
 			 *       вид не вместившиеся. Отказ им прежде выдавался оттого, что целого разбора
 			 *       они не проходят вовсе
+			 *
 			 */
 			result = codec::convert <T> (value);
 			// Выводим признак успешного разбора
@@ -923,8 +919,9 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
  * @note Перечень типов задан заранее и порождается здесь явно: реализация остаётся в
  *       файле реализации, а заголовочный файл несёт лишь объявление. Запрос типа,
  *       в перечень не входящего, отвечает отказом сборки на этапе связывания
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <bool> (const string_view, bool &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <bool> (const string_view, bool &, const boolean_t) noexcept;
 /**
  * @warning Объявление вида `char` обязательно наравне с `signed char` и `unsigned char`:
  *          `char` есть ТРЕТИЙ, самостоятельный вид языка, и у систем Sun `int8_t`
@@ -932,17 +929,18 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <bool> (const strin
  *          валилось нехваткою `numeric<char>`, тогда как у Linux и macOS, где `int8_t`
  *          есть `signed char`, дефекта не видно вовсе. Замерено 08.09.2026 на стенде
  *          Solaris; у кодеков XML, CSV и общего приведения объявление это уже стоит
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <char> (const string_view, char &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <signed char> (const string_view, signed char &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned char> (const string_view, unsigned char &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <short> (const string_view, short &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned short> (const string_view, unsigned short &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int> (const string_view, int &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned int> (const string_view, unsigned int &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <long> (const string_view, long &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned long> (const string_view, unsigned long &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <long long> (const string_view, long long &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned long long> (const string_view, unsigned long long &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <float> (const string_view, float &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <double> (const string_view, double &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <char> (const string_view, char &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <signed char> (const string_view, signed char &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <unsigned char> (const string_view, unsigned char &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <short> (const string_view, short &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <unsigned short> (const string_view, unsigned short &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <int> (const string_view, int &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <unsigned int> (const string_view, unsigned int &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <long> (const string_view, long &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <unsigned long> (const string_view, unsigned long &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <long long> (const string_view, long long &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <unsigned long long> (const string_view, unsigned long long &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <float> (const string_view, float &, const boolean_t) noexcept;
+template bool awh::codec::ini::numeric <double> (const string_view, double &, const boolean_t) noexcept;

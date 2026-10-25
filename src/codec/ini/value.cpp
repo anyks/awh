@@ -25,10 +25,15 @@
 #include <limits>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
  */
 #include <codec/ini/value.hpp>
-#include <sys/log.hpp>
+
 /**
  * Подключаем переносимую подмену целевого файла временным
  *
@@ -41,10 +46,9 @@
  * @warning Заголовок этот гасит макросы `windows.h` сам - `suppress.hpp` перед
  *          включением, `restore.hpp` после. Без того `duplicate_t::ERROR` обратился бы
  *          числом, и сборка развалилась бы вдали от места
- */
-
-/**
+ *
  * Используем стандартное пространство имён
+ *
  */
 using namespace std;
 
@@ -59,10 +63,15 @@ using namespace awh::codec::ini;
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Предел роста вместилища обращением по номеру
 	 *
 	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
-	 * этот рост стережёт. Нуль снимает его вовсе
+	 *          этот рост стережёт. Нуль снимает его вовсе.
 	 *
 	 */
 	static atomic <size_t> LIMIT(0x10000);
@@ -70,8 +79,8 @@ namespace {
 	 * @brief Предел глубины заведения по пути
 	 *
 	 * @details Заведение по пути идёт последовательно и стека не берёт, зато работы по
-	 * заведённому дереву - размножение его и снятие - идут возвратно, и дерево небывалой
-	 * глубины срывает на них стек
+	 *          заведённому дереву - размножение его и снятие - идут возвратно, и дерево небывалой
+	 *          глубины срывает на них стек.
 	 *
 	 * @note Берётся предел самого наречия, а не свой: глубину вложенности подразделов
 	 *       оно уже объявляет, и заводить рядом второй предел значило бы развести их при
@@ -82,7 +91,32 @@ namespace {
 	 *       глубину, какую потребитель держит у себя в памяти, незачем
 	 *
 	 */
-	constexpr size_t DEPTH = static_cast <size_t> (awh::codec::ini::MAX_DEPTH);
+	constexpr size_t DEPTH = static_cast <size_t> (MAX_DEPTH);
+
+	/**
+	 * @brief Функция получения ссылки на пустую запись
+	 *
+	 * @return ссылка на пустую запись
+	 *
+	 */
+	static const string & nothing() noexcept {
+		// Пустая запись, обращением неудачным выдаваемая
+		static const string result;
+		// Выводим ссылку на пустую запись
+		return result;
+	}
+	/**
+	 * @brief Функция получения ссылки на неопределённое значение
+	 *
+	 * @return ссылка на неопределённое значение
+	 *
+	 */
+	static const value_t & missing() noexcept {
+		// Неопределённое значение, обращением неудачным выдаваемое
+		static const value_t result;
+		// Выводим ссылку на неопределённое значение
+		return result;
+	}
 	/**
 	 * @brief Функция записи свойства с оградою, значением запомненной
 	 *
@@ -90,7 +124,7 @@ namespace {
 	 *          знаком примечания: снимать её значило бы править то, о чём не просили.
 	 *          Дерево настроек поступает так же и тем же способом - подменою настройки
 	 *          на время одной записи: своего довода у записи для этого нет, ограду она
-	 *          ставит по надобности
+	 *          ставит по надобности.
 	 *
 	 * @note Подмена ведётся лишь при настройке ограждения по надобности: выбери человек
 	 *       ограждение всегда либо никогда - и решение это принадлежит ему, а не памяти
@@ -103,25 +137,25 @@ namespace {
 	 * @return       признак успешности записи свойства
 	 *
 	 */
-	static bool quoting(awh::codec::ini::writer_t & writer, const bool quoted, const string & key, const string & value) noexcept {
+	static bool quoting(writer_t & writer, const bool quoted, const string & key, const string & value) noexcept {
 		/**
 		 * Если ограду ставить не требуется либо ставит её сама запись
 		 */
-		if(!quoted || (writer.settings().quoting != awh::codec::ini::quoting_t::AUTO))
+		if(!quoted || (writer.settings().quoting != quoting_t::AUTO))
 			// Выполняем запись свойства как оно есть
 			return writer.property(key, value);
 		// Получаем настройки записи текста настроек
-		awh::codec::ini::writer_t::settings_t current = writer.settings();
+		writer_t::settings_t settings = writer.settings();
 		// Устанавливаем ограждение значения кавычками
-		current.quoting = awh::codec::ini::quoting_t::ALWAYS;
+		settings.quoting = quoting_t::ALWAYS;
 		// Выполняем установку настроек записи текста настроек
-		writer.settings(current);
+		writer.settings(settings);
 		// Выполняем запись свойства со значением
 		const bool result = writer.property(key, value);
 		// Возвращаем ограждение значения кавычками по надобности
-		current.quoting = awh::codec::ini::quoting_t::AUTO;
+		settings.quoting = quoting_t::AUTO;
 		// Выполняем установку настроек записи текста настроек
-		writer.settings(current);
+		writer.settings(settings);
 		// Выводим признак успешности записи свойства
 		return result;
 	}
@@ -129,9 +163,9 @@ namespace {
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
 	 * @details Путь записывается тем же порядком, каким записывает его контейнер JSON, а
-	 * порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
-	 * отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
-	 * разбирался бы на два звена и уходил не туда
+	 *          порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
+	 *          отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
+	 *          разбирался бы на два звена и уходил не туда.
 	 *
 	 * @note Порядок снятия предписан стандартом: снятие `~0` прежде `~1` обратило бы
 	 *       записанное `~01` в косую черту вместо `~1`
@@ -204,6 +238,7 @@ namespace {
 		 * @note Отступление это снято общим правилом: оно гласит, что
 		 *       описание стоит выше согласованности API, и коль скоро описание требует
 		 *       для метода своей повадки, выбирать надлежит описание
+		 *
 		 */
 		if((text.front() == '0') && (text.size() > 1))
 			// Выводим признак того, что запись номером не является
@@ -232,31 +267,7 @@ namespace {
 		// Выводим признак того, что запись является номером значения
 		return true;
 	}
-	/**
-	 * @brief Функция получения ссылки на неопределённое значение
-	 *
-	 * @return ссылка на неопределённое значение
-	 *
-	 */
-	static const awh::codec::ini::Value & missing() noexcept {
-		// Неопределённое значение, обращением неудачным выдаваемое
-		static const awh::codec::ini::Value result;
-		// Выводим ссылку на неопределённое значение
-		return result;
-	}
-	/**
-	 * @brief Функция получения ссылки на пустую запись
-	 *
-	 * @return ссылка на пустую запись
-	 *
-	 */
-	static const string & nothing() noexcept {
-		// Пустая запись, обращением неудачным выдаваемая
-		static const string result;
-		// Выводим ссылку на пустую запись
-		return result;
-	}
-}
+};
 
 /**
  * @brief Метод извлечения значения мусорного
@@ -264,9 +275,9 @@ namespace {
  * @return значение мусорное
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::scrap() noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::scrap() noexcept {
 	// Значение мусорное, обращением изменяемым неудачным выдаваемое
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем сброс мусорного значения от прежней записи в него
 	result.clear();
 	// Выводим ссылку на значение мусорное
@@ -301,6 +312,16 @@ void awh::codec::ini::Value::limit(const size_t value) noexcept {
 bool awh::codec::ini::Value::valid() const noexcept {
 	// Выводим признак определённости значения
 	return (this->_type != type_t::NONE);
+}
+/**
+ * @brief Оператор приведения к логическому типу
+ *
+ * @return признак действительности значения
+ *
+ */
+awh::codec::ini::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
 }
 /**
  * @brief Метод извлечения типа значения
@@ -350,8 +371,6 @@ bool awh::codec::ini::Value::empty() const noexcept {
 void awh::codec::ini::Value::clear() noexcept {
 	// Выполняем снос указателя поиска
 	this->unindex();
-	// Выполняем сброс типа хранимого значения
-	this->_type = type_t::NONE;
 	// Выполняем сброс признака значения, записанного в кавычках
 	this->_quoted = false;
 	// Выполняем очистку содержимого простого значения
@@ -360,6 +379,12 @@ void awh::codec::ini::Value::clear() noexcept {
 	this->_names.clear();
 	// Выполняем очистку значений вместилища
 	this->_items.clear();
+	// Выполняем сброс типа хранимого значения
+	this->_type = type_t::NONE;
+	// Выполняем сброс кода отказа последней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа последней работы
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Метод извлечения содержимого простого значения
@@ -453,6 +478,7 @@ size_t awh::codec::ini::Value::locate(const string & name) const noexcept {
 	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
 	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
 	 *       отпечатка на всякое имя
+	 *
 	 */
 	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
@@ -502,16 +528,13 @@ void awh::codec::ini::Value::unindex() noexcept {
  * @return     найденное значение
  *
  */
-const awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & name) const noexcept {
+const awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const string & name) const noexcept {
 	/**
 	 * Если значение вместилищем пар не является
 	 */
 	if(this->_type != type_t::TABLE)
 		// Выводим неопределённое значение
 		return ::missing();
-	/**
-	 * Выполняем перебор имён пар вместилища
-	 */
 	// Выполняем разыскание затребованной пары вместилища
 	const size_t found = this->locate(name);
 	// Если пары вместилища разыскана
@@ -528,12 +551,13 @@ const awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string
  * @return     найденное либо заведённое значение
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & name) noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const string & name) noexcept {
 	/**
 	 * Если значение вместилищем пар не является
 	 *
 	 * @note Значение перерождается вместилищем, а простое содержимое его теряется:
 	 *       обращение изменяемое есть заявление о том, что здесь стоит вместилище
+	 *
 	 */
 	if(this->_type != type_t::TABLE){
 		// Выполняем очистку прежнего значения
@@ -541,9 +565,6 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & nam
 		// Назначаем значению тип вместилища пар
 		this->_type = type_t::TABLE;
 	}
-	/**
-	 * Выполняем перебор имён пар вместилища
-	 */
 	// Выполняем разыскание затребованной пары вместилища
 	const size_t found = this->locate(name);
 	// Если пары вместилища разыскана
@@ -555,6 +576,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & nam
 	 *
 	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
 	 *       самую квадратичность, от какой указатель и заводится
+	 *
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
@@ -573,7 +595,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & nam
  * @return      найденное значение
  *
  */
-const awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const size_t index) const noexcept {
 	/**
 	 * Если номер за пределы вместилища выходит
 	 */
@@ -590,12 +612,13 @@ const awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t
  * @return      найденное либо заведённое значение
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index) noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const size_t index) noexcept {
 	/**
 	 * Если значение вместилищем не является вовсе
 	 *
 	 * @note Обращение по номеру заводит перечень, а не вместилище пар: имени у номера
 	 *       нет, и положить значение в пару было бы некуда
+	 *
 	 */
 	if((this->_type != type_t::ARRAY) && (this->_type != type_t::TABLE)){
 		// Выполняем очистку прежнего значения
@@ -614,7 +637,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index
 		 */
 		if((limit > 0) && ((index + 1) > limit))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		/**
 		 * Если значение является вместилищем пар
 		 */
@@ -628,6 +651,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index
 			 *          розыск по ним отвечал бы отсутствием, тогда как перебор их находит.
 			 *          Ответ тем разнился бы по числу пар - до порога заведения указателя
 			 *          пара с именем пустым находилась, а за порогом пропадала
+			 *
 			 */
 			this->unindex();
 		}
@@ -644,7 +668,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index
  * @return     найденное значение
  *
  */
-const awh::codec::ini::Value & awh::codec::ini::Value::at(const string & path) const noexcept {
+const awh::codec::ini::value_t & awh::codec::ini::Value::at(const string & path) const noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -653,10 +677,10 @@ const awh::codec::ini::Value & awh::codec::ini::Value::at(const string & path) c
 	if(route.empty())
 		// Выводим текущее значение
 		return (* this);
-	// Получаем ссылку на значение, путём разыскиваемое
-	const Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	const value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -706,7 +730,7 @@ const awh::codec::ini::Value & awh::codec::ini::Value::at(const string & path) c
  * @return     заведённое значение
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::place(const string & path) noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::place(const string & path) noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -732,12 +756,12 @@ awh::codec::ini::Value & awh::codec::ini::Value::place(const string & path) noex
 		 */
 		if(links > ::DEPTH)
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 	}
-	// Получаем ссылку на значение, путём разыскиваемое
-	Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -751,7 +775,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::place(const string & path) noex
 		 */
 		if(!::unescape(part))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		// Номер значения вместилища, частью пути заданный
 		size_t index = 0;
 		// Получаем признак того, что часть пути является номером
@@ -792,7 +816,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::place(const string & path) noex
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::ini::Value::push(const Value & value) noexcept {
+bool awh::codec::ini::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если значение вместилищем не является вовсе
 	 */
@@ -802,8 +826,9 @@ bool awh::codec::ini::Value::push(const Value & value) noexcept {
 		 *
 		 * @note Аргумент может ссылаться на текущее значение. Копия должна
 		 *       предшествовать очистке содержимого и изменению типа
+		 *
 		 */
-		Value item = value;
+		value_t item = value;
 		// Выполняем очистку прежнего значения
 		this->clear();
 		// Назначаем значению тип перечня значений
@@ -819,6 +844,7 @@ bool awh::codec::ini::Value::push(const Value & value) noexcept {
 	 * @note Отказ здесь намеренный: добавление без имени во вместилище пар положить
 	 *       некуда, а подставлять имя пустое значило бы завести свойство, записи не
 	 *       подлежащее
+	 *
 	 */
 	if(this->_type == type_t::TABLE)
 		// Выводим признак неудачного добавления
@@ -836,7 +862,7 @@ bool awh::codec::ini::Value::push(const Value & value) noexcept {
  * @return      признак успешности установки
  *
  */
-bool awh::codec::ini::Value::insert(const string & name, const Value & value) noexcept {
+bool awh::codec::ini::Value::insert(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если имя пары вместилища пусто вовсе
 	 */
@@ -850,8 +876,9 @@ bool awh::codec::ini::Value::insert(const string & name, const Value & value) no
 	 *
 	 * @note Источником может быть само дерево или его потомок. Копия должна
 	 *       предшествовать очистке дерева и добавлению имени новой пары
+	 *
 	 */
-	Value item = value;
+	value_t item = value;
 	/**
 	 * Если значение вместилищем пар не является
 	 */
@@ -868,6 +895,7 @@ bool awh::codec::ini::Value::insert(const string & name, const Value & value) no
 	 *
 	 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
 	 *       перестановка их меняла бы вид записанного текста без его на то воли
+	 *
 	 */
 	if(found < this->_items.size()){
 		// Выполняем перезапись значения пары вместилища
@@ -894,7 +922,7 @@ bool awh::codec::ini::Value::insert(const string & name, const Value & value) no
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::ini::Value::append(const string & name, const Value & value) noexcept {
+bool awh::codec::ini::Value::append(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если имя пары вместилища пусто вовсе либо занято уже
 	 */
@@ -919,6 +947,7 @@ bool awh::codec::ini::Value::erase(const string & name) noexcept {
 	 *          отвечает отказом ниже - пары с таким именем не найдено. Порча захода
 	 *          проверок не роняет, замерено. Сносу заход не подлежит: он называет отказ
 	 *          видом значения, а не отсутствием имени
+	 *
 	 */
 	if(this->_type != type_t::TABLE)
 		// Выводим признак неудачного удаления
@@ -971,21 +1000,26 @@ bool awh::codec::ini::Value::erase(const size_t index) noexcept {
 	 *
 	 * @note Сносится он целиком, а не чинится: удаление сдвигает номера всех пар после
 	 *       удалённой, и починка обошлась бы дороже заведения заново
+	 *
 	 */
 	this->unindex();
 	// Выводим признак успешного удаления
 	return true;
 }
 /**
- * @brief Шаблонный метод извлечения числа затребованным видом
+ * @brief Шаблон метода извлечения числа затребованным видом
  *
- * @tparam T      затребованный вид числа
- *
- * @param  result переменная, куда помещается извлечённое значение
- * @return        признак успешности извлечения
+ * @tparam T затребованный вид числа
  *
  */
 template <typename T>
+/**
+ * @brief Метод извлечения числа затребованным видом
+ *
+ * @param result переменная, куда помещается число
+ * @return       признак успешности извлечения
+ *
+ */
 bool awh::codec::ini::Value::extract(T & result) const noexcept {
 	/**
 	 * Если значение простым не является
@@ -999,6 +1033,7 @@ bool awh::codec::ini::Value::extract(T & result) const noexcept {
 	 * @note Разбор ведётся тем же способом, каким ведёт его дерево настроек: договор
 	 *       извлечения общий у них, и расхождение всплыло бы у потребителя, читающего
 	 *       то через дерево, то через владеющее значение
+	 *
 	 */
 	return numeric(this->_text, result);
 }
@@ -1017,6 +1052,7 @@ bool awh::codec::ini::Value::value(bool & result) const noexcept {
 	 *          извлечение отвергается ниже - разбирать нечего. Порча захода проверок не
 	 *          роняет, замерено. Сносу заход не подлежит: он снимает разбор заведомо
 	 *          неподходящего значения
+	 *
 	 */
 	if(this->_type != type_t::STRING)
 		// Выводим признак неудачного извлечения
@@ -1044,7 +1080,7 @@ bool awh::codec::ini::Value::value(string & result) const noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения числа видом `int8_t`
+ * @brief Метод извлечения числа
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
@@ -1056,6 +1092,7 @@ bool awh::codec::ini::Value::value(int8_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(int16_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1063,6 +1100,7 @@ bool awh::codec::ini::Value::value(int16_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(int32_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1070,6 +1108,7 @@ bool awh::codec::ini::Value::value(int32_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(int64_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1077,6 +1116,7 @@ bool awh::codec::ini::Value::value(int64_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(uint8_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1084,6 +1124,7 @@ bool awh::codec::ini::Value::value(uint8_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(uint16_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1091,6 +1132,7 @@ bool awh::codec::ini::Value::value(uint16_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(uint32_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1098,6 +1140,7 @@ bool awh::codec::ini::Value::value(uint32_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(uint64_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1105,6 +1148,7 @@ bool awh::codec::ini::Value::value(uint64_t & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(float & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1112,6 +1156,7 @@ bool awh::codec::ini::Value::value(float & result) const noexcept {
 }
 /**
  * @copydoc awh::codec::ini::Value::value(int8_t &) const
+ *
  */
 bool awh::codec::ini::Value::value(double & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1124,7 +1169,7 @@ bool awh::codec::ini::Value::value(double & result) const noexcept {
  * @return      признак совпадения значений
  *
  */
-bool awh::codec::ini::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::ini::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если типы значений разнятся
 	 */
@@ -1146,6 +1191,7 @@ bool awh::codec::ini::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Признак записи в кавычках сличению не подлежит: кавычки суть
 			 *       оформление записи, а не содержимое её
+			 *
 			 */
 			return (this->_text.compare(value._text) == 0);
 		// Если значения являются перечнями
@@ -1161,6 +1207,7 @@ bool awh::codec::ini::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Порядок значений перечня сличению подлежит: перечень одноимённых
 			 *       значений есть последовательность, и порядок объявления её значим
+			 *
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
 				/**
@@ -1185,10 +1232,11 @@ bool awh::codec::ini::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Порядок пар вместилища сличению НЕ подлежит: вместилище есть отображение
 	 *       имён на значения, и порядок записи его значением не является
+	 *
 	 */
 	for(size_t i = 0; i < this->_names.size(); i++){
 		// Получаем значение одноимённой пары сличаемого вместилища
-		const Value & item = value[this->_names.at(i)];
+		const value_t & item = value[this->_names.at(i)];
 		/**
 		 * Если одноимённой пары в сличаемом вместилище нет вовсе
 		 */
@@ -1212,7 +1260,7 @@ bool awh::codec::ini::Value::operator == (const Value & value) const noexcept {
  * @return      признак расхождения значений
  *
  */
-bool awh::codec::ini::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::ini::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак расхождения значений
 	return !((* this) == value);
 }
@@ -1223,31 +1271,23 @@ bool awh::codec::ini::Value::operator != (const Value & value) const noexcept {
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value) noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::operator = (const value_t & value) noexcept {
 	/**
 	 * Если присваивается значение самому себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем тип хранимого значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем признак значения, записанного в кавычках, до изменения текущего дерева
-	const bool quoted = value._quoted;
-	// Получаем содержимое простого значения до изменения текущего дерева
-	string text = value._text;
-	// Получаем имена пар вместилища до изменения текущего дерева
-	vector <string> names = value._names;
-	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items = value._items;
 	// Выполняем копирование типа хранимого значения
-	this->_type = type;
-	// Выполняем копирование признака значения, записанного в кавычках
-	this->_quoted = quoted;
+	this->_type = value._type;
 	// Выполняем перенос подготовленной копии содержимого простого значения
-	this->_text = ::move(text);
+	this->_text = value._text;
 	// Выполняем перенос подготовленной копии имён пар вместилища
-	this->_names = ::move(names);
+	this->_names = value._names;
+	// Выполняем копирование признака значения, записанного в кавычках
+	this->_quoted = value._quoted;
+	// Получаем значения вместилища до изменения текущего дерева
+	auto items = value._items;
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем перенос подготовленной копии значений вместилища
@@ -1262,44 +1302,35 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Value::operator = (value_t && value) noexcept {
 	/**
 	 * Если присваивается значение самому себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем тип хранимого значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем признак значения, записанного в кавычках, до изменения текущего дерева
-	const bool quoted = value._quoted;
-	// Получаем содержимое простого значения до изменения текущего дерева
-	string text(::move(value._text));
-	// Получаем имена пар вместилища до изменения текущего дерева
-	vector <string> names(::move(value._names));
-	// Получаем указатель поиска до изменения текущего дерева
-	unique_ptr <unordered_map <string, size_t>> index(::move(value._index));
-	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items(::move(value._items));
+	// Выполняем перенос типа хранимого значения
+	this->_type = value._type;
+	// Выполняем перенос признака значения, записанного в кавычках
+	this->_quoted = value._quoted;
+	// Выполняем перенос содержимого простого значения
+	this->_text = ::move(value._text);
+	// Выполняем перенос имён пар вместилища
+	this->_names = ::move(value._names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::move(value._index);
+	// Выполняем перенос значений вместилища
+	this->_items = ::move(value._items);
+	// Выполняем сброс признака значения, записанного в кавычках
+	value._quoted = false;
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
 	 * @note Сброс выполняется до замены старого вместилища назначения: переносимое
 	 *       значение может быть его потомком, и после замены обращаться к нему нельзя
+	 *
 	 */
 	value._type = type_t::NONE;
-	// Выполняем перенос типа хранимого значения
-	this->_type = type;
-	// Выполняем перенос признака значения, записанного в кавычках
-	this->_quoted = quoted;
-	// Выполняем перенос содержимого простого значения
-	this->_text = ::move(text);
-	// Выполняем перенос имён пар вместилища
-	this->_names = ::move(names);
-	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::move(index);
-	// Выполняем перенос значений вместилища
-	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1308,7 +1339,8 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
  *
  */
 awh::codec::ini::Value::Value() noexcept :
- _quoted(false), _type(type_t::NONE), _error(error_t::NONE), _text{""} {}
+ _quoted(false), _type(type_t::NONE),
+ _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор вместилища затребованного типа
  *
@@ -1316,7 +1348,8 @@ awh::codec::ini::Value::Value() noexcept :
  *
  */
 awh::codec::ini::Value::Value(const type_t type) noexcept :
- _quoted(false), _type(type), _error(error_t::NONE), _text{""} {}
+ _quoted(false), _type(type),
+ _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор простого значения
  *
@@ -1325,7 +1358,8 @@ awh::codec::ini::Value::Value(const type_t type) noexcept :
  *
  */
 awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept :
- _quoted(quoted), _type(type_t::STRING), _error(error_t::NONE), _text(value) {}
+ _quoted(quoted), _type(type_t::STRING),
+ _error(error_t::NONE), _text(value) {}
 /**
  * @brief Конструктор простого значения из строки языка
  *
@@ -1334,15 +1368,16 @@ awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept 
  *
  */
 awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
- _quoted(quoted), _type(type_t::STRING),
- _error(error_t::NONE), _text((value != nullptr) ? value : "") {}
+ _quoted(quoted),
+ _type(type_t::STRING), _error(error_t::NONE),
+ _text((value != nullptr) ? value : "") {}
 /**
  * @brief Конструктор копирования
  *
  * @param value копируемое значение
  *
  */
-awh::codec::ini::Value::Value(const Value & value) noexcept :
+awh::codec::ini::Value::Value(const value_t & value) noexcept :
  _quoted(value._quoted), _type(value._type),
  _error(value._error), _text(value._text),
  _items(value._items), _names(value._names) {}
@@ -1352,10 +1387,13 @@ awh::codec::ini::Value::Value(const Value & value) noexcept :
  * @param value переносимое значение
  *
  */
-awh::codec::ini::Value::Value(Value && value) noexcept :
- _quoted(value._quoted), _type(value._type),
- _error(value._error), _text(::move(value._text)),
- _items(::move(value._items)), _names(::move(value._names)),
+awh::codec::ini::Value::Value(value_t && value) noexcept :
+ _quoted(value._quoted),
+ _type(value._type),
+ _error(value._error),
+ _text(::move(value._text)),
+ _items(::move(value._items)),
+ _names(::move(value._names)),
  _index(::move(value._index)) {
 	// Выполняем сброс перенесённого значения
 	value._type = type_t::NONE;
@@ -1366,7 +1404,7 @@ awh::codec::ini::Value::Value(Value && value) noexcept :
  * @param document дерево настроек, откуда снимается значение
  *
  */
-void awh::codec::ini::Value::absorb(const Document & document) noexcept {
+void awh::codec::ini::Value::absorb(const document_t & document) noexcept {
 	// Выполняем очистку значения от прежнего содержимого
 	this->clear();
 	// Назначаем корню тип вместилища пар
@@ -1379,7 +1417,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 	 * @param subsection имя подраздела
 	 *
 	 */
-	const auto gather = [&document](Value & holder, const string & section, const string & subsection) noexcept -> void {
+	const auto gather = [&document](value_t & holder, const string & section, const string & subsection) noexcept -> void {
 		/**
 		 * Имена свойств раздела, снятые своими копиями
 		 *
@@ -1388,6 +1426,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 		 *       хранилище то переместить. Вид, взятый до пересчёта, повисал бы, и разбор
 		 *       брал бы содержимое из освобождённой памяти. Нашёл это ворошитель под
 		 *       санитайзером, круговым переносом значения
+		 *
 		 */
 		vector <string> names;
 		/**
@@ -1409,6 +1448,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 *       защищённый, потерял бы защиту и сам обратился бы в обращение. Дерево
 			 *       по той же причине переписывает значение до подстановки. Нашёл это
 			 *       ворошитель сличением перезаписи снятого значения с перезаписью дерева
+			 *
 			 */
 			const vector <string_view> raws = document.sources(key, section, subsection);
 			/**
@@ -1421,6 +1461,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 *       снятие брало бы содержимое из освобождённой памяти. Нашёл это
 			 *       ворошитель под санитайзером сразу по заведении снятия записи до
 			 *       подстановки: обращение за оградою идёт следом и пересчёт этот учиняет
+			 *
 			 */
 			vector <string> values;
 			// Выполняем выделение места под копии значений свойства
@@ -1439,6 +1480,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 *       файл иначе, чем тот был написан. Перечень выдаётся длиною ровно с
 			 *       перечень значений, но проверка длины стоит всё равно: расходись они -
 			 *       и обращение по номеру ушло бы за край
+			 *
 			 */
 			const vector <bool> quotes = document.quotes(key, section, subsection);
 			/**
@@ -1454,6 +1496,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 *       заводится и запись в него кладётся без промежутка, пустой доли не остаётся)
 			 *       и опустошаются разом же (`Document::remove`: объявление изымается из
 			 *       `_order`, а свойство - из `_properties`). Разойтись им негде
+			 *
 			 */
 			if(values.empty())
 				// Выполняем переход к следующему свойству раздела
@@ -1463,7 +1506,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 */
 			if(values.size() == 1){
 				// Выполняем установку простого значения свойства
-				holder.insert(string(key), Value(values.front(), (!quotes.empty() && quotes.front())));
+				holder.insert(string(key), value_t(values.front(), (!quotes.empty() && quotes.front())));
 				// Выполняем переход к следующему свойству раздела
 				continue;
 			}
@@ -1473,25 +1516,27 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 * @note Перечень заводится лишь при повторе имени: свойство, объявленное
 			 *       однажды, есть значение простое, и обёртка перечнем заставляла бы
 			 *       потребителя различать эти два случая при всяком обращении
+			 *
 			 */
-			Value listed(type_t::ARRAY);
+			value_t listed(type_t::ARRAY);
 			/**
 			 * Выполняем перебор всех значений одноимённого свойства
 			 */
 			for(size_t i = 0; i < values.size(); i++)
 				// Выполняем добавление очередного значения в перечень
-				listed.push(Value(values.at(i), ((i < quotes.size()) && quotes.at(i))));
+				listed.push(value_t(values.at(i), ((i < quotes.size()) && quotes.at(i))));
 			// Выполняем установку перечня значений свойства
 			holder.insert(string(key), listed);
 		}
 	};
 	// Выполняем снятие свойств верхнего уровня текста настроек
-	gather(* this, string(), string());
+	gather(* this, string{""}, string{""});
 	/**
 	 * Имена объявленных разделов, снятые своими копиями
 	 *
 	 * @note Копии обязательны по той же причине, что и у имён свойств: дерево выдаёт
 	 *       имена видами в своё хранилище знаков, а снятие свойств вправе его переместить
+	 *
 	 */
 	vector <pair <string, string>> sections;
 	/**
@@ -1521,12 +1566,13 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 		 *
 		 * @note Сносу заход не подлежит: без него свойства верхнего уровня снялись бы
 		 *       дважды - разделом с пустым именем поверх корня
+		 *
 		 */
 		if(name.first.empty())
 			// Выполняем переход к следующему разделу
 			continue;
 		// Получаем вместилище раздела, заводя его при надобности
-		Value & section = (* this)[name.first];
+		value_t & section = (* this)[name.first];
 		/**
 		 * Если вместилище раздела вида ещё не имеет
 		 *
@@ -1534,6 +1580,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 		 *       вида пустой раздел снимался бы значением неопределённым, а перенос такого
 		 *       значения обратно в дерево отвечал бы отказом - объявление раздела теряло
 		 *       бы себя круговым ходом. Нашёл это ворошитель круговым переносом
+		 *
 		 */
 		if(section._type == type_t::NONE)
 			// Назначаем вместилищу раздела вид вместилища пар
@@ -1548,7 +1595,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			continue;
 		}
 		// Получаем вместилище подраздела, заводя его при надобности
-		Value & subsection = section[name.second];
+		value_t & subsection = section[name.second];
 		/**
 		 * Если вместилище подраздела вида ещё не имеет
 		 */
@@ -1565,7 +1612,8 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
  * @param document дерево настроек, откуда снимается значение
  *
  */
-awh::codec::ini::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _quoted(false) {
+awh::codec::ini::Value::Value(const document_t & document) noexcept :
+ _quoted(false), _type(type_t::NONE) {
 	// Выполняем снятие значения с дерева настроек
 	this->absorb(document);
 }
@@ -1578,13 +1626,32 @@ awh::codec::ini::Value::Value(const Document & document) noexcept : _type(type_t
  */
 bool awh::codec::ini::Value::parse(const string & text) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document;
+	document_t document;
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
-	if(!document.parse(text))
+	if(!document.parse(text)){
+		// Получаем код отказа разбора текста настроек
+		const error_t error = document.error();
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		/**
+		 * Запоминаем код отказа разбора
+		 *
+		 * @note Код и место снимаются ДО очистки, а ставятся после неё: очистка
+		 *       сбрасывает оба, и обратный порядок терял бы и код, и место
+		 *
+		 */
+		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста настроек
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	// Выполняем снятие значения с дерева настроек
 	this->absorb(document);
 	// Выводим признак успешного разбора
@@ -1598,15 +1665,36 @@ bool awh::codec::ini::Value::parse(const string & text) noexcept {
  * @return         признак успешности разбора
  *
  */
-bool awh::codec::ini::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
+bool awh::codec::ini::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Дерево настроек, разбором собираемое
-	Document document;
+	document_t document;
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
-	if(!document.parse(text, settings))
+	if(!document.parse(text)){
+		// Получаем код отказа разбора текста настроек
+		const error_t error = document.error();
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		/**
+		 * Запоминаем код отказа разбора
+		 *
+		 * @note Код и место снимаются ДО очистки, а ставятся после неё: очистка
+		 *       сбрасывает оба, и обратный порядок терял бы и код, и место
+		 *
+		 */
+		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста настроек
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	// Выполняем снятие значения с дерева настроек
 	this->absorb(document);
 	// Выводим признак успешного разбора
@@ -1620,8 +1708,8 @@ bool awh::codec::ini::Value::parse(const string & text, const Document::settings
  *
  */
 bool awh::codec::ini::Value::load(const string & filename) noexcept {
-	// Объект работы с файловой системой
-	fs_t fs;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
 	 *
@@ -1632,21 +1720,22 @@ bool awh::codec::ini::Value::load(const string & filename) noexcept {
 	 *
 	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
+	 *
 	 */
-	if(fs.type(filename, false) != fs_t::type_t::FILE){
+	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
 	// Собираемое содержимое читаемого файла настроек
-	string text;
+	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	fs.read(filename, text);
+	this->_fs.read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (fs.size(filename) > 0)){
+	if(text.empty() && (this->_fs.size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -1663,9 +1752,9 @@ bool awh::codec::ini::Value::load(const string & filename) noexcept {
  * @return         признак успешности чтения
  *
  */
-bool awh::codec::ini::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	// Объект работы с файловой системой
-	fs_t fs;
+bool awh::codec::ini::Value::load(const string & filename, const document_t::settings_t & settings) noexcept {
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
 	 *
@@ -1676,21 +1765,22 @@ bool awh::codec::ini::Value::load(const string & filename, const Document::setti
 	 *
 	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
+	 *
 	 */
-	if(fs.type(filename, false) != fs_t::type_t::FILE){
+	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
 	// Собираемое содержимое читаемого файла настроек
-	string text;
+	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	fs.read(filename, text);
+	this->_fs.read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (fs.size(filename) > 0)){
+	if(text.empty() && (this->_fs.size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -1709,17 +1799,20 @@ bool awh::codec::ini::Value::load(const string & filename, const Document::setti
 string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если корень вместилищем пар не является
 	 *
 	 * @note Корнем текста настроек может быть одно лишь вместилище пар: текст настроек
 	 *       есть перечень свойств и разделов, и простое значение корнем его не бывает
+	 *
 	 */
 	if(this->_type != type_t::TABLE){
 		// Запоминаем код отказа записи
 		this->_error = error_t::UNREPRESENTABLE_VALUE;
 		// Выводим пустой текст настроек
-		return string();
+		return "";
 	}
 	// Объект записи текста настроек
 	writer_t writer(settings);
@@ -1730,7 +1823,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 	 * @return       признак успешности записи
 	 *
 	 */
-	const auto compose = [&writer](const Value & holder) noexcept -> bool {
+	const auto compose = [&writer](const value_t & holder) noexcept -> bool {
 		/**
 		 * Выполняем перебор всех пар вместилища
 		 */
@@ -1747,17 +1840,19 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			 *       имени, а запись `"" = значение` даёт имя длиною в два знака - кавычки
 			 *       имя не ограждают, а входят в него. Проверено щупом на всех трёх путях,
 			 *       а не выведено чтением; правило это одно на все шесть обходов файла
+			 *
 			 */
 			if((i >= holder._names.size()) || holder._names.at(i).empty())
 				// Выполняем переход к следующей паре вместилища
 				continue;
 			// Получаем значение очередной пары вместилища
-			const Value & item = holder._items.at(i);
+			const value_t & item = holder._items.at(i);
 			/**
 			 * Если значение пары является вместилищем пар
 			 *
 			 * @note Вместилище на этом уровне есть раздел либо подраздел, и записывается
 			 *       оно не здесь, а заходом объявления разделов
+			 *
 			 */
 			if(item._type == type_t::TABLE)
 				// Выполняем переход к следующей паре вместилища
@@ -1775,6 +1870,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 					 *
 					 * @note Перечень перечней наречие записать не может: свойство несёт
 					 *       одну последовательность знаков, а перечень есть повтор имени
+					 *
 					 */
 					if(item._items.at(j)._type != type_t::STRING)
 						// Выводим признак неудачной записи
@@ -1787,6 +1883,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 					 *       настройки `arrays` отвергнет её как имя с недопустимым знаком.
 					 *       Повтор же имени читается настройкой `duplicates` в перечень -
 					 *       ровно тем способом, каким этот перечень и был снят
+					 *
 					 */
 					if(!::quoting(writer, item._items.at(j)._quoted, holder._names.at(i), item._items.at(j)._text))
 						// Выводим признак неудачной записи
@@ -1816,6 +1913,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 	 *
 	 * @note Свойства верхнего уровня пишутся прежде объявления разделов намеренно:
 	 *       свойство, за объявлением раздела записанное, принадлежало бы уже ему
+	 *
 	 */
 	if(!compose(* this))
 		// Выводим пустой текст настроек
@@ -1823,7 +1921,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			// Запоминаем код отказа записи, писателем названный
 			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
 			// Выводим пустой текст настроек
-			return string();
+			return "";
 		}
 	/**
 	 * Выполняем перебор всех пар корневого вместилища
@@ -1836,7 +1934,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			// Выполняем переход к следующей паре вместилища
 			continue;
 		// Получаем значение очередной пары корневого вместилища
-		const Value & section = this->_items.at(i);
+		const value_t & section = this->_items.at(i);
 		/**
 		 * Если значение пары вместилищем пар не является
 		 */
@@ -1850,13 +1948,14 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 		 *          не два вложенных. Владеющее значение держит его вложенным ради
 		 *          обхода по имени, и звено `a` там - устройство обхода, а не
 		 *          объявление из текста. Объяви его запись - и в тексте завёлся бы
-		 *          раздел, какого человек не писал
+		 *          раздел, какого человек не писал.
 		 *
 		 * @note Звено, свойств не несущее и подразделы несущее, объявлением потому не
 		 *       выдаётся. Звено пустое ВОВСЕ - ни свойств, ни подразделов - выдаётся:
 		 *       оно и есть раздел, человеком объявленный пустым. Нашло это сличение
 		 *       двух путей перезаписи на корпусе соответствия: текст `[a "b"]` через
 		 *       владеющее значение получал лишнюю строку `[a]`
+		 *
 		 */
 		bool owned = section._items.empty();
 		/**
@@ -1903,7 +2002,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 				// Выполняем переход к следующей паре раздела
 				continue;
 			// Получаем значение очередной пары раздела
-			const Value & subsection = section._items.at(j);
+			const value_t & subsection = section._items.at(j);
 			/**
 			 * Если значение пары вместилищем пар не является
 			 */
@@ -1941,6 +2040,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 				 *
 				 * @note Глубже подраздела наречие не пишет вовсе, и записать такое дерево
 				 *       частью значило бы потерять остаток молча
+				 *
 				 */
 				if(item._type == type_t::TABLE)
 					// Выводим пустой текст настроек
@@ -1957,16 +2057,10 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 	return writer.text();
 }
 /**
- * @brief Метод записи владеющего значения текстом настроек
- *
- * @return записанный текст настроек
- *
- */
-/**
  * @brief Метод получения кода отказа последней работы
  *
  * @details Ход этот отвечает на вопрос «отчего запись пуста»: пустой текст означает разом
- * и дерево пустое, и отказ записи, и различить их иначе потребителю нечем
+ *          и дерево пустое, и отказ записи, и различить их иначе потребителю нечем.
  *
  * @note Прежде отказ записи молчал целиком - ни кода, ни сообщения в журнал, - и
  *       потребитель сохранял бы пустой файл вместо своих настроек. Найдено разбором
@@ -1979,7 +2073,22 @@ awh::codec::ini::error_t awh::codec::ini::Value::error() const noexcept {
 	return this->_error;
 }
 /**
- * Сборка текста значений настройками записи по умолчанию
+ * @brief Метод получения места отказа последней работы над значением
+ *
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::ini::location_t & awh::codec::ini::Value::errorLocation() const noexcept {
+	// Выводим место отказа последней работы над владеющим значением
+	return this->_errorLocation;
+}
+/**
+ * @brief Метод записи владеющего значения текстом настроек
+ *
+ * @details Сборка текста значений настройками записи по умолчанию.
+ *
+ * @return записанный текст настроек
+ *
  */
 string awh::codec::ini::Value::dump() const noexcept {
 	// Выводим записанный текст настроек с настройками записи по умолчанию
@@ -1994,11 +2103,35 @@ string awh::codec::ini::Value::dump() const noexcept {
  */
 bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 	// Получаем записанный текст настроек
-	const string text = this->dump();
+	const string & text = this->dump();
 	/**
 	 * Если записанный текст настроек пуст вовсе при непустом значении
 	 */
 	if(text.empty() && !this->_items.empty()){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"INI value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"INI value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		#endif
 		/**
 		 * Выполняем оглашение отказа в журнал
 		 *
@@ -2014,23 +2147,17 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		 *       потребитель, спросив `error()`, узнавал `NONE`
 		 *
 		 * @note Нашло пробел объединённое покрытие набора с ворошителем
+		 *
 		 */
-		// Запоминаем код отказа записи файла настроек
-		this->_error = error_t::FILE_NOT_WRITTEN;
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::ini::message(this->_error));
-		// Выводим признак неудачной записи
 		return false;
 	}
-	// Поток записи файла настроек
 	/**
 	 * Путь ко временному файлу, рядом с целевым лежащему
 	 *
 	 * @details Запись ведётся во временный файл, а цель подменяется переименованием -
-	 * действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
-	 * знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
-	 * работа прервана - оставлял потребителя без прежнего содержимого И без нового разом
+	 *          действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
+	 *          знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
+	 *          работа прервана - оставлял потребителя без прежнего содержимого И без нового разом.
 	 *
 	 * @warning Временный файл кладётся РЯДОМ с целевым, а не во временный каталог системы:
 	 *          переименование неделимо лишь в пределах одной файловой системы, а через
@@ -2042,30 +2169,49 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 	 *
 	 * @note Порок найден перебором по всем кодекам рамки;
 	 *       у кодеков JSON, XML и CSV он закрыт месяцем раньше
+	 *
 	 */
 	const string temporary(filename + ".awh-tmp");
-	// Объект работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (this->_fs.unlink(temporary));
 	/**
 	 * Если запись собранного текста настроек во временный файл не удалась
 	 */
-	if(!fs.write(temporary, text.data(), text.size())){
+	if(!this->_fs.write(temporary, text.data(), text.size())){
 		/**
 		 * Запоминаем код отказа записи файла настроек
 		 *
 		 * @warning Причина различается по НАЛИЧИЮ временного файла: не заведись он вовсе -
 		 *          отказало ОТКРЫТИЕ, а заведись и не наполнись - отказала запись
+		 *
 		 */
-		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
+		this->_error = ((this->_fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::ini::message(this->_error));
+		static_cast <void> (this->_fs.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"INI value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"INI value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2075,29 +2221,68 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 	 * @warning Сброс ставится ДО подмены цели: запись, успехом отвеченная, лежит ещё во
 	 *          вместилище ядра, и подмена прежде сброса оставила бы цель указывающей на
 	 *          содержимое, до носителя не дошедшее
+	 *
 	 */
-	if(!fs.flush(temporary)){
+	if(!this->_fs.flush(temporary)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::ini::message(this->_error));
+		static_cast <void> (this->_fs.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"INI value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"INI value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
 	 * Если подмена целевого файла временным не удалась
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!this->_fs.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::ini::message(this->_error));
+		static_cast <void> (this->_fs.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"INI value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"INI value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2107,9 +2292,6 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 /**
  * @brief Метод переноса владеющего значения в дерево настроек
  *
- * @param document дерево настроек, куда переносится значение
- * @return         признак успешности переноса
- *
  * @note Имена, руками собранные, судятся у ИСТОКА - переносом в дерево, а не записью.
  *       Замерено щупом 07.09.2026: ключ `bad = key`, ключ с переводом строки и ключ с
  *       пробельною обвязкою отвергаются кодом INVALID_KEY (11), имя раздела со скобкой
@@ -2117,8 +2299,11 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
  *       Разряд беды, найденный у кодека XML, - «привито успехом, а записи не
  *       подлежит» - здесь ОТСУТСТВУЕТ
  *
+ * @param document дерево настроек, куда переносится значение
+ * @return         признак успешности переноса
+ *
  */
-bool awh::codec::ini::Value::graft(Document & document) const noexcept {
+bool awh::codec::ini::Value::graft(document_t & document) const noexcept {
 	/**
 	 * Рабочая копия дерева настроек, куда ведётся перенос
 	 *
@@ -2126,8 +2311,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 *          перенесённого, и потребитель, отказ получивший, не знал ни того, какая
 	 *          часть легла, ни того, как её снять. Примечание при самом переносе тем и
 	 *          обосновывает отказ вместо молчаливого пропуска, что пропуск «оставил бы
-	 *          потребителя с деревом без части его значения», - а отказ оставлял ровно
-	 *          это же
+	 *          потребителя с деревом без части его значения», - а отказ оставлял ровно это же.
 	 *
 	 * @note Перенос ведётся на копии, а с нею дерево и подменяется по успехе. Копия
 	 *       дерева безопасна: своих указателей оно не держит, а места записей хранит
@@ -2136,8 +2320,9 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 *
 	 * @note Правило это одно с правилом записи: отказ не оставляет текста рваным.
 	 *       Закреплено проверкой GraftLeavesTreeIntact
+	 *
 	 */
-	Document staging(document);
+	document_t staging(document);
 	/**
 	 * Если корень вместилищем пар не является
 	 *
@@ -2151,6 +2336,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 *       дерева, а дерево иных видов не несёт, - и правило ворошителя «отказ
 	 *       обязан назвать причину» на них молчит по этой причине, а не по их
 	 *       отсутствию. Закреплены они проверкой GraftRefusalNamesItsCause
+	 *
 	 */
 	if(this->_type != type_t::TABLE){
 		// Запоминаем код отказа переноса исходному дереву
@@ -2159,22 +2345,21 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 		return false;
 	}
 	/**
-	 * Ограждение знака обращения при переносе не ведётся вовсе
+	 * @brief Функция переноса свойств вместилища в дерево настроек
 	 *
 	 * @details Владеющее значение несёт запись ТАКОЮ, какова она в файле: снятие с
 	 *          дерева берёт значение до подстановки обращений, а перенос укладывает его
 	 *          в дерево тем же способом, каким укладывает запись `set()`, - раздельно
 	 *          с подстановкой. Правило это одно у дерева и у значения: запись `${цель}`
-	 *          означает обращение, а данными она становится удвоением знака
+	 *          означает обращение, а данными она становится удвоением знака.
+	 *
+	 * @note Ограждение знака обращения при переносе не ведётся вовсе
 	 *
 	 * @note Прежде здесь стояло ограждение удвоением: снятие брало значение ПОСЛЕ
 	 *       подстановки, и знак, данными бывший, без ограждения обратился бы обращением.
 	 *       Со снятием записи до подстановки ограждение стало вредным - оно удваивало
 	 *       уже удвоенное. Нашёл это ворошитель сличением перезаписи снятого значения с
 	 *       перезаписью дерева
-	 */
-	/**
-	 * @brief Функция переноса свойств вместилища в дерево настроек
 	 *
 	 * @param holder     вместилище, чьи свойства переносятся
 	 * @param section    имя раздела
@@ -2182,7 +2367,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 * @return           признак успешности переноса
 	 *
 	 */
-	const auto transfer = [&staging](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
+	const auto transfer = [&staging](const value_t & holder, const string_view section, const string_view subsection) noexcept -> bool {
 		/**
 		 * Выполняем перебор всех пар вместилища
 		 */
@@ -2194,7 +2379,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				// Выполняем переход к следующей паре вместилища
 				continue;
 			// Получаем значение очередной пары вместилища
-			const Value & item = holder._items.at(i);
+			const value_t & item = holder._items.at(i);
 			/**
 			 * Если значение пары является вместилищем пар
 			 */
@@ -2214,6 +2399,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			 *       правки объявлений поодиночке договор дерева не имеет, а перенос
 			 *       обязан выдать перечень тот, какой в значении, а не сросшийся с
 			 *       прежним
+			 *
 			 */
 			if(item._type == type_t::ARRAY){
 				/**
@@ -2222,6 +2408,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				 * @note Итог сноса не проверяется: отказом он отвечает и тогда, когда
 				 *       свойства в разделе не было вовсе, а это и есть заход переноса
 				 *       в дерево пустое
+				 *
 				 */
 				staging.erase(holder._names.at(i), section, subsection);
 				/**
@@ -2229,12 +2416,13 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				 */
 				for(size_t j = 0; j < item._items.size(); j++){
 					// Получаем очередное значение перечня
-					const Value & entry = item._items.at(j);
+					const value_t & entry = item._items.at(j);
 					/**
 					 * Если значение перечня простым не является вовсе
 					 *
 					 * @note Перечень записи INI несёт лишь простые значения: вложенности
 					 *       запись не имеет, и взяться вложенному значению неоткуда
+					 *
 					 */
 					if(entry._type != type_t::STRING){
 						// Запоминаем код отказа переноса дереву-копии
@@ -2270,6 +2458,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 					 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 					 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 					 *          слоями, и разойдись слои - станет видимым немедля
+					 *
 					 */
 					if(!staging.push(holder._names.at(i), entry._text, section, subsection))
 						// Выводим признак неудачного переноса
@@ -2317,7 +2506,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			// Выполняем переход к следующей паре вместилища
 			continue;
 		// Получаем значение очередной пары корневого вместилища
-		const Value & section = this->_items.at(i);
+		const value_t & section = this->_items.at(i);
 		/**
 		 * Если значение пары вместилищем пар не является
 		 */
@@ -2353,7 +2542,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				// Выполняем переход к следующей паре раздела
 				continue;
 			// Получаем значение очередной пары раздела
-			const Value & subsection = section._items.at(j);
+			const value_t & subsection = section._items.at(j);
 			/**
 			 * Если значение пары вместилищем пар не является
 			 */
@@ -2402,6 +2591,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(item._type == type_t::TABLE)
 					// Выводим признак неудачного переноса
@@ -2420,9 +2610,9 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
  * @return ссылка на открытое вместилище
  *
  */
-awh::codec::ini::Value & awh::codec::ini::Builder::opened() noexcept {
+awh::codec::ini::value_t & awh::codec::ini::Builder::opened() noexcept {
 	// Получаем ссылку на собираемое значение
-	Value * result = &this->_root;
+	value_t * result = &this->_root;
 	/**
 	 * Выполняем перебор пути к открытому вместилищу
 	 */
@@ -2439,17 +2629,17 @@ awh::codec::ini::Value & awh::codec::ini::Builder::opened() noexcept {
  * @return      номер занесённого значения во вместилище
  *
  */
-size_t awh::codec::ini::Builder::deposit(Value && value) noexcept {
+size_t awh::codec::ini::Builder::deposit(value_t && value) noexcept {
 	// Получаем ссылку на открытое вместилище
-	Value & holder = this->opened();
+	value_t & holder = this->opened();
 	/**
 	 * Если имя свойства назначено
 	 */
 	if(this->_keyed){
-		// Получаем имя заносимого поля вместилища
-		const string name(this->_key);
 		// Выполняем сброс признака назначенного имени
 		this->_keyed = false;
+		// Получаем имя заносимого поля вместилища
+		const string name = this->_key;
 		// Выполняем очистку имени поля вместилища
 		this->_key.clear();
 		// Выполняем установку поля вместилища
@@ -2462,6 +2652,7 @@ size_t awh::codec::ini::Builder::deposit(Value && value) noexcept {
 		 *       вместилище, следом открытое, собиралось бы в него. На скалярах ловушка
 		 *       эта не видна вовсе: вылезает она лишь тогда, когда за повтором имени
 		 *       открывается вместилище
+		 *
 		 */
 		const size_t found = holder.search(name);
 		// Выводим номер занесённого поля вместилища
@@ -2479,7 +2670,7 @@ size_t awh::codec::ini::Builder::deposit(Value && value) noexcept {
  * @return      признак успешности открытия
  *
  */
-bool awh::codec::ini::Builder::expand(Value && value) noexcept {
+bool awh::codec::ini::Builder::expand(value_t && value) noexcept {
 	/**
 	 * Если сборка завершена уже
 	 */
@@ -2520,6 +2711,7 @@ bool awh::codec::ini::Builder::expand(Value && value) noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(this->_keyed)
 			// Выводим признак неудачного открытия
@@ -2544,7 +2736,7 @@ bool awh::codec::ini::Builder::expand(Value && value) noexcept {
  */
 bool awh::codec::ini::Builder::section() noexcept {
 	// Выводим признак успешности открытия раздела
-	return this->expand(Value(type_t::TABLE));
+	return this->expand(value_t(type_t::TABLE));
 }
 /**
  * @brief Метод открытия перечня значений одноимённого свойства
@@ -2554,7 +2746,7 @@ bool awh::codec::ini::Builder::section() noexcept {
  */
 bool awh::codec::ini::Builder::list() noexcept {
 	// Выводим признак успешности открытия перечня значений
-	return this->expand(Value(type_t::ARRAY));
+	return this->expand(value_t(type_t::ARRAY));
 }
 /**
  * @brief Метод закрытия открытого вместилища
@@ -2629,7 +2821,7 @@ bool awh::codec::ini::Builder::key(const string & name) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::ini::Builder::value(const Value & value) noexcept {
+bool awh::codec::ini::Builder::value(const value_t & value) noexcept {
 	/**
 	 * Если сборка завершена уже либо вместилище корневое не открыто вовсе
 	 */
@@ -2643,7 +2835,7 @@ bool awh::codec::ini::Builder::value(const Value & value) noexcept {
 		// Выводим признак неудачной записи
 		return false;
 	// Выполняем занесение записываемого значения
-	this->deposit(Value(value));
+	this->deposit(value_t(value));
 	// Выводим признак успешной записи
 	return true;
 }
@@ -2657,14 +2849,15 @@ bool awh::codec::ini::Builder::value(const Value & value) noexcept {
  */
 bool awh::codec::ini::Builder::value(const string & value, const bool quoted) noexcept {
 	// Выводим признак успешности записи простого значения
-	return this->value(Value(value, quoted));
+	return this->value(value_t(value, quoted));
 }
 /**
  * @copydoc awh::codec::ini::Builder::value(const string &, const bool)
+ *
  */
 bool awh::codec::ini::Builder::value(const char * value, const bool quoted) noexcept {
 	// Выводим признак успешности записи простого значения
-	return this->value(Value(value, quoted));
+	return this->value(value_t(value, quoted));
 }
 /**
  * @brief Метод извлечения глубины открытых вместилищ
@@ -2687,16 +2880,16 @@ size_t awh::codec::ini::Builder::depth() const noexcept {
  *
  */
 void awh::codec::ini::Builder::reset() noexcept {
+	// Выполняем сброс признака завершённости сборки
+	this->_done = false;
+	// Выполняем сброс признака назначенного имени
+	this->_keyed = false;
+	// Выполняем очистку имени свойства
+	this->_key.clear();
 	// Выполняем сброс собираемого значения
 	this->_root.clear();
 	// Выполняем очистку пути к открытому вместилищу
-	this->_path.clear();
-	// Выполняем очистку имени свойства
-	this->_key.clear();
-	// Выполняем сброс признака назначенного имени
-	this->_keyed = false;
-	// Выполняем сброс признака завершённости сборки
-	this->_done = false;
+	this->_path.clear();	
 }
 /**
  * @brief Метод изъятия собранного значения
@@ -2706,7 +2899,7 @@ void awh::codec::ini::Builder::reset() noexcept {
  */
 awh::codec::ini::Value awh::codec::ini::Builder::finish() noexcept {
 	// Выполняем изъятие собранного значения переносом
-	Value result(::move(this->_root));
+	value_t result(::move(this->_root));
 	// Выполняем сброс сборки в исходное состояние
 	this->reset();
 	// Выводим собранное значение
@@ -2716,4 +2909,4 @@ awh::codec::ini::Value awh::codec::ini::Builder::finish() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::ini::Builder::Builder() noexcept : _keyed(false), _done(false) {}
+awh::codec::ini::Builder::Builder() noexcept : _done(false), _keyed(false) {}

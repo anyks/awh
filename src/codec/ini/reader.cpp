@@ -21,18 +21,22 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <encoding/ascii.hpp>
-#include <codec/ini/reader.hpp>
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <sys/log.hpp>
+#include <encoding/ascii.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/ini/reader.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -48,6 +52,7 @@ namespace {
 	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
+
 	/**
 	 * Пространство имён контейнера INI
 	 */
@@ -57,21 +62,20 @@ namespace {
 	 * @brief Наибольший объём разобранного текста, удерживаемый до уплотнения хранилища
 	 *
 	 * @details Разобранное начало хранилища освобождается не при всяком событии, а лишь
-	 * по накоплении: перемещение остатка при каждой строке обошлось бы дороже самого
-	 * разбора
+	 *          по накоплении: перемещение остатка при каждой строке обошлось бы дороже самого разбора.
 	 *
 	 * @note Накопления одного мало: при подаче текста целиком остаток хранилища велик, и
-	 * уплотнение через каждые шестьдесят четыре килобайта перемещало бы его снова и снова -
-	 * на файле в шестнадцать мегабайт это два гигабайта перемещений и треть всего времени
-	 * чтения. Уплотнение поэтому требует ещё и того, чтобы освобождаемое начало было не
-	 * меньше остатка: перемещение тогда обходится дешевле того, что оно освобождает, и
-	 * общий их объём остаётся соразмерным длине текста
+	 *       уплотнение через каждые шестьдесят четыре килобайта перемещало бы его снова и снова -
+	 *       на файле в шестнадцать мегабайт это два гигабайта перемещений и треть всего времени
+	 *       чтения. Уплотнение поэтому требует ещё и того, чтобы освобождаемое начало было не
+	 *       меньше остатка: перемещение тогда обходится дешевле того, что оно освобождает, и
+	 *       общий их объём остаётся соразмерным длине текста
 	 *
 	 */
 	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 
 	/**
-	 * @brief Метод отбрасывания пробельной обвязки строки
+	 * @brief Функция отбрасывания пробельной обвязки строки
 	 *
 	 * @param text обрабатываемая строка
 	 * @return     строка без пробельной обвязки по краям
@@ -98,12 +102,12 @@ namespace {
 		return text.substr(begin, end - begin);
 	}
 	/**
-	 * @brief Метод проверки строки на продолжение следующей строкой
+	 * @brief Функция проверки строки на продолжение следующей строкой
 	 *
 	 * @details Продолжение задаётся обратной косой чертой в конце строки. Когда разбор
-	 * управляющих последовательностей включён, черта эта вправе оказаться экранированной
-	 * такой же чертой перед нею: считать её продолжением тогда нельзя, и разбирается
-	 * чётность их числа
+	 *          управляющих последовательностей включён, черта эта вправе оказаться экранированной
+	 *          такой же чертой перед нею: считать её продолжением тогда нельзя, и разбирается
+	 *          чётность их числа.
 	 *
 	 * @param text    проверяемая строка без знака её конца
 	 * @param escapes признак разбора управляющих последовательностей
@@ -135,11 +139,11 @@ namespace {
 		return ((count % 2) == 1);
 	}
 	/**
-	 * @brief Метод проверки строки на продолжение отступом
+	 * @brief Функция проверки строки на продолжение отступом
 	 *
 	 * @details По образцу configparser продолжением значения считается строка, начатая
-	 * пробельным знаком и несущая содержимое. Пустая строка продолжением не является:
-	 * ею значение заканчивается
+	 *          пробельным знаком и несущая содержимое. Пустая строка продолжением не является:
+	 *          ею значение заканчивается.
 	 *
 	 * @param text проверяемая строка без знака её конца
 	 * @return     результат проверки
@@ -156,7 +160,7 @@ namespace {
 		return !::trim(text).empty();
 	}
 	/**
-	 * @brief Метод поиска конца физической строки
+	 * @brief Функция поиска конца физической строки
 	 *
 	 * @param text   разбираемый текст настроек
 	 * @param begin  положение начала строки в разбираемом тексте
@@ -202,6 +206,7 @@ namespace {
 				 * @note Отличить одиночный возврат каретки от начала пары «возврат
 				 *       каретки - перевод строки» можно лишь по следующему знаку:
 				 *       пока его нет, строка законченной не считается
+				 *
 				 */
 				if((i + 1) == text.length())
 					// Выводим признак отсутствия знака конца строки
@@ -218,7 +223,7 @@ namespace {
 		return false;
 	}
 	/**
-	 * @brief Метод разбора управляющей последовательности значения свойства
+	 * @brief Функция разбора управляющей последовательности значения свойства
 	 *
 	 * @param text   разбираемое значение свойства
 	 * @param offset положение обратной косой черты в разбираемом значении
@@ -282,6 +287,7 @@ namespace {
 				 *
 				 * @note Последовательность эта принята описанием служб systemd и служит
 				 *       записи пробела там, где обвязка значения отбрасывается
+				 *
 				 */
 				result.push_back(' ');
 			break;
@@ -295,6 +301,7 @@ namespace {
 				 *          сумеет: значение оборвётся на нём молча. Записывать его в
 				 *          файл настроек не следует, но отвергать разбором тоже нельзя -
 				 *          двоичные значения в поле настроек встречаются
+				 *
 				 */
 				result.push_back('\0');
 			break;
@@ -337,6 +344,7 @@ namespace {
 				 *
 				 * @note Пересечение трёх прогонов числило строку слепой, покуда усечённой
 				 *       записи не подавал никто; ныне она взята проверкой трижды
+				 *
 				 */
 				if((offset + 2 + count) > text.length())
 					// Выводим признак неудачного разбора
@@ -365,6 +373,7 @@ namespace {
 				 *
 				 * @note Запись эта задаёт байт, а не знак Юникода: описание служб
 				 *       systemd применяет её для записи отдельных байтов значения
+				 *
 				 */
 				if(text[offset + 1] == 'x'){
 					/**
@@ -374,6 +383,7 @@ namespace {
 					 *       записывается в кодировке UTF-8 несколькими байтами, и каждый
 					 *       из них задаётся своей последовательностью. Собранное значение
 					 *       поэтому проверяется на правильность целиком, а не побайтно
+					 *
 					 */
 					if(code >= 0x80)
 						// Запоминаем признак записи байта вне набора US-ASCII
@@ -419,6 +429,7 @@ namespace {
 				 *
 				 * @note Сносу заход не подлежит: без него отказ записи знака пропал бы молча, и
 				 *       суррогат лёг бы в значение свойства
+				 *
 				 */
 				if(!encode(code, result))
 					// Выводим признак неудачного разбора
@@ -437,12 +448,19 @@ namespace {
  *
  */
 awh::codec::ini::Reader::Settings::Settings() noexcept :
- comments(marker_t::BOTH), separators(separator_t::EQUALS), duplicates(duplicate_t::LAST),
- quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true), greedySections(false), trimSections(true), strictNames(false),
- escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
- sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
- maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), nesting(true), maxContinuation(MAX_CONTINUATION),
- encoding(encoding_t::NONE) {}
+ trim(true), global(true), arrays(false),
+ indents(false), escapes(false), nesting(true),
+ valueless(false), sensitive(false), emitBlanks(false),
+ strictNames(false), trimSections(true), emitComments(true),
+ continuations(false), greedySections(false),
+ spacedComments(true), inlineComments(false),
+ sensitiveSections(false), delimiter('.'),
+ quotes(quote_t::STRIP), comments(marker_t::BOTH),
+ encoding(encoding_t::NONE), separators(separator_t::EQUALS),
+ duplicates(duplicate_t::LAST), subsections(subsection_t::NONE),
+ maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH),
+ maxContinuation(MAX_CONTINUATION) {}
+
 /**
  * @brief Метод получения настроек наречия MS Windows
  *
@@ -451,7 +469,7 @@ awh::codec::ini::Reader::Settings::Settings() noexcept :
  */
 awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::windows() noexcept {
 	// Собираемые настройки разбора текста настроек
-	Settings result;
+	settings_t result;
 	// Устанавливаем признаваемые знаки начала примечания
 	result.comments = marker_t::SEMICOLON;
 	// Устанавливаем признаваемые знаки разделителя имени и значения
@@ -461,6 +479,7 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::windows() n
 	 *
 	 * @note Вызов GetPrivateProfileString выдаёт первое объявленное значение, а
 	 *       следующие за ним не читает вовсе
+	 *
 	 */
 	result.duplicates = duplicate_t::FIRST;
 	/**
@@ -468,6 +487,7 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::windows() n
 	 *
 	 * @note Кавычки в этом наречии частью значения остаются: вызов их не снимает,
 	 *       и путь, записанный в кавычках, приходит вместе с ними
+	 *
 	 */
 	result.quotes = quote_t::KEEP;
 	// Выводим собранные настройки разбора
@@ -482,19 +502,8 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::windows() n
 awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() noexcept {
 	// Собираемые настройки разбора текста настроек
 	Settings result;
-	// Устанавливаем признаваемые знаки начала примечания
-	result.comments = marker_t::BOTH;
-	// Устанавливаем признаваемые знаки разделителя имени и значения
-	result.separators = separator_t::BOTH;
-	// Устанавливаем обращение с повторным объявлением свойства
-	result.duplicates = duplicate_t::LAST;
-	/**
-	 * Устанавливаем обращение с кавычками вокруг значения
-	 *
-	 * @note Кавычки этим разбором не снимаются: значение берётся от разделителя до
-	 *       конца строки как есть
-	 */
-	result.quotes = quote_t::KEEP;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	// Устанавливаем склеивание строк, продолженных отступом
 	result.indents = true;
 	/**
@@ -503,6 +512,7 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
 	 * @note Разбор этот берёт имя раздела выражением «\\[(?P<header>.+)\\]», и жадность
 	 *       его доводит поиск до последней скобки: «[x[]]» есть ему имя «x[]». Сличено
 	 *       с самим разбором, а не выведено из описания
+	 *
 	 */
 	result.greedySections = true;
 	/**
@@ -510,6 +520,7 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
 	 *
 	 * @note Разбор этот обвязку сохраняет: «[ раздел ]» есть ему имя с пробелами.
 	 *       Сличено с ним самим
+	 *
 	 */
 	result.trimSections = false;
 	/**
@@ -517,10 +528,23 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
 	 *
 	 * @note Наречие это имена свойств приводит к нижнему регистру, а имена разделов
 	 *       сличает как записаны: разделы «[Server]» и «[server]» для него разные
+	 *
 	 */
 	result.sensitiveSections = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
+	/**
+	 * Устанавливаем обращение с кавычками вокруг значения
+	 *
+	 * @note Кавычки этим разбором не снимаются: значение берётся от разделителя до
+	 *       конца строки как есть
+	 *
+	 */
+	result.quotes = quote_t::KEEP;
+	// Устанавливаем признаваемые знаки начала примечания
+	result.comments = marker_t::BOTH;
+	// Устанавливаем признаваемые знаки разделителя имени и значения
+	result.separators = separator_t::BOTH;
+	// Устанавливаем обращение с повторным объявлением свойства
+	result.duplicates = duplicate_t::LAST;
 	// Выводим собранные настройки разбора
 	return result;
 }
@@ -532,29 +556,30 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
  */
 awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::systemd() noexcept {
 	// Собираемые настройки разбора текста настроек
-	Settings result;
+	settings_t result;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
+	// Устанавливаем разбор управляющих последовательностей в значении
+	result.escapes = true;
+	// Устанавливаем учёт регистра имён разделов и свойств
+	result.sensitive = true;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой
+	result.continuations = true;
+	// Устанавливаем обращение с кавычками вокруг значения
+	result.quotes = quote_t::STRIP;
 	// Устанавливаем признаваемые знаки начала примечания
 	result.comments = marker_t::BOTH;
-	// Устанавливаем признаваемые знаки разделителя имени и значения
-	result.separators = separator_t::EQUALS;
 	/**
 	 * Устанавливаем обращение с повторным объявлением свойства
 	 *
 	 * @note Повторное объявление в описании служб добавляет значение к перечню, а
 	 *       пустое значение перечень этот сбрасывает: сброс - работа потребителя,
 	 *       разбор же выдаёт объявления в порядке их следования
+	 *
 	 */
 	result.duplicates = duplicate_t::MERGE;
-	// Устанавливаем обращение с кавычками вокруг значения
-	result.quotes = quote_t::STRIP;
-	// Устанавливаем разбор управляющих последовательностей в значении
-	result.escapes = true;
-	// Устанавливаем склеивание строк, продолженных обратной косой чертой
-	result.continuations = true;
-	// Устанавливаем учёт регистра имён разделов и свойств
-	result.sensitive = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
+	// Устанавливаем признаваемые знаки разделителя имени и значения
+	result.separators = separator_t::EQUALS;
 	// Выводим собранные настройки разбора
 	return result;
 }
@@ -566,42 +591,27 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::systemd() n
  */
 awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexcept {
 	// Собираемые настройки разбора текста настроек
-	Settings result;
-	// Устанавливаем признаваемые знаки начала примечания
-	result.comments = marker_t::BOTH;
-	// Устанавливаем признаваемые знаки разделителя имени и значения
-	result.separators = separator_t::EQUALS;
+	settings_t result;
 	/**
-	 * Поверка имён строгою грамматикой наречия НЕ включается умолчанием
+	 * Устанавливаем признание свойств, объявленных до первого раздела
 	 *
-	 * @details Наречие это грамматике своей не следует, и включение поверки здесь было
-	 *          бы правкою, потребителю видной: имя из знаков письменностей мира средство
-	 *          «git config» отвергает, а мы его принимаем и записываем. Включив поверку
-	 *          одному лишь чтению, я развёл бы чтение с записью - ровно тот порок, какой
-	 *          закрывал весь круг, - а включив обоим, отверг бы записи, набором
-	 *          проверок нарочно поверяемые. Решение выносится за пределы кодека; признак заведён и
-	 *          работает, включается настройкою
+	 * @note Средство «git config» такое свойство принимает и выдаёт именем без раздела:
+	 *       запись «loose = 1» выдаётся им как «loose=1». Сличено с самим средством
 	 *
-	 * @note Мера расхождения снята: из 377 текстов корпуса, средством «git config» не
-	 *       осиленных, чтение наше принимает 376
 	 */
-	// Устанавливаем обращение с повторным объявлением свойства
-	result.duplicates = duplicate_t::MERGE;
-	// Устанавливаем обращение с кавычками вокруг значения
-	result.quotes = quote_t::STRIP;
-	/**
-	 * Устанавливаем признание обоих построений имени подраздела
-	 *
-	 * @note Средство «git config» принимает и «[раздел "подраздел"]», и «[раздел.подраздел]»,
-	 *       выдавая оба одним и тем же именем. Запись же ведётся кавычками: точка внутри
-	 *       имени подраздела иначе прочлась бы вторым уровнем вложенности
-	 */
-	result.subsections = subsection_t::BOTH;
+	result.global = true;
+	// Устанавливаем разбор управляющих последовательностей в значении
+	result.escapes = true;
+	// Устанавливаем признание свойства, записанного без разделителя и значения
+	result.valueless = true;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой
+	result.continuations = true;
 	/**
 	 * Устанавливаем признание примечания в конце строки свойства
 	 *
 	 * @note Наречие это примечание в конце строки признаёт, и значение с точкой с
 	 *       запятой в нём приходится заключать в кавычки
+	 *
 	 */
 	result.inlineComments = true;
 	/**
@@ -610,21 +620,40 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexc
 	 * @note Средство «git config» режет значение по знаку примечания где угодно, а не
 	 *       за пробелом только: запись «key = a#b» выдаётся им значением «a». Сличено
 	 *       с самим средством, а не выведено из описания
+	 *
 	 */
 	result.spacedComments = false;
-	// Устанавливаем разбор управляющих последовательностей в значении
-	result.escapes = true;
-	// Устанавливаем склеивание строк, продолженных обратной косой чертой
-	result.continuations = true;
-	// Устанавливаем признание свойства, записанного без разделителя и значения
-	result.valueless = true;
+	// Устанавливаем обращение с кавычками вокруг значения
+	result.quotes = quote_t::STRIP;
+	// Устанавливаем признаваемые знаки начала примечания
+	result.comments = marker_t::BOTH;
+	// Устанавливаем признаваемые знаки разделителя имени и значения
+	result.separators = separator_t::EQUALS;
 	/**
-	 * Устанавливаем признание свойств, объявленных до первого раздела
+	 * Устанавливаем обращение с повторным объявлением свойства
 	 *
-	 * @note Средство «git config» такое свойство принимает и выдаёт именем без раздела:
-	 *       запись «loose = 1» выдаётся им как «loose=1». Сличено с самим средством
+	 * @details Наречие это грамматике своей не следует, и включение поверки здесь было
+	 *          бы правкою, потребителю видной: имя из знаков письменностей мира средство
+	 *          «git config» отвергает, а мы его принимаем и записываем. Включив поверку
+	 *          одному лишь чтению, я развёл бы чтение с записью - ровно тот порок, какой
+	 *          закрывал весь круг, - а включив обоим, отверг бы записи, набором
+	 *          проверок нарочно поверяемые. Решение выносится за пределы кодека; признак заведён и
+	 *          работает, включается настройкою.
+	 *
+	 * @note Мера расхождения снята: из 377 текстов корпуса, средством «git config» не
+	 *       осиленных, чтение наше принимает 376
+	 *
 	 */
-	result.global = true;
+	result.duplicates = duplicate_t::MERGE;
+	/**
+	 * Устанавливаем признание обоих построений имени подраздела
+	 *
+	 * @note Средство «git config» принимает и «[раздел "подраздел"]», и «[раздел.подраздел]»,
+	 *       выдавая оба одним и тем же именем. Запись же ведётся кавычками: точка внутри
+	 *       имени подраздела иначе прочлась бы вторым уровнем вложенности
+	 *
+	 */
+	result.subsections = subsection_t::BOTH;
 	// Выводим собранные настройки разбора
 	return result;
 }
@@ -636,21 +665,21 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexc
  */
 awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::strict() noexcept {
 	// Собираемые настройки разбора текста настроек
-	Settings result;
-	// Устанавливаем признаваемые знаки начала примечания
-	result.comments = marker_t::BOTH;
-	// Устанавливаем признаваемые знаки разделителя имени и значения
-	result.separators = separator_t::EQUALS;
-	// Устанавливаем прекращение разбора при повторном объявлении свойства
-	result.duplicates = duplicate_t::ERROR;
-	// Устанавливаем обращение с кавычками вокруг значения
-	result.quotes = quote_t::STRIP;
+	settings_t result;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	// Устанавливаем разбор управляющих последовательностей в значении
 	result.escapes = true;
 	// Устанавливаем учёт регистра имён разделов и свойств
 	result.sensitive = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
+	// Устанавливаем обращение с кавычками вокруг значения
+	result.quotes = quote_t::STRIP;
+	// Устанавливаем признаваемые знаки начала примечания
+	result.comments = marker_t::BOTH;
+	// Устанавливаем прекращение разбора при повторном объявлении свойства
+	result.duplicates = duplicate_t::ERROR;
+	// Устанавливаем признаваемые знаки разделителя имени и значения
+	result.separators = separator_t::EQUALS;
 	// Выводим собранные настройки разбора
 	return result;
 }
@@ -691,25 +720,16 @@ string awh::codec::ini::Reader::fold(const string_view name, const bool section)
 bool awh::codec::ini::Reader::fail(const error_t error, const size_t offset, const uint32_t line, const uint32_t column) noexcept {
 	// Запоминаем код ошибки разбора
 	this->_error = error;
+	// Выполняем сброс вида текущего события разбора
+	this->_event = event_t::NONE;
 	// Запоминаем состояние чтения текста настроек
 	this->_state = state_t::FAILED;
-	// Запоминаем смещение обнаруженной ошибки в исходном тексте
-	this->_errorLocation.offset = (this->_base + offset);
 	// Запоминаем номер строки, где обнаружена ошибка
 	this->_errorLocation.line = line;
 	// Запоминаем положение в строке, где обнаружена ошибка
 	this->_errorLocation.column = column;
-	// Выполняем сброс вида текущего события разбора
-	this->_event = event_t::NONE;
-	/**
-	 * Выполняем оглашение отказа в журнал
-	 *
-	 * @note Код отказа остаётся доступен через error(), а место его - через
-	 *       errorLocation(): журнал есть оповещение, а не единственный способ узнать
-	 *       о случившемся
-	 */
-	// Выполняем вывод сообщения об отказе разбора текста настроек
-	awh::log::print("INI parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(error), line, column);
+	// Запоминаем смещение обнаруженной ошибки в исходном тексте
+	this->_errorLocation.offset = (this->_base + offset);
 	// Выводим признак отказа для передачи вызывающему
 	return false;
 }
@@ -732,7 +752,8 @@ void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32
 	 * @details Место запрашивается по собранной логической строке, а та у строки с
 	 *          продолжениями лежит в отдельном хранилище: знаки её собраны из кусков
 	 *          исходного текста, и положения их в нём непрерывными не являются.
-	 *          Отрезки, записанные при сборке, дают обратное отображение
+	 *          Отрезки, записанные при сборке, дают обратное отображение.
+	 *
 	 */
 	size_t target = offset;
 	/**
@@ -777,6 +798,7 @@ void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(index < piece.logical)
 				// Выполняем прекращение поиска отрезка
@@ -806,8 +828,8 @@ void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32
 		 *          переносом лежит уже на следующей строке. Столбец, посчитанный от
 		 *          начала логической строки сквозь переносы, указывал бы на место,
 		 *          которого в строке нет вовсе: примечание, приписанное ко второй
-		 *          физической строке, выдавалось строкой первой со столбцом больше
-		 *          её длины
+		 *          физической строке, выдавалось строкой первой со столбцом больше её длины.
+		 *
 		 */
 		if(this->_buffer[i] == '\n'){
 			// Выполняем переход к следующей строке исходного текста
@@ -833,6 +855,7 @@ void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32
 		 *
 		 * @note Считаются лишь первые байты последовательностей: знак Юникода
 		 *       записывается несколькими байтами, а положением своим остаётся один
+		 *
 		 */
 		if((static_cast <uint8_t> (this->_buffer[i]) & 0xC0) != 0x80)
 			// Выполняем увеличение положения знака в строке
@@ -858,7 +881,7 @@ bool awh::codec::ini::Reader::measure(const size_t begin, size_t & length, size_
 	/**
 	 * Выполняем перебор физических строк исходного текста
 	 */
-	while(true){
+	for(;;){
 		// Длина очередной физической строки без знака её конца
 		size_t size = 0;
 		// Положение начала следующей физической строки
@@ -898,6 +921,7 @@ bool awh::codec::ini::Reader::measure(const size_t begin, size_t & length, size_
 			 * @note Отступом продолжается лишь значение свойства: ни пустая строка,
 			 *       ни примечание, ни объявление раздела продолжения не имеют, и
 			 *       строка с отступом за ними начинает запись заново
+			 *
 			 */
 			value = (!content.empty() && (content.front() != '[') && !commented(content.front(), this->_settings.comments));
 			// Снимаем признак разбора первой физической строки
@@ -935,6 +959,7 @@ bool awh::codec::ini::Reader::measure(const size_t begin, size_t & length, size_
 				 *       принять его, пока она не поступила целиком, нельзя: строка
 				 *       с отступом, разорванная границей куска, обратилась бы в
 				 *       отдельную запись
+				 *
 				 */
 				if(!this->_final)
 					// Выводим признак незавершённой логической строки
@@ -974,14 +999,29 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	 *
 	 * @note Перечень остаётся пустым у строки без продолжений: такая строка лежит в
 	 *       исходном тексте непрерывным отрезком, и отображение ей тождественно
+	 *
 	 */
 	this->_pieces.clear();
 	/**
 	 * Если длина логической строки предел настроек превышает
 	 */
-	if((this->_settings.maxLine > 0) && (static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine)))
-		// Выводим сообщение об ошибке разбора
+	if((this->_settings.maxLine > 0) && (static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {begin, length}, log::flag_t::WARNING, codec::ini::message(error_t::LINE_TOO_LONG), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::LINE_TOO_LONG), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::LINE_TOO_LONG, begin, this->_line, 1);
+	}
 	// Длина первой физической строки без знака её конца
 	size_t size = 0;
 	// Положение начала следующей физической строки
@@ -992,6 +1032,7 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	 * @note Строка такая лежит в приведённом тексте непрерывным отрезком, и
 	 *       выдаётся на неё ссылка: копирование её в отдельное хранилище
 	 *       обходилось в проход по всему тексту сверх самого разбора
+	 *
 	 */
 	if(!::split(this->_buffer, begin, size, after) || (after >= (begin + length))){
 		// Запоминаем ссылку на логическую строку в приведённом тексте
@@ -1001,18 +1042,19 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	}
 	// Количество склеенных строк продолжения
 	uint32_t count = 0;
-	// Выполняем упреждающее выделение памяти под собираемую логическую строку
-	this->_logical.reserve(length);
 	/**
 	 * Признак того, что предыдущая строка продолжена отступом
 	 *
 	 * @note Отступ снимается со всякой строки продолжения, включая последнюю: она
 	 *       обрывается не продолжением, а концом записи, и отступ её от прочих ничем
 	 *       не отличается
+	 *
 	 */
 	bool stripped = false;
 	// Положение начала очередной физической строки
 	size_t offset = begin;
+	// Выполняем упреждающее выделение памяти под собираемую логическую строку
+	this->_logical.reserve(length);
 	/**
 	 * Выполняем перебор физических строк логической строки
 	 */
@@ -1048,9 +1090,23 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 		/**
 		 * Если количество склеенных строк предел настроек превышает
 		 */
-		if((++count) > this->_settings.maxContinuation)
-			// Выводим сообщение об ошибке разбора
+		if((++count) > this->_settings.maxContinuation){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {begin, length}, log::flag_t::WARNING, codec::ini::message(error_t::CONTINUATION_EXCEEDED), this->_line + count, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::CONTINUATION_EXCEEDED), this->_line + count, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::CONTINUATION_EXCEEDED, offset, this->_line + count, 1);
+		}
 		/**
 		 * Если строка продолжается обратной косой чертой
 		 */
@@ -1061,6 +1117,7 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 			 * @note Знак конца строки при таком продолжении не сохраняется: строки
 			 *       склеиваются встык, а отступ следующей строки остаётся частью
 			 *       значения - таково обращение описания служб systemd
+			 *
 			 */
 			const string_view content = (stripped ? ::trim(line.substr(0, line.length() - 1)) : line.substr(0, line.length() - 1));
 			// Выполняем запоминание отрезка собранной логической строки
@@ -1085,6 +1142,7 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 			 * @note Отступ, которым продолжение задано, частью значения не является:
 			 *       он служит лишь признаком продолжения, и разбор языка Python его
 			 *       отбрасывает вместе с обвязкой в конце строки
+			 *
 			 */
 			this->_logical.append(content);
 			/**
@@ -1097,6 +1155,7 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 			 * @note Знак этот отображается на сам перенос исходного текста: своего
 			 *       знака в исходном тексте он не имеет, а место его - это место
 			 *       конца той строки, за которой он добавлен
+			 *
 			 */
 			this->_pieces.emplace_back(this->_logical.size(), (offset + size), 1);
 			// Выполняем добавление знака конца строки к логической строке
@@ -1119,10 +1178,10 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
  *
  */
 bool awh::codec::ini::Reader::header(const string_view line, const size_t offset) noexcept {
-	// Положение закрывающей квадратной скобки объявления
-	size_t close = string_view::npos;
 	// Признак нахождения разбора внутри кавычек имени подраздела
 	bool quoted = false;
+	// Положение закрывающей квадратной скобки объявления
+	size_t close = string_view::npos;
 	/**
 	 * Выполняем перебор знаков объявления раздела
 	 *
@@ -1130,6 +1189,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 *       в примечании за объявлением - запись «[a] ; см. раздел [docs]» давала имя
 	 *       раздела «a] ; см. раздел [docs». Скобка внутри кавычек имени подраздела
 	 *       при этом закрывающей не считается: наречие Git такое имя допускает
+	 *
 	 */
 	for(size_t i = 1; i < line.length(); i++){
 		/**
@@ -1162,11 +1222,12 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		 *          скобку потерявшее, забирало примечание себе в имя: запись
 		 *          «[раздел ; см. далее [тут]» давала имя «раздел ; см. далее [тут».
 		 *          Примечание разметку обрывает - объявление без скобки не закрыто, и
-		 *          отвечать на него следует именно этим
+		 *          отвечать на него следует именно этим.
 		 *
 		 * @note Требование к знаку то же, что и в значении: примечанием он признаётся,
 		 *       лишь когда отделён пробельным знаком, - иначе точка с запятой внутри
 		 *       имени раздела обрывала бы объявление
+		 *
 		 */
 		if(!quoted && this->_settings.inlineComments && commented(line[i], this->_settings.comments) && (!this->_settings.spacedComments || ascii::isSpace(line[i - 1])))
 			// Выполняем прекращение поиска закрывающей скобки
@@ -1182,6 +1243,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 			 *
 			 * @note При поиске до последней перебор идёт дальше: разбор языка Python
 			 *       берёт имя раздела до последней скобки, и «[x[]]» есть ему «x[]»
+			 *
 			 */
 			if(!this->_settings.greedySections)
 				// Выполняем прекращение поиска закрывающей скобки
@@ -1191,30 +1253,59 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	/**
 	 * Если закрывающая квадратная скобка объявления не обнаружена
 	 */
-	if(close == string_view::npos)
-		// Выводим сообщение об ошибке разбора
+	if(close == string_view::npos){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::UNCLOSED_SECTION), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::UNCLOSED_SECTION), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::UNCLOSED_SECTION, offset, this->_line, 1);
+	}
 	/**
 	 * Получаем содержимое объявления раздела без квадратных скобок
 	 *
 	 * @note Пробельная обвязка отбрасывается настройкою: разбор языка Python её
 	 *       сохраняет, и «[ раздел ]» есть ему имя с пробелами
+	 *
 	 */
-	string_view content = (this->_settings.trimSections ?
-	 ::trim(line.substr(1, close - 1)) : line.substr(1, close - 1));
+	string_view content = (this->_settings.trimSections ? ::trim(line.substr(1, close - 1)) : line.substr(1, close - 1));
 	/**
 	 * Если объявление раздела поверяется строгою грамматикой наречия
 	 *
 	 * @details Грамматика эта обвязки не отбрасывает, а отвергает: средство «git config»
 	 *          записи «[ раздел ]» не принимает вовсе. Отбрасывание же принимало её
-	 *          молча, и наречие выходило шире образца
+	 *          молча, и наречие выходило шире образца.
 	 *
 	 * @note Поверка ведётся ДО разбора имени подраздела: обвязка стоит по краям всего
 	 *       объявления, а не одного лишь имени раздела
+	 *
 	 */
-	if(this->_settings.strictNames && (content.length() != (close - 1)))
-		// Выводим сообщение об ошибке разбора
+	if(this->_settings.strictNames && (content.length() != (close - 1))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SECTION), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SECTION), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_SECTION, offset, this->_line, 1);
+	}
 	// Получаем остаток строки за закрывающей квадратной скобкой
 	const string_view tail = ::trim(line.substr(close + 1));
 	/**
@@ -1224,9 +1315,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		/**
 		 * Если содержимое за скобкой примечанием не является
 		 */
-		if(!commented(tail.front(), this->_settings.comments))
-			// Выводим сообщение об ошибке разбора
+		if(!commented(tail.front(), this->_settings.comments)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::UNEXPECTED_CONTENT), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::UNEXPECTED_CONTENT), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::UNEXPECTED_CONTENT, offset, this->_line, 1);
+		}
 		/**
 		 * Если выдача примечаний настройками разрешена
 		 */
@@ -1243,7 +1348,8 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 			 * @details Местом примечания служит сам знак, которым оно начато, а не начало
 			 *          строки: примечание за свойством выдаётся именно так, и указывать
 			 *          два одинаковых по существу примечания разными местами значило бы
-			 *          выдавать потребителю то одно, то другое
+			 *          выдавать потребителю то одно, то другое.
+			 *
 			 */
 			const size_t placement = static_cast <size_t> (tail.data() - line.data());
 			// Запоминаем смещение удержанного примечания в исходном тексте
@@ -1257,15 +1363,43 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	/**
 	 * Если имя раздела пусто
 	 */
-	if(content.empty())
-		// Выводим сообщение об ошибке разбора
+	if(content.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
+	}
 	/**
 	 * Если длина имени раздела предел настроек превышает
 	 */
-	if((this->_settings.maxName > 0) && (content.length() > this->_settings.maxName))
-		// Выводим сообщение об ошибке разбора
+	if((this->_settings.maxName > 0) && (content.length() > this->_settings.maxName)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::NAME_TOO_LONG), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::NAME_TOO_LONG), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::NAME_TOO_LONG, offset, this->_line, 1);
+	}
 	// Выполняем очистку имени текущего подраздела
 	this->_subsection.clear();
 	/**
@@ -1273,6 +1407,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 *
 	 * @note Виды сличаются разрядами, а не равенством: настройка «BOTH» признаёт оба
 	 *       построения разом, ибо средство «git config» принимает и «[a.b]», и «[a "b"]»
+	 *
 	 */
 	const uint8_t kinds = static_cast <uint8_t> (this->_settings.subsections);
 	/**
@@ -1280,6 +1415,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 *
 	 * @note Разбор кавычек ведётся ПРЕЖДЕ разбора точечной цепи: запись «[a.b "origin"]»
 	 *       несёт оба построения разом, и рез по точке первым уносил бы кавычки в имя
+	 *
 	 */
 	if(kinds & static_cast <uint8_t> (subsection_t::QUOTED)){
 		{
@@ -1292,9 +1428,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				/**
 				 * Если имя раздела перед кавычкой отсутствует
 				 */
-				if(::trim(content.substr(0, position)).empty())
-					// Выводим сообщение об ошибке разбора
+				if(::trim(content.substr(0, position)).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
+				}
 				// Признак обнаружения закрывающей кавычки имени подраздела
 				bool closed = false;
 				/**
@@ -1308,6 +1458,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 					 *       последовательности - кавычка и сама черта, - и таково
 					 *       обращение настроек Git: прочие знаки за чертой оно
 					 *       оставляет как есть
+					 *
 					 */
 					if((content[i] == '\\') && ((i + 1) < content.length())){
 						// Выполняем добавление знака за чертой к имени подраздела
@@ -1324,9 +1475,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 						/**
 						 * Если за закрывающей кавычкой обнаружено содержимое
 						 */
-						if(!::trim(content.substr(i + 1)).empty())
-							// Выводим сообщение об ошибке разбора
+						if(!::trim(content.substr(i + 1)).empty()){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+							#endif
+							// Объявляем отказ разбора
 							return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
+						}
 						// Выполняем прекращение разбора имени подраздела
 						break;
 					}
@@ -1359,10 +1524,25 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
-				if(!closed)
-					// Выводим сообщение об ошибке разбора
+				if(!closed){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
+				}
 				// Получаем имя раздела без имени подраздела
 				content = ::trim(content.substr(0, position));
 			}
@@ -1379,9 +1559,9 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 			 * @note При признании обоих построений разом поиск ведётся лишь до открывающей
 			 *       кавычки: знак-разделитель внутри имени, кавычками взятого, есть знак
 			 *       обыкновенный, и резать по нему значило бы рвать имя надвое
+			 *
 			 */
-			const size_t edge = ((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) ?
-			 content.find('"') : string_view::npos);
+			const size_t edge = ((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) ? content.find('"') : string_view::npos);
 			// Получаем положение знака-разделителя имени подраздела
 			const size_t position = content.substr(0, edge).find(this->_settings.delimiter);
 			/**
@@ -1403,36 +1583,80 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				}
 				/**
 				 * Если глубина вложенности подразделов предел настроек превышает
-				 */
-				/**
+				 *
 				 * Если подразделы настройками не дозволены
 				 *
 				 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне
 				 *       значит «без предела» у всех кодеков рамки
+				 *
 				 */
-				if(!this->_settings.nesting)
-					// Выводим сообщение об ошибке разбора
+				if(!this->_settings.nesting){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::DEPTH_EXCEEDED), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::DEPTH_EXCEEDED), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
+				}
 				/**
 				 * Если глубина вложенности подразделов предел настроек превышает
 				 *
 				 * @note Граница ВКЛЮЧАЮЩАЯ: предел в единицу допускает один уровень
 				 *       подраздела. Прежде она была исключающей, и предел в единицу значил
 				 *       ровно то же, что ноль, - одно значение настройки пропадало впустую
+				 *
 				 */
-				if((this->_settings.maxDepth > 0) && (depth > this->_settings.maxDepth))
-					// Выводим сообщение об ошибке разбора
+				if((this->_settings.maxDepth > 0) && (depth > this->_settings.maxDepth)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::DEPTH_EXCEEDED), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::DEPTH_EXCEEDED), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
+				}
 				/**
 				 * Если имя подраздела за знаком-разделителем пусто
 				 *
 				 * @note Запись «[a.]» от записи «[a]» отличается лишь знаком-разделителем,
 				 *       а разбирается в тот же раздел с пустым подразделом: принять её
 				 *       значило бы потерять этот знак при обратной записи
+				 *
 				 */
-				if((position + 1) >= content.length())
-					// Выводим сообщение об ошибке разбора
+				if((position + 1) >= content.length()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SUBSECTION), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
+				}
 				/**
 				 * Если имя подраздела кавычками уже взято
 				 *
@@ -1441,17 +1665,18 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				 *          и имя в кавычках складываются в одно имя подраздела. Прежде
 				 *          разбор резал по точке ПЕРВЫМ и клал в имя подраздела «b "origin"»
 				 *          вместе с кавычками: имя выходило небывалым, а сличение с
-				 *          эталоном расходилось на 18 текстах корпуса
+				 *          эталоном расходилось на 18 текстах корпуса.
+				 *
 				 */
 				if(!this->_subsection.empty()){
 					// Имя подраздела, кавычками взятое
-					const string quoted(this->_subsection);
+					string quoted(this->_subsection);
 					// Запоминаем точечную цепь именем подраздела
 					this->_subsection.assign(content.substr(position + 1));
 					// Выполняем добавление знака-разделителя к имени подраздела
 					this->_subsection.push_back(this->_settings.delimiter);
 					// Выполняем добавление имени, кавычками взятого
-					this->_subsection.append(quoted);
+					this->_subsection.append(::move(quoted));
 				// Запоминаем имя текущего подраздела
 				} else this->_subsection.assign(content.substr(position + 1));
 				// Получаем имя раздела без имени подраздела
@@ -1459,9 +1684,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				/**
 				 * Если имя раздела оказалось пустым
 				 */
-				if(content.empty())
-					// Выводим сообщение об ошибке разбора
+				if(content.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_SECTION), this->_line, 1);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
+				}
 			}
 		}
 	}
@@ -1471,10 +1710,11 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 * @details Наречие Git имя раздела строит из букв, цифр, черты и точки - и ничего
 	 *          более: запись «[a b]» средство «git config» отвергает, требуя «[a "b"]»,
 	 *          а «[a_b]» отвергает вовсе. Чтение, грамматики не поверяющее, принимало
-	 *          и то, и другое, и наречие выходило шире своего образца
+	 *          и то, и другое, и наречие выходило шире своего образца.
 	 *
 	 * @note Имя подраздела грамматике этой не подлежит: в кавычках оно вольно, и
 	 *       «[a "любое имя"]» средство принимает
+	 *
 	 */
 	if(this->_settings.strictNames){
 		/**
@@ -1484,9 +1724,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 			/**
 			 * Если знак имени раздела грамматике наречия не отвечает
 			 */
-			if(!ascii::isAlnum(content[i]) && (content[i] != '-') && (content[i] != '.'))
-				// Выводим сообщение об ошибке разбора
+			if(!ascii::isAlnum(content[i]) && (content[i] != '-') && (content[i] != '.')){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SECTION), this->_line, 1);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_SECTION), this->_line, 1);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_SECTION, offset, this->_line, 1);
+			}
 		}
 	}
 	// Запоминаем имя текущего раздела
@@ -1501,6 +1755,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		 * @note Имена соединяются через нулевой байт намеренно: разделитель этот в
 		 *       именах не встречается, и раздел «a» с подразделом «b» не сольётся с
 		 *       разделом «a.b», объявленным иначе
+		 *
 		 */
 		string name = this->fold(this->_section, true);
 		// Выполняем добавление разделителя имён к собираемому имени
@@ -1511,34 +1766,48 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		 * @note Таково обращение настроек Git: имя раздела регистра не учитывает, а
 		 *       имя подраздела - учитывает, поскольку несёт в себе то имя ветви, то
 		 *       обозначение источника, где регистр значащ
+		 *
 		 */
 		name.append(this->_subsection);
 		/**
 		 * Если раздел с таким именем уже объявлен
 		 */
-		if(!this->_sections.emplace(std::move(name)).second)
-			// Выводим сообщение об ошибке разбора
+		if(!this->_sections.emplace(std::move(name)).second){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::DUPLICATE_SECTION), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::DUPLICATE_SECTION), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::DUPLICATE_SECTION, offset, this->_line, 1);
+		}
 	}
 	// Выполняем очистку перечня объявленных свойств прежнего раздела
 	this->_keys.clear();
+	// Запоминаем признак того, что первый раздел текста настроек объявлен
+	this->_sectioned = true;
 	// Запоминаем имя раздела текущего события
 	this->_name.section = this->_section;
 	// Запоминаем имя подраздела текущего события
 	this->_name.subsection = this->_subsection;
-	// Запоминаем признак того, что первый раздел текста настроек объявлен
-	this->_sectioned = true;
 	// Запоминаем вид текущего события разбора
 	this->_event = event_t::SECTION;
 	// Выводим результат выполнения операции
 	return true;
 }
 /**
- * @brief Метод приведения значения свойства к окончательному виду
+ * @brief Метод проверки того, что значение свойства приведения не требует
  *
- * @param text     разбираемое значение свойства
- * @param position положение начала значения в приведённом тексте
- * @return         результат выполнения операции
+ * @param value проверяемое значение свойства
+ * @return      признак того, что значение приведения не требует
  *
  */
 bool awh::codec::ini::Reader::plain(const string_view value) const noexcept {
@@ -1562,7 +1831,7 @@ bool awh::codec::ini::Reader::plain(const string_view value) const noexcept {
 		 * Если очередным знаком начинается примечание в конце строки
 		 */
 		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
-		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1])))
+		  (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1])))
 			// Выводим признак того, что значение приведения требует
 			return false;
 	}
@@ -1578,16 +1847,17 @@ bool awh::codec::ini::Reader::plain(const string_view value) const noexcept {
  *
  */
 bool awh::codec::ini::Reader::extract(const string_view text, const size_t position) noexcept {
-	// Выполняем очистку хранилища значения свойства
-	this->_value.clear();
 	// Количество пробельных знаков за разделителем имени и значения
 	size_t indent = 0;
+	// Выполняем очистку хранилища значения свойства
+	this->_value.clear();
 	/**
 	 * Выполняем отбрасывание пробельных знаков за разделителем имени и значения
 	 *
 	 * @note Отбрасываются лишь пробел и знак табуляции: знак конца строки за
 	 *       разделителем означает, что значение записано строками продолжения, и
 	 *       первой строкой его тогда является пустая - таково обращение configparser
+	 *
 	 */
 	while((indent < text.length()) && ((text[indent] == ' ') || (text[indent] == '\t')))
 		// Выполняем переход к следующему знаку значения свойства
@@ -1604,6 +1874,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	 *       в конце строки нет, и такое значение лежит в приведённом тексте
 	 *       непрерывным отрезком. Выдать его указателем на этот отрезок дешевле,
 	 *       чем переписывать знак за знаком в отдельное хранилище
+	 *
 	 */
 	if(this->plain(value)){
 		// Длина значения без пробельной обвязки в конце
@@ -1624,27 +1895,29 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
-	// Признак нахождения разбора внутри кавычек
-	bool quoted = false;
-	// Признак записи байта вне набора US-ASCII шестнадцатеричной последовательностью
-	bool hexed = false;
 	// Знак кавычки, которой значение открыто
 	char quote = 0;
+	/**
+	 * Длина значения без пробельной обвязки в конце
+	 *
+	 * @note Обвязка отбрасывается лишь у части значения, записанной вне кавычек:
+	 *       пробел, взятый в кавычки, записан там намеренно и значащ
+	 *
+	 */
+	size_t keep = 0;
 	/**
 	 * Положение кавычки, которой значение открыто
 	 *
 	 * @note Местом незакрытой кавычки служит она сама, а не начало значения: искать
 	 *       незакрытую кавычку читающему следует там, где она стоит, - тем более что
 	 *       значение вправе собираться из нескольких строк продолжения
+	 *
 	 */
 	size_t opening = 0;
-	/**
-	 * Длина значения без пробельной обвязки в конце
-	 *
-	 * @note Обвязка отбрасывается лишь у части значения, записанной вне кавычек:
-	 *       пробел, взятый в кавычки, записан там намеренно и значащ
-	 */
-	size_t keep = 0;
+	// Признак нахождения разбора внутри кавычек
+	bool quoted = false;
+	// Признак записи байта вне набора US-ASCII шестнадцатеричной последовательностью
+	bool hexed = false;
 	/**
 	 * Выполняем перебор знаков значения свойства
 	 */
@@ -1678,7 +1951,20 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 					uint32_t column = 0;
 					// Выполняем получение места обнаруженной ошибки
 					this->place(offset + i, line, column);
-					// Выводим сообщение об ошибке разбора
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, position}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ESCAPE), line, column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ESCAPE), line, column);
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::INVALID_ESCAPE, offset + i, line, column);
 				}
 				// Выполняем переход к знаку за управляющей последовательностью
@@ -1699,12 +1985,12 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		 * Если очередным знаком является открывающая кавычка
 		 */
 		if((this->_settings.quotes == quote_t::STRIP) && (value[i] == '"')){
+			// Запоминаем положение кавычки, которой значение открыто
+			opening = i;
 			// Запоминаем признак нахождения разбора внутри кавычек
 			quoted = true;
 			// Запоминаем знак кавычки, которой значение открыто
 			quote = value[i];
-			// Запоминаем положение кавычки, которой значение открыто
-			opening = i;
 			// Запоминаем признак того, что значение было заключено в кавычки
 			this->_property.quoted = true;
 			/**
@@ -1712,6 +1998,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			 *
 			 * @note Пустые кавычки в конце значения обвязкой не являются: запись
 			 *       «имя = значение ""» несёт пробел перед ними намеренно
+			 *
 			 */
 			keep = this->_value.length();
 			// Выполняем переход к следующему знаку значения
@@ -1733,7 +2020,20 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				uint32_t column = 0;
 				// Выполняем получение места обнаруженной ошибки
 				this->place(offset + i, line, column);
-				// Выводим сообщение об ошибке разбора
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, position}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ESCAPE), line, column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ESCAPE), line, column);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_ESCAPE, offset + i, line, column);
 			}
 			// Выполняем переход к знаку за управляющей последовательностью
@@ -1749,9 +2049,10 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		 * @note Примечанием знак признаётся лишь тогда, когда стоит в начале значения
 		 *       либо отделён от него пробельным знаком: без этого требования всякая
 		 *       решётка внутри значения - в записи цвета, скажем, - обрезала бы его
+		 *
 		 */
 		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
-		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1]))){
+		  (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1]))){
 			/**
 			 * Получаем положение конца примечания в значении свойства
 			 *
@@ -1759,6 +2060,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			 *       значение, собранное из строк продолжения, несёт их знаки конца, и
 			 *       примечание, идущее до конца собранного значения, поглотило бы
 			 *       строки продолжения, стоящие за ним
+			 *
 			 */
 			const size_t stop = value.find('\n', i);
 			/**
@@ -1789,6 +2091,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			 *
 			 * @note Пробел, отделяющий примечание от значения, значению не принадлежит:
 			 *       снимается он вместе с примечанием, как и в конце всего значения
+			 *
 			 */
 			if(this->_settings.trim && (keep < this->_value.length()))
 				// Выполняем отбрасывание пробельной обвязки перед примечанием
@@ -1798,6 +2101,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			 *
 			 * @note Строки продолжения разделены знаком конца строки, и снятие
 			 *       примечания его не отменяет: значение остаётся многострочным
+			 *
 			 */
 			this->_value.push_back('\n');
 			// Выполняем переход к знаку за концом примечания
@@ -1824,7 +2128,20 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		uint32_t column = 0;
 		// Выполняем получение места незакрытой кавычки значения
 		this->place(offset + opening, line, column);
-		// Выводим сообщение об ошибке разбора
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, position}, log::flag_t::WARNING, codec::ini::message(error_t::UNTERMINATED_QUOTE), line, column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::UNTERMINATED_QUOTE), line, column);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::UNTERMINATED_QUOTE, (offset + opening), line, column);
 	}
 	/**
@@ -1840,6 +2157,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	 *       кодировке UTF-8, а запись отдельными байтами способна собрать
 	 *       последовательность, этой кодировке не отвечающую, - записать такое
 	 *       значение обратно было бы нечем
+	 *
 	 */
 	if(hexed){
 		// Положение проверяемого знака собранного значения
@@ -1862,7 +2180,20 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				uint32_t column = 0;
 				// Выполняем получение места обнаруженной ошибки
 				this->place(offset, line, column);
-				// Выводим сообщение об ошибке разбора
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, position}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ENCODING), line, column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_ENCODING), line, column);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_ENCODING, offset, line, column);
 			}
 			// Выполняем переход к следующему знаку собранного значения
@@ -1886,11 +2217,23 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	/**
 	 * Если свойство объявлено до первого раздела вопреки настройкам
 	 */
-	if(!this->_sectioned && !this->_settings.global)
-		// Выводим сообщение об ошибке разбора
+	if(!this->_sectioned && !this->_settings.global){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::KEY_OUTSIDE_SECTION), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::KEY_OUTSIDE_SECTION), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::KEY_OUTSIDE_SECTION, offset, this->_line, 1);
-	// Положение разделителя имени свойства и его значения
-	size_t position = string_view::npos;
+	}
 	/**
 	 * Положение знака примечания, стоящего до разделителя имени и значения
 	 *
@@ -1898,13 +2241,16 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	 *          исполняется только при найденном разделителе. Оттого строка без значения
 	 *          забирала примечание себе в имя, а при разделителях обоих видов разделителем
 	 *          становился знак внутри самого примечания: запись «foo ; см. далее: текст»
-	 *          разбиралась в свойство с именем «foo ; см. далее» и значением «текст»
+	 *          разбиралась в свойство с именем «foo ; см. далее» и значением «текст».
 	 *
 	 * @note Требование к знаку то же, что и в значении: примечанием он признаётся, лишь
 	 *       когда стоит в начале строки либо отделён пробельным знаком, - иначе решётка
 	 *       внутри имени обрезала бы его
+	 *
 	 */
 	size_t note = string_view::npos;
+	// Положение разделителя имени свойства и его значения
+	size_t position = string_view::npos;
 	/**
 	 * Выполняем перебор знаков логической строки
 	 */
@@ -1913,7 +2259,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 * Если очередным знаком начинается примечание в конце строки
 		 */
 		if(this->_settings.inlineComments && commented(line[i], this->_settings.comments) &&
-		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(line[i - 1]))){
+		  (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(line[i - 1]))){
 			// Запоминаем положение знака примечания
 			note = i;
 			// Выполняем прекращение поиска разделителя
@@ -1942,6 +2288,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			 *
 			 * @note Примечание кончается вместе со своей физической строкой: строки
 			 *       продолжения, стоящие за ним, ему не принадлежат
+			 *
 			 */
 			const size_t stop = line.find('\n', note);
 			// Запоминаем содержимое удержанного примечания
@@ -1962,14 +2309,18 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	 * Получаем имя свойства без пробельной обвязки
 	 *
 	 * @note Примечание в имя не входит: строка обрезается по знаку его начала
+	 *
 	 */
-	string_view key = ::trim((position == string_view::npos) ?
-		((note == string_view::npos) ? line : line.substr(0, note)) : line.substr(0, position));
+	string_view key = ::trim(
+		(position == string_view::npos) ?
+		((note == string_view::npos) ? line : line.substr(0, note)) : line.substr(0, position)
+	);
 	/**
 	 * Получаем положение имени свойства в разбираемой строке
 	 *
 	 * @note Держится ради указания места ошибки: имя разбирается без обвязки, а
 	 *       столбец следует считать от начала строки, как она в файле записана
+	 *
 	 */
 	const size_t placement = static_cast <size_t> (key.data() - line.data());
 	/**
@@ -1979,9 +2330,23 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		/**
 		 * Если свойство без разделителя и значения настройками не признаётся
 		 */
-		if(!this->_settings.valueless)
-			// Выводим сообщение об ошибке разбора
+		if(!this->_settings.valueless){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::MISSING_SEPARATOR), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::MISSING_SEPARATOR), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::MISSING_SEPARATOR, offset, this->_line, 1);
+		}
 		// Запоминаем признак свойства, записанного без разделителя и значения
 		this->_property.valueless = true;
 		// Выполняем сброс значения свойства текущего события
@@ -1990,9 +2355,23 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	/**
 	 * Если имя свойства пусто
 	 */
-	if(key.empty())
-		// Выводим сообщение об ошибке разбора
+	if(key.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_KEY), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_KEY), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::EMPTY_KEY, offset, this->_line, 1);
+	}
 	/**
 	 * Если запись добавления к перечню значений настройками признаётся
 	 */
@@ -2010,35 +2389,79 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 *          прежде - замерено, отказ приходит кодом UNEXPECTED_CONTENT. Сносу
 		 *          заход не подлежит: правка распознавания строк вернёт сюда
 		 *          управление, и свойство без имени легло бы в дерево молча
+		 *
 		 */
-		if(key.empty())
-			// Выводим сообщение об ошибке разбора
+		if(key.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_KEY), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::EMPTY_KEY), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::EMPTY_KEY, offset, this->_line, 1);
+		}
 	}
 	/**
 	 * Если длина имени свойства предел настроек превышает
 	 */
-	if((this->_settings.maxName > 0) && (key.length() > this->_settings.maxName))
-		// Выводим сообщение об ошибке разбора
+	if((this->_settings.maxName > 0) && (key.length() > this->_settings.maxName)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::NAME_TOO_LONG), this->_line, 1);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::NAME_TOO_LONG), this->_line, 1);
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::NAME_TOO_LONG, offset, this->_line, 1);
+	}
 	/**
 	 * Если имя свойства поверяется строгою грамматикой наречия
 	 *
 	 * @details Наречие Git имя свойства строит из буквы первым знаком, а далее из букв,
 	 *          цифр и черты - и ничего более: записи «k_2 = v», «k.2 = v» и «1k = v»
 	 *          средство «git config» отвергает. Чтение, грамматики не поверяющее,
-	 *          принимало их именем свойства - и наречие выходило шире своего образца
+	 *          принимало их именем свойства - и наречие выходило шире своего образца.
 	 *
 	 * @note Отказ выдаётся кодом `INVALID_KEY`: имя содержит знаки, наречием не
 	 *       признаваемые, и это ровно тот смысл, какой код несёт
+	 *
 	 */
 	if(this->_settings.strictNames){
 		/**
 		 * Если первый знак имени свойства буквою не является
 		 */
-		if(!ascii::isAlpha(key.front()))
-			// Выводим сообщение об ошибке разбора
+		if(!ascii::isAlpha(key.front())){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_KEY, offset, this->_line, 1);
+		}
 		/**
 		 * Выполняем перебор всех знаков имени свойства
 		 */
@@ -2046,9 +2469,23 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			/**
 			 * Если знак имени свойства грамматике наречия не отвечает
 			 */
-			if(!ascii::isAlnum(key[i]) && (key[i] != '-'))
-				// Выводим сообщение об ошибке разбора
+			if(!ascii::isAlnum(key[i]) && (key[i] != '-')){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), this->_line, 1);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), this->_line, 1);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_KEY, offset, this->_line, 1);
+			}
 		}
 	}
 	/**
@@ -2065,6 +2502,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 *
 		 * @note Знак конца строки недопустим всюду: он означает, что имя собралось из
 		 *       строк продолжения, чего запись не допускает
+		 *
 		 */
 		if(((key[i] == '[') && (i == 0)) || (key[i] == '\n') || (key[i] == '\r')){
 			// Номер строки, на которой обнаружена ошибка
@@ -2073,7 +2511,20 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			uint32_t column = 0;
 			// Выполняем получение места обнаруженной ошибки
 			this->place(offset + placement + i, line, column);
-			// Выводим сообщение об ошибке разбора
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), line, column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::INVALID_KEY), line, column);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_KEY, (offset + placement + i), line, column);
 		}
 	}
@@ -2084,9 +2535,23 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		/**
 		 * Если свойство с таким именем в разделе уже объявлено
 		 */
-		if(!this->_keys.emplace(this->fold(key)).second)
-			// Выводим сообщение об ошибке разбора
+		if(!this->_keys.emplace(this->fold(key)).second){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {line, offset}, log::flag_t::WARNING, codec::ini::message(error_t::DUPLICATE_KEY), this->_line, 1);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(error_t::DUPLICATE_KEY), this->_line, 1);
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::DUPLICATE_KEY, offset, this->_line, 1);
+		}
 	}
 	/**
 	 * Если разделитель имени свойства и его значения обнаружен
@@ -2124,6 +2589,7 @@ const awh::codec::ini::Reader::settings_t & awh::codec::ini::Reader::settings() 
  * @brief Метод установки настроек разбора
  *
  * @param settings настройки разбора текста настроек
+ * @return         признак того, что настройки приняты
  *
  */
 bool awh::codec::ini::Reader::settings(const settings_t & settings) noexcept {
@@ -2135,13 +2601,12 @@ bool awh::codec::ini::Reader::settings(const settings_t & settings) noexcept {
 	 *       Кодировку приведение к тому же не сменит - она определена по метке
 	 *       порядка байтов, - и настройки разошлись бы с делом. Смена поэтому не
 	 *       исполняется вовсе: чтобы задать иные настройки, чтение сбрасывают
-	 */
-	/**
+	 *
 	 * Если подача текста уже началась, а настройки сменить затребовано
 	 *
 	 * @details Отказ этот прежде был НЕМ: `settings()` отвечал ложью, а кода не ставил, и
-	 * потребитель, спросивший причину, получал `NONE` - отсутствие отказа при отказе. Разряд
-	 * тот же, что у подачи после объявленного конца
+	 *          потребитель, спросивший причину, получал `NONE` - отсутствие отказа при отказе. Разряд
+	 *          тот же, что у подачи после объявленного конца.
 	 *
 	 * @note Причины разведены поимённо: смена КОДИРОВКИ берёт общий код семьи
 	 *       `ENCODING_ALREADY_CHOSEN` - тот же, каким отвечают JSON, XML и CSV, - а смена
@@ -2152,11 +2617,14 @@ bool awh::codec::ini::Reader::settings(const settings_t & settings) noexcept {
 	 * @note Кодировка сличается с ОПРЕДЕЛЁННОЮ САМИМ ЧТЕНИЕМ, а не с признаком начатого
 	 *       приведения: приведение из UTF-8 в UTF-8 не ведётся вовсе и признака такого не
 	 *       поднимает, - заслон, на нём стоящий, пропускал бы смену молча
+	 *
 	 */
 	if(this->_final || (this->_base > 0) || !this->_buffer.empty()){
 		// Запоминаем код отказа смены настроек посреди подачи текста
-		this->_error = ((settings.encoding != this->_decoder.encoding()) ?
-		 error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED);
+		this->_error = (
+			(settings.encoding != this->_decoder.encoding()) ?
+			error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED
+		);
 		// Выводим признак того, что настройки не приняты
 		return false;
 	}
@@ -2172,99 +2640,98 @@ bool awh::codec::ini::Reader::settings(const settings_t & settings) noexcept {
  *
  */
 void awh::codec::ini::Reader::reset() noexcept {
-	// Выполняем сброс приведения исходного текста
-	this->_decoder.reset();
-	// Выполняем сброс признака получения последнего куска исходного текста
-	this->_final = false;
-	// Выполняем сброс признака объявления первого раздела
-	this->_sectioned = false;
-	// Выполняем сброс состояния чтения текста настроек
-	this->_state = state_t::HUNGRY;
-	// Выполняем сброс вида текущего события разбора
-	this->_event = event_t::NONE;
-	// Выполняем сброс кода ошибки разбора
-	this->_error = error_t::NONE;
-	// Выполняем сброс отложенного кода ошибки приведения исходного текста
-	this->_decoding = error_t::NONE;
-	// Выполняем сброс положения обнаруженной ошибки
-	this->_errorLocation = location_t();
-	// Выполняем сброс положения текущего события
-	this->_location = location_t();
-	// Выполняем очистку приведённого исходного текста
-	this->_buffer.clear();
-	// Выполняем сброс положения разбираемого знака
-	this->_offset = 0;
-	// Выполняем сброс положения начала разбираемой логической строки
-	this->_start = 0;
-	// Выполняем сброс смещения начала приведённого текста
-	this->_base = 0;
 	// Выполняем сброс номера разбираемой строки исходного текста
 	this->_line = 1;
-	// Выполняем сброс имени текущего раздела
-	this->_name = name_t();
-	// Выполняем очистку хранилища имени текущего раздела
-	this->_section.clear();
-	// Выполняем очистку хранилища имени текущего подраздела
-	this->_subsection.clear();
-	// Выполняем сброс свойства текущего события
-	this->_property = property_t();
-	// Выполняем сброс примечания текущего события
-	this->_comment = comment_t();
-	// Выполняем очистку хранилища имени свойства
+	// Выполняем сброс смещения начала приведённого текста
+	this->_base = 0;
+	// Выполняем сброс положения начала разбираемой логической строки
+	this->_start = 0;
+	// Выполняем сброс положения разбираемого знака
+	this->_offset = 0;
+	// Выполняем сброс признака получения последнего куска исходного текста
+	this->_final = false;
+	// Выполняем сброс признака удержанного примечания
+	this->_pending = false;
+	// Выполняем сброс признака объявления первого раздела
+	this->_sectioned = false;
+	// Выполняем сброс значения свойства текущего события
+	this->_view = "";
+	// Выполняем сброс ссылки на логическую строку
+	this->_current = "";
+	// Выполняем очистку перечня объявленных свойств
+	this->_keys.clear();
 	// Выполняем очистку хранилища значения свойства
 	this->_value.clear();
-	// Выполняем сброс значения свойства текущего события
-	this->_view = string_view();
+	// Выполняем очистку приведённого исходного текста
+	this->_buffer.clear();
+	// Выполняем очистку отрезков собранной логической строки
+	this->_pieces.clear();
 	// Выполняем очистку хранилища содержимого примечания
 	this->_content.clear();
 	// Выполняем очистку собранной логической строки
 	this->_logical.clear();
-	// Выполняем сброс ссылки на логическую строку
-	this->_current = string_view();
-	// Выполняем очистку отрезков собранной логической строки
-	this->_pieces.clear();
-	// Выполняем сброс признака удержанного примечания
-	this->_pending = false;
-	// Выполняем сброс удержанного примечания конца строки
-	this->_tail = comment_t();
+	// Выполняем очистку хранилища имени текущего раздела
+	this->_section.clear();
 	// Выполняем очистку перечня объявленных разделов
 	this->_sections.clear();
-	// Выполняем очистку перечня объявленных свойств
-	this->_keys.clear();
+	// Выполняем очистку хранилища имени текущего подраздела
+	this->_subsection.clear();
+	// Выполняем сброс приведения исходного текста
+	this->_decoder.reset();
+	// Выполняем сброс вида текущего события разбора
+	this->_event = event_t::NONE;
+	// Выполняем сброс кода ошибки разбора
+	this->_error = error_t::NONE;
+	// Выполняем сброс состояния чтения текста настроек
+	this->_state = state_t::HUNGRY;
+	// Выполняем сброс отложенного кода ошибки приведения исходного текста
+	this->_decoding = error_t::NONE;
+	// Выполняем сброс имени текущего раздела
+	this->_name = name_t();
+	// Выполняем сброс удержанного примечания конца строки
+	this->_tail = comment_t();
+	// Выполняем сброс примечания текущего события
+	this->_comment = comment_t();
+	// Выполняем сброс положения текущего события
+	this->_location = location_t();
+	// Выполняем сброс свойства текущего события
+	this->_property = property_t();
+	// Выполняем сброс положения обнаруженной ошибки
+	this->_errorLocation = location_t();
 }
 /**
-	 * @brief Метод передачи очередного куска исходного текста
-	 *
-	 * @param buffer буфер очередного куска исходного текста
-	 * @param size   размер буфера очередного куска исходного текста
-	 * @param end    признак того, что кусок является последним
-	 * @return       результат выполнения операции
-	 *
-	 *
-	 * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
-	 *       шести кодекам рамки разом - две подачи с признаком конца подряд:
-	 *
-	 *         INI 37, TOML 38, YAML 51, JSON 30, XML 41, CSV 17
-	 *
-	 *       Все шесть отвечают отказом при коде НЕнулевом и при названной причине;
-	 *       имена кодов свои у каждого, но смысл один - подача продолжена после
-	 *       объявленного её конца
-	 *
-	 * @warning Здесь стояло описание расхождения, замеренного 07.09.2026: YAML отвечал
-	 *          `TRAILING_CHARACTERS` - кодом чужого смысла, TOML без вычерпывания событий
-	 *          отдавал УСПЕХ, а INI отказывал при коде НУЛЕВОМ, то есть немо. Расхождение
-	 *          это устранено, а описание его осталось стоять во ВСЕХ ТРЁХ кодеках сразу и
-	 *          лгало трижды
-	 *
-	 * @warning Довод тот утверждал вдобавок, будто кода `TEXT_ALREADY_ENDED` у YAML, TOML
-	 *          и INI в перечне нет вовсе и заведение его меняет договор наружу. Ныне код
-	 *          этот есть у всех трёх и им же они и отвечают: запись пережила ровно ту
-	 *          правку, невозможность которой утверждала
-	 *
-	 * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
-	 *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
-	 *       против работы уже сделанной
-	 */
+ * @brief Метод передачи очередного куска исходного текста
+ *
+ * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
+ *       шести кодекам рамки разом - две подачи с признаком конца подряд:
+ *
+ *         INI 37, TOML 38, YAML 51, JSON 30, XML 41, CSV 17
+ *
+ *       Все шесть отвечают отказом при коде НЕнулевом и при названной причине;
+ *       имена кодов свои у каждого, но смысл один - подача продолжена после
+ *       объявленного её конца
+ *
+ * @warning Здесь стояло описание расхождения, замеренного 07.09.2026: YAML отвечал
+ *          `TRAILING_CHARACTERS` - кодом чужого смысла, TOML без вычерпывания событий
+ *          отдавал УСПЕХ, а INI отказывал при коде НУЛЕВОМ, то есть немо. Расхождение
+ *          это устранено, а описание его осталось стоять во ВСЕХ ТРЁХ кодеках сразу и
+ *          лгало трижды
+ *
+ * @warning Довод тот утверждал вдобавок, будто кода `TEXT_ALREADY_ENDED` у YAML, TOML
+ *          и INI в перечне нет вовсе и заведение его меняет договор наружу. Ныне код
+ *          этот есть у всех трёх и им же они и отвечают: запись пережила ровно ту
+ *          правку, невозможность которой утверждала
+ *
+ * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
+ *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
+ *       против работы уже сделанной
+ *
+ * @param buffer буфер очередного куска исходного текста
+ * @param size   размер буфера очередного куска исходного текста
+ * @param end    признак того, что кусок является последним
+ * @return       результат выполнения операции
+ *
+ */
 bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
 	 * Если разбор прекращён ошибкой
@@ -2274,6 +2741,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 *          ниже - порча захода проверок не роняет, замерено. Сносу заход не
 	 *          подлежит: он отвергает подачу и тогда, когда конец текста ещё не
 	 *          объявлен, а разбор уже сорван
+	 *
 	 */
 	if(this->_state == state_t::FAILED)
 		// Выводим отрицательный результат выполнения операции
@@ -2282,8 +2750,8 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * Если последний кусок исходного текста уже получен
 	 *
 	 * @details Отказ этот прежде кода НЕ СТАВИЛ: подача после объявленного конца
-	 * отвергалась молча, и потребитель, спросивший причину, получал `NONE` - то есть
-	 * отсутствие отказа при отказе. Замерено двумя подачами с признаком конца
+	 *          отвергалась молча, и потребитель, спросивший причину, получал `NONE` - то есть
+	 *          отсутствие отказа при отказе. Замерено двумя подачами с признаком конца.
 	 *
 	 * @note Причины разведены НАРОЧНО: прежде обе стояли одним условием, и код был бы
 	 *       общим на два разных случая - конец объявлен да приведение отказало, - тогда
@@ -2292,6 +2760,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * @note Кодек TOML на ту же подачу отвечал УСПЕХОМ, а YAML - `TRAILING_CHARACTERS`.
 	 *       Три кодека расходились в трёх местах на одном и том же случае, и ныне
 	 *       все три отвечают `TEXT_ALREADY_ENDED` при коде ненулевом - замерено 09.09.2026
+	 *
 	 */
 	if(this->_final){
 		// Запоминаем код отказа подачи после объявленного конца текста
@@ -2303,15 +2772,16 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * Если приведение куска отказало
 	 *
 	 * @details Отказ приведения ОТКЛАДЫВАЕТСЯ до вычерпывания событий намеренно: там он
-	 * выдаётся вызовом `fail()` вместе со строкою и местом в ней, тогда как здесь места
-	 * этого ещё нет. Кодеки TOML и YAML отвечают отказом сразу же, и расхождение это
-	 * замерено: у всех трёх исход для потребителя, события вычерпывающего, ОДИН - код
-	 * `INVALID_ENCODING`, - разнится лишь миг, когда он объявлен
+	 *          выдаётся вызовом `fail()` вместе со строкою и местом в ней, тогда как здесь места
+	 *          этого ещё нет. Кодеки TOML и YAML отвечают отказом сразу же, и расхождение это
+	 *          замерено: у всех трёх исход для потребителя, события вычерпывающего, ОДИН - код
+	 *          `INVALID_ENCODING`, - разнится лишь миг, когда он объявлен.
 	 *
 	 * @warning Код здесь ставится ОТДЕЛЬНО, и без того отказ был НЕМ: потребитель, событий
 	 *          не вычерпавший и подавший кусок следом, получал ложь при коде `NONE` - то
 	 *          есть отсутствие отказа при отказе. Замерено: без вычерпывания код 0, с
 	 *          вычерпыванием 4
+	 *
 	 */
 	if(this->_decoding != error_t::NONE){
 		// Запоминаем отложенный код отказа приведения куска
@@ -2326,6 +2796,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 *       хранилищу, и рост его по мере надобности переносил бы уже приведённый
 	 *       текст всякий раз заново - на файле в шестнадцать мегабайт это несколько
 	 *       переносов всего текста
+	 *
 	 */
 	if((this->_buffer.size() + size) > this->_buffer.capacity())
 		// Выполняем выделение памяти под приведённый кусок исходного текста
@@ -2343,6 +2814,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 		 *       и кусками расходился бы: кусками события начала текста выдаются,
 		 *       а целиком - нет. Оттого отказ откладывается до исчерпания
 		 *       приведённого начала, и место его указывает на испорченный знак
+		 *
 		 */
 		this->_decoding = this->_decoder.error();
 	// Запоминаем признак получения последнего куска исходного текста
@@ -2366,6 +2838,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if(this->_state == state_t::FINISHED)
 		// Выводим отрицательный результат выполнения операции
@@ -2376,7 +2849,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * @details Состояние `HUNGRY` объявлено значащим «для продолжения разбора требуется
 	 *          следующий кусок текста», и за последним куском оно ЛОЖНО: продолжения не
 	 *          требуется, ибо его нет вовсе. Оттого принявшая последний кусок подача
-	 *          ставит `READY` - разбирать есть что, и звать надлежит `next()`
+	 *          ставит `READY` - разбирать есть что, и звать надлежит `next()`.
 	 *
 	 * @warning Ложь эта не была безобидной: потребитель, договору следующий буквально -
 	 *          «при HUNGRY подавай ещё», - уходил в БЕСКОНЕЧНЫЙ круг. Замерено щупом:
@@ -2388,6 +2861,7 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 *       стояла та же ложь с иного конца - состояние держалось `HUNGRY` вплоть до
 	 *       первого `next()`. Кодеки TOML, JSON, XML и CSV ставят здесь `READY`, и этот
 	 *       был единственным из семи, кто расходился
+	 *
 	 */
 	this->_state = (this->_final ? state_t::READY : state_t::HUNGRY);
 	// Выводим положительный результат выполнения операции
@@ -2417,6 +2891,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 	 * @warning Сторож этот равнозначен: событий по завершении не остаётся, и снятие
 	 *          отвечает их отсутствием и без него - порча захода проверок не роняет,
 	 *          замерено. Сносу заход не подлежит: он снимает обход очереди событий
+	 *
 	 */
 	if((this->_state == state_t::FAILED) || (this->_state == state_t::FINISHED))
 		// Выводим признак отсутствия события разбора
@@ -2425,32 +2900,33 @@ bool awh::codec::ini::Reader::next() noexcept {
 	 * Если примечание конца строки ждёт своей выдачи
 	 */
 	if(this->_pending){
+		// Выполняем сброс значения свойства текущего события
+		this->_view = "";
 		// Снимаем признак удержанного примечания
 		this->_pending = false;
+		// Запоминаем состояние чтения текста настроек
+		this->_state = state_t::READY;
+		// Запоминаем вид текущего события разбора
+		this->_event = event_t::COMMENT;
 		/**
 		 * Выполняем сброс свойства предыдущего события
 		 *
 		 * @note Примечание конца строки выдаётся событием вслед за свойством, к строке
 		 *       которого приписано, и поля свойства к этому событию не относятся:
 		 *       договор велит держать их пустыми у всякого события, кроме свойства
+		 *
 		 */
 		this->_property = property_t();
-		// Выполняем сброс значения свойства текущего события
-		this->_view = string_view();
 		// Запоминаем содержимое примечания текущего события
 		this->_comment.text = this->_content;
+		// Запоминаем положение текущего события в исходном тексте
+		this->_location = this->_tail.location;
 		// Запоминаем знак, которым примечание начато
 		this->_comment.marker = this->_tail.marker;
 		// Запоминаем расположение примечания в тексте настроек
 		this->_comment.placement = this->_tail.placement;
 		// Запоминаем положение примечания в исходном тексте
 		this->_comment.location = this->_tail.location;
-		// Запоминаем положение текущего события в исходном тексте
-		this->_location = this->_tail.location;
-		// Запоминаем вид текущего события разбора
-		this->_event = event_t::COMMENT;
-		// Запоминаем состояние чтения текста настроек
-		this->_state = state_t::READY;
 		// Выводим признак наличия события разбора
 		return true;
 	}
@@ -2477,7 +2953,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 	/**
 	 * Выполняем разбор текста настроек до получения очередного события
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если приведённый текст разобран целиком
 		 */
@@ -2488,10 +2964,25 @@ bool awh::codec::ini::Reader::next() noexcept {
 			 * @note Отказ приведения выдаётся здесь, а не в месте своего появления:
 			 *       приведённое начало текста разбирается прежде, чем разбор
 			 *       прекращается, - иначе события начала текста пропадали бы
+			 *
 			 */
-			if(this->_decoding != error_t::NONE)
-				// Выводим сообщение об ошибке приведения исходного текста
+			if(this->_decoding != error_t::NONE){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::ini::message(this->_decoding), this->_line, 1);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(this->_decoding), this->_line, 1);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(this->_decoding, this->_offset, this->_line, 1);
+			}
 			/**
 			 * Если исходный текст поступил целиком
 			 */
@@ -2508,10 +2999,10 @@ bool awh::codec::ini::Reader::next() noexcept {
 			// Выводим признак отсутствия события разбора
 			return false;
 		}
-		// Длина логической строки без знака её конца
-		size_t length = 0;
 		// Положение начала следующей логической строки
 		size_t next = 0;
+		// Длина логической строки без знака её конца
+		size_t length = 0;
 		/**
 		 * Если логическая строка поступила ещё не целиком
 		 */
@@ -2521,33 +3012,48 @@ bool awh::codec::ini::Reader::next() noexcept {
 			 *
 			 * @note Оборванная приведением строка событием не выдаётся: за испорченным
 			 *       знаком стояло её продолжение, и половина строки за целую не сойдёт
+			 *
 			 */
-			if(this->_decoding != error_t::NONE)
-				// Выводим сообщение об ошибке приведения исходного текста
+			if(this->_decoding != error_t::NONE){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::ini::message(this->_decoding), this->_line, 1);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::ini::message(this->_decoding), this->_line, 1);
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(this->_decoding, this->_offset, this->_line, 1);
+			}
 			// Запоминаем состояние чтения текста настроек
 			this->_state = state_t::HUNGRY;
 			// Выводим признак отсутствия события разбора
 			return false;
 		}
-		// Запоминаем смещение текущего события в исходном тексте
-		this->_location.offset = (this->_base + this->_offset);
-		// Запоминаем номер строки текущего события
-		this->_location.line = this->_line;
 		// Запоминаем положение текущего события в строке
 		this->_location.column = 1;
+		// Запоминаем номер строки текущего события
+		this->_location.line = this->_line;
+		// Запоминаем смещение текущего события в исходном тексте
+		this->_location.offset = (this->_base + this->_offset);
 		/**
 		 * Если сборку логической строки выполнить не удалось
 		 */
 		if(!this->join(this->_offset, length))
 			// Выводим признак отсутствия события разбора
 			return false;
+		// Количество строк исходного текста, занятых логической строкой
+		uint32_t lines = 0;
 		// Получаем положение начала разобранной логической строки
 		const size_t offset = this->_offset;
 		// Запоминаем положение начала разбираемой логической строки
 		this->_start = offset;
-		// Количество строк исходного текста, занятых логической строкой
-		uint32_t lines = 0;
 		/**
 		 * Выполняем перебор знаков разобранного отрезка исходного текста
 		 */
@@ -2571,6 +3077,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 		 * @note Номер разбираемой строки наращивается лишь по завершении разбора:
 		 *       разбор указывает место ошибки номером строки, и опережающий счёт
 		 *       уводил бы указание на строку ниже настоящей
+		 *
 		 */
 		this->_offset = next;
 		// Получаем содержимое логической строки без пробельной обвязки
@@ -2607,6 +3114,10 @@ bool awh::codec::ini::Reader::next() noexcept {
 			if(this->_settings.emitComments){
 				// Выполняем наращивание номера разбираемой строки
 				this->_line += lines;
+				// Запоминаем состояние чтения текста настроек
+				this->_state = state_t::READY;
+				// Запоминаем вид текущего события разбора
+				this->_event = event_t::COMMENT;
 				// Запоминаем содержимое примечания текущего события
 				this->_content.assign(::trim(content.substr(1)));
 				// Запоминаем содержимое примечания текущего события
@@ -2617,10 +3128,6 @@ bool awh::codec::ini::Reader::next() noexcept {
 				this->_comment.placement = placement_t::OWN;
 				// Запоминаем положение примечания в исходном тексте
 				this->_comment.location = this->_location;
-				// Запоминаем вид текущего события разбора
-				this->_event = event_t::COMMENT;
-				// Запоминаем состояние чтения текста настроек
-				this->_state = state_t::READY;
 				// Выводим признак наличия события разбора
 				return true;
 			}
@@ -2635,6 +3142,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 		 * @note Отступ учитывается в положении ошибки: разбор идёт по строке без
 		 *       обвязки, а указывать место человеку следует в строке, как она в
 		 *       файле записана
+		 *
 		 */
 		const size_t indent = static_cast <size_t> (content.data() - this->_current.data());
 		/**
@@ -2653,6 +3161,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 		 * @note Свойству отдаётся строка без обрезки: хвостовая обвязка значения -
 		 *       это хвост всей строки, и снятие её здесь отняло бы у настройки
 		 *       обрезки всякий смысл. Имя свойства обрезает сам разбор свойства
+		 *
 		 */
 		} else if(!this->assign(this->_current, offset))
 			// Выводим признак отсутствия события разбора
@@ -2782,29 +3291,7 @@ awh::codec::ini::encoding_t awh::codec::ini::Reader::encoding() const noexcept {
 	return this->_decoder.encoding();
 }
 /**
- * @brief Конструктор
- *
- */
-awh::codec::ini::Reader::Reader() noexcept :
- _decoder(),
- _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
- _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false) {}
-/**
- * @brief Конструктор
- *
- * @param settings настройки разбора текста настроек
- *
- */
-awh::codec::ini::Reader::Reader(const settings_t & settings) noexcept :
- _decoder(),
- _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
- _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false), _settings(settings) {
-	// Выполняем установку кодировки исходного текста
-	this->_decoder.encoding(this->_settings.encoding);
-}
-
-/**
- * @brief Шаблон типа числа результата разбора
+ * @brief Шаблон метода получения значения текущего свойства числом
  *
  * @tparam T тип числа результата разбора
  *
@@ -2822,7 +3309,6 @@ bool awh::codec::ini::Reader::value(T & result, const boolean_t forms) const noe
 	// Выполняем разбор значения текущего свойства числом
 	return numeric(this->text(), result, forms);
 }
-
 /**
  * Выполняем порождение метода получения значения свойства числом для всех поддерживаемых типов
  *
@@ -2834,7 +3320,7 @@ bool awh::codec::ini::Reader::value(T & result, const boolean_t forms) const noe
  * @note Вид char голым намеренно не порождён: число им не разбирают
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <bool> (bool &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <bool> (bool &, const boolean_t) const noexcept;
 /**
  * @note Вид `char` порождается наравне с `signed char` и `unsigned char`, и лишним он НЕ
  *       является: у систем Sun вид `int8_t` объявлен КАК `char`, а не как `signed char`
@@ -2852,26 +3338,45 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <bool> (bool 
  *          связки `ini::numeric`, где довод при ней и стоит. Пять прочих мест остались, и
  *          вскрылись они лишь раскладкою назавтра. Разряд тот же, что у тел разбора UTF-8:
  *          починка, приложенная к одному списку из нескольких
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <char> (char &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <signed char> (signed char &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned char> (unsigned char &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <short> (short &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned short> (unsigned short &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int> (int &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned int> (unsigned int &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <long> (long &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned long> (unsigned long &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <long long> (long long &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned long long> (unsigned long long &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <float> (float &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <double> (double &, const boolean_t) const noexcept;
-
+template bool awh::codec::ini::Reader::value <char> (char &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <signed char> (signed char &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <unsigned char> (unsigned char &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <short> (short &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <unsigned short> (unsigned short &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <int> (int &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <unsigned int> (unsigned int &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <long> (long &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <unsigned long> (unsigned long &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <long long> (long long &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <unsigned long long> (unsigned long long &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <float> (float &, const boolean_t) const noexcept;
+template bool awh::codec::ini::Reader::value <double> (double &, const boolean_t) const noexcept;
 /**
- * Возвращаем системные макросы потребителю библиотеки:
- * имена, подавленные в начале файла, снова принадлежат ему
+ * @brief Конструктор
+ *
  */
-#include <sys/macro/restore.hpp>
+awh::codec::ini::Reader::Reader() noexcept :
+ _final(false), _pending(false), _sectioned(false),
+ _state(state_t::HUNGRY), _event(event_t::NONE),
+ _error(error_t::NONE), _decoding(error_t::NONE),
+ _start(0), _offset(0), _line(1), _base(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора текста настроек
+ *
+ */
+awh::codec::ini::Reader::Reader(const settings_t & settings) noexcept :
+ _final(false), _pending(false), _sectioned(false),
+ _state(state_t::HUNGRY), _event(event_t::NONE),
+ _error(error_t::NONE), _settings(settings), _decoding(error_t::NONE),
+ _start(0), _offset(0), _line(1), _base(0) {
+	// Выполняем установку кодировки исходного текста
+	this->_decoder.encoding(this->_settings.encoding);
+}
+
 /**
  * @brief Конструктор
  *
@@ -2880,4 +3385,11 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <double> (dou
  * @param length  длина отрезка в байтах
  *
  */
-awh::codec::ini::Reader::Piece::Piece(const size_t logical, const size_t source, const size_t length) noexcept : logical(logical), source(source), length(length) {}
+awh::codec::ini::Reader::Piece::Piece(const size_t logical, const size_t source, const size_t length) noexcept :
+ length(length), source(source), logical(logical) {}
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include <sys/macro/restore.hpp>

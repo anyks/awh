@@ -34,13 +34,8 @@
 using namespace std;
 
 /**
- * \~russian
  * @brief Конструктор
  *
- * \~english
- * @brief Constructor
- *
- * \~
  */
 awh::codec::cef::Position::Position() noexcept :
  codec::location_t(1, 1, 0) {}

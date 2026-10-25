@@ -25,6 +25,10 @@
  */
 #include <sys/log.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/ini/encoding.hpp>
 
 /**
@@ -78,12 +82,12 @@ namespace {
 	 */
 	static size_t length(const uint8_t letter) noexcept {
 		// Выводим длину по общему телу, лежащему в единице трансляции кодировщика
-		return awh::utf8::sequence(letter);
+		return utf8::sequence(letter);
 	}
 };
 
 /**
- * @brief Метод проверки знака на допустимость в тексте настроек
+ * @brief Функция проверки знака на допустимость в тексте настроек
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -108,6 +112,7 @@ bool awh::codec::ini::isChar(const uint32_t code) noexcept {
 	 * @note Область C1 отвергается наравне с областью C0 намеренно: в тексте настроек
 	 *       знаки эти незримы, и всякое их появление означает либо испорченный файл,
 	 *       либо попытку скрыть содержимое от читающего глазами
+	 *
 	 */
 	if((code >= 0x7F) && (code <= 0x9F))
 		// Выводим отрицательный результат проверки знака
@@ -122,7 +127,7 @@ bool awh::codec::ini::isChar(const uint32_t code) noexcept {
 	return true;
 }
 /**
- * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+ * @brief Функция чтения кодового значения из текста в кодировке UTF-8
  *
  * @details Тело общее - `awh::utf8::decode`: правило наибольшей годной части держит
  *          один код, а не пять копий. Равенство перебрано по всем подачам до трёх
@@ -137,10 +142,10 @@ bool awh::codec::ini::isChar(const uint32_t code) noexcept {
  */
 uint32_t awh::codec::ini::decode(const char * buffer, const size_t size, size_t & length) noexcept {
 	// Выводим разбор по общему телу
-	return awh::utf8::decode(buffer, size, length);
+	return utf8::decode(buffer, size, length);
 }
 /**
- * @brief Метод записи кодового значения в кодировке UTF-8
+ * @brief Функция записи кодового значения в кодировке UTF-8
  *
  * @details Тело общее - `awh::utf8::encode`: побайтовая сборка записи живёт в одном
  *          месте; равенство перебрано по всем значениям 0..U+110001.
@@ -152,7 +157,7 @@ uint32_t awh::codec::ini::decode(const char * buffer, const size_t size, size_t 
  */
 bool awh::codec::ini::encode(const uint32_t code, string & result) noexcept {
 	// Выводим запись по общему телу
-	return awh::utf8::encode(code, result);
+	return utf8::encode(code, result);
 }
 /**
  * @brief Метод определения кодировки по метке порядка байтов
@@ -183,6 +188,7 @@ bool awh::codec::ini::Decoder::sniff() noexcept {
 	 * @note Метка UTF-32 сличается прежде метки UTF-16 намеренно: обратный порядок
 	 *       её открывается теми же двумя байтами, что и метка UTF-16, и сличив
 	 *       короткую первой, мы прочли бы весь текст парами байтов вместо четвёрок
+	 *
 	 */
 	} else if((size >= 4) && (data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)) {
 		// Запоминаем определённую кодировку исходного текста
@@ -232,6 +238,7 @@ bool awh::codec::ini::Decoder::sniff() noexcept {
 		 * @note Метка чужой кодировки при навязанной извне частью текста остаётся
 		 *       намеренно: снятие её означало бы доверие к метке, которой вызывающий
 		 *       уже отказал, навязав кодировку
+		 *
 		 */
 		if(this->_encoding == encoding)
 			// Выполняем снятие метки порядка байтов с начала текста
@@ -290,8 +297,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -308,8 +326,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -319,8 +348,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -343,6 +383,7 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 					 * @note Однобайтовые знаки переносятся отрезком, а не поодиночке: в
 					 *       тексте настроек их подавляющее большинство, и перенос знака за
 					 *       знаком стоил пятой доли всего времени чтения
+					 *
 					 */
 					const size_t begin = offset;
 					/**
@@ -360,12 +401,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 							 *       посреди отрезка отбросил бы уже разобранное его начало.
 							 *       Разбор выдаёт события по приведённому тексту, и потеря
 							 *       начала отрезка отняла бы у него события целых строк
+							 *
 							 */
 							result.append(buffer + begin, (offset - begin));
 							// Запоминаем код ошибки приведения
 							this->_error = error_t::INVALID_CHARACTER;
-							// Выполняем вывод сообщения об отказе в лог
-							this->report();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+							#endif
 							// Выводим отрицательный результат выполнения операции
 							return false;
 						}
@@ -395,12 +448,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 *       шёл мимо этого сторожа и отвергался чтением ниже, ныне ловится
 				 *       здесь. Порча условия поставлена заново: набор INI прошёл целиком
 				 *       (283 из 283), то есть неразличимость держится и при новом составе
+				 *
 				 */
 				if(count == 0){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -414,8 +479,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -438,8 +514,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -449,8 +536,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -464,14 +562,14 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 		case static_cast <uint8_t> (encoding_t::UTF16LE):
 		// Если кодировкой является UTF-16 с прямым порядком байтов
 		case static_cast <uint8_t> (encoding_t::UTF16BE): {
-			// Получаем признак обратного порядка байтов кодировки
-			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
+			// Получаем признак обратного порядка байтов кодировки
+			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			/**
 			 * Выполняем перебор пар байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Значение очередной пары байтов исходного текста
 				uint16_t unit = 0;
 				/**
@@ -518,8 +616,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -540,12 +649,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 *
 				 * @note Младшая половина без предшествующей старшей означает испорченный
 				 *       текст: подставить вместо неё знак замены значило бы скрыть порчу
+				 *
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Если прочитанная пара байтов суррогатной не является
@@ -556,8 +677,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -587,12 +719,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -612,8 +756,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -629,7 +784,7 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 			/**
 			 * Выполняем перебор четвёрок байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Байты очередной четвёрки исходного текста
 				uint8_t unit[4] = {0, 0, 0, 0};
 				/**
@@ -638,6 +793,7 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Добор ведётся в удержанное хранилище, а не рядом с ним: четвёрка
 				 *       вправе разойтись по трём кускам, и сборка её через один
 				 *       промежуточный буфер теряла бы байты второго куска
+				 *
 				 */
 				if(this->_length > 0){
 					/**
@@ -691,12 +847,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Значения эти отвергаются кодом кодировки, а не кодом недопустимого
 				 *       знака: суррогаты в UTF-32 не записываются вовсе, и появление их
 				 *       означает не запрещённый знак, а испорченную запись
+				 *
 				 */
 				if(((code >= 0xD800) && (code <= 0xDFFF)) || (code > MAX_CODEPOINT)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -706,8 +874,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -742,12 +921,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -769,13 +960,23 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 			if(end && (this->_length != 0)){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
 		} break;
-		// Если кодировкой является ISO-8859-1
 		// Если кодировкой является Windows-1252
 		case static_cast <uint8_t> (encoding_t::CP1252): {
 			/**
@@ -788,6 +989,7 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Область 0x80-0x9F читается по перекодировочной таблице, а всё
 				 *       прочее совпадает с ISO-8859-1, где кодовое значение знака равно
 				 *       значению его байта
+				 *
 				 */
 				const uint32_t code = (((data[i] >= 0x80) && (data[i] <= 0x9F)) ? CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i]));
 				/**
@@ -796,8 +998,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if((code == 0) || !isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -827,17 +1040,30 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 			}
 		} break;
+		// Если кодировкой является ISO-8859-1
 		case static_cast <uint8_t> (encoding_t::LATIN1): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
@@ -849,8 +1075,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -860,8 +1097,7 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @note Кодовое значение знака в кодировке ISO-8859-1 совпадает со
 				 *       значением его байта: перекодировочная таблица этой кодировке
 				 *       не нужна вовсе
-				 */
-				/**
+				 *
 				 * @warning Заход этот НЕДОСТИЖИМ входными данными: значение байта не
 				 *          превышает 255, а всякое такое значение записи поддаётся.
 				 *          Доказано срывом, в заход поставленным
@@ -879,12 +1115,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(data[i], result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -902,8 +1150,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(data[i] >= 0x80){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -913,8 +1172,19 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -923,13 +1193,13 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 			}
 		} break;
 		/**
-		 * Если кодировка исходного текста не определена
+		 * Если кодировка исходного текста кодеком не поддерживается
 		 *
-		 * @warning Заход этот НЕДОСТИЖИМ входными данными: кодировка определяется до
-		 *          приведения и значения «NONE» к этому мигу не имеет. Доказано срывом,
-		 *          в заход поставленным
+		 * @warning Заход этот достижим: общий перечень шире поддерживаемого кодеком, и
+		 *          SINGLE приходит сюда от потребителя, задавшего его настройкой. Прежний
+		 *          довод о недостижимости относился к NONE и силы более не имеет
 		 *
-		 * @note Рассуждение проверено ПО СУЩЕСТВУ чтением, и вот его звенья: обнюхивание
+		 * @note Рассуждение ниже проверено ПО СУЩЕСТВУ чтением, и вот его звенья: обнюхивание
 		 *       ставит `_encoding` либо кодировкой опознанной, либо UTF-8 по умолчанию, и
 		 *       ставит всегда, коли кодировка извне не навязана; назначение же извне вида
 		 *       «NONE» признак навязанности СНИМАЕТ и оставляет обнюхиванию. Стало быть,
@@ -939,20 +1209,26 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 		 *       новая, обработчика ещё не имеющая, ушла бы отсюда молча - текст прошёл бы
 		 *       мимо приведения вовсе, а разбор получил бы байты чужой кодировки
 		 *
-		 * @note Довод выше стоит на устройстве соседнего слоя, и оттого он ПОДКРЕПЛЁН
-		 *       замером: тело захода даёт ноль у всех трёх подач - набор кодека,
-		 *       ворошитель за 60 000 проходов и общий набор кодеков, - при живом
-		 *       стороже. Замерено родным покрытием clang
+		 * @note Прежний замер недостижимости относился к перечню без SINGLE и силы более
+		 *       не имеет: ныне заход этот обращается отказом на неподдерживаемом виде
 		 *
-		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ: он лишь не нашёл подачи. Доводы
-		 *          рода сего - «соседний слой отсеивает прежде» - падали не раз, и
-		 *          всякий раз оттого, что закрыта была дорога ИЗВЕСТНАЯ, а не всякая
 		 */
 		default: {
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -989,12 +1265,24 @@ bool awh::codec::ini::Decoder::process(const char * buffer, const size_t size, c
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if(end && (this->_length != 0)){
 		// Запоминаем код ошибки приведения
 		this->_error = error_t::INVALID_ENCODING;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI encoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1088,6 +1376,7 @@ bool awh::codec::ini::Decoder::convert(const void * buffer, const size_t size, c
 		 * @note Наибольшая метка порядка байтов занимает четыре байта, и до их
 		 *       прихода определять кодировку нельзя: метка UTF-32 начинается с
 		 *       метки UTF-16, и по двум первым байтам их не различить
+		 *
 		 */
 		if((this->_prolog.size() < 4) && !end)
 			// Выводим положительный результат выполнения операции
@@ -1126,6 +1415,7 @@ bool awh::codec::ini::Decoder::convert(const void * buffer, const size_t size, c
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->sniff())
 			// Выводим отрицательный результат выполнения операции
@@ -1155,8 +1445,10 @@ awh::codec::ini::error_t awh::codec::ini::Decoder::error() const noexcept {
  *
  */
 void awh::codec::ini::Decoder::reset() noexcept {
-	// Выполняем сброс кода ошибки приведения
-	this->_error = error_t::NONE;
+	// Выполняем сброс количества удержанных байтов
+	this->_length = 0;
+	// Выполняем сброс удержанной старшей половины суррогатной пары
+	this->_surrogate = 0;
 	// Выполняем сброс признака обнаружения метки порядка байтов
 	this->_signed = false;
 	// Выполняем сброс признака обработки метки порядка байтов
@@ -1165,36 +1457,28 @@ void awh::codec::ini::Decoder::reset() noexcept {
 	this->_started = false;
 	// Выполняем сброс удержанного начала текста
 	this->_prolog.clear();
-	// Выполняем сброс количества удержанных байтов
-	this->_length = 0;
-	// Выполняем сброс удержанной старшей половины суррогатной пары
-	this->_surrogate = 0;
+	// Выполняем сброс кода ошибки приведения
+	this->_error = error_t::NONE;
 	/**
 	 * Если кодировка исходного текста извне не навязана
 	 *
 	 * @note Навязанная кодировка сброс переживает намеренно: устанавливается она
 	 *       вызывающим до разбора, и потеря её при сбросе означала бы молчаливый
 	 *       переход разбора на кодировку по умолчанию
+	 *
 	 */
 	if(!this->_forced)
 		// Выполняем сброс определённой кодировки исходного текста
 		this->_encoding = encoding_t::NONE;
 }
 /**
- * @brief Метод вывода сообщения об отказе в лог
- *
- */
-void awh::codec::ini::Decoder::report() const noexcept {
-	// Выполняем вывод сообщения об отказе
-	awh::log::print("INI encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
-}
-/**
  * @brief Конструктор
  *
  */
 awh::codec::ini::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
+ _forced(false), _marked(false), _signed(false),
+ _started(false), _length(0), _surrogate(0),
+ _error(error_t::NONE), _encoding(encoding_t::NONE) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака
 	this->_pending[0] = 0;
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

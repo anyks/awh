@@ -192,6 +192,9 @@ namespace awh {
 					 */
 					bool _quoted;
 				private:
+					// Объект работы с файловой системой
+					fs_t _fs;
+				private:
 					// Тип хранимого значения
 					type_t _type;
 				private:
