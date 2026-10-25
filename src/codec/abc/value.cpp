@@ -94,7 +94,7 @@ namespace {
  * @brief Метод разыскания поля отображения по имени
  *
  * @param name имя разыскиваемого поля отображения
- * @return     номер поля отображения, размер вместимого при отсутствии
+ * @return     номер поля отображения, `size()` при отсутствии
  *
  */
 size_t awh::codec::abc::Value::locate(const string & name) const noexcept {
@@ -514,18 +514,18 @@ void awh::codec::abc::Value::clear() noexcept {
 	this->_failure.reset();
 }
 /**
- * @brief Метод сброса значения в указанный вид с сохранением capacity
+ * @brief Метод сброса значения в исходное состояние с указанием нового вида
  *
  * @details Не освобождает capacity векторов `_items` и `_keys`: следующий
  *          `push_back` переиспользует уже отведённую память. Задаёт вид значения,
  *          что позволяет обойтись без присвоения нового объекта
- *          (`_root = value_t(MAP)`) и его разрушения
+ *          (`_root = value_t(MAP)`) и его разрушения.
  *
  * @note Разрушение детей идёт тем же обходом, что у `clear()`, и стоимость
  *       разрушения НЕ экономится — экономится только разница между
  *       «разрушить старый + построить новый» и «переиспользовать старый»
  *
- * @param kind устанавливаемый вид значения
+ * @param kind устанавливаемый вид значения после сброса
  *
  */
 void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
@@ -621,10 +621,9 @@ void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
  * @brief Метод отвода capacity у векторов `_items` и `_keys`
  *
  * @details Без `reserve` каждый `push_back` при росте может перераспределить
- *          буфер и инвалидировать ранее заведённые указатели на добавляемые
- *          элементы
+ *          буфер и инвалидировать ранее заведённые указатели на добавляемые элементы.
  *
- * @param capacity отводимая ёмкость
+ * @param capacity отводимая ёмкость векторов
  *
  */
 void awh::codec::abc::Value::reserve(const size_t capacity) noexcept {
@@ -669,7 +668,7 @@ bool awh::codec::abc::Value::negative() const noexcept {
 /**
  * @brief Метод извлечения цифр числа неограниченной ширины
  *
- * @param result извлекаемые цифры числа старшим октетом вперёд
+ * @param result извлекаемые цифры числа МЛАДШИМ октетом вперёд
  * @return       признак успешности извлечения
  *
  */
@@ -1814,7 +1813,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
 	return this->parse(buffer, size, reader_t::settings_t());
 }
 /**
- * @brief Метод разбора записи затребованными настройками
+ * @brief Метод разбора записи затребованными настройками разбора
  *
  * @param buffer   буфер разбираемой записи
  * @param size     размер разбираемой записи
@@ -1850,7 +1849,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size, const
 	return true;
 }
 /**
- * @brief Метод сборки записи из владеющего значения затребованными настройками сборки
+ * @brief Метод сборки записи из владеющего значения затребованными настройками
  *
  * @param result   собранная запись
  * @param error    код отказа, если сборка не удалась
@@ -1886,9 +1885,11 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error, co
 	return true;
 }
 /**
- * @brief Метод сборки записи из владеющего значения
+ * @brief Метод сборки записи из владеющего значения с поводом отказа
  *
- * @return собранная запись
+ * @param result собранная запись
+ * @param error  код отказа, если сборка не удалась
+ * @return       признак успешности сборки
  *
  */
 bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error) const noexcept {

@@ -1334,6 +1334,7 @@ vector <uint8_t> awh::codec::abc::Document::dump() const noexcept {
  * @brief Метод установки настроек разбора записи
  *
  * @param settings устанавливаемые настройки разбора записи
+ * @return         признак принятия настроек документа
  *
  */
 bool awh::codec::abc::Document::settings(const settings_t & settings) noexcept {
@@ -1380,7 +1381,12 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::root() const noexc
 	return value_t(this, 0, static_cast <uint32_t> (this->_nodes.size()));
 }
 /**
- * Количество значений корня дерева документа
+ * @brief Метод извлечения количества значений корня дерева документа
+ *
+ * @details Количество значений корня дерева документа.
+ *
+ * @return количество значений корня дерева документа
+ *
  */
 size_t awh::codec::abc::Document::size() const noexcept {
 	// Выводим количество значений корня дерева документа
@@ -1787,9 +1793,10 @@ bool awh::codec::abc::Document::Value::keyed() const noexcept {
 	return this->_doc->_nodes.at(this->_index).keyed;
 }
 /**
- * @brief Метод проверки того, что значение является именем поля отображения
+ * @brief Метод проверки того, что две ссылки ведут к ОДНОМУ узлу дерева
  *
- * @return признак того, что значение является именем поля отображения
+ * @param value сличаемая ссылка на значение
+ * @return      признак того, что обе ссылки ведут к одному узлу
  *
  */
 bool awh::codec::abc::Document::Value::same(const Value & value) const noexcept {

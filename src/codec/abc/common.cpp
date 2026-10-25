@@ -718,11 +718,11 @@ bool awh::codec::abc::segment(const string_view path, size_t & offset, string_vi
 	return true;
 }
 /**
- * @brief Метод разбора звена пути на номер значения
+ * @brief Функция разбора звена пути номером значения
  *
  * @param segment разбираемое звено пути
  * @param result  разобранный номер значения
- * @return        признак того, что звено является номером
+ * @return        признак годности записи номером
  *
  */
 bool awh::codec::abc::indexed(const string_view segment, size_t & result) noexcept {

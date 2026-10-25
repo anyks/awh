@@ -433,12 +433,14 @@ bool awh::codec::abc::Editor::pack() noexcept {
 	return true;
 }
 /**
- * @brief Метод внесения записи в конец контейнера
+ * @brief Метод накопления записи правкой контейнера
  *
- * @param buffer буфер вносимой записи
- * @param size   размер вносимой записи
- * @param kind   вид содержимого вносимой записи
- * @return       признак успешности внесения
+ * @param buffer буфер накопляемой записи
+ * @param size   размер накопляемой записи
+ * @param kind   вид содержимого накопляемой записи
+ * @param added  признак того, что запись вносится, а не правится
+ * @param number номер правимой строки оглавления
+ * @return       признак успешности накопления
  *
  */
 bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const payload_t kind, const bool added, const uint64_t number) noexcept {

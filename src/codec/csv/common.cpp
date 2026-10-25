@@ -114,7 +114,7 @@ namespace {
 };
 
 /**
- * @brief Метод получения сообщения об ошибке разбора
+ * @brief Функция получения сообщения об ошибке разбора
  *
  * @param error код ошибки разбора
  * @return      сообщение об ошибке
@@ -246,7 +246,7 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 	return "unknown error";
 }
 /**
- * @brief Метод получения названия кодировки
+ * @brief Функция получения названия кодировки
  *
  * @param encoding кодировка исходного текста
  * @return         название кодировки
@@ -302,7 +302,7 @@ const char * awh::codec::csv::name(const encoding_t encoding) noexcept {
 	return "unknown";
 }
 /**
- * @brief Метод определения кодировки по метке порядка байтов
+ * @brief Функция определения кодировки по метке порядка байтов
  *
  * @details Метки сличаются от длинной к короткой намеренно: метка UTF-32 с обратным
  *          порядком байтов начинается теми же двумя байтами, что и метка UTF-16 с обратным
@@ -313,8 +313,7 @@ const char * awh::codec::csv::name(const encoding_t encoding) noexcept {
  *          прочесть его знаками вперемешку с пустыми. Отказ выдаётся разбором отдельно
  *
  * @param text начало исходного текста
- * @return     определённая кодировка, UTF-8 при отсутствии метки либо отсутствие
- *             кодировки у неподдерживаемой
+ * @return     определённая кодировка либо UTF-8 при отсутствии метки
  *
  */
 awh::codec::csv::encoding_t awh::codec::csv::encoding(const string_view text) noexcept {
@@ -365,7 +364,7 @@ awh::codec::csv::encoding_t awh::codec::csv::encoding(const string_view text) no
 	return encoding_t::UTF8;
 }
 /**
- * @brief Метод получения знака конца строки
+ * @brief Функция получения знака конца строки
  *
  * @param newline вид знака конца строки
  * @return        последовательность знаков конца строки
@@ -404,7 +403,7 @@ string_view awh::codec::csv::newline(const newline_t newline) noexcept {
 	return "\r\n";
 }
 /**
- * @brief Метод проверки пригодности знака в разделители полей
+ * @brief Функция проверки пригодности знака в разделители полей
  *
  * @param separator знак-разделитель полей
  * @param quote     знак кавычек
@@ -432,7 +431,7 @@ bool awh::codec::csv::suitable(const char separator, const char quote) noexcept 
 	return true;
 }
 /**
- * @brief Метод проверки необходимости заключить поле в кавычки
+ * @brief Функция проверки необходимости заключить поле в кавычки
  *
  * @param text      содержимое поля
  * @param separator знак-разделитель полей
@@ -513,7 +512,7 @@ bool awh::codec::csv::quotable(const string_view text, const char separator, con
 	return necessary;
 }
 /**
- * @brief Метод приведения содержимого поля к целому числу со знаком
+ * @brief Функция приведения содержимого поля к целому числу со знаком
  *
  * @param text   содержимое поля
  * @param result полученное значение
@@ -580,7 +579,7 @@ bool awh::codec::csv::integer(const string_view text, int64_t & result) noexcept
 	return false;
 }
 /**
- * @brief Метод приведения содержимого поля к целому числу без знака
+ * @brief Функция приведения содержимого поля к целому числу без знака
  *
  * @param text   содержимое поля
  * @param result полученное значение
@@ -657,7 +656,7 @@ bool awh::codec::csv::integer(const string_view text, uint64_t & result) noexcep
 	return false;
 }
 /**
- * @brief Метод приведения содержимого поля к числу с плавающей точкой
+ * @brief Функция приведения содержимого поля к числу с плавающей точкой
  *
  * @param text   содержимое поля
  * @param result полученное значение
@@ -779,7 +778,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	return false;
 }
 /**
- * @brief Метод приведения содержимого поля к логическому значению
+ * @brief Функция приведения содержимого поля к логическому значению
  *
  * @details Признаются записи, сложившиеся на деле: «true» и «false», «yes» и «no»,
  *          «on» и «off», единица и ноль - в любом регистре. Наречия здесь нет: у CSV нет

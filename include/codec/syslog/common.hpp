@@ -655,7 +655,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод получения текста сообщения об ошибке разбора
+			 * @brief Функция получения текста сообщения об ошибке разбора
 			 *
 			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
 			 *          потребителю: разбирать отказы надлежит по коду, а не по тексту.
@@ -664,7 +664,7 @@ namespace awh {
 			 * @return      текст сообщения об ошибке разбора
 			 *
 			 * \~english
-			 * @brief Method of getting the text of the message about an error of the parsing
+			 * @brief Function of getting the text of the message about an error of the parsing
 			 *
 			 * @details The text is issued in English and is meant for a journal, and not for a consumer: the
 			 *          refusals are to be parsed by the code, and not by the text.
@@ -677,7 +677,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения имени источника сообщения
+			 * @brief Функция получения имени источника сообщения
 			 *
 			 * @details Имена взяты из описания RFC 5424 и общеприняты службами журналов;
 			 *          при значении, за предел таблицы выходящем, выдаётся пустая строка.
@@ -686,7 +686,7 @@ namespace awh {
 			 * @return         имя источника сообщения
 			 *
 			 * \~english
-			 * @brief Method of getting the name of the source of a message
+			 * @brief Function of getting the name of the source of a message
 			 *
 			 * @details The names are taken from the description of RFC 5424 and are commonly accepted by the
 			 *          journal services; for a value going beyond the table an empty string is issued.
@@ -699,13 +699,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ const char * name(const facility_t facility) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения имени степени важности сообщения
+			 * @brief Функция получения имени степени важности сообщения
 			 *
 			 * @param severity степень важности сообщения
 			 * @return         имя степени важности сообщения
 			 *
 			 * \~english
-			 * @brief Method of getting the name of the degree of the importance of a message
+			 * @brief Function of getting the name of the degree of the importance of a message
 			 *
 			 * @param severity degree of the importance of a message
 			 * @return         name of the degree of the importance of a message

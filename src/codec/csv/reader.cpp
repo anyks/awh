@@ -933,6 +933,7 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
  * @brief Метод разбора приведённого куска текста
  *
  * @param text разбираемый приведённый кусок текста
+ * @param size размер куска текста в байтах
  * @return     признак продолжения разбора
  *
  */
@@ -964,7 +965,13 @@ bool awh::codec::csv::Reader::process(const char * text, const size_t size) noex
 	return true;
 }
 /**
- * Обработка очередного знака разбираемого текста
+ * @brief Метод разбора очередного знака текста
+ *
+ * @details Обработка очередного знака разбираемого текста.
+ *
+ * @param letter разбираемый знак
+ * @return       признак продолжения разбора
+ *
  */
 bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	/**
@@ -2271,8 +2278,6 @@ bool awh::codec::csv::Reader::count(const char separator, vector <uint32_t> & co
  *          чем разделителей. Побеждает знак, дающий наибольшее количество записей с одним и тем
  *          же числом полей, а при равенстве - знак, дающий больше полей.
  *
- * @return признак успешного определения
- *
  */
 void awh::codec::csv::Reader::detect() noexcept {
 	// Достоинство лучшего из проверенных разделителей
@@ -2361,8 +2366,6 @@ void awh::codec::csv::Reader::detect() noexcept {
 }
 /**
  * @brief Метод сброса состояния разбора
- *
- * @param настройки разбора сохраняются
  *
  */
 void awh::codec::csv::Reader::reset() noexcept {
@@ -3136,6 +3139,7 @@ const awh::codec::csv::Reader::settings_t & awh::codec::csv::Reader::settings() 
  *          разными способами.
  *
  * @param settings настройки разбора текста
+ * @return         признак принятия настроек разбора
  *
  */
 bool awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {

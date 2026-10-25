@@ -78,6 +78,7 @@ namespace {
 	 *
 	 * @tparam T        тип неразрядного вида
 	 * @tparam typename тип по умолчанию
+	 *
 	 */
 	template <typename T, typename = void>
 	/**
@@ -531,7 +532,7 @@ void awh::codec::csv::Document::consume() noexcept {
  * @brief Метод разбора текста таблицы
  *
  * @param text разбираемый текст таблицы
- * @return     признак успешного разбора
+ * @return     результат разбора
  *
  */
 bool awh::codec::csv::Document::parse(const string_view text) noexcept {
@@ -1549,9 +1550,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	return true;
 }
 /**
- * @brief Метод получения кода ошибки разбора
+ * @brief Метод получения кода отказа последней работы над таблицей
  *
- * @return код ошибки разбора
+ * @return код отказа последней работы
  *
  */
 awh::codec::csv::error_t awh::codec::csv::Document::error() const noexcept {
@@ -1950,8 +1951,8 @@ bool awh::codec::csv::Document::value(T & result, const size_t row, const string
  *       вид знака, а не числа. Виды `signed char` и `unsigned char` порождаются
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const string_view) const noexcept;
 /**
  * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
  *
@@ -1968,32 +1969,32 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <bool> (boo
  *       система, и решает по-разному
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <char> (char &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <char> (char &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <short> (short &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <short> (short &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <int> (int &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <int> (int &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long> (long &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long> (long &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <float> (float &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <float> (float &, const size_t, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <double> (double &, const size_t, const size_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <double> (double &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <char> (char &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <char> (char &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <short> (short &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <short> (short &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <int> (int &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <int> (int &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <long> (long &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <long> (long &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <float> (float &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <float> (float &, const size_t, const string_view) const noexcept;
+template bool awh::codec::csv::Document::value <double> (double &, const size_t, const size_t) const noexcept;
+template bool awh::codec::csv::Document::value <double> (double &, const size_t, const string_view) const noexcept;
 /**
  * @brief Метод установки заголовка таблицы
  *
@@ -2119,6 +2120,7 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
  * @brief Метод добавления записи в конец таблицы
  *
  * @param fields поля добавляемой записи
+ * @return       результат добавления записи
  *
  */
 bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept {
@@ -2214,6 +2216,7 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
  * @brief Метод добавления записи в конец таблицы
  *
  * @param fields поля добавляемой записи
+ * @return       результат добавления записи
  *
  */
 bool awh::codec::csv::Document::append(const vector <string_view> & fields) noexcept {
@@ -2476,6 +2479,7 @@ awh::codec::csv::Document::operator string() const noexcept {
  * @brief Метод установки настроек контейнера
  *
  * @param settings настройки контейнера
+ * @return         признак принятия настроек документа
  *
  */
 bool awh::codec::csv::Document::settings(const settings_t & settings) noexcept {

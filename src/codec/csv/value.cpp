@@ -125,9 +125,9 @@ awh::codec::csv::Value::operator bool () const noexcept {
 	return this->valid();
 }
 /**
- * @brief Метод получения кода отказа последней работы
+ * @brief Метод получения кода отказа последней работы над значением
  *
- * @return код отказа последней работы над значением
+ * @return код отказа последней работы
  *
  */
 awh::codec::csv::error_t awh::codec::csv::Value::error() const noexcept {
@@ -865,7 +865,7 @@ bool awh::codec::csv::Value::value(uint64_t & result) const noexcept {
 	}
 }
 /**
- * @brief Метод извлечения дробного значения поля одинарной точности
+ * @brief Метод извлечения дробного значения поля
  *
  * @param result извлекаемое значение
  * @return       признак успешности извлечения
@@ -876,7 +876,7 @@ bool awh::codec::csv::Value::value(float & result) const noexcept {
 	return this->extract(result);
 }
 /**
- * @brief Метод извлечения дробного значения поля
+ * @brief Метод извлечения дробного значения поля двойной точности
  *
  * @param result извлекаемое значение
  * @return       признак успешности извлечения
@@ -1036,10 +1036,11 @@ bool awh::codec::csv::Value::graft(document_t & document) const noexcept {
 	return true;
 }
 /**
- * @brief Метод разбора текста таблицы
+ * @brief Метод разбора текста таблицы с заданными настройками
  *
- * @param text исходный текст таблицы
- * @return     признак успешности разбора
+ * @param text     исходный текст таблицы
+ * @param settings настройки таблицы
+ * @return         признак успешности разбора
  *
  */
 bool awh::codec::csv::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
@@ -1073,9 +1074,10 @@ bool awh::codec::csv::Value::parse(const string & text) noexcept {
 	return this->parse(text, document_t::settings_t());
 }
 /**
- * @brief Метод чтения таблицы из файла
+ * @brief Метод чтения таблицы из файла с заданными настройками
  *
  * @param filename адрес файла таблицы
+ * @param settings настройки таблицы
  * @return         признак успешности чтения
  *
  */
@@ -1346,9 +1348,10 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	return true;
 }
 /**
- * @brief Метод выдачи текста таблицы
+ * @brief Метод выдачи текста таблицы с заданными настройками записи
  *
- * @return собранный текст таблицы
+ * @param settings настройки записи текста таблицы
+ * @return         собранный текст таблицы
  *
  */
 string awh::codec::csv::Value::dump(const writer_t::settings_t & settings) const noexcept {

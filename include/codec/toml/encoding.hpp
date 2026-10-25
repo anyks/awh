@@ -82,7 +82,7 @@ namespace awh {
 		namespace toml {
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в тексте настроек
+			 * @brief Функция проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Описание отвергает управляющие знаки области C0 сырыми, дозволяя
 			 *          из них лишь горизонтальную табуляцию, перевод строки и возврат каретки, и
@@ -93,7 +93,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility in the text of the settings
+			 * @brief Function of checking a character for admissibility in the text of the settings
 			 *
 			 * @details The specification rejects the control characters of the C0 area in a raw form, permitting
 			 *          of them only the horizontal tabulation, the line feed and the carriage return, and
@@ -108,7 +108,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isChar(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+			 * @brief Функция чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @param buffer буфер исходного текста в кодировке UTF-8
 			 * @param size   размер буфера исходного текста
@@ -116,7 +116,7 @@ namespace awh {
 			 * @return       прочитанное кодовое значение знака
 			 *
 			 * \~english
-			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 * @brief Function of reading a code value from a text in the UTF-8 encoding
 			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
@@ -128,7 +128,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод записи кодового значения в кодировке UTF-8
+			 * @brief Функция записи кодового значения в кодировке UTF-8
 			 *
 			 * @param code   записываемое кодовое значение знака
 			 * @param result текст, к которому дописывается знак
@@ -136,7 +136,7 @@ namespace awh {
 			 *
 			 *
 			 * \~english
-			 * @brief Method of writing a code value in the UTF-8 encoding
+			 * @brief Function of writing a code value in the UTF-8 encoding
 			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended

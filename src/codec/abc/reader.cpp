@@ -190,6 +190,7 @@ bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
 /**
  * @brief Метод перестроения указателя имён полей вместимого
  *
+ * @param depth  глубина вложенности звена, чей указатель перестраивается
  * @param frame  звено стека вместимых, чей указатель перестраивается
  * @param needed число имён, какое указателю надлежит вместить
  *
@@ -367,7 +368,7 @@ bool awh::codec::abc::Reader::duplicated(frame_t & frame, const size_t offset, c
 /**
  * @brief Метод выдачи собранного события разбора
  *
- * @param record собранное событие разбора
+ * @param item собранное событие разбора
  *
  */
 void awh::codec::abc::Reader::emit(const record_t & item) noexcept {
@@ -3399,6 +3400,7 @@ const awh::codec::abc::Reader::settings_t & awh::codec::abc::Reader::settings() 
  * @brief Метод установки настроек разбора записи
  *
  * @param settings устанавливаемые настройки разбора записи
+ * @return         признак принятия настроек разбора
  *
  */
 bool awh::codec::abc::Reader::settings(const settings_t & settings) noexcept {

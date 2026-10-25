@@ -978,7 +978,7 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 void awh::codec::abc::Writer::flatten() const noexcept {
 	// Если врезок чужого содержимого нет
 	if(this->_cuts.empty())
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	// Буфер цельной записи
 	vector <uint8_t> result;
@@ -1113,7 +1113,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
  * @brief Метод укладки октетов содержимого значения
  *
  * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится врезкой,
- * а прочее копируется в буфер собираемой записи
+ *          а прочее копируется в буфер собираемой записи.
  *
  * @param buffer буфер укладываемых октетов
  * @param size   размер укладываемых октетов
@@ -1133,7 +1133,7 @@ void awh::codec::abc::Writer::content(const void * buffer, const size_t size, co
 	 *
 	 */
 	if((buffer == nullptr) || (size == 0))
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	// Выполняем получение указателя на октеты содержимого
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
@@ -1144,7 +1144,7 @@ void awh::codec::abc::Writer::content(const void * buffer, const size_t size, co
 	if(!copy && (this->_settings.reference > 0) && (size >= this->_settings.reference)){
 		// Выполняем укладку врезки чужого содержимого
 		this->_cuts.push_back(cut_t(this->_record.size(), buffer, size));
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	}
 	// Выполняем укладку октетов содержимого в буфер собираемой записи
@@ -1822,7 +1822,7 @@ const vector <uint8_t> & awh::codec::abc::Writer::record() const noexcept {
  *
  */
 vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexcept {
-	// Результат работы функции
+	// Результат работы метода
 	vector <piece_t> result;
 	// Смещение выданной части буфера собираемой записи
 	size_t offset = 0;
@@ -1855,7 +1855,7 @@ vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexce
  *
  */
 size_t awh::codec::abc::Writer::length() const noexcept {
-	// Результат работы функции
+	// Результат работы метода
 	size_t result = this->_record.size();
 	/**
 	 * Выполняем перебор врезок чужого содержимого
@@ -1900,6 +1900,7 @@ const awh::codec::abc::Writer::settings_t & awh::codec::abc::Writer::settings() 
  * @brief Метод установки настроек сборки записи
  *
  * @param settings устанавливаемые настройки сборки записи
+ * @return         признак принятия настроек записи
  *
  */
 bool awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {

@@ -181,9 +181,11 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	return true;
 }
 /**
- * @brief Метод сведения дерева к корню
+ * @brief Метод сведения дерева к корню с приданной свёрткой
  *
  * @param result буфер, куда следует положить корень дерева
+ * @param buffer буфер октетов приданного кадра
+ * @param size   размер октетов приданного кадра
  * @return       признак успешно сведённого дерева
  *
  */

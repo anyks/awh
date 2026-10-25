@@ -147,7 +147,7 @@ void awh::codec::cef::Writer::escape(const string_view text, const area_t area, 
 	if(!this->_settings.escape){
 		// Добавляем значение в результирующую запись как есть
 		result.append(text);
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	}
 	/**
@@ -420,6 +420,7 @@ const awh::codec::cef::Writer::settings_t & awh::codec::cef::Writer::settings() 
  * @brief Метод установки настроек записи событий
  *
  * @param settings настройки записи событий
+ * @return         признак принятия настроек записи
  *
  */
 bool awh::codec::cef::Writer::settings(const settings_t & settings) noexcept {

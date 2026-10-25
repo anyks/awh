@@ -79,7 +79,7 @@ namespace {
 	/**
 	 * @brief Шаблон функции приведения дробного числа к затребованному виду
 	 *
-	 * @tparam T затребованный вид числа
+	 * @tparam T вид числа, к какому ведётся приведение
 	 *
 	 */
 	template <typename T>
@@ -266,8 +266,8 @@ template <typename T>
 /**
  * @brief Функция приведения дробного числа к затребованному виду
  *
- * @details Тело приведения лежит в безымянном пространстве этого же файла, а метод
- *          этот отдаёт его наружу: приведением пользуются и кодеки, число при чтении уже
+ * @details Тело приведения лежит в безымянном пространстве этого же файла, а функция
+ *          эта отдаёт его наружу: приведением пользуются и кодеки, число при чтении уже
  *          разобравшие, - у них разбирать нечего, и извлечение приведением исчерпывается.
  *
  * @param value приводимое дробное число
@@ -286,24 +286,24 @@ T awh::codec::convert(const double value) noexcept {
  *       связыванием ровно так же
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::convert <bool> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ char awh::codec::convert <char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ signed char awh::codec::convert <signed char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned char awh::codec::convert <unsigned char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ short awh::codec::convert <short> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned short awh::codec::convert <unsigned short> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int awh::codec::convert <int> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned int awh::codec::convert <unsigned int> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ long awh::codec::convert <long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned long awh::codec::convert <unsigned long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ long long awh::codec::convert <long long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned long long awh::codec::convert <unsigned long long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ float awh::codec::convert <float> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ double awh::codec::convert <double> (const double) noexcept;
+template bool awh::codec::convert <bool> (const double) noexcept;
+template char awh::codec::convert <char> (const double) noexcept;
+template signed char awh::codec::convert <signed char> (const double) noexcept;
+template unsigned char awh::codec::convert <unsigned char> (const double) noexcept;
+template short awh::codec::convert <short> (const double) noexcept;
+template unsigned short awh::codec::convert <unsigned short> (const double) noexcept;
+template int awh::codec::convert <int> (const double) noexcept;
+template unsigned int awh::codec::convert <unsigned int> (const double) noexcept;
+template long awh::codec::convert <long> (const double) noexcept;
+template unsigned long awh::codec::convert <unsigned long> (const double) noexcept;
+template long long awh::codec::convert <long long> (const double) noexcept;
+template unsigned long long awh::codec::convert <unsigned long long> (const double) noexcept;
+template float awh::codec::convert <float> (const double) noexcept;
+template double awh::codec::convert <double> (const double) noexcept;
 /**
- * @brief Шаблон функции извлечения числа из записи затребованным видом
+ * @brief Шаблон вида числа, извлекаемого из записи
  *
- * @tparam T затребованный вид числа
+ * @tparam T вид числа, извлекаемого из записи
  *
  */
 template <typename T>
@@ -315,7 +315,6 @@ template <typename T>
  *          записи `nan` и `inf`, показатель степени при извлечении целым и переполнение
  *          разрядности. Расхождение снято решением от 01.09.2026 сведением обеих
  *          дверей к одному разбору, и правила взяты такие:
- *
  *          1. Пробельная обвязка отбрасывается: `whiteSpace` у числовых видов XML Schema
  *             задан значением `collapse`, а текстовый узел разметки почти всегда приходит с
  *             переводом строки и отступом.
@@ -330,9 +329,9 @@ template <typename T>
  *       этот общий у всех кодеков рамки, и расхождение здесь стало бы расхождением
  *       поведения кодеков между собой
  *
- * @param text   разбираемое содержимое
- * @param result ссылка на результат разбора
- * @return       признак успешного разбора
+ * @param text   разбираемая запись числа
+ * @param result ссылка на результат извлечения
+ * @return       признак успешного извлечения
  *
  */
 bool awh::codec::numeric(const string_view text, T & result) noexcept {
@@ -542,17 +541,17 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
  *       и CSV дословно; согласие это и есть договор о поддерживаемых видах числа
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <bool> (const string_view, bool &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <char> (const string_view, char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <signed char> (const string_view, signed char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <short> (const string_view, short &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int> (const string_view, int &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <long> (const string_view, long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <long long> (const string_view, long long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <float> (const string_view, float &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <double> (const string_view, double &) noexcept;
+template bool awh::codec::numeric <bool> (const string_view, bool &) noexcept;
+template bool awh::codec::numeric <char> (const string_view, char &) noexcept;
+template bool awh::codec::numeric <signed char> (const string_view, signed char &) noexcept;
+template bool awh::codec::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
+template bool awh::codec::numeric <short> (const string_view, short &) noexcept;
+template bool awh::codec::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
+template bool awh::codec::numeric <int> (const string_view, int &) noexcept;
+template bool awh::codec::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
+template bool awh::codec::numeric <long> (const string_view, long &) noexcept;
+template bool awh::codec::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
+template bool awh::codec::numeric <long long> (const string_view, long long &) noexcept;
+template bool awh::codec::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
+template bool awh::codec::numeric <float> (const string_view, float &) noexcept;
+template bool awh::codec::numeric <double> (const string_view, double &) noexcept;

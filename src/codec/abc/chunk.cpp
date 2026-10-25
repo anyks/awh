@@ -195,6 +195,7 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
  * @param result     буфер уложенной записи, обёртываемой кадром
  * @param number     порядковый номер кадра
  * @param generation поколение записи кадра
+ * @return           признак успешной обёртки записи кадром
  *
  */
 bool awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept {

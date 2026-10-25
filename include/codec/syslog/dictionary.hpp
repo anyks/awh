@@ -142,12 +142,12 @@ namespace awh {
 			namespace facilities {
 				/**
 				 * \~russian
-				 * @brief Метод получения количества записей словаря
+				 * @brief Функция получения количества записей словаря
 				 *
 				 * @return количество записей словаря
 				 *
 				 * \~english
-				 * @brief Method of getting the number of the records of the dictionary
+				 * @brief Function of getting the number of the records of the dictionary
 				 *
 				 * @return number of the records of the dictionary
 				 *
@@ -156,13 +156,13 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ size_t size() noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод розыска источника сообщения по числовому коду
+				 * @brief Функция розыска источника сообщения по числовому коду
 				 *
 				 * @param code числовой код источника сообщения
 				 * @return     запись словаря либо nullptr, если кода в словаре нет
 				 *
 				 * \~english
-				 * @brief Method of the search for a source of a message by a numeric code
+				 * @brief Function of the search for a source of a message by a numeric code
 				 *
 				 * @param code numeric code of the source of the message
 				 * @return     record of the dictionary or nullptr if the code is not in the dictionary
@@ -172,7 +172,7 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ const entry_t * at(const uint8_t code) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод розыска источника сообщения по краткому имени
+				 * @brief Функция розыска источника сообщения по краткому имени
 				 *
 				 * @details Розыск ведётся без разбора величины букв: службы журналов
 				 *          пишут имена и строчными, и прописными.
@@ -181,7 +181,7 @@ namespace awh {
 				 * @return     запись словаря либо nullptr, если имени в словаре нет
 				 *
 				 * \~english
-				 * @brief Method of the search for a source of a message by a short name
+				 * @brief Function of the search for a source of a message by a short name
 				 *
 				 * @details The search is conducted regardless of the case of the letters: the journal services
 				 *          write the names both in lower and in upper case.
@@ -211,12 +211,12 @@ namespace awh {
 			namespace severities {
 				/**
 				 * \~russian
-				 * @brief Метод получения количества записей словаря
+				 * @brief Функция получения количества записей словаря
 				 *
 				 * @return количество записей словаря
 				 *
 				 * \~english
-				 * @brief Method of getting the number of the records of the dictionary
+				 * @brief Function of getting the number of the records of the dictionary
 				 *
 				 * @return number of the records of the dictionary
 				 *
@@ -225,13 +225,13 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ size_t size() noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод розыска степени важности сообщения по числовому коду
+				 * @brief Функция розыска степени важности сообщения по числовому коду
 				 *
 				 * @param code числовой код степени важности сообщения
 				 * @return     запись словаря либо nullptr, если кода в словаре нет
 				 *
 				 * \~english
-				 * @brief Method of the search for a degree of the importance of a message by a numeric code
+				 * @brief Function of the search for a degree of the importance of a message by a numeric code
 				 *
 				 * @param code numeric code of the degree of the importance of the message
 				 * @return     record of the dictionary or nullptr if the code is not in the dictionary
@@ -241,7 +241,7 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ const entry_t * at(const uint8_t code) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод розыска степени важности сообщения по краткому имени
+				 * @brief Функция розыска степени важности сообщения по краткому имени
 				 *
 				 * @details Розыск ведётся без разбора величины букв и принимает имена,
 				 *          службами журналов принятые наравне с основными: `error` наравне с
@@ -251,7 +251,7 @@ namespace awh {
 				 * @return     запись словаря либо nullptr, если имени в словаре нет
 				 *
 				 * \~english
-				 * @brief Method of the search for a degree of the importance of a message by a short name
+				 * @brief Function of the search for a degree of the importance of a message by a short name
 				 *
 				 * @details The search is conducted regardless of the case of the letters and accepts the names
 				 *          adopted by the journal services on a par with the main ones: `error` on a par with

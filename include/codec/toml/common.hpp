@@ -1241,13 +1241,13 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод получения описания кода ошибки
+			 * @brief Функция получения описания кода ошибки
 			 *
 			 * @param error код ошибки разбора или записи
 			 * @return      описание кода ошибки
 			 *
 			 * \~english
-			 * @brief Method of getting the description of an error code
+			 * @brief Function of getting the description of an error code
 			 *
 			 * @param error error code of the parsing or of the writing
 			 * @return      description of the error code
@@ -1257,13 +1257,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения названия кодировки
+			 * @brief Функция получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         название кодировки
 			 *
 			 * \~english
-			 * @brief Method of getting the name of an encoding
+			 * @brief Function of getting the name of an encoding
 			 *
 			 * @param encoding encoding of the source text
 			 * @return         name of the encoding
@@ -1273,7 +1273,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод определения кодировки по её названию
+			 * @brief Функция определения кодировки по её названию
 			 *
 			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
 			 *          обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
@@ -1283,7 +1283,7 @@ namespace awh {
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
-			 * @brief Method of determining an encoding by its name
+			 * @brief Function of determining an encoding by its name
 			 *
 			 * @details This contract is one across INI, TOML and YAML: a codec that accepts
 			 *          encodings is obliged to be able both to name one and to recognize it by
@@ -1298,13 +1298,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения названия типа значения
+			 * @brief Функция получения названия типа значения
 			 *
 			 * @param type тип значения текста настроек
 			 * @return     название типа значения
 			 *
 			 * \~english
-			 * @brief Method of getting the name of a type of a value
+			 * @brief Function of getting the name of a type of a value
 			 *
 			 * @param type type of a value of a settings text
 			 * @return     name of the type of the value
@@ -1314,13 +1314,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ const char * name(const type_t type) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения последовательности знаков конца строки
+			 * @brief Функция получения последовательности знаков конца строки
 			 *
 			 * @param newline вид знака конца строки
 			 * @return        последовательность знаков конца строки
 			 *
 			 * \~english
-			 * @brief Method of getting the sequence of the line ending characters
+			 * @brief Function of getting the sequence of the line ending characters
 			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
@@ -1330,7 +1330,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ string_view newline(const newline_t newline) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в имени ключа без кавычек
+			 * @brief Функция проверки знака на допустимость в имени ключа без кавычек
 			 *
 			 * @warning Приговор здесь один: допустим ли ОДИН знак набора US-ASCII. Пойдёт
 			 *          ли имя целиком голым, посредник не знает: у него на входе ни длины имени,
@@ -1346,7 +1346,7 @@ namespace awh {
 			 * @return       результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility in the name of a key without quotes
+			 * @brief Function of checking a character for admissibility in the name of a key without quotes
 			 *
 			 * @warning The verdict here is single: whether ONE character of the US-ASCII set is
 			 *          admissible. Whether the whole name will pass bare, the intermediary does not
@@ -1368,7 +1368,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool bare(const char letter) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака Юникода на допустимость в имени ключа без кавычек
+			 * @brief Функция проверки знака Юникода на допустимость в имени ключа без кавычек
 			 *
 			 * @details Набор знаков задан черновиком следующей версии описания: буквы,
 			 *          цифры и знаки письменностей мира, но не знаки препинания и не знаки
@@ -1378,7 +1378,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a Unicode character for admissibility in the name of a key without quotes
+			 * @brief Function of checking a Unicode character for admissibility in the name of a key without quotes
 			 *
 			 * @details The set of the characters is given by the draft of the next version of the specification: the letters,
 			 *          the digits and the characters of the writing systems of the world, but not the punctuation marks and not the
@@ -1392,7 +1392,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool named(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки даты на существование её в календаре
+			 * @brief Функция проверки даты на существование её в календаре
 			 *
 			 * @details Проверяются и пределы полей, и длина месяца вместе с високосным
 			 *          годом: «2026-02-31» записью даты не является, и принимать её значило бы
@@ -1407,7 +1407,7 @@ namespace awh {
 			 * @return      результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a date for its existence in the calendar
+			 * @brief Function of checking a date for its existence in the calendar
 			 *
 			 * @details Both the limits of the fields and the length of the month together with a leap
 			 *          year are checked: «2026-02-31» is not a record of a date, and to accept it would mean
@@ -1426,7 +1426,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool calendar(const uint16_t year, const uint8_t month, const uint8_t day) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения очередного знака Юникода последовательности UTF-8
+			 * @brief Функция получения очередного знака Юникода последовательности UTF-8
 			 *
 			 * @param text   последовательность знаков, из которой ведётся чтение
 			 * @param offset положение начала знака в последовательности
@@ -1434,7 +1434,7 @@ namespace awh {
 			 * @return       количество байт знака, ноль - знак битый либо оборванный
 			 *
 			 * \~english
-			 * @brief Method of getting the next Unicode character of a UTF-8 sequence
+			 * @brief Function of getting the next Unicode character of a UTF-8 sequence
 			 *
 			 * @param text   sequence of characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
@@ -1446,13 +1446,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ size_t decode(const string_view text, const size_t offset, uint32_t & code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод получения длины последовательности UTF-8 по её ведущему байту
+			 * @brief Функция получения длины последовательности UTF-8 по её ведущему байту
 			 *
 			 * @param leading ведущий байт последовательности знака
 			 * @return        количество байт последовательности, ноль - байт ведущим не является
 			 *
 			 * \~english
-			 * @brief Method of getting the length of a UTF-8 sequence by its leading byte
+			 * @brief Function of getting the length of a UTF-8 sequence by its leading byte
 			 *
 			 * @param leading leading byte of the character sequence
 			 * @return        number of the bytes of the sequence, zero — the byte is not a leading one
@@ -1462,7 +1462,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ size_t sequence(const uint8_t leading) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод разбора очередной последовательности UTF-8
+			 * @brief Функция разбора очередной последовательности UTF-8
 			 *
 			 * @details Свод правил разбора последовательности собран здесь единственным
 			 *          телом: чтение целым текстом и чтение по кускам расходятся лишь тем, как
@@ -1475,7 +1475,7 @@ namespace awh {
 			 * @return       исход разбора последовательности
 			 *
 			 * \~english
-			 * @brief Method of the parsing of the next UTF-8 sequence
+			 * @brief Function of the parsing of the next UTF-8 sequence
 			 *
 			 * @details The set of the rules of the parsing of a sequence is gathered here as a single
 			 *          body: the reading by a whole text and the reading in chunks differ only in how

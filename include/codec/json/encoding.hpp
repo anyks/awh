@@ -107,7 +107,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в тексте настроек
+			 * @brief Функция проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Из управляющих знаков допускаются лишь горизонтальная табуляция,
 			 *          перевод строки и возврат каретки: прочие в файле настроек означают либо
@@ -122,7 +122,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility in the text of the settings
+			 * @brief Function of checking a character for admissibility in the text of the settings
 			 *
 			 * @details Of the control characters only the horizontal tabulation,
 			 *          the line feed and the carriage return are admitted: the rest of them in a settings file mean either
@@ -141,7 +141,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isChar(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+			 * @brief Функция чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
 			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
@@ -153,7 +153,7 @@ namespace awh {
 			 * @return       прочитанное кодовое значение знака
 			 *
 			 * \~english
-			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 * @brief Function of reading a code value from a text in the UTF-8 encoding
 			 *
 			 * @details Not only the construction of the sequence is checked but also its
 			 *          shortestness: an overlong record of a code value is rejected as
@@ -169,14 +169,14 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод записи кодового значения в кодировке UTF-8
+			 * @brief Функция записи кодового значения в кодировке UTF-8
 			 *
 			 * @param code   записываемое кодовое значение знака
 			 * @param result текст, к которому дописывается знак
 			 * @return       результат выполнения операции
 			 *
 			 * \~english
-			 * @brief Method of writing a code value in the UTF-8 encoding
+			 * @brief Function of writing a code value in the UTF-8 encoding
 			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
@@ -187,7 +187,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод извлечения кодовой точки из последовательности UTF-8
+			 * @brief Функция извлечения кодовой точки из последовательности UTF-8
 			 *
 			 * @details При негодной последовательности выдаётся знак замены U+FFFD, а
 			 *          разобранной считается наибольшая часть её, годная началом последовательности.
@@ -205,7 +205,7 @@ namespace awh {
 			 * @return       количество разобранных байтов содержимого
 			 *
 			 * \~english
-			 * @brief Method of the extraction of a code point from a UTF-8 sequence
+			 * @brief Function of the extraction of a code point from a UTF-8 sequence
 			 *
 			 * @details At a malformed sequence the replacement character U+FFFD is produced, and
 			 *          the largest part of it suitable as the beginning of a sequence is considered parsed.

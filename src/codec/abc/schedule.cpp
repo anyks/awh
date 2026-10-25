@@ -41,6 +41,8 @@ using namespace std;
 /**
  * @brief Метод отбоя срока своим потоком
  *
+ * @param round номер круга отбоя, на котором поток заведён
+ *
  */
 void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
 	/**

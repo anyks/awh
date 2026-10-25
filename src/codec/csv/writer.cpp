@@ -612,7 +612,6 @@ template <typename T>
  *          текст непереносимым, а в записи, где запятая служит разделителем полей, ещё и неразбираемым.
  *
  * @param value записываемое значение
- * @return      результат выполнения операции
  *
  */
 bool awh::codec::csv::Writer::number(const T value) noexcept {
@@ -704,7 +703,7 @@ bool awh::codec::csv::Writer::number(const T value) noexcept {
  *       по обоим обозначениям сразу оказалось бы двойным
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <bool> (const bool) noexcept;
+template bool awh::codec::csv::Writer::number <bool> (const bool) noexcept;
 /**
  * Вид `char` не порождается НАМЕРЕННО
  *
@@ -732,19 +731,19 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <bool> (cons
  *       система, и решает по-разному
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <char> (const char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <signed char> (const signed char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned char> (const unsigned char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <short> (const short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned short> (const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int> (const int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned int> (const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <long> (const long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned long> (const unsigned long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <long long> (const long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned long long> (const unsigned long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <float> (const float) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <double> (const double) noexcept;
+template bool awh::codec::csv::Writer::number <char> (const char) noexcept;
+template bool awh::codec::csv::Writer::number <signed char> (const signed char) noexcept;
+template bool awh::codec::csv::Writer::number <unsigned char> (const unsigned char) noexcept;
+template bool awh::codec::csv::Writer::number <short> (const short) noexcept;
+template bool awh::codec::csv::Writer::number <unsigned short> (const unsigned short) noexcept;
+template bool awh::codec::csv::Writer::number <int> (const int) noexcept;
+template bool awh::codec::csv::Writer::number <unsigned int> (const unsigned int) noexcept;
+template bool awh::codec::csv::Writer::number <long> (const long) noexcept;
+template bool awh::codec::csv::Writer::number <unsigned long> (const unsigned long) noexcept;
+template bool awh::codec::csv::Writer::number <long long> (const long long) noexcept;
+template bool awh::codec::csv::Writer::number <unsigned long long> (const unsigned long long) noexcept;
+template bool awh::codec::csv::Writer::number <float> (const float) noexcept;
+template bool awh::codec::csv::Writer::number <double> (const double) noexcept;
 /**
  * @brief Метод завершения текущей записи
  *
@@ -774,7 +773,7 @@ void awh::codec::csv::Writer::record() noexcept {
 		#endif
 		// Объявляем отказ
 		this->refuse(error_t::SEPARATOR_CONFLICT);
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	}
 	// Выполняем запись метки порядка байтов
@@ -833,7 +832,7 @@ void awh::codec::csv::Writer::record() noexcept {
 			#endif
 			// Объявляем отказ
 			this->refuse(error_t::UNWRITABLE_FIELD);
-			// Выходим из функции
+			// Выходим из метода
 			return;
 		}
 		// Записываем открывающий знак кавычек
@@ -1090,7 +1089,7 @@ void awh::codec::csv::Writer::revert(const size_t size, const size_t origin, con
 	this->_started = started;
 }
 /**
- * @brief Метод отката неудавшейся операции записи с сообщением об отказе
+ * @brief Метод отката неудавшейся операции записи
  *
  * @param size    размер собранного текста до начала операции
  * @param origin  положение начала записи до начала операции
@@ -1120,7 +1119,13 @@ bool awh::codec::csv::Writer::rollback(const size_t size, const size_t origin, c
 	return this->refuse(error);
 }
 /**
- * Оформление отказа записи с уведомлением журнала
+ * @brief Метод отказа записи текста
+ *
+ * @details Оформление отказа записи с уведомлением журнала.
+ *
+ * @param error код отказа записи
+ * @return      признак отказа записи, всегда ложь
+ *
  */
 bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код отказа записи
@@ -1186,7 +1191,7 @@ string awh::codec::csv::Writer::take() noexcept {
 	return result;
 }
 /**
- * @brief Метод очистки собранного текста
+ * @brief Метод сброса записи в исходное состояние
  *
  * @details Очищается лишь собранный текст: настройки записи и признак записанной метки
  * порядка байтов сохраняются, иначе метка эта появилась бы посреди потока
@@ -1225,6 +1230,7 @@ const awh::codec::csv::Writer::settings_t & awh::codec::csv::Writer::settings() 
  * @brief Метод установки настроек записи текста
  *
  * @param settings настройки записи текста
+ * @return         признак принятия настроек записи
  *
  */
 bool awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
