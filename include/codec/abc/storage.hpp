@@ -45,8 +45,9 @@
 #include "container.hpp"
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/fs.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
