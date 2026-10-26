@@ -166,7 +166,7 @@ namespace {
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const string & path) noexcept {
+	static bool directory(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -300,7 +300,7 @@ namespace {
 	 * @return     результат суждения
 	 *
 	 */
-	static bool writable(const string_view text) noexcept {
+	static bool directory(const string_view text) noexcept {
 		/**
 		 * Выполняем перебор всех знаков содержимого поля
 		 */
@@ -1320,7 +1320,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       оглашает отказ кодом `FILE_NOT_OPENED`
 	 *
 	 */
-	if(!::writable(temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -2163,7 +2163,7 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 		/**
 		 * Если содержимое поля записи не подлежит
 		 */
-		if(!::writable(value)){
+		if(!::directory(value)){
 			// Запоминаем код отказа добавления записи с непредставимым содержимым
 			this->_error = error_t::UNWRITABLE_FIELD;
 			// Выводим признак неудачного добавления записи
@@ -2257,7 +2257,7 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 		/**
 		 * Если содержимое поля записи не подлежит
 		 */
-		if(!::writable(value)){
+		if(!::directory(value)){
 			// Запоминаем код отказа добавления записи с непредставимым содержимым
 			this->_error = error_t::UNWRITABLE_FIELD;
 			// Выводим признак неудачного добавления записи

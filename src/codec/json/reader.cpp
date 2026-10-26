@@ -1725,12 +1725,12 @@ void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, 
 	 *
 	 */
 	if(this->_handler != nullptr){
-		// Сбрасываем признак изменения содержимого разбором
-		this->_modified = false;
 		// Устанавливаем положение текущего события в исходном тексте
 		this->_position = this->_mark;
 		// Получаем признак изменения содержимого разбором
 		const bool modified = this->_modified;
+		// Сбрасываем признак изменения содержимого разбором
+		this->_modified = false;
 		/**
 		 * Выполняем выдачу собранного события обработчику
 		 *
@@ -2915,7 +2915,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			/**
 			 * Если знак начинает отменяющую последовательность
 			 */
-			if((this->_modified = (letter == '\\'))){
+			if(letter == '\\'){
+				// Запоминаем признак изменения содержимого разбором
+				this->_modified = true;
 				// Переводим разбор к разбору отменяющей последовательности
 				this->_phase = phase_t::ESCAPE;
 				// Пропускаем знак отмены
@@ -3158,10 +3160,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 * Если прочитан старший суррогат пары
 			 */
 			if((this->_unicode >= 0xD800) && (this->_unicode <= 0xDBFF)){
-				// Сбрасываем собираемый знак Юникода
-				this->_unicode = 0;
 				// Запоминаем старший суррогат пары
 				this->_surrogate = this->_unicode;
+				// Сбрасываем собираемый знак Юникода
+				this->_unicode = 0;
 				/**
 				 * Переводим разбор к ожиданию младшего суррогата
 				 *

@@ -909,7 +909,7 @@ bool codec::json::Writer::value(const string & value) noexcept {
 	 */
 	if(&value == &this->_result)
 		// Повторяем операцию с независимой копией входной строки
-		return this->value(value);
+		return this->value(string(value));
 	/**
 	 * Если отказ на негодную кодировку затребован, а содержимое ей не отвечает
 	 *

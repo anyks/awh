@@ -1293,7 +1293,13 @@ awh::codec::ini::value_t & awh::codec::ini::Value::operator = (const value_t & v
 	this->_names = value._names;
 	// Выполняем копирование признака значения, записанного в кавычках
 	this->_quoted = value._quoted;
-	// Получаем значения вместилища до изменения текущего дерева
+	/**
+	 * Получаем значения вместилища до изменения текущего дерева
+	 *
+	 * @warning Весь прикол с таким переносом, заключается в том,
+	 *          что текущий узел может находится в value._items
+	 *
+	 */
 	auto items = value._items;
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
@@ -1326,8 +1332,16 @@ awh::codec::ini::value_t & awh::codec::ini::Value::operator = (value_t && value)
 	this->_names = ::move(value._names);
 	// Выполняем перенесение указателя поиска вместе с именами
 	this->_index = ::move(value._index);
-	// Выполняем перенос значений вместилища
-	this->_items = ::move(value._items);
+	/**
+	 * Получаем значения вместилища до изменения текущего дерева
+	 *
+	 * @warning Весь прикол с таким переносом, заключается в том,
+	 *          что текущий узел может находится в value._items
+	 *
+	 */
+	auto items = ::move(value._items);
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выполняем сброс признака значения, записанного в кавычках
 	value._quoted = false;
 	/**
@@ -1338,6 +1352,8 @@ awh::codec::ini::value_t & awh::codec::ini::Value::operator = (value_t && value)
 	 *
 	 */
 	value._type = type_t::NONE;
+	// Выполняем перенос значений вместилища
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }

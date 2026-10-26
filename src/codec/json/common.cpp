@@ -345,7 +345,7 @@ const char * awh::codec::json::name(const type_t type) noexcept {
 	/**
 	 * Определяем вид значения документа
 	 */
-	switch(static_cast <uint8_t> (type)){
+	switch(static_cast <uint16_t> (type)){
 		// Если значения нет вовсе
 		case static_cast <uint16_t> (type_t::UNDEFINED):
 			// Выводим название вида значения

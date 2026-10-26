@@ -241,7 +241,7 @@ namespace {
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const string & path) noexcept {
+	static bool directory(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -1960,7 +1960,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла значения
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -2334,12 +2334,20 @@ awh::codec::json::value_t & awh::codec::json::Value::operator = (const value_t &
 	this->_text = value._text;
 	// Выполняем копирование имён полей объекта
 	this->_names = value._names;
-	// Выполняем копирование значений вместилища
-	this->_items = value._items;
 	// Выполняем копирование хранимого числа
 	this->_number = value._number;
+	/**
+	 * Получаем значения вместилища до изменения текущего дерева
+	 *
+	 * @warning Весь прикол с таким переносом, заключается в том,
+	 *          что текущий узел может находится в value._items
+	 *
+	 */
+	auto items = value._items;
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
+	// Выполняем перенос подготовленной копии значений вместилища
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2367,10 +2375,18 @@ awh::codec::json::value_t & awh::codec::json::Value::operator = (value_t && valu
 	this->_text = ::move(value._text);
 	// Выполняем перенос имён полей объекта
 	this->_names = ::move(value._names);
-	// Выполняем перенос значений вместилища
-	this->_items = ::move(value._items);
+	/**
+	 * Получаем значения вместилища до изменения текущего дерева
+	 *
+	 * @warning Весь прикол с таким переносом, заключается в том,
+	 *          что текущий узел может находится в value._items
+	 *
+	 */
+	auto items = value._items;
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
+	// Выполняем перенос подготовленной копии значений вместилища
+	this->_items = ::move(items);
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 	// Выводим ссылку на текущее значение

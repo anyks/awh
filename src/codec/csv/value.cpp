@@ -78,7 +78,7 @@ namespace {
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const string & path) noexcept {
+	static bool directory(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -1228,7 +1228,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**

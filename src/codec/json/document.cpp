@@ -112,7 +112,7 @@ namespace {
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static bool writable(const string & path) noexcept {
+	static bool directory(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -877,11 +877,13 @@ bool awh::codec::json::Document::digest(const event_t event, const span_t conten
 	/**
 	 * Если событие является именем поля объекта
 	 */
-	if((this->_keyed = (event == event_t::KEY))){
+	if(event == event_t::KEY){
 		// Запоминаем длину имени поля объекта
 		this->_named = content.length;
 		// Запоминаем сквозное положение конца имени поля объекта
 		this->_pointer = (position + static_cast <uint64_t> (content.length));
+		// Устанавливаем признак разбора имени поля объекта
+		this->_keyed = true;
 		// Выводим признак успешной сборки
 		return true;
 	}
@@ -2476,7 +2478,7 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла документа
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
