@@ -1161,7 +1161,7 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {name, buffer, size, static_cast <uint16_t> (error}), log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {name, buffer, size, static_cast <uint16_t> (error)}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
 		/**
 		 * Если режим отладки не включён
 		 */

@@ -2953,10 +2953,13 @@ typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::Docume
 	return (* this)[string(1, name)];
 }
 /**
- * Выполняем создание шаблонов обращения по написанию знака
+ * Выполняем создание шаблона обращения значения по написанию знака
  */
 template typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Document::Value>::type
 awh::codec::json::Document::Value::operator [] <char> (const char) const noexcept;
+/**
+ * Выполняем создание шаблона обращения документа по написанию знака
+ */
 template typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Document::value_t>::type
 awh::codec::json::Document::operator [] <char> (const char) const noexcept;
 /**

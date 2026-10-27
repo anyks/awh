@@ -2507,7 +2507,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2800,7 +2800,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2836,7 +2836,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2859,7 +2859,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2887,7 +2887,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2909,7 +2909,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::SIGNING_FAILED));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2931,7 +2931,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2954,21 +2954,21 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если отпечаток открытого ключа владельца выработан
 		 *
 		 * @note **Место это и близнец его у фиксации ЗАТЕНЯЮТ ДРУГ ДРУГА, и порознь ни
-		 * одно проверкою не закрепить.** Уборка первым делом зовёт `commit()` безусловно,
-		 * а та отпечаток кладёт сама, - оттого к сему месту в заголовке уже лежит верное
-		 * значение, и обесточение любого ОДНОГО из двух не меняет ничего. Установлено
-		 * щупом 08.09.2026: порознь молчат оба, обесточенные же РАЗОМ красят
-		 * `EditorFixture.CompactionStoresTheFingerprintOfTheCurrentSigner`
+		 *       одно проверкою не закрепить.** Уборка первым делом зовёт `commit()` безусловно,
+		 *       а та отпечаток кладёт сама, - оттого к сему месту в заголовке уже лежит верное
+		 *       значение, и обесточение любого ОДНОГО из двух не меняет ничего. Установлено
+		 *       щупом 08.09.2026: порознь молчат оба, обесточенные же РАЗОМ красят
+		 *       `EditorFixture.CompactionStoresTheFingerprintOfTheCurrentSigner`
 		 *
 		 * @warning Отсюда следует, что укладка эта ИЗБЫТОЧНА при нынешнем устройстве, - но
-		 * снимать её нельзя: избыточность держится на том, что уборка зовёт фиксацию
-		 * БЕЗУСЛОВНО. Пропади это условие правкой, отпечаток пропал бы молча, а проверка
-		 * осталась бы зелёной, ибо закрепляет она договор («заголовок несёт отпечаток
-		 * нынешнего подписанта»), а не место его исполнения
+		 *          снимать её нельзя: избыточность держится на том, что уборка зовёт фиксацию
+		 *          БЕЗУСЛОВНО. Пропади это условие правкой, отпечаток пропал бы молча, а проверка
+		 *          осталась бы зелёной, ибо закрепляет она договор («заголовок несёт отпечаток
+		 *          нынешнего подписанта»), а не место его исполнения
 		 *
 		 * @note Проверка ведёт уборку ключом ИНЫМ, нежели подписан прежний контейнер: при
-		 * одном ключе новая выработка от унаследованного значения неотличима, и утверждение
-		 * отпечатка не закрепляет ничего - щуп отверг такое написание
+		 *       одном ключе новая выработка от унаследованного значения неотличима, и утверждение
+		 *       отпечатка не закрепляет ничего - щуп отверг такое написание
 		 *
 		 */
 		if(abc::fingerprint(* this->_signer, this->_name, print))
@@ -3009,7 +3009,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3031,7 +3031,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (skind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), length}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
 		/**
 		 * Если режим отладки не включён
 		 */

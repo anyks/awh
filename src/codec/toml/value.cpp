@@ -1644,8 +1644,6 @@ awh::codec::toml::value_t & awh::codec::toml::Value::operator = (value_t && valu
 	auto index = ::move(value._index);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
-	// Выполняем перенос значений вместилища
-	this->_items = ::move(items);
 	// Выполняем перенос имён пар таблицы
 	this->_names = ::move(names);
 	// Выполняем перенесение указателя поиска вместе с именами
@@ -1672,6 +1670,8 @@ awh::codec::toml::value_t & awh::codec::toml::Value::operator = (value_t && valu
 	 *
 	 */
 	value._type = type_t::NONE;
+	// Выполняем перенос значений вместилища
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }

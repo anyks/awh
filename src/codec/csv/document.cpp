@@ -56,6 +56,10 @@ namespace {
 	 * Используем пространство имён библиотеки
 	 */
 	using namespace awh;
+	/**
+	 * Пространство имён контейнера CSV
+	 */
+	using namespace codec::csv;
 
 	/**
 	 * @brief Принудительная подстановка горячих обращений кодека
@@ -213,11 +217,6 @@ namespace {
 	 *
 	 */
 	static bool dispatch(codec::csv::reader_t & reader, string & storage, vector <codec::csv::span_t> & spans, vector <string_view> & fields, const function <bool (const vector <string_view> &)> & callback) noexcept {
-		/**
-		 * Пространство имён контейнера CSV
-		 */
-		using namespace codec::csv;
-
 		/**
 		 * Выполняем перебор всех событий разбора
 		 */

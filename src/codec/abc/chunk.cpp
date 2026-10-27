@@ -85,9 +85,12 @@ namespace {
  */
 awh::codec::abc::Packer::Settings::Settings() noexcept :
  encrypt(false), threshold(64),
- hash(crypto_t::hash_t::SHA256), cipher(crypto_t::cipher_t::AES256),
- mixed(compressor::method_t::ZSTD), text(compressor::method_t::ZSTD),
- binary(compressor::method_t::LZ4), numeric(compressor::method_t::ZSTD) {}
+ hash(crypto_t::hash_t::SHA256),
+ cipher(crypto_t::cipher_t::AES256),
+ mixed(compressor::method_t::ZSTD),
+ text(compressor::method_t::ZSTD),
+ binary(compressor::method_t::LZ4),
+ numeric(compressor::method_t::ZSTD) {}
 
 /**
  * @brief Метод объявления отказа укладки либо снятия кадра
@@ -335,7 +338,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation} log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
+				log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::ENCRYPTION_FAILED));
 			/**
 			 * Если режим отладки не включён
 			 */

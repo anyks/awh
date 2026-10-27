@@ -506,7 +506,6 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 				 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
 				 *
 				 */
-				
 				case static_cast <uint16_t> (type_t::NIL):
 				case static_cast <uint16_t> (type_t::INT):
 				case static_cast <uint16_t> (type_t::BOOL):
@@ -2412,20 +2411,14 @@ awh::codec::json::value_t & awh::codec::json::Value::operator = (value_t && valu
 	this->_text = ::move(value._text);
 	// Выполняем перенос имён полей объекта
 	this->_names = ::move(value._names);
-	/**
-	 * Получаем значения вместилища до изменения текущего дерева
-	 *
-	 * @warning Весь прикол с таким переносом, заключается в том,
-	 *          что текущий узел может находится в value._items
-	 *
-	 */
-	auto items = value._items;
+	// Получаем значения вместилища до уничтожения прежнего дерева
+	auto items = ::move(value._items);
+	// Очищаем источник, пока прежнее дерево ещё удерживает его
+	value.clear();
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
-	// Выполняем перенос подготовленной копии значений вместилища
+	// Выполняем перенос значений вместилища
 	this->_items = ::move(items);
-	// Выполняем очистку значения, у какого содержимое отобрано
-	value.clear();
 	// Выводим ссылку на текущее значение
 	return (* this);
 }

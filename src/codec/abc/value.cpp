@@ -2444,30 +2444,28 @@ awh::codec::abc::value_t & awh::codec::abc::Value::operator = (value_t && value)
 	if(this == &value)
 		// Выводим ссылку на присвоенное значение
 		return (* this);
+	// Сохраняем источник до уничтожения дерева, которому он может принадлежать
+	value_t moved = ::move(value);
 	// Выполняем очистку присваиваемого значения
 	this->clear();
 	// Выполняем установку вида узла значения
-	this->_kind = value._kind;
+	this->_kind = moved._kind;
 	// Выполняем установку вида значения
-	this->_type = value._type;
+	this->_type = moved._type;
 	// Выполняем установку числа значения
-	this->_number = value._number;
+	this->_number = moved._number;
 	// Выполняем перенесение содержимого значения
-	this->_text = ::move(value._text);
+	this->_text = ::move(moved._text);
 	// Выполняем установку десятичного порядка величины
-	this->_exponent = value._exponent;
+	this->_exponent = moved._exponent;
 	// Выполняем установку признака отрицательности величины
-	this->_negative = value._negative;
+	this->_negative = moved._negative;
 	// Выполняем перенесение имён полей отображения
-	this->_keys = ::move(value._keys);
+	this->_keys = ::move(moved._keys);
 	// Выполняем перенесение значений вместимого
-	this->_items = ::move(value._items);
+	this->_items = ::move(moved._items);
 	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::move(value._index);
-	// Выполняем сброс вида узла перенесённого значения
-	value._kind = kind_t::NONE;
-	// Выполняем сброс вида перенесённого значения
-	value._type = type_t::UNDEFINED;
+	this->_index = ::move(moved._index);
 	// Выводим ссылку на присвоенное значение
 	return (* this);
 }
