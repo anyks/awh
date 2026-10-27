@@ -2463,6 +2463,34 @@ void awh::codec::csv::Reader::reset() noexcept {
  */
 bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
+	 * Если поданного буфера не существует при объявленной длине подачи
+	 *
+	 * @note Пустая подача отказом не является - она ничего к тексту не добавляет, а
+	 *       подача без буфера при ненулевой длине есть ошибка вызывающего: чтение по
+	 *       нулевому указателю оборвалось бы падением. Заслон стоит прежде всякой
+	 *       работы с поданным, ровно как у abc-читателя
+	 *
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV parsing failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::csv::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV parsing failed: %s", log::flag_t::WARNING, codec::csv::message(error_t::INTERNAL));
+		#endif
+		// Запоминаем код отказа разбора
+		this->_error = error_t::INTERNAL;
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	/**
 	 * Если разбор уже прекращён отказом
 	 */
 	if(this->_error != error_t::NONE)

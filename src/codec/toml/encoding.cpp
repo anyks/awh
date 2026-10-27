@@ -24,8 +24,12 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
-#include <codec/toml/encoding.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/toml/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -46,8 +50,8 @@ namespace {
 	 * @brief Перекодировочная таблица области 0x80-0x9F кодировки Windows-1252
 	 *
 	 * @details Кодировка эта совпадает с ISO-8859-1 всюду, кроме этой области: там,
-	 * где у ISO-8859-1 управляющие знаки области C1, у неё знаки печатные. Пять
-	 * значений области не определены вовсе и обозначены нулём
+	 *          где у ISO-8859-1 управляющие знаки области C1, у неё знаки печатные. Пять
+	 *          значений области не определены вовсе и обозначены нулём.
 	 *
 	 */
 	static constexpr uint32_t CP1252_TABLE[32] = {
@@ -59,7 +63,7 @@ namespace {
 };
 
 /**
- * @brief Метод проверки знака на допустимость в тексте настроек
+ * @brief Функция проверки знака на допустимость в тексте настроек
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -86,6 +90,7 @@ bool awh::codec::toml::isChar(const uint32_t code) noexcept {
 	 *       встречаются в строковых значениях. Отвергать их значило бы отвергать
 	 *       законный текст - в отличие от записи INI, где договора нет вовсе и выбор
 	 *       строгости остаётся за разбирающим
+	 *
 	 */
 	if(code == 0x7F)
 		// Выводим отрицательный результат проверки знака
@@ -100,24 +105,24 @@ bool awh::codec::toml::isChar(const uint32_t code) noexcept {
 	return true;
 }
 /**
- * @brief Метод чтения кодового значения из последовательности UTF-8
+ * @brief Функция чтения кодового значения из текста в кодировке UTF-8
  *
  * @details Тело общее - `awh::utf8::decode`: правило наибольшей годной части держит один
  *          код, а не пять копий. Равенство перебрано по всем подачам до трёх байт
  *          включительно - 17 101 312 подач, нуль расхождений.
  *
- * @param buffer буфер исходной последовательности
- * @param size   размер буфера исходной последовательности
- * @param length количество байт, разбором пройденных
- * @return       прочитанное кодовое значение либо обозначение ошибочного
+ * @param buffer буфер исходного текста в кодировке UTF-8
+ * @param size   размер буфера исходного текста
+ * @param length длина прочитанной последовательности в байтах
+ * @return       прочитанное кодовое значение знака
  *
  */
 uint32_t awh::codec::toml::decode(const char * buffer, const size_t size, size_t & length) noexcept {
 	// Выводим разбор по общему телу
-	return awh::utf8::decode(buffer, size, length);
+	return utf8::decode(buffer, size, length);
 }
 /**
- * @brief Метод записи кодового значения последовательностью UTF-8
+ * @brief Функция записи кодового значения в кодировке UTF-8
  *
  * @details Тело общее - `awh::utf8::encode`: побайтовая сборка записи живёт в одном месте;
  *          равенство перебрано по всем значениям 0..U+110001
@@ -129,7 +134,7 @@ uint32_t awh::codec::toml::decode(const char * buffer, const size_t size, size_t
  */
 bool awh::codec::toml::encode(const uint32_t code, string & result) noexcept {
 	// Выводим запись по общему телу
-	return awh::utf8::encode(code, result);
+	return utf8::encode(code, result);
 }
 /**
  * @brief Метод определения кодировки по метке порядка байтов
@@ -138,58 +143,59 @@ bool awh::codec::toml::encode(const uint32_t code, string & result) noexcept {
  *
  */
 bool awh::codec::toml::Decoder::sniff() noexcept {
-	// Получаем удержанные байты начала текста в беззнаковом виде
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
-	// Получаем количество удержанных байтов начала текста
-	const size_t size = this->_prolog.size();
 	// Количество байтов метки порядка байтов
 	size_t length = 0;
 	// Кодировка, определённая по метке порядка байтов
 	encoding_t encoding = encoding_t::NONE;
+	// Получаем количество удержанных байтов начала текста
+	const size_t size = this->_prolog.size();
+	// Получаем удержанные байты начала текста в беззнаковом виде
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (this->_prolog.data());
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-8
 	 */
 	if((size >= 3) && (data[0] == 0xEF) && (data[1] == 0xBB) && (data[2] == 0xBF)){
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF8;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 3;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF8;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-32 с прямым порядком
 	 *
 	 * @note Метка UTF-32 сличается прежде метки UTF-16 намеренно: обратный порядок
 	 *       её открывается теми же двумя байтами, что и метка UTF-16, и сличив
 	 *       короткую первой, мы прочли бы весь текст парами байтов вместо четвёрок
+	 *
 	 */
 	} else if((size >= 4) && (data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF32BE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 4;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF32BE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-32 с обратным порядком
 	 */
 	} else if((size >= 4) && (data[0] == 0xFF) && (data[1] == 0xFE) && (data[2] == 0x00) && (data[3] == 0x00)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF32LE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 4;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF32LE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с прямым порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFE) && (data[1] == 0xFF)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16BE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16BE;
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с обратным порядком
 	 */
 	} else if((size >= 2) && (data[0] == 0xFF) && (data[1] == 0xFE)) {
-		// Запоминаем определённую кодировку исходного текста
-		encoding = encoding_t::UTF16LE;
 		// Запоминаем количество байтов метки порядка байтов
 		length = 2;
+		// Запоминаем определённую кодировку исходного текста
+		encoding = encoding_t::UTF16LE;
 	}
 	/**
 	 * Если метка порядка байтов в начале текста обнаружена
@@ -209,6 +215,7 @@ bool awh::codec::toml::Decoder::sniff() noexcept {
 		 * @note Метка чужой кодировки при навязанной извне частью текста остаётся
 		 *       намеренно: снятие её означало бы доверие к метке, которой вызывающий
 		 *       уже отказал, навязав кодировку
+		 *
 		 */
 		if(this->_encoding == encoding)
 			// Выполняем снятие метки порядка байтов с начала текста
@@ -267,8 +274,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -285,8 +303,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -313,12 +342,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
 				 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 				 *          слово: слог у одной руки в разное время разный
+				 *
 				 */
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -341,6 +382,7 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					 * @note Однобайтовые знаки переносятся отрезком, а не поодиночке: в
 					 *       тексте настроек их подавляющее большинство, и перенос знака за
 					 *       знаком стоил пятой доли всего времени чтения
+					 *
 					 */
 					const size_t begin = offset;
 					/**
@@ -351,6 +393,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 						 * Если знак в тексте настроек недопустим
 						 */
 						if(!isChar(data[offset])){
+							// Запоминаем код ошибки приведения
+							this->_error = error_t::INVALID_CHARACTER;
 							/**
 							 * Выполняем добавление разобранного начала отрезка к приведённому тексту
 							 *
@@ -358,12 +402,22 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 							 *       посреди отрезка отбросил бы уже разобранное его начало.
 							 *       Разбор выдаёт события по приведённому тексту, и потеря
 							 *       начала отрезка отняла бы у него события целых строк
+							 *
 							 */
 							result.append(buffer + begin, (offset - begin));
-							// Запоминаем код ошибки приведения
-							this->_error = error_t::INVALID_CHARACTER;
-							// Выполняем вывод сообщения об отказе в лог
-							this->report();
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+							#endif
 							// Выводим отрицательный результат выполнения операции
 							return false;
 						}
@@ -386,12 +440,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 *       проверкой уличить его снятие нельзя - доказано подменою условия
 				 *       на ложь: набор прошёл целиком. Убирать его как мёртвый код не
 				 *       следует - путь исполняется, а выдача его совпадает со вторым
+				 *
 				 */
 				if(count == 0){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -405,8 +471,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -429,8 +506,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -455,12 +543,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
 				 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 				 *          слово: слог у одной руки в разное время разный
+				 *
 				 */
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -474,14 +574,14 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 		case static_cast <uint8_t> (encoding_t::UTF16LE):
 		// Если кодировкой является UTF-16 с прямым порядком байтов
 		case static_cast <uint8_t> (encoding_t::UTF16BE): {
-			// Получаем признак обратного порядка байтов кодировки
-			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
+			// Получаем признак обратного порядка байтов кодировки
+			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			/**
 			 * Выполняем перебор пар байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Значение очередной пары байтов исходного текста
 				uint16_t unit = 0;
 				/**
@@ -528,8 +628,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+						#endif
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -550,12 +661,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 *
 				 * @note Младшая половина без предшествующей старшей означает испорченный
 				 *       текст: подставить вместо неё знак замены значило бы скрыть порчу
+				 *
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Если прочитанная пара байтов суррогатной не является
@@ -566,8 +689,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -589,12 +723,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
 				 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 				 *          слово: слог у одной руки в разное время разный
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -614,8 +760,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -624,14 +781,14 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 		case static_cast <uint8_t> (encoding_t::UTF32LE):
 		// Если кодировкой является UTF-32 с прямым порядком байтов
 		case static_cast <uint8_t> (encoding_t::UTF32BE): {
-			// Получаем признак обратного порядка байтов кодировки
-			const bool reverse = (this->_encoding == encoding_t::UTF32LE);
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
+			// Получаем признак обратного порядка байтов кодировки
+			const bool reverse = (this->_encoding == encoding_t::UTF32LE);
 			/**
 			 * Выполняем перебор четвёрок байтов исходного текста
 			 */
-			while(true){
+			for(;;){
 				// Байты очередной четвёрки исходного текста
 				uint8_t unit[4] = {0, 0, 0, 0};
 				/**
@@ -640,6 +797,7 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @note Добор ведётся в удержанное хранилище, а не рядом с ним: четвёрка
 				 *       вправе разойтись по трём кускам, и сборка её через один
 				 *       промежуточный буфер теряла бы байты второго куска
+				 *
 				 */
 				if(this->_length > 0){
 					/**
@@ -693,12 +851,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @note Значения эти отвергаются кодом кодировки, а не кодом недопустимого
 				 *       знака: суррогаты в UTF-32 не записываются вовсе, и появление их
 				 *       означает не запрещённый знак, а испорченную запись
+				 *
 				 */
 				if(((code >= 0xD800) && (code <= 0xDFFF)) || (code > MAX_CODEPOINT)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -708,8 +878,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -744,12 +925,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -771,13 +964,23 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 			if(end && (this->_length != 0)){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
 		} break;
-		// Если кодировкой является ISO-8859-1
 		// Если кодировкой является Windows-1252
 		case static_cast <uint8_t> (encoding_t::CP1252): {
 			/**
@@ -790,6 +993,7 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @note Область 0x80-0x9F читается по перекодировочной таблице, а всё
 				 *       прочее совпадает с ISO-8859-1, где кодовое значение знака равно
 				 *       значению его байта
+				 *
 				 */
 				const uint32_t code = (((data[i] >= 0x80) && (data[i] <= 0x9F)) ? CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i]));
 				/**
@@ -798,8 +1002,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if((code == 0) || !isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -838,17 +1053,30 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
 			}
 		} break;
+		// Если кодировкой является ISO-8859-1
 		case static_cast <uint8_t> (encoding_t::LATIN1): {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
@@ -860,8 +1088,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -871,8 +1110,7 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @note Кодовое значение знака в кодировке ISO-8859-1 совпадает со
 				 *       значением его байта: перекодировочная таблица этой кодировке
 				 *       не нужна вовсе
-				 */
-				/**
+				 *
 				 * @warning Заход этот НЕДОСТИЖИМ входными данными: значение байта не
 				 *          превышает 255, а всякое такое значение записи поддаётся. Довод
 				 *          взят у близнеца записи INI, где заход доказан срывом
@@ -890,12 +1128,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 				 *          слоями, и разойдись слои - станет видимым немедля
+				 *
 				 */
 				if(!encode(data[i], result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -913,8 +1163,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(data[i] >= 0x80){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -924,8 +1185,19 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+					#endif
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -968,19 +1240,31 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 		 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 		 *          слово: слог у одной руки в разное время разный
 		 *
-		 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ 07.09.2026: у перечня `encoding_t` девять членов,
-		 *       ветвями выбора стоят восемь, и без ветви остаётся ровно один - `NONE`, коего
-		 *       заход этот и ловит. Сличены члены перечня с ветвями выбора приведения
+		 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ: у общего перечня `encoding_t` десять членов,
+		 *       ветвями выбора стоят восемь, и без ветви остаются NONE и SINGLE. NONE до
+		 *       перебора не доходит, а SINGLE обращается сюда отказом
 		 *
 		 * @warning Сличать надлежит и МЕСТА ПРИСВОЕНИЯ: перечень разрядный, и значение вне
 		 *          членов попасть туда МОЖЕТ приведением снаружи - заслон стоит ровно на это.
 		 *          Приращение перечня новым членом без ветви вернёт сюда управление
+		 *
 		 */
 		default: {
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -1005,12 +1289,24 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if(end && (this->_length != 0)){
 		// Запоминаем код ошибки приведения
 		this->_error = error_t::INVALID_ENCODING;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::toml::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML encoding failed: %s", log::flag_t::WARNING, codec::toml::message(this->_error));
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1062,10 +1358,10 @@ bool awh::codec::toml::Decoder::encoding(const encoding_t encoding) noexcept {
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
-	// Запоминаем навязанную извне кодировку исходного текста
-	this->_encoding = encoding;
 	// Запоминаем признак навязанной извне кодировки
 	this->_forced = true;
+	// Запоминаем навязанную извне кодировку исходного текста
+	this->_encoding = encoding;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1104,6 +1400,7 @@ bool awh::codec::toml::Decoder::convert(const void * buffer, const size_t size, 
 		 * @note Наибольшая метка порядка байтов занимает четыре байта, и до их
 		 *       прихода определять кодировку нельзя: метка UTF-32 начинается с
 		 *       метки UTF-16, и по двум первым байтам их не различить
+		 *
 		 */
 		if((this->_prolog.size() < 4) && !end)
 			// Выводим положительный результат выполнения операции
@@ -1143,6 +1440,7 @@ bool awh::codec::toml::Decoder::convert(const void * buffer, const size_t size, 
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->sniff())
 			// Выводим отрицательный результат выполнения операции
@@ -1172,8 +1470,10 @@ awh::codec::toml::error_t awh::codec::toml::Decoder::error() const noexcept {
  *
  */
 void awh::codec::toml::Decoder::reset() noexcept {
-	// Выполняем сброс кода ошибки приведения
-	this->_error = error_t::NONE;
+	// Выполняем сброс количества удержанных байтов
+	this->_length = 0;
+	// Выполняем сброс удержанной старшей половины суррогатной пары
+	this->_surrogate = 0;
 	// Выполняем сброс признака обнаружения метки порядка байтов
 	this->_signed = false;
 	// Выполняем сброс признака обработки метки порядка байтов
@@ -1182,42 +1482,28 @@ void awh::codec::toml::Decoder::reset() noexcept {
 	this->_started = false;
 	// Выполняем сброс удержанного начала текста
 	this->_prolog.clear();
-	// Выполняем сброс количества удержанных байтов
-	this->_length = 0;
-	// Выполняем сброс удержанной старшей половины суррогатной пары
-	this->_surrogate = 0;
+	// Выполняем сброс кода ошибки приведения
+	this->_error = error_t::NONE;
 	/**
 	 * Если кодировка исходного текста извне не навязана
 	 *
 	 * @note Навязанная кодировка сброс переживает намеренно: устанавливается она
 	 *       вызывающим до разбора, и потеря её при сбросе означала бы молчаливый
 	 *       переход разбора на кодировку по умолчанию
+	 *
 	 */
 	if(!this->_forced)
 		// Выполняем сброс определённой кодировки исходного текста
 		this->_encoding = encoding_t::NONE;
 }
 /**
- * @brief Метод вывода сообщения об отказе в лог
- *
- */
-void awh::codec::toml::Decoder::report() const noexcept {
-	// Выполняем вывод сообщения об отказе
-	awh::log::print("TOML encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::toml::message(this->_error));
-}
-/**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
-	// Выполняем сброс удержанных байтов незавершённой последовательности знака
-	this->_pending[0] = 0;
-	// Выполняем сброс удержанных байтов незавершённой последовательности знака
-	this->_pending[1] = 0;
-	// Выполняем сброс удержанных байтов незавершённой последовательности знака
-	this->_pending[2] = 0;
-	// Выполняем сброс удержанных байтов незавершённой последовательности знака
-	this->_pending[3] = 0;
-}
+ _forced(false), _marked(false),
+ _signed(false), _started(false),
+ _length(0), _surrogate(0),
+ _error(error_t::NONE),
+ _encoding(encoding_t::NONE),
+ _prolog{""}, _pending{0,0,0,0} {}

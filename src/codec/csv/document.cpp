@@ -58,6 +58,25 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_CSV_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_CSV_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -176,7 +195,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
 	}
 	/**
 	 * @brief Функция выдачи событий разбора записями обработчику
@@ -300,7 +319,7 @@ namespace {
 	 * @return     результат суждения
 	 *
 	 */
-	static bool directory(const string_view text) noexcept {
+	static AWH_CSV_INLINE bool writable(const string_view text) noexcept {
 		/**
 		 * Выполняем перебор всех знаков содержимого поля
 		 */
@@ -1260,6 +1279,41 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 */
 	this->_location = location_t();
 	/**
+	 * Если адрес файла таблицы не указан либо каталог для записи негоден
+	 *
+	 * @note Отказ пути опознаётся безо всякой работы, и заводить для такой записи
+	 *       временный файл рано: проверка стоит прежде заведения его намеренно
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа сохранения таблицы
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CSV document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CSV document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::csv::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачного сохранения
+		return false;
+	}
+	/**
 	 * Адрес временного файла, куда собирается таблица
 	 *
 	 * @details Таблица пишется рядом с целью и переносится на неё лишь по успешном
@@ -2163,7 +2217,7 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 		/**
 		 * Если содержимое поля записи не подлежит
 		 */
-		if(!::directory(value)){
+		if(!::writable(value)){
 			// Запоминаем код отказа добавления записи с непредставимым содержимым
 			this->_error = error_t::UNWRITABLE_FIELD;
 			// Выводим признак неудачного добавления записи
@@ -2257,7 +2311,7 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 		/**
 		 * Если содержимое поля записи не подлежит
 		 */
-		if(!::directory(value)){
+		if(!::writable(value)){
 			// Запоминаем код отказа добавления записи с непредставимым содержимым
 			this->_error = error_t::UNWRITABLE_FIELD;
 			// Выводим признак неудачного добавления записи

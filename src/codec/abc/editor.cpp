@@ -52,7 +52,7 @@ namespace {
 	 * @return       снятое значение
 	 *
 	 */
-	uint64_t restore(const uint8_t * buffer, const uint8_t width) noexcept {
+	static constexpr uint64_t restore(const uint8_t * buffer, const uint8_t width) noexcept {
 		// Собираемое значение
 		uint64_t result = 0;
 		/**

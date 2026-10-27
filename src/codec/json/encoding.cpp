@@ -91,7 +91,7 @@ namespace {
 	 * @return     признак принадлежности всех восьми байтов к US-ASCII
 	 *
 	 */
-	static AWH_JSON_INLINE bool plain(const uint64_t word) noexcept {
+	static constexpr bool plain(const uint64_t word) noexcept {
 		// Разметка старших битов всех байтов слова
 		constexpr uint64_t HIGH = 0x8080808080808080ull;
 		// Выводим признак принадлежности всех восьми байтов к US-ASCII

@@ -50,6 +50,25 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_ABC_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_ABC_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция объявления отказа поверки подписи
 	 *
 	 * @details Поверка есть свободная функция, и своего кода отказа у неё нет: код уходит
@@ -61,7 +80,7 @@ namespace {
 	 * @return      признак успешности, всегда ложь
 	 *
 	 */
-	bool refuse(const codec::abc::error_t error, codec::abc::error_t & out) noexcept {
+	static AWH_ABC_INLINE bool refuse(const codec::abc::error_t error, codec::abc::error_t & out) noexcept {
 		// Выполняем установку кода отказа поверки
 		out = error;
 		// Сообщаем, что поверка отвечена отказом

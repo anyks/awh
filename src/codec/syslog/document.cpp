@@ -26,10 +26,11 @@
  *          `ofstream` с путём в UTF-8 кладёт у MS Windows файл под именем, поданному не
  *          равным, а узкий ход находит его обратно тем же неверным преобразованием,
  *          отчего отказа не будет НИКОГДА. Порок этот тише отказа: имя на диске не то,
- *          а всё сходится
+ *          а всё сходится.
  *
  * @note Переведено 09.09.2026: работа кодеков с файловой системой
  *       ведётся через `sys/fs`, прямые ходы к потокам и `stat` отсюда сняты
+ *
  */
 #include <sys/fs.hpp>
 
@@ -39,7 +40,7 @@
 #include <sys/log.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
 #include <codec/syslog/document.hpp>
 
@@ -52,6 +53,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Пространство имён контейнера ABC
+ */
+using namespace awh::codec::abc;
 
 /**
  * @brief Инкапсулируем вспомогательные функции и константы модуля в аннонимное пространство имён
@@ -68,6 +73,28 @@ namespace {
 	using namespace awh::codec::syslog;
 
 	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+	/**
+	 * @brief Имя вместилища блоков структурированных данных в дереве события
+	 *
+	 * @details Обращение к блоку ведётся именем внутри вместилища, а НЕ строковым путём:
+	 *          опознаватели блоков живых журналов несут знак «@», а имена полей - точку,
+	 *          и разбирать такой путь звеньями пришлось бы самому кодеку.
+	 *
+	 */
+	constexpr const char * STRUCTURES = "structures";
+	/**
+	 * @brief Запись даты с пробелом вместо знака «T»
+	 *
+	 * @details Описаниями системного журнала вид этот не назначен вовсе, но живыми
+	 *          устройствами пишется: принимаем его наравне с назначенными.
+	 *
+	 */
+	constexpr string_view SPACED_DATE_FORMAT = "%Y-%m-%d %H:%M:%S";
+	/**
 	 * @brief Имена полей заголовка записи в дереве контейнера ABC
 	 *
 	 * @details Порядок отвечает порядку членов перечня полей заголовка: поле кладётся
@@ -81,39 +108,51 @@ namespace {
 	};
 
 	/**
-	 * @brief Имя вместилища блоков структурированных данных в дереве события
+	 * @brief Функция постановки отменяющей записи в звене пути
 	 *
-	 * @details Обращение к блоку ведётся именем внутри вместилища, а НЕ строковым путём:
-	 *          опознаватели блоков живых журналов несут знак «@», а имена полей - точку,
-	 *          и разбирать такой путь звеньями пришлось бы самому кодеку.
-	 *
-	 */
-	constexpr const char * STRUCTURES = "structures";
-
-	/**
-	 * @brief Запись даты с пробелом вместо знака «T»
-	 *
-	 * @details Описаниями системного журнала вид этот не назначен вовсе, но живыми
-	 *          устройствами пишется: принимаем его наравне с назначенными.
+	 * @param name имя, звеном пути ставимое
+	 * @return     звено пути с поставленной отменяющей записью
 	 *
 	 */
-	constexpr string_view SPACED_DATE_FORMAT = "%Y-%m-%d %H:%M:%S";
-
+	static string encode(const string_view name) noexcept {
+		// Результирующее звено пути
+		string result = "";
+		// Выделяем память под результирующее звено пути
+		result.reserve(name.size());
+		/**
+		 * Выполняем перебор всех знаков имени
+		 */
+		for(size_t i = 0; i < name.size(); i++){
+			/**
+			 * Определяем знак имени
+			 */
+			switch(name[i]){
+				// Если знак является знаком отмены
+				case '~': result.append("~0"); break;
+				// Если знак является косой чертой
+				case '/': result.append("~1"); break;
+				// Если знак отменяющей записи не требует
+				default: result.append(1, name[i]);
+			}
+		}
+		// Выводим результирующее звено пути
+		return result;
+	}
 	/**
 	 * @brief Функция снятия отменяющей записи со звена пути
 	 *
 	 * @details Звено пути несёт отменяющую запись RFC 6901: «~1» есть косая черта, а
 	 *          «~0» - сам знак отмены. Порядок снятия обратен порядку постановки:
 	 *          сперва «~1», затем «~0», - иначе запись «~01» обращалась бы в косую
-	 *          черту вместо «~1»
+	 *          черту вместо «~1».
 	 *
 	 * @param link звено пути с отменяющей записью
 	 * @return     имя, звеном пути обозначенное
 	 *
 	 */
-	string decode(const string_view link) noexcept {
+	static string decode(const string_view link) noexcept {
 		// Результирующее имя, звеном обозначенное
-		string result;
+		string result = "";
 		// Выделяем память под результирующее имя
 		result.reserve(link.size());
 		/**
@@ -152,39 +191,6 @@ namespace {
 		// Выводим результирующее имя
 		return result;
 	}
-
-	/**
-	 * @brief Функция постановки отменяющей записи в звене пути
-	 *
-	 * @param name имя, звеном пути ставимое
-	 * @return     звено пути с поставленной отменяющей записью
-	 *
-	 */
-	string encode(const string_view name) noexcept {
-		// Результирующее звено пути
-		string result;
-		// Выделяем память под результирующее звено пути
-		result.reserve(name.size());
-		/**
-		 * Выполняем перебор всех знаков имени
-		 */
-		for(size_t i = 0; i < name.size(); i++){
-			/**
-			 * Определяем знак имени
-			 */
-			switch(name[i]){
-				// Если знак является знаком отмены
-				case '~': result.append("~0"); break;
-				// Если знак является косой чертой
-				case '/': result.append("~1"); break;
-				// Если знак отменяющей записи не требует
-				default: result.append(1, name[i]);
-			}
-		}
-		// Выводим результирующее звено пути
-		return result;
-	}
-
 	/**
 	 * @brief Функция разбора пути на звенья
 	 *
@@ -197,7 +203,7 @@ namespace {
 	 * @return     звенья пути со снятой отменяющей записью
 	 *
 	 */
-	vector <string> split(const string & path) noexcept {
+	static vector <string> split(const string & path) noexcept {
 		// Результирующие звенья пути
 		vector <string> result;
 		// Если путь пуст либо корнем является
@@ -250,7 +256,7 @@ namespace {
 	 * @return       признак числового вида звена пути
 	 *
 	 */
-	bool indexOf(const string & link, size_t & result) noexcept {
+	static bool indexOf(const string & link, size_t & result) noexcept {
 		// Сбрасываем номер значения перечня
 		result = 0;
 		// Если звено пути пусто
@@ -275,6 +281,32 @@ namespace {
 		// Выводим признак числового вида звена пути
 		return true;
 	}
+	/**
+	 * @brief Функция проверки того, что адрес указывает на каталог
+	 *
+	 * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
+	 *          ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
+	 *          их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу.
+	 *
+	 * @warning Распознавание стоит ДО открытия потока намеренно: у MS Windows каталог не
+	 *          открывается вовсе, и проверка, поставленная после открытия, была бы там
+	 *          мертва - договор разошёлся бы по системам
+	 *
+	 * @param filename проверяемый адрес
+	 * @return         признак того, что адрес указывает на каталог
+	 *
+	 */
+	static bool directory(const string & filename) noexcept {
+		/**
+		 * Выводим результат проверки того, что адрес указывает на каталог
+		 *
+		 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на
+		 *          каталог есть тот же каталог для того, кто его открывает, и различать их
+		 *          здесь значило бы принять ссылку за годный файл
+		 *
+		 */
+		return (__awh_fs__.type(filename, false) == fs_t::type_t::DIR);
+	}
 };
 
 /**
@@ -282,6 +314,7 @@ namespace {
  *
  * @param text разбираемый текст записи
  * @return     результат выполнения операции
+ *
  */
 bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 	// Выполняем очистку дерева события
@@ -298,15 +331,15 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 		return false;
 	}
 	// Заводим дерево события отображением
-	this->_root = abc::value_t(abc::kind_t::MAP);
+	this->_root = value_t(kind_t::MAP);
+	// Опознаватель блока структурированных данных, полями наполняемого
+	string block = "";
 	/**
 	 * Отводим место под двух детей корня (header, structures), чтобы
 	 * закешированный ниже указатель `_structures` оставался валидным
 	 * до конца `parse()`
 	 */
 	this->_root.reserve(2);
-	// Опознаватель блока структурированных данных, полями наполняемого
-	string block = "";
 	/**
 	 * Выполняем перебор событий разбора первой записи
 	 */
@@ -326,27 +359,27 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 				// Если полем заголовка является номер описания записи
 				if(this->_reader.field() == field_t::VERSION)
 					// Ставим номер описания записи целым числом
-					this->_root.place("/header/" + name) = abc::value_t(static_cast <uint64_t> (this->_reader.version()));
+					this->_root.place("/header/" + name) = value_t(static_cast <uint64_t> (this->_reader.version()));
 				// Если полем заголовка является поле знаками
-				else this->_root.place("/header/" + name) = abc::value_t(this->_reader.value());
+				else this->_root.place("/header/" + name) = value_t(this->_reader.value());
 			} break;
 			// Если событием является опознаватель блока структурированных данных
 			case static_cast <uint8_t> (event_t::STRUCTURE): {
 				// Запоминаем опознаватель блока структурированных данных
 				block = this->_reader.key();
 				/**
-				 * Заводим блок структурированных данных отображением
+				 * Заводим ссылку через полный путь при первом обращении
 				 *
 				 * @note Блок заводится ПУСТЫМ и здесь, а не при первом своём поле:
 				 *       описание дозволяет блоки без полей прямо, и завод по первому
 				 *       полю терял бы такие блоки молча
+				 *
 				 */
-				// Заводим ссылку через полный путь при первом обращении
 				if(this->_structures == nullptr)
 					// Заводим ссылку на блок описаний через полный путь
 					this->_structures = & this->_root.place(string("/") + STRUCTURES);
 				// Получаем закешированную ссылку и заводим блок пустым отображением
-				(* this->_structures)[block] = abc::value_t(abc::kind_t::MAP);
+				(* this->_structures)[block] = value_t(kind_t::MAP);
 			} break;
 			// Если событием является поле структурированных данных
 			case static_cast <uint8_t> (event_t::PARAM): {
@@ -359,7 +392,7 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 					// Заводим ссылку через полный путь
 					this->_structures = & this->_root.place(string("/") + STRUCTURES);
 				// Получаем закешированную ссылку на вместилище блоков
-				abc::value_t & fields = (* this->_structures)[block];
+				value_t & fields = (* this->_structures)[block];
 				/**
 				 * Если имя поля блоком уже объявлено
 				 *
@@ -367,61 +400,63 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 				 *          «An SD-PARAM MAY be repeated multiple times inside an
 				 *          SD-ELEMENT» (RFC 5424, раздел 6.3.3). Прежде второе значение
 				 *          ЗАТИРАЛО первое, и повтор терялся молча - запись с двумя
-				 *          значениями возвращалась одним
+				 *          значениями возвращалась одним.
 				 *
 				 * @note Повтор обращается в перечень и доливается в конец - тем же
 				 *       порядком, каким кодек CEF поступает с повтором ключа расширения.
 				 *       Обход остаётся замкнутым числовыми звеньями пути
+				 *
 				 */
 				if(fields.contains(this->_reader.key())){
 					// Получаем значение, именем поля уже объявленное
-					abc::value_t & exists = fields[this->_reader.key()];
+					value_t & exists = fields[this->_reader.key()];
 					// Если объявленное значение перечнем является
-					if(exists.type() == abc::type_t::ARRAY){
+					if(exists.type() == type_t::ARRAY){
 						// Добавляем новое значение в конец перечня
-						if(!exists.push(abc::value_t(this->_reader.value())))
+						if(!exists.push(value_t(this->_reader.value())))
 							// Выводим отрицательный признак разбора записи
 							return false;
 					// Если объявленное значение перечнем не является
 					} else {
 						// Заводим перечень значений одного имени
-						abc::value_t list(abc::kind_t::ARRAY);
+						value_t list(kind_t::ARRAY);
 						// Добавляем объявленное ранее значение в перечень
 						if(!list.push(exists))
 							// Выводим отрицательный признак разбора записи
 							return false;
 						// Добавляем новое значение в перечень
-						if(!list.push(abc::value_t(this->_reader.value())))
+						if(!list.push(value_t(this->_reader.value())))
 							// Выводим отрицательный признак разбора записи
 							return false;
 						// Ставим перечень значений на место объявленного значения
 						exists = ::move(list);
 					}
 				// Если имя поля блоком ещё не объявлено
-				} else fields[this->_reader.key()] = abc::value_t(this->_reader.value());
+				} else fields[this->_reader.key()] = value_t(this->_reader.value());
 			} break;
 			// Если событием является текст сообщения
-			case static_cast <uint8_t> (event_t::MESSAGE): {
+			case static_cast <uint8_t> (event_t::MESSAGE):
 				// Ставим текст сообщения в дерево события
-				this->_root.place("/message") = abc::value_t(this->_reader.value());
-			} break;
+				this->_root.place("/message") = value_t(this->_reader.value());
+			break;
 			// Если событием является окончание записи
 			case static_cast <uint8_t> (event_t::RECORD): {
 				/**
 				 * Ставим описание, каким запись прочтена, в дерево события
 				 *
 				 * @details Описание кладётся ЗНАКАМИ, а не числом: дерево читается
-				 * человеком, а число описания ему ничего не говорит. Писатель же берёт
-				 * его отсюда и потому пишет запись тем же описанием, каким она
-				 * прочтена, - оборот вида не меняет
+				 *          человеком, а число описания ему ничего не говорит. Писатель же берёт
+				 *          его отсюда и потому пишет запись тем же описанием, каким она
+				 *          прочтена, - оборот вида не меняет.
+				 *
 				 */
-				this->_root.place("/standard") = abc::value_t(string(
+				this->_root.place("/standard") = value_t(string(
 					(this->_reader.standard() == standard_t::RFC5424) ? "RFC5424" : "RFC3164"
 				));
 				// Если приоритет записью объявлен
 				if(this->_reader.prioritized()){
 					// Ставим приоритет записи в дерево события
-					this->_root.place("/priority") = abc::value_t(static_cast <uint64_t> (this->_reader.priority()));
+					this->_root.place("/priority") = value_t(static_cast <uint64_t> (this->_reader.priority()));
 					/**
 					 * Ставим источник и важность сообщения ИМЕНАМИ
 					 *
@@ -429,10 +464,11 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 					 *       второе число того же было бы вторым местом одного и того же,
 					 *       расходящимся при правке одного. Имена же несут то, чего в
 					 *       приоритете нет, - словарное название
+					 *
 					 */
-					this->_root.place("/facility") = abc::value_t(string(awh::codec::syslog::name(this->_reader.facility())));
+					this->_root.place("/facility") = value_t(string(name(this->_reader.facility())));
 					// Ставим степень важности сообщения именем
-					this->_root.place("/severity") = abc::value_t(string(awh::codec::syslog::name(this->_reader.severity())));
+					this->_root.place("/severity") = value_t(string(name(this->_reader.severity())));
 				}
 				// Выводим положительный результат выполнения операции
 				return true;
@@ -449,40 +485,13 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод чтения записи системного журнала из файла
  *
  * @param filename адрес файла записи системного журнала
  * @return         результат выполнения операции
- */
-/**
- * @brief Функция проверки того, что адрес указывает на каталог
- *
- * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
- * ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
- * их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу
- *
- * @warning Распознавание стоит ДО открытия потока намеренно: у MS Windows каталог не
- *          открывается вовсе, и проверка, поставленная после открытия, была бы там
- *          мертва - договор разошёлся бы по системам
- *
- * @param filename проверяемый адрес
- * @return         признак того, что адрес указывает на каталог
  *
  */
-static bool directory(const fs_t & fs, const string & filename) noexcept {
-	// Выводим результат проверки того, что адрес указывает на каталог
-	/**
-	 * Выводим результат проверки того, что адрес указывает на каталог
-	 *
-	 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на
-	 *          каталог есть тот же каталог для того, кто его открывает, и различать их
-	 *          здесь значило бы принять ссылку за годный файл
-	 */
-	return (fs.type(filename, false) == fs_t::type_t::DIR);
-}
-
 bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	/**
 	 * Сбрасываем код ошибки последней операции
@@ -490,9 +499,10 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
 	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
 	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
-	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	/**
@@ -501,24 +511,46 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 * @note Отказ выдаётся ДО открытия потока: каталог открывается успешно и читается
 	 *       пусто, отчего подача его отвечала бы ИСТИНОЙ с пустым деревом - ложный успех
 	 *       вместо отказа, отличить какой потребителю нечем
+	 *
 	 */
-	if(::directory(this->_fs, filename)){
+	if(::directory(filename)){
 		/**
 		 * Запоминаем код ошибки чтения файла
 		 *
 		 * @details Код здесь `FILE_NOT_READ`, а НЕ `FILE_NOT_OPENED`: каталог
-		 * открывается успешно - открытие ему не преграда, - и прочесть его нечем.
-		 * Различие это не украшение: потребитель, увидевший «открыть не удалось»,
-		 * ищет права доступа либо отсутствующий путь, тогда как беда в том, что
-		 * подан не файл вовсе
+		 *          открывается успешно - открытие ему не преграда, - и прочесть его нечем.
+		 *          Различие это не украшение: потребитель, увидевший «открыть не удалось»,
+		 *          ищет права доступа либо отсутствующий путь, тогда как беда в том, что
+		 *          подан не файл вовсе.
 		 *
 		 * @note Код заведён 08.09.2026: шесть кодеков из восьми
 		 *       держали `FILE_NOT_READ` уже, а у этих двух его не было вовсе, и
 		 *       подача каталога отвечалась кодом открытия
+		 *
 		 */
 		this->_error = error_t::FILE_NOT_READ;
-		// Выводим в лог сообщение о подаче каталога вместо файла
-		log::print("SysLog file \"%s\" is a directory", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" is a directory", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" is a directory",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -527,8 +559,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 *
 	 * @note Сюда приходит и отсутствующий файл, и всякий иной вид объекта файловой
 	 *       системы: открыть его нечем, и код здесь именно `FILE_NOT_OPENED`
-	 */
-	/**
+	 *
 	 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на файл
 	 *          читается ровно как файл, и `ifstream`, стоявший здесь прежде, открывал её
 	 *          без всякой разницы. Различай их - и кодек отвечал бы отказом на файл,
@@ -538,49 +569,90 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 *       ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая моя редакция заслона
 	 *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её при этом `fs_t`
 	 *       давал без единой жалобы - то есть отказ был выдуман мною, а не системой
+	 *
 	 */
-	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
+	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим в лог сообщение об ошибке открытия файла
-		log::print("SysLog file \"%s\" could not be opened", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" could not be opened", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" could not be opened",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	// Содержимое файла записи системного журнала
+	string content = "";
 	/**
 	 * Величина файла, снятая ДО чтения
 	 *
 	 * @details Отказ чтения опознаётся расхождением прочитанного с нею, а НЕ пустотою
-	 * содержимого: пустой файл законно отвечается пустым содержимым - ноль сходится с
-	 * нулём, - тогда как сличение одной пустоты и на пустой файл отвечало бы отказом, и
-	 * обрыв чтения на середине большого файла пропускало бы вовсе
+	 *          содержимого: пустой файл законно отвечается пустым содержимым - ноль сходится с
+	 *          нулём, - тогда как сличение одной пустоты и на пустой файл отвечало бы отказом, и
+	 *          обрыв чтения на середине большого файла пропускало бы вовсе.
 	 *
 	 * @note Устройство это заведено 09.09.2026: прежнее сличение ловило лишь
 	 *       чтение, не давшее НИЧЕГО, а частичное принимало за успех
+	 *
 	 */
-	const uintmax_t expected = this->_fs.size(filename);
-	// Содержимое файла записи системного журнала
-	string content = "";
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	// Выполняем чтение содержимого файла записи системного журнала
-	this->_fs.read(filename, content);
+	::__awh_fs__.read(filename, content);
 	/**
 	 * Если прочитанное с величиною файла не сошлось
 	 */
 	if(static_cast <uintmax_t> (content.size()) != expected){
 		// Запоминаем код ошибки чтения файла
 		this->_error = error_t::FILE_NOT_READ;
-		// Выводим в лог сообщение об ошибке чтения файла
-		log::print("SysLog file \"%s\" could not be read", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" could not be read", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" could not be read",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Выводим результат разбора содержимого файла записи системного журнала
 	/**
 	 * Если содержимое файла несёт более одной записи
 	 *
 	 * @details Документ держит ОДНУ запись, и разбор берёт из потока первую. Прочитать же
-	 * многозаписный журнал документом и сохранить его обратно значило бы стереть всё, кроме
-	 * первой записи, - молча, ибо оба хода отвечали успехом, а код отказа оставался нулевым
+	 *          многозаписный журнал документом и сохранить его обратно значило бы стереть всё, кроме
+	 *          первой записи, - молча, ибо оба хода отвечали успехом, а код отказа оставался нулевым.
 	 *
 	 * @warning Замерено щупом 15.09.2026: журнал из десяти записей после `load` и `save`
 	 *          оставался с ОДНОЙ. Ни признака, ни кода при том не было: «load=да save=да
@@ -590,6 +662,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 * @note Счёт ведётся своим же чтением и прекращается на ВТОРОЙ записи: узнать надо не
 	 *       сколько их, а больше ли одной. Поток же записей читается `reader_t` - он для
 	 *       того и заведён, - и путь этот отказом не закрывается
+	 *
 	 */
 	{
 		// Объект чтения записей для счёта их в содержимом файла
@@ -623,25 +696,44 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 			if(records > 1){
 				// Устанавливаем код ошибки многозаписного файла
 				this->_error = error_t::MULTIPLE_RECORDS;
-				// Выводим в лог сообщение о многозаписном файле
-				log::print(
-					"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream",
-					log::flag_t::CRITICAL, "SysLog", filename.c_str()
-				);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug(
+						"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream", __PRETTY_FUNCTION__,
+						{filename},
+						log::flag_t::CRITICAL,
+						"SysLog",
+						filename.c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print(
+						"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream",
+						log::flag_t::CRITICAL,
+						"SysLog",
+						filename.c_str()
+					);
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
 		}
 	}
-	// Отдаём собранное содержимое разбору
+	// Выводим результат разбора содержимого файла записи системного журнала
 	return this->parse(content);
 }
-
 /**
  * @brief Метод записи события в файл
  *
  * @param filename адрес файла записи системного журнала
  * @return         результат выполнения операции
+ *
  */
 bool awh::codec::syslog::Document::save(const string & filename) const noexcept {
 	/**
@@ -649,8 +741,47 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 *
 	 * @note Ход этот константен, а поле кода изменяемо: отказ обязан называть причину.
 	 *       Прежде сохранение отвечало ложью БЕЗ кода вовсе, и `error()` нёс что угодно
+	 *
 	 */
 	this->_error = error_t::NONE;
+	// Положение последнего разделителя адреса записи
+	const size_t slash = filename.find_last_of("/\\");
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки записи системного журнала: сохранение по
+	 *       пустому адресу отказом тем же отвечает, но лишь по собранной впустую
+	 *       записи, а отказ пути опознаётся безо всякой работы
+	 *
+	 */
+	if(filename.empty() || ((slash != string::npos) && (::__awh_fs__.type(filename.substr(0, slash), false) != fs_t::type_t::DIR))){
+		// Запоминаем код ошибки невозможности записи файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" could not be written", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" could not be written",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выполняем сбор записи системного журнала из дерева события
 	const string & content = this->dump();
 	// Если сбор записи системного журнала отказом завершился
@@ -664,9 +795,8 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 * Адрес временного файла, на место цели подменяемого
 	 *
 	 * @details Сохранение ведётся НЕДЕЛИМО: текст ложится во временный файл рядом с
-	 * целью, и лишь удавшаяся запись подменяет цель переименованием. Цель оттого либо
-	 * остаётся прежней целиком, либо становится новой целиком, а половины её не видно
-	 * никогда
+	 *          целью, и лишь удавшаяся запись подменяет цель переименованием. Цель оттого либо
+	 *          остаётся прежней целиком, либо становится новой целиком, а половины её не видно никогда.
 	 *
 	 * @warning Прежде здесь стоял СНОС цели перед записью, и отказ записи уничтожал
 	 *          прежний журнал безвозвратно. Доказано опытом 16.09.2026 на отдельном
@@ -684,15 +814,14 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 *          копирование с последующим сносом - неделимость теряется молча, а вместе с
 	 *          нею и вся польза временного файла. Довод этот записан в укладке кодека ABC,
 	 *          откуда способ и перенят (16.09.2026)
-	 */
-	/**
+	 *
 	 * Адрес цели сохранения, символьную ссылку разрешающий
 	 *
 	 * @details Подмена переименованием заменяет САМ ПУТЬ, и путь этот, символьной ссылкой
-	 * бывший, обратился бы обычным файлом: ссылка пропала бы, а цель её осталась со
-	 * старым содержимым. Потребитель же, направивший ссылку на журнал, ждёт обновления
-	 * ЦЕЛИ - чтением кодек ровно так со ссылкою и обходится, «ссылка проходится, а не
-	 * отличается от своей цели», - и записи надлежит отвечать чтению тем же
+	 *          бывший, обратился бы обычным файлом: ссылка пропала бы, а цель её осталась со
+	 *          старым содержимым. Потребитель же, направивший ссылку на журнал, ждёт обновления
+	 *          ЦЕЛИ - чтением кодек ровно так со ссылкою и обходится, «ссылка проходится, а не
+	 *          отличается от своей цели», - и записи надлежит отвечать чтению тем же.
 	 *
 	 * @note Найдено обходом намеренных решений 17.09.2026. Дефект этот НЕ от перехода на
 	 *       неделимое сохранение: прежний код, сносивший цель перед записью, ссылку
@@ -701,14 +830,15 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 *
 	 * @note Разрешение ведётся `fullpath(addr, true)`, и при отказе его берётся путь как
 	 *       подан: отсутствующая цель - случай обычный, и сохранение обязано её завести
+	 *
 	 */
-	const string resolved = this->_fs.fullpath(filename, true);
+	const string resolved = ::__awh_fs__.fullpath(filename, true);
 	// Адрес цели сохранения: разрешённый путь либо поданный, буде разрешить не удалось
 	const string target = (resolved.empty() ? filename : resolved);
 	// Адрес временного файла, создаваемого исключительно для этого сохранения
-	string temporary;
+	string temporary = "";
 	// Создаём уникальный файл с сохранением битов доступа существующей цели под POSIX
-	handle_file_t file = this->_fs.temporary(target, temporary);
+	handle_file_t file = ::__awh_fs__.temporary(target, temporary);
 	/**
 	 * Если запись собранной записи в файл отказом завершилась
 	 *
@@ -716,22 +846,37 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 *       восемь работ `write` и `append` отвечают признаком, а не одним лишь журналом.
 	 *       Прежде признак приходилось добывать поверкою величины записанного - обход
 	 *       этот снят, ибо настоящий ответ теперь есть
+	 *
 	 */
-	if((file == nullptr) || !this->_fs.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
-		/**
-		 * Выполняем снос недописанного временного файла
-		 *
-		 * @note Цель при этом НЕ ТРОНУТА вовсе: прежний журнал остаётся на месте
-		 *       целиком, и отказ сохранения данных больше не стоит
-		 */
+	if((file == nullptr) || !::__awh_fs__.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
 		// Закрываем объект перед удалением созданного файла
 		file.reset();
 		// Если временный файл был создан
 		if(!temporary.empty())
 			// Удаляем только файл этого сохранения
-			static_cast <void> (this->_fs.unlink(temporary));
-		// Выводим в лог сообщение об ошибке записи файла
-		log::print("SysLog file \"%s\" could not be written", log::flag_t::CRITICAL, filename.c_str());
+			static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" could not be written", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" could not be written",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим отрицательный результат выполнения операции
@@ -741,49 +886,91 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Запись, отвеченная успехом, лежит ещё во вместилище ядра, и обрыв питания
-	 * её теряет: файл на месте, а содержимого в нём нет. Сохранение события журнала тем
-	 * и ценно, что переживает падение машины, - без сброса обещание это пусто
+	 *          её теряет: файл на месте, а содержимого в нём нет. Сохранение события журнала тем
+	 *          и ценно, что переживает падение машины, - без сброса обещание это пусто.
 	 *
 	 * @warning Своего `fsync` тут не писать: под macOS он долговечности НЕ обещает вовсе,
 	 *          доводит до пластины только `F_FULLFSYNC`, и ход рамки это знает
 	 *
 	 * @note Отказ сброса записи не отменяет - записанное на месте и читается, - оттого
 	 *       итог его уходит в журнал, а не в отказ сохранения
+	 *
 	 */
-	if(!this->_fs.flush(temporary, true, file))
-		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
-		log::print("SysLog file \"%s\" was written but not flushed onto the medium", log::flag_t::WARNING, filename.c_str());
+	if(!::__awh_fs__.flush(temporary, true, file)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" was written but not flushed onto the medium", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::WARNING,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" was written but not flushed onto the medium",
+				log::flag_t::WARNING,
+				filename.c_str()
+			);
+		#endif
+	}
+	// Закрываем объект перед подменой целевого файла
+	file.reset();
 	/**
 	 * Если перенос собранной записи на место цели не удался
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная
-	 * успехом, лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса,
-	 * оставила бы цель указывающей на содержимое, до носителя не дошедшее
+	 *          успехом, лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса,
+	 *          оставила бы цель указывающей на содержимое, до носителя не дошедшее.
 	 *
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новой записью целиком, а половины её не видно никогда
+	 *
 	 */
-	// Закрываем объект перед подменой целевого файла
-	file.reset();
-	// Если подмена целевого файла не выполнена
-	if(!this->_fs.replaceAddress(temporary, target)){
+	if(!::__awh_fs__.replaceAddress(temporary, target)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим в лог сообщение об ошибке подмены файла
-		log::print("SysLog file \"%s\" could not be replaced by the temporary one", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"SysLog file \"%s\" could not be replaced by the temporary one", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"SysLog file \"%s\" could not be replaced by the temporary one",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод сбора записи системного журнала из дерева события
  *
  * @return собранная запись системного журнала
+ *
  */
 string awh::codec::syslog::Document::dump() const noexcept {
 	// Собранная запись системного журнала
@@ -792,31 +979,32 @@ string awh::codec::syslog::Document::dump() const noexcept {
 	 * Если сборка записи отказом завершилась
 	 *
 	 * @details Итог сборки проверяется НЕПРЕМЕННО: писатель наполняет запись по ходу
-	 * обхода дерева, и на отказе в ней остаётся собранное до места отказа. Выдача
-	 * такого обрубка отдавала бы потребителю запись, которая разбирается, но несёт
-	 * лишь часть события - и молча
+	 *          обхода дерева, и на отказе в ней остаётся собранное до места отказа. Выдача
+	 *          такого обрубка отдавала бы потребителю запись, которая разбирается, но несёт
+	 *          лишь часть события - и молча.
+	 *
 	 */
 	if(!const_cast <writer_t &> (this->_writer).write(this->_root, result)){
 		// Запоминаем код ошибки сборки записи
-		const_cast <Document *> (this)->_error = this->_writer.error();
+		const_cast <document_t *> (this)->_error = this->_writer.error();
 		// Выводим пустую запись системного журнала
 		return "";
 	}
 	// Выводим собранную запись системного журнала
 	return result;
 }
-
 /**
  * @brief Метод извлечения значения дерева по пути
  *
  * @param path путь к значению
  * @return     ссылка на значение либо ссылка на отсутствующее значение
+ *
  */
 const awh::codec::abc::value_t & awh::codec::syslog::Document::at(const string & path) const noexcept {
 	// Получаем звенья разбираемого пути
-	const vector <string> links = split(path);
+	const auto & links = ::split(path);
 	// Текущее значение обхода дерева события
-	const abc::value_t * result = &this->_root;
+	const value_t * result = &this->_root;
 	/**
 	 * Выполняем обход дерева события по звеньям пути
 	 */
@@ -826,12 +1014,12 @@ const awh::codec::abc::value_t & awh::codec::syslog::Document::at(const string &
 		 */
 		switch(static_cast <uint32_t> (result->type())){
 			// Если значение является отображением
-			case static_cast <uint32_t> (abc::type_t::MAP):
+			case static_cast <uint32_t> (type_t::MAP):
 				// Переходим к полю отображения по имени
 				result = &(*result)[link];
 			break;
 			// Если значение является перечнем
-			case static_cast <uint32_t> (abc::type_t::ARRAY): {
+			case static_cast <uint32_t> (type_t::ARRAY): {
 				// Номер значения перечня, звеном обозначенный
 				size_t index = 0;
 				// Признак числового вида звена пути
@@ -854,6 +1042,7 @@ const awh::codec::abc::value_t & awh::codec::syslog::Document::at(const string &
 					 *          ПЕРВЫМ значением перечня, и отвечало бы годным. Замерено
 					 *          08.09.2026 щупом: «/list/18446744073709551616» отдавало
 					 *          «первое», а «...617» - «второе»
+					 *
 					 */
 					else if(index > ((SIZE_MAX - static_cast <size_t> (link[i] - '0')) / 10))
 						// Запоминаем неприменимость звена номером значения
@@ -864,39 +1053,40 @@ const awh::codec::abc::value_t & awh::codec::syslog::Document::at(const string &
 				// Если звено пути числовым не является
 				if(!numeric)
 					// Выводим отсутствующее значение дерева
-					return abc::value_t::scrap();
+					return value_t::scrap();
 				// Переходим к значению перечня по номеру
 				result = &(*result)[index];
 			} break;
 			// Если значение вместилищем не является
-			default: return abc::value_t::scrap();
+			default: return value_t::scrap();
 		}
 	}
 	// Выводим значение дерева события по пути
 	return * result;
 }
-
 /**
  * @brief Метод постановки значения дерева по пути
  *
  * @param path  путь к значению
  * @param value значение, по пути ставимое
  * @return      признак успешности постановки значения
+ *
  */
-bool awh::codec::syslog::Document::set(const string & path, const abc::value_t & value) noexcept {
+bool awh::codec::syslog::Document::set(const string & path, const value_t & value) noexcept {
 	/**
 	 * Сбрасываем код ошибки последней операции
 	 *
 	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
 	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
 	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
-	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
-	const vector <string> links = split(path);
+	const auto & links = ::split(path);
 	// Если путь звеньев не содержит
 	if(links.empty()){
 		// Запоминаем код ошибки отсутствия поля
@@ -905,7 +1095,7 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
 		return false;
 	}
 	// Текущее значение обхода дерева события
-	abc::value_t * current = &this->_root;
+	value_t * current = &this->_root;
 	/**
 	 * Выполняем обход дерева события по звеньям пути, кроме последнего
 	 */
@@ -921,8 +1111,9 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
 		 * @note Номер за пределами перечня отвергается, а не дописывается в конец:
 		 *       дописывание сквозь путь заводило бы значения молча, и потребитель,
 		 *       ошибшийся номером, получал бы успех вместо отказа
+		 *
 		 */
-		if(current->type() == abc::type_t::ARRAY){
+		if(current->type() == type_t::ARRAY){
 			// Номер значения перечня, звеном обозначенный
 			size_t index = 0;
 			// Если звено пути числовым не является либо за предел перечня выходит
@@ -941,30 +1132,31 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
 		 * Если звено пути занято значением, вместилищем НЕ являющимся
 		 *
 		 * @details Отвечаем отказом, а вместилище НЕ заводим поверх: постановка сквозь
-		 * скаляр стирала бы его молча, и потребитель, успех получивший, не узнал бы о
-		 * потере вовсе. Ложный успех вместо отказа - разряд тише всех прочих: отказ с
-		 * названной причиной видно, а исчезнувшее значение нет
+		 *          скаляр стирала бы его молча, и потребитель, успех получивший, не узнал бы о
+		 *          потере вовсе. Ложный успех вместо отказа - разряд тише всех прочих: отказ с
+		 *          названной причиной видно, а исчезнувшее значение нет.
 		 *
 		 * @note Звено ОТСУТСТВУЮЩЕЕ вместилищем заводится по-прежнему: путь достраивает
-		 * дерево, и в том его назначение. Различие здесь ровно между «звена нет» и
-		 * «звено занято иным»: первое достраивается, второе отвергается
+		 *       дерево, и в том его назначение. Различие здесь ровно между «звена нет» и
+		 *       «звено занято иным»: первое достраивается, второе отвергается
 		 *
 		 * @warning Найдено 09.09.2026 сличением с кодеками YAML и TOML:
 		 *          у них тот же случай отвечается отказом с названной
 		 *          причиной, а дерево остаётся нетронутым. Хуже того, внутри ЭТОГО ЖЕ
 		 *          файла ход сноса `erase` уже отвечал на такой путь отказом
 		 *          `UNKNOWN_FIELD` - один договор о двух лицах в одном файле
+		 *
 		 */
-		if((current->type() != abc::type_t::MAP) && current->valid()){
+		if((current->type() != type_t::MAP) && current->valid()){
 			// Запоминаем код ошибки отсутствия поля
 			this->_error = error_t::UNKNOWN_FIELD;
 			// Выводим отрицательный признак постановки значения
 			return false;
 		}
 		// Если вместилище звена пути ещё не заведено
-		if(current->type() != abc::type_t::MAP)
+		if(current->type() != type_t::MAP)
 			// Заводим вместилище звена пути отображением
-			(* current) = abc::value_t(abc::kind_t::MAP);
+			(* current) = value_t(kind_t::MAP);
 		// Переходим к полю отображения по имени
 		current = &(*current)[links.at(i)];
 	}
@@ -973,8 +1165,9 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
 	 *
 	 * @note Условие то же, что и внутри обхода: значение перечня ставится по номеру,
 	 *       а номер за пределами перечня отвергается
+	 *
 	 */
-	if(current->type() == abc::type_t::ARRAY){
+	if(current->type() == type_t::ARRAY){
 		// Номер значения перечня, звеном обозначенный
 		size_t index = 0;
 		// Если звено пути числовым не является либо за предел перечня выходит
@@ -994,28 +1187,29 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
 	 *
 	 * @note Условие то же, что и внутри обхода: занятое звено отвергается, отсутствующее
 	 *       заводится
+	 *
 	 */
-	if((current->type() != abc::type_t::MAP) && current->valid()){
+	if((current->type() != type_t::MAP) && current->valid()){
 		// Запоминаем код ошибки отсутствия поля
 		this->_error = error_t::UNKNOWN_FIELD;
 		// Выводим отрицательный признак постановки значения
 		return false;
 	}
 	// Если вместилище последнего звена отображением не является
-	if(current->type() != abc::type_t::MAP)
+	if(current->type() != type_t::MAP)
 		// Заводим вместилище последнего звена отображением
-		(* current) = abc::value_t(abc::kind_t::MAP);
+		(* current) = value_t(kind_t::MAP);
 	// Ставим значение в дерево события по последнему звену пути
 	(* current)[links.back()] = value;
 	// Выводим признак успешности постановки значения
 	return (* current)[links.back()].valid();
 }
-
 /**
  * @brief Метод сброса значения дерева по пути
  *
  * @param path путь к сбрасываемому значению
  * @return     признак успешности сброса значения
+ *
  */
 bool awh::codec::syslog::Document::reset(const string & path) noexcept {
 	/**
@@ -1024,9 +1218,10 @@ bool awh::codec::syslog::Document::reset(const string & path) noexcept {
 	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
 	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
 	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
-	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	/**
@@ -1035,10 +1230,11 @@ bool awh::codec::syslog::Document::reset(const string & path) noexcept {
 	 * @details Сброс по пустому пути опустошает дерево ЦЕЛИКОМ и отвечает успехом - тем
 	 *          же порядком, каким поступают кодеки JSON, YAML и XML: `reset("")` у них
 	 *          опустошает корень, а `erase("")` отвечает отказом. Прежде здесь оба
-	 *          отвечали отказом, и договор семи кодеков расходился ровно в этом месте
+	 *          отвечали отказом, и договор семи кодеков расходился ровно в этом месте.
 	 *
 	 * @note Расхождение найдено аудитом 15.09.2026 сличением шести кодеков щупом;
 	 *       закреплено `CodecContract.EmptyPathIsUnderstoodAlikeByEveryEditingCall`
+	 *
 	 */
 	if(path.empty() || (path == "/")){
 		// Выполняем очистку дерева события
@@ -1054,14 +1250,14 @@ bool awh::codec::syslog::Document::reset(const string & path) noexcept {
 		return false;
 	}
 	// Выводим признак замещения значения пустой последовательностью знаков
-	return this->set(path, abc::value_t(string("")));
+	return this->set(path, value_t(string{""}));
 }
-
 /**
  * @brief Метод сноса значения дерева по пути
  *
  * @param path путь к сносимому значению
  * @return     признак успешности сноса значения
+ *
  */
 bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 	/**
@@ -1070,13 +1266,14 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
 	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
 	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
-	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
-	const vector <string> links = split(path);
+	const auto & links = ::split(path);
 	// Если путь звеньев не содержит
 	if(links.empty()){
 		// Запоминаем код ошибки отсутствия поля
@@ -1085,13 +1282,13 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 		return false;
 	}
 	// Текущее значение обхода дерева события
-	abc::value_t * current = &this->_root;
+	value_t * current = &this->_root;
 	/**
 	 * Выполняем обход дерева события по звеньям пути, кроме последнего
 	 */
 	for(size_t i = 0; (i + 1) < links.size(); i++){
 		// Если вместилище звена пути отображением не является
-		if(current->type() != abc::type_t::MAP){
+		if(current->type() != type_t::MAP){
 			// Запоминаем код ошибки отсутствия поля
 			this->_error = error_t::UNKNOWN_FIELD;
 			// Выводим отрицательный признак сноса значения
@@ -1101,7 +1298,7 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 		current = &(*current)[links.at(i)];
 	}
 	// Если вместилище сносимого значения перечнем является
-	if(current->type() == abc::type_t::ARRAY){
+	if(current->type() == type_t::ARRAY){
 		// Номер сносимого значения перечня
 		size_t index = 0;
 		// Признак числового вида последнего звена пути
@@ -1122,6 +1319,7 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 			 *          «18446744073709551616» (2^64) обращалось бы нулём - то есть
 			 *          снос несуществующего номера сносил бы ПЕРВОЕ значение перечня,
 			 *          отвечая успехом
+			 *
 			 */
 			else if(index > ((SIZE_MAX - static_cast <size_t> (links.back()[i] - '0')) / 10))
 				// Запоминаем неприменимость звена номером значения
@@ -1142,24 +1340,24 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 	// Выводим признак сноса значения отображения по имени
 	return current->erase(links.back());
 }
-
 /**
  * @brief Метод извлечения звеньев пути, у значения объявленных
  *
  * @param path путь к значению
  * @return     звенья пути, у значения объявленные
+ *
  */
 vector <string> awh::codec::syslog::Document::keys(const string & path) const noexcept {
 	// Результирующий перечень звеньев пути
 	vector <string> result;
 	// Получаем значение дерева события по пути
-	const abc::value_t & value = this->at(path);
+	const value_t & value = this->at(path);
 	/**
 	 * Определяем вид значения дерева события
 	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является отображением
-		case static_cast <uint32_t> (abc::type_t::MAP): {
+		case static_cast <uint32_t> (type_t::MAP): {
 			// Выделяем память под звенья пути
 			result.reserve(value.size());
 			/**
@@ -1167,10 +1365,10 @@ vector <string> awh::codec::syslog::Document::keys(const string & path) const no
 			 */
 			for(size_t i = 0; i < value.size(); i++)
 				// Добавляем имя поля отображения звеном пути
-				result.push_back(encode(value.key(i).text()));
+				result.push_back(::encode(value.key(i).text()));
 		} break;
 		// Если значение является перечнем
-		case static_cast <uint32_t> (abc::type_t::ARRAY): {
+		case static_cast <uint32_t> (type_t::ARRAY): {
 			// Выделяем память под звенья пути
 			result.reserve(value.size());
 			/**
@@ -1184,40 +1382,39 @@ vector <string> awh::codec::syslog::Document::keys(const string & path) const no
 	// Выводим результирующий перечень звеньев пути
 	return result;
 }
-
 /**
  * @brief Метод проверки наличия значения по пути
  *
  * @param path путь к значению
  * @return     признак наличия значения по пути
+ *
  */
 bool awh::codec::syslog::Document::has(const string & path) const noexcept {
 	// Выводим признак наличия значения дерева события по пути
 	return this->at(path).valid();
 }
-
 /**
  * @brief Метод проверки наличия вложенного значения по имени
  *
  * @param path путь к значению
  * @param name имя вложенного значения
  * @return     признак наличия вложенного значения
+ *
  */
 bool awh::codec::syslog::Document::contains(const string & path, const string & name) const noexcept {
 	// Выводим признак наличия вложенного значения по имени
 	return this->at(path).contains(name);
 }
-
 /**
  * @brief Метод получения количества блоков структурированных данных
  *
  * @return количество блоков структурированных данных
+ *
  */
 size_t awh::codec::syslog::Document::size() const noexcept {
 	// Выводим количество блоков структурированных данных
-	return this->_root.at(string("/") + STRUCTURES).size();
+	return this->_root.at(string{"/"} + STRUCTURES).size();
 }
-
 /**
  * @brief Метод очистки дерева события
  *
@@ -1228,98 +1425,98 @@ void awh::codec::syslog::Document::clear() noexcept {
 	// Сбрасываем код ошибки последней операции
 	this->_error = error_t::NONE;
 }
-
 /**
  * @brief Метод получения описания, каким прочтена запись
  *
  * @return описание, каким прочтена запись
+ *
  */
 awh::codec::syslog::standard_t awh::codec::syslog::Document::standard() const noexcept {
 	// Получаем описание, деревом объявленное
-	const abc::value_t & value = this->_root.at(string("/standard"));
+	const value_t & value = this->_root.at(string("/standard"));
 	// Если описание деревом не объявлено
-	if(value.type() != abc::type_t::STRING)
+	if(value.type() != type_t::STRING)
 		// Выводим неопределённое описание записи
 		return standard_t::AUTO;
 	// Выводим описание, каким прочтена запись
 	return ((value.text().compare("RFC5424") == 0) ? standard_t::RFC5424 : standard_t::RFC3164);
 }
-
 /**
  * @brief Метод получения приоритета записи
  *
  * @return приоритет записи
+ *
  */
 uint32_t awh::codec::syslog::Document::priority() const noexcept {
 	// Приоритет записи, из дерева извлекаемый
 	uint64_t result = 0;
 	// Если извлечение приоритета записи отказом завершилось
-	if(!this->_root.at(string("/priority")).value(result))
+	if(!this->_root.at(string{"/priority"}).value(result))
 		// Выводим неопределённый приоритет записи
 		return 0;
 	// Выводим приоритет записи
 	return static_cast <uint32_t> (result);
 }
-
 /**
  * @brief Метод получения признака объявленности приоритета
  *
  * @return признак того, что приоритет записью объявлен
+ *
  */
 bool awh::codec::syslog::Document::prioritized() const noexcept {
 	// Выводим признак объявленности приоритета записи
-	return this->_root.contains(string("priority"));
+	return this->_root.contains(string{"priority"});
 }
-
 /**
  * @brief Метод получения источника сообщения
  *
  * @return источник сообщения
+ *
  */
 awh::codec::syslog::facility_t awh::codec::syslog::Document::facility() const noexcept {
 	// Выводим источник сообщения частным от деления приоритета на восемь
 	return static_cast <facility_t> (this->priority() / 8);
 }
-
 /**
  * @brief Метод получения степени важности сообщения
  *
  * @return степень важности сообщения
+ *
  */
 awh::codec::syslog::severity_t awh::codec::syslog::Document::severity() const noexcept {
 	// Выводим важность сообщения остатком от деления приоритета на восемь
 	return static_cast <severity_t> (this->priority() % 8);
 }
-
 /**
  * @brief Метод получения человеческого названия источника сообщения
  *
  * @return человеческое название источника сообщения
+ *
  */
 string awh::codec::syslog::Document::label() const noexcept {
 	// Если приоритет записью не объявлен
 	if(!this->prioritized())
 		// Выводим пустое название источника сообщения
-		return string("");
+		return "";
 	// Выполняем розыск источника сообщения в словаре
 	const entry_t * entry = facilities::at(static_cast <uint8_t> (this->facility()));
 	// Выводим человеческое название источника сообщения
-	return ((entry != nullptr) ? string(entry->title) : string(""));
+	return ((entry != nullptr) ? string{entry->title} : "");
 }
-
 /**
  * @brief Метод получения даты сообщения заданным видом
  *
  * @param format вид, каким надлежит выдать дату сообщения
  * @return       дата сообщения заданным видом
+ *
  */
 string awh::codec::syslog::Document::timestamp(const string & format) const noexcept {
 	// Получаем дату сообщения, деревом объявленную
-	const abc::value_t & value = this->_root.at(string("/header/timestamp"));
+	const value_t & value = this->_root.at("/header/timestamp");
 	// Если дата сообщения деревом не объявлена
-	if(value.type() != abc::type_t::STRING)
+	if(value.type() != type_t::STRING)
 		// Выводим пустую дату сообщения
-		return string("");
+		return "";
 	// Получаем время сообщения числом
 	const uint64_t date = this->time();
 	/**
@@ -1327,6 +1524,7 @@ string awh::codec::syslog::Document::timestamp(const string & format) const noex
 	 *
 	 * @note Дата выдаётся как есть, а не пустой: записи живых устройств несут и
 	 *       такие даты, а выдача пустоты означала бы, что даты нет вовсе
+	 *
 	 */
 	if(date == 0)
 		// Выводим дату сообщения как есть
@@ -1334,29 +1532,30 @@ string awh::codec::syslog::Document::timestamp(const string & format) const noex
 	// Выводим дату сообщения заданным видом
 	return this->_chrono.format(date, format);
 }
-
 /**
  * @brief Метод получения времени сообщения числом
  *
  * @return время сообщения тысячными долями секунды
+ *
  */
 uint64_t awh::codec::syslog::Document::time() const noexcept {
 	// Получаем дату сообщения, деревом объявленную
-	const abc::value_t & value = this->_root.at(string("/header/timestamp"));
+	const value_t & value = this->_root.at("/header/timestamp");
 	// Если дата сообщения деревом не объявлена
-	if(value.type() != abc::type_t::STRING)
+	if(value.type() != type_t::STRING)
 		// Выводим неопределённое время сообщения
 		return 0;
-	// Получаем текст даты сообщения
-	const string & text = value.text();
 	// Признак пригодности записи даты
 	bool valid = false;
+	// Получаем текст даты сообщения
+	const string & text = value.text();
 	/**
 	 * Выполняем разбор даты сообщения видами, ГОД НЕСУЩИМИ
 	 *
 	 * @note Порядок проб тот же, каким пробует их писатель, и по тому же доводу: вид
 	 *       устаревшего описания года не несёт вовсе, и проба его первой отняла бы год
 	 *       у даты, год объявляющей
+	 *
 	 */
 	uint64_t result = this->_chrono.parse(text, chrono_t::standard_t::RFC3339, valid, chrono_t::storage_t::LOCAL);
 	// Если запись даты нынешнему описанию не отвечает
@@ -1374,31 +1573,41 @@ uint64_t awh::codec::syslog::Document::time() const noexcept {
 	// Выводим время сообщения тысячными долями секунды
 	return (valid ? result : 0);
 }
-
 /**
  * @brief Метод получения дерева разобранной записи
  *
  * @return дерево разобранной записи контейнером ABC
+ *
  */
 const awh::codec::abc::value_t & awh::codec::syslog::Document::root() const noexcept {
 	// Выводим дерево разобранной записи
 	return this->_root;
 }
-
+/**
+ * @brief Метод проверки дерева документа на пустоту
+ *
+ * @return признак отсутствия узлов в дереве документа
+ *
+ */
+bool awh::codec::syslog::Document::empty() const noexcept {
+	// Выводим признак отсутствия узлов в дереве документа
+	return this->_root.empty();
+}
 /**
  * @brief Метод получения кода ошибки последней операции
  *
  * @return код ошибки последней операции
+ *
  */
 awh::codec::syslog::error_t awh::codec::syslog::Document::error() const noexcept {
 	// Выводим код ошибки последней операции
 	return this->_error;
 }
-
 /**
  * @brief Метод получения положения обнаруженной ошибки
  *
  * @return положение обнаруженной ошибки в исходном тексте
+ *
  */
 const awh::codec::syslog::pos_t & awh::codec::syslog::Document::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки
@@ -1418,7 +1627,7 @@ bool awh::codec::syslog::Document::settings(const settings_t & settings) noexcep
 	 * @details Чтение потоком смены правил посреди разбора не терпит: записи, разными
 	 *          правилами прочтённые, ничем друг от друга не отличаются. У ДОКУМЕНТА же условия
 	 *          этого нет: он держит одну запись целиком, и всякий его разбор сам начинается со
-	 *          сброса - состояние чтения между вызовами не значимо вовсе
+	 *          сброса - состояние чтения между вызовами не значимо вовсе.
 	 *
 	 * @warning Прежде настройки пробрасывались чтению как есть, и оно отвечало отказом,
 	 *          коль скоро уже что-то приняло. Потребитель, прочитавший одну запись, НЕ
@@ -1429,6 +1638,7 @@ bool awh::codec::syslog::Document::settings(const settings_t & settings) noexcep
 	 *       один договор о двух лицах есть самый дорогой род расхождения, ибо каждое из
 	 *       них выглядит намеренным. Своя же проверка при том ограничение ЗАКРЕПЛЯЛА,
 	 *       приняв его за договор
+	 *
 	 */
 	this->_reader.reset();
 	// Если установка настроек разбора записей отказом завершилась
@@ -1440,35 +1650,38 @@ bool awh::codec::syslog::Document::settings(const settings_t & settings) noexcep
 	}
 	// Получаем настройки записи событий
 	writer_t::settings_t current = settings.writer;
+	// Сводим настройку постановки метки порядка байтов с настройкой снятия её
+	current.bom = settings.reader.bom;
 	/**
 	 * Сводим настройку постановки отмены знаков с настройкой снятия её
 	 *
 	 * @details Порознь их задавать нельзя: постановка отмены поверх неснятой
-	 * наращивает косые при всяком обороте, а снятие без постановки их теряет. Пару
-	 * эту сводит документ, ибо только он держит обе стороны оборота
+	 *          наращивает косые при всяком обороте, а снятие без постановки их теряет. Пару
+	 *          эту сводит документ, ибо только он держит обе стороны оборота.
+	 *
 	 */
 	current.escape = settings.reader.unescape;
-	// Сводим настройку постановки метки порядка байтов с настройкой снятия её
-	current.bom = settings.reader.bom;
 	// Устанавливаем настройки записи событий
 	this->_writer.settings(current);
 	// Выводим положительный признак установки настроек
 	return true;
 }
 /**
- * @brief Псевдоним сброса состояния документа (см. clear())
+ * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+ *
+ * @return настройки записи текста
  *
  */
-void awh::codec::syslog::Document::reset() noexcept {
-	// Сносим содержимое документа, возвращая его к пустому состоянию
-	this->clear();
+awh::codec::syslog::writer_t::settings_t awh::codec::syslog::Document::writing() const noexcept {
+	// Выводим настройки записи, писателем действующие
+	return this->_writer.settings();
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::syslog::Document::Document() noexcept :
- _root(abc::kind_t::MAP), _error(error_t::NONE) {}
+ _root(kind_t::MAP), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -1476,7 +1689,7 @@ awh::codec::syslog::Document::Document() noexcept :
  *
  */
 awh::codec::syslog::Document::Document(const settings_t & settings) noexcept :
-_root(abc::kind_t::MAP), _error(error_t::NONE) {
+_root(kind_t::MAP), _error(error_t::NONE) {
 	// Устанавливаем настройки чтения и записи событий
 	this->settings(settings);
 }

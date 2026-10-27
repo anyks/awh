@@ -20,9 +20,15 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
  */
 #include <codec/syslog/writer.hpp>
+#include <codec/syslog/dictionary.hpp>
 
 /**
  * Подключаем заголовочный файл модуля разбора чисел
@@ -30,6 +36,7 @@
  * @note Разбор записи числа ведётся им, а не средствами рамки языка: те судят запись по
  *       локали, и десятичный знак берут у неё, тогда как запись протокола локали машины
  *       не подвластна вовсе
+ *
  */
 #include <num/lexical/lexical.hpp>
 
@@ -38,16 +45,14 @@
  *
  * @note Годность записи в UTF-8 поверяется им: метка порядка байтов есть ОБЪЯВЛЕНИЕ
  *       кодировки, и ставить её перед текстом, в UTF-8 не записанным, нельзя
+ *
  */
 #include <encoding/unicode/utf8.hpp>
-
-#include <codec/syslog/dictionary.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -63,13 +68,48 @@ namespace {
 	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
+
+	/**
+	 * @brief Имена полей заголовка записи в дереве контейнера ABC
+	 *
+	 * @details В отличие от записи CEF, поля заголовка системного журнала имена имеют:
+	 *          описание RFC 5424 называет всякое из них, и разыскиваются они по имени.
+	 *
+	 */
+	constexpr string_view VERSION = "version";
+	/**
+	 * @brief Имя свойства идентификатора процесса
+	 *
+	 */
+	constexpr string_view PROCESS = "process";
+	/**
+	 * @brief Имя свойства имени узла
+	 *
+	 */
+	constexpr string_view HOSTNAME = "hostname";
+	/**
+	 * @brief Имя свойства метки времени
+	 *
+	 */
+	constexpr string_view TIMESTAMP = "timestamp";
+	/**
+	 * @brief Имя свойства номера сообщения
+	 *
+	 */
+	constexpr string_view MESSAGE_ID = "messageId";
+	/**
+	 * @brief Имя свойства приложения
+	 *
+	 */
+	constexpr string_view APPLICATION = "application";
+
 	/**
 	 * @brief Поверка имени структурированных данных на набор знаков описания
 	 *
 	 * @details RFC 5424, раздел 6.3.3: `SD-NAME = 1*32 PRINTUSASCII`, за вычетом знака
-	 * равенства, пробела, закрывающей скобки и кавычки. Отмены знаков имя не знает
-	 * вовсе, и потому имя, набору не отвечающее, записанным быть не может: повторный
-	 * разбор такой записи взял бы его иначе
+	 *          равенства, пробела, закрывающей скобки и кавычки. Отмены знаков имя не знает
+	 *          вовсе, и потому имя, набору не отвечающее, записанным быть не может: повторный
+	 *          разбор такой записи взял бы его иначе.
 	 *
 	 * @note Прежде поверка велась перечнем знаков, из головы взятым - пробел,
 	 *       табуляция, переводы строки, равенство, скобка, кавычка, - и знаки
@@ -79,8 +119,9 @@ namespace {
 	 *
 	 * @param name имя структуры либо поля структурированных данных
 	 * @return     признак выразимости имени записью системного журнала
+	 *
 	 */
-	bool named(const string & name) noexcept {
+	static bool named(const string & name) noexcept {
 		// Если имя структурированных данных пусто
 		if(name.empty())
 			// Выводим отказ поверки: пустое имя записано быть не может
@@ -114,29 +155,7 @@ namespace {
 		// Выводим признак выразимости имени записью системного журнала
 		return true;
 	}
-	/**
-	 * Пространство имён контейнера SysLog
-	 */
-	using namespace awh::codec::syslog;
-
-	/**
-	 * @brief Имена полей заголовка записи в дереве контейнера ABC
-	 *
-	 * @details В отличие от записи CEF, поля заголовка системного журнала имена имеют:
-	 *          описание RFC 5424 называет всякое из них, и разыскиваются они по имени
-	 */
-	constexpr string_view VERSION     = "version";
-	// Имя свойства метки времени
-	constexpr string_view TIMESTAMP   = "timestamp";
-	// Имя свойства имени узла
-	constexpr string_view HOSTNAME    = "hostname";
-	// Имя свойства приложения
-	constexpr string_view APPLICATION = "application";
-	// Имя свойства идентификатора процесса
-	constexpr string_view PROCESS     = "process";
-	// Имя свойства номера сообщения
-	constexpr string_view MESSAGE_ID  = "messageId";
-}
+};
 
 /**
  * @brief Метод прекращения записи ошибкой
@@ -144,34 +163,29 @@ namespace {
  * @param error код ошибки записи
  * @param name  имя поля, на котором запись прекращена
  * @return      признак успешности записи
+ *
  */
-bool awh::codec::syslog::Writer::fail(const error_t error, const string_view name) noexcept {
+bool awh::codec::syslog::Writer::fail(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	// Выводим в лог сообщение об ошибке записи
-	awh::log::print(
-		"SysLog writing failed: %s at the field \"%s\"",
-		awh::log::flag_t::CRITICAL,
-		awh::codec::syslog::message(error),
-		string(name).c_str()
-	);
 	// Выводим отрицательный признак успешности записи
 	return false;
 }
-
 /**
  * @brief Метод определения описания записи по составу дерева
  *
  * @param value дерево контейнера ABC
  * @return      определённое описание записи
+ *
  */
 awh::codec::syslog::standard_t awh::codec::syslog::Writer::detect(const abc::value_t & value) const noexcept {
 	/**
 	 * Если описание записи объявлено самим деревом
 	 *
 	 * @details Объявленное старше угаданного: дерево, чтением собранное, несёт
-	 * описание, каким запись прочтена, - и писать её иным описанием значило бы
-	 * менять её вид на обороте без всякого о том знака
+	 *          описание, каким запись прочтена, - и писать её иным описанием значило бы
+	 *          менять её вид на обороте без всякого о том знака.
+	 *
 	 */
 	if(value.contains(string("standard"))){
 		// Описание записи, деревом объявленное
@@ -190,6 +204,7 @@ awh::codec::syslog::standard_t awh::codec::syslog::Writer::detect(const abc::val
 	 *
 	 * @note Данных этих описание RFC 3164 не знает вовсе: несущее их дерево иначе
 	 *       как записью RFC 5424 выражено быть не может
+	 *
 	 */
 	if(value.contains(string("structures")) && (value.at(string("structures")).size() > 0))
 		// Выводим описание записи нынешним
@@ -208,15 +223,16 @@ awh::codec::syslog::standard_t awh::codec::syslog::Writer::detect(const abc::val
 	 *
 	 * @note Гадать по правдоподобию даты нельзя: дату несут оба описания, и
 	 *       запись, читанная одним из них, обязана писаться им же
+	 *
 	 */
 	return standard_t::RFC3164;
 }
-
 /**
  * @brief Метод постановки отмены знаков в значении структурированных данных
  *
  * @param text   значение, отмены знаков требующее
  * @param result значение с поставленной отменой знаков
+ *
  */
 void awh::codec::syslog::Writer::escape(const string_view text, string & result) const noexcept {
 	// Выделяем память под результирующее значение
@@ -225,14 +241,15 @@ void awh::codec::syslog::Writer::escape(const string_view text, string & result)
 	 * Если постановка отмены знаков выключена
 	 *
 	 * @details Настройка эта живёт в паре с настройкой снятия отмены у чтения:
-	 * значения, отмену знаков несущие, ставятся в запись как есть. Порознь их
-	 * задавать нельзя - постановка отмены поверх неснятой наращивает косые при
-	 * всяком обороте, - оттого пару эту сводит документ, а не потребитель
+	 *          значения, отмену знаков несущие, ставятся в запись как есть. Порознь их
+	 *          задавать нельзя - постановка отмены поверх неснятой наращивает косые при
+	 *          всяком обороте, - оттого пару эту сводит документ, а не потребитель.
+	 *
 	 */
 	if(!this->_settings.escape){
 		// Добавляем значение в результирующую запись как есть
 		result.append(text);
-		// Выходим из функции
+		// Выходим из метода
 		return;
 	}
 	/**
@@ -245,6 +262,7 @@ void awh::codec::syslog::Writer::escape(const string_view text, string & result)
 		 * @note Знаков этих ровно три, и описанием они названы поимённо: кавычка,
 		 *       закрывающая скобка и сама обратная косая. Отменять иные знаки
 		 *       запрещено прямо - обратная косая перед ними стоит как есть
+		 *
 		 */
 		if((text[i] == '"') || (text[i] == ']') || (text[i] == '\\'))
 			// Ставим знак обратной косой перед отменяемым знаком
@@ -253,13 +271,13 @@ void awh::codec::syslog::Writer::escape(const string_view text, string & result)
 		result.append(1, text[i]);
 	}
 }
-
 /**
  * @brief Метод обращения значения дерева в последовательность знаков
  *
  * @param value  значение дерева контейнера ABC
  * @param result значение последовательностью знаков
  * @return       признак успешности обращения значения
+ *
  */
 bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & result) noexcept {
 	// Выполняем очистку результирующего значения
@@ -282,23 +300,6 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 					return false;
 				// Если вложенное значение обращается в знаки
 				case static_cast <uint8_t> (nested_t::TEXT): {
-					/**
-					 * Выполняем обращение вложенного значения в читаемые знаки
-					 *
-					 * @details Перечень выдаётся значениями через запятую, отображение -
-					 * парами «имя=значение» через запятую; обход ведётся самим этим ходом
-					 * и потому одинаков на всякой глубине
-					 *
-					 * @warning Прежде здесь стоял `value.dump()` - ДВОИЧНАЯ запись
-					 *          контейнера ABC, - и её знаки клались в поле записи как
-					 *          текст. Поле имени узла обращалось при том в «\x82AaAb»:
-					 *          запись выходила негодной вовсе, обратно не читалась и
-					 *          набору знаков описания противоречила, а настройка при том
-					 *          обещает «обратить в последовательность знаков». Найдено
-					 *          щупом вложенности 15.09.2026 по признаку, взятому
-					 *          у кодеков JSON: то же значение при иной настройке
-					 *          записывается - значит дело в настройке, а не в значении
-					 */
 					// Признак того, что значение отображением является
 					const bool mapped = (value.type() == abc::type_t::MAP);
 					/**
@@ -328,9 +329,11 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 					// Выводим положительный признак обращения значения
 					return true;
 				}
-				// Если вложенное значение пропускается вовсе: отказ обращения
-				// разбирается зовущим по настройке, ибо пропуск поля есть дело
-				// сборки записи, а не обращения значения
+				/**
+				 * Если вложенное значение пропускается вовсе: отказ обращения
+				 * разбирается зовущим по настройке, ибо пропуск поля есть дело
+				 * сборки записи, а не обращения значения
+				 */
 				default: return false;
 			}
 		}
@@ -342,7 +345,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 			return true;
 		}
 		// Если значение является пустым
-		case static_cast <uint32_t> (abc::type_t::NUL):
+		case static_cast <uint32_t> (abc::type_t::NIL):
 			// Выводим положительный признак обращения значения
 			return true;
 		// Если значение является логическим
@@ -408,6 +411,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 		 *       где десятичным знаком служит «٫» (U+066B, два байта в UTF-8), `noexp`
 		 *       выдавал «0.10000000000000001» вместо «0.1». Виною тому не оснастка -
 		 *       она делала ровно то, ради чего заведена, - а обращение к ней отсюда
+		 *
 		 */
 		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), current);
 		/**
@@ -419,6 +423,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 		 *       бесконечности и NaN, - и самая длинная запись вышла 24 октета при
 		 *       запасе 346, отказов ноль. Метка недостижимости, замером не поверенная,
 		 *       живёт ровно до первого переезда кода
+		 *
 		 */
 		if(!static_cast <bool> (output))
 			// Выводим отрицательный признак обращения значения
@@ -439,7 +444,6 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 	// Выводим положительный признак обращения значения
 	return true;
 }
-
 /**
  * @brief Метод получения поля заголовка последовательностью знаков
  *
@@ -447,6 +451,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
  * @param name   имя разыскиваемого поля заголовка
  * @param result значение поля последовательностью знаков
  * @return       признак успешности получения поля
+ *
  */
 bool awh::codec::syslog::Writer::extract(const abc::value_t & header, const string_view name, string & result) noexcept {
 	// Выполняем очистку результирующего значения
@@ -476,27 +481,40 @@ bool awh::codec::syslog::Writer::extract(const abc::value_t & header, const stri
 		// Выводим положительный признак получения поля
 		return true;
 	}
-	// Выводим отказ записи неверным значением поля заголовка
-	return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE, name);
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {name, result}, log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+	#endif
+	// Объявляем отказ записи
+	return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE);
 }
-
 /**
  * @brief Метод приведения даты сообщения к виду выбранного описания
  *
  * @param text     дата сообщения, деревом объявленная
  * @param standard описание, каким собирается запись
  * @param result   дата видом выбранного описания
+ *
  */
 void awh::codec::syslog::Writer::timestamp(const string_view text, const standard_t standard, string & result) const noexcept {
 	/**
 	 * Запоминаем дату сообщения КАК ЕСТЬ
 	 *
 	 * @details Дата не переписывается вовсе - ни у одного из описаний. Содержимое поля
-	 * есть то, что положил отправитель либо потребитель, и менять его кодек не вправе:
-	 * перепись была бы домысливанием - тем же, каким была бы приписка приставки
-	 * приоритета к записи, её не имевшей. Довод этот особенно весом у даты: вид её
-	 * несёт зону отправителя, и приведение к местной зоне теряло бы сведения о том, где
-	 * составлено сообщение
+	 *          есть то, что положил отправитель либо потребитель, и менять его кодек не вправе:
+	 *          перепись была бы домысливанием - тем же, каким была бы приписка приставки
+	 *          приоритета к записи, её не имевшей. Довод этот особенно весом у даты: вид её
+	 *          несёт зону отправителя, и приведение к местной зоне теряло бы сведения о том, где
+	 *          составлено сообщение.
 	 *
 	 * @note Прежде здесь стояла перепись даты в вид RFC 3339 у записей нынешнего
 	 *       описания. Ворошитель показал 07.09.2026, чем она плоха: дата «2003-10-11T22:14<15Z»,
@@ -506,18 +524,19 @@ void awh::codec::syslog::Writer::timestamp(const string_view text, const standar
 	 *       того есть `chrono_t`, а у документа - ход `timestamp`
 	 *
 	 * @param standard описание записи, ныне на выбор вида не влияющее
+	 *
 	 */
 	(void) standard;
 	// Запоминаем дату сообщения как есть
 	result.assign(text);
 }
-
 /**
  * @brief Метод сборки блоков структурированных данных
  *
  * @param value  блоки структурированных данных, деревом объявленные
  * @param result собираемая запись
  * @return       признак успешности сборки блоков
+ *
  */
 bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string & result) noexcept {
 	// Если блоки структурированных данных деревом не объявлены
@@ -539,17 +558,31 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 		 * Если опознаватель блока записи системного журнала непредставим
 		 *
 		 * @details Опознаватель отделяется от полей блока пробелом, а сам блок
-		 * закрывается квадратной скобкой: опознаватель, пробельный знак либо скобку
-		 * несущий, записанным быть не может - повторный разбор такой записи взял бы
-		 * его иначе. Отмены знаков опознаватель не знает вовсе
+		 *          закрывается квадратной скобкой: опознаватель, пробельный знак либо скобку
+		 *          несущий, записанным быть не может - повторный разбор такой записи взял бы
+		 *          его иначе. Отмены знаков опознаватель не знает вовсе.
+		 *
 		 */
 		if(!::named(id)){
 			// Если непредставимое значение пропускается вовсе
 			if(this->_settings.nested == nested_t::SKIP)
 				// Переходим к следующему блоку структурированных данных
 				continue;
-			// Выводим отказ записи непредставимым опознавателем блока
-			return this->fail(error_t::INVALID_STRUCTURE_ID, id);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), string(id).c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), string(id).c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::INVALID_STRUCTURE_ID);
 		}
 		// Открываем блок структурированных данных
 		result.append(1, '[');
@@ -559,12 +592,13 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 		 * Получаем поля очередного блока структурированных данных
 		 *
 		 * @details Обращение ведётся ИМЕНЕМ внутри вместилища, а НЕ ходом `at`: тот
-		 * разбирает довод строковым путём, и опознаватель блока, косую черту несущий,
-		 * был бы им недостижим - путь рвался бы на два звена. Опознаватели же живых
-		 * журналов косую черту несут
+		 *          разбирает довод строковым путём, и опознаватель блока, косую черту несущий,
+		 *          был бы им недостижим - путь рвался бы на два звена. Опознаватели же живых
+		 *          журналов косую черту несут.
 		 *
 		 * @note Найдено ворошителем 07.09.2026: блок «[NOwKW0omSiy/Ll a="1"]» собирался
 		 *       обратно пустым - поля его пропадали молча
+		 *
 		 */
 		const abc::value_t & params = value[id];
 		// Если поля блока отображением являются
@@ -581,8 +615,21 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 					if(this->_settings.nested == nested_t::SKIP)
 						// Переходим к следующему полю блока структурированных данных
 						continue;
-					// Выводим отказ записи непредставимым именем поля блока
-					return this->fail(error_t::INVALID_PARAM_NAME, name);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PARAM_NAME), string(name).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PARAM_NAME), string(name).c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::INVALID_PARAM_NAME);
 				}
 				// Получаем значение очередного поля блока структурированных данных, ИМЕНЕМ его
 				const abc::value_t & param = params[name];
@@ -593,12 +640,13 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 				 *          SD-PARAM MAY be repeated multiple times inside an SD-ELEMENT»
 				 *          (RFC 5424, раздел 6.3.3), - и перечень значений пишется
 				 *          ПОВТОРОМ имени, по значению на каждое звено. Порядок этот тот
-				 *          же, каким кодек CEF пишет повтор ключа расширения
+				 *          же, каким кодек CEF пишет повтор ключа расширения.
 				 *
 				 * @warning Без перебора перечень уходил в `stringify` целиком и отвечался
 				 *          отказом NESTED_VALUE: разбор повтор сохранял, а запись его
 				 *          выразить не могла - оборот записи с повтором давал ПУСТО.
 				 *          Проверено щупом 14.09.2026
+				 *
 				 */
 				const size_t count = ((param.type() == abc::type_t::ARRAY) ? param.size() : 1);
 				/**
@@ -615,8 +663,21 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 						if(nested && (this->_settings.nested == nested_t::SKIP))
 							// Переходим к следующему значению поля блока
 							continue;
-						// Выводим отказ записи неверным значением поля блока
-						return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE, name);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+						#endif
+						// Объявляем отказ записи
+						return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE);
 					}
 					// Отделяем поле блока от предыдущего пробелом
 					result.append(1, ' ');
@@ -639,45 +700,59 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 	// Выводим положительный признак сборки блоков
 	return true;
 }
-
 /**
  * @brief Метод сборки текста сообщения
  *
  * @param value  дерево контейнера ABC
  * @param result собираемая запись
  * @return       признак успешности сборки текста сообщения
+ *
  */
 bool awh::codec::syslog::Writer::payload(const abc::value_t & value, string & result) noexcept {
 	// Если текст сообщения деревом не объявлен
-	if(!value.contains(string("message")))
+	if(!value.contains(string{"message"}))
 		// Выводим положительный признак сборки текста сообщения
 		return true;
 	// Текст сообщения последовательностью знаков
 	string text = "";
 	// Если обращение текста сообщения в знаки отказом завершилось
-	if(!this->stringify(value.at(string("message")), text)){
+	if(!this->stringify(value.at(string{"message"}), text)){
 		// Признак того, что текст сообщения вложенным является
 		const bool nested = (
-			(value.at(string("message")).type() == abc::type_t::MAP) ||
-			(value.at(string("message")).type() == abc::type_t::ARRAY)
+			(value.at(string{"message"}).type() == abc::type_t::MAP) ||
+			(value.at(string{"message"}).type() == abc::type_t::ARRAY)
 		);
 		// Если вложенный текст сообщения пропускается вовсе
 		if(nested && (this->_settings.nested == nested_t::SKIP))
 			// Выводим положительный признак сборки текста сообщения
 			return true;
-		// Выводим отказ записи неверным текстом сообщения
-		return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE, "message");
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(nested ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE);
 	}
 	/**
 	 * Отделяем текст сообщения от заголовка записи пробелом
 	 *
 	 * @details Пробел ставится и перед ПУСТЫМ текстом: запись различает «сообщение
-	 * пусто» и «сообщения нет вовсе» - первое есть пробел без текста за ним, второе
-	 * есть отсутствие и пробела. Опусти пробел у пустого текста - и оборот записи
-	 * терял бы объявленность сообщения молча
+	 *          пусто» и «сообщения нет вовсе» - первое есть пробел без текста за ним, второе
+	 *          есть отсутствие и пробела. Опусти пробел у пустого текста - и оборот записи
+	 *          терял бы объявленность сообщения молча.
 	 *
 	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи,
 	 *       пробелом оканчивающейся
+	 *
 	 */
 	result.append(1, ' ');
 	// Если текст сообщения пуст
@@ -690,35 +765,66 @@ bool awh::codec::syslog::Writer::payload(const abc::value_t & value, string & re
 	 * @details Запись оканчивается переводом строки, и он же ей границею служит: текст,
 	 *          перевод строки несущий, разрывает запись надвое. Отменяющей
 	 *          последовательности описание syslog тексту сообщения не даёт вовсе -
-	 *          выразить такой текст запись не может
+	 *          выразить такой текст запись не может.
 	 *
 	 * @warning Прежде текст этот писался УСПЕХОМ: писатель отвечал истиной, а оборот
 	 *          битой записи отвечал INCOMPLETE_HEADER, и сообщение из восьми байтов
 	 *          возвращалось тремя. Проверено щупом 14.09.2026
+	 *
 	 */
-	if(text.find('\n') != string::npos)
-		// Выводим отказ записи непредставимым текстом сообщения
-		return this->fail(error_t::UNREPRESENTABLE_VALUE, "message");
+	if(text.find('\n') != string::npos){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::UNREPRESENTABLE_VALUE);
+	}
 	/**
 	 * Если текст сообщения возвратом каретки оканчивается
 	 *
 	 * @details Разбор снимает возврат каретки перед переводом строки, границу записи
 	 *          образующий, и знак этот пропадал бы МОЛЧА: оборот отказа не давал вовсе,
 	 *          а сообщение возвращалось короче записанного на один байт. Внутри текста
-	 *          возврат каретки допустим - там он границы не образует и оборот его хранит
+	 *          возврат каретки допустим - там он границы не образует и оборот его хранит.
 	 *
 	 * @note Из двух бед эта хуже первой: битая запись опознаётся отказом при обороте, а
 	 *       утрата знака не опознаётся ничем
+	 *
 	 */
-	if(text.back() == '\r')
-		// Выводим отказ записи непредставимым текстом сообщения
-		return this->fail(error_t::UNREPRESENTABLE_VALUE, "message");
+	if(text.back() == '\r'){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("message").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::UNREPRESENTABLE_VALUE);
+	}
 	/**
 	 * Если постановка метки порядка байтов включена
 	 *
 	 * @note Метка ставится лишь перед текстом, ASCII не являющимся: описание
 	 *       требует её признаком записи в UTF-8, а перед текстом ASCII она наращивала
 	 *       бы три октета на всякую запись без нужды
+	 *
 	 */
 	if(this->_settings.bom && (this->_standard == standard_t::RFC5424)){
 		// Признак того, что текст сообщения знаками ASCII не исчерпывается
@@ -741,7 +847,7 @@ bool awh::codec::syslog::Writer::payload(const abc::value_t & value, string & re
 		 * @details Метка есть ОБЪЯВЛЕНИЕ кодировки: «If the MSG contains UTF-8 ... MUST
 		 *          start with BOM» (RFC 5424, раздел 6.4). Ставить её перед текстом, в
 		 *          UTF-8 не записанным, значит объявлять кодировку ложно - принимающий
-		 *          возьмёт байты за UTF-8 и разберёт их не так, как они писаны
+		 *          возьмёт байты за UTF-8 и разберёт их не так, как они писаны.
 		 *
 		 * @warning Прежде довода о годности не было вовсе: метка ставилась перед всяким
 		 *          текстом, ASCII не исчерпывающимся. Щуп 14.09.2026 показал её перед
@@ -750,8 +856,9 @@ bool awh::codec::syslog::Writer::payload(const abc::value_t & value, string & re
 		 *
 		 * @note Текст негодный пишется КАК ЕСТЬ, без метки и без отказа: журнал берёт
 		 *       данные, какие есть, и выдумывать за отправителя кодировку не наше дело
+		 *
 		 */
-		if(wide && awh::utf8::valid(text) && (text.compare(0, BOM.size(), BOM) != 0))
+		if(wide && utf8::valid(text) && (text.compare(0, BOM.size(), BOM) != 0))
 			// Ставим метку порядка байтов перед текстом сообщения
 			result.append(BOM);
 	}
@@ -760,17 +867,17 @@ bool awh::codec::syslog::Writer::payload(const abc::value_t & value, string & re
 	// Выводим положительный признак сборки текста сообщения
 	return true;
 }
-
 /**
  * @brief Метод сборки записи описания RFC 3164
  *
  * @param value  дерево контейнера ABC
  * @param result собираемая запись
  * @return       признак успешности сборки записи
+ *
  */
 bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & result) noexcept {
 	// Поля заголовка записи, деревом объявленные
-	const abc::value_t & header = value.at(string("header"));
+	const abc::value_t & header = value.at(string{"header"});
 	// Значение поля заголовка последовательностью знаков
 	string text = "";
 	// Если получение даты сообщения отказом завершилось
@@ -781,17 +888,32 @@ bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & res
 	 * Если дата сообщения деревом не объявлена
 	 *
 	 * @details Отвечаем отказом, а текущую дату НЕ подставляем: подстановка эта была бы
-	 * домысливанием - тем же, каким была бы приписка приставки приоритета к записи, её
-	 * не имевшей. Дата описанием обязательна и позиционна: за ней следует имя узла, и
-	 * запись без даты означала бы иное. Отправитель даты не объявил - объявлять её за
-	 * него кодек не вправе
+	 *          домысливанием - тем же, каким была бы приписка приставки приоритета к записи, её
+	 *          не имевшей. Дата описанием обязательна и позиционна: за ней следует имя узла, и
+	 *          запись без даты означала бы иное. Отправитель даты не объявил - объявлять её за
+	 *          него кодек не вправе.
 	 *
 	 * @note Найдено ворошителем 07.09.2026: ПУСТАЯ запись возвращалась из оборота
 	 *       записью с текущей датой
+	 *
 	 */
-	if(text.empty())
-		// Выводим отказ записи отсутствующей датой сообщения
-		return this->fail(error_t::INCOMPLETE_HEADER, TIMESTAMP);
+	if(text.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INCOMPLETE_HEADER), string(TIMESTAMP).c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INCOMPLETE_HEADER), string(TIMESTAMP).c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::INCOMPLETE_HEADER);
+	}
 	// Дата сообщения видом устаревшего описания
 	string date = "";
 	// Приводим дату сообщения к виду устаревшего описания
@@ -806,17 +928,32 @@ bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & res
 	 * Если имя узла деревом не объявлено
 	 *
 	 * @details Отвечаем отказом, а знака «-» НЕ ставим: знак этот назначен отсутствующим
-	 * значением лишь описанием RFC 5424, а у RFC 3164 он есть законное имя узла - и
-	 * повторный разбор вернул бы именем узла сам знак. Опустить же поле вместе с
-	 * разделителем нельзя тем более: место его позиционно, и разбор взял бы именем узла
-	 * метку приложения, а меткой первое слово текста
+	 *          значением лишь описанием RFC 5424, а у RFC 3164 он есть законное имя узла - и
+	 *          повторный разбор вернул бы именем узла сам знак. Опустить же поле вместе с
+	 *          разделителем нельзя тем более: место его позиционно, и разбор взял бы именем узла
+	 *          метку приложения, а меткой первое слово текста.
 	 *
 	 * @note Оба исхода найдены ворошителем 07.09.2026 расхождением деревьев после
 	 *       оборота: сперва опущенное поле, затем поставленный на его место знак «-»
+	 *
 	 */
-	if(text.empty())
-		// Выводим отказ записи отсутствующим именем узла
-		return this->fail(error_t::INCOMPLETE_HEADER, HOSTNAME);
+	if(text.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INCOMPLETE_HEADER), string(HOSTNAME).c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INCOMPLETE_HEADER), string(HOSTNAME).c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::INCOMPLETE_HEADER);
+	}
 	// Отделяем имя узла от даты сообщения пробелом
 	result.append(1, ' ');
 	// Добавляем имя узла в результирующую запись
@@ -829,35 +966,50 @@ bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & res
 	 * Если название приложения деревом не объявлено, а опознаватель работы объявлен
 	 *
 	 * @details Отвечаем отказом, а опознаватель НЕ теряем молча: у устаревшего описания
-	 * опознаватель работы стоит внутри метки приложения - «app[pid]:», - и без самой
-	 * метки места ему в записи нет вовсе. Записать его отдельно значило бы породить
-	 * запись, какая разбирается, но означает иное; опустить - потерять сведения молча
+	 *          опознаватель работы стоит внутри метки приложения - «app[pid]:», - и без самой
+	 *          метки места ему в записи нет вовсе. Записать его отдельно значило бы породить
+	 *          запись, какая разбирается, но означает иное; опустить - потерять сведения молча.
 	 *
 	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота
-	 */
-	/**
+	 *
 	 * Если название приложения пусто, а опознаватель работы деревом объявлен
 	 *
 	 * @details Отвечаем отказом: у устаревшего описания опознаватель работы стоит
-	 * внутри метки приложения - «app[pid]:», - и без самого имени метка не читается
-	 * меткой вовсе. Запись «[pid]:» повторный разбор возьмёт текстом сообщения, а не
-	 * меткой: пустой метки описание не знает
+	 *          внутри метки приложения - «app[pid]:», - и без самого имени метка не читается
+	 *          меткой вовсе. Запись «[pid]:» повторный разбор возьмёт текстом сообщения, а не
+	 *          меткой: пустой метки описание не знает.
 	 *
 	 * @note Условие смотрит на ЗНАЧЕНИЕ, а не на объявленность: поле, объявленное
 	 *       пустым, ведёт к той же неразборчивой записи, что и вовсе отсутствующее
+	 *
 	 */
-	if(text.empty() && header.contains(string(PROCESS)))
-		// Выводим отказ записи опознавателем работы без названия приложения
-		return this->fail(error_t::UNREPRESENTABLE_VALUE, PROCESS);
+	if(text.empty() && header.contains(string{PROCESS})){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string(PROCESS).c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string(PROCESS).c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::UNREPRESENTABLE_VALUE);
+	}
 	/**
 	 * Если название приложения деревом объявлено
 	 *
 	 * @details Объявленность спрашивается у ДЕРЕВА, а не у длины значения: запись
-	 * различает «метка пуста» и «метки нет вовсе» - первое есть двоеточие без имени
-	 * перед ним, второе есть отсутствие и двоеточия. Гляди на длину - и текст
-	 * сообщения, за меткой стоящий, слипался бы с нею при обороте
+	 *          различает «метка пуста» и «метки нет вовсе» - первое есть двоеточие без имени
+	 *          перед ним, второе есть отсутствие и двоеточия. Гляди на длину - и текст
+	 *          сообщения, за меткой стоящий, слипался бы с нею при обороте.
 	 *
 	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота
+	 *
 	 */
 	if(header.contains(string(APPLICATION))){
 		// Отделяем метку приложения от имени узла пробелом
@@ -874,13 +1026,14 @@ bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & res
 		 * Если опознаватель работы деревом объявлен
 		 *
 		 * @details Объявленность спрашивается у ДЕРЕВА, а не у длины значения: запись
-		 * различает «опознаватель пуст» и «опознавателя нет вовсе» - первое есть пустые
-		 * скобки, второе есть отсутствие и скобок. Гляди на длину - и оборот записи
-		 * терял бы объявленность молча
+		 *          различает «опознаватель пуст» и «опознавателя нет вовсе» - первое есть пустые
+		 *          скобки, второе есть отсутствие и скобок. Гляди на длину - и оборот записи
+		 *          терял бы объявленность молча.
 		 *
 		 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота
+		 *
 		 */
-		if(header.contains(string(PROCESS))){
+		if(header.contains(string{PROCESS})){
 			// Открываем опознаватель работы квадратной скобкой
 			result.append(1, '[');
 			// Добавляем опознаватель работы в результирующую запись
@@ -894,17 +1047,17 @@ bool awh::codec::syslog::Writer::legacy(const abc::value_t & value, string & res
 	// Выполняем сборку текста сообщения
 	return this->payload(value, result);
 }
-
 /**
  * @brief Метод сборки записи описания RFC 5424
  *
  * @param value  дерево контейнера ABC
  * @param result собираемая запись
  * @return       признак успешности сборки записи
+ *
  */
 bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & result) noexcept {
 	// Поля заголовка записи, деревом объявленные
-	const abc::value_t & header = value.at(string("header"));
+	const abc::value_t & header = value.at(string{"header"});
 	// Значение поля заголовка последовательностью знаков
 	string text = "";
 	// Если получение номера описания записи отказом завершилось
@@ -918,15 +1071,15 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 		// Номер описания записи, из дерева извлекаемый
 		uint64_t current = 0;
 		/**
-		 * Выполняем разбор номера описания записи модулем разбора чисел
+		 * Выполняем разбор записи номера описания модулем разбора чисел
 		 *
 		 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stoull`: тот судит запись ПО
 		 *          ЛОКАЛИ, а номер описания пришёл из дерева отправителя и локали машины
 		 *          не подвластен вовсе. Заодно уходят исключения, каких договор писателя
 		 *          не знает: ход этот объявлен `noexcept`, и брошенное `std::stoull`
 		 *          валило бы программу целиком
+		 *
 		 */
-		// Выполняем разбор записи номера описания модулем разбора чисел
 		const auto parsed = lexical_t::fromChars(text.data(), (text.data() + text.size()), current);
 		/**
 		 * Если разбор записи номера описания отказом завершился либо запись исчерпана не вся
@@ -934,18 +1087,47 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 		 * @details Разбор берёт запись С НАЧАЛА и останавливается на первом знаке, числу не
 		 *          принадлежащем, отвечая при этом УСПЕХОМ: запись «1abc» обращалась бы
 		 *          единицею, и мусор за числом пропадал молча. Успех признаётся лишь тогда,
-		 *          когда разбор потребил запись целиком
+		 *          когда разбор потребил запись целиком.
 		 *
 		 * @note Тот же разряд найден щупом 14.09.2026 у кодека CEF: «cfp1=1,5» ложилось в
 		 *       дерево единицею - дробная часть пропадала без отказа
+		 *
 		 */
-		if(!static_cast <bool> (parsed) || (parsed.ptr != (text.data() + text.size())))
-			// Выводим отказ записи ошибочным номером описания
-			return this->fail(error_t::INVALID_VERSION, VERSION);
+		if(!static_cast <bool> (parsed) || (parsed.ptr != (text.data() + text.size()))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_VERSION), string(VERSION).c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_VERSION), string(VERSION).c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::INVALID_VERSION);
+		}
 		// Если номер описания записи не поддерживается
-		if((current == 0) || (current > MAX_VERSION))
-			// Выводим отказ записи неподдерживаемым номером описания
-			return this->fail(error_t::UNSUPPORTED_VERSION, VERSION);
+		if((current == 0) || (current > MAX_VERSION)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNSUPPORTED_VERSION), string(VERSION).c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNSUPPORTED_VERSION), string(VERSION).c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::UNSUPPORTED_VERSION);
+		}
 		// Запоминаем номер описания записи
 		version = static_cast <uint32_t> (current);
 	}
@@ -971,23 +1153,26 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 	 * @note Отсутствующее поле ставится знаком «-», а не пропускается: поля
 	 *       заголовка нынешнего описания позиционны, и пропуск поля сдвинул бы все
 	 *       следующие - запись разбиралась бы, но означала иное
+	 *
 	 */
 	} else result.append(NIL);
 	/**
 	 * Имена полей заголовка, знаками записываемых
 	 *
 	 * @note Порядок отвечает порядку полей в записи: описание ставит их позиционно
+	 *
 	 */
 	constexpr string_view FIELDS[] = {HOSTNAME, APPLICATION, PROCESS, MESSAGE_ID};
 	/**
 	 * Пределы длины полей заголовка, порядку самих полей отвечающие
 	 *
 	 * @details Пределы эти назначены RFC 5424 разделами 6.2.4 - 6.2.7, и место им здесь,
-	 * в сборке нынешнего описания: RFC 3164 длин не ограничивает вовсе, и `legacy` их
-	 * знать не должен
+	 *          в сборке нынешнего описания: RFC 3164 длин не ограничивает вовсе, и `legacy` их
+	 *          знать не должен.
 	 *
 	 * @warning Порядок обязан отвечать порядку FIELDS: поля заголовка позиционны, и
 	 *          разъехавшиеся пределы отвергали бы одно поле вместо другого
+	 *
 	 */
 	constexpr size_t LIMITS[] = {MAX_HOSTNAME, MAX_APPLICATION, MAX_PROCESS, MAX_MESSAGE_ID};
 	/**
@@ -1007,27 +1192,57 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 		 *
 		 * @note Знак пробела внутри поля запись выразить не может: поля разделяются
 		 *       им, и отмены знаков заголовок не знает вовсе
+		 *
 		 */
 		if(!text.empty()){
 			// Если поле заголовка знак пробела несёт
-			if(text.find_first_of(" \t\n\r") != string::npos)
-				// Выводим отказ записи непредставимым значением поля заголовка
-				return this->fail(error_t::UNREPRESENTABLE_VALUE, name);
+			if(text.find_first_of(" \t\n\r") != string::npos){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::UNREPRESENTABLE_VALUE);
+			}
 			/**
 			 * Если длина поля заголовка допустимую превышает
 			 *
 			 * @details Поверка эта замыкает ОБОРОТ: читатель длины полей блюдёт строгим
-			 * разбором, писатель же выдавал запись любой длины, и своя собственная запись
-			 * своим же читателем отвергалась кодом FIELD_TOO_LONG. Найдено кругом аудита
-			 * 17.09.2026 щупом, четыре поля из четырёх прогнавшим
+			 *          разбором, писатель же выдавал запись любой длины, и своя собственная запись
+			 *          своим же читателем отвергалась кодом FIELD_TOO_LONG. Найдено кругом аудита
+			 *          17.09.2026 щупом, четыре поля из четырёх прогнавшим.
 			 *
 			 * @note Отказ здесь безусловен, а не при строгом разборе: у писателя режима
 			 *       строгости нет вовсе, а место это - сборка НЫНЕШНЕГО описания, где
 			 *       пределы назначены самим RFC 5424
+			 *
 			 */
-			if(text.size() > LIMITS[i])
-				// Выводим отказ записи слишком длинным полем заголовка
-				return this->fail(error_t::FIELD_TOO_LONG, name);
+			if(text.size() > LIMITS[i]){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::FIELD_TOO_LONG), string(name).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::FIELD_TOO_LONG), string(name).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::FIELD_TOO_LONG);
+			}
 			// Добавляем поле заголовка в результирующую запись
 			result.append(text);
 		// Если поле заголовка деревом не объявлено
@@ -1036,9 +1251,9 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 	// Отделяем блоки структурированных данных от заголовка пробелом
 	result.append(1, ' ');
 	// Если блоки структурированных данных деревом объявлены
-	if(value.contains(string("structures"))){
+	if(value.contains(string{"structures"})){
 		// Если сборка блоков структурированных данных отказом завершилась
-		if(!this->structured(value.at(string("structures")), result))
+		if(!this->structured(value.at(string{"structures"}), result))
 			// Выводим отказ сборки записи
 			return false;
 	// Если блоки структурированных данных деревом не объявлены
@@ -1046,53 +1261,56 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 	// Выполняем сборку текста сообщения
 	return this->payload(value, result);
 }
-
 /**
  * @brief Метод получения настроек записи событий
  *
  * @return настройки записи событий
+ *
  */
 const awh::codec::syslog::Writer::settings_t & awh::codec::syslog::Writer::settings() const noexcept {
 	// Выводим настройки записи событий
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек записи событий
  *
  * @param settings настройки записи событий
+ * @return         признак принятия настроек записи
+ *
  */
-void awh::codec::syslog::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::syslog::Writer::settings(const settings_t & settings) noexcept {
 	// Устанавливаем настройки записи событий
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
-
 /**
  * @brief Метод получения кода ошибки записи
  *
  * @return код ошибки последней операции записи
+ *
  */
 awh::codec::syslog::error_t awh::codec::syslog::Writer::error() const noexcept {
 	// Выводим код ошибки последней операции записи
 	return this->_error;
 }
-
 /**
  * @brief Метод получения описания, каким собрана последняя запись
  *
  * @return описание, каким собрана последняя запись
+ *
  */
 awh::codec::syslog::standard_t awh::codec::syslog::Writer::standard() const noexcept {
 	// Выводим описание, каким собрана последняя запись
 	return this->_standard;
 }
-
 /**
  * @brief Метод сборки записи системного журнала из дерева контейнера ABC
  *
  * @param value  дерево контейнера ABC
  * @param result собранная запись системного журнала
  * @return       признак успешности сборки записи
+ *
  */
 bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & result) noexcept {
 	// Выполняем очистку результирующей записи
@@ -1100,54 +1318,84 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 	// Сбрасываем код ошибки последней операции записи
 	this->_error = error_t::NONE;
 	// Если дерево отображением не является
-	if(value.type() != abc::type_t::MAP)
-		// Выводим отказ записи неверным устройством дерева
-		return this->fail(error_t::UNREPRESENTABLE_VALUE, "/");
+	if(value.type() != abc::type_t::MAP){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("/").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNREPRESENTABLE_VALUE), string("/").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::UNREPRESENTABLE_VALUE);
+	}
 	/**
 	 * Запоминаем описание, каким собирается запись
 	 *
 	 * @details Описание, самоопределением полученное, ЗАПОМИНАЕТСЯ тем же правилом,
-	 * каким запоминает его чтение: спрос отвечает опознанным описанием, а не
-	 * настройкой `AUTO`
+	 *          каким запоминает его чтение: спрос отвечает опознанным описанием, а не
+	 *          настройкой `AUTO`.
+	 *
 	 */
 	this->_standard = ((this->_settings.standard == standard_t::AUTO) ? this->detect(value) : this->_settings.standard);
 	/**
 	 * Если запись приставки приоритета включена И приоритет деревом объявлен
 	 *
 	 * @details Приставка НЕ домысливается: дерево, приоритета не несущее, собрано из
-	 * записи, приставки не имевшей, - и дописать её значило бы объявить источник с
-	 * важностью, каких отправитель не объявлял. Чтение записи без приставки отказом не
-	 * отвечает, и запись обязана отвечать ему тем же
+	 *          записи, приставки не имевшей, - и дописать её значило бы объявить источник с
+	 *          важностью, каких отправитель не объявлял. Чтение записи без приставки отказом не
+	 *          отвечает, и запись обязана отвечать ему тем же.
 	 *
 	 * @note Найдено щупом оборота 07.09.2026: запись без приставки возвращалась из
 	 *       оборота с приставкой «<13>», взятой из настройки
+	 *
 	 */
-	if(this->_settings.prefix && (value.contains(string("priority")) ||
-	   value.contains(string("facility")) || value.contains(string("severity")))){
+	if(this->_settings.prefix && (value.contains(string("priority")) || value.contains(string("facility")) || value.contains(string("severity")))){
 		// Приоритет записи, в приставку ставимый
 		uint64_t priority = 0;
 		// Если приоритет деревом объявлен
-		if(value.contains(string("priority"))){
+		if(value.contains(string{"priority"})){
 			// Если извлечение приоритета отказом завершилось
-			if(!value.at(string("priority")).value(priority))
-				// Выводим отказ записи ошибочным приоритетом
-				return this->fail(error_t::INVALID_PRIORITY, "priority");
+			if(!value.at(string{"priority"}).value(priority)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::INVALID_PRIORITY);
+			}
 		/**
 		 * Если приоритет деревом не объявлен, а объявлены источник с важностью
 		 *
 		 * @note Приоритет есть источник, восьмикратно взятый, и важность: держать
 		 *       его дважды нельзя, и собирается он из частей лишь за неимением целого
+		 *
 		 */
 		} else {
 			/**
 			 * Если деревом объявлена лишь ОДНА из двух частей приоритета
 			 *
 			 * @details Приоритет собирается из источника и важности, и обе части у него
-			 * равноправны. Дерево, несущее лишь одну из них, второй не объявляет вовсе -
-			 * и дописать её нулём значило бы объявить источник с важностью, каких
-			 * отправитель не объявлял. Правило это кодеком уже объявлено приставкой
-			 * целиком («приставка НЕ домысливается»), и половине приставки оно
-			 * распространяется тем же доводом
+			 *          равноправны. Дерево, несущее лишь одну из них, второй не объявляет вовсе -
+			 *          и дописать её нулём значило бы объявить источник с важностью, каких
+			 *          отправитель не объявлял. Правило это кодеком уже объявлено приставкой
+			 *          целиком («приставка НЕ домысливается»), и половине приставки оно
+			 *          распространяется тем же доводом.
 			 *
 			 * @note Найдено щупом словаря 15.09.2026: дерево, несущее лишь «severity»,
 			 *       писалось приставкой «<3>» - сообщением ЯДРА, ибо источник домысливался
@@ -1158,70 +1406,170 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 			 *
 			 * @note Оборот чтения этим не задет: чтение кладёт в дерево приоритет целиком
 			 *       вместе с обоими именами, и половины у него не бывает
+			 *
 			 */
-			if(value.contains(string("facility")) != value.contains(string("severity")))
-				// Выводим отказ записи приоритетом, наполовину объявленным
-				return this->fail(error_t::INVALID_PRIORITY, value.contains(string("facility")) ? "severity" : "facility");
+			if(value.contains(string{"facility"}) != value.contains(string{"severity"})){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string(value.contains(string("facility")) ? "severity" : "facility").c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string(value.contains(string("facility")) ? "severity" : "facility").c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::INVALID_PRIORITY);
+			}
 			// Источник сообщения, деревом объявленный
 			uint64_t facility = 0;
 			// Важность сообщения, деревом объявленная
 			uint64_t severity = 0;
 			// Если источник сообщения деревом объявлен
-			if(value.contains(string("facility"))){
+			if(value.contains(string{"facility"})){
 				// Получаем источник сообщения, деревом объявленный
-				const abc::value_t & current = value.at(string("facility"));
+				const abc::value_t & current = value.at(string{"facility"});
 				/**
 				 * Если источник сообщения объявлен ИМЕНЕМ
 				 *
 				 * @details Имя принимается наравне с числом: службы журналов пишут
-				 * правила отбора именами, и дерево, руками собранное, несёт их же.
-				 * Требовать числа значило бы заставлять потребителя держать таблицу
-				 * кодов, каковая у кодека уже есть
+				 *          правила отбора именами, и дерево, руками собранное, несёт их же.
+				 *          Требовать числа значило бы заставлять потребителя держать таблицу
+				 *          кодов, каковая у кодека уже есть.
+				 *
 				 */
 				if(current.type() == abc::type_t::STRING){
 					// Выполняем розыск источника сообщения в словаре
 					const entry_t * entry = facilities::find(current.text());
 					// Если имя источника сообщения словарю неизвестно
-					if(entry == nullptr)
-						// Выводим отказ записи неизвестным источником сообщения
-						return this->fail(error_t::INVALID_PRIORITY, "facility");
+					if(entry == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("facility").c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("facility").c_str());
+						#endif
+						// Объявляем отказ записи
+						return this->fail(error_t::INVALID_PRIORITY);
+					}
 					// Запоминаем числовой код источника сообщения
 					facility = entry->code;
 				// Если извлечение источника сообщения отказом завершилось
-				} else if(!current.value(facility))
-					// Выводим отказ записи ошибочным источником сообщения
-					return this->fail(error_t::INVALID_PRIORITY, "facility");
+				} else if(!current.value(facility)) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("facility").c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("facility").c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::INVALID_PRIORITY);
+				}
 			}
 			// Если важность сообщения деревом объявлена
-			if(value.contains(string("severity"))){
+			if(value.contains(string{"severity"})){
 				// Получаем важность сообщения, деревом объявленную
-				const abc::value_t & current = value.at(string("severity"));
+				const abc::value_t & current = value.at(string{"severity"});
 				// Если важность сообщения объявлена ИМЕНЕМ
 				if(current.type() == abc::type_t::STRING){
 					// Выполняем розыск важности сообщения в словаре
 					const entry_t * entry = severities::find(current.text());
 					// Если имя важности сообщения словарю неизвестно
-					if(entry == nullptr)
-						// Выводим отказ записи неизвестной важностью сообщения
-						return this->fail(error_t::INVALID_PRIORITY, "severity");
+					if(entry == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("severity").c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("severity").c_str());
+						#endif
+						// Объявляем отказ записи
+						return this->fail(error_t::INVALID_PRIORITY);
+					}
 					// Запоминаем числовой код важности сообщения
 					severity = entry->code;
 				// Если извлечение важности сообщения отказом завершилось
-				} else if(!current.value(severity))
-					// Выводим отказ записи ошибочной важностью сообщения
-					return this->fail(error_t::INVALID_PRIORITY, "severity");
+				} else if(!current.value(severity)) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("severity").c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("severity").c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::INVALID_PRIORITY);
+				}
 			}
 			// Если источник либо важность сообщения выходят за предел
-			if((facility > 0x17) || (severity > 0x07))
-				// Выводим отказ записи приоритетом, за предел выходящим
-				return this->fail(error_t::INVALID_PRIORITY, "priority");
+			if((facility > 0x17) || (severity > 0x07)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::INVALID_PRIORITY);
+			}
 			// Собираем приоритет записи из источника и важности сообщения
 			priority = ((facility * 8) + severity);
 		}
 		// Если приоритет записи за предел выходит
-		if(priority > MAX_PRIORITY)
-			// Выводим отказ записи приоритетом, за предел выходящим
-			return this->fail(error_t::INVALID_PRIORITY, "priority");
+		if(priority > MAX_PRIORITY){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::INVALID_PRIORITY), string("priority").c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::INVALID_PRIORITY);
+		}
 		// Открываем приставку приоритета угловой скобкой
 		result.append(1, '<');
 		// Добавляем приоритет записи в результирующую запись
@@ -1245,8 +1593,24 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 			// Выполняем сборку записи описания RFC 3164
 			ok = this->legacy(value, result);
 		break;
-		// Если описание записи определить не удалось
-		default: return this->fail(error_t::UNKNOWN_STANDARD, "/");
+		// Если стандарт не определён или не установлен
+		default: {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::syslog::message(error_t::UNKNOWN_STANDARD), string("/").c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::syslog::message(error_t::UNKNOWN_STANDARD), string("/").c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::UNKNOWN_STANDARD);
+		}
 	}
 	// Если сборка записи отказом завершилась
 	if(!ok)
@@ -1259,22 +1623,32 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 	// Выводим положительный признак успешности сборки записи
 	return true;
 }
-
 /**
  * @brief Конструктор
  *
  */
 awh::codec::syslog::Writer::Writer() noexcept :
- _error(error_t::NONE), _standard(standard_t::AUTO), _chrono() {}
-
+ _error(error_t::NONE), _standard(standard_t::AUTO) {}
 /**
- * Возвращаем имена, системными макросами занятые
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста
+ *
  */
-#include <sys/macro/restore.hpp>
+awh::codec::syslog::Writer::Writer(const settings_t & settings) noexcept : Writer() {
+	// Выполняем установку настроек записи текста
+	this->settings(settings);
+}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::syslog::Writer::Settings::Settings() noexcept :
- standard(standard_t::AUTO), nested(nested_t::STRICT), prefix(true),
- bom(true), escape(true), terminate(true) {}
+ bom(true), escape(true), prefix(true), terminate(true),
+ nested(nested_t::STRICT), standard(standard_t::AUTO) {}
+
+/**
+ * Возвращаем имена, системными макросами занятые
+ */
+#include <sys/macro/restore.hpp>

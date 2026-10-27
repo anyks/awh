@@ -88,7 +88,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
 	}
 };
 
@@ -1145,9 +1145,13 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	// Выполняем сброс места отказа прежней работы
 	this->_errorLocation = location_t();
 	/**
-	 * Если адрес файла таблицы не указан
+	 * Если адрес файла таблицы не указан либо каталог для записи негоден
+	 *
+	 * @note Отказ пути опознаётся безо всякой работы, и собирать текст для записи,
+	 *       которой не бывать, рано: проверка стоит до `dump()` намеренно
+	 *
 	 */
-	if(filename.empty()){
+	if(filename.empty() || !::directory(filename)){
 		// Запоминаем код отказа сохранения таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**

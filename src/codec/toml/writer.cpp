@@ -33,9 +33,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <encoding/ascii.hpp>
+#include <sys/log.hpp>
 #include <num/lexical/lexical.hpp>
+#include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/toml/writer.hpp>
 
 /**
@@ -44,7 +49,6 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -66,17 +70,36 @@ namespace {
 	using namespace awh::codec::toml;
 
 	/**
-	 * @brief Метод проверки знака на принадлежность к управляющим
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_TOML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_TOML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Функция проверки знака на принадлежность к управляющим
 	 *
 	 * @details Описание отводит тексту настроек знаки печатные, знак горизонтальной
-	 * табуляции и знаки конца строки: прочие управляющие знаки в записи дословной
-	 * оградить нечем, а в основной они записываются последовательностями
+	 *          табуляции и знаки конца строки: прочие управляющие знаки в записи дословной
+	 *          оградить нечем, а в основной они записываются последовательностями.
 	 *
 	 * @param letter проверяемый знак
 	 * @return       результат проверки
 	 *
 	 */
-	static bool controlled(const char letter) noexcept {
+	static constexpr bool controlled(const char letter) noexcept {
 		// Получаем беззнаковое значение проверяемого знака
 		const uint8_t value = static_cast <uint8_t> (letter);
 		// Выводим результат проверки знака на принадлежность к управляющим
@@ -90,7 +113,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	bool overlaps(const string & buffer, const string_view text) noexcept {
+	static AWH_TOML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -107,18 +130,20 @@ namespace {
  *
  */
 awh::codec::toml::Writer::Settings::Settings() noexcept :
- maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH), maxParts(MAX_PARTS),
- unicode(false), promote(true), spaces(true), indent(false), separated(true),
+ indent(false), spaces(true),
+ promote(true), unicode(false), separated(true),
+ maxKey(MAX_KEY), maxLine(MAX_LINE),
+ maxDepth(MAX_DEPTH), maxParts(MAX_PARTS),
  newline(newline_t::LF), malformed(malformed_t::REPLACE) {}
 
 /**
  * @brief Метод запоминания отказа записи вместе с кодом ошибки
  *
  * @details Отказ, случившийся после того, как операция уже дописала начало своё,
- * оставляет строку оборванной, и выдавать собранный текст после него нельзя: свой
- * же разбор целым его не признает. Судится это здесь единственным телом - перечень
- * мест, где отказ приходит после дописывания, разошёлся бы с кодом при первой же
- * правке любого из них
+ *          оставляет строку оборванной, и выдавать собранный текст после него нельзя: свой
+ *          же разбор целым его не признает. Судится это здесь единственным телом - перечень
+ *          мест, где отказ приходит после дописывания, разошёлся бы с кодом при первой же
+ *          правке любого из них.
  *
  * @note Признак рваности липкий: строку, оборванную отказом, вправе завершить
  *       знаком конца строки следующая удачная операция, и по одному лишь виду
@@ -131,8 +156,6 @@ awh::codec::toml::Writer::Settings::Settings() noexcept :
 bool awh::codec::toml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	// Выполняем вывод сообщения об отказе записи текста
-	awh::log::print("TOML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error));
 	/**
 	 * Если отказ застал строку незавершённой
 	 */
@@ -153,7 +176,20 @@ bool awh::codec::toml::Writer::newline() noexcept {
 	 * Если длина собранной логической строки превышает допустимую
 	 */
 	if((this->_settings.maxLine > 0) && (this->_length > static_cast <size_t> (this->_settings.maxLine))){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::LINE_TOO_LONG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::LINE_TOO_LONG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::LINE_TOO_LONG);
 	}
 	/**
@@ -161,6 +197,7 @@ bool awh::codec::toml::Writer::newline() noexcept {
 	 *
 	 * @note Запоминается она здесь, у самой записи, а не спрашивается позже у настроек:
 	 *       настройка вправе смениться между записью строки и судом о ней
+	 *
 	 */
 	this->_written = this->_settings.newline;
 	// Выполняем запись знака конца строки
@@ -177,13 +214,6 @@ bool awh::codec::toml::Writer::newline() noexcept {
  *
  */
 void awh::codec::toml::Writer::fold() noexcept {
-	/**
-	 * Выполняем запись знака конца строки, длину записи не сбрасывая
-	 *
-	 * @note Разбор меряет пределом длины запись целиком - вместе со всеми строками
-	 *       многострочного значения, - и сброс счёта здесь дал бы обход предела:
-	 *       собранный текст читающий отверг бы длиной записи
-	 */
 	// Запоминаем разметку конца строки, на деле применённую
 	this->_written = this->_settings.newline;
 	// Выполняем запись знака конца строки
@@ -230,15 +260,12 @@ bool awh::codec::toml::Writer::ready() noexcept {
 	 * @note Незаписанное значение отличается от незакрытого перечня: первое означает
 	 *       пропущенный вызов записи значения, второе - порядок вызовов, строке текста
 	 *       места не оставляющий
-	 */
-	/**
-	 * Если своего кода отказа запись ещё не несёт
 	 *
 	 * @details Код здесь ставился БЕЗУСЛОВНО, и оттого первопричина ПОДМЕНЯЛАСЬ следствием:
-	 * отвергнутое значение оставляет запись в состоянии «имя есть, значения нет», и всякий
-	 * спрос собранного текста писал поверх причины код `MISSING_VALUE`. Потребитель, спросив
-	 * причину отказа, получал не её, а её последствие - и шёл искать пропущенное значение
-	 * вместо негодной кодировки. Замерено: до спроса текста код 4, после спроса 16
+	 *          отвергнутое значение оставляет запись в состоянии «имя есть, значения нет», и всякий
+	 *          спрос собранного текста писал поверх причины код `MISSING_VALUE`. Потребитель, спросив
+	 *          причину отказа, получал не её, а её последствие - и шёл искать пропущенное значение
+	 *          вместо негодной кодировки. Замерено: до спроса текста код 4, после спроса 16.
 	 *
 	 * @note Правило это в кодеке уже записано - при переносе кода отказа записи документу:
 	 *       первый отказ важнее последующих, ибо он и есть причина. Здесь оно не
@@ -247,9 +274,6 @@ bool awh::codec::toml::Writer::ready() noexcept {
 	 * @warning Потеря причины и ПОДМЕНА её - беды разной тяжести. Потеря видна: код `NONE`
 	 *          при отказе противоречив сам по себе. Подмена не видна вовсе: код правдоподобен
 	 *          и уводит в сторону
-	 */
-	/**
-	 * Если своего кода отказа запись ещё не несёт
 	 *
 	 * @warning Код выбирается ПО ВИДУ незакрытого окружения, а не двоичным выбором
 	 *          «имя без значения либо изъян кодека». Прежде стоял выбор из двух, и всякое
@@ -265,6 +289,9 @@ bool awh::codec::toml::Writer::ready() noexcept {
 	 * @note `INTERNAL` оставлен одному лишь `ROOT`: окружение это ставится при ПУСТОМ
 	 *       перечне уровней, а сюда ход доходит лишь при непустом, - вот там оно и вправду
 	 *       невозможно
+	 *
+	 * @note Если своего кода отказа запись ещё не несёт
+	 *
 	 */
 	if(this->_error == error_t::NONE){
 		/**
@@ -299,7 +326,7 @@ bool awh::codec::toml::Writer::ready() noexcept {
  * @brief Метод проверки пригодности примечания внутри перечня значений
  *
  * @details Проверяет и место записи, и содержимое примечания: записывать его
- * дозволено лишь внутри перечня, собираемого несколькими строками
+ *          дозволено лишь внутри перечня, собираемого несколькими строками.
  *
  * @param text содержимое записываемого примечания
  * @return     результат выполнения операции
@@ -310,7 +337,20 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 	 * Если запись ведётся вне перечня значений
 	 */
 	if(this->context() != context_t::ARRAY){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -318,9 +358,23 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 	 *
 	 * @note Примечание длится до конца строки, и перечень, его несущий, одной
 	 *       строкой не собрать: закрывающая скобка досталась бы содержимому
+	 *
 	 */
 	if(!this->_levels.back().multiline){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -333,9 +387,23 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 		 * @note Примечание перечня занимает одну строку по устройству своему: знак
 		 *       конца строки внутри него оборвал бы его на первой же строке, а хвост
 		 *       достался бы перечню содержимым
+		 *
 		 */
 		if((text[i] == '\n') || controlled(text[i])){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 	}
@@ -357,10 +425,6 @@ void awh::codec::toml::Writer::indent() noexcept {
 /**
  * @brief Метод записи разделителя очередного значения перечня
  *
- * @return результат выполнения операции
- *
- */
-/**
  * @warning Связка эта отказа НЕ ВЫДАЁТ вовсе: единственный выход её - согласие, и
  *          оттого недостижимы все семь строк распространения отказа у зовущих её
  *          с проверкою «if(!separate())». Строки эти пересечение прогонов числило
@@ -374,6 +438,9 @@ void awh::codec::toml::Writer::indent() noexcept {
  * @note Обвязка отказа у зовущих оставлена намеренно: связка ведёт запись, а запись
  *       отказать может впредь - хоть по пределу длины строки, хоть по отказу
  *       нижнего слоя, - и снятие обвязки пришлось бы возвращать по частям
+ *
+ * @return результат выполнения операции
+ *
  */
 bool awh::codec::toml::Writer::separate() noexcept {
 	// Получаем уровень вложенности, на котором ведётся запись
@@ -401,6 +468,7 @@ bool awh::codec::toml::Writer::separate() noexcept {
 		 *
 		 * @note Отступ этот украшающий и ставится наравне с отступом строки самой
 		 *       пары: без него продолжение перечня уходило бы левее её начала
+		 *
 		 */
 		this->indent();
 		/**
@@ -408,6 +476,7 @@ bool awh::codec::toml::Writer::separate() noexcept {
 		 *
 		 * @note Уровень пары глубиной не считается: скобок он не несёт, и отступа
 		 *       ему не полагается
+		 *
 		 */
 		for(size_t i = 0; i < this->_levels.size(); i++){
 			/**
@@ -463,17 +532,19 @@ bool awh::codec::toml::Writer::complete() noexcept {
 		return true;
 	}
 	/**
-	 * Выводим отказ записи вместе с кодом ошибки
-	 *
-	 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: завершение записи
-	 *          зовётся лишь следом за записанным значением, а значение принимается
-	 *          только внутри пары либо перечня - прочие окружения отвергает поверка
-	 *          пригодности прежде. Замерено покрытием: ни набор проверок, ни корпус
-	 *          наречий, ни двадцать тысяч проходов ворошителя его не задели
-	 *
-	 * @note Сносу заход не подлежит: он есть застава последнего рубежа - окружение,
-	 *       впредь заведённое, без него сочло бы значение записанным впустую
+	 * Если включён режим отладки
 	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+	#endif
+	// Объявляем отказ записи
 	return this->refuse(error_t::INTERNAL);
 }
 /**
@@ -488,7 +559,20 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 	 * Если длина составной части имени превышает допустимую
 	 */
 	if((this->_settings.maxKey > 0) && (part.name.length() > static_cast <size_t> (this->_settings.maxKey))){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::KEY_TOO_LONG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::KEY_TOO_LONG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::KEY_TOO_LONG);
 	}
 	// Получаем запись, которой записывается составная часть имени
@@ -517,6 +601,7 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 			 *
 			 * @note Знаки Юникода в имени без кавычек отводит лишь черновик следующей
 			 *       версии описания, и признаются они по настройке читающего
+			 *
 			 */
 			if(!this->_settings.unicode || (static_cast <uint8_t> (part.name[i]) < 0x80)){
 				// Запоминаем непригодность имени к записи без кавычек
@@ -548,7 +633,20 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 			 * Если смена ограды имени настройками не дозволена
 			 */
 			if(!this->_settings.promote){
-				// Выводим отказ записи вместе с кодом ошибки
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message((part.name.empty() ? error_t::EMPTY_KEY : error_t::INVALID_KEY)));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message((part.name.empty() ? error_t::EMPTY_KEY : error_t::INVALID_KEY)));
+				#endif
+				// Объявляем отказ записи
 				return this->refuse((part.name.empty() ? error_t::EMPTY_KEY : error_t::INVALID_KEY));
 			}
 			// Выполняем смену ограды имени на основную строку
@@ -577,8 +675,9 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 /**
  * @brief Метод записи составного имени ключа
  *
- * @param path записываемое составное имя ключа
- * @return     результат выполнения операции
+ * @param parts указатель на составные части имени ключа
+ * @param count количество составных частей имени ключа
+ * @return      результат выполнения операции
  *
  */
 bool awh::codec::toml::Writer::naming(const part_t * parts, const size_t count) noexcept {
@@ -586,14 +685,40 @@ bool awh::codec::toml::Writer::naming(const part_t * parts, const size_t count) 
 	 * Если составное имя ключа пусто
 	 */
 	if((parts == nullptr) || (count == 0)){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {parts, count}, log::flag_t::CRITICAL, codec::toml::message(error_t::EMPTY_KEY));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::EMPTY_KEY));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::EMPTY_KEY);
 	}
 	/**
 	 * Если количество составных частей имени превышает допустимое
 	 */
 	if((this->_settings.maxParts > 0) && (count > static_cast <size_t> (this->_settings.maxParts))){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {parts, count}, log::flag_t::CRITICAL, codec::toml::message(error_t::PARTS_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::PARTS_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::PARTS_EXCEEDED);
 	}
 	/**
@@ -640,6 +765,7 @@ bool awh::codec::toml::Writer::carried(const string_view text, const string_t qu
 				 *
 				 * @note Управляющих последовательностей дословная строка не признаёт, и
 				 *       записать ими знак, оградой не несомый, там нечем
+				 *
 				 */
 				if((text[i] == '\'') || (text[i] == '\n') || (text[i] == '\r') || controlled(text[i]))
 					// Выводим отрицательный результат проверки
@@ -656,6 +782,7 @@ bool awh::codec::toml::Writer::carried(const string_view text, const string_t qu
 			 * @note Разбор приводит пару «возврат каретки - перевод строки» к одному
 			 *       переводу, а управляющих последовательностей дословная ограда не
 			 *       признаёт: записать возврат каретки ею нечем
+			 *
 			 */
 			if(text.find('\r') != string_view::npos)
 				// Выводим отрицательный результат проверки
@@ -670,9 +797,9 @@ bool awh::codec::toml::Writer::carried(const string_view text, const string_t qu
 			 * @note Одинарная кавычка в конце содержимого ограде не мешает: описание
 			 *       дозволяет двум кавычкам стоять перед закрывающей оградой, и разбор
 			 *       отличает четыре кавычки подряд от трёх, а пять - от четырёх
-			 */
-			/**
+			 *
 			 * Выполняем перебор всех знаков строкового значения
+			 *
 			 */
 			for(size_t i = 0; i < text.length(); i++){
 				/**
@@ -691,6 +818,7 @@ bool awh::codec::toml::Writer::carried(const string_view text, const string_t qu
 	 *
 	 * @note Основная строка несёт всякое содержимое: знак, оградой не несомый,
 	 *       записывается там управляющей последовательностью
+	 *
 	 */
 	return true;
 }
@@ -713,7 +841,20 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 		 * Если смена ограды строки настройками не дозволена
 		 */
 		if(!this->_settings.promote){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_VALUE);
 		}
 		/**
@@ -721,10 +862,10 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 		 */
 		selected = ((selected == string_t::MULTILINE_LITERAL) ? string_t::MULTILINE_BASIC : string_t::BASIC);
 	}
-	// Признак многострочной записи строкового значения
-	const bool multiline = ((selected == string_t::MULTILINE_BASIC) || (selected == string_t::MULTILINE_LITERAL));
 	// Признак дословной записи строкового значения
 	const bool literal = ((selected == string_t::LITERAL) || (selected == string_t::MULTILINE_LITERAL));
+	// Признак многострочной записи строкового значения
+	const bool multiline = ((selected == string_t::MULTILINE_BASIC) || (selected == string_t::MULTILINE_LITERAL));
 	/**
 	 * Если строка записывается дословной оградой
 	 */
@@ -743,6 +884,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 		 *       становился многострочным, хотя человек написал его одною строкой.
 		 *       Перезапись тем самым не сходилась сама с собою. Нашло это сличение двух
 		 *       путей перезаписи на корпусе toml-test
+		 *
 		 */
 		if(multiline && !text.empty() && (text.front() == '\n'))
 			// Выполняем запись знака конца строки внутри записи
@@ -761,6 +903,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 	 * конца строки
 	 *
 	 * @note Правило то же, что и у дословной ограды выше: знак ставится лишь по нужде
+	 *
 	 */
 	if(multiline && !text.empty() && (text.front() == '\n'))
 		// Выполняем запись знака конца строки внутри записи
@@ -791,6 +934,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 				 *
 				 * @note Кавычка внутри многострочной ограды ограждения не требует:
 				 *       требует его лишь та, что слилась бы с закрывающей оградой
+				 *
 				 */
 				if(multiline && (text.compare(i, 3, "\"\"\"") != 0) && ((i + 1) < text.length())){
 					// Выполняем запись двойной кавычки как она есть
@@ -841,6 +985,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 				 *       приводит пару «возврат каретки - перевод строки» к одному
 				 *       переводу, и записанный собою возврат каретки при обратном
 				 *       чтении пропадал бы молча
+				 *
 				 */
 				this->append("\\r");
 				// Выполняем переход к следующему знаку
@@ -893,9 +1038,23 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(length <= 0){
-				// Выводим отказ записи вместе с кодом ошибки
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				#endif
+				// Объявляем отказ записи
 				return this->refuse(error_t::INTERNAL);
 			}
 			// Выполняем запись управляющей последовательности знака
@@ -936,14 +1095,27 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * @note Проверка ведётся по календарю, а не по пределам полей: «2026-02-31»
 		 *       пределам отвечает, а датой не является, и записать её значило бы собрать
 		 *       текст, который читающий отвергнет
+		 *
 		 */
 		if((stamp.date.year > 9999) || !toml::calendar(stamp.date.year, stamp.date.month, stamp.date.day)){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Выполняем запись даты отметки времени
-		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%04u-%02u-%02u",
-		 static_cast <uint32_t> (stamp.date.year), static_cast <uint32_t> (stamp.date.month), static_cast <uint32_t> (stamp.date.day));
+		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%04u-%02u-%02u", static_cast <uint32_t> (stamp.date.year), static_cast <uint32_t> (stamp.date.month), static_cast <uint32_t> (stamp.date.day));
 		/**
 		 * Если запись даты отметки времени выполнить не удалось
 		 *
@@ -969,9 +1141,23 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(length <= 0){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись даты отметки времени
@@ -992,15 +1178,28 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 *
 		 * @note Секунда в шестьдесят принимается намеренно: описание дозволяет ею
 		 *       записывать добавочную секунду координации
+		 *
 		 */
 		if((stamp.time.hour > 23) || (stamp.time.minute > 59) || (stamp.time.second > 60) ||
 		   (stamp.time.digits > MAX_FRACTION) || (stamp.time.nanosecond > 999999999)){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Выполняем запись времени отметки
-		int32_t length = ::snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u",
-		 static_cast <uint32_t> (stamp.time.hour), static_cast <uint32_t> (stamp.time.minute), static_cast <uint32_t> (stamp.time.second));
+		int32_t length = ::snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u", static_cast <uint32_t> (stamp.time.hour), static_cast <uint32_t> (stamp.time.minute), static_cast <uint32_t> (stamp.time.second));
 		/**
 		 * Если запись времени отметки выполнить не удалось
 		 *
@@ -1025,9 +1224,23 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(length <= 0){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись времени отметки
@@ -1059,9 +1272,23 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(length != static_cast <int32_t> (MAX_FRACTION)){
-				// Выводим отказ записи вместе с кодом ошибки
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				#endif
+				// Объявляем отказ записи
 				return this->refuse(error_t::INTERNAL);
 			}
 			// Выполняем запись разделителя доли секунды
@@ -1071,6 +1298,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 *
 			 * @note Разряды эти значащи: «01:02:03.100» и «01:02:03.1» задают одно и то
 			 *       же время, но выбраны они человеком, и подменять их не следует
+			 *
 			 */
 			this->append(string_view(fraction, static_cast <size_t> (stamp.time.digits)));
 		}
@@ -1083,7 +1311,20 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если смещение часового пояса отсутствует
 		 */
 		if(stamp.offset == NO_TIMEZONE){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		/**
@@ -1099,7 +1340,20 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если смещение часового пояса выходит за отведённый ему отрезок значений
 		 */
 		if((stamp.offset < -(23 * 60 + 59)) || (stamp.offset > (23 * 60 + 59))){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Получаем величину смещения часового пояса в минутах
@@ -1110,10 +1364,9 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * @note Нулевое смещение знака не несёт, и знак его берётся отдельным признаком:
 		 *       описание отводит записи «-00:00» смысл, от «+00:00» отличный - первою
 		 *       обозначено смещение неизвестное, второю смещение, заведомо нулевое
+		 *
 		 */
-		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%c%02u:%02u",
-		 (((stamp.offset < 0) || ((stamp.offset == 0) && stamp.negative)) ? '-' : '+'),
-		 (value / 60), (value % 60));
+		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%c%02u:%02u", (((stamp.offset < 0) || ((stamp.offset == 0) && stamp.negative)) ? '-' : '+'), (value / 60), (value % 60));
 		/**
 		 * Если запись смещения часового пояса выполнить не удалось
 		 *
@@ -1139,9 +1392,23 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(length <= 0){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись смещения часового пояса
@@ -1153,7 +1420,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 /**
  * @brief Метод записи объявления таблицы
  *
- * @param path  записываемое имя таблицы
+ * @param parts указатель на составные части имени таблицы
+ * @param count количество составных частей имени таблицы
  * @param array признак объявления очередной таблицы набора таблиц
  * @return      результат выполнения операции
  *
@@ -1166,6 +1434,7 @@ bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count,
 	 *          поверкой имени тем же кодом и с тем же откатом текста, и порча захода
 	 *          ни одной проверки не роняет - замерено. Проверкою он не закрепляется
 	 *          намеренно: закреплять в нём нечего
+	 *
 	 */
 	if(!this->ready())
 		// Выводим отрицательный результат выполнения операции
@@ -1176,6 +1445,7 @@ bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count,
 	 * @note Пустая строка не ставится ни в начале текста, ни следом за уже
 	 *       записанной пустой строкой: иначе текст рос бы пустыми строками с каждой
 	 *       перезаписью
+	 *
 	 */
 	if(this->_settings.separated && !this->_text.empty()){
 		/**
@@ -1184,6 +1454,7 @@ bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count,
 		 * @warning Спрашивается применённое, а не настройка: при смене разметки с CRLF на
 		 *          LF пустая строка не узнавалась вовсе, и разделитель ставил вторую -
 		 *          замерено щупом
+		 *
 		 */
 		const string_view newline = toml::newline(this->_written);
 		// Получаем длину пары знаков конца строки
@@ -1258,6 +1529,7 @@ bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count,
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(!this->blank())
 				// Выводим отрицательный результат выполнения операции
@@ -1295,11 +1567,14 @@ const awh::codec::toml::Writer::settings_t & awh::codec::toml::Writer::settings(
  * @brief Метод установки настроек записи
  *
  * @param settings настройки записи текста настроек
+ * @return         признак принятия настроек записи
  *
  */
-void awh::codec::toml::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::toml::Writer::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек записи текста настроек
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Метод записи объявления таблицы
@@ -1343,6 +1618,7 @@ bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1368,6 +1644,7 @@ bool awh::codec::toml::Writer::table(const string_view name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1377,6 +1654,7 @@ bool awh::codec::toml::Writer::table(const string_view name) noexcept {
 	 *
 	 * @note Имя собирается на стопе, а не перечнем: перечень выделял бы память на
 	 *       каждое объявление
+	 *
 	 */
 	part_t part;
 	// Устанавливаем имя записываемой таблицы
@@ -1426,6 +1704,7 @@ bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1451,6 +1730,7 @@ bool awh::codec::toml::Writer::arrayTable(const string_view name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1463,10 +1743,11 @@ bool awh::codec::toml::Writer::arrayTable(const string_view name) noexcept {
 	return this->declare(&part, 1, true);
 }
 /**
- * @brief Метод записи имени ключа пары
+ * @brief Метод записи имени ключа пары со знаком равенства
  *
- * @param path записываемое составное имя ключа
- * @return     результат выполнения операции
+ * @param parts указатель на составные части имени ключа
+ * @param count количество составных частей имени ключа
+ * @return      результат выполнения операции
  *
  */
 bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) noexcept {
@@ -1504,6 +1785,7 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(!this->separate())
 				// Выводим отрицательный результат выполнения операции
@@ -1512,11 +1794,19 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
 		// Если запись ведётся в ином окружении
 		default: {
 			/**
-			 * Запоминаем код ошибки записи
-			 *
-			 * @note Имени ключа посреди перечня места нет: значения перечня имён не
-			 *       имеют, а незаписанное значение пары означает пропущенный вызов
+			 * Если включён режим отладки
 			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {parts, count}, log::flag_t::CRITICAL, codec::toml::message((this->context() == context_t::KEYED) ? error_t::MISSING_VALUE : error_t::INVALID_KEY));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message((this->context() == context_t::KEYED) ? error_t::MISSING_VALUE : error_t::INVALID_KEY));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse((this->context() == context_t::KEYED) ? error_t::MISSING_VALUE : error_t::INVALID_KEY);
 		}
 	}
@@ -1536,7 +1826,7 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
 /**
  * @brief Метод записи имени ключа пары
  *
- * @param name записываемое имя ключа
+ * @param path записываемое составное имя ключа
  * @return     результат выполнения операции
  *
  */
@@ -1575,6 +1865,7 @@ bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1600,6 +1891,7 @@ bool awh::codec::toml::Writer::key(const string_view name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1609,6 +1901,7 @@ bool awh::codec::toml::Writer::key(const string_view name) noexcept {
 	 *
 	 * @note Имя собирается на стопе, а не перечнем: перечень выделял бы память на
 	 *       каждую записанную пару
+	 *
 	 */
 	part_t part;
 	// Устанавливаем имя записываемого ключа
@@ -1616,13 +1909,6 @@ bool awh::codec::toml::Writer::key(const string_view name) noexcept {
 	// Выполняем запись имени ключа пары
 	return this->keyed(&part, 1);
 }
-/**
- * @brief Метод записи значения
- *
- * @param value записываемое значение
- * @return      результат выполнения операции
- *
- */
 /**
  * @brief Метод записи логического значения
  *
@@ -1659,6 +1945,7 @@ bool awh::codec::toml::Writer::value(const uint64_t value) noexcept {
 	 * @note Отказ обязателен: описание TOML целых без знака не несёт вовсе, и приведение
 	 *       со знаком переменило бы число молча - потребитель получил бы текст с числом
 	 *       отрицательным вместо затребованного
+	 *
 	 */
 	if(value > static_cast <uint64_t> (std::numeric_limits <int64_t>::max())){
 		// Запоминаем код отказа записи значения
@@ -1697,6 +1984,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 	 *
 	 * @note Правило это оставлено потребителю, кому кодировка безразлична вовсе: разбор
 	 *       такой записи отвечает отказом, и потребитель, правило выбравший, о том знает
+	 *
 	 */
 	if(this->_settings.malformed == malformed_t::PASS){
 		// Выдаём срез исходной записи
@@ -1713,6 +2001,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 	 *
 	 * @note Разбор ведётся тем же телом, каким его ведёт чтение: второе такое тело
 	 *       разошлось бы с первым, и запись выдавала бы то, чего чтение не принимает
+	 *
 	 */
 	while(position < text.size()){
 		// Разобранный знак Юникода
@@ -1731,6 +2020,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 			 * @note Годная запись не копируется вовсе до первой негодной последовательности:
 			 *       записи такие составляют подавляющее большинство, и лишний обход их
 			 *       лёг бы платою на всякую запись ради редкого случая
+			 *
 			 */
 			if(malformed)
 				// Выполняем перенос годной последовательности
@@ -1745,6 +2035,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 		 *
 		 * @note Отвергается она **ничего не записав**: отказ посреди записи оставил бы в
 		 *       тексте имя поля без значения, а это хуже негодного байта
+		 *
 		 */
 		if(this->_settings.malformed == malformed_t::REFUSE){
 			/**
@@ -1753,6 +2044,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 			 * @note Код тот же, каким отвечает писатель наречия YAML на ту же подачу: тела
 			 *       разбора кодировки у трёх кодеков сведены к одному, и число знаков
 			 *       замены на одной подаче у них тоже одно
+			 *
 			 */
 			this->_error = error_t::INVALID_ENCODING;
 			// Выводим признак непригодности записи
@@ -1775,6 +2067,7 @@ bool awh::codec::toml::Writer::brought(const string_view text, string & result, 
 		 * @note Длина здесь есть наибольшая часть последовательности, разбором отмеренная,
 		 *       и знак замены положен на неё один. Переход при том обязан двинуться хотя бы
 		 *       на байт: длина нулевая остановила бы обход записи навсегда
+		 *
 		 */
 		position += ((length > 0) ? length : 1);
 	}
@@ -1798,7 +2091,11 @@ bool awh::codec::toml::Writer::value(const string_view value) noexcept {
 	return this->text(value);
 }
 /**
- * Запись значения в содержимое записи
+ * @brief Метод записи значения
+ *
+ * @param value записываемое значение
+ * @return      результат выполнения операции
+ *
  */
 bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 	/**
@@ -1807,6 +2104,7 @@ bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1843,11 +2141,19 @@ bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 			return this->stamp(value.stamp, value.type);
 	}
 	/**
-	 * Выводим отказ записи вместе с кодом ошибки
-	 *
-	 * @note Перечень и таблица значениями не записываются: составное значение
-	 *       собирается парой вызовов открытия и закрытия
+	 * Если включён режим отладки
 	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
+	#endif
+	// Объявляем отказ записи
 	return this->refuse(error_t::INVALID_VALUE);
 }
 /**
@@ -1869,14 +2175,15 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Накопитель записи, к годной кодировке приведённой
-	string repaired;
+	string repaired = "";
 	// Срез записи, к записи пригодной
-	string_view record;
+	string_view record = "";
 	/**
 	 * Если привести строковое значение к годной кодировке не удалось
 	 *
@@ -1884,7 +2191,7 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 	 *          строка, её нарушающая, наречию невыразима вовсе. Прежде она писалась КАК
 	 *          ЕСТЬ: запись выходила такою, что СОБСТВЕННЫЙ читающий отвергал её кодом
 	 *          негодной кодировки, - то есть кодек порождал текст, которого сам прочесть
-	 *          не может. Найдено разбором круга по краевым величинам
+	 *          не может. Найдено разбором круга по краевым величинам.
 	 *
 	 * @note Отказ БЕЗУСЛОВНЫЙ, стоявший здесь прежде, снят: довод его гласил, что отказ
 	 *       лучше подмены, ибо подмена меняет данные потребителя молча, - и довод тот
@@ -1893,6 +2200,7 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 	 *       довода, друг другу перечащих, стояли в одной рамке у одной руки
 	 *
 	 * @note Выбор оставлен потребителю: `REFUSE` возвращает прежнее обхождение целиком
+	 *
 	 */
 	if(!this->brought(text, repaired, record))
 		// Выводим отрицательный результат выполнения операции
@@ -1924,13 +2232,27 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -1956,6 +2278,7 @@ bool awh::codec::toml::Writer::boolean(const bool value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1987,13 +2310,27 @@ bool awh::codec::toml::Writer::boolean(const bool value) noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	// Выполняем запись логического значения
@@ -2016,6 +2353,7 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2047,13 +2385,27 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value, radix}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -2062,9 +2414,23 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 	 * @note Описание отводит знак числа лишь десятичной записи: записать
 	 *       отрицательное число шестнадцатеричным нечем, и молча сменить систему
 	 *       счисления запись не вправе - человек выбрал её сам
+	 *
 	 */
 	if((radix != radix_t::DECIMAL) && (value < 0)){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_NUMBER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_NUMBER));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NUMBER);
 	}
 	// Хранилище записи целого числа
@@ -2141,9 +2507,23 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INTERNAL);
 	}
 	// Выполняем запись целого числа
@@ -2165,6 +2545,7 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2196,19 +2577,33 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если записываемое число не является числом
 	 */
-	if(std::isnan(value)){
+	if(::isnan(value)){
 		/**
 		 * Выполняем запись обозначения нечисла вместе со знаком
 		 *
@@ -2221,15 +2616,16 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 		 *
 		 * @note Бесконечность рядом знак сохраняла всегда, и разнобой этот держался
 		 *       лишь описанием, а не устройством
+		 *
 		 */
-		this->append(std::signbit(value) ? "-nan" : "nan");
+		this->append(::signbit(value) ? "-nan" : "nan");
 		// Выполняем завершение записи значения
 		return this->complete();
 	}
 	/**
 	 * Если записываемое число бесконечно
 	 */
-	if(std::isinf(value)){
+	if(::isinf(value)){
 		// Выполняем запись обозначения бесконечности
 		this->append((value < 0) ? "-inf" : "inf");
 		// Выполняем завершение записи значения
@@ -2248,8 +2644,9 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 *
 	 * @note Подмена знака десятичной точки локали точкой более не нужна: запись
 	 *       ведётся по правилам местности «C» и от настроек приложения не зависит
+	 *
 	 */
-	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	// Определяем длину записи числа с плавающей точкой
 	length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 	/**
@@ -2271,9 +2668,23 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INTERNAL);
 	}
 	// Выполняем запись числа с плавающей точкой
@@ -2283,6 +2694,7 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 *
 	 * @note Дробная часть здесь не украшение: «1» описание читает целым числом, и
 	 *       без неё число с плавающей точкой при обратном чтении сменило бы тип
+	 *
 	 */
 	if((::memchr(buffer, '.', static_cast <size_t> (length)) == nullptr) &&
 	   (::memchr(buffer, 'e', static_cast <size_t> (length)) == nullptr) &&
@@ -2307,6 +2719,7 @@ bool awh::codec::toml::Writer::stamp(const stamp_t & stamp, const type_t type) n
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2338,13 +2751,27 @@ bool awh::codec::toml::Writer::stamp(const stamp_t & stamp, const type_t type) n
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -2352,7 +2779,20 @@ bool awh::codec::toml::Writer::stamp(const stamp_t & stamp, const type_t type) n
 	 */
 	if((type != type_t::OFFSET_DATETIME) && (type != type_t::LOCAL_DATETIME) &&
 	   (type != type_t::LOCAL_DATE) && (type != type_t::LOCAL_TIME)){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_DATETIME);
 	}
 	/**
@@ -2368,8 +2808,8 @@ bool awh::codec::toml::Writer::stamp(const stamp_t & stamp, const type_t type) n
  * @brief Метод проверки возможности открыть составное значение
  *
  * @details Проверяет и окружение записи, и глубину вложенности: перечень и встроенная
- * таблица открываются по одним и тем же правилам, и держать их двумя телами значило бы
- * развести своды правил при первой же правке одного из них
+ *          таблица открываются по одним и тем же правилам, и держать их двумя телами значило бы
+ *          развести своды правил при первой же правке одного из них.
  *
  * @return результат выполнения операции
  *
@@ -2402,13 +2842,27 @@ bool awh::codec::toml::Writer::nestable() noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->separate())
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	// Глубина вложенности записываемого значения
@@ -2419,6 +2873,7 @@ bool awh::codec::toml::Writer::nestable() noexcept {
 	 * @note Уровень пары глубиной не считается: разбор меряет глубину вложенностью
 	 *       перечней и встроенных таблиц друг в друга, и счёт уровня пары наравне с
 	 *       ними отвергал бы запись того, что разбор принимает
+	 *
 	 */
 	for(auto & level : this->_levels){
 		/**
@@ -2453,10 +2908,25 @@ bool awh::codec::toml::Writer::nestable() noexcept {
 	 *          огранение настройки записи потолком остаётся работою невыполненной: она
 	 *          видима потребителю - настройка, поднятая выше потолка, перестала бы
 	 *          подниматься, - а решения такие выносятся за пределы кодека
+	 *
 	 */
-	if(depth >= static_cast <size_t> (this->_settings.maxDepth))
-		// Выводим отказ записи вместе с кодом ошибки
+	if(depth >= static_cast <size_t> (this->_settings.maxDepth)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::DEPTH_EXCEEDED);
+	}
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -2474,6 +2944,7 @@ bool awh::codec::toml::Writer::arrayOpen(const bool multiline) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2504,6 +2975,7 @@ bool awh::codec::toml::Writer::arrayClose() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2512,7 +2984,20 @@ bool awh::codec::toml::Writer::arrayClose() noexcept {
 	 * Если запись ведётся вне перечня значений
 	 */
 	if(this->context() != context_t::ARRAY){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNCLOSED_ARRAY));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNCLOSED_ARRAY));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNCLOSED_ARRAY);
 	}
 	/**
@@ -2528,6 +3013,7 @@ bool awh::codec::toml::Writer::arrayClose() noexcept {
 		 *
 		 * @note Отступ закрывающей скобки на один уровень мельче отступа значений:
 		 *       скобка эта принадлежит объемлющему уровню, а не закрываемому
+		 *
 		 */
 		for(size_t i = 0; (i + 1) < this->_levels.size(); i++){
 			/**
@@ -2558,6 +3044,7 @@ bool awh::codec::toml::Writer::inlineOpen() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2575,6 +3062,7 @@ bool awh::codec::toml::Writer::inlineOpen() noexcept {
 	 *
 	 * @note Многострочной встроенная таблица не бывает: описание переноса строки
 	 *       внутри неё не дозволяет вовсе
+	 *
 	 */
 	this->_levels.push_back(level_t(context_t::INLINE, false));
 	// Выводим положительный результат выполнения операции
@@ -2593,6 +3081,7 @@ bool awh::codec::toml::Writer::inlineClose() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2601,7 +3090,20 @@ bool awh::codec::toml::Writer::inlineClose() noexcept {
 	 * Если запись ведётся вне встроенной таблицы
 	 */
 	if(this->context() != context_t::INLINE){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNCLOSED_INLINE_TABLE);
 	}
 	/**
@@ -2635,6 +3137,7 @@ bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2677,9 +3180,23 @@ bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
 			 * @note Оградить управляющий знак в примечании нечем: управляющих
 			 *       последовательностей примечание не признаёт, а обрезать содержимое
 			 *       запись не вправе
+			 *
 			 */
 			if(controlled(line[i])){
-				// Выводим отказ записи вместе с кодом ошибки
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+				#endif
+				// Объявляем отказ записи
 				return this->refuse(error_t::INVALID_CHARACTER);
 			}
 		}
@@ -2702,12 +3219,16 @@ bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
 			return false;
 		// Выполняем переход к следующей строке примечания
 		start = (stop + 1);
+	/**
+	 * Если мы прошли ещё не все символы текста
+	 */
 	} while(start <= text.length());
 	/**
 	 * Запоминаем, что к записанной строке примечание дописать нельзя
 	 *
 	 * @note Строка примечания примечанием и является: дописывать к ней второе
 	 *       примечание нечем - знак его начала достался бы содержимому первого
+	 *
 	 */
 	this->_trailable = false;
 	// Выводим положительный результат выполнения операции
@@ -2731,6 +3252,7 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2745,7 +3267,20 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 	 * Если к последней записанной строке примечание дописать нельзя
 	 */
 	if(!this->_trailable || this->_text.empty()){
-		// Выводим отказ записи вместе с кодом ошибки
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
@@ -2758,9 +3293,23 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 		 * @note Примечание в конце строки занимает одну строку по устройству своему:
 		 *       знак конца строки внутри него оборвал бы его на первой же строке, а
 		 *       хвост достался бы тексту настроек содержимым
+		 *
 		 */
 		if((text[i] == '\n') || controlled(text[i])){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 	}
@@ -2770,6 +3319,7 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 	 * @warning Спрашивается применённое, а не настройка: при смене разметки с CRLF на LF
 	 *          дописка снимала один перевод строки из двух знаков и оставляла одинокий
 	 *          возврат каретки посреди строки, отвечая успехом. Замерено щупом
+	 *
 	 */
 	const string_view newline = toml::newline(this->_written);
 	/**
@@ -2786,6 +3336,7 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 		 *       длины запись целиком - вместе со всеми строками многострочного
 		 *       значения, - а по тексту видна лишь последняя из них, и предел на
 		 *       записи со многими строками обходился бы примечанием
+		 *
 		 */
 		this->_length = this->_restore;
 	}
@@ -2809,8 +3360,8 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
  * @brief Метод записи примечания внутри перечня значений
  *
  * @details Примечание записывается своей строкой перечня, между значениями его.
- * Перечень, примечание несущий, записывается несколькими строками по устройству:
- * примечание оканчивается концом строки, и в одну строку такой перечень не собрать
+ *          Перечень, примечание несущий, записывается несколькими строками по устройству:
+ *          примечание оканчивается концом строки, и в одну строку такой перечень не собрать.
  *
  * @param text содержимое записываемого примечания
  * @return     результат выполнения операции
@@ -2827,6 +3378,7 @@ bool awh::codec::toml::Writer::remark(const string_view text) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2872,8 +3424,8 @@ bool awh::codec::toml::Writer::remark(const string_view text) noexcept {
  * @brief Метод дописывания примечания к значению перечня
  *
  * @details Примечание дописывается в конец строки последнего записанного значения
- * перечня - вместе с запятой, его отделяющей. Служит перезаписи перечня без
- * обеднения его примечаниями
+ *          перечня - вместе с запятой, его отделяющей. Служит перезаписи перечня без
+ *          обеднения его примечаниями.
  *
  * @param text      содержимое дописываемого примечания
  * @param separator признак того, что за примечанием следует значение
@@ -2891,6 +3443,7 @@ bool awh::codec::toml::Writer::remarked(const string_view text, const bool separ
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2908,6 +3461,7 @@ bool awh::codec::toml::Writer::remarked(const string_view text, const bool separ
 	 *
 	 * @note Запятая ставится перед примечанием, а не после него: примечание длится
 	 *       до конца строки, и запятая, за ним записанная, досталась бы содержимому
+	 *
 	 */
 	if(separator && (level.count > 0) && !level.separated){
 		// Выполняем запись разделителя значений перечня
@@ -2944,6 +3498,7 @@ bool awh::codec::toml::Writer::blank() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2983,6 +3538,7 @@ const string & awh::codec::toml::Writer::text() noexcept {
 	 *
 	 * @note Судится сама рваность, а не признак ошибки: отказ, ничего дописать не
 	 *       успевший, текста не портит, и запись после него вправе продолжаться
+	 *
 	 */
 	if(this->_torn)
 		// Выводим пустой результат выдачи собранного текста настроек
@@ -3000,43 +3556,26 @@ const string & awh::codec::toml::Writer::text() noexcept {
  * @brief Метод сброса записи в исходное состояние
  *
  */
-void awh::codec::toml::Writer::clear() noexcept {
-	// Выполняем сброс кода ошибки записи
-	this->_error = error_t::NONE;
-	// Выполняем сброс признака объявления таблицы
-	this->_tabled = false;
-	// Выполняем сброс признака возможности дописать примечание
-	this->_trailable = false;
-	// Выполняем сброс признака текста, отказом оборванного
-	this->_torn = false;
+void awh::codec::toml::Writer::reset() noexcept {
 	// Выполняем сброс длины собираемой логической строки
 	this->_length = 0;
 	// Выполняем сброс длины записи, знаком конца строки завершённой
 	this->_restore = 0;
+	// Выполняем сброс признака текста, отказом оборванного
+	this->_torn = false;
+	// Выполняем сброс признака объявления таблицы
+	this->_tabled = false;
+	// Выполняем сброс признака возможности дописать примечание
+	this->_trailable = false;
+	// Выполняем сброс кода ошибки записи
+	this->_error = error_t::NONE;
 	// Выполняем очистку собираемого текста настроек
 	this->_text.clear();
 	// Выполняем очистку стопы уровней вложенности
 	this->_levels.clear();
 }
 /**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Writer::Writer() noexcept :
- _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0),
- _written(newline_t::LF) {}
-/**
- * @brief Конструктор
- *
- * @param settings настройки записи текста настроек
- *
- */
-awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
- _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0),
- _written(settings.newline), _settings(settings) {}
-
-/**
- * @brief Шаблон типа записываемого числа
+ * @brief Шаблон метода записи пары с числовым значением
  *
  * @tparam T тип записываемого числа
  *
@@ -3062,6 +3601,7 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
 	 *
 	 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
 	 *       причислен к целым, и без этого истина записалась бы единицей
+	 *
 	 */
 	if constexpr(is_same <T, bool>::value)
 		// Выполняем запись логического значения
@@ -3082,9 +3622,23 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
 		 * @note Описание отводит целому числу шестьдесят четыре разряда со знаком, и
 		 *       записать число сверх того нечем: приведение по кругу выдало бы
 		 *       отрицательное значение
+		 *
 		 */
 		if(static_cast <uint64_t> (value) > static_cast <uint64_t> (numeric_limits <int64_t>::max())){
-			// Выводим отказ записи вместе с кодом ошибки
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {key, value}, log::flag_t::CRITICAL, codec::toml::message(error_t::NUMBER_OVERFLOW));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML writing failed: %s", log::flag_t::CRITICAL, codec::toml::message(error_t::NUMBER_OVERFLOW));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::NUMBER_OVERFLOW);
 		}
 		// Выполняем запись целого числа без знака
@@ -3093,7 +3647,6 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
 	// Выполняем запись целого числа со знаком
 	else return this->integer(static_cast <int64_t> (value));
 }
-
 /**
  * Выполняем порождение приёма записи пары с числовым значением
  *
@@ -3108,8 +3661,9 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
  *       в него попавший, вышел бы числом 122 молча. Отказ сборки здесь честнее - для знака
  *       есть запись текстом. Виды `signed char` и `unsigned char` порождаются: они берутся
  *       числами осознанно
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <bool> (const string_view, const bool) noexcept;
+template bool awh::codec::toml::Writer::number <bool> (const string_view, const bool) noexcept;
 /**
  * @note Вид `char` порождается наравне с `signed char` и `unsigned char`, и лишним он НЕ
  *       является: у систем Sun вид `int8_t` объявлен КАК `char`, а не как `signed char`
@@ -3127,26 +3681,39 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <bool> (con
  *          связки `ini::numeric`, где довод при ней и стоит. Пять прочих мест остались, и
  *          вскрылись они лишь раскладкою назавтра. Разряд тот же, что у тел разбора UTF-8:
  *          починка, приложенная к одному списку из нескольких
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <char> (const string_view, const char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <signed char> (const string_view, const signed char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <short> (const string_view, const short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned short> (const string_view, const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int> (const string_view, const int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned int> (const string_view, const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <long> (const string_view, const long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned long> (const string_view, const unsigned long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <long long> (const string_view, const long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned long long> (const string_view, const unsigned long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <float> (const string_view, const float) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <double> (const string_view, const double) noexcept;
-
+template bool awh::codec::toml::Writer::number <char> (const string_view, const char) noexcept;
+template bool awh::codec::toml::Writer::number <signed char> (const string_view, const signed char) noexcept;
+template bool awh::codec::toml::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
+template bool awh::codec::toml::Writer::number <short> (const string_view, const short) noexcept;
+template bool awh::codec::toml::Writer::number <unsigned short> (const string_view, const unsigned short) noexcept;
+template bool awh::codec::toml::Writer::number <int> (const string_view, const int) noexcept;
+template bool awh::codec::toml::Writer::number <unsigned int> (const string_view, const unsigned int) noexcept;
+template bool awh::codec::toml::Writer::number <long> (const string_view, const long) noexcept;
+template bool awh::codec::toml::Writer::number <unsigned long> (const string_view, const unsigned long) noexcept;
+template bool awh::codec::toml::Writer::number <long long> (const string_view, const long long) noexcept;
+template bool awh::codec::toml::Writer::number <unsigned long long> (const string_view, const unsigned long long) noexcept;
+template bool awh::codec::toml::Writer::number <float> (const string_view, const float) noexcept;
+template bool awh::codec::toml::Writer::number <double> (const string_view, const double) noexcept;
 /**
- * Возвращаем системные макросы потребителю библиотеки:
- * имена, подавленные в начале файла, снова принадлежат ему
+ * @brief Конструктор
+ *
  */
-#include <sys/macro/restore.hpp>
+awh::codec::toml::Writer::Writer() noexcept :
+ _torn(false), _tabled(false), _trailable(false),
+ _length(0), _restore(0), _error(error_t::NONE), _written(newline_t::LF) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста настроек
+ *
+ */
+awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
+ _torn(false), _tabled(false), _trailable(false),
+ _length(0), _restore(0), _error(error_t::NONE),
+ _written(settings.newline), _settings(settings) {}
+
 /**
  * @brief Конструктор
  *
@@ -3154,4 +3721,11 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <double> (c
  * @param multiline признак многострочной записи перечня
  *
  */
-awh::codec::toml::Writer::Level::Level(const context_t context, const bool multiline) noexcept : context(context), count(0), multiline(multiline), separated(false), remarked(false) {}
+awh::codec::toml::Writer::Level::Level(const context_t context, const bool multiline) noexcept :
+ remarked(false), multiline(multiline), separated(false), count(0), context(context) {}
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include <sys/macro/restore.hpp>

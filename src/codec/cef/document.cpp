@@ -90,6 +90,25 @@ namespace {
 	using namespace awh::codec::cef;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_CEF_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_CEF_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -128,7 +147,7 @@ namespace {
 	 * @return     звено пути с поставленной отменяющей записью
 	 *
 	 */
-	string encode(const string_view name) noexcept {
+	static AWH_CEF_INLINE string encode(const string_view name) noexcept {
 		// Результирующее звено пути
 		string result = "";
 		// Выделяем память под результирующее звено пути
@@ -172,7 +191,7 @@ namespace {
 	 * @return     имя, звеном пути обозначенное
 	 *
 	 */
-	string decode(const string_view link) noexcept {
+	static AWH_CEF_INLINE string decode(const string_view link) noexcept {
 		// Результирующее имя, звеном обозначенное
 		string result = "";
 		// Выделяем память под результирующее имя
@@ -232,7 +251,7 @@ namespace {
 	 * @return       признак числового вида звена пути
 	 *
 	 */
-	bool indexOf(const string & link, size_t & result) noexcept {
+	static AWH_CEF_INLINE bool indexOf(const string & link, size_t & result) noexcept {
 		// Сбрасываем номер значения перечня
 		result = 0;
 		// Если звено пути пусто
@@ -281,7 +300,7 @@ namespace {
 	 * @return       признак разбора записи целиком
 	 *
 	 */
-	bool numberOf(const string & value, T & result) noexcept {
+	static AWH_CEF_INLINE bool numberOf(const string & value, T & result) noexcept {
 		// Выполняем разбор записи числа модулем разбора чисел
 		const auto parsed = lexical_t::fromChars(value.data(), (value.data() + value.size()), result);
 		// Если разбор записи числа отказом завершился
@@ -306,7 +325,7 @@ namespace {
 	 * @return     звенья пути со снятой отменяющей записью
 	 *
 	 */
-	vector <string> split(const string & path) noexcept {
+	static AWH_CEF_INLINE vector <string> split(const string & path) noexcept {
 		// Результирующие звенья пути
 		vector <string> result;
 		// Если путь пуст либо корнем является
@@ -1251,6 +1270,44 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *
 	 */
 	this->_error = error_t::NONE;
+	// Положение последнего разделителя адреса записи
+	const size_t slash = filename.find_last_of("/\\");
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки записи CEF: сохранение по пустому адресу
+	 *       отказом тем же отвечает, но лишь по собранной впустую запись, а отказ пути
+	 *       опознаётся безо всякой работы
+	 *
+	 */
+	if(filename.empty() || ((slash != string::npos) && (::__awh_fs__.type(filename.substr(0, slash), false) != fs_t::type_t::DIR))){
+		// Запоминаем код ошибки невозможности записи файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" could not be written", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" could not be written",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выполняем сбор записи CEF из дерева события
 	const string & content = this->dump();
 	// Если сбор записи CEF отказом завершился

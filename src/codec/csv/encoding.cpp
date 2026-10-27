@@ -57,6 +57,25 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_CSV_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_CSV_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Перекодировочная таблица области 0x80-0x9F кодировки Windows-1252
 	 *
 	 * @details Кодировка эта совпадает с ISO-8859-1 всюду, кроме этой области: там,
@@ -116,7 +135,7 @@ namespace {
 	 * @return     признак допустимости всех восьми байтов
 	 *
 	 */
-	static inline bool plain(const uint64_t word) noexcept {
+	static AWH_CSV_INLINE bool plain(const uint64_t word) noexcept {
 		/**
 		 * Постоянные заводятся с собственным хранением
 		 *

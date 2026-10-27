@@ -87,6 +87,50 @@ namespace {
 	static thread_local fs_t __awh_fs__;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_INI_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_INI_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
+	/**
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
 	 * @details Путь записывается тем же порядком, каким записывает его контейнер JSON, а
@@ -105,7 +149,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static bool unescape(string & token) noexcept {
+	static AWH_INI_INLINE bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -157,7 +201,7 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static string escape(const string_view name) noexcept {
+	static AWH_INI_INLINE string escape(const string_view name) noexcept {
 		// Собираемое звено пути
 		string result = "";
 		// Выполняем выделение места под звено пути
@@ -204,7 +248,7 @@ namespace {
 	 * @return         признак совпадения заданных настроек с настройками по умолчанию
 	 *
 	 */
-	static bool untouched(const codec::ini::writer_t::settings_t & settings) noexcept {
+	static AWH_INI_INLINE bool untouched(const codec::ini::writer_t::settings_t & settings) noexcept {
 		// Настройки записи текста настроек, установленные по умолчанию
 		const codec::ini::writer_t::settings_t fallback;
 		// Выполняем сверку всякого поля заданных настроек с полем настроек по умолчанию
@@ -232,7 +276,7 @@ namespace {
 	 * @param lower  признак приведения имени к нижнему регистру
 	 *
 	 */
-	static void appended(string & buffer, const string_view name, const bool lower) noexcept {
+	static AWH_INI_INLINE void appended(string & buffer, const string_view name, const bool lower) noexcept {
 		/**
 		 * Если приведение имени к нижнему регистру не требуется
 		 */
@@ -3543,6 +3587,43 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::ini::Document::save(const string & filename) const noexcept {
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"INI document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"INI document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::ini::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи
+		return false;
+	}
 	// Получаем собранный текст настроек
 	const string text = this->dump();
 	/**

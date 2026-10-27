@@ -27,18 +27,23 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
-#include <codec/toml/value.hpp>
 
 /**
  * Подключаем общее приведение чисел кодеков
  *
  * @note Приведение вынесено из шести кодеков в одно место 01.09.2026; своя копия его,
  *       здесь прежде стоявшая, снята - две тождественные копии расходятся молча
+ *
  */
 #include <codec/numeric.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/toml/value.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -56,27 +61,99 @@ using namespace awh::codec::toml;
  */
 namespace {
 	/**
-	 * @note Приведение дробного числа к затребованному виду держалось здесь СВОЕЙ копией,
-	 *       тело в тело равной общей `awh::codec::convert` из `src/codec/numeric.cpp`.
-	 *       Копий тех вынос 01.09.2026 оставил семь по всем кодекам, и расходятся они
-	 *       молча: правка края округления в одном месте оставляет прочие с прежним изъяном
+	 * Пространство имён библиотеки
 	 */
+	using namespace awh;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_TOML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_TOML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+
 	/**
 	 * @brief Предел роста вместилища обращением по номеру
 	 *
 	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
-	 * этот рост стережёт. Нуль снимает его вовсе: сколько памяти есть у приложения,
-	 * ведомо ему одному
+	 *          этот рост стережёт. Нуль снимает его вовсе: сколько памяти есть у приложения,
+	 *          ведомо ему одному.
+	 *
+	 * @note Приведение дробного числа к затребованному виду держалось здесь СВОЕЙ копией,
+	 *       тело в тело равной общей `awh::codec::convert` из `src/codec/numeric.cpp`.
+	 *       Копий тех вынос 01.09.2026 оставил семь по всем кодекам, и расходятся они
+	 *       молча: правка края округления в одном месте оставляет прочие с прежним изъяном
 	 *
 	 */
-	static atomic <size_t> LIMIT(0x10000);
+	static atomic <size_t> __awh_limit__(0x10000);
+
+	/**
+	 * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
+	 *
+	 * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
+	 *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
+	 *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
+	 *       `int64_t` НЕ является
+	 *
+	 */
+	typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
+	/**
+	 * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
+	 *
+	 */
+	typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
+
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
+	
 	/**
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
 	 * @details Путь записывается тем же порядком, каким записывает его контейнер JSON, а
-	 * порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
-	 * отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
-	 * разбирался бы на два звена и уходил не туда
+	 *          порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
+	 *          отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
+	 *          разбирался бы на два звена и уходил не туда.
 	 *
 	 * @note Порядок снятия предписан стандартом: снятие `~0` прежде `~1` обратило бы
 	 *       записанное `~01` в косую черту вместо `~1`
@@ -89,7 +166,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static bool unescape(string & token) noexcept {
+	static AWH_TOML_INLINE bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -128,14 +205,14 @@ namespace {
 	 *
 	 * @details Проверкой этой решается, чем является часть пути: номером значения
 	 *          перечня либо именем пары таблицы. Таблица, пару числовую несущая,
-	 *          разыскивается именем - тип вместилища решает раньше вида записи
+	 *          разыскивается именем - тип вместилища решает раньше вида записи.
 	 *
 	 * @param text  проверяемая запись
 	 * @param index разбираемый порядковый номер
 	 * @return      признак числовой записи
 	 *
 	 */
-	static bool numbering(const string & text, size_t & index) noexcept {
+	static AWH_TOML_INLINE bool numbering(const string & text, size_t & index) noexcept {
 		/**
 		 * Если запись пуста вовсе
 		 */
@@ -148,11 +225,12 @@ namespace {
 		 * @details Описание RFC 6901 в разделе 4 велит номеру быть либо одиноким нулём,
 		 *          либо цифрою от единицы с цифрами за нею: запись `01` номером не
 		 *          является ВОВСЕ. Прежде она разбиралась номером наравне с `1`, и путь
-		 *          `/01` отдавал значение соседнее вместо отказа
+		 *          `/01` отдавал значение соседнее вместо отказа.
 		 *
 		 * @note Отступление это снято общим правилом: оно гласит, что
 		 *       описание стоит выше согласованности API, и коль скоро описание требует
 		 *       для метода своей повадки, выбирать надлежит описание
+		 *
 		 */
 		if((text.front() == '0') && (text.size() > 1))
 			// Выводим признак того, что запись номером не является
@@ -173,8 +251,9 @@ namespace {
 			 * Если добавление разряда выведет номер за предел разрядности
 			 *
 			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
-			 * заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
-			 * по такому пути отдавало бы соседнее значение молча
+			 *          заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
+			 *          по такому пути отдавало бы соседнее значение молча.
+			 *
 			 */
 			if(index > ((numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
 				// Выводим признак того, что запись номером не является
@@ -190,14 +269,14 @@ namespace {
 	 *
 	 * @details Обращение постоянное, ничего не разыскавшее, обязано выдать ссылку, а
 	 *          не завести значение: значение это одно на весь кодек и живёт оно всю
-	 *          работу приложения
+	 *          работу приложения.
 	 *
 	 * @return ссылка на неопределённое значение
 	 *
 	 */
-	static const awh::codec::toml::Value & missing() noexcept {
+	static AWH_TOML_INLINE const value_t & missing() noexcept {
 		// Неопределённое значение, обращением неудачным выдаваемое
-		static const awh::codec::toml::Value result;
+		static const value_t result;
 		// Выводим ссылку на неопределённое значение
 		return result;
 	}
@@ -207,7 +286,7 @@ namespace {
 	 * @return ссылка на пустую запись
 	 *
 	 */
-	static const string & nothing() noexcept {
+	static AWH_TOML_INLINE const string & nothing() noexcept {
 		// Пустая запись, обращением неудачным выдаваемая
 		static const string result;
 		// Выводим ссылку на пустую запись
@@ -220,7 +299,7 @@ namespace {
 	 * @return     признак того, что тип является вместилищем
 	 *
 	 */
-	static bool holding(const type_t type) noexcept {
+	static constexpr bool holding(const type_t type) noexcept {
 		// Выводим признак того, что тип значения является вместилищем
 		return ((type == type_t::TABLE) || (type == type_t::ARRAY));
 	}
@@ -231,14 +310,14 @@ namespace {
 	 * @return     признак того, что тип является отметкой времени
 	 *
 	 */
-	static bool stamped(const type_t type) noexcept {
+	static constexpr bool stamped(const type_t type) noexcept {
 		// Выводим признак того, что тип значения является отметкой времени
 		return (
 			(type == type_t::OFFSET_DATETIME) || (type == type_t::LOCAL_DATETIME) ||
 			(type == type_t::LOCAL_DATE) || (type == type_t::LOCAL_TIME)
 		);
 	}
-}
+};
 
 /**
  * @brief Метод проверки определённости значения
@@ -249,6 +328,16 @@ namespace {
 bool awh::codec::toml::Value::valid() const noexcept {
 	// Выводим признак определённости значения
 	return (this->_type != type_t::NONE);
+}
+/**
+ * @brief Оператор приведения к логическому типу
+ *
+ * @return признак действительности значения
+ *
+ */
+awh::codec::toml::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
 }
 /**
  * @brief Метод извлечения типа значения
@@ -298,28 +387,32 @@ bool awh::codec::toml::Value::empty() const noexcept {
 void awh::codec::toml::Value::clear() noexcept {
 	// Выполняем снос указателя поиска
 	this->unindex();
-	// Выполняем сброс типа хранимого значения
-	this->_type = type_t::NONE;
-	// Выполняем сброс записи строкового значения
-	this->_quoting = string_t::BASIC;
-	// Выполняем сброс системы счисления записи целого числа
-	this->_radix = radix_t::DECIMAL;
+	// Выполняем сброс числа с плавающей точкой
+	this->_real = .0;
+	// Выполняем сброс целого числа
+	this->_integer = 0;
 	// Выполняем сброс логического значения
 	this->_boolean = false;
 	// Выполняем сброс признака записи перечня несколькими строками
 	this->_multiline = false;
-	// Выполняем сброс целого числа
-	this->_integer = 0;
-	// Выполняем сброс числа с плавающей точкой
-	this->_real = 0.;
-	// Выполняем сброс отметки времени
-	this->_stamp = stamp_t();
+	// Выполняем сброс типа хранимого значения
+	this->_type = type_t::NONE;
+	// Выполняем сброс кода отказа последней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс системы счисления записи целого числа
+	this->_radix = radix_t::DECIMAL;
+	// Выполняем сброс записи строкового значения
+	this->_quoting = string_t::BASIC;
 	// Выполняем очистку содержимого строкового значения
 	this->_text.clear();
 	// Выполняем очистку имён пар таблицы
 	this->_names.clear();
 	// Выполняем очистку значений вместилища
 	this->_items.clear();
+	// Выполняем сброс отметки времени
+	this->_stamp = stamp_t();
+	// Выполняем сброс положения отказа последней работы
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Метод извлечения содержимого строкового значения
@@ -432,6 +525,7 @@ bool awh::codec::toml::Value::stamp(const stamp_t & stamp, const type_t type) no
 	 *
 	 * @note Отказ здесь намеренный: вид задаётся потребителем, и приятие вида чужого
 	 *       положило бы отметку в значение, каким она не читается вовсе
+	 *
 	 */
 	if(!::stamped(type))
 		// Выводим признак неудачной установки
@@ -457,8 +551,9 @@ awh::codec::toml::Value & awh::codec::toml::Value::scrap() noexcept {
 	 *
 	 * @note Своё оно у всякого потока: одно на приложение обратило бы запись мимо цели
 	 *       в гонку между потоками
+	 *
 	 */
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем сброс мусорного значения от прежней записи в него
 	result.clear();
 	// Выводим ссылку на значение мусорное
@@ -472,7 +567,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::scrap() noexcept {
  */
 size_t awh::codec::toml::Value::limit() noexcept {
 	// Выводим предел роста вместилища по номеру
-	return ::LIMIT.load(std::memory_order_relaxed);
+	return ::__awh_limit__.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -482,7 +577,7 @@ size_t awh::codec::toml::Value::limit() noexcept {
  */
 void awh::codec::toml::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища по номеру
-	::LIMIT.store(value, std::memory_order_relaxed);
+	::__awh_limit__.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод проверки наличия пары таблицы по имени
@@ -526,6 +621,7 @@ size_t awh::codec::toml::Value::locate(const string & name) const noexcept {
 	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
 	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
 	 *       отпечатка на всякое имя
+	 *
 	 */
 	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
@@ -575,7 +671,7 @@ void awh::codec::toml::Value::unindex() noexcept {
  * @return     найденное значение
  *
  */
-const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & name) const noexcept {
+const awh::codec::toml::value_t & awh::codec::toml::Value::operator [] (const string & name) const noexcept {
 	/**
 	 * Если значение таблицей не является
 	 */
@@ -598,13 +694,14 @@ const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const stri
  * @return     найденное либо заведённое значение
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & name) noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Value::operator [] (const string & name) noexcept {
 	/**
 	 * Если значение таблицей не является
 	 *
 	 * @note Значение перерождается таблицей, а простое содержимое его теряется. Решено
 	 *       это так же, как решает розыск с заведением: обращение изменяемое есть
 	 *       заявление о том, что здесь стоит вместилище, и спорить с ним нечем
+	 *
 	 */
 	if(this->_type != type_t::TABLE){
 		// Выполняем очистку прежнего значения
@@ -623,6 +720,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & n
 	 *
 	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
 	 *       самую квадратичность, от какой указатель и заводится
+	 *
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
@@ -641,7 +739,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & n
  * @return      найденное значение
  *
  */
-const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::toml::value_t & awh::codec::toml::Value::operator [] (const size_t index) const noexcept {
 	/**
 	 * Если номер за пределы вместилища выходит
 	 */
@@ -658,12 +756,13 @@ const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size
  * @return      найденное либо заведённое значение
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t index) noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Value::operator [] (const size_t index) noexcept {
 	/**
 	 * Если значение вместилищем не является вовсе
 	 *
 	 * @note Обращение по номеру заводит перечень, а не таблицу: имени у номера нет, и
 	 *       положить значение в таблицу было бы некуда
+	 *
 	 */
 	if(!::holding(this->_type)){
 		// Выполняем очистку прежнего значения
@@ -676,17 +775,18 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t ind
 	 */
 	if(index >= this->_items.size()){
 		// Получаем предел роста вместилища по номеру
-		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
+		const size_t limit = ::__awh_limit__.load(std::memory_order_relaxed);
 		/**
 		 * Если рост вместилища предел превышает
 		 *
 		 * @note Значение мусорное выдаётся вместо роста: номер, пришедший извне,
 		 *       обращается требованием памяти по нему, и без предела запись по номеру
 		 *       `0xFFFFFFFF` требовала бы памяти на четыре миллиарда значений
+		 *
 		 */
 		if((limit > 0) && ((index + 1) > limit))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		/**
 		 * Если значение является таблицей
 		 *
@@ -694,6 +794,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t ind
 		 *       записана быть не может, и заведённая так пара записи не подлежит. Рост
 		 *       такой оставлен намеренно - обращение по номеру к таблице есть обращение к
 		 *       паре по порядку её, и отвечать на него отказом значило бы запретить обход
+		 *
 		 */
 		if(this->_type == type_t::TABLE){
 			// Выполняем рост перечня имён пар таблицы
@@ -707,6 +808,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t ind
 			 *          пара с именем пустым находилась, а за порогом пропадала, - и
 			 *          установка по тому же имени клала бы вторую пару рядом с первой,
 			 *          выдавая текст настроек с именем, объявленным дважды
+			 *
 			 */
 			this->unindex();
 		}
@@ -723,7 +825,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t ind
  * @return     найденное значение
  *
  */
-const awh::codec::toml::Value & awh::codec::toml::Value::at(const string & path) const noexcept {
+const awh::codec::toml::value_t & awh::codec::toml::Value::at(const string & path) const noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -732,10 +834,10 @@ const awh::codec::toml::Value & awh::codec::toml::Value::at(const string & path)
 	if(route.empty())
 		// Выводим текущее значение
 		return (* this);
-	// Получаем ссылку на значение, путём разыскиваемое
-	const Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	const value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -757,6 +859,7 @@ const awh::codec::toml::Value & awh::codec::toml::Value::at(const string & path)
 		 *
 		 * @note Тип вместилища решает раньше вида записи: таблица, пару числовую
 		 *       несущую, разыскивается именем, а не номером
+		 *
 		 */
 		if((result->_type == type_t::ARRAY) && ::numbering(part, index))
 			// Выполняем переход к значению перечня по номеру его
@@ -788,7 +891,7 @@ const awh::codec::toml::Value & awh::codec::toml::Value::at(const string & path)
  * @return     заведённое значение
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Value::place(const string & path) noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -805,6 +908,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) no
 	 *          небывалой глубины срывает на них стек. Записать такое дерево нельзя ни при
 	 *          каком пределе: запись отвергает его вложенностью своей, - оттого предел
 	 *          заведения ему и равен, ибо дерево, записать которое нельзя, заводить незачем
+	 *
 	 */
 	{
 		// Количество звеньев пути к значению
@@ -820,12 +924,12 @@ awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) no
 		 */
 		if(links > static_cast <size_t> (MAX_DEPTH))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 	}
-	// Получаем ссылку на значение, путём разыскиваемое
-	Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -839,7 +943,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) no
 		 */
 		if(!::unescape(part))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		// Номер значения вместилища, частью пути заданный
 		size_t index = 0;
 		// Получаем признак того, что часть пути является номером
@@ -849,6 +953,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) no
 		 *
 		 * @note Тип заводимого вместилища решает запись части пути: часть числовая
 		 *       заводит перечень значений, а всякая иная - таблицу
+		 *
 		 */
 		if(!::holding(result->_type)){
 			// Выполняем очистку прежнего значения
@@ -883,7 +988,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) no
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::toml::Value::push(const Value & value) noexcept {
+bool awh::codec::toml::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если значение вместилищем не является вовсе
 	 */
@@ -893,8 +998,9 @@ bool awh::codec::toml::Value::push(const Value & value) noexcept {
 		 *
 		 * @note Аргумент может ссылаться на текущее значение. Копия должна
 		 *       предшествовать очистке содержимого и изменению типа
+		 *
 		 */
-		Value item = value;
+		value_t item = value;
 		// Выполняем очистку прежнего значения
 		this->clear();
 		// Назначаем значению тип перечня значений
@@ -909,6 +1015,7 @@ bool awh::codec::toml::Value::push(const Value & value) noexcept {
 	 *
 	 * @note Отказ здесь намеренный: добавление без имени в таблицу положить некуда, а
 	 *       подставлять имя пустое значило бы завести пару, записи не подлежащую
+	 *
 	 */
 	if(this->_type == type_t::TABLE)
 		// Выводим признак неудачного добавления
@@ -926,9 +1033,9 @@ bool awh::codec::toml::Value::push(const Value & value) noexcept {
  * @return      признак успешности установки
  *
  */
-bool awh::codec::toml::Value::insert(const string & name, const Value & value) noexcept {
+bool awh::codec::toml::Value::insert(const string & name, const value_t & value) noexcept {
 	/**
-	 * Имя пустое установке не препятствует
+	 * Сохраняем имя до изменения дерева, которому оно может принадлежать
 	 *
 	 * @details Наречие TOML имя пустое дозволяет оградою: запись `"" = 1` законна,
 	 *          чтение её принимает, запись выдаёт, а дерево держит. Отказ установки
@@ -936,19 +1043,22 @@ bool awh::codec::toml::Value::insert(const string & name, const Value & value) n
 	 *          невоспроизводимо: потребитель не мог собрать законный текст настроек,
 	 *          хотя разобрать его мог
 	 *
+	 * @note Имя пустое установке не препятствует
+	 *
 	 * @note Прежде здесь стоял отказ по пустому имени, доводом не снабжённый. Отказ
 	 *       осмыслен у @c push() - туда имя не передаётся вовсе, - а здесь имя передано,
 	 *       и пустота его есть выбор потребителя
-	 */
-	// Сохраняем имя до изменения дерева, которому оно может принадлежать
+	 *
+	 */ 
 	string key = name;
 	/**
 	 * Сохраняем значение до изменения текущего дерева
 	 *
 	 * @note Источником может быть само дерево или его потомок. Копия должна
 	 *       предшествовать очистке дерева и добавлению имени новой пары
+	 *
 	 */
-	Value item = value;
+	value_t item = value;
 	/**
 	 * Если значение таблицей не является
 	 */
@@ -964,8 +1074,8 @@ bool awh::codec::toml::Value::insert(const string & name, const Value & value) n
 	 * Если пара таблицы разыскана
 	 *
 	 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
-	 *       перестановка их при перезаписи меняла бы вид записанного текста без его на то
-	 *       воли
+	 *       перестановка их при перезаписи меняла бы вид записанного текста без его на то воли
+	 *
 	 */
 	if(found < this->_items.size()){
 		// Выполняем перезапись значения пары таблицы
@@ -992,7 +1102,7 @@ bool awh::codec::toml::Value::insert(const string & name, const Value & value) n
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::toml::Value::append(const string & name, const Value & value) noexcept {
+bool awh::codec::toml::Value::append(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если имя пары таблицы уже занято
 	 */
@@ -1056,6 +1166,7 @@ bool awh::codec::toml::Value::erase(const size_t index) noexcept {
 	 *
 	 * @note Имя удаляется вместе со значением: перечни имён и значений идут рядом, и
 	 *       рассогласование их сдвинуло бы все имена за удалённым на единицу
+	 *
 	 */
 	if((this->_type == type_t::TABLE) && (index < this->_names.size()))
 		// Выполняем удаление имени пары таблицы
@@ -1067,21 +1178,26 @@ bool awh::codec::toml::Value::erase(const size_t index) noexcept {
 	 *
 	 * @note Сносится он целиком, а не чинится: удаление сдвигает номера всех пар после
 	 *       удалённой, и починка обошлась бы дороже заведения заново
+	 *
 	 */
 	this->unindex();
 	// Выводим признак успешного удаления
 	return true;
 }
 /**
- * @brief Шаблонный метод извлечения числа затребованным видом
+ * @brief Шаблон метода извлечения числа затребованным видом
  *
- * @tparam T      затребованный вид числа
- *
- * @param  result переменная, куда помещается извлечённое значение
- * @return        признак успешности извлечения
+ * @tparam T затребованный вид числа
  *
  */
 template <typename T>
+/**
+ * @brief Метод извлечения числа затребованным видом
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
 bool awh::codec::toml::Value::extract(T & result) const noexcept {
 	/**
 	 * Определяем тип хранимого значения
@@ -1095,6 +1211,7 @@ bool awh::codec::toml::Value::extract(T & result) const noexcept {
 			 * @note Целое, за отрезок затребованного вида выходящее, переносится младшими
 			 *       разрядами: приведение языка не отказывает нигде, и признак успешности
 			 *       отведён одному лишь случаю, когда значение числом не является вовсе
+			 *
 			 */
 			result = static_cast <T> (this->_integer);
 		break;
@@ -1152,7 +1269,7 @@ bool awh::codec::toml::Value::value(string & result) const noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения числа видом `int8_t`
+ * @brief Метод извлечения числа int8
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
@@ -1163,63 +1280,99 @@ bool awh::codec::toml::Value::value(int8_t & result) const noexcept {
 	return this->extract <int8_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа int16
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(int16_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <int16_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа int32
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(int32_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <int32_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа int64
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(int64_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <int64_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа unsigned int8
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(uint8_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <uint8_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа unsigned int16
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(uint16_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <uint16_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа unsigned int32
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(uint32_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <uint32_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа unsigned int64
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(uint64_t & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <uint64_t> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа float
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(float & result) const noexcept {
 	// Выводим признак успешности извлечения числа
 	return this->extract <float> (result);
 }
 /**
- * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ * @brief Метод извлечения числа double
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
  */
 bool awh::codec::toml::Value::value(double & result) const noexcept {
 	// Выводим признак успешности извлечения числа
@@ -1232,12 +1385,13 @@ bool awh::codec::toml::Value::value(double & result) const noexcept {
  * @return      признак совпадения значений
  *
  */
-bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::toml::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если типы значений разнятся
 	 *
 	 * @note Целое и дробное сличаются как числа, а не как виды: запись `1` и запись
 	 *       `1.0` суть одно число, и расходиться им незачем
+	 *
 	 */
 	if(this->_type != value._type){
 		/**
@@ -1270,6 +1424,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Запись строки сличению не подлежит: дословная и основная записи
 			 *       одного содержимого суть одно значение
+			 *
 			 */
 			return (this->_text.compare(value._text) == 0);
 		// Если значения являются целыми числами
@@ -1278,9 +1433,9 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 			 * Выводим признак совпадения чисел
 			 *
 			 * @note Система счисления сличению не подлежит: `0x1F` и `31` суть одно число
+			 *
 			 */
 			return (this->_integer == value._integer);
-		// Если значения являются числами с плавающей точкой
 		/**
 		 * Если значения являются числами с плавающей точкой
 		 *
@@ -1291,6 +1446,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 		 *
 		 * @note Нашёл это ворошитель круговым переносом снятого значения на записи `nan`.
 		 *       У кодека YAML тем же способом найдено то же самое и решено так же
+		 *
 		 */
 		case static_cast <uint8_t> (type_t::FLOAT): {
 			/**
@@ -1319,6 +1475,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Порядок значений перечня сличению подлежит: перечень есть
 			 *       последовательность, и порядок её значением является
+			 *
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
 				/**
@@ -1344,10 +1501,11 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 			 *
 			 * @note Порядок пар таблицы сличению НЕ подлежит: таблица есть отображение
 			 *       имён на значения, и порядок записи её значением не является
+			 *
 			 */
 			for(size_t i = 0; i < this->_names.size(); i++){
 				// Получаем значение одноимённой пары сличаемой таблицы
-				const Value & item = value[this->_names.at(i)];
+				const value_t & item = value[this->_names.at(i)];
 				/**
 				 * Если одноимённой пары в сличаемой таблице нет вовсе
 				 *
@@ -1356,6 +1514,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 				 *          всё равно - порча захода ни одной проверки не роняет,
 				 *          замерено. Сносу заход не подлежит: он называет расхождение
 				 *          именем, а не значением, и снимает сличение заведомо разного
+				 *
 				 */
 				if(!item.valid() && this->_items.at(i).valid())
 					// Выводим признак расхождения значений
@@ -1376,6 +1535,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Заход этот берёт все четыре вида отметки времени разом: вид их уже сличён
 	 *       выше, и остаётся сличить саму отметку
+	 *
 	 */
 	return (
 		(this->_stamp.date.year == value._stamp.date.year) &&
@@ -1395,7 +1555,7 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
  * @return      признак расхождения значений
  *
  */
-bool awh::codec::toml::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::toml::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак расхождения значений
 	return !((* this) == value);
 }
@@ -1406,59 +1566,41 @@ bool awh::codec::toml::Value::operator != (const Value & value) const noexcept {
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & value) noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Value::operator = (const value_t & value) noexcept {
 	/**
 	 * Если присваивается значение самому себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем тип хранимого значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем запись строкового значения до изменения текущего дерева
-	const string_t quoting = value._quoting;
-	// Получаем систему счисления записи целого числа до изменения текущего дерева
-	const radix_t radix = value._radix;
-	// Получаем логическое значение до изменения текущего дерева
-	const bool boolean = value._boolean;
-	// Получаем признак записи перечня несколькими строками до изменения текущего дерева
-	const bool multiline = value._multiline;
-	// Получаем целое число до изменения текущего дерева
-	const int64_t integer = value._integer;
-	// Получаем число с плавающей точкой до изменения текущего дерева
-	const double real = value._real;
-	// Получаем отметку времени до изменения текущего дерева
-	const stamp_t stamp = value._stamp;
-	// Получаем содержимое строкового значения до изменения текущего дерева
-	string text = value._text;
-	// Получаем имена пар таблицы до изменения текущего дерева
-	vector <string> names = value._names;
-	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items = value._items;
-	// Выполняем копирование типа хранимого значения
-	this->_type = type;
-	// Выполняем копирование записи строкового значения
-	this->_quoting = quoting;
-	// Выполняем копирование системы счисления записи целого числа
-	this->_radix = radix;
-	// Выполняем копирование логического значения
-	this->_boolean = boolean;
-	// Выполняем копирование признака записи перечня несколькими строками
-	this->_multiline = multiline;
-	// Выполняем копирование целого числа
-	this->_integer = integer;
-	// Выполняем копирование числа с плавающей точкой
-	this->_real = real;
-	// Выполняем копирование отметки времени
-	this->_stamp = stamp;
 	// Выполняем перенос подготовленной копии содержимого строкового значения
-	this->_text = ::move(text);
-	// Выполняем перенос подготовленной копии имён пар таблицы
-	this->_names = ::move(names);
+	this->_text = value._text;
+	// Выполняем копирование числа с плавающей точкой
+	this->_real = value._real;
+	// Выполняем копирование типа хранимого значения
+	this->_type = value._type;
+	// Выполняем копирование системы счисления записи целого числа
+	this->_radix = value._radix;
+	// Выполняем копирование отметки времени
+	this->_stamp = value._stamp;
+	// Выполняем копирование логического значения
+	this->_boolean = value._boolean;
+	// Выполняем копирование целого числа
+	this->_integer = value._integer;
+	// Выполняем копирование записи строкового значения
+	this->_quoting = value._quoting;
+	// Выполняем копирование признака записи перечня несколькими строками
+	this->_multiline = value._multiline;
+	// Получаем значения вместилища до изменения текущего дерева
+	auto items = value._items;
+	// Получаем имена пар таблицы до изменения текущего дерева
+	auto names = value._names;
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем перенос подготовленной копии значений вместилища
 	this->_items = ::move(items);
+	// Выполняем перенос подготовленной копии имён пар таблицы
+	this->_names = ::move(names);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1469,78 +1611,121 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & val
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Value::operator = (value_t && value) noexcept {
 	/**
 	 * Если присваивается значение самому себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем тип хранимого значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем запись строкового значения до изменения текущего дерева
-	const string_t quoting = value._quoting;
-	// Получаем систему счисления записи целого числа до изменения текущего дерева
-	const radix_t radix = value._radix;
-	// Получаем логическое значение до изменения текущего дерева
-	const bool boolean = value._boolean;
-	// Получаем признак записи перечня несколькими строками до изменения текущего дерева
-	const bool multiline = value._multiline;
-	// Получаем целое число до изменения текущего дерева
-	const int64_t integer = value._integer;
-	// Получаем число с плавающей точкой до изменения текущего дерева
-	const double real = value._real;
-	// Получаем отметку времени до изменения текущего дерева
-	const stamp_t stamp = value._stamp;
-	// Получаем содержимое строкового значения до изменения текущего дерева
-	string text(::move(value._text));
-	// Получаем имена пар таблицы до изменения текущего дерева
-	vector <string> names(::move(value._names));
-	// Получаем указатель поиска до изменения текущего дерева
-	unique_ptr <unordered_map <string, size_t>> index(::move(value._index));
+	// Выполняем перенос типа хранимого значения
+	this->_type = value._type;
+	// Выполняем перенос числа с плавающей точкой
+	this->_real = value._real;
+	// Выполняем перенос системы счисления записи целого числа
+	this->_radix = value._radix;
+	// Выполняем перенос отметки времени
+	this->_stamp = value._stamp;
+	// Выполняем перенос записи строкового значения
+	this->_quoting = value._quoting;
+	// Выполняем перенос логического значения
+	this->_boolean = value._boolean;
+	// Выполняем перенос целого числа
+	this->_integer = value._integer;
+	// Выполняем перенос признака записи перечня несколькими строками
+	this->_multiline = value._multiline;
+	// Выполняем перенос содержимого строкового значения
+	this->_text = ::move(value._text);
 	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items(::move(value._items));
+	auto items = ::move(value._items);
+	// Получаем имена пар таблицы до изменения текущего дерева
+	auto names = ::move(value._names);
+	// Получаем указатель поиска до изменения текущего дерева
+	auto index = ::move(value._index);
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
+	// Выполняем перенос значений вместилища
+	this->_items = ::move(items);
+	// Выполняем перенос имён пар таблицы
+	this->_names = ::move(names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::move(index);
+	// Выполняем сброс числа с плавающей точкой
+	value._real = .0;
+	// Выполняем сброс целого числа
+	value._integer = 0;
+	// Выполняем сброс логического значения
+	value._boolean = false;
+	// Выполняем сброс признака записи перечня несколькими строками
+	value._multiline = false;
+	// Выполняем сброс объекта отметки времени
+	value._stamp = stamp_t();
+	// Выполняем сброс системы счисления записи целого числа
+	value._radix = radix_t::DECIMAL;
+	// Выполняем сброс записи строкового значения
+	value._quoting = string_t::BASIC;
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
 	 * @note Сброс выполняется до замены старого вместилища назначения: переносимое
 	 *       значение может быть его потомком, и после замены обращаться к нему нельзя
+	 *
 	 */
 	value._type = type_t::NONE;
-	// Выполняем перенос типа хранимого значения
-	this->_type = type;
-	// Выполняем перенос записи строкового значения
-	this->_quoting = quoting;
-	// Выполняем перенос системы счисления записи целого числа
-	this->_radix = radix;
-	// Выполняем перенос логического значения
-	this->_boolean = boolean;
-	// Выполняем перенос признака записи перечня несколькими строками
-	this->_multiline = multiline;
-	// Выполняем перенос целого числа
-	this->_integer = integer;
-	// Выполняем перенос числа с плавающей точкой
-	this->_real = real;
-	// Выполняем перенос отметки времени
-	this->_stamp = stamp;
-	// Выполняем перенос содержимого строкового значения
-	this->_text = ::move(text);
-	// Выполняем перенос имён пар таблицы
-	this->_names = ::move(names);
-	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::move(index);
-	// Выполняем перенос значений вместилища
-	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
+/**
+ * @brief Шаблон оператора извлечения константной искомой пары
+ *
+ * @tparam T вид имени искомой пары
+ *
+ */
+template <typename T>
+/**
+ * @brief Оператор извлечения константной искомой пары
+ *
+ * @param name имя искомой пары
+ *
+ */
+typename enable_if <is_same <T, char>::value, const awh::codec::toml::value_t &>::type awh::codec::toml::Value::operator [] (const T name) const noexcept {
+	// Выводим значение пары, именем из одного знака разыскиваемое
+	return (* this)[string(1, name)];
+}
+/**
+ * Выполняем создание конкретных шаблона оператора обращения по имени из одного знака
+ */
+template const awh::codec::toml::value_t & awh::codec::toml::Value::operator [] <char> (const char) const noexcept;
+/**
+ * @brief Шаблон оператора извлечения искомой пары
+ *
+ * @tparam T вид имени заводимой пары
+ *
+ */
+template <typename T>
+/**
+ * @brief Оператор извлечения искомой пары
+ *
+ * @param name имя искомой пары
+ *
+ */
+typename enable_if <is_same <T, char>::value, awh::codec::toml::value_t &>::type awh::codec::toml::Value::operator [] (const T name) noexcept {
+	// Выводим значение пары, именем из одного знака заводимое
+	return (* this)[string(1, name)];
+}
+/**
+ * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
+ */
+template awh::codec::toml::value_t & awh::codec::toml::Value::operator [] <char> (const char) noexcept;
 /**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Value::Value() noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.) {}
+ _boolean(false), _multiline(false),
+ _type(type_t::NONE), _radix(radix_t::DECIMAL),
+ _quoting(string_t::BASIC), _real(.0),
+ _integer(0), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор вместилища затребованного типа
  *
@@ -1548,8 +1733,10 @@ awh::codec::toml::Value::Value() noexcept :
  *
  */
 awh::codec::toml::Value::Value(const type_t type) noexcept :
- _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.) {}
+ _boolean(false), _multiline(false),
+ _type(type), _radix(radix_t::DECIMAL),
+ _quoting(string_t::BASIC), _real(.0),
+ _integer(0), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор логического значения
  *
@@ -1557,8 +1744,10 @@ awh::codec::toml::Value::Value(const type_t type) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const bool value) noexcept :
- _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(value), _multiline(false), _integer(0), _real(0.) {}
+ _boolean(value), _multiline(false),
+ _type(type_t::BOOLEAN), _radix(radix_t::DECIMAL),
+ _quoting(string_t::BASIC), _real(.0),
+ _integer(0), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор целого числа
  *
@@ -1567,8 +1756,10 @@ awh::codec::toml::Value::Value(const bool value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcept :
- _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
- _boolean(false), _multiline(false), _integer(value), _real(0.) {}
+ _boolean(false), _multiline(false),
+ _type(type_t::INTEGER), _radix(radix),
+ _quoting(string_t::BASIC), _real(.0),
+ _integer(value), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор целого числа без знака
  *
@@ -1577,8 +1768,11 @@ awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcep
  *
  */
 awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexcept :
- _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
- _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {
+ _boolean(false), _multiline(false),
+ _type(type_t::INTEGER), _radix(radix),
+ _quoting(string_t::BASIC), _real(.0),
+ _integer(static_cast <int64_t> (value)),
+ _error(error_t::NONE), _text{""} {
 	/**
 	 * Если величина разрядность целого со знаком превышает
 	 *
@@ -1587,7 +1781,7 @@ awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexce
 	 *          молча: `18446744073709551615` обращалось записью в `-1`, а
 	 *          `9223372036854775808` - в самое отрицательное число. Запись выходила
 	 *          годной по виду, разбиралась без отказа и была неверна по величине -
-	 *          худший из возможных исходов
+	 *          худший из возможных исходов.
 	 *
 	 * @note Отвечать отказом самому конструктору нечем - он ответа не выдаёт, - и потому
 	 *       значение объявляется НЕГОДНЫМ с названной причиной: запись такого значения
@@ -1597,6 +1791,7 @@ awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexce
 	 * @note Наречие YAML величину эту записывает целиком и правильно - оно её знает, - и
 	 *       расхождение это законно: правило берётся у описания наречия, а не у общего
 	 *       вида ходов
+	 *
 	 */
 	if(value > static_cast <uint64_t> (std::numeric_limits <int64_t>::max())){
 		// Объявляем значение негодным: величина наречию невыразима
@@ -1612,8 +1807,18 @@ awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexce
  *
  */
 awh::codec::toml::Value::Value(const double value) noexcept :
- _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(value) {}
+ _boolean(false), _multiline(false),
+ _type(type_t::FLOAT), _radix(radix_t::DECIMAL),
+ _quoting(string_t::BASIC), _real(value),
+ _integer(0), _error(error_t::NONE), _text{""} {}
+/**
+ * @brief Шаблон конструктора целого числа записи любой
+ *
+ * @tparam T тип данных значения
+ * @tparam E тип передаваемого значения
+ *
+ */
+template <typename T, typename E>
 /**
  * @brief Конструктор целого числа записи любой
  *
@@ -1621,9 +1826,17 @@ awh::codec::toml::Value::Value(const double value) noexcept :
  * @param radix система счисления записи целого числа
  *
  */
-template <typename T, typename E>
 awh::codec::toml::Value::Value(const T value, const radix_t radix) noexcept :
- Value(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value), radix) {}
+ value_t(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value), radix) {}
+/**
+ * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
+ */
+template awh::codec::toml::Value::Value(const short, const radix_t) noexcept;
+template awh::codec::toml::Value::Value(const unsigned short, const radix_t) noexcept;
+template awh::codec::toml::Value::Value(const int, const radix_t) noexcept;
+template awh::codec::toml::Value::Value(const unsigned int, const radix_t) noexcept;
+template awh::codec::toml::Value::Value(const wide_t, const radix_t) noexcept;
+template awh::codec::toml::Value::Value(const uwide_t, const radix_t) noexcept;
 /**
  * @brief Конструктор знака
  *
@@ -1632,7 +1845,7 @@ awh::codec::toml::Value::Value(const T value, const radix_t radix) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const char value, const string_t quoting) noexcept :
- Value(string(1, value), quoting) {}
+ value_t(string(1, value), quoting) {}
 /**
  * @brief Конструктор строкового значения
  *
@@ -1641,8 +1854,9 @@ awh::codec::toml::Value::Value(const char value, const string_t quoting) noexcep
  *
  */
 awh::codec::toml::Value::Value(const string & value, const string_t quoting) noexcept :
- _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.), _text(value) {}
+ _boolean(false), _multiline(false), _type(type_t::STRING),
+ _radix(radix_t::DECIMAL), _quoting(quoting), _real(.0),
+ _integer(0), _error(error_t::NONE), _text(value) {}
 /**
  * @brief Конструктор строкового значения из строки языка
  *
@@ -1651,8 +1865,9 @@ awh::codec::toml::Value::Value(const string & value, const string_t quoting) noe
  *
  */
 awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexcept :
- _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.),
+ _boolean(false), _multiline(false), _type(type_t::STRING),
+ _radix(radix_t::DECIMAL), _quoting(quoting), _real(.0),
+ _integer(0), _error(error_t::NONE),
  _text((value != nullptr) ? value : "") {}
 /**
  * @brief Конструктор копирования
@@ -1660,32 +1875,32 @@ awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexc
  * @param value копируемое значение
  *
  */
-awh::codec::toml::Value::Value(const Value & value) noexcept :
- _type(value._type), _quoting(value._quoting), _radix(value._radix),
- _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
- _real(value._real), _stamp(value._stamp), _text(value._text),
- _names(value._names), _items(value._items) {}
+awh::codec::toml::Value::Value(const value_t & value) noexcept :
+ _boolean(value._boolean), _multiline(value._multiline),
+ _type(value._type), _radix(value._radix),
+ _stamp(value._stamp), _quoting(value._quoting),
+ _real(value._real), _integer(value._integer),
+ _error(value._error), _text(value._text),
+ _items(value._items), _names(value._names) {}
 /**
  * @brief Конструктор переноса
  *
  * @param value переносимое значение
  *
  */
-awh::codec::toml::Value::Value(Value && value) noexcept :
- _type(value._type), _quoting(value._quoting), _radix(value._radix),
- _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
- _real(value._real), _stamp(value._stamp), _text(::move(value._text)),
- _names(::move(value._names)), _items(::move(value._items)),
+awh::codec::toml::Value::Value(value_t && value) noexcept :
+ _boolean(value._boolean), _multiline(value._multiline),
+ _type(value._type), _radix(value._radix),
+ _stamp(value._stamp), _quoting(value._quoting),
+ _real(value._real), _integer(value._integer),
+ _error(value._error), _text(::move(value._text)),
+ _items(::move(value._items)), _names(::move(value._names)),
  _index(::move(value._index)) {
 	// Выполняем сброс перенесённого значения
 	value._type = type_t::NONE;
 }
 /**
  * @brief Метод снятия значения с дерева настроек по составному имени
- *
- * @param document дерево настроек, откуда снимается значение
- * @param path     составное имя снимаемого значения
- * @return         признак успешности снятия
  *
  * @note Отказов у связки этой РОВНО ДВА, и сочтены они чтением тела 07.09.2026: неудача
  *       `document.get(path, content)` да ветвь `default` выбора по виду значения, отметкою
@@ -1702,8 +1917,12 @@ awh::codec::toml::Value::Value(Value && value) noexcept :
  *       живут при записи, а не при виде узла. Сличены грепом все присвоения `type =`
  *       у дерева и у читающего
  *
+ * @param document дерево настроек, откуда снимается значение
+ * @param path     составное имя снимаемого значения
+ * @return         признак успешности снятия
+ *
  */
-bool awh::codec::toml::Value::absorb(const Document & document, const vector <string_view> & path) noexcept {
+bool awh::codec::toml::Value::absorb(const document_t & document, const vector <string_view> & path) noexcept {
 	// Выполняем очистку значения от прежнего содержимого
 	this->clear();
 	/**
@@ -1715,6 +1934,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 	 * @note Проверка набора ведётся прежде проверки таблицы: у первой таблицы набора
 	 *       запись объявления та же, и проверка таблицы приняла бы набор за неё одну,
 	 *       потеряв все прочие
+	 *
 	 */
 	if(!path.empty() && (document.count(path) > 0)){
 		// Назначаем значению тип перечня
@@ -1730,6 +1950,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			 *
 			 * @note Запись хранится своею памятью намеренно: составное имя собрано
 			 *       взглядами, и взгляд на временную запись висел бы к обращению
+			 *
 			 */
 			const string ordinal = ::to_string(i);
 			// Собираем составное имя очередной таблицы набора
@@ -1737,7 +1958,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			// Добавляем номер очередной таблицы в составное имя
 			nested.push_back(ordinal);
 			// Заводим очередную таблицу набора
-			Value item;
+			value_t item;
 			/**
 			 * Если снять очередную таблицу набора не удалось
 			 *
@@ -1759,6 +1980,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(!item.absorb(document, nested))
 				// Выполняем переход к следующей таблице набора
@@ -1780,6 +2002,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 	 *       детей при отсутствии своего значения: запись объявления заводит лишь
 	 *       заголовок, а `[a.b]` и `a.b = 1` заводят звено `a` без него. Опора на одну
 	 *       только запись объявления теряла бы такое звено вместе со всем поддеревом
+	 *
 	 */
 	if(document.table(path) || path.empty() || (!document.keys(path).empty() && !document.has(path))){
 		// Назначаем значению тип таблицы
@@ -1795,7 +2018,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			// Добавляем имя очередной пары в составное имя
 			nested.push_back(key);
 			// Заводим значение очередной пары таблицы
-			Value item;
+			value_t item;
 			/**
 			 * Если снять значение очередной пары не удалось
 			 *
@@ -1818,6 +2041,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(!item.absorb(document, nested))
 				// Выполняем переход к следующей паре таблицы
@@ -1852,6 +2076,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			 * @note Признак снимается наравне с содержимым: перечень, человеком растянутый
 			 *       на несколько строк, владеющее значение прежде сводило в одну, тогда как
 			 *       дерево его намеренно хранит и намеренно же растягивает обратно
+			 *
 			 */
 			this->_multiline = document.multiline(path);
 			// Получаем количество значений перечня
@@ -1865,6 +2090,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 				 *
 				 * @note Запись хранится своею памятью намеренно: составное имя собрано
 				 *       взглядами, и взгляд на временную запись висел бы к обращению
+				 *
 				 */
 				const string ordinal = ::to_string(i);
 				// Собираем составное имя очередного значения перечня
@@ -1872,7 +2098,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 				// Добавляем номер очередного значения в составное имя
 				nested.push_back(ordinal);
 				// Заводим очередное значение перечня
-				Value item;
+				value_t item;
 				/**
 				 * Если снять очередное значение перечня не удалось
 				 */
@@ -1898,7 +2124,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 				// Добавляем имя очередной пары в составное имя
 				nested.push_back(key);
 				// Заводим значение очередной пары таблицы
-				Value item;
+				value_t item;
 				/**
 				 * Если снять значение очередной пары не удалось
 				 */
@@ -1967,9 +2193,10 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
  * @param document дерево настроек, откуда снимается значение
  *
  */
-awh::codec::toml::Value::Value(const Document & document) noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.) {
+awh::codec::toml::Value::Value(const document_t & document) noexcept :
+ _boolean(false), _multiline(false), _type(type_t::NONE),
+ _radix(radix_t::DECIMAL), _quoting(string_t::BASIC),
+ _real(.0), _integer(0), _error(error_t::NONE), _text{""} {
 	// Выполняем снятие значения с корня дерева настроек
 	this->absorb(document, {});
 }
@@ -1980,9 +2207,10 @@ awh::codec::toml::Value::Value(const Document & document) noexcept :
  * @param path     составное имя снимаемого значения
  *
  */
-awh::codec::toml::Value::Value(const Document & document, const vector <string_view> & path) noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
- _boolean(false), _multiline(false), _integer(0), _real(0.) {
+awh::codec::toml::Value::Value(const document_t & document, const vector <string_view> & path) noexcept :
+ _boolean(false), _multiline(false), _type(type_t::NONE),
+ _radix(radix_t::DECIMAL), _quoting(string_t::BASIC),
+ _real(.0), _integer(0), _error(error_t::NONE), _text{""} {
 	// Выполняем снятие значения с дерева настроек по составному имени
 	this->absorb(document, path);
 }
@@ -1994,14 +2222,33 @@ awh::codec::toml::Value::Value(const Document & document, const vector <string_v
  *
  */
 bool awh::codec::toml::Value::parse(const string & text) noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Дерево настроек, разбором собираемое
-	Document document;
+	document_t document;
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
-	if(!document.parse(text))
+	if(!document.parse(text)){
+		// Получаем код отказа разбора текста настроек
+		const error_t error = document.error();
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		/**
+		 * Запоминаем код отказа разбора
+		 *
+		 * @note Код и место снимаются ДО очистки, а ставятся после неё: очистка
+		 *       сбрасывает оба, и обратный порядок терял бы и код, и место
+		 *
+		 */
+		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста настроек
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	/**
 	 * Если снять значение с корня дерева настроек не удалось
 	 */
@@ -2019,15 +2266,36 @@ bool awh::codec::toml::Value::parse(const string & text) noexcept {
  * @return         признак успешности разбора
  *
  */
-bool awh::codec::toml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
+bool awh::codec::toml::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Дерево настроек, разбором собираемое
-	Document document;
+	document_t document;
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
-	if(!document.parse(text, settings))
+	if(!document.parse(text)){
+		// Получаем код отказа разбора текста настроек
+		const error_t error = document.error();
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		/**
+		 * Запоминаем код отказа разбора
+		 *
+		 * @note Код и место снимаются ДО очистки, а ставятся после неё: очистка
+		 *       сбрасывает оба, и обратный порядок терял бы и код, и место
+		 *
+		 */
+		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста настроек
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	/**
 	 * Если снять значение с корня дерева настроек не удалось
 	 */
@@ -2045,8 +2313,8 @@ bool awh::codec::toml::Value::parse(const string & text, const Document::setting
  *
  */
 bool awh::codec::toml::Value::load(const string & filename) noexcept {
-	// Объект работы с файловой системой
-	fs_t fs;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
 	 *
@@ -2057,21 +2325,22 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
 	 *
 	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
+	 *
 	 */
-	if(fs.type(filename, false) != fs_t::type_t::FILE){
+	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
 	// Собираемое содержимое читаемого файла настроек
-	string text;
+	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	fs.read(filename, text);
+	::__awh_fs__.read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (fs.size(filename) > 0)){
+	if(text.empty() && (::__awh_fs__.size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -2088,9 +2357,9 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
  * @return         признак успешности чтения
  *
  */
-bool awh::codec::toml::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	// Объект работы с файловой системой
-	fs_t fs;
+bool awh::codec::toml::Value::load(const string & filename, const document_t::settings_t & settings) noexcept {
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
 	 *
@@ -2101,21 +2370,22 @@ bool awh::codec::toml::Value::load(const string & filename, const Document::sett
 	 *
 	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
+	 *
 	 */
-	if(fs.type(filename, false) != fs_t::type_t::FILE){
+	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
 	// Собираемое содержимое читаемого файла настроек
-	string text;
+	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	fs.read(filename, text);
+	::__awh_fs__.read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (fs.size(filename) > 0)){
+	if(text.empty() && (::__awh_fs__.size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -2139,6 +2409,7 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
 	 * @note Признак этот берётся отдельно от самого имени: имя пустое отличать от
 	 *       отсутствия имени иначе нечем, а запись `"" = 5` описанием дозволена -
 	 *       значение перечня же имени не имеет вовсе
+	 *
 	 */
 	if(keyed || !name.empty()){
 		/**
@@ -2208,13 +2479,14 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
 				 * @details Дыра заводится ростом таблицы по номеру: имени у неё нет, а
 				 *          значение недействительно. Записана она быть не может - имя есть у
 				 *          всякой пары наречия, - и пропускается молча: отказ на ней сорвал бы
-				 *          запись всего дерева из-за одной дыры
+				 *          запись всего дерева из-за одной дыры.
 				 *
 				 * @note Дыра узнаётся по НЕДЕЙСТВИТЕЛЬНОМУ значению, а не по одному лишь
 				 *       пустому имени: запись `"" = 5` описанием дозволена, и пара с пустым
 				 *       именем, значение несущая, записи подлежит наравне с прочими.
 				 *       Прежде она пропускалась вместе с дырами, и снятое с дерева значение
 				 *       её теряло молча - нашёл это ворошитель круговым переносом
+				 *
 				 */
 				if((i >= this->_names.size()) || (this->_names.at(i).empty() && !this->_items.at(i).valid()))
 					// Выполняем переход к следующей паре таблицы
@@ -2241,6 +2513,7 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
 	 *
 	 * @note Заход этот берёт значение неопределённое: записать его нечем, а пустого
 	 *       значения у наречия TOML нет вовсе
+	 *
 	 */
 	return false;
 }
@@ -2254,6 +2527,8 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
 string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Объект записи текста настроек
 	writer_t writer(settings);
 	/**
@@ -2261,6 +2536,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 *
 	 * @note Корнем текста настроек может быть одна лишь таблица: описание наречия
 	 *       велит тексту быть перечнем пар, и число либо строка корнем его не бывают
+	 *
 	 */
 	if(this->_type != type_t::TABLE){
 		/**
@@ -2270,16 +2546,18 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 		 *          исправно, корнем текста его не сделать по устройству наречия. Прежде
 		 *          стоял второй, и отказ гласил «значение искажено» о вполне годном целом -
 		 *          потребитель шёл искать порчу там, где её нет
+		 *
 		 */
 		this->_error = error_t::UNREPRESENTABLE_VALUE;
 		// Выводим пустой текст настроек
-		return string();
+		return "";
 	}
 	/**
 	 * Выполняем перебор всех пар корневой таблицы
 	 *
 	 * @note Пары простые пишутся прежде вложенных таблиц намеренно: пара, за
 	 *       объявлением таблицы записанная, принадлежала бы уже ей, а не корню
+	 *
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		/**
@@ -2303,7 +2581,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 				// Запоминаем код отказа записи, потоком названный
 				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
 				// Выводим пустой текст настроек
-				return string();
+				return "";
 			}
 	}
 	/**
@@ -2331,16 +2609,17 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 				// Запоминаем код отказа записи, потоком названный
 				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
 				// Выводим пустой текст настроек
-				return string();
+				return "";
 			}
 		// Получаем значение объявленной таблицы
-		const Value & table = this->_items.at(i);
+		const value_t & table = this->_items.at(i);
 		/**
 		 * Выполняем перебор всех пар объявленной таблицы
 		 *
 		 * @note Вложенные таблицы записываются встроенными, а не объявлениями своими:
 		 *       объявление вложенное требует составного имени, а составные имена
 		 *       владеющее значение не держит - имя всякой пары у него простое
+		 *
 		 */
 		for(size_t j = 0; j < table._items.size(); j++){
 			/**
@@ -2352,6 +2631,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 			 *       пропуск по одному лишь имени ронял такую пару молча вместе со всем её
 			 *       поддеревом. Нашёл это ворошитель круговым ходом снятого значения на
 			 *       объявлении `[name."".c]`
+			 *
 			 */
 			if((j >= table._names.size()) || (table._names.at(j).empty() && !table._items.at(j).valid()))
 				// Выполняем переход к следующей паре таблицы
@@ -2374,6 +2654,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 *
 	 * @note Отдельного завершения запись не требует: поток дописывает окончание строки
 	 *       сам, и дерево настроек забирает у него текст ровно так же
+	 *
 	 */
 	return writer.text();
 }
@@ -2394,6 +2675,16 @@ awh::codec::toml::error_t awh::codec::toml::Value::error() const noexcept {
 	return this->_error;
 }
 /**
+ * @brief Метод получения места отказа последней работы над значением
+ *
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::toml::location_t & awh::codec::toml::Value::errorLocation() const noexcept {
+	// Выводим место отказа последней работы над владеющим значением
+	return this->_errorLocation;
+}
+/**
  * @brief Метод записи владеющего значения текстом настроек
  *
  * @return записанный текст настроек
@@ -2411,6 +2702,43 @@ string awh::codec::toml::Value::dump() const noexcept {
  *
  */
 bool awh::codec::toml::Value::save(const string & filename) const noexcept {
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"TOML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"TOML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи
+		return false;
+	}
 	// Получаем записанный текст настроек
 	const string text = this->dump();
 	/**
@@ -2435,40 +2763,43 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	 * @note Сносу заход не подлежит: без него запись пустоты легла бы на цель и
 	 *       затёрла прежнее её содержимое, отчитавшись успехом. Довод тот же, каким
 	 *       держится такой же заход у кодека JSON
+	 *
 	 */
 	if(text.empty() && !this->_items.empty()){
-		/**
-		 * Выполняем оглашение отказа в журнал
-		 *
-		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
-		 *          слова получивший, не узнает ни места отказа, ни рода его. Прежде запись
-		 *          владеющего значения не оглашала НИ ОДНОГО из четырёх своих отказов, тогда
-		 *          как кодеки JSON, XML и CSV оглашают все. Здесь берётся их же порядок
-		 *
-		 * @note Код отказа запоминается вместе с оглашением: поле его объявлено
-		 *       `mutable`, и постоянность записи правке кода не мешает. Прежде здесь
-		 *       стоял довод обратный - «запись объявлена постоянной, потому код не
-		 *       ставится», - и он был ЛОЖЕН по слову: отказ выдавался при коде НОЛЬ, а
-		 *       потребитель, спросив `error()`, узнавал `NONE`
-		 *
-		 * @note Нашло пробел объединённое покрытие набора с ворошителем
-		 */
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::toml::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"TOML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"TOML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Поток записи файла настроек
 	/**
 	 * Путь ко временному файлу, рядом с целевым лежащему
 	 *
 	 * @details Запись ведётся во временный файл, а цель подменяется переименованием -
-	 * действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
-	 * знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
-	 * работа прервана - оставлял потребителя без прежнего содержимого И без нового разом
+	 *          действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
+	 *          знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
+	 *          работа прервана - оставлял потребителя без прежнего содержимого И без нового разом.
 	 *
 	 * @warning Временный файл кладётся РЯДОМ с целевым, а не во временный каталог системы:
 	 *          переименование неделимо лишь в пределах одной файловой системы, а через
@@ -2480,30 +2811,50 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	 *
 	 * @note Порок найден перебором по всем кодекам рамки;
 	 *       у кодеков JSON, XML и CSV он закрыт месяцем раньше
+	 *
 	 */
 	const string temporary(filename + ".awh-tmp");
-	// Объект работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Если запись собранного текста настроек во временный файл не удалась
 	 */
-	if(!fs.write(temporary, text.data(), text.size())){
+	if(!::__awh_fs__.write(temporary, text.data(), text.size())){
 		/**
 		 * Запоминаем код отказа записи файла настроек
 		 *
 		 * @warning Причина различается по НАЛИЧИЮ временного файла: не заведись он вовсе -
 		 *          отказало ОТКРЫТИЕ, а заведись и не наполнись - отказала запись
+		 *
 		 */
-		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
+		this->_error = ((::__awh_fs__.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::toml::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"TOML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"TOML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2513,29 +2864,68 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	 * @warning Сброс ставится ДО подмены цели: запись, успехом отвеченная, лежит ещё во
 	 *          вместилище ядра, и подмена прежде сброса оставила бы цель указывающей на
 	 *          содержимое, до носителя не дошедшее
+	 *
 	 */
-	if(!fs.flush(temporary)){
+	if(!::__awh_fs__.flush(temporary)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::toml::message(this->_error));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"TOML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"TOML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
 	 * Если подмена целевого файла временным не удалась
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::toml::message(this->_error));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"TOML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"TOML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::toml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2546,7 +2936,7 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
  * @brief Метод сборки содержимого значения для правки дерева настроек
  *
  * @details Договор правки дерева принимает значение тем же построением, каким чтение
- * его выдаёт: тип задан полем, а составному значению отвечает содержимое пустое
+ *          его выдаёт: тип задан полем, а составному значению отвечает содержимое пустое.
  *
  * @param result собираемое содержимое значения
  *
@@ -2554,18 +2944,18 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 void awh::codec::toml::Value::contented(content_t & result) const noexcept {
 	// Запоминаем тип переносимого значения
 	result.type = this->_type;
-	// Запоминаем ограду строкового значения
-	result.quoting = this->_quoting;
+	// Запоминаем число с плавающей точкой
+	result.real = this->_real;
 	// Запоминаем систему счисления записи целого числа
 	result.radix = this->_radix;
+	// Запоминаем отметку времени
+	result.stamp = this->_stamp;
+	// Запоминаем ограду строкового значения
+	result.quoting = this->_quoting;
 	// Запоминаем логическое значение
 	result.boolean = this->_boolean;
 	// Запоминаем целое число со знаком
 	result.integer = this->_integer;
-	// Запоминаем число с плавающей точкой
-	result.real = this->_real;
-	// Запоминаем отметку времени
-	result.stamp = this->_stamp;
 	// Запоминаем строковое значение
 	result.text = string_view(this->_text);
 }
@@ -2573,8 +2963,8 @@ void awh::codec::toml::Value::contented(content_t & result) const noexcept {
  * @brief Метод наполнения составного значения, у места уже объявленного
  *
  * @details Наполнение ведётся вглубь: значение простое кладётся доливом, а перечень и
- * встроенная таблица кладутся пустыми и наполняются заходом сюда же по составному имени
- * своего места - порядковым номером в перечне, именем ключа во встроенной таблице
+ *          встроенная таблица кладутся пустыми и наполняются заходом сюда же по составному имени
+ *          своего места - порядковым номером в перечне, именем ключа во встроенной таблице.
  *
  * @note Пара встроенной таблицы с именем пустым переносу не подлежит и отвечает
  *       отказом: имени такого запись не имеет, и молчаливый пропуск оставил бы
@@ -2585,13 +2975,13 @@ void awh::codec::toml::Value::contented(content_t & result) const noexcept {
  * @return         признак успешности наполнения
  *
  */
-bool awh::codec::toml::Value::inflate(Document & document, const vector <string_view> & path) const noexcept {
+bool awh::codec::toml::Value::inflate(document_t & document, const vector <string_view> & path) const noexcept {
 	/**
 	 * Выполняем перебор всех вложенных значений
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		// Получаем очередное вложенное значение
-		const Value & item = this->_items.at(i);
+		const value_t & item = this->_items.at(i);
 		// Собираемое содержимое очередного вложенного значения
 		content_t content;
 		// Выполняем сборку содержимого очередного вложенного значения
@@ -2607,19 +2997,31 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 			 *
 			 * @details Дыру заводит рост перечня по номеру: запись `value[3]` заводит три
 			 *          значения недействительных перед четвёртым. Перечень языка дыр не
-			 *          знает вовсе, и перенести её нечем
+			 *          знает вовсе, и перенести её нечем.
 			 *
 			 * @warning Отказ здесь обязателен, а пропуск негоден: пропустив дыру, перенос
 			 *          сдвинул бы номера остальных значений - `[3]` обратилось бы в `[0]`,
 			 *          - и потребитель получил бы значение не там, где положил. Перенос же
 			 *          дыры как есть отдавал успех и оставлял дерево незаписываемым: запись
 			 *          его отвечала пустотой с кодом «значение построено ошибочно»
+			 *
 			 */
 			if(!item.valid()){
 				// Запоминаем код отказа наполнения дереву настроек
 				document._error = error_t::INVALID_VALUE;
-				// Выполняем вывод сообщения об отказе в лог
-				document.report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::toml::message(document._error), document._errorLocation.line, document._errorLocation.column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML document failed: %s at line %u column %u", log::flag_t::CRITICAL, codec::toml::message(document._error), document._errorLocation.line, document._errorLocation.column);
+				#endif
 				// Выводим признак неудачного наполнения
 				return false;
 			}
@@ -2650,6 +3052,7 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
 			if(!document.push(path, content))
 				// Выводим признак неудачного наполнения
@@ -2685,6 +3088,7 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 		 *          перечня значений не бывает. Замерено покрытием: заход не задет ни разу
 		 *
 		 * @note Сносу заход не подлежит: без него обращение к имени вышло бы за край
+		 *
 		 */
 		if(i >= this->_names.size())
 			// Выводим признак неудачного наполнения
@@ -2694,6 +3098,7 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 		 *
 		 * @note Дыра узнаётся недействительным значением: пара с пустым именем, значение
 		 *       несущая, есть запись `"" = 5`, описанием дозволенная, и переносу подлежит
+		 *
 		 */
 		if(this->_names.at(i).empty() && !item.valid())
 			// Выполняем переход к следующей паре встроенной таблицы
@@ -2722,6 +3127,7 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!document.put(path, name, content))
 			// Выводим признак неудачного наполнения
@@ -2747,17 +3153,9 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 /**
  * @brief Метод переноса владеющего значения в дерево настроек
  *
- * @param document дерево настроек, куда переносится значение
- * @param path     составное имя места переноса
- * @return         признак успешности переноса
- *
- */
-/**
- * @brief Метод переноса владеющего значения в дерево настроек с целостью его
- *
  * @details Перенос обязан быть ЦЕЛЫМ: отказ посреди него оставлял дерево с частью
  *          перенесённого, и потребитель, отказ получивший, не знал ни того, какая часть
- *          легла, ни того, как её снять
+ *          легла, ни того, как её снять.
  *
  * @note Перенос ведётся на копии дерева, а с нею дерево и подменяется по успехе. Копия
  *       безопасна: своих указателей дерево не держит, а места записей хранит смещениями,
@@ -2769,27 +3167,27 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
  *
  * @note Правило это одно с правилом записи: отказ не оставляет текста рваным
  *
- * @param document дерево настроек, куда переносится значение
- * @param path     составное имя, по какому укладывается значение
- * @return         признак успешности переноса
- *
  * @note Имена, руками собранные, судятся у ИСТОКА - переносом в дерево, а не записью.
  *       Замерено щупом 07.09.2026: имя с переводом строки и имя со знаком управляющим
  *       отвергаются кодом INVALID_KEY (9) при дереве нетронутом, тогда как имя с пробелом
  *       и имя пустое описанием ДОЗВОЛЕНЫ и записываются оградою - `"bad key" = "v"` и
  *       `"" = "v"`. Разряд беды «привито успехом, а записи не подлежит» здесь ОТСУТСТВУЕТ
  *
+ * @param document дерево настроек, куда переносится значение
+ * @param path     составное имя места переноса
+ * @return         признак успешности переноса
+ *
  */
-bool awh::codec::toml::Value::graft(Document & document, const vector <string_view> & path) const noexcept {
+bool awh::codec::toml::Value::graft(document_t & document, const vector <string_view> & path) const noexcept {
 	/**
 	 * Если глубина вложенности переносимого значения превышает потолок допустимого
 	 *
 	 * @details Дерево, собранное руками, предела глубины не знало вовсе: разбор текста
-	 * огранивает настройку `maxDepth` потолком `MAX_DEPTH` перед работою, а прививка
-	 * значения шла мимо всякого суждения о глубине. Оттого дерево принимало значение,
-	 * какого запись принять не может: вложенность в семьдесят массивов прививалась
-	 * УСПЕХОМ, а `dump()` затем отдавал ПУСТУЮ строку с кодом `DEPTH_EXCEEDED`, и
-	 * документ становился незаписуемым без всякого признака отказа при правке
+	 *          огранивает настройку `maxDepth` потолком `MAX_DEPTH` перед работою, а прививка
+	 *          значения шла мимо всякого суждения о глубине. Оттого дерево принимало значение,
+	 *          какого запись принять не может: вложенность в семьдесят массивов прививалась
+	 *          УСПЕХОМ, а `dump()` затем отдавал ПУСТУЮ строку с кодом `DEPTH_EXCEEDED`, и
+	 *          документ становился незаписуемым без всякого признака отказа при правке.
 	 *
 	 * @note Судить здесь потолком `MAX_DEPTH`, а не настройкою записи, ВЕРНО: настройка
 	 *       эта у записи потолком не огранена, но дерево глубже потолка не примет и
@@ -2802,12 +3200,13 @@ bool awh::codec::toml::Value::graft(Document & document, const vector <string_vi
 	 * @note Правка эта родня находке о негодной кодировке при прививке: там дерево тоже
 	 *       принимало то, чего запись принять не может. Разряд один - прививка судила
 	 *       годность значения не тем же мерилом, каким судит её запись
+	 *
 	 */
 	{
 		// Наибольшая встреченная глубина вложенности значения
 		size_t deepness = 0;
 		// Стопа обхода дерева: узел и глубина его залегания
-		vector <pair <const Value *, size_t>> stack;
+		vector <pair <const value_t *, size_t>> stack;
 		// Выполняем помещение корня переносимого значения в стопу обхода
 		stack.emplace_back(this, static_cast <size_t> (1));
 		/**
@@ -2842,7 +3241,7 @@ bool awh::codec::toml::Value::graft(Document & document, const vector <string_vi
 		}
 	}
 	// Рабочая копия дерева настроек, куда ведётся перенос
-	Document staging(document);
+	document_t staging(document);
 	/**
 	 * Если уложить значение в рабочую копию не удалось
 	 */
@@ -2852,6 +3251,7 @@ bool awh::codec::toml::Value::graft(Document & document, const vector <string_vi
 		 *
 		 * @note Код берётся у копии: она с отказом и пропадает, а потребитель обязан
 		 *       узнать причину - отказ без названной причины оставляет его ни с чем
+		 *
 		 */
 		document._error = staging.error();
 		// Выводим признак неудачного переноса
@@ -2863,9 +3263,14 @@ bool awh::codec::toml::Value::graft(Document & document, const vector <string_vi
 	return true;
 }
 /**
- * Внедрение значения в документ по пути
+ * @brief Метод укладки владеющего значения в дерево настроек
+ *
+ * @param document дерево настроек, куда укладывается значение
+ * @param path     составное имя, по какому укладывается значение
+ * @return         признак успешности укладки
+ *
  */
-bool awh::codec::toml::Value::implant(Document & document, const vector <string_view> & path) const noexcept {
+bool awh::codec::toml::Value::implant(document_t & document, const vector <string_view> & path) const noexcept {
 	/**
 	 * Определяем тип переносимого значения
 	 */
@@ -2893,6 +3298,7 @@ bool awh::codec::toml::Value::implant(Document & document, const vector <string_
 			 *
 			 * @note Корень объявления не требует: таблицею он является всегда, и
 			 *       объявлять его заголовком значило бы завести таблицу с пустым именем
+			 *
 			 */
 			if(!path.empty()){
 				/**
@@ -2932,6 +3338,7 @@ bool awh::codec::toml::Value::implant(Document & document, const vector <string_
 		 * @note Перечень объявляется у места пустым, а наполняется доливом значений:
 		 *       вложенные перечни и встроенные таблицы объявляются тем же способом и
 		 *       наполняются составным именем с порядковым номером своим на конце
+		 *
 		 */
 		case static_cast <uint8_t> (type_t::ARRAY): {
 			/**
@@ -2957,6 +3364,7 @@ bool awh::codec::toml::Value::implant(Document & document, const vector <string_
 	 *       назначается затем, что `graft()` берёт её у копии дерева, а укладка её
 	 *       не называла вовсе - потребитель получал бы ложь при истинном отказе:
 	 *       `error()` отвечал бы «ошибок не обнаружено»
+	 *
 	 */
 	document._error = error_t::INVALID_VALUE;
 	// Выводим признак неудачного переноса
@@ -2969,9 +3377,9 @@ bool awh::codec::toml::Value::implant(Document & document, const vector <string_
  * @return ссылка на открытое вместилище
  *
  */
-awh::codec::toml::Value & awh::codec::toml::Builder::opened() noexcept {
+awh::codec::toml::value_t & awh::codec::toml::Builder::opened() noexcept {
 	// Получаем ссылку на собираемое значение
-	Value * result = &this->_root;
+	value_t * result = &this->_root;
 	/**
 	 * Выполняем перебор пути к открытому вместилищу
 	 */
@@ -2988,9 +3396,9 @@ awh::codec::toml::Value & awh::codec::toml::Builder::opened() noexcept {
  * @return      номер занесённого значения во вместилище
  *
  */
-size_t awh::codec::toml::Builder::deposit(Value && value) noexcept {
+size_t awh::codec::toml::Builder::deposit(value_t && value) noexcept {
 	// Получаем ссылку на открытое вместилище
-	Value & holder = this->opened();
+	value_t & holder = this->opened();
 	/**
 	 * Если имя пары таблицы назначено
 	 */
@@ -3011,6 +3419,7 @@ size_t awh::codec::toml::Builder::deposit(Value && value) noexcept {
 		 *       вместилище, следом открытое, собиралось бы в него. На скалярах ловушка
 		 *       эта не видна вовсе: вылезает она лишь тогда, когда за повтором имени
 		 *       открывается вместилище
+		 *
 		 */
 		const size_t found = holder.search(name);
 		// Выводим номер занесённого поля вместилища
@@ -3028,7 +3437,7 @@ size_t awh::codec::toml::Builder::deposit(Value && value) noexcept {
  * @return      признак успешности открытия
  *
  */
-bool awh::codec::toml::Builder::expand(Value && value) noexcept {
+bool awh::codec::toml::Builder::expand(value_t && value) noexcept {
 	/**
 	 * Если сборка завершена уже
 	 */
@@ -3075,6 +3484,7 @@ bool awh::codec::toml::Builder::expand(Value && value) noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(this->_keyed)
 			// Выводим признак неудачного открытия
@@ -3099,7 +3509,7 @@ bool awh::codec::toml::Builder::expand(Value && value) noexcept {
  */
 bool awh::codec::toml::Builder::table() noexcept {
 	// Выводим признак успешности открытия таблицы
-	return this->expand(Value(type_t::TABLE));
+	return this->expand(value_t(type_t::TABLE));
 }
 /**
  * @brief Метод открытия перечня значений
@@ -3110,7 +3520,7 @@ bool awh::codec::toml::Builder::table() noexcept {
  */
 bool awh::codec::toml::Builder::array(const bool multiline) noexcept {
 	// Заводим открываемый перечень значений
-	Value value(type_t::ARRAY);
+	value_t value(type_t::ARRAY);
 	// Выполняем установку признака записи перечня несколькими строками
 	value.multiline(multiline);
 	// Выводим признак успешности открытия перечня значений
@@ -3134,6 +3544,7 @@ bool awh::codec::toml::Builder::close() noexcept {
 	 *
 	 * @note Отказ намеренный: имя без значения есть незавершённая пара, и закрытие
 	 *       вместилища на ней потеряло бы имя молча
+	 *
 	 */
 	if(this->_keyed)
 		// Выводим признак неудачного закрытия
@@ -3192,7 +3603,7 @@ bool awh::codec::toml::Builder::key(const string & name) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::toml::Builder::value(const Value & value) noexcept {
+bool awh::codec::toml::Builder::value(const value_t & value) noexcept {
 	/**
 	 * Если сборка завершена уже либо вместилище корневое не открыто вовсе
 	 */
@@ -3206,7 +3617,7 @@ bool awh::codec::toml::Builder::value(const Value & value) noexcept {
 		// Выводим признак неудачной записи
 		return false;
 	// Выполняем занесение записываемого значения
-	this->deposit(Value(value));
+	this->deposit(value_t(value));
 	// Выводим признак успешной записи
 	return true;
 }
@@ -3219,7 +3630,7 @@ bool awh::codec::toml::Builder::value(const Value & value) noexcept {
  */
 bool awh::codec::toml::Builder::value(const bool value) noexcept {
 	// Выводим признак успешности записи логического значения
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи целого числа со знаком
@@ -3231,7 +3642,7 @@ bool awh::codec::toml::Builder::value(const bool value) noexcept {
  */
 bool awh::codec::toml::Builder::value(const int64_t value, const radix_t radix) noexcept {
 	// Выводим признак успешности записи целого числа
-	return this->value(Value(value, radix));
+	return this->value(value_t(value, radix));
 }
 /**
  * @brief Метод записи целого числа без знака
@@ -3243,7 +3654,7 @@ bool awh::codec::toml::Builder::value(const int64_t value, const radix_t radix) 
  */
 bool awh::codec::toml::Builder::value(const uint64_t value, const radix_t radix) noexcept {
 	// Выводим признак успешности записи целого числа без знака
-	return this->value(Value(value, radix));
+	return this->value(value_t(value, radix));
 }
 /**
  * @brief Метод записи числа с плавающей точкой
@@ -3254,7 +3665,7 @@ bool awh::codec::toml::Builder::value(const uint64_t value, const radix_t radix)
  */
 bool awh::codec::toml::Builder::value(const double value) noexcept {
 	// Выводим признак успешности записи числа с плавающей точкой
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи строкового значения
@@ -3266,14 +3677,13 @@ bool awh::codec::toml::Builder::value(const double value) noexcept {
  */
 bool awh::codec::toml::Builder::value(const string & value, const string_t quoting) noexcept {
 	// Выводим признак успешности записи строкового значения
-	return this->value(Value(value, quoting));
+	return this->value(value_t(value, quoting));
 }
 /**
- * @copydoc awh::codec::toml::Builder::value(const string &, const string_t)
  */
 bool awh::codec::toml::Builder::value(const char * value, const string_t quoting) noexcept {
 	// Выводим признак успешности записи строкового значения
-	return this->value(Value(value, quoting));
+	return this->value(value_t(value, quoting));
 }
 /**
  * @brief Метод записи отметки времени
@@ -3285,7 +3695,7 @@ bool awh::codec::toml::Builder::value(const char * value, const string_t quoting
  */
 bool awh::codec::toml::Builder::value(const stamp_t & value, const type_t type) noexcept {
 	// Заводим записываемое значение отметки времени
-	Value stamped;
+	value_t stamped;
 	/**
 	 * Если установить отметку времени не удалось
 	 */
@@ -3316,16 +3726,16 @@ size_t awh::codec::toml::Builder::depth() const noexcept {
  *
  */
 void awh::codec::toml::Builder::reset() noexcept {
+	// Выполняем сброс признака завершённости сборки
+	this->_done = false;
+	// Выполняем сброс признака назначенного имени
+	this->_keyed = false;
+	// Выполняем очистку имени пары таблицы
+	this->_key.clear();
 	// Выполняем сброс собираемого значения
 	this->_root.clear();
 	// Выполняем очистку пути к открытому вместилищу
 	this->_path.clear();
-	// Выполняем очистку имени пары таблицы
-	this->_key.clear();
-	// Выполняем сброс признака назначенного имени
-	this->_keyed = false;
-	// Выполняем сброс признака завершённости сборки
-	this->_done = false;
 }
 /**
  * @brief Метод изъятия собранного значения
@@ -3333,9 +3743,9 @@ void awh::codec::toml::Builder::reset() noexcept {
  * @return собранное значение
  *
  */
-awh::codec::toml::Value awh::codec::toml::Builder::finish() noexcept {
+awh::codec::toml::value_t awh::codec::toml::Builder::finish() noexcept {
 	// Выполняем изъятие собранного значения переносом
-	Value result(::move(this->_root));
+	value_t result(::move(this->_root));
 	// Выполняем сброс сборки в исходное состояние
 	this->reset();
 	// Выводим собранное значение
@@ -3345,56 +3755,4 @@ awh::codec::toml::Value awh::codec::toml::Builder::finish() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::toml::Builder::Builder() noexcept : _keyed(false), _done(false) {}
-/**
- * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
- *
- * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
- *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
- *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
- *       `int64_t` НЕ является
- */
-typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
-/**
- * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
- *
- */
-typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
-/**
- * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
- */
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const short, const radix_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const unsigned short, const radix_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const int, const radix_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const unsigned int, const radix_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const wide_t, const radix_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const uwide_t, const radix_t) noexcept;
-/**
- * @brief Оператор обращения к паре по имени из одного знака
- *
- * @param name имя искомой пары из одного знака
- * @return     найденное значение
- *
- */
-template <typename T>
-typename enable_if <is_same <T, char>::value, const awh::codec::toml::Value &>::type awh::codec::toml::Value::operator [] (const T name) const noexcept {
-	// Выводим значение пары, именем из одного знака разыскиваемое
-	return (* this)[string(1, name)];
-}
-/**
- * @brief Оператор заведения пары по имени из одного знака
- *
- * @param name имя заводимой пары из одного знака
- * @return     заведённое значение
- *
- */
-template <typename T>
-typename enable_if <is_same <T, char>::value, awh::codec::toml::Value &>::type awh::codec::toml::Value::operator [] (const T name) noexcept {
-	// Выводим значение пары, именем из одного знака заводимое
-	return (* this)[string(1, name)];
-}
-/**
- * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
- */
-template __AWH_SHARED_EXPORT__ const awh::codec::toml::Value & awh::codec::toml::Value::operator [] <char> (const char) const noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::toml::Value & awh::codec::toml::Value::operator [] <char> (const char) noexcept;
+awh::codec::toml::Builder::Builder() noexcept : _done(false), _keyed(false) {}

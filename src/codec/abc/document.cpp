@@ -171,7 +171,7 @@ namespace {
 	 * @return     признак того, что содержимое узла лежит в хранилище октетов
 	 *
 	 */
-	static bool stored(const codec::abc::type_t type) noexcept {
+	static constexpr bool stored(const codec::abc::type_t type) noexcept {
 		/**
 		 * Определяем вид значения узла
 		 */

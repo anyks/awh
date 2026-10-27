@@ -21,7 +21,12 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
  */
 #include <codec/syslog/reader.hpp>
 
@@ -30,6 +35,7 @@
  *
  * @note Годность текста кодировке поверяется ходом рамки, а не своим разбором: держать
  *       один договор в двух местах значило бы разводить их молча при правке одного
+ *
  */
 #include <encoding/unicode/utf8.hpp>
 
@@ -37,7 +43,6 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -50,40 +55,45 @@ using namespace std;
  */
 namespace {
 	/**
-	 * @brief Смещение разбора, начиная с какого хранилище уплотняется
+	 * @brief Наибольшее число знаков в долях секунды, какое допускает RFC 5424
 	 *
-	 * @details Уплотнение стоит перекладывания хвоста, и делать его на всякий поданный
-	 *          кусок было бы дороже самого разбора
+	 * @details Раздел 6.2.3.1 назначает предел прямо: приложение системного журнала
+	 *          НЕ ДОЛЖНО писать более шести знаков после точки.
+	 *
 	 */
-	constexpr size_t COMPACT_THRESHOLD = 0x10000;
+	constexpr size_t MAX_SECFRAC = 6;
 	/**
 	 * @brief Количество полей заголовка записи RFC 5424, структурированным данным предшествующих
 	 *
 	 * @details Описание назначает их шесть и порядок их закрепляет: номер описания, дата,
-	 *          узел, приложение, работа и опознаватель сообщения
+	 *          узел, приложение, работа и опознаватель сообщения.
+	 *
 	 */
 	constexpr size_t MODERN_FIELDS = 6;
+	/**
+	 * @brief Смещение разбора, начиная с какого хранилище уплотняется
+	 *
+	 * @details Уплотнение стоит перекладывания хвоста, и делать его на всякий поданный
+	 *          кусок было бы дороже самого разбора.
+	 *
+	 */
+	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 	/**
 	 * @brief Запись даты с пробелом вместо знака «T»
 	 *
 	 * @details Описаниями системного журнала вид этот НЕ назначен вовсе, но живыми
-	 *          устройствами пишется: так дату записывает, к примеру, syslog-ng
+	 *          устройствами пишется: так дату записывает, к примеру, syslog-ng.
+	 *
 	 */
 	constexpr string_view SPACED_DATE_FORMAT = "%Y-%m-%d %H:%M:%S";
+	
 	/**
-	 * @brief Наибольшее число знаков в долях секунды, какое допускает RFC 5424
-	 *
-	 * @details Раздел 6.2.3.1 назначает предел прямо: приложение системного журнала
-	 *          НЕ ДОЛЖНО писать более шести знаков после точки
-	 */
-	constexpr size_t MAX_SECFRAC = 6;
-	/**
-	 * @brief Поверка поля заголовка на набор знаков, описанием назначенный
+	 * @brief Функция поверки поля заголовка на набор знаков, описанием назначенный
 	 *
 	 * @details Разделы 6.2.4-6.2.7 назначают полям заголовка - имени узла, названию
-	 * приложения, опознавателю работы и опознавателю сообщения - набор PRINTUSASCII:
-	 * знаки от 33 до 126 включительно. Пробел, управляющие знаки и всё, что вне ASCII,
-	 * описанием запрещены
+	 *          приложения, опознавателю работы и опознавателю сообщения - набор PRINTUSASCII:
+	 *          знаки от 33 до 126 включительно. Пробел, управляющие знаки и всё, что вне ASCII,
+	 *          описанием запрещены.
 	 *
 	 * @warning Поверка эта зовётся ЛИШЬ при строгом сличении: живые устройства пишут в
 	 *          имени узла и знаки своей письменности, и отвергать их при слабом сличении
@@ -93,8 +103,9 @@ namespace {
 	 *
 	 * @param field поле заголовка записи
 	 * @return      признак соответствия поля набору знаков описания
+	 *
 	 */
-	bool printable(const string_view field) noexcept {
+	static bool printable(const string_view field) noexcept {
 		/**
 		 * Выполняем перебор всех знаков поля заголовка
 		 */
@@ -110,12 +121,12 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Поверка имени структурированных данных на набор знаков описания
+	 * @brief Функция поверки имени структурированных данных на набор знаков описания
 	 *
 	 * @details RFC 5424, раздел 6.3.3, задаёт именам свой набор, от заголовочных полей
-	 * отличный: `SD-NAME = 1*32 PRINTUSASCII`, за вычетом знака равенства, пробела,
-	 * закрывающей скобки и кавычки. Все четыре изъятия поверяются здесь, а не
-	 * возлагаются на разбор
+	 *          отличный: `SD-NAME = 1*32 PRINTUSASCII`, за вычетом знака равенства, пробела,
+	 *          закрывающей скобки и кавычки. Все четыре изъятия поверяются здесь, а не
+	 *          возлагаются на разбор.
 	 *
 	 * @note Поверка эта отдельная, а не `printable`: набор тут УЖЕ печатного, и слить
 	 *       их в один ход значило бы отвергать кавычку в полях заголовка, где она
@@ -131,8 +142,9 @@ namespace {
 	 *
 	 * @param name имя структуры либо поля структурированных данных
 	 * @return     признак соответствия имени набору знаков описания
+	 *
 	 */
-	bool named(const string_view name) noexcept {
+	static bool named(const string_view name) noexcept {
 		/**
 		 * Выполняем перебор всех знаков имени
 		 */
@@ -163,32 +175,16 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Поверка записи даты на требования RFC 5424, разделу 6.2.3.1 сверх RFC 3339
-	 *
-	 * @details Описание системного журнала берёт от RFC 3339 подмножество и добавляет
-	 * к нему четыре запрета своих: буквы «T» и «Z» обязаны быть прописными, скачущая
-	 * секунда запрещена, знаков долей не более шести, смещение «-00:00» не допускается.
-	 * Ход разбора каркаса знает RFC 3339 целиком и потому принимает всё перечисленное
-	 *
-	 * @warning Поверка эта зовётся ЛИШЬ при строгом сличении: живые устройства пишут и
-	 *          строчную «z», и скачущую секунду, и отвергать их при слабом сличении
-	 *          значило бы терять события. Заведено 15.09.2026 по щупу оборота дат:
-	 *          строгое сличение принимало пять записей из восьми, описанию противных,
-	 *          и расходилось само с собою - строчную «t» оно отвергало, а «z» нет
-	 *
-	 * @param timestamp запись даты сообщения
-	 * @return          признак соответствия записи требованиям описания
-	 */
-	/**
-	 * @brief Поверка числа, записанного двумя знаками, на попадание в границы
+	 * @brief Функция поверки числа, записанного двумя знаками, на попадание в границы
 	 *
 	 * @param text  запись даты сообщения
 	 * @param begin смещение первого знака числа
 	 * @param least наименьшее допустимое значение
 	 * @param most  наибольшее допустимое значение
 	 * @return      признак того, что число записано двумя цифрами и в границы попадает
+	 *
 	 */
-	bool bounded(const string_view text, const size_t begin, const uint32_t least, const uint32_t most) noexcept {
+	static bool bounded(const string_view text, const size_t begin, const uint32_t least, const uint32_t most) noexcept {
 		// Если знаков числа в записи не хватает
 		if((begin + 1) >= text.size())
 			// Выводим отказ поверки: запись числа усечена
@@ -203,9 +199,24 @@ namespace {
 		return ((value >= least) && (value <= most));
 	}
 	/**
-	 * Проверка строгого вида метки времени
+	 * @brief Функция поверки записи даты на требования RFC 5424, разделу 6.2.3.1 сверх RFC 3339
+	 *
+	 * @details Описание системного журнала берёт от RFC 3339 подмножество и добавляет
+	 *          к нему четыре запрета своих: буквы «T» и «Z» обязаны быть прописными, скачущая
+	 *          секунда запрещена, знаков долей не более шести, смещение «-00:00» не допускается.
+	 *          Ход разбора каркаса знает RFC 3339 целиком и потому принимает всё перечисленное.
+	 *
+	 * @warning Поверка эта зовётся ЛИШЬ при строгом сличении: живые устройства пишут и
+	 *          строчную «z», и скачущую секунду, и отвергать их при слабом сличении
+	 *          значило бы терять события. Заведено 15.09.2026 по щупу оборота дат:
+	 *          строгое сличение принимало пять записей из восьми, описанию противных,
+	 *          и расходилось само с собою - строчную «t» оно отвергало, а «z» нет
+	 *
+	 * @param timestamp запись даты сообщения
+	 * @return          признак соответствия записи требованиям описания
+	 *
 	 */
-	bool strictTimestamp(const string_view timestamp) noexcept {
+	static bool strictTimestamp(const string_view timestamp) noexcept {
 		// Наименьшая запись даты описания: «1985-04-12T23:20:50Z»
 		if(timestamp.size() < 20)
 			// Выводим отказ поверки: записи короче наименьшей описанию не отвечают
@@ -214,8 +225,8 @@ namespace {
 		 * Если числа записи за границы, описанием назначенные, выходят
 		 *
 		 * @details Границы эти назначает ABNF раздела 6.2.3.1: месяц 01-12, день 01-31,
-		 * час 00-23, минута и секунда 00-59. Секунда 60 отвергается отдельно ниже, ибо
-		 * скачущую секунду описание запрещает особо
+		 *          час 00-23, минута и секунда 00-59. Секунда 60 отвергается отдельно ниже, ибо
+		 *          скачущую секунду описание запрещает особо.
 		 *
 		 * @warning Поверка эта стоит ЗДЕСЬ, а не у модуля дат, намеренно, и заведена
 		 *          15.09.2026 намеренно. Прежде границы эти стерёг разбор
@@ -227,6 +238,7 @@ namespace {
 		 *
 		 * @note Год не поверяется границами: описание требует лишь четырёх цифр, и всякое
 		 *       их сочетание ему отвечает
+		 *
 		 */
 		if(!::bounded(timestamp, 5, 1, 12) || !::bounded(timestamp, 8, 1, 31) ||
 		   !::bounded(timestamp, 11, 0, 23) || !::bounded(timestamp, 14, 0, 59) ||
@@ -240,6 +252,7 @@ namespace {
 		 *       различение регистра в литералах образца: прежде строчная «t» отвергалась
 		 *       разбором сама, и кодеку стеречь было нечего. Раздел 6.2.3.1 требует
 		 *       прописных обеих букв, и теперь запрет ставит кодек
+		 *
 		 */
 		if(timestamp[10] != 'T')
 			// Выводим отказ поверки: раздел 6.2.3.1 требует прописной буквы
@@ -276,6 +289,7 @@ namespace {
 			 *
 			 * @note Строчная «z» отвергается наравне со строчной «t»: раздел 6.2.3.1
 			 *       требует прописных обеих, и разнобой здесь был бы хуже запрета
+			 *
 			 */
 			return ((timestamp[offset] == 'Z') && ((offset + 1) == timestamp.size()));
 		// Если смещение пояса времени записано отрицательным нулём
@@ -286,7 +300,8 @@ namespace {
 		 * Если смещение пояса времени описанию не отвечает
 		 *
 		 * @details Вид смещения назначен ABNF: знак, два знака часов, двоеточие, два знака
-		 *          минут. Часы смещения 00-23, минуты 00-59
+		 *          минут. Часы смещения 00-23, минуты 00-59.
+		 *
 		 */
 		if(((timestamp[offset] != '+') && (timestamp[offset] != '-')) ||
 		   ((offset + 6) != timestamp.size()) || (timestamp[offset + 3] != ':') ||
@@ -296,7 +311,7 @@ namespace {
 		// Выводим итог поверки: прочее сличено ходом разбора каркаса
 		return true;
 	}
-}
+};
 
 /**
  * @brief Метод прекращения разбора ошибкой
@@ -304,41 +319,34 @@ namespace {
  * @param error  код ошибки разбора
  * @param offset смещение места ошибки в хранилище разбора
  * @return       признак наличия очередного события разбора
+ *
  */
 bool awh::codec::syslog::Reader::fail(const error_t error, const size_t offset) noexcept {
 	// Запоминаем код ошибки разбора
 	this->_error = error;
-	// Устанавливаем состояние прекращения разбора ошибкой
-	this->_state = state_t::FAILED;
 	// Сбрасываем вид текущего события разбора
 	this->_event = event_t::NONE;
+	// Устанавливаем состояние прекращения разбора ошибкой
+	this->_state = state_t::FAILED;
 	// Выполняем определение положения места ошибки в исходном тексте
 	this->place(offset, this->_errorLocation);
-	// Выводим в лог сообщение об ошибке разбора
-	awh::log::print(
-		"SysLog parsing failed: %s at line %llu column %llu",
-		awh::log::flag_t::CRITICAL,
-		awh::codec::syslog::message(error),
-		static_cast <unsigned long long> (this->_errorLocation.line),
-		static_cast <unsigned long long> (this->_errorLocation.column)
-	);
 	// Выводим отсутствие очередного события разбора
 	return false;
 }
-
 /**
  * @brief Метод определения положения смещения в исходном тексте
  *
  * @param offset смещение в хранилище разбора
  * @param result положение, вычисляемое по смещению
+ *
  */
 void awh::codec::syslog::Reader::place(const size_t offset, pos_t & result) const noexcept {
-	// Устанавливаем смещение в байтах от начала текста
-	result.offset = (this->_origin.offset + static_cast <uint64_t> (offset));
 	// Учитываем строки, удалённые при уплотнении хранилища
 	result.line = this->_origin.line;
 	// Устанавливаем номер столбца начала хранилища
 	result.column = this->_origin.column;
+	// Устанавливаем смещение в байтах от начала текста
+	result.offset = (this->_origin.offset + static_cast <uint64_t> (offset));
 	/**
 	 * Выполняем перебор знаков хранилища до искомого смещения
 	 */
@@ -353,13 +361,13 @@ void awh::codec::syslog::Reader::place(const size_t offset, pos_t & result) cons
 		} else result.column++;
 	}
 }
-
 /**
  * @brief Метод отыскания конца текущей записи
  *
  * @param length длина найденной записи без знака конца строки
  * @param next   смещение начала следующей записи
  * @return       признак того, что запись найдена целиком
+ *
  */
 bool awh::codec::syslog::Reader::measure(size_t & length, size_t & next) const noexcept {
 	// Выполняем поиск перевода строки, запись завершающего
@@ -389,32 +397,48 @@ bool awh::codec::syslog::Reader::measure(size_t & length, size_t & next) const n
 	// Выводим признак того, что запись целиком не найдена
 	return false;
 }
-
 /**
  * @brief Метод разбора очередной записи целиком
  *
  * @param record текст очередной записи без знака конца строки
  * @return       признак успешного разбора записи
+ *
  */
 bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
-	// Выполняем очистку полей заголовка предыдущей записи
-	this->_fields.clear();
-	// Выполняем очистку блоков структурированных данных предыдущей записи
-	this->_structures.clear();
-	// Выполняем очистку текста сообщения предыдущей записи
-	this->_message.clear();
-	// Сбрасываем признак объявленности текста сообщения
-	this->_messaged = false;
-	// Сбрасываем приоритет предыдущей записи
-	this->_priority = 0;
-	// Сбрасываем признак объявленности приоритета
-	this->_prioritized = false;
 	// Сбрасываем номер описания предыдущей записи
 	this->_version = 0;
+	// Сбрасываем приоритет предыдущей записи
+	this->_priority = 0;
+	// Сбрасываем признак объявленности текста сообщения
+	this->_messaged = false;
+	// Сбрасываем признак объявленности приоритета
+	this->_prioritized = false;
+	// Выполняем очистку полей заголовка предыдущей записи
+	this->_fields.clear();
+	// Выполняем очистку текста сообщения предыдущей записи
+	this->_message.clear();
+	// Выполняем очистку блоков структурированных данных предыдущей записи
+	this->_structures.clear();
 	// Если длина записи допустимую превышает
-	if(record.size() > static_cast <size_t> (this->_settings.maxRecord))
-		// Выводим отказ разбора слишком длинной записью
+	if(record.size() > static_cast <size_t> (this->_settings.maxRecord)){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::syslog::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::RECORD_TOO_LONG, this->_record);
+	}
 	// Смещение, за приставкой приоритета следующее
 	size_t offset = 0;
 	// Если разбор приставки приоритета отказом завершился
@@ -427,6 +451,7 @@ bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
 	 * @note Описание, самоопределением найденное, ЗАПОМИНАЕТСЯ: спрос его после
 	 *       разбора отвечает опознанным, а не настройкой, - то есть так же, как если
 	 *       бы описание задали вручную
+	 *
 	 */
 	this->_standard = (this->_settings.standard == standard_t::AUTO ? this->detect(record, offset) : this->_settings.standard);
 	/**
@@ -442,16 +467,31 @@ bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
 			// Выводим итог разбора записи нынешним описанием
 			return this->modern(record, offset);
 	}
-	// Выводим отказ разбора неопределённым описанием записи
+	// Выполняем определение положения места ошибки в исходном тексте
+	this->place(this->_record, this->_errorLocation);
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::syslog::message(error_t::UNKNOWN_STANDARD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNKNOWN_STANDARD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+	#endif
+	// Объявляем отказ разбора
 	return this->fail(error_t::UNKNOWN_STANDARD, this->_record);
 }
-
 /**
  * @brief Метод разбора приставки приоритета
  *
  * @param record разбираемая запись
  * @param offset смещение, за приставкой следующее
  * @return       признак успешного разбора приставки
+ *
  */
 bool awh::codec::syslog::Reader::priority(const string_view record, size_t & offset) noexcept {
 	// Сбрасываем смещение разбора приставки
@@ -461,6 +501,7 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	 *
 	 * @note Отказом это НЕ является: описание приставку требует, живые же устройства
 	 *       шлют записи и без неё, а сборщики журналов такие записи принимают
+	 *
 	 */
 	if(record.empty() || (record.front() != '<'))
 		// Выводим признак успешного разбора приставки
@@ -468,29 +509,78 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	// Выполняем поиск знака, приставку закрывающего
 	const size_t pos = record.find('>', 1);
 	// Если знак, приставку закрывающий, не найден
-	if(pos == string_view::npos)
-		// Выводим отказ разбора ошибочной приставкой приоритета
+	if(pos == string_view::npos){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_PRIORITY, this->_record);
+	}
 	// Если приставка приоритета пуста
-	if(pos == 1)
-		// Выводим отказ разбора ошибочной приставкой приоритета
+	if(pos == 1){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record + 1, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_PRIORITY, this->_record + 1);
+	}
 	/**
 	 * Если сличение ведётся строго, отвергаем ведущие нули значения приоритета
 	 *
 	 * @details Оба описания запрещают их прямо: RFC 3164 разделом 4.1.1 и RFC 5424
-	 * разделом 6.2.1 - значение записывается целым числом без ведущих нулей. Сам нуль
-	 * записью «<0>» при этом законен, и запрет его не касается
+	 *          разделом 6.2.1 - значение записывается целым числом без ведущих нулей. Сам нуль
+	 *          записью «<0>» при этом законен, и запрет его не касается.
 	 *
 	 * @warning Запрет ставится ЛИШЬ при строгом сличении: живые устройства шлют «<01>»,
 	 *          и отвергать такие записи при слабом сличении значило бы терять события.
 	 *          Прежде запись эта принималась всяким сличением и молча обращалась в
 	 *          «<1>» - искажение тихое, ибо запись остаётся правдоподобной. Найдено
 	 *          щупом приоритета 15.09.2026
+	 *
 	 */
-	if((this->_settings.mode == mode_t::STRONG) && (record[1] == '0') && (pos > 2))
-		// Выводим отказ разбора ошибочной приставкой приоритета
+	if((this->_settings.mode == mode_t::STRONG) && (record[1] == '0') && (pos > 2)){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record + 1, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_PRIORITY, this->_record + 1);
+	}
 	// Собираемое значение приоритета
 	uint32_t result = 0;
 	/**
@@ -498,15 +588,47 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	 */
 	for(size_t i = 1; i < pos; i++){
 		// Если знак приставки цифрой не является
-		if((record[i] < '0') || (record[i] > '9'))
-			// Выводим отказ разбора ошибочной приставкой приоритета
+		if((record[i] < '0') || (record[i] > '9')){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + i, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_PRIORITY, this->_record + i);
+		}
 		// Наращиваем значение приоритета очередной цифрой
 		result = ((result * 10) + static_cast <uint32_t> (record[i] - '0'));
 		// Если значение приоритета за допустимый предел вышло
-		if(result > MAX_PRIORITY)
-			// Выводим отказ разбора приоритетом, за предел вышедшим
+		if(result > MAX_PRIORITY){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + i, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PRIORITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_PRIORITY, this->_record + i);
+		}
 	}
 	// Запоминаем приоритет записи
 	this->_priority = result;
@@ -517,23 +639,23 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	// Выводим признак успешного разбора приставки
 	return true;
 }
-
 /**
  * @brief Метод получения приоритета текущей записи
  *
  * @return приоритет текущей записи
+ *
  */
 uint32_t awh::codec::syslog::Reader::priority() const noexcept {
 	// Выводим приоритет текущей записи
 	return this->_priority;
 }
-
 /**
  * @brief Метод определения описания записи по её виду
  *
  * @param record разбираемая запись
  * @param offset смещение, за приставкой приоритета следующее
  * @return       определённое описание записи
+ *
  */
 awh::codec::syslog::standard_t awh::codec::syslog::Reader::detect(const string_view record, const size_t offset) const noexcept {
 	// Указатель перебора знаков номера описания
@@ -544,6 +666,7 @@ awh::codec::syslog::standard_t awh::codec::syslog::Reader::detect(const string_v
 	 * @note Описание RFC 5424 задаёт номер описания цифрами в количестве от одной до
 	 *       трёх, за какими обязан следовать пробел. Признак этот назначен самим
 	 *       описанием, а не выведен из наблюдений
+	 *
 	 */
 	while((i < record.size()) && (i < (offset + 3)) && (record[i] >= '0') && (record[i] <= '9'))
 		// Сдвигаем указатель перебора знаков
@@ -555,45 +678,46 @@ awh::codec::syslog::standard_t awh::codec::syslog::Reader::detect(const string_v
 	// Выводим описание записи устаревшим
 	return standard_t::RFC3164;
 }
-
 /**
  * @brief Метод разбора записи описания RFC 3164
  *
  * @param record разбираемая запись
  * @param offset смещение, за приставкой приоритета следующее
  * @return       признак успешного разбора записи
+ *
  */
 bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset) noexcept {
-	// Запоминаем смещение начала даты сообщения
-	const size_t begin = offset;
 	/**
 	 * Отделяем дату сообщения счётом слов, а не постоянной длиной
 	 *
 	 * @details Описание RFC 3164 назначает дате вид «Mmm dd hh:mm:ss» длиною ровно в
-	 * пятнадцать октетов, и по длине её отделять было бы дешевле всего. Но живые
-	 * устройства пишут в этом месте ещё три вида - «Www Mmm dd hh:mm:ss yyyy» записи
-	 * asctime, «2024-10-04 13:29:47» и дату RFC 3339, - и отделение по длине разбирало
-	 * бы их неверно МОЛЧА, отдавая часть даты именем узла. Оттого дата отделяется по
-	 * слову, ЗНАК ВРЕМЕНИ несущему: оно у всех четырёх видов последнее, а за ним
-	 * дозволен лишь год четырьмя цифрами
+	 *          пятнадцать октетов, и по длине её отделять было бы дешевле всего. Но живые
+	 *          устройства пишут в этом месте ещё три вида - «Www Mmm dd hh:mm:ss yyyy» записи
+	 *          asctime, «2024-10-04 13:29:47» и дату RFC 3339, - и отделение по длине разбирало
+	 *          бы их неверно МОЛЧА, отдавая часть даты именем узла. Оттого дата отделяется по
+	 *          слову, ЗНАК ВРЕМЕНИ несущему: оно у всех четырёх видов последнее, а за ним
+	 *          дозволен лишь год четырьмя цифрами.
 	 *
 	 * @note Предел в пять слов взят не украшения ради: без него запись без даты вовсе
-	 *       съедала бы под дату весь текст сообщения, в каком двоеточие непременно
-	 *       найдётся
+	 *       съедала бы под дату весь текст сообщения, в каком двоеточие непременно найдётся
+	 *
 	 */
 	constexpr size_t LEGACY_DATE_WORDS = 5;
+	// Запоминаем смещение начала даты сообщения
+	const size_t begin = offset;
+	// Количество разобранных слов даты сообщения
+	size_t words = 0;
 	// Длина даты сообщения в октетах
 	size_t length = 0;
 	// Указатель перебора знаков даты сообщения
 	size_t i = offset;
-	// Количество разобранных слов даты сообщения
-	size_t words = 0;
 	/**
 	 * Признак того, что дата сообщения знак времени несёт
 	 *
 	 * @details Всякий вид даты, описаниями и живыми устройствами писанный, время несёт:
-	 * и вид BSD, и asctime, и RFC 3339, и вид с пробелом вместо знака «T». Оттого слово
-	 * со знаком времени и служит признаком конца даты
+	 *          и вид BSD, и asctime, и RFC 3339, и вид с пробелом вместо знака «T». Оттого слово
+	 *          со знаком времени и служит признаком конца даты.
+	 *
 	 */
 	bool timing = false;
 	/**
@@ -606,10 +730,10 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 		while((i < record.size()) && (record[i] == ' '))
 			// Сдвигаем указатель перебора знаков
 			i++;
-		// Запоминаем смещение начала очередного слова
-		const size_t word = i;
 		// Признак того, что слово знак времени несёт
 		bool timed = false;
+		// Запоминаем смещение начала очередного слова
+		const size_t word = i;
 		/**
 		 * Выполняем перебор знаков очередного слова
 		 */
@@ -655,13 +779,14 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 			 * Если за временем следует слово ровно из четырёх цифр
 			 *
 			 * @details Слово это двусмысленно: описание RFC 3164 года не назначает вовсе,
-			 * но живые устройства его пишут, а имя узла из четырёх цифр от года
-			 * неотличимо. Двусмысленность разрешается ГРАММАТИКОЙ описания, а не
-			 * правдоподобием года: описание ставит между датой и меткой приложения имя
-			 * узла, оттого слово это годом считается лишь тогда, когда за ним следует
-			 * НЕ метка приложения. Проверять же год на правдоподобие («больше 1970»)
-			 * значило бы гадать: журналы несут и даты испытательных стендов, и даты,
-			 * сбитые часами устройства
+			 *          но живые устройства его пишут, а имя узла из четырёх цифр от года
+			 *          неотличимо. Двусмысленность разрешается ГРАММАТИКОЙ описания, а не
+			 *          правдоподобием года: описание ставит между датой и меткой приложения имя
+			 *          узла, оттого слово это годом считается лишь тогда, когда за ним следует
+			 *          НЕ метка приложения. Проверять же год на правдоподобие («больше 1970»)
+			 *          значило бы гадать: журналы несут и даты испытательных стендов, и даты,
+			 *          сбитые часами устройства.
+			 *
 			 */
 			if(((next - year) == 4) && ((next >= record.size()) || (record[next] == ' '))){
 				// Смещение перебора слова, за годом следующего
@@ -694,6 +819,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 				 * @note Обратный случай означает, что слово это есть имя узла: между
 				 *       датой и меткой описание ставит узел, и годом занять его место
 				 *       нечему
+				 *
 				 */
 				if(!tagged)
 					// Запоминаем длину даты сообщения вместе с годом
@@ -707,16 +833,33 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 * Если дата сообщения записью не объявлена
 	 *
 	 * @details Необъявленной дата считается и тогда, когда знака времени не несёт ни
-	 * одно из просмотренных слов: без него концу даты взяться неоткуда, и счёт слов
-	 * забрал бы под дату весь заголовок. Записанная обратно, такая «дата» вобрала бы в
-	 * себя и следующее поле - оборот записи разрушался бы молча
+	 *          одно из просмотренных слов: без него концу даты взяться неоткуда, и счёт слов
+	 *          забрал бы под дату весь заголовок. Записанная обратно, такая «дата» вобрала бы в
+	 *          себя и следующее поле - оборот записи разрушался бы молча.
 	 *
 	 * @note Найдено ворошителем 07.09.2026: запись «<170>Sat Ja», порчей усечённая,
 	 *       возвращалась из оборота с датой «Sat Ja -»
+	 *
 	 */
-	if((length == 0) || !timing)
-		// Выводим отказ разбора недостачею полей заголовка
+	if((length == 0) || !timing){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record + begin, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
+	}
 	// Получаем дату сообщения записи
 	const string_view timestamp(record.data() + offset, length);
 	/**
@@ -724,6 +867,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 *
 	 * @note Оба вида даты каркасу известны: устаревший - RFC3164, нынешний - RFC3339.
 	 *       Пробуем оба, ибо в этом месте живые устройства пишут и тот, и другой
+	 *
 	 */
 	if(this->_settings.mode != mode_t::NONE){
 		// Признак пригодности записи даты
@@ -734,6 +878,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 		 * @note Виды пробуются по убыванию частоты, а не по порядку описаний: разбор
 		 *       ведётся до первого удавшегося, и вид, чаще встречаемый, экономит
 		 *       попытки на всякой записи
+		 *
 		 */
 		this->_chrono.parse(timestamp, chrono_t::standard_t::RFC3164, valid, chrono_t::storage_t::LOCAL);
 		// Если запись даты устаревшему описанию не отвечает
@@ -746,6 +891,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 		 * @note Два вида ниже описаниями системного журнала НЕ назначены вовсе, но
 		 *       живыми устройствами пишутся: запись asctime языка C и запись с
 		 *       пробелом вместо знака «T». Отвергать их значило бы терять события
+		 *
 		 */
 		if(!valid)
 			// Выполняем разбор даты сообщения записью asctime языка C
@@ -755,9 +901,25 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 			// Выполняем разбор даты сообщения записью с пробелом вместо знака «T»
 			this->_chrono.parse(timestamp, SPACED_DATE_FORMAT, valid, chrono_t::storage_t::LOCAL);
 		// Если запись даты разбору не поддалась
-		if(!valid)
-			// Выводим отказ разбора ошибочной датой сообщения
+		if(!valid){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_TIMESTAMP, this->_record + begin);
+		}
 	}
 	// Выполняем укладку даты сообщения
 	this->lay(field_t::TIMESTAMP, timestamp);
@@ -787,15 +949,15 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 * Выполняем перебор знаков метки приложения
 	 *
 	 * @details Метка оканчивается двоеточием либо открывающей скобкой опознавателя
-	 * работы. Набор знаков её ОГРАНИЧЕН: описание зовёт метку алфавитно-цифровой,
-	 * живые же устройства пишут в ней и путь к программе («/usr/sbin/cron»), и имя с
-	 * чертой. Знак, набору чуждый, означает, что метки нет вовсе, а есть уже текст
-	 * сообщения
+	 *          работы. Набор знаков её ОГРАНИЧЕН: описание зовёт метку алфавитно-цифровой,
+	 *          живые же устройства пишут в ней и путь к программе («/usr/sbin/cron»), и имя с чертой.
+	 *          Знак, набору чуждый, означает, что метки нет вовсе, а есть уже текст сообщения.
 	 *
 	 * @note Ограничение это не украшение, а условие ОБРАТИМОСТИ: без него текст
 	 *       сообщения, двоеточие несущий, становился меткой при повторном разборе -
 	 *       запись, кодеком собранная, читалась им же иначе. Найдено ворошителем
 	 *       07.09.2026 расхождением деревьев после оборота
+	 *
 	 */
 	while((offset < record.size()) && (record[offset] != ':') && (record[offset] != '[') &&
 	      (((record[offset] >= 'a') && (record[offset] <= 'z')) ||
@@ -813,6 +975,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 *       Считай её меткой - и повторный разбор съедал бы первый знак сообщения, а
 	 *       оборот записи укорачивал бы его при всяком круге. Найдено ворошителем
 	 *       07.09.2026
+	 *
 	 */
 	if((offset > tag) && (offset < record.size()) && ((record[offset] == ':') || (record[offset] == '['))){
 		// Выполняем укладку названия приложения
@@ -830,9 +993,25 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 				// Сдвигаем смещение разбора
 				offset++;
 			// Если скобка опознавателя работы не закрыта
-			if(offset >= record.size())
-				// Выводим отказ разбора ошибочным опознавателем работы
+			if(offset >= record.size()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + process, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PROCESS), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PROCESS), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_PROCESS, this->_record + process);
+			}
 			// Выполняем укладку опознавателя работы
 			this->lay(field_t::PROCESS, string_view(record.data() + process, offset - process));
 			// Сдвигаем смещение разбора за закрывающую скобку опознавателя
@@ -850,6 +1029,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 		 *       был бы съеден вторично - текст сообщения терял бы первый свой знак, а
 		 *       оборот записи укорачивал бы его при всяком круге. Найдено ворошителем
 		 *       07.09.2026
+		 *
 		 */
 		if((offset < record.size()) && (record[offset] == ' '))
 			// Сдвигаем смещение разбора за разделитель
@@ -858,21 +1038,21 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	} else offset = tag;
 	// Если текст сообщения записью объявлен
 	if(offset < record.size()){
-		// Запоминаем текст сообщения записи
-		this->_message.assign(record.data() + offset, record.size() - offset);
 		// Запоминаем признак объявленности текста сообщения
 		this->_messaged = true;
+		// Запоминаем текст сообщения записи
+		this->_message.assign(record.data() + offset, record.size() - offset);
 	}
 	// Выводим признак успешного разбора записи
 	return true;
 }
-
 /**
  * @brief Метод разбора записи описания RFC 5424
  *
  * @param record разбираемая запись
  * @param offset смещение, за приставкой приоритета следующее
  * @return       признак успешного разбора записи
+ *
  */
 bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset) noexcept {
 	// Поля заголовка записи, разделителем отделённые
@@ -883,6 +1063,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 * @note Разделителем полей описание назначает РОВНО ОДИН пробел, и полей этих
 	 *       ровно шесть: пропуск пробелов подряд означал бы приём записи, описанию не
 	 *       отвечающей, а пустое поле там записывается знаком отсутствия значения
+	 *
 	 */
 	for(size_t i = 0; i < MODERN_FIELDS; i++){
 		// Запоминаем смещение начала очередного поля заголовка
@@ -894,19 +1075,35 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 			// Сдвигаем смещение разбора
 			offset++;
 		// Если поле заголовка оборвалось вместе с записью
-		if(offset >= record.size())
-			// Выводим отказ разбора недостачею полей заголовка
+		if(offset >= record.size()){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
+		}
 		// Запоминаем очередное поле заголовка записи
 		fields[i] = string_view(record.data() + begin, offset - begin);
 		/**
 		 * Если сличение ведётся строго и поле заголовка пусто
 		 *
 		 * @details Правило это объявлено запискою выше - «разделителем описание назначает
-		 * РОВНО ОДИН пробел, а пустое поле там записывается знаком отсутствия значения»,
-		 * - и поверки под ним не стояло: два пробела подряд давали поле пустое, и запись
-		 * такая принималась строгим сличением наравне с записью законной. Описание же
-		 * задаёт каждому полю заголовка длину не менее одного знака либо знак «-»
+		 *          РОВНО ОДИН пробел, а пустое поле там записывается знаком отсутствия значения»,
+		 *          - и поверки под ним не стояло: два пробела подряд давали поле пустое, и запись
+		 *          такая принималась строгим сличением наравне с записью законной. Описание же
+		 *          задаёт каждому полю заголовка длину не менее одного знака либо знак «-».
 		 *
 		 * @note Найдено картою кодов отказа 16.09.2026: код `EMPTY_HEADER_FIELD` объявлен
 		 *       с описанием и не наводился НИ ОДНИМ местом кодека. Сличение кодов,
@@ -917,10 +1114,27 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		 *       пустое поле заголовка отвергается и слабым сличением - там условие это
 		 *       сложилось иным, и равнять кодеки друг по другу значило бы ломать
 		 *       согласие каждого с самим собою
+		 *
 		 */
-		if((this->_settings.mode == mode_t::STRONG) && fields[i].empty())
-			// Выводим отказ разбора пустым полем заголовка
+		if((this->_settings.mode == mode_t::STRONG) && fields[i].empty()){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::EMPTY_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::EMPTY_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::EMPTY_HEADER_FIELD, this->_record + begin);
+		}
 		// Сдвигаем смещение разбора за разделитель полей
 		offset++;
 	}
@@ -929,9 +1143,25 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 */
 	for(size_t i = 0; i < fields[0].size(); i++){
 		// Если знак номера описания цифрой не является
-		if((fields[0][i] < '0') || (fields[0][i] > '9'))
-			// Выводим отказ разбора ошибочным номером описания
+		if((fields[0][i] < '0') || (fields[0][i] > '9')){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_VERSION, this->_record);
+		}
 		// Наращиваем номер описания очередной цифрой
 		this->_version = ((this->_version * 10) + static_cast <uint32_t> (fields[0][i] - '0'));
 		/**
@@ -940,31 +1170,64 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		 * @details Набор без сторожа обращался по кругу: «4294967297» есть 2^32 + 1, и в
 		 *          uint32_t он ложился единицей - негодный номер описания проходил
 		 *          поверку ниже как годный. Приставка приоритета сторожа этого имеет
-		 *          изначально, а номер описания был без него
+		 *          изначально, а номер описания был без него.
 		 *
 		 * @note Прекращение набора, а не отказ прямо здесь: место отказа остаётся тем же,
 		 *       что и прежде, - поверкою ниже, - и поведение при негодном номере не
 		 *       меняется ни кодом ошибки, ни местом его наведения
+		 *
 		 */
 		if(this->_version > MAX_VERSION)
 			// Выходим из цикла набора: номер описания негоден и опознается поверкой ниже
 			break;
 	}
 	// Если номер описания записи пуст
-	if(fields[0].empty())
-		// Выводим отказ разбора ошибочным номером описания
+	if(fields[0].empty()){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_VERSION, this->_record);
+	}
 	// Если номер описания записи не поддерживается
-	if(this->_version > MAX_VERSION)
-		// Выводим отказ разбора неподдерживаемым номером описания
+	if(this->_version > MAX_VERSION){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_record, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNSUPPORTED_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNSUPPORTED_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::UNSUPPORTED_VERSION, this->_record);
+	}
 	/**
 	 * Если сличение ведётся строго, поверяем ЗАПИСЬ номера описания, а не одно значение
 	 *
 	 * @details RFC 5424, раздел 6.2.2, задаёт номеру описания вид `VERSION =
-	 * NONZERO-DIGIT 0*2DIGIT`: первая цифра не нуль, и всего цифр не более трёх. Отсюда
-	 * два запрета, значением номера не выразимые: нуль номером не бывает вовсе, и
-	 * ведущий нуль запрещён
+	 *          NONZERO-DIGIT 0*2DIGIT`: первая цифра не нуль, и всего цифр не более трёх. Отсюда
+	 *          два запрета, значением номера не выразимые: нуль номером не бывает вовсе, и
+	 *          ведущий нуль запрещён.
 	 *
 	 * @note Найдено щупом 16.09.2026: записи «<165>0 ...», «<165>01 ...» и «<165>001 ...»
 	 *       разбирались строгим сличением как RFC 5424 редакции ПЕРВОЙ - ибо предел
@@ -976,16 +1239,49 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 * @note Разряд тот же, каким страдала приставка приоритета, и поверка та же: судить
 	 *       надлежит ЗАПИСЬ поля, а не число, из неё набранное, - число ведущих нулей
 	 *       не помнит
+	 *
 	 */
 	if(this->_settings.mode == mode_t::STRONG){
 		// Если номер описания записи нулём объявлен
-		if(this->_version == 0)
-			// Выводим отказ разбора ошибочным номером описания
+		if(this->_version == 0){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_VERSION, this->_record);
+		}
 		// Если номер описания записи ведущий нуль несёт
-		if((fields[0].size() > 1) && (fields[0][0] == '0'))
-			// Выводим отказ разбора ошибочным номером описания
+		if((fields[0].size() > 1) && (fields[0][0] == '0')){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_VERSION, this->_record);
+		}
 	}
 	/**
 	 * Если сличение ведётся, проверяем пригодность даты сообщения
@@ -993,6 +1289,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 * @note Дата разбирается ходом фреймворка, а не своим разбором: описание её -
 	 *       RFC 3339, и каркас знает его уже. Заводить рядом второй разбор значило бы
 	 *       держать один договор в двух местах
+	 *
 	 */
 	if((this->_settings.mode != mode_t::NONE) && (fields[1] != NIL)){
 		// Признак пригодности записи даты
@@ -1000,9 +1297,25 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		// Выполняем разбор даты сообщения ходом фреймворка
 		this->_chrono.parse(fields[1], chrono_t::standard_t::RFC3339, valid, chrono_t::storage_t::LOCAL);
 		// Если запись даты разбору не поддалась
-		if(!valid)
-			// Выводим отказ разбора ошибочной датой сообщения
+		if(!valid){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_TIMESTAMP, this->_record);
+		}
 	}
 	/**
 	 * Если сличение ведётся строго, проверяем длины полей заголовка
@@ -1010,6 +1323,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 * @note Пределы длин назначены самим описанием, разделы 6.2.4-6.2.7, и потому
 	 *       проверяются лишь при строгом сличении: живые устройства их превышают, а
 	 *       отвергать такие записи значило бы терять события
+	 *
 	 */
 	if(this->_settings.mode == mode_t::STRONG){
 		/**
@@ -1018,15 +1332,33 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		 * @note Поверка стоит ЗДЕСЬ, а не рядом с разбором даты выше: запреты эти
 		 *       принадлежат строгому сличению, тогда как разбор ведётся при всяком
 		 *       сличении, кроме отключённого вовсе
+		 *
 		 */
-		if((fields[1] != NIL) && !::strictTimestamp(fields[1]))
-			// Выводим отказ разбора ошибочной датой сообщения
+		if((fields[1] != NIL) && !::strictTimestamp(fields[1])){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_TIMESTAMP), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_TIMESTAMP, this->_record);
+		}
 		/**
 		 * Выполняем перебор полей заголовка, набору знаков подлежащих
 		 *
 		 * @note Дата и номер описания сюда не входят: у них свой вид, и стерегут его
 		 *       поверки выше. Перебор идёт с имени узла по опознаватель сообщения
+		 *
 		 */
 		for(size_t i = 2; i < MODERN_FIELDS; i++){
 			// Если поле заголовка набору знаков описания отвечает, переходим к следующему
@@ -1040,32 +1372,151 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 			 *       отвело свои коды, прочим полям - общий. Код имени узла до 15.09.2026
 			 *       не наводился НИ ОДНИМ путём, будучи объявленным: поверка набора знаков
 			 *       задумывалась и сделана не была
+			 *
 			 */
 			switch(i){
-				// Если поле заголовка именем узла является
-				case 2: return this->fail(error_t::INVALID_HOSTNAME, this->_record);
-				// Если поле заголовка опознавателем работы является
-				case 4: return this->fail(error_t::INVALID_PROCESS, this->_record);
-				// Если поле заголовка прочим полем является
-				default: return this->fail(error_t::INVALID_HEADER_FIELD, this->_record);
+				// Если мы получили ошибку неверного хоста
+				case 2: {
+					// Выполняем определение положения места ошибки в исходном тексте
+					this->place(this->_record, this->_errorLocation);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_HOSTNAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_HOSTNAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					#endif
+					// Объявляем отказ разбора
+					return this->fail(error_t::INVALID_HOSTNAME, this->_record);
+				}
+				// Если мы получили ошибку неверного процесса
+				case 4: {
+					// Выполняем определение положения места ошибки в исходном тексте
+					this->place(this->_record, this->_errorLocation);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PROCESS), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PROCESS), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					#endif
+					// Объявляем отказ разбора
+					return this->fail(error_t::INVALID_PROCESS, this->_record);
+				}
+				// Если мы получили ошибку неверного поля заголовка
+				default: {
+					// Выполняем определение положения места ошибки в исходном тексте
+					this->place(this->_record, this->_errorLocation);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					#endif
+					// Объявляем отказ разбора
+					return this->fail(error_t::INVALID_HEADER_FIELD, this->_record);
+				}
 			}
 		}
 		// Если длина имени узла допустимую превышает
-		if(fields[2].size() > static_cast <size_t> (MAX_HOSTNAME))
-			// Выводим отказ разбора слишком длинным полем заголовка
+		if(fields[2].size() > static_cast <size_t> (MAX_HOSTNAME)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		}
 		// Если длина названия приложения допустимую превышает
-		if(fields[3].size() > static_cast <size_t> (MAX_APPLICATION))
-			// Выводим отказ разбора слишком длинным полем заголовка
+		if(fields[3].size() > static_cast <size_t> (MAX_APPLICATION)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		}
 		// Если длина опознавателя работы допустимую превышает
-		if(fields[4].size() > static_cast <size_t> (MAX_PROCESS))
-			// Выводим отказ разбора слишком длинным полем заголовка
+		if(fields[4].size() > static_cast <size_t> (MAX_PROCESS)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		}
 		// Если длина опознавателя сообщения допустимую превышает
-		if(fields[5].size() > static_cast <size_t> (MAX_MESSAGE_ID))
-			// Выводим отказ разбора слишком длинным полем заголовка
+		if(fields[5].size() > static_cast <size_t> (MAX_MESSAGE_ID)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		}
 	}
 	// Выполняем укладку номера описания записи
 	this->lay(field_t::VERSION, fields[0]);
@@ -1089,6 +1540,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 	 * @note Разделитель здесь обязателен описанием, но живые устройства его опускают,
 	 *       и запись такая читается однозначно: текст сообщения начинается сразу за
 	 *       закрывающей скобкой
+	 *
 	 */
 	if(offset < record.size()){
 		// Если за структурированными данными следует разделитель
@@ -1102,6 +1554,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		 *
 		 * @note Метка есть признак кодировки, а не часть сообщения: оставить её в
 		 *       тексте значило бы отдать потребителю три октета, каких он не писал
+		 *
 		 */
 		if(this->_settings.bom && (text.size() >= BOM.size()) && (text.compare(0, BOM.size(), BOM) == 0)){
 			// Сдвигаем текст сообщения за метку порядка байтов
@@ -1110,8 +1563,8 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 			 * Если сличение ведётся строго, поверяем годность текста кодировке
 			 *
 			 * @details RFC 5424, раздел 6.4, требует прямо: текст, меткою порядка байтов
-			 * открытый, ОБЯЗАН быть годным UTF-8. Метка есть заявление о кодировке, и
-			 * заявление это поверяемо - чего кодек не делал вовсе, метку снимая
+			 *          открытый, ОБЯЗАН быть годным UTF-8. Метка есть заявление о кодировке, и
+			 *          заявление это поверяемо - чего кодек не делал вовсе, метку снимая.
 			 *
 			 * @note Поверка ведётся ходом рамки `awh::utf8::valid`, а не своим разбором:
 			 *       рамка знает и сверхдлинные записи, и суррогатные пары, и предел
@@ -1126,26 +1579,43 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 			 *       годным UTF-8 НЕ бывших - обрывок пары, одинокий хвост, октет 0xFE,
 			 *       сверхдлинный нуль и суррогат D800, - приняты строгим сличением все
 			 *       пять, тогда как своим же ходом рамка звала их негодными
+			 *
 			 */
-			if((this->_settings.mode == mode_t::STRONG) && !awh::utf8::valid(text))
-				// Выводим отказ разбора негодной кодировкой текста сообщения
+			if((this->_settings.mode == mode_t::STRONG) && !awh::utf8::valid(text)){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + offset, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_MESSAGE_UTF8), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_MESSAGE_UTF8), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_MESSAGE_UTF8, this->_record + offset);
+			}
 		}
-		// Запоминаем текст сообщения записи
-		this->_message.assign(text.data(), text.size());
 		// Запоминаем признак объявленности текста сообщения
 		this->_messaged = true;
+		// Запоминаем текст сообщения записи
+		this->_message.assign(text.data(), text.size());
 	}
 	// Выводим признак успешного разбора записи
 	return true;
 }
-
 /**
  * @brief Метод разбора блоков структурированных данных
  *
  * @param record разбираемая запись
  * @param offset смещение начала первого блока
  * @return       признак успешного разбора блоков
+ *
  */
 bool awh::codec::syslog::Reader::structured(const string_view record, size_t & offset) noexcept {
 	/**
@@ -1170,24 +1640,73 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 		 *
 		 * @note Опознаватель оканчивается пробелом либо закрывающей скобкой: блок без
 		 *       единого поля описанием дозволен
+		 *
 		 */
 		while((offset < record.size()) && (record[offset] != ' ') && (record[offset] != ']'))
 			// Сдвигаем смещение разбора
 			offset++;
 		// Если опознаватель блока оборвался вместе с записью
-		if(offset >= record.size())
-			// Выводим отказ разбора незакрытой скобкой блока
+		if(offset >= record.size()){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
+		}
 		// Получаем опознаватель блока структурированных данных
 		const string_view name(record.data() + begin, offset - begin);
 		// Если опознаватель блока пуст
-		if(name.empty())
-			// Выводим отказ разбора ошибочным опознавателем блока
+		if(name.empty()){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_record + begin);
+		}
 		// Если сличение ведётся и длина опознавателя допустимую превышает
-		if((this->_settings.mode == mode_t::STRONG) && (name.size() > static_cast <size_t> (MAX_NAME)))
-			// Выводим отказ разбора слишком длинным именем
+		if((this->_settings.mode == mode_t::STRONG) && (name.size() > static_cast <size_t> (MAX_NAME))){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::NAME_TOO_LONG, this->_record + begin);
+		}
 		/**
 		 * Если сличение ведётся и опознаватель блока набору знаков описания не отвечает
 		 *
@@ -1195,20 +1714,54 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 		 *       не поверялся ничем, и строгое сличение принимало `[exa"mple@1 ...]`
 		 *       наравне с законным именем. Длина и набор суть два требования одного
 		 *       правила описания, и выполнялось из них одно
+		 *
 		 */
-		if((this->_settings.mode == mode_t::STRONG) && !::named(name))
-			// Выводим отказ разбора ошибочным опознавателем блока
+		if((this->_settings.mode == mode_t::STRONG) && !::named(name)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_STRUCTURE_ID), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_record + begin);
+		}
 		// Если количество блоков допустимое превышает
-		if(this->_structures.size() >= static_cast <size_t> (this->_settings.maxStructures))
-			// Выводим отказ разбора превышением предела настроек
+		if(this->_structures.size() >= static_cast <size_t> (this->_settings.maxStructures)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::OVERFLOW_LIMIT, this->_record + begin);
+		}
 		/**
 		 * Если сличение ведётся строго, проверяем неповторимость опознавателя блока
 		 *
 		 * @note Описание требует неповторимости опознавателей внутри записи. Проверка
 		 *       эта перебором, а не указателем: блоков в живых записях единицы, и
 		 *       заведение указателя стоило бы дороже самого перебора
+		 *
 		 */
 		if(this->_settings.mode == mode_t::STRONG){
 			/**
@@ -1216,9 +1769,25 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 			 */
 			for(auto & structure : this->_structures){
 				// Если опознаватель блока уже объявлен
-				if(structure.first.compare(0, structure.first.size(), name.data(), name.size()) == 0)
-					// Выводим отказ разбора повторным опознавателем блока
+				if(structure.first.compare(0, structure.first.size(), name.data(), name.size()) == 0){
+					// Выполняем определение положения места ошибки в исходном тексте
+					this->place(this->_record + begin, this->_errorLocation);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::DUPLICATE_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::DUPLICATE_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::DUPLICATE_STRUCTURE, this->_record + begin);
+				}
 			}
 		}
 		// Заводим блок структурированных данных записи
@@ -1238,33 +1807,129 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 				// Сдвигаем смещение разбора
 				offset++;
 			// Если имя поля оборвалось вместе с записью
-			if(offset >= record.size())
-				// Выводим отказ разбора незакрытой скобкой блока
+			if(offset >= record.size()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + start);
+			}
 			// Если за именем поля не следует знак равенства
-			if(record[offset] != '=')
-				// Выводим отказ разбора ошибочным именем поля
+			if(record[offset] != '='){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
+			}
 			// Получаем имя поля блока структурированных данных
 			const string_view key(record.data() + start, offset - start);
 			// Если имя поля блока пусто
-			if(key.empty())
-				// Выводим отказ разбора ошибочным именем поля
+			if(key.empty()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
+			}
 			// Если сличение ведётся и длина имени поля допустимую превышает
-			if((this->_settings.mode == mode_t::STRONG) && (key.size() > static_cast <size_t> (MAX_NAME)))
-				// Выводим отказ разбора слишком длинным именем
+			if((this->_settings.mode == mode_t::STRONG) && (key.size() > static_cast <size_t> (MAX_NAME))){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::NAME_TOO_LONG, this->_record + start);
+			}
 			// Если сличение ведётся и имя поля набору знаков описания не отвечает
-			if((this->_settings.mode == mode_t::STRONG) && !::named(key))
-				// Выводим отказ разбора ошибочным именем поля
+			if((this->_settings.mode == mode_t::STRONG) && !::named(key)){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::INVALID_PARAM_NAME), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
+			}
 			// Сдвигаем смещение разбора за знак равенства
 			offset++;
 			// Если значение поля не взято в кавычки
-			if((offset >= record.size()) || (record[offset] != '"'))
-				// Выводим отказ разбора значением без кавычек
+			if((offset >= record.size()) || (record[offset] != '"')){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + offset, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNQUOTED_PARAM_VALUE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNQUOTED_PARAM_VALUE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNQUOTED_PARAM_VALUE, this->_record + offset);
+			}
 			// Сдвигаем смещение разбора за открывающую кавычку значения
 			offset++;
 			// Запоминаем смещение начала значения поля
@@ -1275,6 +1940,7 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 			 * @note Кавычка, обратной косой отменённая, значения не закрывает: отмена
 			 *       знаков внутри значения своя, и разбирать её позже, вторым проходом,
 			 *       значило бы разбирать дважды
+			 *
 			 */
 			while(offset < record.size()){
 				// Если знак является обратной косой, знак за нею отменяющей
@@ -1292,13 +1958,45 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 				offset++;
 			}
 			// Если кавычка значения не закрыта
-			if(offset >= record.size())
-				// Выводим отказ разбора незакрытой кавычкой значения
+			if(offset >= record.size()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + value, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_PARAM_VALUE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_PARAM_VALUE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::UNCLOSED_PARAM_VALUE, this->_record + value);
+			}
 			// Если количество полей блока допустимое превышает
-			if(this->_structures.back().second.size() >= static_cast <size_t> (this->_settings.maxParams))
-				// Выводим отказ разбора превышением предела настроек
+			if(this->_structures.back().second.size() >= static_cast <size_t> (this->_settings.maxParams)){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_record + start, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::OVERFLOW_LIMIT, this->_record + start);
+			}
 			// Заводим поле блока структурированных данных
 			this->_structures.back().second.emplace_back();
 			// Устанавливаем имя поля блока структурированных данных
@@ -1315,34 +2013,51 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 			offset++;
 		}
 		// Если блок структурированных данных не закрыт
-		if((offset >= record.size()) || (record[offset] != ']'))
-			// Выводим отказ разбора незакрытой скобкой блока
+		if((offset >= record.size()) || (record[offset] != ']')){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_record + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record, offset}, log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::UNCLOSED_STRUCTURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
+		}
 		// Сдвигаем смещение разбора за закрывающую скобку блока
 		offset++;
 	}
 	// Выводим признак успешного разбора блоков
 	return true;
 }
-
 /**
  * @brief Метод укладки поля заголовка
  *
  * @param field поле заголовка, укладываемое в запись
  * @param text  значение поля, записью объявленное
  * @return      признак успешной укладки поля
+ *
  */
 bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text) noexcept {
 	/**
 	 * Если запись читается устаревшим описанием
 	 *
 	 * @details Знак «-» назначен отсутствующим значением ЛИШЬ описанием RFC 5424;
-	 * описание RFC 3164 его не знает вовсе, и метка приложения «-» есть законное имя,
-	 * а не отсутствие. Толкуй его отсутствием - и запись, собранная обратно, метки не
-	 * несла бы, а повторный разбор взял бы меткой первое слово текста
+	 *          описание RFC 3164 его не знает вовсе, и метка приложения «-» есть законное имя,
+	 *          а не отсутствие. Толкуй его отсутствием - и запись, собранная обратно, метки не
+	 *          несла бы, а повторный разбор взял бы меткой первое слово текста.
 	 *
 	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
 	 *       «<129>Oct 9 22:14:15 icZF -: текст»
+	 *
 	 */
 	if(this->_standard != standard_t::RFC5424){
 		// Заводим поле заголовка записи
@@ -1358,13 +2073,14 @@ bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text
 	 *       знака значило бы отдать потребителю утверждение, какого в записи не было
 	 *
 	 * @details Пустое поле правится ТЕМ ЖЕ правилом, что и знак отсутствия: описание
-	 * пустых полей не знает вовсе - место поля занимает либо значение, либо знак «-», -
-	 * и поле, пустым оказавшееся, есть след записи, описанию не отвечающей (двух
-	 * пробелов подряд, к примеру). Различать их нечем: записанное обратно, пустое поле
-	 * выйдет знаком «-», и оборот записи расходился бы молча
+	 *          пустых полей не знает вовсе - место поля занимает либо значение, либо знак «-», -
+	 *          и поле, пустым оказавшееся, есть след записи, описанию не отвечающей (двух
+	 *          пробелов подряд, к примеру). Различать их нечем: записанное обратно, пустое поле
+	 *          выйдет знаком «-», и оборот записи расходился бы молча.
 	 *
 	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
 	 *       с датой вида BSD, поданной в поле нынешнего описания
+	 *
 	 */
 	if((text == NIL) || text.empty()){
 		/**
@@ -1389,6 +2105,7 @@ bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text
 			 *       у отсутствия одно, и вид представления назначает настройка. Клади
 			 *       здесь пустую строку - и запись, собранная обратно, несла бы «-», а
 			 *       повторный разбор дал бы «-» вместо пустоты
+			 *
 			 */
 			case static_cast <uint8_t> (nil_t::LITERAL): {
 				// Заводим поле заголовка записи
@@ -1403,12 +2120,12 @@ bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text
 	// Выводим признак успешной укладки поля
 	return true;
 }
-
 /**
  * @brief Метод снятия отмены знаков со значения структурированных данных
  *
  * @param text   значение с отменёнными знаками
  * @param result значение со снятой отменой знаков
+ *
  */
 void awh::codec::syslog::Reader::unescape(const string_view text, string & result) const noexcept {
 	// Выполняем очистку результата снятия отмены знаков
@@ -1426,7 +2143,8 @@ void awh::codec::syslog::Reader::unescape(const string_view text, string & resul
 		 *          поэтому весь отрез таких знаков дописывается разом. Замер 06.10.2026:
 		 *          перенос знака за знаком стоил разбору системного журнала 7.1 % вершины
 		 *          стека потока (дописывание по одному знаку «append(size_t, char)»), и то
-		 *          же снятие подняло разбор CEF в 1.385 раза
+		 *          же снятие подняло разбор CEF в 1.385 раза.
+		 *
 		 */
 		if(text[i] != '\\'){
 			// Длина отрезка знаков без обратной косой
@@ -1451,6 +2169,7 @@ void awh::codec::syslog::Reader::unescape(const string_view text, string & resul
 		 *       кавычку, закрывающую квадратную скобку и саму обратную косую. Косая
 		 *       перед всяким иным знаком отмены не образует и остаётся в значении как
 		 *       есть - иначе разбор терял бы косые, каких потребитель не отменял
+		 *
 		 */
 		if(((i + 1) < text.size()) && ((text[i + 1] == '"') || (text[i + 1] == ']') || (text[i + 1] == '\\'))){
 			// Добавляем отменённый знак в результат
@@ -1464,22 +2183,22 @@ void awh::codec::syslog::Reader::unescape(const string_view text, string & resul
 		result.append(1, text[i]);
 	}
 }
-
 /**
  * @brief Метод получения настроек разбора записей
  *
  * @return настройки разбора записей
+ *
  */
 const awh::codec::syslog::Reader::settings_t & awh::codec::syslog::Reader::settings() const noexcept {
 	// Выводим настройки разбора записей
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек разбора записей
  *
  * @param settings настройки разбора записей
  * @return         признак успешной установки настроек
+ *
  */
 bool awh::codec::syslog::Reader::settings(const settings_t & settings) noexcept {
 	/**
@@ -1487,10 +2206,11 @@ bool awh::codec::syslog::Reader::settings(const settings_t & settings) noexcept 
 	 *
 	 * @note Смена правил посреди потока дала бы записи, прочтённые по разным правилам,
 	 *       и потребитель не имел бы способа узнать, какая чем прочтена
+	 *
 	 */
 	if(!this->_buffer.empty()){
 		// Выводим в лог сообщение о смене настроек посреди разбора
-		awh::log::print("SysLog settings are changed in the middle of the parsing", awh::log::flag_t::WARNING);
+		log::print("SysLog settings are changed in the middle of the parsing", log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1499,62 +2219,60 @@ bool awh::codec::syslog::Reader::settings(const settings_t & settings) noexcept 
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод сброса состояния чтения
  *
  */
 void awh::codec::syslog::Reader::reset() noexcept {
-	// Устанавливаем состояние готовности разбора
-	this->_state = state_t::HUNGRY;
-	// Сбрасываем вид текущего события разбора
-	this->_event = event_t::NONE;
-	// Сбрасываем код ошибки последней операции разбора
-	this->_error = error_t::NONE;
-	// Выполняем очистку положения обнаруженной ошибки
-	this->_errorLocation = pos_t();
-	// Выполняем очистку положения начала текущего события
-	this->_position = pos_t();
-	// Сбрасываем положение начала хранилища
-	this->_origin = pos_t();
-	// Выполняем очистку хранилища подаваемого текста
-	this->_buffer.clear();
-	// Сбрасываем смещение разбора в хранилище
-	this->_offset = 0;
-	// Сбрасываем смещение начала неразобранного остатка записи
-	this->_record = 0;
-	// Сбрасываем признак подачи последнего куска текста
-	this->_end = false;
-	// Устанавливаем этап отыскания очередной записи
-	this->_stage = stage_t::RECORD;
-	// Сбрасываем номер поля заголовка текущего события
-	this->_field = field_t::NONE;
 	// Сбрасываем указатель выдачи полей
 	this->_index = 0;
 	// Сбрасываем указатель выдачи блоков структурированных данных
 	this->_block = 0;
-	// Выполняем очистку полей заголовка записи
-	this->_fields.clear();
-	// Выполняем очистку блоков структурированных данных
-	this->_structures.clear();
-	// Выполняем очистку текста сообщения записи
-	this->_message.clear();
-	// Сбрасываем признак объявленности текста сообщения
-	this->_messaged = false;
-	// Сбрасываем описание, каким прочтена запись
-	this->_standard = standard_t::AUTO;
-	// Сбрасываем приоритет записи
-	this->_priority = 0;
-	// Сбрасываем признак объявленности приоритета
-	this->_prioritized = false;
+	// Сбрасываем смещение разбора в хранилище
+	this->_offset = 0;
+	// Сбрасываем смещение начала неразобранного остатка записи
+	this->_record = 0;
 	// Сбрасываем номер описания записи
 	this->_version = 0;
+	// Сбрасываем приоритет записи
+	this->_priority = 0;
+	// Сбрасываем признак подачи последнего куска текста
+	this->_end = false;
+	// Сбрасываем признак объявленности текста сообщения
+	this->_messaged = false;
+	// Сбрасываем признак объявленности приоритета
+	this->_prioritized = false;
+	// Сбрасываем номер поля заголовка текущего события
+	this->_field = field_t::NONE;
+	// Сбрасываем вид текущего события разбора
+	this->_event = event_t::NONE;
+	// Сбрасываем код ошибки последней операции разбора
+	this->_error = error_t::NONE;
+	// Устанавливаем этап отыскания очередной записи
+	this->_stage = stage_t::RECORD;
+	// Устанавливаем состояние готовности разбора
+	this->_state = state_t::HUNGRY;
+	// Сбрасываем описание, каким прочтена запись
+	this->_standard = standard_t::AUTO;
+	// Сбрасываем положение начала хранилища
+	this->_origin = pos_t();
+	// Выполняем очистку положения начала текущего события
+	this->_position = pos_t();
+	// Выполняем очистку положения обнаруженной ошибки
+	this->_errorLocation = pos_t();
 	// Выполняем очистку имени ключа текущего события
 	this->_key.clear();
 	// Выполняем очистку значения текущего события
 	this->_value.clear();
+	// Выполняем очистку полей заголовка записи
+	this->_fields.clear();
+	// Выполняем очистку хранилища подаваемого текста
+	this->_buffer.clear();
+	// Выполняем очистку текста сообщения записи
+	this->_message.clear();
+	// Выполняем очистку блоков структурированных данных
+	this->_structures.clear();
 }
-
 /**
  * @brief Метод подачи очередного куска разбираемого текста
  *
@@ -1562,6 +2280,7 @@ void awh::codec::syslog::Reader::reset() noexcept {
  * @param size   размер подаваемого текста в байтах
  * @param end    признак того, что подан последний кусок текста
  * @return       признак успешной подачи текста
+ *
  */
 bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	// Если разбор уже прекращён ошибкой
@@ -1571,7 +2290,7 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 	// Если текст уже подан последним куском
 	if(this->_end){
 		// Выводим в лог сообщение о подаче текста после последнего куска
-		awh::log::print("SysLog text is fed after the last chunk", awh::log::flag_t::WARNING);
+		log::print("SysLog text is fed after the last chunk", log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1600,22 +2319,22 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод подачи разбираемого текста целиком
  *
  * @param text подаваемый текст целиком
  * @return     признак успешной подачи текста
+ *
  */
 bool awh::codec::syslog::Reader::feed(const string_view text) noexcept {
 	// Выводим итог подачи разбираемого текста целиком
 	return this->feed(text.data(), text.size(), true);
 }
-
 /**
  * @brief Метод перехода к очередному событию разбора
  *
  * @return признак наличия очередного события разбора
+ *
  */
 bool awh::codec::syslog::Reader::next() noexcept {
 	// Если разбор прекращён ошибкой либо доведён до конца
@@ -1629,7 +2348,7 @@ bool awh::codec::syslog::Reader::next() noexcept {
 	/**
 	 * Выполняем разбор записей, пока они в хранилище отыскиваются
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Определяем этап разбора текущей записи
 		 */
@@ -1638,12 +2357,12 @@ bool awh::codec::syslog::Reader::next() noexcept {
 			case static_cast <uint8_t> (stage_t::HEADER): {
 				// Если все поля заголовка уже выданы
 				if(this->_index >= this->_fields.size()){
-					// Устанавливаем этап выдачи структурированных данных
-					this->_stage = stage_t::STRUCTURE;
 					// Сбрасываем указатель выдачи блоков структурированных данных
 					this->_block = 0;
 					// Сбрасываем указатель выдачи полей блока
 					this->_index = 0;
+					// Устанавливаем этап выдачи структурированных данных
+					this->_stage = stage_t::STRUCTURE;
 					// Продолжаем разбор следующим этапом
 					continue;
 				}
@@ -1655,10 +2374,10 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				this->_key.clear();
 				// Сдвигаем указатель выдачи полей заголовка
 				this->_index++;
-				// Устанавливаем вид текущего события полем заголовка
-				this->_event = event_t::HEADER;
 				// Устанавливаем состояние готовности события
 				this->_state = state_t::READY;
+				// Устанавливаем вид текущего события полем заголовка
+				this->_event = event_t::HEADER;
 				// Выводим наличие очередного события разбора
 				return true;
 			}
@@ -1679,6 +2398,7 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				 * @note Опознаватель выдаётся СВОИМ событием, а не приписывается всякому
 				 *       полю: блок без полей описанием дозволен, и приписывание оставило
 				 *       бы такой блок невидимым вовсе
+				 *
 				 */
 				if(this->_index == 0){
 					// Запоминаем опознаватель блока структурированных данных
@@ -1689,10 +2409,10 @@ bool awh::codec::syslog::Reader::next() noexcept {
 					this->_index++;
 					// Сбрасываем номер поля заголовка текущего события
 					this->_field = field_t::NONE;
-					// Устанавливаем вид текущего события опознавателем блока
-					this->_event = event_t::STRUCTURE;
 					// Устанавливаем состояние готовности события
 					this->_state = state_t::READY;
+					// Устанавливаем вид текущего события опознавателем блока
+					this->_event = event_t::STRUCTURE;
 					// Выводим наличие очередного события разбора
 					return true;
 				}
@@ -1711,10 +2431,10 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				this->_value = structure.second.at(this->_index - 1).second;
 				// Сдвигаем указатель выдачи полей блока
 				this->_index++;
-				// Устанавливаем вид текущего события полем блока
-				this->_event = event_t::PARAM;
 				// Устанавливаем состояние готовности события
 				this->_state = state_t::READY;
+				// Устанавливаем вид текущего события полем блока
+				this->_event = event_t::PARAM;
 				// Выводим наличие очередного события разбора
 				return true;
 			}
@@ -1732,27 +2452,27 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				this->_value = this->_message;
 				// Сбрасываем номер поля заголовка текущего события
 				this->_field = field_t::NONE;
-				// Устанавливаем вид текущего события текстом сообщения
-				this->_event = event_t::MESSAGE;
 				// Устанавливаем состояние готовности события
 				this->_state = state_t::READY;
+				// Устанавливаем вид текущего события текстом сообщения
+				this->_event = event_t::MESSAGE;
 				// Выводим наличие очередного события разбора
 				return true;
 			}
 			// Если ведётся выдача знака окончания записи
 			case static_cast <uint8_t> (stage_t::FINISH): {
-				// Устанавливаем этап отыскания очередной записи
-				this->_stage = stage_t::RECORD;
 				// Выполняем очистку имени ключа текущего события
 				this->_key.clear();
 				// Выполняем очистку значения текущего события
 				this->_value.clear();
 				// Сбрасываем номер поля заголовка текущего события
 				this->_field = field_t::NONE;
-				// Устанавливаем вид текущего события окончанием записи
-				this->_event = event_t::RECORD;
 				// Устанавливаем состояние готовности события
 				this->_state = state_t::READY;
+				// Устанавливаем вид текущего события окончанием записи
+				this->_event = event_t::RECORD;
+				// Устанавливаем этап отыскания очередной записи
+				this->_stage = stage_t::RECORD;
 				// Выводим наличие очередного события разбора
 				return true;
 			}
@@ -1764,18 +2484,19 @@ bool awh::codec::syslog::Reader::next() noexcept {
 					 * Если подан последний кусок текста
 					 */
 					if(this->_end){
-						// Устанавливаем состояние окончания разбора
-						this->_state = state_t::FINISHED;
-						// Устанавливаем вид текущего события окончанием текста
-						this->_event = event_t::FINISH;
 						// Выполняем очистку имени ключа текущего события
 						this->_key.clear();
 						// Выполняем очистку значения текущего события
 						this->_value.clear();
+						// Устанавливаем вид текущего события окончанием текста
+						this->_event = event_t::FINISH;
+						// Устанавливаем состояние окончания разбора
+						this->_state = state_t::FINISHED;
 						/**
 						 * @note Окончание текста выдаётся событием наравне с прочими, а
 						 *       следующий спрос отвечает отказом заставою окончания
 						 *       разбора, оттого событие это выдаётся ровно однажды
+						 *
 						 */
 						return true;
 					// Устанавливаем состояние ожидания следующего куска текста
@@ -1788,15 +2509,32 @@ bool awh::codec::syslog::Reader::next() noexcept {
 						 *          хранилище росло, пока подаёт подающий. Щуп 14.09.2026
 						 *          скормил 64 МБ при пределе записи в 1 МБ - ни отказа,
 						 *          ни жалобы; отправитель же, границы не ставящий,
-						 *          исчерпывал бы память принимающего
+						 *          исчерпывал бы память принимающего.
 						 *
 						 * @note Сличение строгое: запись длиною РОВНО в предел годна, и
 						 *       отвергать её нельзя. Отвергается остаток, предел
 						 *       превзошедший, границы в себе не имея
+						 *
 						 */
-						if((this->_buffer.size() - this->_offset) > static_cast <size_t> (this->_settings.maxRecord))
-							// Выводим отказ разбора превышением длины записи
+						if((this->_buffer.size() - this->_offset) > static_cast <size_t> (this->_settings.maxRecord)){
+							// Выполняем определение положения места ошибки в исходном тексте
+							this->place(this->_offset, this->_errorLocation);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("SysLog parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::syslog::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("SysLog parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::syslog::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+							#endif
+							// Объявляем отказ разбора
 							return this->fail(error_t::RECORD_TOO_LONG, this->_offset);
+						}
 						// Устанавливаем состояние ожидания следующего куска текста
 						this->_state = state_t::HUNGRY;
 					}
@@ -1813,6 +2551,7 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				 *          октетов давала местом отказа 48, а «<999>1 ...» длиною 50 -
 				 *          53. Прежняя проверка места сличала лишь НОМЕР СТРОКИ, и он
 				 *          был верен - оттого дефект и жил незамеченным
+				 *
 				 */
 				this->_record = this->_offset;
 				// Выполняем определение положения начала текущей записи
@@ -1826,6 +2565,7 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				 *
 				 * @note Пустая строка записью не является и отказом не считается: потоки
 				 *       журналов сплошь и рядом несут их между записями
+				 *
 				 */
 				if(record.empty())
 					// Продолжаем отыскание очередной записи
@@ -1834,139 +2574,149 @@ bool awh::codec::syslog::Reader::next() noexcept {
 				if(!this->prepare(record))
 					// Выводим отсутствие очередного события разбора
 					return false;
-				// Устанавливаем этап выдачи полей заголовка
-				this->_stage = stage_t::HEADER;
 				// Сбрасываем указатель выдачи полей заголовка
 				this->_index = 0;
+				// Устанавливаем этап выдачи полей заголовка
+				this->_stage = stage_t::HEADER;
 			} break;
 		}
 	}
 }
-
 /**
  * @brief Метод получения текущего состояния чтения
  *
  * @return текущее состояние чтения
+ *
  */
 awh::codec::syslog::state_t awh::codec::syslog::Reader::state() const noexcept {
 	// Выводим текущее состояние чтения
 	return this->_state;
 }
-
 /**
  * @brief Метод получения вида текущего события разбора
  *
  * @return вид текущего события разбора
+ *
  */
 awh::codec::syslog::event_t awh::codec::syslog::Reader::event() const noexcept {
 	// Выводим вид текущего события разбора
 	return this->_event;
 }
-
 /**
  * @brief Метод получения кода ошибки последней операции разбора
  *
  * @return код ошибки последней операции разбора
+ *
  */
 awh::codec::syslog::error_t awh::codec::syslog::Reader::error() const noexcept {
 	// Выводим код ошибки последней операции разбора
 	return this->_error;
 }
-
 /**
  * @brief Метод получения положения обнаруженной ошибки
  *
  * @return положение обнаруженной ошибки в исходном тексте
+ *
  */
 const awh::codec::syslog::pos_t & awh::codec::syslog::Reader::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
 	return this->_errorLocation;
 }
-
 /**
- * @brief Метод получения положения начала текущего события
+ * @brief Метод получения положения начала текущей ЗАПИСИ
  *
- * @return положение начала текущего события в исходном тексте
+ * @return положение начала текущей записи в исходном тексте
+ *
  */
 const awh::codec::syslog::pos_t & awh::codec::syslog::Reader::position() const noexcept {
 	// Выводим положение начала текущего события в исходном тексте
 	return this->_position;
 }
-
+/**
+ * @brief Метод получения положения начала текущего события
+ *
+ * @return положение начала текущего события в исходном тексте
+ *
+ */
+const awh::codec::syslog::location_t & awh::codec::syslog::Reader::location() const noexcept {
+	// Выводим положение начала текущего события в исходном тексте
+	return this->position();
+}
 /**
  * @brief Метод получения поля заголовка, текущим событием выданного
  *
  * @return поле заголовка, текущим событием выданное
+ *
  */
 awh::codec::syslog::field_t awh::codec::syslog::Reader::field() const noexcept {
 	// Выводим поле заголовка, текущим событием выданное
 	return this->_field;
 }
-
 /**
  * @brief Метод получения имени ключа текущего события
  *
  * @return имя ключа текущего события
+ *
  */
 const string & awh::codec::syslog::Reader::key() const noexcept {
 	// Выводим имя ключа текущего события
 	return this->_key;
 }
-
 /**
  * @brief Метод получения значения текущего события
  *
  * @return значение текущего события
+ *
  */
 const string & awh::codec::syslog::Reader::value() const noexcept {
 	// Выводим значение текущего события
 	return this->_value;
 }
-
 /**
  * @brief Метод получения описания, каким прочтена текущая запись
  *
  * @return описание, каким прочтена текущая запись
+ *
  */
 awh::codec::syslog::standard_t awh::codec::syslog::Reader::standard() const noexcept {
 	// Выводим описание, каким прочтена текущая запись
 	return this->_standard;
 }
-
 /**
  * @brief Метод получения признака объявленности приоритета
  *
  * @return признак того, что приоритет записью объявлен
+ *
  */
 bool awh::codec::syslog::Reader::prioritized() const noexcept {
 	// Выводим признак того, что приоритет записью объявлен
 	return this->_prioritized;
 }
-
 /**
  * @brief Метод получения источника сообщения
  *
  * @return источник сообщения
+ *
  */
 awh::codec::syslog::facility_t awh::codec::syslog::Reader::facility() const noexcept {
 	// Выводим источник сообщения частным от деления приоритета на восемь
 	return static_cast <facility_t> (this->_priority / 8);
 }
-
 /**
  * @brief Метод получения степени важности сообщения
  *
  * @return степень важности сообщения
+ *
  */
 awh::codec::syslog::severity_t awh::codec::syslog::Reader::severity() const noexcept {
 	// Выводим важность сообщения остатком от деления приоритета на восемь
 	return static_cast <severity_t> (this->_priority % 8);
 }
-
 /**
  * @brief Метод получения номера описания записи
  *
  * @return номер описания записи
+ *
  */
 uint32_t awh::codec::syslog::Reader::version() const noexcept {
 	// Выводим номер описания записи
@@ -1977,15 +2727,29 @@ uint32_t awh::codec::syslog::Reader::version() const noexcept {
  *
  */
 awh::codec::syslog::Reader::Reader() noexcept :
- _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE),
- _offset(0), _record(0), _end(false), _stage(stage_t::RECORD), _field(field_t::NONE),
- _index(0), _block(0), _messaged(false), _standard(standard_t::AUTO), _priority(0),
- _prioritized(false), _version(0), _chrono() {}
+ _end(false), _messaged(false), _prioritized(false),
+ _state(state_t::HUNGRY), _event(event_t::NONE),
+ _error(error_t::NONE), _stage(stage_t::RECORD),
+ _field(field_t::NONE), _standard(standard_t::AUTO),
+ _index(0), _block(0), _offset(0),
+ _record(0), _version(0), _priority(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора текста
+ *
+ */
+awh::codec::syslog::Reader::Reader(const settings_t & settings) noexcept : Reader() {
+	// Выполняем установку настроек разбора текста
+	this->settings(settings);
+}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::syslog::Reader::Settings::Settings() noexcept :
- standard(standard_t::AUTO), mode(mode_t::NONE), nil(nil_t::OMIT),
- bom(true), unescape(true), maxRecord(MAX_RECORD),
- maxStructures(MAX_STRUCTURES), maxParams(MAX_PARAMS) {}
+ bom(true), unescape(true), nil(nil_t::OMIT),
+ mode(mode_t::NONE), standard(standard_t::AUTO),
+ maxParams(MAX_PARAMS), maxRecord(MAX_RECORD),
+ maxStructures(MAX_STRUCTURES) {}

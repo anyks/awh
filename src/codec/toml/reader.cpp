@@ -29,9 +29,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <encoding/ascii.hpp>
-#include <codec/toml/reader.hpp>
 #include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/toml/reader.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -39,7 +44,6 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -64,14 +68,33 @@ namespace {
 	 * @brief Порог изъятия разобранного начала накопленного текста в байтах
 	 *
 	 * @details Изъятие переносит остаток текста к началу хранилища, и делать это на
-	 * каждой записи значило бы переносить его снова и снова. Порог выбран так, чтобы
-	 * перенос приходился на одну запись из многих тысяч
+	 *          каждой записи значило бы переносить его снова и снова. Порог выбран так, чтобы
+	 *          перенос приходился на одну запись из многих тысяч.
 	 *
 	 */
 	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 
 	/**
-	 * @brief Метод проверки знака на пробельный знак строки
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_TOML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_TOML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Функция проверки знака на пробельный знак строки
 	 *
 	 * @note Знаком строки пробельными описание считает лишь пробел и горизонтальную
 	 *       табуляцию: знак конца строки завершает запись, а не отделяет её части
@@ -80,18 +103,18 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static bool blank(const char letter) noexcept {
+	static constexpr bool blank(const char letter) noexcept {
 		// Выводим результат проверки знака
 		return ((letter == ' ') || (letter == '\t'));
 	}
 	/**
-	 * @brief Метод проверки знака на завершение записи значения
+	 * @brief Функция проверки знака на завершение записи значения
 	 *
 	 * @param letter проверяемый знак
 	 * @return       результат проверки
 	 *
 	 */
-	static bool terminator(const char letter) noexcept {
+	static constexpr bool terminator(const char letter) noexcept {
 		// Выводим результат проверки знака
 		return (
 			::blank(letter) || (letter == '\n') || (letter == '\r') ||
@@ -99,10 +122,10 @@ namespace {
 		);
 	}
 	/**
-	 * @brief Метод разбора целого числа из последовательности цифр заданной системы
+	 * @brief Функция разбора целого числа из последовательности цифр заданной системы
 	 *
 	 * @details Разбор ведётся накоплением с проверкой выхода за отрезок значений на
-	 * каждом разряде: приведение по кругу превратило бы негодное число в годное
+	 *          каждом разряде: приведение по кругу превратило бы негодное число в годное.
 	 *
 	 * @param text     разбираемая последовательность цифр
 	 * @param radix    основание системы счисления
@@ -111,7 +134,7 @@ namespace {
 	 * @return         признак успешного разбора
 	 *
 	 */
-	static bool digits(const string_view text, const uint32_t radix, const bool negative, int64_t & result) noexcept {
+	static AWH_TOML_INLINE bool digits(const string_view text, const uint32_t radix, const bool negative, int64_t & result) noexcept {
 		/**
 		 * Если разбирать нечего
 		 *
@@ -122,6 +145,7 @@ namespace {
 		 *
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа - перебор по
 		 *       пустой записи выдал бы ноль успехом, и `a = 0x` стало бы нулём молча
+		 *
 		 */
 		if(text.empty())
 			// Выводим признак неудачного разбора
@@ -133,6 +157,7 @@ namespace {
 		 *
 		 * @note Отрицательные числа доходят на единицу дальше положительных: отрезок
 		 *       значений знакового числа несимметричен
+		 *
 		 */
 		const uint64_t limit = (negative ?
 			(static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1) :
@@ -170,10 +195,10 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Метод проверки построения записи числа с разделителями разрядов
+	 * @brief Функция проверки построения записи числа с разделителями разрядов
 	 *
 	 * @details Знак подчёркивания описание дозволяет лишь между цифрами: запись «1__0»
-	 * и запись «_1» им отвергаются. Разделители из записи изымаются
+	 *          и запись «_1» им отвергаются. Разделители из записи изымаются.
 	 *
 	 * @param text   проверяемая запись числа
 	 * @param radix  основание системы счисления
@@ -181,7 +206,7 @@ namespace {
 	 * @return       признак правильного построения записи
 	 *
 	 */
-	static bool separated(const string_view text, const uint32_t radix, string & result) noexcept {
+	static AWH_TOML_INLINE bool separated(const string_view text, const uint32_t radix, string & result) noexcept {
 		// Выполняем очистку записи числа без разделителей
 		result.clear();
 		// Признак того, что предыдущим знаком записи была цифра
@@ -223,10 +248,10 @@ namespace {
  *
  */
 awh::codec::toml::Reader::Settings::Settings() noexcept :
- maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH),
- nesting(true), maxParts(MAX_PARTS),
- duplicates(true), unicode(false), emitComments(true),
- emitBlanks(false), encoding(encoding_t::NONE) {}
+ nesting(true), unicode(false), duplicates(true),
+ emitBlanks(false), emitComments(true),
+ maxKey(MAX_KEY), maxLine(MAX_LINE), maxDepth(MAX_DEPTH),
+ maxParts(MAX_PARTS), encoding(encoding_t::NONE) {}
 
 /**
  * @brief Метод запоминания ошибки разбора вместе с местом её обнаружения
@@ -242,20 +267,13 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 	 *
 	 * @note Первая ошибка старше последующих: разбор после неё продолжения не имеет,
 	 *       и подменять место её обнаружения местом следствия нельзя
+	 *
 	 */
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = error;
 		// Запоминаем место обнаружения ошибки разбора
 		this->_errorLocation = this->locate(offset);
-		/**
-		 * Выполняем оглашение отказа в журнал
-		 *
-		 * @note Код отказа остаётся доступен через error(), а место его - через
-		 *       location(): журнал есть оповещение, а не единственный способ узнать
-		 *       о случившемся
-		 */
-		log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
 	}
 	// Запоминаем состояние прекращения разбора ошибкой
 	this->_state = state_t::FAILED;
@@ -268,6 +286,7 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 	 *       очистки выдача зависела бы от нарезки текста на куски: подача целиком
 	 *       успевала выдать события записи, отвергнутой ниже по тексту, а подача
 	 *       кусками откатывала их вместе с самой записью
+	 *
 	 */
 	this->_items.clear();
 	// Выводим признак отказа для выхода из разбора
@@ -314,6 +333,7 @@ awh::codec::toml::location_t awh::codec::toml::Reader::locate(const size_t offse
 	 *       разбор: место события запоминается при входе в него, а не по выходе -
 	 *       иначе запись, начатая на одном куске и дочитанная на следующих, оставляла
 	 *       бы своё начало позади
+	 *
 	 */
 	if(offset >= this->_bol){
 		// Запоминаем номер строки исходного текста
@@ -327,6 +347,7 @@ awh::codec::toml::location_t awh::codec::toml::Reader::locate(const size_t offse
 	 *       его указывает на начало записи, разбором уже пройденное. Счёт строк
 	 *       отматывается назад по накопленному тексту: иначе место отказа указывало бы
 	 *       на строку, следующую за виновной
+	 *
 	 */
 	} else {
 		// Количество строк, на которое отматывается счёт
@@ -378,10 +399,10 @@ awh::codec::toml::location_t awh::codec::toml::Reader::locate(const size_t offse
 awh::codec::toml::Reader::span_t awh::codec::toml::Reader::keep(const string_view text) noexcept {
 	// Собираемое указание на добавленную последовательность
 	span_t result;
-	// Запоминаем смещение начала последовательности в хранилище
-	result.offset = static_cast <uint32_t> (this->_store.length());
 	// Запоминаем длину добавляемой последовательности
 	result.length = static_cast <uint32_t> (text.length());
+	// Запоминаем смещение начала последовательности в хранилище
+	result.offset = static_cast <uint32_t> (this->_store.length());
 	// Выполняем добавление последовательности в хранилище записи
 	this->_store.append(text);
 	// Выводим указание на добавленную последовательность
@@ -428,25 +449,19 @@ bool awh::codec::toml::Reader::postponed() noexcept {
 		// Выводим признак того, что отложенного отказа нет
 		return true;
 	/**
-	 * Выполняем запоминание отложенной ошибки приведения
-	 *
-	 * @note Отказ выдаётся лишь по остановке разбора: события приведённого начала
-	 *       потребитель обязан получить прежде отказа, и оба зовущих сюда пути
-	 *       зовут по исчерпании событий - разбор к этому времени либо приведённое
-	 *       начало исчерпал, либо встал посреди записи, продолжения которой ждёт.
-	 *       Ждать его нечего: приведение отказом прекращено, и накопленный текст
-	 *       больше не пополнится - без выдачи отказа здесь разбор застревал бы
-	 *       навсегда, а исход его зависел бы от нарезки текста на куски
-	 *
-	 * @note Местом отказа берётся конец накопленного текста: приведение отказом
-	 *       прекращено, и текст этот больше не пополнится - конец его и есть тот
-	 *       знак, на котором приведение оборвалось
-	 *
-	 * @note Число зовущих СВЕРЕНО грепом по приёму `postponed`: мест вызова ровно 2,
-	 *       не считая строки определения. Довод, называющий число, проверяется за секунды,
-	 *       и проверять его надлежит при написании: метка соседнего кодека пала сегодня
-	 *       оттого, что говорила «оба места вызова», а мест было три
+	 * Если включён режим отладки
 	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::toml::message(this->_decoding), this->locate(this->_buffer.length()).line, this->locate(this->_buffer.length()).column);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(this->_decoding), this->locate(this->_buffer.length()).line, this->locate(this->_buffer.length()).column);
+	#endif
+	// Объявляем отказ разбора
 	return this->failure(this->_decoding, this->_buffer.length());
 }
 /**
@@ -472,6 +487,7 @@ bool awh::codec::toml::Reader::oversize(const size_t offset) noexcept {
 	 *       содержимым записи не является: без отбрасывания одна и та же строка
 	 *       предел то превышала бы, то нет - смотря по тому, оканчивается ли ею
 	 *       текст, и каким из двух видов окончания она отделена от следующей
+	 *
 	 */
 	if((end > this->_start) && (this->_buffer[end - 1] == '\n'))
 		// Выполняем отбрасывание перевода строки
@@ -487,10 +503,25 @@ bool awh::codec::toml::Reader::oversize(const size_t offset) noexcept {
 	 *
 	 * @note Меряется запись целиком - вместе со всеми строками многострочного
 	 *       значения: иначе многострочная запись давала бы обход предела
+	 *
 	 */
-	if((end - this->_start) > static_cast <size_t> (this->_settings.maxLine))
-		// Выполняем запоминание ошибки превышения предела длины записи
+	if((end - this->_start) > static_cast <size_t> (this->_settings.maxLine)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {offset}, log::flag_t::WARNING, codec::toml::message(error_t::LINE_TOO_LONG), this->locate(this->_start).line, this->locate(this->_start).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::LINE_TOO_LONG), this->locate(this->_start).line, this->locate(this->_start).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::LINE_TOO_LONG, this->_start);
+	}
 	// Выводим признак того, что предел не превышен
 	return true;
 }
@@ -518,6 +549,7 @@ void awh::codec::toml::Reader::assemble(const uint32_t part, const uint32_t part
 		 *       ключа описанием дозволено пустым, и без него таблица «[""]» давала бы
 		 *       то же полное имя, что и верхний уровень текста настроек, - ключ её
 		 *       считался бы повтором одноимённого ключа верхнего уровня
+		 *
 		 */
 		result.push_back('\x1F');
 		// Выполняем добавление очередной составной части имени
@@ -542,6 +574,7 @@ string_view awh::codec::toml::Reader::intern(const string_view name) noexcept {
 	 *
 	 * @note Место в блоке отводится заранее и не наращивается: дописывание сверх
 	 *       отведённого перенесло бы содержимое блока, обесценив ссылки на имена
+	 *
 	 */
 	if(this->_blocks.empty() || ((this->_blocks.back().length() + name.length()) > this->_blocks.back().capacity())){
 		// Выполняем заведение очередного блока хранилища
@@ -571,6 +604,7 @@ awh::codec::toml::Reader::kind_t awh::codec::toml::Reader::lookup(const string_v
 	 *
 	 * @note Поиск ведётся первым: запись вправе объявить имя дважды сама, и имена её
 	 *       в указатель родов до окончания разбора не переносятся
+	 *
 	 */
 	const size_t position = this->staged(name);
 	/**
@@ -606,6 +640,7 @@ size_t awh::codec::toml::Reader::staged(const string_view name) const noexcept {
 	 *
 	 * @note Перебор ведётся, пока имён немного: обычная запись объявляет их считанные
 	 *       единицы, и указатель стоил бы ей выделения памяти на всякое имя
+	 *
 	 */
 	for(size_t i = 0; i < this->_staging; i++){
 		/**
@@ -640,6 +675,7 @@ void awh::codec::toml::Reader::stage(const string_view name, const kind_t kind, 
 	 *       него выделяется единожды. Освобождение очереди выделяло память на всякое
 	 *       имя, длина которого не умещалась в короткий запас строки, - расход этот
 	 *       прятала лишь libc++ со своим запасом в 22 байта
+	 *
 	 */
 	if(this->_staging < this->_pending.size()){
 		// Получаем уже заведённое место очереди объявляемых имён
@@ -690,6 +726,7 @@ bool awh::codec::toml::Reader::occupied(const string & name, const size_t offset
 	 *
 	 * @note Разделитель стоит перед всякой частью имени, и всякое его вхождение,
 	 *       кроме первого, отделяет очередное объемлющее имя
+	 *
 	 */
 	for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
 		/**
@@ -701,19 +738,49 @@ bool awh::codec::toml::Reader::occupied(const string & name, const size_t offset
 			 *
 			 * @note Встроенная таблица закрыта своими скобками: описание запрещает
 			 *       дополнять её и заголовком, и составным именем ключа
+			 *
 			 */
-			case static_cast <uint8_t> (kind_t::INLINE):
-				// Выполняем запоминание ошибки дополнения встроенной таблицы
+			case static_cast <uint8_t> (kind_t::INLINE): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, offset}, log::flag_t::WARNING, codec::toml::message(error_t::EXTEND_INLINE_TABLE), this->locate(offset).line, this->locate(offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::EXTEND_INLINE_TABLE), this->locate(offset).line, this->locate(offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::EXTEND_INLINE_TABLE, offset);
+			}
 			/**
 			 * Если объемлющее имя занято парой
 			 *
 			 * @note Под простым значением и под перечнем не заводится ничего: имя
 			 *       меняло бы при этом свой тип
+			 *
 			 */
-			case static_cast <uint8_t> (kind_t::VALUE):
-				// Выполняем запоминание ошибки переопределения заданного значения
+			case static_cast <uint8_t> (kind_t::VALUE): {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, offset}, log::flag_t::WARNING, codec::toml::message(error_t::REDEFINE_TABLE), this->locate(offset).line, this->locate(offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::REDEFINE_TABLE), this->locate(offset).line, this->locate(offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::REDEFINE_TABLE, offset);
+			}
 		}
 	}
 	// Выводим признак того, что объемлющие имена свободны
@@ -754,14 +821,29 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 		 * @note Таблицу, заведённую исподволь объемлющим именем заголовка, дозволено
 		 *       объявить явно: описание отводит заголовку «[x]» право объявить
 		 *       надтаблицу, заведённую прежде заголовком «[x.y]»
+		 *
 		 */
 		case static_cast <uint8_t> (kind_t::TABLE): {
 			/**
 			 * Если имя уже занято
 			 */
-			if((current != kind_t::NONE) && (current != kind_t::IMPLICIT))
-				// Выполняем запоминание ошибки повторного объявления имени
+			if((current != kind_t::NONE) && (current != kind_t::IMPLICIT)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error, offset);
+			}
 		} break;
 		/**
 		 * Если объявляется заголовок набора таблиц
@@ -772,10 +854,25 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 			 *
 			 * @note Дополнять набором таблиц имя, набором таблиц не являющееся,
 			 *       описание запрещает: значение по имени меняло бы свой тип
+			 *
 			 */
-			if((current != kind_t::NONE) && (current != kind_t::ARRAY))
-				// Выполняем запоминание ошибки дополнения таблицы набором
+			if((current != kind_t::NONE) && (current != kind_t::ARRAY)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error, offset);
+			}
 		} break;
 		/**
 		 * Если объявляется пара имени ключа со значением
@@ -784,22 +881,37 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 			/**
 			 * Если имя уже занято
 			 */
-			if(current != kind_t::NONE)
-				// Выполняем запоминание ошибки повторного объявления имени
+			if(current != kind_t::NONE){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error, offset);
+			}
 		}
 	}
 	/**
 	 * Если объявляется пара имени ключа со значением
 	 *
 	 * @details Описание запрещает дописывать составным именем ключа в таблицу, прежде
-	 * объявленную заголовком: запись «[a.b.c]» с последующими «[a]» и «b.c.t = 1»
-	 * дополняла бы закрытую уже таблицу. Дозволено лишь заводить составным именем
-	 * таблицы новые либо дополнять заведённые тем же способом
+	 *          объявленную заголовком: запись «[a.b.c]» с последующими «[a]» и «b.c.t = 1»
+	 *          дополняла бы закрытую уже таблицу. Дозволено лишь заводить составным именем
+	 *          таблицы новые либо дополнять заведённые тем же способом.
 	 *
 	 * @note Имя текущей таблицы и начала его из проверки изъяты: пара внутри «[a.b.c]»
 	 *       объемлющими именами своими имеет её саму, и запрет их отверг бы всякую пару
 	 *       таблицы, заголовком объявленной
+	 *
 	 */
 	if((kind == kind_t::VALUE) || (kind == kind_t::INLINE)){
 		/**
@@ -822,9 +934,23 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 				// Если объемлющее имя объявлено заголовком таблицы
 				case static_cast <uint8_t> (kind_t::TABLE):
 				// Если объемлющее имя объявлено заголовком набора таблиц
-				case static_cast <uint8_t> (kind_t::ARRAY):
-					// Выполняем запоминание ошибки дополнения объявленной таблицы
+				case static_cast <uint8_t> (kind_t::ARRAY): {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::DUPLICATE_TABLE, offset);
+				}
 			}
 		}
 	}
@@ -834,6 +960,7 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 	 * @note Всякое объемлющее имя заводит таблицу исподволь, и род её разнится:
 	 *       заведённую заголовком дозволено объявить явно, а заведённую составным
 	 *       именем ключа - нет
+	 *
 	 */
 	for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
 		// Получаем очередное объемлющее имя
@@ -870,6 +997,7 @@ void awh::codec::toml::Reader::compact() noexcept {
 	 * @note Положения, отсчитываемые от начала хранилища, изъятием обесцениваются, и
 	 *       сдвигать надлежит их все: начало строки, начало записи и само положение
 	 *       разбора
+	 *
 	 */
 	this->_buffer.erase(0, this->_offset);
 	// Выполняем сдвиг положения начала разбираемой строки
@@ -884,10 +1012,6 @@ void awh::codec::toml::Reader::compact() noexcept {
 /**
  * @brief Метод проверки завершённости строки в накопленном тексте
  *
- * @param end признак того, что текст поступил целиком
- * @return    признак того, что строка накоплена целиком
- *
- *
  * @warning На устройстве приёма этого держатся ШЕСТЬ доводов недостижимости у разбора:
  *          все они гласят, что разбор записи заводится лишь по накоплении строки целиком,
  *          а исчерпание текста посреди записи невозможно. Довод верен, покуда приём при
@@ -898,6 +1022,10 @@ void awh::codec::toml::Reader::compact() noexcept {
  *          запись общая, иначе правку сделают по одному доводу из шести, а пять останутся
  *          лгать. Родство доводов замера не переносит, но общее основание рушится у всех
  *          сразу - вещи разные, и смешивать их нельзя
+ *
+ * @param end признак того, что текст поступил целиком
+ * @return    признак того, что строка накоплена целиком
+ *
  */
 bool awh::codec::toml::Reader::completed(const bool end) noexcept {
 	/**
@@ -921,8 +1049,8 @@ bool awh::codec::toml::Reader::completed(const bool end) noexcept {
  * @brief Метод разбора примечания, начатого текущим знаком
  *
  * @details Разбор ведётся от знака начала примечания, на который указывает текущее
- * положение, и до места конца содержимого его. Собранное событие уходит в очередь
- * выдачи, если выдача примечаний настройками разрешена
+ *          положение, и до места конца содержимого его. Собранное событие уходит в очередь
+ *          выдачи, если выдача примечаний настройками разрешена.
  *
  * @param position положение конца содержимого примечания
  * @param trailing признак примечания, дописанного к готовой строке
@@ -955,9 +1083,10 @@ bool awh::codec::toml::Reader::commented(const size_t position, const bool trail
 	 *       не считая строки определения. Довод, называющий число, проверяется за секунды,
 	 *       и проверять его надлежит при написании: метка соседнего кодека пала сегодня
 	 *       оттого, что говорила «оба места вызова», а мест было три
+	 *
 	 */
 	if(!text.empty() && (text.back() == '\r') && (position < this->_buffer.length()) &&
-	 (this->_buffer[position] == '\n'))
+	  (this->_buffer[position] == '\n'))
 		// Выполняем отбрасывание возврата каретки
 		text = text.substr(0, (text.length() - 1));
 	/**
@@ -983,10 +1112,25 @@ bool awh::codec::toml::Reader::commented(const size_t position, const bool trail
 		 *          сложенных, закрывают дорогу известную, а не всякую Сносу заход не подлежит: правка поверки знака у приведения
 		 *          пропустила бы управляющий знак в примечание, а оттуда - в перезапись,
 		 *          где он оборвал бы строку и разбил текст настроек надвое
+		 *
 		 */
-		if(((letter < 0x20) && (text[i] != '\t')) || (letter == 0x7F))
-			// Выполняем запоминание ошибки недопустимого знака
+		if(((letter < 0x20) && (text[i] != '\t')) || (letter == 0x7F)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {position, trailing}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate((this->_offset + i)).line, this->locate((this->_offset + i)).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate((this->_offset + i)).line, this->locate((this->_offset + i)).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_CHARACTER, (this->_offset + i));
+		}
 	}
 	/**
 	 * Выполняем отбрасывание пробельной обвязки содержимого примечания
@@ -1068,6 +1212,8 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 			// Выводим признак успешного разбора
 			return true;
 		/**
+		 * Запоминаем нужду в продолжении текста
+		 *
 		 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 		 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 		 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -1088,8 +1234,8 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 		 *          держатся на устройстве `completed`. Правка её обязана снять либо поправить
 		 *          все шесть разом: родство доводов замера не переносит, но общее основание
 		 *          рушится у всех сразу
+		 *
 		 */
-		// Запоминаем нужду в продолжении текста
 		this->_hungry = true;
 		// Выводим признак неудачного разбора
 		return false;
@@ -1107,10 +1253,25 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 			 *
 			 * @note Возврат каретки сам по себе концом строки не является: описание
 			 *       отводит концом строки перевод строки и пару из возврата с переводом
+			 *
 			 */
-			if(end)
-				// Выполняем запоминание ошибки недопустимого знака
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -1119,9 +1280,23 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 		/**
 		 * Если за возвратом каретки перевод строки не следует
 		 */
-		if(this->_buffer[this->_offset + 1] != '\n')
-			// Выполняем запоминание ошибки недопустимого знака
+		if(this->_buffer[this->_offset + 1] != '\n'){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+		}
 		// Выполняем пропуск возврата каретки
 		this->step(this->_offset + 1);
 	}
@@ -1134,7 +1309,20 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 		// Выводим признак успешного разбора
 		return true;
 	}
-	// Выполняем запоминание ошибки содержимого за завершённой записью
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::UNEXPECTED_CONTENT), this->locate(this->_offset).line, this->locate(this->_offset).column);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNEXPECTED_CONTENT), this->locate(this->_offset).line, this->locate(this->_offset).column);
+	#endif
+	// Объявляем отказ разбора
 	return this->failure(error_t::UNEXPECTED_CONTENT, this->_offset);
 }
 /**
@@ -1147,12 +1335,12 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
  *
  */
 bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_t & result) noexcept {
-	// Получаем знак кавычки, которой значение ограждено
-	const char quote = this->_buffer[this->_offset];
-	// Запоминаем положение начала строкового значения
-	const size_t opening = this->_offset;
 	// Признак того, что значение записано многострочным
 	bool multiline = false;
+	// Запоминаем положение начала строкового значения
+	const size_t opening = this->_offset;
+	// Получаем знак кавычки, которой значение ограждено
+	const char quote = this->_buffer[this->_offset];
 	/**
 	 * Если за первой кавычкой накоплено ещё два знака
 	 */
@@ -1169,6 +1357,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 		 * @note Две кавычки подряд означают либо пустое значение, либо начало
 		 *       многострочной записи, и различить их можно лишь по третьему знаку:
 		 *       без него разбор откладывается до прихода продолжения
+		 *
 		 */
 		if(((this->_offset + 1) >= this->_buffer.length()) || (this->_buffer[this->_offset + 1] == quote)){
 			// Запоминаем нужду в продолжении текста
@@ -1178,9 +1367,11 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 		}
 	}
 	// Запоминаем запись разобранного строкового значения
-	quoting = (quote == '"' ?
+	quoting = (
+		quote == '"' ?
 		(multiline ? string_t::MULTILINE_BASIC : string_t::BASIC) :
-		(multiline ? string_t::MULTILINE_LITERAL : string_t::LITERAL));
+		(multiline ? string_t::MULTILINE_LITERAL : string_t::LITERAL)
+	);
 	// Получаем признак разбора управляющих последовательностей
 	const bool escapes = (quote == '"');
 	// Выполняем пропуск знаков ограждения значения
@@ -1195,6 +1386,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 	 *       этот у разных стандартных библиотек разный - libc++ отводит 22 байта и
 	 *       расход прятала, libstdc++ отводит 15 и на крупном файле давала свыше
 	 *       миллиона выделений против двадцати шести
+	 *
 	 */
 	string & content = this->_content;
 	// Выполняем очистку хранилища содержимого от прошлого значения
@@ -1210,9 +1402,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытого строкового значения
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNTERMINATED_STRING, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -1234,6 +1440,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 		 *
 		 * @note Знак этот описание отбрасывает: перенос за открывающими кавычками
 		 *       ставят ради вида записи, а не ради содержимого
+		 *
 		 */
 		if((this->_offset < this->_buffer.length()) && (this->_buffer[this->_offset] == '\n'))
 			// Выполняем пропуск знака конца строки
@@ -1242,7 +1449,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 	/**
 	 * Выполняем перебор знаков строкового значения
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если накопленный текст исчерпан
 		 */
@@ -1250,9 +1457,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытого строкового значения
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNTERMINATED_STRING, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -1290,6 +1511,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 *       значения, а закрывающими считает три подряд; пять подряд означают
 			 *       две кавычки в конце содержимого. Судить о числе их можно лишь тогда,
 			 *       когда накоплено пять либо текст оборвался
+			 *
 			 */
 			if((count < 5) && ((this->_offset + count) >= this->_buffer.length()) && !end){
 				// Запоминаем нужду в продолжении текста
@@ -1317,10 +1539,25 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 *
 			 * @note Больше пяти подряд описание не дозволяет: две кавычки содержимого
 			 *       вместе с тремя закрывающими дают предел
+			 *
 			 */
-			if(count > 5)
-				// Выполняем запоминание ошибки построения значения
+			if(count > 5){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_VALUE, this->_offset);
+			}
 			/**
 			 * Выполняем добавление кавычек содержимого к значению
 			 */
@@ -1343,10 +1580,25 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 *
 			 * @note Однострочное значение знака конца строки не переживает: описание
 			 *       требует закрыть его кавычкой прежде конца строки
+			 *
 			 */
-			if(!multiline)
-				// Выполняем запоминание ошибки незакрытого строкового значения
+			if(!multiline){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNTERMINATED_STRING, opening);
+			}
 			// Выполняем добавление знака конца строки к содержимому значения
 			content.push_back(letter);
 			// Выполняем переход к следующему знаку значения
@@ -1365,9 +1617,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				/**
 				 * Если текст поступил целиком
 				 */
-				if(end)
-					// Выполняем запоминание ошибки недопустимого знака
+				if(end){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+				}
 				// Запоминаем нужду в продолжении текста
 				this->_hungry = true;
 				// Выводим признак неудачного разбора
@@ -1376,9 +1642,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			/**
 			 * Если за возвратом каретки перевод строки не следует
 			 */
-			if(this->_buffer[this->_offset + 1] != '\n')
-				// Выполняем запоминание ошибки недопустимого знака
+			if(this->_buffer[this->_offset + 1] != '\n'){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+			}
 			// Выполняем пропуск возврата каретки
 			this->step(this->_offset + 1);
 			// Переходим к следующему знаку строкового значения
@@ -1408,10 +1688,25 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
-		if((static_cast <uint8_t> (letter) < 0x20) && (letter != '\t'))
-			// Выполняем запоминание ошибки недопустимого знака
+		if((static_cast <uint8_t> (letter) < 0x20) && (letter != '\t')){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+		}
 		/**
 		 * Если знаком является обратная косая черта при разборе последовательностей
 		 */
@@ -1423,9 +1718,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				/**
 				 * Если текст поступил целиком
 				 */
-				if(end)
-					// Выполняем запоминание ошибки построения последовательности
+				if(end){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+				}
 				// Запоминаем нужду в продолжении текста
 				this->_hungry = true;
 				// Выводим признак неудачного разбора
@@ -1439,12 +1748,13 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 * @note Черта в конце строки многострочного значения отбрасывает знак конца
 			 *       строки вместе со всей пробельной обвязкой следующей строки: так
 			 *       длинное значение записывают в несколько строк, не внося переносов
+			 *
 			 */
 			if(multiline && (::blank(next) || (next == '\n') || (next == '\r'))){
-				// Положение разбираемого знака приведённого текста
-				size_t offset = (this->_offset + 1);
 				// Признак того, что знак конца строки за чертой обнаружен
 				bool folded = false;
+				// Положение разбираемого знака приведённого текста
+				size_t offset = (this->_offset + 1);
 				/**
 				 * Выполняем пропуск пробельных знаков за обратной косой чертой
 				 */
@@ -1485,23 +1795,44 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 *
 				 * @note Черта, за которой стоят одни пробелы, последовательностью не
 				 *       является: описание дозволяет ей отбрасывать лишь перенос строки
+				 *
 				 */
-				if(!folded)
-					// Выполняем запоминание ошибки построения последовательности
+				if(!folded){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+				}
 				// Выполняем перемещение разбора за отброшенные знаки
 				this->step(offset);
 				// Переходим к следующему знаку строкового значения
 				continue;
 			}
-			// Кодовое значение знака управляющей последовательности
-			uint32_t code = 0;
 			// Количество знаков записи кодового значения
 			size_t count = 0;
+			// Кодовое значение знака управляющей последовательности
+			uint32_t code = 0;
 			/**
 			 * Определяем знак, следующий за обратной косой чертой
 			 */
 			switch(next){
+				// Если знак записан кодовым значением Юникода
+				case 'u': count = 4; break;
+				// Если знак записан полным кодовым значением Юникода
+				case 'U': count = 8; break;
+				// Если знаком является двойная кавычка
+				case '"': code = '"'; break;
 				// Если знаком является перевод строки
 				case 'n': code = '\n'; break;
 				// Если знаком является горизонтальная табуляция
@@ -1514,14 +1845,24 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				case 'f': code = '\f'; break;
 				// Если знаком является обратная косая черта
 				case '\\': code = '\\'; break;
-				// Если знаком является двойная кавычка
-				case '"': code = '"'; break;
-				// Если знак записан кодовым значением Юникода
-				case 'u': count = 4; break;
-				// Если знак записан полным кодовым значением Юникода
-				case 'U': count = 8; break;
-				// Если знак за обратной косой чертой управляющим не является
-				default: return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+				// Если знак записи не определён
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
+					return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+				}
 			}
 			/**
 			 * Если знак записан кодовым значением Юникода
@@ -1534,9 +1875,23 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					/**
 					 * Если текст поступил целиком
 					 */
-					if(end)
-						// Выполняем запоминание ошибки построения последовательности
+					if(end){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						#endif
+						// Объявляем отказ разбора
 						return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+					}
 					// Запоминаем нужду в продолжении текста
 					this->_hungry = true;
 					// Выводим признак неудачного разбора
@@ -1551,18 +1906,46 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					/**
 					 * Если знак записи кодового значения шестнадцатеричным не является
 					 */
-					if(digit < 0)
-						// Выполняем запоминание ошибки построения последовательности
+					if(digit < 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						#endif
+						// Объявляем отказ разбора
 						return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+					}
 					// Добавляем к кодовому значению разряды прочитанного знака
 					code = ((code << 4) | static_cast <uint32_t> (digit));
 				}
 				/**
 				 * Если записанное кодовое значение знаком Юникода не является
 				 */
-				if(((code >= 0xD800) && (code <= 0xDFFF)) || (code > MAX_CODEPOINT))
-					// Выполняем запоминание ошибки построения последовательности
+				if(((code >= 0xD800) && (code <= 0xDFFF)) || (code > MAX_CODEPOINT)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+				}
 			}
 			/**
 			 * Если запись знака в кодировке UTF-8 выполнить не удалось
@@ -1585,10 +1968,25 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
-			if(!encode(code, content))
-				// Выполняем запоминание ошибки построения последовательности
+			if(!encode(code, content)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_ESCAPE, this->_offset);
+			}
 			// Выполняем перемещение разбора за управляющую последовательность
 			this->step(this->_offset + 2 + count);
 			// Переходим к следующему знаку строкового значения
@@ -1614,7 +2012,7 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 	/**
 	 * Выполняем разбор составных частей имени ключа
 	 */
-	while(true){
+	for(;;){
 		// Выполняем пропуск пробельных знаков строки
 		this->spaces();
 		/**
@@ -1624,9 +2022,23 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки пустого имени ключа
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, count}, log::flag_t::WARNING, codec::toml::message(error_t::EMPTY_KEY), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::EMPTY_KEY), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::EMPTY_KEY, this->_offset);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -1653,10 +2065,25 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 			 *
 			 * @note Описание дозволяет имени лишь однострочную запись: многострочная в
 			 *       имени ошибочна независимо от содержимого
+			 *
 			 */
-			if((quoting == string_t::MULTILINE_BASIC) || (quoting == string_t::MULTILINE_LITERAL))
-				// Выполняем запоминание ошибки построения имени ключа
+			if((quoting == string_t::MULTILINE_BASIC) || (quoting == string_t::MULTILINE_LITERAL)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, count}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_KEY), this->locate(this->_start).line, this->locate(this->_start).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_KEY), this->locate(this->_start).line, this->locate(this->_start).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_KEY, this->_start);
+			}
 			// Запоминаем запись имени составной части
 			segment.naming = ((quoting == string_t::BASIC) ? naming_t::BASIC : naming_t::LITERAL);
 		/**
@@ -1696,6 +2123,7 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 				 * @note Оборванный знак от битого отличается лишь приходом продолжения:
 				 *       судить о нём по накопленному тексту нельзя, покуда текст не
 				 *       поступил целиком
+				 *
 				 */
 				if((outcome == toml::utf8_t::TRUNCATED) && !end){
 					/**
@@ -1710,6 +2138,7 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 					 *
 					 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 					 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
+					 *
 					 */
 					this->_hungry = true;
 					// Выводим признак неудачного разбора
@@ -1727,14 +2156,29 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 			/**
 			 * Если составная часть имени пуста
 			 */
-			if(position == this->_offset)
-				// Выполняем запоминание ошибки пустого имени ключа
+			if(position == this->_offset){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, count}, log::flag_t::WARNING, codec::toml::message(error_t::EMPTY_KEY), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::EMPTY_KEY), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::EMPTY_KEY, this->_offset);
+			}
 			/**
 			 * Если накопленный текст исчерпан именем
 			 *
 			 * @note Имя, дошедшее до конца накопленного текста, оборванным быть не
 			 *       перестаёт: следующий кусок вправе продолжить его новыми знаками
+			 *
 			 */
 			if((position >= this->_buffer.length()) && !end){
 				// Запоминаем нужду в продолжении текста
@@ -1750,9 +2194,23 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 		/**
 		 * Если длина составной части имени предел настроек превышает
 		 */
-		if((this->_settings.maxKey > 0) && (segment.name.length > this->_settings.maxKey))
-			// Выполняем запоминание ошибки превышения предела длины имени
+		if((this->_settings.maxKey > 0) && (segment.name.length > this->_settings.maxKey)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, count}, log::flag_t::WARNING, codec::toml::message(error_t::KEY_TOO_LONG), this->locate(this->_start).line, this->locate(this->_start).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::KEY_TOO_LONG), this->locate(this->_start).line, this->locate(this->_start).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::KEY_TOO_LONG, this->_start);
+		}
 		// Выполняем добавление составной части к имени ключа
 		this->_segments.push_back(segment);
 		// Выполняем увеличение количества составных частей имени
@@ -1760,9 +2218,23 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 		/**
 		 * Если количество составных частей имени предел настроек превышает
 		 */
-		if((this->_settings.maxParts > 0) && (count > this->_settings.maxParts))
-			// Выполняем запоминание ошибки превышения количества частей имени
+		if((this->_settings.maxParts > 0) && (count > this->_settings.maxParts)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, count}, log::flag_t::WARNING, codec::toml::message(error_t::PARTS_EXCEEDED), this->locate(this->_start).line, this->locate(this->_start).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::PARTS_EXCEEDED), this->locate(this->_start).line, this->locate(this->_start).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::PARTS_EXCEEDED, this->_start);
+		}
 		// Выполняем пропуск пробельных знаков строки
 		this->spaces();
 		/**
@@ -1817,6 +2289,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 *       цифра ли стоит за ним, - и решать без этого знака нельзя: следующий кусок
 	 *       вправе принести цифру, и запись, решённая здесь одной лишь датой, разошлась
 	 *       бы с записью, поданной целиком
+	 *
 	 */
 	if((position < this->_buffer.length()) && ((position + 1) >= this->_buffer.length()) && !end &&
 	   (this->_buffer[position] == ' ') && ((position - this->_offset) == 10) &&
@@ -1831,6 +2304,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 *
 	 * @note Описание дозволяет отделять время от даты пробелом наравне со знаком «T»:
 	 *       пробел этот записи не завершает, и конец её приходится искать дальше
+	 *
 	 */
 	if(((position + 1) < this->_buffer.length()) && (this->_buffer[position] == ' ') &&
 	   ((position - this->_offset) == 10) && (this->_buffer[this->_offset + 4] == '-') &&
@@ -1849,6 +2323,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 *
 	 * @note Запись, дошедшая до конца накопленного текста, оборванной быть не
 	 *       перестаёт: следующий кусок вправе продолжить её новыми знаками
+	 *
 	 */
 	if((position >= this->_buffer.length()) && !end){
 		// Запоминаем нужду в продолжении текста
@@ -1861,9 +2336,23 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	/**
 	 * Если запись значения пуста
 	 */
-	if(text.empty())
-		// Выполняем запоминание ошибки отсутствия значения
+	if(text.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::MISSING_VALUE, this->_offset);
+	}
 	// Запоминаем место значения в исходном тексте
 	item.location = this->locate(this->_offset);
 	// Запоминаем вид собранного события
@@ -1872,10 +2361,10 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 * Если значением является истина
 	 */
 	if(text.compare("true") == 0){
-		// Запоминаем тип значения события
-		item.type = type_t::BOOLEAN;
 		// Запоминаем логическое значение события
 		item.boolean = true;
+		// Запоминаем тип значения события
+		item.type = type_t::BOOLEAN;
 		// Выполняем перемещение разбора за запись значения
 		this->step(position);
 		// Выводим признак успешного разбора
@@ -1885,10 +2374,10 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 * Если значением является ложь
 	 */
 	if(text.compare("false") == 0){
-		// Запоминаем тип значения события
-		item.type = type_t::BOOLEAN;
 		// Запоминаем логическое значение события
 		item.boolean = false;
+		// Запоминаем тип значения события
+		item.type = type_t::BOOLEAN;
 		// Выполняем перемещение разбора за запись значения
 		this->step(position);
 		// Выводим признак успешного разбора
@@ -1900,15 +2389,30 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 * @note Отметку от числа отличают знак переноса на пятом знаке записи даты и
 	 *       двоеточие на третьем знаке записи времени: обе записи начинаются цифрами,
 	 *       и различить их можно лишь по разделителю
+	 *
 	 */
 	if(((text.length() >= 10) && (text[4] == '-') && ascii::isDigit(text[0])) ||
 	   ((text.length() >= 8) && (text[2] == ':') && ascii::isDigit(text[0]))){
 		/**
 		 * Если разбор отметки времени не удался
 		 */
-		if(!this->stamped(text, item))
-			// Выполняем запоминание ошибки построения отметки времени
+		if(!this->stamped(text, item)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_DATETIME), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_DATETIME), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_DATETIME, this->_offset);
+		}
 		// Выполняем перемещение разбора за запись значения
 		this->step(position);
 		// Выводим признак успешного разбора
@@ -1916,8 +2420,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	}
 	/**
 	 * Если разбор числа не удался
-	 */
-	/**
+	 *
 	 * @note Сюда попадает ВСЯКОЕ значение неограждённое, числом не выглядящее тоже, и
 	 *       оттого отказ его зовётся `INVALID_NUMBER`. Не промах: по описанию значение
 	 *       без ограды, не будучи `true`, `false` либо отметкою времени, может быть
@@ -1932,6 +2435,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
 	 *          «код называет не ту причину» мы нынче правили не раз. Здесь правки НЕТ, и
 	 *          вот почему: по грамматике причина названа ВЕРНО, ибо иного толкования у
 	 *          голого слова нет. Довод записан затем, чтобы разбор этот не вёлся заново
+	 *
 	 */
 	if(!this->numeric(text, item))
 		// Выводим признак неудачного разбора
@@ -1951,7 +2455,7 @@ bool awh::codec::toml::Reader::scalar(const bool end, item_t & item) noexcept {
  */
 bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) const noexcept {
 	/**
-	 * @brief Метод чтения числа заданной длины из записи отметки
+	 * @brief Функция чтения числа заданной длины из записи отметки
 	 *
 	 * @param source разбираемая запись отметки
 	 * @param offset положение чтения в записи
@@ -1989,10 +2493,10 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 	stamp_t stamp;
 	// Положение чтения записи отметки
 	size_t offset = 0;
-	// Признак наличия даты в записи отметки
-	bool dated = false;
 	// Прочитанное из записи отметки число
 	uint32_t value = 0;
+	// Признак наличия даты в записи отметки
+	bool dated = false;
 	/**
 	 * Если запись отметки начинается с даты
 	 */
@@ -2026,22 +2530,23 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 		 *
 		 * @note Проверка эта не украшение: «2026-02-31» записью даты не является, и
 		 *       принимать её значило бы выдавать потребителю день, которого нет
+		 *
 		 */
 		if(!toml::calendar(stamp.date.year, stamp.date.month, stamp.date.day))
 			// Выводим признак неудачного разбора
 			return false;
-		// Запоминаем признак наличия даты в записи отметки
-		dated = true;
 		// Выполняем переход за запись даты
 		offset = 10;
+		// Запоминаем признак наличия даты в записи отметки
+		dated = true;
 		/**
 		 * Если запись отметки датой исчерпана
 		 */
 		if(offset >= text.length()){
-			// Запоминаем тип значения события
-			item.type = type_t::LOCAL_DATE;
 			// Запоминаем собранную отметку времени
 			item.stamp = stamp;
+			// Запоминаем тип значения события
+			item.type = type_t::LOCAL_DATE;
 			// Выводим признак успешного разбора
 			return true;
 		}
@@ -2081,6 +2586,7 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 	 *
 	 * @note Значение в шестьдесят принимается намеренно: описание дозволяет им
 	 *       записывать добавочную секунду координации
+	 *
 	 */
 	if(((offset + 5) >= text.length()) || (text[offset + 5] != ':') || !read(text, offset + 6, 2, value) || (value > 60))
 		// Выводим признак неудачного разбора
@@ -2108,6 +2614,7 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 			 *
 			 * @note Разряды сверх девяти отбрасываются: описание дозволяет обращение
 			 *       это прямо, а хранение доли ведётся наносекундами
+			 *
 			 */
 			if(digits < MAX_FRACTION)
 				// Выполняем накопление значения доли секунды
@@ -2150,6 +2657,7 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 	 *
 	 * @note Смещение отводится лишь отметке с датой: у местного времени часового
 	 *       пояса нет по существу
+	 *
 	 */
 	if(!dated)
 		// Выводим признак неудачного разбора
@@ -2164,14 +2672,14 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 		if((offset + 1) != text.length())
 			// Выводим признак неудачного разбора
 			return false;
-		// Запоминаем признак записи часового пояса UTC знаком «Z»
-		stamp.zulu = true;
 		// Запоминаем смещение часового пояса отметки
 		stamp.offset = 0;
-		// Запоминаем тип значения события
-		item.type = type_t::OFFSET_DATETIME;
+		// Запоминаем признак записи часового пояса UTC знаком «Z»
+		stamp.zulu = true;
 		// Запоминаем собранную отметку времени
 		item.stamp = stamp;
+		// Запоминаем тип значения события
+		item.type = type_t::OFFSET_DATETIME;
 		// Выводим признак успешного разбора
 		return true;
 	}
@@ -2215,12 +2723,13 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 	 * @note Описание отводит записи «-00:00» смысл, от «+00:00» отличный: первою
 	 *       обозначено смещение неизвестное, второю - смещение, заведомо нулевое.
 	 *       Само смещение знака не несёт: нуль отрицательным не бывает
+	 *
 	 */
 	stamp.negative = (negative && (shift == 0));
-	// Запоминаем тип значения события
-	item.type = type_t::OFFSET_DATETIME;
 	// Запоминаем собранную отметку времени
 	item.stamp = stamp;
+	// Запоминаем тип значения события
+	item.type = type_t::OFFSET_DATETIME;
 	// Выводим признак успешного разбора
 	return true;
 }
@@ -2233,12 +2742,12 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
  *
  */
 bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) noexcept {
-	// Разбираемая запись числа без знака
-	string_view value = text;
-	// Признак отрицательного числа
-	bool negative = false;
 	// Признак записи числа со знаком
 	bool signed_ = false;
+	// Признак отрицательного числа
+	bool negative = false;
+	// Разбираемая запись числа без знака
+	string_view value = text;
 	/**
 	 * Если запись числа начинается со знака
 	 */
@@ -2253,9 +2762,23 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 	/**
 	 * Если запись числа исчерпана знаком
 	 */
-	if(value.empty())
-		// Выполняем запоминание ошибки построения записи числа
+	if(value.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
 	/**
 	 * Если значением является бесконечность
 	 */
@@ -2286,22 +2809,51 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		 * Если запись числа с приставкой несёт знак
 		 *
 		 * @note Описание отводит знак лишь десятичной записи: «-0x1» им не отведено
+		 *
 		 */
-		if(signed_)
-			// Выполняем запоминание ошибки построения записи числа
+		if(signed_){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+		}
+		// Запись числа без разделителей разрядов
+		string digits = "";
 		// Получаем основание системы счисления записи
 		const uint32_t radix = ((value[1] == 'x') ? 16 : ((value[1] == 'o') ? 8 : 2));
 		// Запоминаем систему счисления записи целого числа
 		item.radix = ((value[1] == 'x') ? radix_t::HEX : ((value[1] == 'o') ? radix_t::OCTAL : radix_t::BINARY));
-		// Запись числа без разделителей разрядов
-		string digits;
 		/**
 		 * Если построение записи числа ошибочно
 		 */
-		if(!::separated(value.substr(2), radix, digits))
-			// Выполняем запоминание ошибки построения записи числа
+		if(!::separated(value.substr(2), radix, digits)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+		}
 		/**
 		 * Если разбор целого числа не удался
 		 */
@@ -2312,6 +2864,7 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 			 * @note Отличать негодное построение от выхода за отрезок значений
 			 *       обязательно: первое означает ошибку в файле, второе - число,
 			 *       которое хранилищу не по мерке
+			 *
 			 */
 			for(size_t i = 0; i < digits.length(); i++){
 				// Получаем значение очередной цифры записи
@@ -2319,11 +2872,38 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 				/**
 				 * Если знак цифрой системы счисления не является
 				 */
-				if((digit < 0) || (static_cast <uint32_t> (digit) >= radix))
-					// Выполняем запоминание ошибки построения записи числа
+				if((digit < 0) || (static_cast <uint32_t> (digit) >= radix)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_NUMBER, this->_offset);
+				}
 			}
-			// Выполняем запоминание ошибки выхода числа за отрезок значений
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::NUMBER_OVERFLOW), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::NUMBER_OVERFLOW), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::NUMBER_OVERFLOW, this->_offset);
 		}
 		// Запоминаем тип значения события
@@ -2332,13 +2912,27 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		return true;
 	}
 	// Запись числа без разделителей разрядов
-	string digits;
+	string digits = "";
 	/**
 	 * Если построение записи числа ошибочно
 	 */
-	if(!::separated(value, 10, digits))
-		// Выполняем запоминание ошибки построения записи числа
+	if(!::separated(value, 10, digits)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
 	// Признак записи числа с плавающей точкой
 	bool real = false;
 	// Положение разбираемого знака записи числа
@@ -2349,6 +2943,7 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 	 * @note Построение записи проверяется правилом описания, а не набором знаков её:
 	 *       запись «1.e2» несёт одни лишь дозволенные знаки, а числом по описанию не
 	 *       является - десятичная точка обязана нести цифру и слева, и справа
+	 *
 	 */
 	while((position < digits.length()) && ascii::isDigit(digits[position]))
 		// Выполняем переход к следующему знаку записи числа
@@ -2356,9 +2951,23 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 	/**
 	 * Если целая часть записи числа пуста
 	 */
-	if(position == 0)
-		// Выполняем запоминание ошибки построения записи числа
+	if(position == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
 	/**
 	 * Если за целой частью записи числа следует десятичная точка
 	 */
@@ -2378,9 +2987,23 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		/**
 		 * Если дробная часть записи числа пуста
 		 */
-		if(position == start)
-			// Выполняем запоминание ошибки построения записи числа
+		if(position == start){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+		}
 	}
 	/**
 	 * Если за записью числа следует знак порядка
@@ -2407,32 +3030,75 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		/**
 		 * Если порядок записи числа пуст
 		 */
-		if(position == start)
-			// Выполняем запоминание ошибки построения записи числа
+		if(position == start){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+		}
 	}
 	/**
 	 * Если запись числа разобрана не до конца
 	 */
-	if(position < digits.length())
-		// Выполняем запоминание ошибки построения записи числа
+	if(position < digits.length()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
 	/**
 	 * Если запись числа несёт незначащий ноль в начале
 	 *
 	 * @note Описание запрещает его прямо: «011» записью числа не является, и принимать
 	 *       её значило бы разбирать то восьмеричным числом, то десятичным - смотря по
 	 *       разбирающему
+	 *
 	 */
-	if((digits.length() > 1) && (digits[0] == '0') && ascii::isDigit(digits[1]))
-		// Выполняем запоминание ошибки построения записи числа
+	if((digits.length() > 1) && (digits[0] == '0') && ascii::isDigit(digits[1])){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
 	/**
 	 * Если число записано с плавающей точкой
 	 */
 	if(real){
 		// Собираемое значение числа с плавающей точкой
-		double number = 0.0;
+		double number = .0;
 		// Выполняем разбор числа с плавающей точкой
 		const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), (digits.data() + digits.length()), number);
 		/**
@@ -2443,11 +3109,25 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		 *       величина. Отвечать на неё ошибкой в файле значило бы посылать потребителя
 		 *       править запись, которая правильна, - целое за отрезком отвечает
 		 *       NUMBER_OVERFLOW, и дробному отводится тот же код
+		 *
 		 */
-		if(!static_cast <bool> (res) || (res.ptr != (digits.data() + digits.length())))
-			// Выполняем запоминание ошибки разбора записи числа
-			return this->failure(((res.ec == errc::result_out_of_range) ?
-				error_t::NUMBER_OVERFLOW : error_t::INVALID_NUMBER), this->_offset);
+		if(!static_cast <bool> (res) || (res.ptr != (digits.data() + digits.length()))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(((res.ec == errc::result_out_of_range) ? error_t::NUMBER_OVERFLOW : error_t::INVALID_NUMBER)), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(((res.ec == errc::result_out_of_range) ? error_t::NUMBER_OVERFLOW : error_t::INVALID_NUMBER)), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
+			return this->failure(((res.ec == errc::result_out_of_range) ? error_t::NUMBER_OVERFLOW : error_t::INVALID_NUMBER), this->_offset);
+		}
 		// Запоминаем тип значения события
 		item.type = type_t::FLOAT;
 		// Запоминаем значение события с плавающей точкой
@@ -2486,12 +3166,40 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
-			if(!ascii::isDigit(digits[i]))
-				// Выполняем запоминание ошибки построения записи числа
+			if(!ascii::isDigit(digits[i])){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_NUMBER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_NUMBER, this->_offset);
+			}
 		}
-		// Выполняем запоминание ошибки выхода числа за отрезок значений
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, codec::toml::message(error_t::NUMBER_OVERFLOW), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::NUMBER_OVERFLOW), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::NUMBER_OVERFLOW, this->_offset);
 	}
 	// Запоминаем тип значения события
@@ -2518,9 +3226,23 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 		/**
 		 * Если текст поступил целиком
 		 */
-		if(end)
-			// Выполняем запоминание ошибки отсутствия значения
+		if(end){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::MISSING_VALUE, this->_offset);
+		}
 		// Запоминаем нужду в продолжении текста
 		this->_hungry = true;
 		// Выводим признак неудачного разбора
@@ -2558,6 +3280,7 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 				 * @note Пока таблица не закрыта, ключи её объявляются законно, и род
 				 *       закрытой таблицы отвергал бы их дополнением: род этот ставится
 				 *       лишь по закрытии скобки
+				 *
 				 */
 				this->_pending.at(declared).kind = kind_t::DOTTED;
 			}
@@ -2580,9 +3303,23 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 	/**
 	 * Если значение оборвано концом строки
 	 */
-	if((letter == '\n') || (letter == '\r'))
-		// Выполняем запоминание ошибки отсутствия значения
+	if((letter == '\n') || (letter == '\r')){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::MISSING_VALUE, this->_offset);
+	}
 	// Собираемое событие значения
 	item_t item;
 	/**
@@ -2621,9 +3358,9 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
  * @brief Метод пропуска пробельной обвязки и примечаний внутри перечня
  *
  * @details Перечень описание дозволяет записывать в несколько строк вместе с
- * примечаниями внутри, и пропуск этот приходится вести дважды - перед очередным
- * значением и за ним. Тело у обоих пропусков одно: два свода правил разошлись бы
- * при первой же правке одного из них
+ *          примечаниями внутри, и пропуск этот приходится вести дважды - перед очередным
+ *          значением и за ним. Тело у обоих пропусков одно: два свода правил разошлись бы
+ *          при первой же правке одного из них.
  *
  * @param end     признак того, что текст поступил целиком
  * @param opening положение открытия перечня в накопленном тексте
@@ -2634,7 +3371,7 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 	/**
 	 * Выполняем пропуск пробельных знаков, переносов строк и примечаний
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если накопленный текст исчерпан
 		 */
@@ -2642,9 +3379,23 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытого перечня
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, opening}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_ARRAY), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_ARRAY), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNCLOSED_ARRAY, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -2666,11 +3417,28 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 				 * @note Возврат каретки сам по себе концом строки не является:
 				 *       описание отводит концом строки перевод строки и пару из
 				 *       возврата с переводом
+				 *
 				 */
-				if(end)
-					// Выполняем запоминание ошибки недопустимого знака
+				if(end){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, opening}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+				}
 				/**
+				 * Запоминаем нужду в продолжении текста
+				 *
 				 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 				 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 				 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -2680,8 +3448,8 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 				 *
 				 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 				 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
+				 *
 				 */
-				// Запоминаем нужду в продолжении текста
 				this->_hungry = true;
 				// Выводим признак неудачного разбора
 				return false;
@@ -2689,9 +3457,23 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 			/**
 			 * Если за возвратом каретки перевод строки не следует
 			 */
-			if(this->_buffer[this->_offset + 1] != '\n')
-				// Выполняем запоминание ошибки недопустимого знака
+			if(this->_buffer[this->_offset + 1] != '\n'){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, opening}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+			}
 		}
 		/**
 		 * Если знаком является пробельный знак либо знак конца строки
@@ -2715,9 +3497,23 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 				/**
 				 * Если текст поступил целиком
 				 */
-				if(end)
-					// Выполняем запоминание ошибки незакрытого перечня
+				if(end){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, opening}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_ARRAY), this->locate(opening).line, this->locate(opening).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_ARRAY), this->locate(opening).line, this->locate(opening).column);
+					#endif
+					// Объявляем отказ разбора
 					return this->failure(error_t::UNCLOSED_ARRAY, opening);
+				}
 				// Запоминаем нужду в продолжении текста
 				this->_hungry = true;
 				// Выводим признак неудачного разбора
@@ -2730,6 +3526,7 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
 			 *       значением на строке его: обратная запись расстановку эту хранит,
 			 *       и различаются они по тому, есть ли перед знаком начала примечания
 			 *       непробельное содержимое
+			 *
 			 */
 			bool trailing = false;
 			/**
@@ -2780,19 +3577,49 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 	 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне значит «без
 	 *       предела» у всех кодеков рамки: одним числом две разные мысли выразить нельзя,
 	 *       не отняв одну из них
+	 *
 	 */
-	if(!this->_settings.nesting)
-		// Выполняем запоминание ошибки превышения глубины вложенности
+	if(!this->_settings.nesting){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth}, log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
+	}
 	/**
 	 * Если глубина вложенности значений предел настроек превышает
 	 *
 	 * @note Предел этот не украшение: разбор вложенности ведётся стопой вызовов, и
 	 *       текст из одних открывающих скобок исчерпывает её без предела
+	 *
 	 */
-	if(depth >= this->_settings.maxDepth)
-		// Выполняем запоминание ошибки превышения глубины вложенности
+	if(depth >= this->_settings.maxDepth){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth}, log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
+	}
 	// Собираемое событие открытия перечня значений
 	item_t item;
 	// Запоминаем вид собранного события
@@ -2801,18 +3628,18 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 	item.type = type_t::ARRAY;
 	// Запоминаем место открытия перечня в исходном тексте
 	item.location = this->locate(this->_offset);
+	// Признак того, что перечень ожидает очередного значения
+	bool expected = true;
 	// Запоминаем положение открытия перечня в накопленном тексте
 	const size_t opening = this->_offset;
 	// Выполняем добавление собранного события в очередь выдачи
 	this->_items.push_back(item);
 	// Выполняем пропуск знака открытия перечня
 	this->step(this->_offset + 1);
-	// Признак того, что перечень ожидает очередного значения
-	bool expected = true;
 	/**
 	 * Выполняем разбор содержимого перечня значений
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если пропустить пробельную обвязку и примечания перечня не удалось
 		 */
@@ -2825,10 +3652,10 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 		if(this->_buffer[this->_offset] == ']'){
 			// Собираемое событие закрытия перечня значений
 			item_t closing;
-			// Запоминаем вид собранного события
-			closing.event = event_t::ARRAY_CLOSE;
 			// Запоминаем тип значения события
 			closing.type = type_t::ARRAY;
+			// Запоминаем вид собранного события
+			closing.event = event_t::ARRAY_CLOSE;
 			// Запоминаем место закрытия перечня в исходном тексте
 			closing.location = this->locate(this->_offset);
 			// Выполняем добавление собранного события в очередь выдачи
@@ -2842,10 +3669,25 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 		 * Если очередного значения перечень не ожидает
 		 *
 		 * @note Значение, не отделённое запятой от предыдущего, описанием не отведено
+		 *
 		 */
-		if(!expected)
-			// Выполняем запоминание ошибки построения значения
+		if(!expected){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_VALUE, this->_offset);
+		}
 		/**
 		 * Если разбор очередного значения перечня не удался
 		 */
@@ -2887,22 +3729,51 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 	 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне значит «без
 	 *       предела» у всех кодеков рамки: одним числом две разные мысли выразить нельзя,
 	 *       не отняв одну из них
+	 *
 	 */
-	if(!this->_settings.nesting)
-		// Выполняем запоминание ошибки превышения глубины вложенности
+	if(!this->_settings.nesting){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
+	}
 	/**
 	 * Если глубина вложенности значений предел настроек превышает
 	 */
-	if(depth >= this->_settings.maxDepth)
-		// Выполняем запоминание ошибки превышения глубины вложенности
+	if(depth >= this->_settings.maxDepth){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DEPTH_EXCEEDED), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
+	}
 	// Собираемое событие открытия встроенной таблицы
 	item_t item;
-	// Запоминаем вид собранного события
-	item.event = event_t::INLINE_OPEN;
 	// Запоминаем тип значения события
 	item.type = type_t::TABLE;
+	// Запоминаем вид собранного события
+	item.event = event_t::INLINE_OPEN;
 	// Запоминаем место открытия встроенной таблицы в исходном тексте
 	item.location = this->locate(this->_offset);
 	// Запоминаем положение открытия встроенной таблицы в накопленном тексте
@@ -2919,8 +3790,9 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 	 *       безымянной имя даётся здесь своё - «@» со счётом. Столкнуться ему не с чем:
 	 *       полное имя настоящего ключа начинается разделителем частей, а живёт имя это
 	 *       лишь до конца записи и в объявленные не переносится
+	 *
 	 */
-	string synthetic;
+	string synthetic = "";
 	/**
 	 * Если собственного имени у встроенной таблицы нет
 	 */
@@ -2932,19 +3804,20 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 		// Запоминаем собранное имя началом имён ключей встроенной таблицы
 		prefix = &synthetic;
 	}
-	// Признак того, что встроенная таблица ожидает очередной пары
-	bool expected = false;
 	/**
 	 * Признак того, что очередная пара будет первой
 	 *
 	 * @note Пары встроенной таблицы описание требует отделять запятой: без этого
 	 *       признака запись «{a = 1 b = 2}» принималась бы наравне с правильной
+	 *
 	 */
 	bool first = true;
+	// Признак того, что встроенная таблица ожидает очередной пары
+	bool expected = false;
 	/**
 	 * Выполняем разбор содержимого встроенной таблицы
 	 */
-	while(true){
+	for(;;){
 		// Выполняем пропуск пробельных знаков строки
 		this->spaces();
 		/**
@@ -2954,9 +3827,23 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытой встроенной таблицы
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNCLOSED_INLINE_TABLE, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -2971,16 +3858,31 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 			 *
 			 * @note Запятая в конце встроенной таблицы описанием запрещена: «{a = 1,}»
 			 *       записью встроенной таблицы не является
+			 *
 			 */
-			if(expected)
-				// Выполняем запоминание ошибки построения значения
+			if(expected){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::INVALID_VALUE, this->_offset);
+			}
 			// Собираемое событие закрытия встроенной таблицы
 			item_t closing;
-			// Запоминаем вид собранного события
-			closing.event = event_t::INLINE_CLOSE;
 			// Запоминаем тип значения события
 			closing.type = type_t::TABLE;
+			// Запоминаем вид собранного события
+			closing.event = event_t::INLINE_CLOSE;
 			// Запоминаем место закрытия встроенной таблицы в исходном тексте
 			closing.location = this->locate(this->_offset);
 			// Выполняем добавление собранного события в очередь выдачи
@@ -2995,16 +3897,45 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 		 *
 		 * @note Описание отводит встроенной таблице одну строку целиком: перенос
 		 *       внутри неё им не дозволен
+		 *
 		 */
-		if((this->_buffer[this->_offset] == '\n') || (this->_buffer[this->_offset] == '\r'))
-			// Выполняем запоминание ошибки незакрытой встроенной таблицы
+		if((this->_buffer[this->_offset] == '\n') || (this->_buffer[this->_offset] == '\r')){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::UNCLOSED_INLINE_TABLE, opening);
+		}
 		/**
 		 * Если очередная пара от предыдущей запятой не отделена
 		 */
-		if(!first && !expected)
-			// Выполняем запоминание ошибки построения значения
+		if(!first && !expected){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_VALUE, this->_offset);
+		}
 		// Запоминаем, что очередная пара первой не является
 		first = false;
 		// Собираемое событие имени ключа встроенной таблицы
@@ -3028,10 +3959,26 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки отсутствия знака равенства
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::MISSING_EQUALS, this->_offset);
+			}
 			/**
+			 * Запоминаем нужду в продолжении текста
+			 *
 			 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 			 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 			 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -3041,8 +3988,8 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 			 *
 			 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 			 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
+			 *
 			 */
-			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
 			return false;
@@ -3050,17 +3997,32 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 		/**
 		 * Если за именем ключа знак равенства не следует
 		 */
-		if(this->_buffer[this->_offset] != '=')
-			// Выполняем запоминание ошибки отсутствия знака равенства
+		if(this->_buffer[this->_offset] != '='){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::MISSING_EQUALS, this->_offset);
+		}
 		/**
 		 * Собираемое полное имя ключа встроенной таблицы
 		 *
 		 * @note Имя собирается лишь тогда, когда собственное имя есть и у самой
 		 *       встроенной таблицы: таблица, записанная значением перечня, имени не
 		 *       имеет вовсе, и ключи её повторами друг другу не приходятся
+		 *
 		 */
-		string name;
+		string name = "";
 		/**
 		 * Если собственное имя у встроенной таблицы есть
 		 */
@@ -3095,9 +4057,23 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытой встроенной таблицы
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, depth, prefix}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_INLINE_TABLE), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNCLOSED_INLINE_TABLE, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -3141,9 +4117,23 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 		/**
 		 * Если текст поступил целиком
 		 */
-		if(end)
-			// Выполняем запоминание ошибки незакрытого объявления таблицы
+		if(end){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::UNCLOSED_TABLE, opening);
+		}
 		// Запоминаем нужду в продолжении текста
 		this->_hungry = true;
 		// Выводим признак неудачного разбора
@@ -3176,10 +4166,26 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 		/**
 		 * Если текст поступил целиком
 		 */
-		if(end)
-			// Выполняем запоминание ошибки незакрытого объявления таблицы
+		if(end){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::UNCLOSED_TABLE, opening);
+		}
 		/**
+		 * Запоминаем нужду в продолжении текста
+		 *
 		 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 		 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 		 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -3189,8 +4195,8 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 		 *
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 		 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
+		 *
 		 */
-		// Запоминаем нужду в продолжении текста
 		this->_hungry = true;
 		// Выводим признак неудачного разбора
 		return false;
@@ -3198,9 +4204,23 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 	/**
 	 * Если объявление таблицы квадратной скобкой не закрыто
 	 */
-	if(this->_buffer[this->_offset] != ']')
-		// Выполняем запоминание ошибки построения объявления таблицы
+	if(this->_buffer[this->_offset] != ']'){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_TABLE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_TABLE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::INVALID_TABLE, this->_offset);
+	}
 	// Выполняем пропуск знака закрытия объявления таблицы
 	this->step(this->_offset + 1);
 	/**
@@ -3214,9 +4234,23 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 			/**
 			 * Если текст поступил целиком
 			 */
-			if(end)
-				// Выполняем запоминание ошибки незакрытого объявления таблицы
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNCLOSED_TABLE), this->locate(opening).line, this->locate(opening).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNCLOSED_TABLE, opening);
+			}
 			// Запоминаем нужду в продолжении текста
 			this->_hungry = true;
 			// Выводим признак неудачного разбора
@@ -3225,14 +4259,28 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 		/**
 		 * Если объявление набора таблиц второй скобкой не закрыто
 		 */
-		if(this->_buffer[this->_offset] != ']')
-			// Выполняем запоминание ошибки построения объявления таблицы
+		if(this->_buffer[this->_offset] != ']'){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_TABLE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::INVALID_TABLE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::INVALID_TABLE, this->_offset);
+		}
 		// Выполняем пропуск второго знака закрытия объявления
 		this->step(this->_offset + 1);
 	}
 	// Собираемое полное имя объявленной таблицы
-	string name;
+	string name = "";
 	// Выполняем сборку полного имени таблицы из составных частей
 	this->assemble(item.part, item.parts, name);
 	/**
@@ -3291,10 +4339,26 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 		/**
 		 * Если текст поступил целиком
 		 */
-		if(end)
-			// Выполняем запоминание ошибки отсутствия знака равенства
+		if(end){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+			#endif
+			// Объявляем отказ разбора
 			return this->failure(error_t::MISSING_EQUALS, this->_offset);
+		}
 		/**
+		 * Запоминаем нужду в продолжении текста
+		 *
 		 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 		 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 		 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -3304,8 +4368,8 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 		 *
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 		 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
+		 *
 		 */
-		// Запоминаем нужду в продолжении текста
 		this->_hungry = true;
 		// Выводим признак неудачного разбора
 		return false;
@@ -3313,9 +4377,23 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	/**
 	 * Если за именем ключа знак равенства не следует
 	 */
-	if(this->_buffer[this->_offset] != '=')
-		// Выполняем запоминание ошибки отсутствия знака равенства
+	if(this->_buffer[this->_offset] != '='){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::MISSING_EQUALS), this->locate(this->_offset).line, this->locate(this->_offset).column);
+		#endif
+		// Объявляем отказ разбора
 		return this->failure(error_t::MISSING_EQUALS, this->_offset);
+	}
 	// Выполняем пропуск знака равенства
 	this->step(this->_offset + 1);
 	/**
@@ -3324,8 +4402,7 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	 * @note Разделитель имени таблицы с именем ключа ставит сама сборка: всякая
 	 *       часть имени идёт за ним, отчего пустое имя таблицы от верхнего уровня
 	 *       отличимо
-	 */
-	/**
+	 *
 	 * @note Хранилище имени держится полем объекта, а не переменной вызова: очистка
 	 *       сохраняет за ним занятую память, и всякая следующая пара обходится без
 	 *       выделения. Переменная вызова выделяла память на всякую пару, полное имя
@@ -3334,6 +4411,7 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	 *       её запасом в 22 байта расход этот прятала. Разбор пары повторно из себя
 	 *       не вызывается - пара разбирается лишь из разбора записи, - и поле это
 	 *       столкнуться само с собою не может
+	 *
 	 */
 	string & name = this->_name;
 	// Запоминаем имя текущей таблицы началом полного имени ключа
@@ -3369,10 +4447,10 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 * Если разбор записи откачен нуждою в продолжении текста
 	 *
 	 * @details Запись, продолжения не дождавшаяся, откатывается целиком и разбирается
-	 * заново по приходе очередного куска. Браться за неё заново прежде времени незачем:
-	 * оканчивается запись знаком конца строки, а с накопленным прежде текстом она не
-	 * окончилась - стало быть, знак этот стоит среди пришедшего. Нет его - нет и записи,
-	 * и разбор накопленного начала был бы повторён впустую
+	 *          заново по приходе очередного куска. Браться за неё заново прежде времени незачем:
+	 *          оканчивается запись знаком конца строки, а с накопленным прежде текстом она не
+	 *          окончилась - стало быть, знак этот стоит среди пришедшего. Нет его - нет и записи,
+	 *          и разбор накопленного начала был бы повторён впустую.
 	 *
 	 * @note Без этой ограды подача по байту обращала бы разбор одной записи в
 	 *       квадратичный: запись в мегабайт кусками по шестьдесят четыре байта отнимала
@@ -3384,6 +4462,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *          знаком конца строки, которого уже не будет, осталась бы неразобранной -
 	 *          выдался бы отказ приведения вместо ошибки самой записи, и итог разбора
 	 *          зависел бы от нарезки. Ворошитель это и поймал
+	 *
 	 */
 	if((this->_state == state_t::HUNGRY) && !end && (this->_decoding == error_t::NONE)){
 		/**
@@ -3396,47 +4475,49 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 			return false;
 		}
 	}
-	// Выполняем сброс признака нужды в продолжении текста
-	this->_hungry = false;
-	// Выполняем очистку очереди собранных событий записи
-	this->_items.clear();
-	// Выполняем очистку составных частей имён ключей записи
-	this->_segments.clear();
-	// Выполняем очистку хранилища содержимого событий записи
-	this->_store.clear();
+	/**
+	 * Выполняем укорочение очереди имён, объявляемых разбираемой записью
+	 *
+	 * @note Очередь укорачивается счётом, а не освобождается: места её достаются
+	 *       следующей записи вместе с уже занятой под имена памятью
+	 *
+	 */
+	this->_staging = 0;
 	// Выполняем сброс номера выдаваемого события в очереди
 	this->_current = 0;
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
+	// Признак успешного разбора записи
+	bool result = false;
+	// Выполняем сброс признака нужды в продолжении текста
+	this->_hungry = false;
+	// Выполняем сброс признака объявления таблицы разбираемой записью
+	this->_declaring = false;
+	// Выполняем сброс признака объявления набора таблиц разбираемой записью
+	this->_appending = false;
+	// Выполняем очистку очереди собранных событий записи
+	this->_items.clear();
+	// Выполняем очистку хранилища содержимого событий записи
+	this->_store.clear();
 	/**
 	 * Выполняем очистку указателя имён, объявляемых разбираемой записью
 	 *
 	 * @note Очистка ведётся прежде очереди имён: указатель держит ссылки на её
 	 *       содержимое, и порядок обратный оставлял бы его со ссылками на
 	 *       освобождённую память
+	 *
 	 */
 	this->_staged.clear();
-	/**
-	 * Выполняем укорочение очереди имён, объявляемых разбираемой записью
-	 *
-	 * @note Очередь укорачивается счётом, а не освобождается: места её достаются
-	 *       следующей записи вместе с уже занятой под имена памятью
-	 */
-	this->_staging = 0;
+	// Выполняем очистку составных частей имён ключей записи
+	this->_segments.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
-	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
-	this->_anonymous = 0;
-	// Выполняем сброс признака объявления таблицы разбираемой записью
-	this->_declaring = false;
-	// Выполняем сброс признака объявления набора таблиц разбираемой записью
-	this->_appending = false;
 	// Запоминаем положение начала разбираемой записи
 	this->_start = this->_offset;
-	// Запоминаем номер строки начала разбираемой записи
-	const uint32_t line = this->_line;
 	// Запоминаем положение начала строки разбираемой записи
 	const size_t bol = this->_bol;
-	// Признак успешного разбора записи
-	bool result = false;
+	// Запоминаем номер строки начала разбираемой записи
+	const uint32_t line = this->_line;
 	/**
 	 * Если накопленный текст исчерпан
 	 */
@@ -3570,21 +4651,37 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 			 *          слоями, и разойдись слои - станет видимым немедля
+			 *
 			 */
-			if(end)
-				// Выполняем запоминание ошибки обрыва текста посреди записи
+			if(end){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end}, log::flag_t::WARNING, codec::toml::message(error_t::UNEXPECTED_EOF), this->locate(this->_start).line, this->locate(this->_start).column);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::UNEXPECTED_EOF), this->locate(this->_start).line, this->locate(this->_start).column);
+				#endif
+				// Объявляем отказ разбора
 				return this->failure(error_t::UNEXPECTED_EOF, this->_start);
+			}
+			// Выполняем откат положения начала строки к началу записи
+			this->_bol = bol;
+			// Выполняем откат номера строки к началу записи
+			this->_line = line;
 			/**
 			 * Выполняем откат разбора к началу записи
 			 *
 			 * @note Откатывается и счёт строк: запись разбирается заново по приходе
 			 *       продолжения, и знаки конца строки её сосчитались бы дважды
+			 *
 			 */
 			this->_offset = this->_start;
-			// Выполняем откат номера строки к началу записи
-			this->_line = line;
-			// Выполняем откат положения начала строки к началу записи
-			this->_bol = bol;
 			// Запоминаем состояние нужды в продолжении текста
 			this->_state = state_t::HUNGRY;
 			/**
@@ -3592,6 +4689,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 			 *
 			 * @note Накопленным текстом запись не окончилась, и знак конца её стоит среди
 			 *       того, что ещё не пришло: искать его прежде этого места незачем
+			 *
 			 */
 			this->_probed = this->_buffer.length();
 			// Выполняем очистку очереди собранных событий записи
@@ -3606,6 +4704,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 * @note Проверка стоит здесь, а не при выдаче событий: событие выдаётся не всякой
 	 *       записью, и проверка, поставленная там, обходилась бы записями, событий не
 	 *       дающими
+	 *
 	 */
 	if(!this->oversize(this->_offset))
 		// Выводим признак того, что запись не разобрана
@@ -3616,6 +4715,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 * @note Всякая таблица набора несёт свои ключи: имена, объявленные в предыдущей
 	 *       таблице набора, повтором для новой не являются, и снимаются здесь все -
 	 *       вместе с вложенными наборами таблиц, которые новая таблица заводит заново
+	 *
 	 */
 	if(this->_appending && this->_settings.duplicates){
 		/**
@@ -3640,6 +4740,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 * @note Перенос выполняется здесь, а не по ходу разбора: запись, которой не хватило
 	 *       продолжения текста, разбирается заново, и объявленное ею объявилось бы
 	 *       дважды - при подаче кусками текст отвергался бы повтором, которого нет
+	 *
 	 */
 	for(size_t index = 0; index < this->_staging; index++){
 		// Получаем очередное имя, объявленное разобранной записью
@@ -3650,6 +4751,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 		 * @note Имя это живёт лишь до конца записи: встроенная таблица закрывается
 		 *       своими скобками, и дополнить её снаружи нечем - переносить имена её
 		 *       в объявленные значило бы держать в памяти то, чего никто не спросит
+		 *
 		 */
 		if(!pending.name.empty() && (pending.name.front() != '\x1F'))
 			// Переходим к следующему объявленному имени
@@ -3660,6 +4762,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 		 * @note Заведённое исподволь уже объявленного не подменяет: таблица,
 		 *       объявленная заголовком, объемлющим именем ключа в заведённую исподволь
 		 *       не превращается
+		 *
 		 */
 		if(pending.implied){
 			/**
@@ -3678,6 +4781,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 		 *
 		 * @note Подмена рода нужна заголовку таблицы, заведённой прежде исподволь:
 		 *       объявленная явно, она перестаёт быть заведённой исподволь
+		 *
 		 */
 		if(i != this->_names.end())
 			// Выполняем подмену рода объявленного имени
@@ -3691,6 +4795,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 * @note Имя текущей таблицы подменяется здесь, а не при разборе объявления: запись,
 	 *       которой не хватило продолжения текста, разбирается заново, и подмена, сделанная
 	 *       по ходу, досталась бы записи, которая ещё вправе быть отвергнутой
+	 *
 	 */
 	if(this->_declaring)
 		// Запоминаем имя текущей таблицы текста настроек
@@ -3735,11 +4840,14 @@ bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	 * @note Кодировка сличается с ОПРЕДЕЛЁННОЮ САМИМ ЧТЕНИЕМ, а не с признаком начатого
 	 *       приведения: приведение из UTF-8 в UTF-8 не ведётся вовсе и признака такого не
 	 *       поднимает, - заслон, на нём стоящий, пропускал бы смену молча
+	 *
 	 */
 	if(this->_state != state_t::READY){
 		// Запоминаем код отказа смены настроек посреди подачи текста
-		this->_error = ((settings.encoding != this->_decoder.encoding()) ?
-		 error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED);
+		this->_error = (
+			(settings.encoding != this->_decoder.encoding()) ?
+			error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED
+		);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -3748,8 +4856,10 @@ bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	 */
 	if(!this->_buffer.empty()){
 		// Запоминаем код отказа смены настроек посреди подачи текста
-		this->_error = ((settings.encoding != this->_decoder.encoding()) ?
-		 error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED);
+		this->_error = (
+			(settings.encoding != this->_decoder.encoding()) ?
+			error_t::ENCODING_ALREADY_CHOSEN : error_t::SETTINGS_ALREADY_APPLIED
+		);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -3761,39 +4871,67 @@ bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	return true;
 }
 /**
-	 * @brief Метод подачи очередного куска исходного текста
-	 *
-	 * @param buffer буфер очередного куска исходного текста
-	 * @param size   размер буфера очередного куска исходного текста
-	 * @param end    признак того, что кусок является последним
-	 * @return       результат выполнения операции
-	 *
-	 *
-	 * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
-	 *       шести кодекам рамки разом - две подачи с признаком конца подряд:
-	 *
-	 *         INI 37, TOML 38, YAML 51, JSON 30, XML 41, CSV 17
-	 *
-	 *       Все шесть отвечают отказом при коде НЕнулевом и при названной причине;
-	 *       имена кодов свои у каждого, но смысл один - подача продолжена после
-	 *       объявленного её конца
-	 *
-	 * @warning Здесь стояло описание расхождения, замеренного 07.09.2026: YAML отвечал
-	 *          `TRAILING_CHARACTERS` - кодом чужого смысла, TOML без вычерпывания событий
-	 *          отдавал УСПЕХ, а INI отказывал при коде НУЛЕВОМ, то есть немо. Расхождение
-	 *          это устранено, а описание его осталось стоять во ВСЕХ ТРЁХ кодеках сразу и
-	 *          лгало трижды
-	 *
-	 * @warning Довод тот утверждал вдобавок, будто кода `TEXT_ALREADY_ENDED` у YAML, TOML
-	 *          и INI в перечне нет вовсе и заведение его меняет договор наружу. Ныне код
-	 *          этот есть у всех трёх и им же они и отвечают: запись пережила ровно ту
-	 *          правку, невозможность которой утверждала
-	 *
-	 * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
-	 *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
-	 *       против работы уже сделанной
-	 */
+ * @brief Метод подачи очередного куска исходного текста
+ *
+ * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
+ *       шести кодекам рамки разом - две подачи с признаком конца подряд:
+ *
+ *         INI 37, TOML 38, YAML 51, JSON 30, XML 41, CSV 17
+ *
+ *       Все шесть отвечают отказом при коде НЕнулевом и при названной причине;
+ *       имена кодов свои у каждого, но смысл один - подача продолжена после
+ *       объявленного её конца
+ *
+ * @warning Здесь стояло описание расхождения, замеренного 07.09.2026: YAML отвечал
+ *          `TRAILING_CHARACTERS` - кодом чужого смысла, TOML без вычерпывания событий
+ *          отдавал УСПЕХ, а INI отказывал при коде НУЛЕВОМ, то есть немо. Расхождение
+ *          это устранено, а описание его осталось стоять во ВСЕХ ТРЁХ кодеках сразу и
+ *          лгало трижды
+ *
+ * @warning Довод тот утверждал вдобавок, будто кода `TEXT_ALREADY_ENDED` у YAML, TOML
+ *          и INI в перечне нет вовсе и заведение его меняет договор наружу. Ныне код
+ *          этот есть у всех трёх и им же они и отвечают: запись пережила ровно ту
+ *          правку, невозможность которой утверждала
+ *
+ * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
+ *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
+ *       против работы уже сделанной
+ *
+ * @param buffer буфер очередного куска исходного текста
+ * @param size   размер буфера очередного куска исходного текста
+ * @param end    признак того, что кусок является последним
+ * @return       результат выполнения операции
+ *
+ */
 bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
+	/**
+	 * Если поданного буфера не существует при объявленной длине подачи
+	 *
+	 * @note Пустая подача отказом не является - она ничего к тексту не добавляет, а
+	 *       подача без буфера при ненулевой длине есть ошибка вызывающего: чтение по
+	 *       нулевому указателю оборвалось бы падением. Заслон стоит прежде всякой
+	 *       работы с поданным, ровно как у abc-читателя
+	 *
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("TOML parsing failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::toml::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("TOML parsing failed: %s", log::flag_t::WARNING, codec::toml::message(error_t::INTERNAL));
+		#endif
+		// Запоминаем код отказа разбора
+		this->_error = error_t::INTERNAL;
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	/**
 	 * Если разбор прекращён ошибкой
 	 */
@@ -3810,13 +4948,14 @@ bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, cons
 	 * Если последний кусок исходного текста уже получен
 	 *
 	 * @details Заслон здесь стоял ОДИН - по состоянию `FINISHED`, - а состояние это после
-	 * подачи с признаком конца не наступает, и подача следом проходила УСПЕХОМ: текст за
-	 * объявленным концом принимался и разбирался молча, дописываясь к прежнему. Замерено
-	 * двумя подачами `k = 1` и `m = 2`, обе с признаком конца, - обе вернули успех
+	 *          подачи с признаком конца не наступает, и подача следом проходила УСПЕХОМ: текст за
+	 *          объявленным концом принимался и разбирался молча, дописываясь к прежнему. Замерено
+	 *          двумя подачами `k = 1` и `m = 2`, обе с признаком конца, - обе вернули успех.
 	 *
 	 * @note Кодек INI ту же подачу отвергал, но кода не ставил, а YAML отвечал
 	 *       `TRAILING_CHARACTERS`. Три кодека расходились в трёх местах на одном случае, и ныне
 	 *       все три отвечают `TEXT_ALREADY_ENDED` при коде ненулевом - замерено 09.09.2026
+	 *
 	 */
 	if(this->_final){
 		// Запоминаем код отказа подачи после объявленного конца текста
@@ -3839,6 +4978,7 @@ bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, cons
 		 *       приведение переносит в хранилище всё, что успело проверить, и выдать
 		 *       отказ сразу значило бы отнять у разбора события, которые подача целиком
 		 *       выдаёт
+		 *
 		 */
 		if(!this->_decoder.convert(buffer, size, end, this->_buffer))
 			// Запоминаем отложенный код ошибки приведения
@@ -3855,11 +4995,12 @@ bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, cons
 	 *          грозит смертью лишь видам, но не событиям, и очередь, подачею стёртая,
 	 *          теряла их молча. Замерено тестом FeedsWithoutDrainingKeepEvents: текст
 	 *          двух записей, поданный двумя кусками до вычерпывания, отдавал два события
-	 *          из четырёх - половина событий пропадала без отказа и без следа
+	 *          из четырёх - половина событий пропадала без отказа и без следа.
 	 *
 	 * @note Кусок к этому ходу уже принят и приведён: выход здесь потерь не несёт, а
 	 *       разбор продолжится переходом к следующему событию, который очередь вычерпает
 	 *       и разбор заведёт сам
+	 *
 	 */
 	if(this->_current < this->_items.size())
 		// Выводим положительный результат выполнения операции
@@ -3885,6 +5026,19 @@ bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, cons
 	return this->postponed();
 }
 /**
+ * @brief Метод передачи исходного текста целиком
+ *
+ * @details Разбирает переданный текст как единственный и последний кусок.
+ *
+ * @param text исходный текст настроек целиком
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Reader::feed(const string_view text) noexcept {
+	// Выполняем передачу исходного текста единственным и последним куском
+	return this->feed(text.data(), text.size(), true);
+}
+/**
  * @brief Метод перехода к следующему событию разбора
  *
  * @return признак того, что событие получено
@@ -3901,10 +5055,10 @@ bool awh::codec::toml::Reader::next() noexcept {
 		if((this->_state == state_t::FAILED) || (this->_state == state_t::FINISHED))
 			// Выводим признак того, что событие не получено
 			return false;
-		// Выполняем очистку очереди собранных событий записи
-		this->_items.clear();
 		// Выполняем сброс номера выдаваемого события в очереди
 		this->_current = 0;
+		// Выполняем очистку очереди собранных событий записи
+		this->_items.clear();
 		/**
 		 * Выполняем разбор накопленного текста настроек
 		 */
@@ -3926,6 +5080,7 @@ bool awh::codec::toml::Reader::next() noexcept {
 			 * @note Выдача эта нужна и здесь: приведённое начало текста разбирается
 			 *       тем из путей, которому оно досталось, и подача целиком доводит
 			 *       разбор до конца именно переходом к следующему событию
+			 *
 			 */
 			static_cast <void> (this->postponed());
 			// Выводим признак того, что событие не получено
@@ -3966,20 +5121,20 @@ bool awh::codec::toml::Reader::next() noexcept {
 		// Запоминаем место примечания в исходном тексте
 		this->_comment.location = item.location;
 	}
+	// Запоминаем число с плавающей точкой события
+	this->_value.real = item.real;
 	// Запоминаем тип значения текущего события
 	this->_value.type = item.type;
-	// Запоминаем запись строкового значения
-	this->_value.quoting = item.quoting;
+	// Запоминаем отметку времени события
+	this->_value.stamp = item.stamp;
 	// Запоминаем систему счисления записи целого числа
 	this->_value.radix = item.radix;
+	// Запоминаем запись строкового значения
+	this->_value.quoting = item.quoting;
 	// Запоминаем логическое значение события
 	this->_value.boolean = item.boolean;
 	// Запоминаем целое число события
 	this->_value.integer = item.integer;
-	// Запоминаем число с плавающей точкой события
-	this->_value.real = item.real;
-	// Запоминаем отметку времени события
-	this->_value.stamp = item.stamp;
 	// Запоминаем место значения в исходном тексте
 	this->_value.location = item.location;
 	/**
@@ -4097,57 +5252,49 @@ awh::codec::toml::encoding_t awh::codec::toml::Reader::encoding() const noexcept
  * @brief Метод сброса разбора в исходное состояние
  *
  */
-void awh::codec::toml::Reader::clear() noexcept {
+void awh::codec::toml::Reader::reset() noexcept {
+	// Выполняем сброс номера разбираемой строки
+	this->_line = 1;
+	// Выполняем сброс положения начала разбираемой строки
+	this->_bol = 0;
+	// Выполняем сброс смещения начала приведённого текста
+	this->_base = 0;
+	// Выполняем сброс положения начала разбираемой записи
+	this->_start = 0;
+	// Выполняем сброс положения разбираемого знака
+	this->_offset = 0;
+	// Выполняем сброс положения поиска знака конца записи
+	this->_probed = 0;
+	// Выполняем сброс номера выдаваемого события в очереди
+	this->_current = 0;
+	// Выполняем сброс счёта имён, объявляемых разбираемой записью
+	this->_staging = 0;
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
+	// Выполняем сброс признака поступления текста целиком
+	this->_final = false;
+	// Выполняем сброс признака нужды в продолжении текста
+	this->_hungry = false;
+	// Выполняем сброс признака объявления таблицы разбираемой записью
+	this->_declaring = false;
+	// Выполняем сброс признака объявления набора таблиц разбираемой записью
+	this->_appending = false;
 	// Выполняем сброс состояния разбора текста настроек
 	this->_state = state_t::READY;
 	// Выполняем сброс кода ошибки разбора
 	this->_error = error_t::NONE;
 	// Выполняем сброс отложенного кода ошибки приведения
 	this->_decoding = error_t::NONE;
-	// Выполняем сброс признака нужды в продолжении текста
-	this->_hungry = false;
-	// Выполняем сброс признака поступления текста целиком
-	this->_final = false;
-	// Выполняем сброс приведения исходного текста
-	this->_decoder.reset();
-	// Выполняем сброс места обнаружения ошибки разбора
-	this->_errorLocation = location_t();
-	// Выполняем сброс места текущего события разбора
-	this->_location = location_t();
-	// Выполняем очистку накопленного текста настроек
-	this->_buffer.clear();
-	// Выполняем очистку хранилища содержимого событий записи
-	this->_store.clear();
-	// Выполняем очистку хранилища собираемого строкового значения
-	this->_content.clear();
 	// Выполняем очистку хранилища собираемого полного имени ключа
 	this->_name.clear();
-	// Выполняем сброс положения разбираемого знака
-	this->_offset = 0;
-	// Выполняем сброс положения начала разбираемой записи
-	this->_start = 0;
-	// Выполняем сброс положения поиска знака конца записи
-	this->_probed = 0;
-	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
-	this->_anonymous = 0;
-	// Выполняем сброс смещения начала приведённого текста
-	this->_base = 0;
-	// Выполняем сброс номера разбираемой строки
-	this->_line = 1;
-	// Выполняем сброс положения начала разбираемой строки
-	this->_bol = 0;
-	// Выполняем очистку очереди собранных событий записи
-	this->_items.clear();
-	// Выполняем очистку составных частей имён ключей записи
-	this->_segments.clear();
-	// Выполняем сброс номера выдаваемого события в очереди
-	this->_current = 0;
 	// Выполняем очистку составных частей имени ключа текущего события
 	this->_path.clear();
-	// Выполняем сброс значения текущего события
-	this->_value = content_t();
-	// Выполняем сброс примечания текущего события
-	this->_comment = comment_t();
+	// Выполняем очистку хранилища содержимого событий записи
+	this->_store.clear();
+	// Выполняем очистку очереди собранных событий записи
+	this->_items.clear();
 	// Выполняем очистку имени текущей таблицы
 	this->_table.clear();
 	/**
@@ -4156,32 +5303,47 @@ void awh::codec::toml::Reader::clear() noexcept {
 	 * @note Очистка ведётся прежде хранилища имён: указатель держит ссылки на
 	 *       содержимое хранилища, и порядок обратный оставлял бы его со ссылками на
 	 *       освобождённую память
+	 *
 	 */
 	this->_names.clear();
+	// Выполняем очистку накопленного текста настроек
+	this->_buffer.clear();
 	// Выполняем очистку хранилища объявленных имён
 	this->_blocks.clear();
 	// Выполняем очистку указателя имён, объявляемых разбираемой записью
 	this->_staged.clear();
+	// Выполняем очистку хранилища собираемого строкового значения
+	this->_content.clear();
 	// Выполняем очистку имён, объявляемых разбираемой записью
 	this->_pending.clear();
-	// Выполняем сброс счёта имён, объявляемых разбираемой записью
-	this->_staging = 0;
+	// Выполняем очистку составных частей имён ключей записи
+	this->_segments.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
-	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
-	this->_anonymous = 0;
-	// Выполняем сброс признака объявления таблицы разбираемой записью
-	this->_declaring = false;
-	// Выполняем сброс признака объявления набора таблиц разбираемой записью
-	this->_appending = false;
+	// Выполняем сброс приведения исходного текста
+	this->_decoder.reset();
+	// Выполняем сброс значения текущего события
+	this->_value = content_t();
+	// Выполняем сброс примечания текущего события
+	this->_comment = comment_t();
+	// Выполняем сброс места текущего события разбора
+	this->_location = location_t();
+	// Выполняем сброс места обнаружения ошибки разбора
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Reader::Reader() noexcept :
- _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(),
- _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
+ _final(false), _hungry(false),
+ _declaring(false), _appending(false),
+ _bol(0), _start(0), _offset(0),
+ _probed(0), _current(0), _staging(0),
+ _line(1), _anonymous(0), _base(0),
+ _state(state_t::READY),
+ _error(error_t::NONE),
+ _decoding(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -4189,18 +5351,16 @@ awh::codec::toml::Reader::Reader() noexcept :
  *
  */
 awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
- _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(),
- _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
- _staging(0), _declaring(false), _appending(false) {
+ _final(false), _hungry(false),
+ _declaring(false), _appending(false),
+ _bol(0), _start(0), _offset(0),
+ _probed(0), _current(0), _staging(0),
+ _line(1), _anonymous(0), _base(0),
+ _state(state_t::READY), _error(error_t::NONE),
+ _decoding(error_t::NONE), _settings(settings) {
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);
 }
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Reader::Span::Span() noexcept : length(0), offset(0) {}
 
 /**
  * @brief Конструктор

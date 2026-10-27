@@ -102,7 +102,7 @@ namespace {
 		// Прочитанное слово
 		uint64_t result = 0;
 		// Выполняем чтение восьми байтов исходного текста
-		::memcpy(& result, buffer, sizeof(result));
+		::memcpy(&result, buffer, sizeof(result));
 		// Выводим прочитанное слово
 		return result;
 	}
@@ -114,7 +114,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static AWH_JSON_INLINE uint64_t lesser(const uint64_t word, const uint64_t bound) noexcept {
+	static constexpr uint64_t lesser(const uint64_t word, const uint64_t bound) noexcept {
 		// Выводим отметки байтов, меньших заданной границы
 		return ((word - (ONES * bound)) & ~word);
 	}
@@ -131,7 +131,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static AWH_JSON_INLINE uint64_t above(const uint64_t word, const uint64_t bound) noexcept {
+	static constexpr uint64_t above(const uint64_t word, const uint64_t bound) noexcept {
 		// Выводим отметки байтов, больших заданной границы
 		return ((word + (ONES * (0x7F - bound))) | word);
 	}
@@ -143,7 +143,7 @@ namespace {
 	 * @return      отметки старшими битами найденных байтов
 	 *
 	 */
-	static AWH_JSON_INLINE uint64_t equal(const uint64_t word, const uint64_t match) noexcept {
+	static constexpr uint64_t equal(const uint64_t word, const uint64_t match) noexcept {
 		// Получаем слово, обнулённое в местах совпадения байтов
 		const uint64_t found = (word ^ match);
 		// Выводим отметки байтов, равных разыскиваемому
@@ -161,7 +161,7 @@ namespace {
 	 * @return       признак принадлежности знака к пробельным
 	 *
 	 */
-	static AWH_JSON_INLINE bool spacing(const char letter) noexcept {
+	static constexpr bool spacing(const char letter) noexcept {
 		// Выводим признак принадлежности знака к пробельным
 		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r'));
 	}
@@ -173,7 +173,7 @@ namespace {
 	 * @return       признак того, что знак является шестнадцатеричным
 	 *
 	 */
-	static AWH_JSON_INLINE bool hexadecimal(const char letter, uint32_t & result) noexcept {
+	static constexpr bool hexadecimal(const char letter, uint32_t & result) noexcept {
 		/**
 		 * Если знак является десятичной цифрой
 		 */
@@ -758,6 +758,34 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
  *
  */
 bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
+	/**
+	 * Если поданного буфера не существует при объявленной длине подачи
+	 *
+	 * @note Пустая подача отказом не является - она ничего к тексту не добавляет, а
+	 *       подача без буфера при ненулевой длине есть ошибка вызывающего: чтение по
+	 *       нулевому указателю оборвалось бы падением. Заслон стоит прежде всякой
+	 *       работы с поданным, ровно как у abc-читателя
+	 *
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON parsing failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON parsing failed: %s", log::flag_t::WARNING, codec::json::message(error_t::INTERNAL));
+		#endif
+		// Запоминаем код отказа разбора
+		this->_error = error_t::INTERNAL;
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	/**
 	 * Если разбор уже прекращён отказом
 	 */

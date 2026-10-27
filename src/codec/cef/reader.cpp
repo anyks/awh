@@ -74,7 +74,7 @@ namespace {
 	 * @return       признак отменённости знака
 	 *
 	 */
-	static bool escaped(const string_view text, const size_t offset) noexcept {
+	static constexpr bool escaped(const string_view text, const size_t offset) noexcept {
 		// Количество обратных косых, знаку предшествующих
 		size_t count = 0;
 		/**

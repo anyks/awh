@@ -25,6 +25,10 @@
  */
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/toml/common.hpp>
 
 /**
@@ -43,7 +47,7 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
 	 *          Названия кодировок знаками US-ASCII ограничены, и привлекать сюда правила
@@ -54,7 +58,7 @@ namespace {
 	 * @return       результат сличения
 	 *
 	 */
-	static bool compare(const string_view first, const string_view second) noexcept {
+	static constexpr bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков не совпадают
 		 */
@@ -78,7 +82,7 @@ namespace {
 };
 
 /**
- * @brief Метод получения описания кода ошибки
+ * @brief Функция получения описания кода ошибки
  *
  * @param error код ошибки разбора или записи
  * @return      описание кода ошибки
@@ -262,7 +266,7 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 	return "unknown error";
 }
 /**
- * @brief Метод получения названия кодировки
+ * @brief Функция получения названия кодировки
  *
  * @param encoding кодировка исходного текста
  * @return         название кодировки
@@ -304,7 +308,11 @@ const char * awh::codec::toml::name(const encoding_t encoding) noexcept {
 		// Если кодировкой является Windows-1252
 		case static_cast <uint8_t> (encoding_t::CP1252):
 			// Выводим название кодировки
-			return "WINDOWS-1252";
+			return "windows-1252";
+		// Если кодировка однобайтовая, взятая таблицею
+		case static_cast <uint8_t> (encoding_t::SINGLE):
+			// Выводим обозначение вида кодировки
+			return "single-byte";
 		/**
 		 * Если кодировка не определена вовсе
 		 *
@@ -312,6 +320,7 @@ const char * awh::codec::toml::name(const encoding_t encoding) noexcept {
 		 *       «unknown» остаётся значению, членом перечня НЕ ЯВЛЯЮЩЕМУСЯ. Иначе имя
 		 *       кодировки неопределённой неотличимо от имени мусора, и потребитель,
 		 *       имя печатающий, о разнице не узнает
+		 *
 		 */
 		case static_cast <uint8_t> (encoding_t::NONE):
 			// Выводим название неопределённой кодировки
@@ -321,7 +330,7 @@ const char * awh::codec::toml::name(const encoding_t encoding) noexcept {
 	return "unknown";
 }
 /**
- * @brief Метод получения названия типа значения
+ * @brief Функция получения названия типа значения
  *
  * @param type тип значения текста настроек
  * @return     название типа значения
@@ -377,7 +386,7 @@ const char * awh::codec::toml::name(const type_t type) noexcept {
 	return "none";
 }
 /**
- * @brief Метод получения последовательности знаков конца строки
+ * @brief Функция получения последовательности знаков конца строки
  *
  * @param newline вид знака конца строки
  * @return        последовательность знаков конца строки
@@ -394,7 +403,7 @@ string_view awh::codec::toml::newline(const newline_t newline) noexcept {
 	return "\n";
 }
 /**
- * @brief Метод проверки знака на допустимость в имени ключа без кавычек
+ * @brief Функция проверки знака на допустимость в имени ключа без кавычек
  *
  * @param letter проверяемый знак имени
  * @return       результат проверки
@@ -407,11 +416,12 @@ bool awh::codec::toml::bare(const char letter) noexcept {
 	 * @note Набор задан описанием и знаками US-ASCII ограничен: буквы обоих регистров,
 	 *       цифры, знак подчёркивания и знак переноса. Привлекать сюда правила местности
 	 *       незачем - имя ключа запись протокольная, а не человеческая речь
+	 *
 	 */
 	return (ascii::isAlpha(letter) || ascii::isDigit(letter) || (letter == '_') || (letter == '-'));
 }
 /**
- * @brief Метод проверки знака Юникода на допустимость в имени ключа без кавычек
+ * @brief Функция проверки знака Юникода на допустимость в имени ключа без кавычек
  *
  * @param code проверяемый знак имени
  * @return     результат проверки
@@ -424,8 +434,9 @@ bool awh::codec::toml::named(const uint32_t code) noexcept {
 	 * @note Набор взят из черновика следующей версии описания дословно: складывать его
 	 *       по разрядам Юникода нельзя - разряды эти от издания к изданию пополняются,
 	 *       и имя, законное сегодня, завтра читалось бы иначе
+	 *
 	 */
-	static const uint32_t BOUNDS[][2] = {
+	static constexpr uint32_t BOUNDS[][2] = {
 		{0x0000B2, 0x0000B3}, {0x0000B9, 0x0000B9}, {0x0000BC, 0x0000BE},
 		{0x0000C0, 0x0000D6}, {0x0000D8, 0x0000F6}, {0x0000F8, 0x00037D},
 		{0x00037F, 0x001FFF}, {0x00200C, 0x00200D}, {0x00203F, 0x002040},
@@ -448,15 +459,15 @@ bool awh::codec::toml::named(const uint32_t code) noexcept {
 	return false;
 }
 /**
- * @brief Метод получения длины последовательности UTF-8 по её ведущему байту
+ * @brief Функция получения длины последовательности UTF-8 по её ведущему байту
  *
  * @details Тело общее - `awh::utf8::sequence`, тело которого держится в единице
  *          трансляции: правило ведущего байта держится в одном месте. Подстановку в
  *          заголовке против этого тела меряли парой на кластере - выигрыша нет,
  *          отношения легли в полосу контроля двух сборок одного кода.
  *
- * @param leading ведущий байт последовательности
- * @return       длина последовательности в байтах, нулевая при ошибочном ведущем байте
+ * @param leading ведущий байт последовательности знака
+ * @return        количество байт последовательности, ноль - байт ведущим не является
  *
  */
 size_t awh::codec::toml::sequence(const uint8_t leading) noexcept {
@@ -464,7 +475,7 @@ size_t awh::codec::toml::sequence(const uint8_t leading) noexcept {
 	return awh::utf8::sequence(leading);
 }
 /**
- * @brief Метод разбора очередной последовательности UTF-8
+ * @brief Функция разбора очередной последовательности UTF-8
  *
  * @param text   последовательность знаков, из которой ведётся чтение
  * @param offset положение начала знака в последовательности
@@ -478,8 +489,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 	length = 0;
 	/**
 	 * Если читать знак неоткуда
-	 */
-	/**
+	 *
 	 * Если разбор начат за пределом переданного текста
 	 *
 	 * @warning Заход этот есть застава последнего рубежа, ничем не задетая: всякий зовущий
@@ -512,6 +522,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 	 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
 	 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 	 *          слово: слог у одной руки в разное время разный
+	 *
 	 */
 	if(offset >= text.length())
 		// Выводим признак нехватки байт последовательности
@@ -522,8 +533,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 	const size_t count = sequence(leading);
 	/**
 	 * Если ведущий байт построен ошибочно
-	 */
-	/**
+	 *
 	 * Если длина последовательности по ведущему байту не разобрана
 	 *
 	 * @warning Заход этот ДОСТИЖИМ и СРАБАТЫВАЕТ. Доказано печатью, в условие
@@ -541,6 +551,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 	 *       поверка ниже выдаёт тот же отказ. Достижимость доказывает лишь ПЕЧАТЬ в теле
 	 *          Сносу заход не подлежит: разбор, зовущий это тело помимо приведения,
 	 *          шагал бы по байтам вслепую и собрал бы имя, знаков не составляющее
+	 *
 	 */
 	if(count == 0){
 		// Запоминаем количество байт, разбором пройденных
@@ -579,6 +590,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 		 *       наибольшую часть последовательности. Прежде длина оставалась НУЛЁМ, и
 		 *       зовущий, желавший перешагнуть оборванную последовательность целиком, шагал
 		 *       по одному байту
+		 *
 		 */
 		if((offset + i) >= text.length()){
 			// Запоминаем количество байт последовательности, налицо имеющихся
@@ -593,7 +605,8 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 		 *
 		 * @details Первый продолжающий байт предел свой берёт у байта ведущего, а не общий
 		 *          `80..BF`: `E0` требует от него `A0`, а `F0` - `90`, ибо ниже пошла бы
-		 *          запись длиннее необходимой, и предел общий её пропускал бы
+		 *          запись длиннее необходимой, и предел общий её пропускал бы.
+		 *
 		 */
 		const uint8_t bottom = ((i > 1) ? 0x80 : ((leading == 0xE0) ? 0xA0 : ((leading == 0xF0) ? 0x90 : 0x80)));
 		/**
@@ -601,7 +614,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 		 *
 		 * @details `ED` требует от первого продолжающего байта не свыше `9F`, ибо выше
 		 *          пошли бы суррогаты, а `F4` - не свыше `8F`, ибо выше пошли бы точки
-		 *          свыше U+10FFFF
+		 *          свыше U+10FFFF.
 		 *
 		 * @note Пределами этими запись длиннее необходимой, суррогат и точка вне пределов
 		 *       закрываются разом, а граница негодной последовательности ложится по
@@ -612,6 +625,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 		 *       негодной последовательности длину ЦЕЛИКОМ, тогда как наречие YAML тем же
 		 *       телом отмеряет её по первому негодному байту. Расхождение видно подменою
 		 *       знаком замены: на записи `E0 80 80` одно тело давало ОДИН знак, другое ТРИ
+		 *
 		 */
 		const uint8_t ceiling = ((i > 1) ? 0xBF : ((leading == 0xED) ? 0x9F : ((leading == 0xF4) ? 0x8F : 0xBF)));
 		/**
@@ -634,7 +648,7 @@ awh::codec::toml::utf8_t awh::codec::toml::inspect(const string_view text, const
 	return utf8_t::VALID;
 }
 /**
- * @brief Метод получения очередного знака Юникода последовательности UTF-8
+ * @brief Функция получения очередного знака Юникода последовательности UTF-8
  *
  * @param text   последовательность знаков, из которой ведётся чтение
  * @param offset положение начала знака в последовательности
@@ -655,7 +669,7 @@ size_t awh::codec::toml::decode(const string_view text, const size_t offset, uin
 	return length;
 }
 /**
- * @brief Метод проверки даты на существование её в календаре
+ * @brief Функция проверки даты на существование её в календаре
  *
  * @param year  проверяемый год
  * @param month проверяемый месяц
@@ -675,8 +689,9 @@ bool awh::codec::toml::calendar(const uint16_t year, const uint8_t month, const 
 	 *
 	 * @note Февралю отведено двадцать девять дней, а год невисокосный отсекается
 	 *       отдельно: держать две таблицы ради одного месяца незачем
+	 *
 	 */
-	static const uint8_t DAYS[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	static constexpr uint8_t DAYS[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	/**
 	 * Если день месяца за пределы месяца выходит
 	 */
@@ -692,9 +707,8 @@ bool awh::codec::toml::calendar(const uint16_t year, const uint8_t month, const 
 	// Выводим положительный результат проверки
 	return true;
 }
-
 /**
- * @brief Метод определения кодировки по её названию
+ * @brief Функция определения кодировки по её названию
  *
  * @param text название кодировки в любом регистре
  * @return     определённая кодировка исходного текста
@@ -731,6 +745,7 @@ awh::codec::toml::encoding_t awh::codec::toml::encoding(const string_view text) 
 	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
 	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
 	 *       основание по умолчанию
+	 *
 	 */
 	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
 		// Выводим определённую кодировку
@@ -765,6 +780,7 @@ awh::codec::toml::encoding_t awh::codec::toml::encoding(const string_view text) 
 	 * @note Кодировка эта с ISO-8859-1 не совпадает и отдельной ветвью разбирается
 	 *       намеренно: там, где у ISO-8859-1 управляющие знаки области C1, у неё
 	 *       знаки печатные - денежный знак евро, кавычки-лапки, тире
+	 *
 	 */
 	if(::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252") || ::compare(text, "WINDOWS1252"))
 		// Выводим определённую кодировку
@@ -782,35 +798,39 @@ awh::codec::toml::encoding_t awh::codec::toml::encoding(const string_view text) 
  * @brief Конструктор
  *
  */
-awh::codec::toml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
+awh::codec::toml::Date::Date() noexcept :
+ day(0), month(0), year(0) {}
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::toml::Date::Date() noexcept : year(0), month(0), day(0) {}
+awh::codec::toml::Time::Time() noexcept :
+ hour(0), minute(0), second(0),
+ digits(0), nanosecond(0) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::toml::Time::Time() noexcept : nanosecond(0), hour(0), minute(0), second(0), digits(0) {}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Stamp::Stamp() noexcept : offset(NO_TIMEZONE), zulu(false), negative(false), spaced(false) {}
+awh::codec::toml::Stamp::Stamp() noexcept :
+ zulu(false), spaced(false),
+ negative(false), offset(NO_TIMEZONE) {}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Part::Part() noexcept : naming(naming_t::BARE) {}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Content::Content() noexcept :
- type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
- boolean(false), integer(0), real(0.0) {}
+ real(0.0), boolean(false),
+ type(type_t::NONE), radix(radix_t::DECIMAL),
+ integer(0), quoting(string_t::BASIC) {}
 /**
  * @brief Конструктор
  *

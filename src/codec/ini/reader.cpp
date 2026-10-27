@@ -59,6 +59,25 @@ namespace {
 	using namespace awh::codec::ini;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_INI_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_INI_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Наибольший объём разобранного текста, удерживаемый до уплотнения хранилища
 	 *
 	 * @details Разобранное начало хранилища освобождается не при всяком событии, а лишь
@@ -81,7 +100,7 @@ namespace {
 	 * @return     строка без пробельной обвязки по краям
 	 *
 	 */
-	static string_view trim(const string_view text) noexcept {
+	static AWH_INI_INLINE string_view trim(const string_view text) noexcept {
 		// Начало значащей части строки
 		size_t begin = 0;
 		// Конец значащей части строки
@@ -114,7 +133,7 @@ namespace {
 	 * @return        результат проверки
 	 *
 	 */
-	static bool continued(const string_view text, const bool escapes) noexcept {
+	static AWH_INI_INLINE bool continued(const string_view text, const bool escapes) noexcept {
 		/**
 		 * Если строка пуста либо не оканчивается обратной косой чертой
 		 */
@@ -149,7 +168,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool indented(const string_view text) noexcept {
+	static AWH_INI_INLINE bool indented(const string_view text) noexcept {
 		/**
 		 * Если строка пуста либо не начата пробельным знаком
 		 */
@@ -169,7 +188,7 @@ namespace {
 	 * @return       признак того, что знак конца строки обнаружен
 	 *
 	 */
-	static bool split(const string_view text, const size_t begin, size_t & length, size_t & next) noexcept {
+	static AWH_INI_INLINE bool split(const string_view text, const size_t begin, size_t & length, size_t & next) noexcept {
 		/**
 		 * Выполняем перебор знаков разбираемого текста
 		 */
@@ -232,7 +251,7 @@ namespace {
 	 * @return       признак успешного разбора
 	 *
 	 */
-	static bool unescape(const string_view text, const size_t offset, size_t & length, string & result, bool & hexed) noexcept {
+	static AWH_INI_INLINE bool unescape(const string_view text, const size_t offset, size_t & length, string & result, bool & hexed) noexcept {
 		/**
 		 * Если за обратной косой чертой знака не осталось
 		 */
@@ -2733,6 +2752,34 @@ void awh::codec::ini::Reader::reset() noexcept {
  *
  */
 bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
+	/**
+	 * Если поданного буфера не существует при объявленной длине подачи
+	 *
+	 * @note Пустая подача отказом не является - она ничего к тексту не добавляет, а
+	 *       подача без буфера при ненулевой длине есть ошибка вызывающего: чтение по
+	 *       нулевому указателю оборвалось бы падением. Заслон стоит прежде всякой
+	 *       работы с поданным, ровно как у abc-читателя
+	 *
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI parsing failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::ini::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI parsing failed: %s", log::flag_t::WARNING, codec::ini::message(error_t::INTERNAL));
+		#endif
+		// Запоминаем код отказа разбора
+		this->_error = error_t::INTERNAL;
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	/**
 	 * Если разбор прекращён ошибкой
 	 *

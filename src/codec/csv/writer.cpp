@@ -59,6 +59,25 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_CSV_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_CSV_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция проверки пересечения входного среза с выходным буфером
 	 *
 	 * @param buffer выходной буфер
@@ -66,7 +85,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static bool overlaps(const string & buffer, const string_view text) noexcept {
+	static AWH_CSV_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -120,7 +139,7 @@ namespace {
 	 *
 	 */
 	static constexpr allowed_t __awh_allowed__ = allowed_t();
-}
+};
 
 /**
  * Псевдоним таблицы годности знаков области ASCII

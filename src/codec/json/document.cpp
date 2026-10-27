@@ -122,7 +122,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash)) == fs_t::type_t::DIR);
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
 	}
 };
 
@@ -2402,6 +2402,43 @@ string awh::codec::json::Document::dump() const noexcept {
  *
  */
 bool awh::codec::json::Document::save(const string & filename) const noexcept {
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа записи файла документа
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"JSON document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"JSON document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::json::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи файла документа
+		return false;
+	}
 	/**
 	 * Получаем собранный текст документа
 	 *
