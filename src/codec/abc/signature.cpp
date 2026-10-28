@@ -94,7 +94,7 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	/**
 	 * Если модуль шифрования не отдан либо кадр не передан
 	 */
-	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0)){
+	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0) || (size == numeric_limits <size_t>::max())){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -190,6 +190,22 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
  *
  */
 bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffer, const size_t size) const noexcept {
+	// Независимая копия входа, лежащего в выходном буфере
+	vector <uint8_t> copied;
+	// Если вход лежит в выходном буфере
+	if((buffer != nullptr) && (size > 0) && !result.empty()){
+		// Выполняем получение адреса входа
+		const uintptr_t address = reinterpret_cast <uintptr_t> (buffer);
+		// Выполняем получение адреса начала выходного буфера
+		const uintptr_t begin = reinterpret_cast <uintptr_t> (result.data());
+		// Если адрес входа принадлежит выходному буферу
+		if((address >= begin) && (address < (begin + result.size()))){
+			// Выполняем копирование входа до очистки выходного буфера
+			copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+			// Перенаправляем чтение входа в независимую копию
+			buffer = copied.data();
+		}
+	}
 	// Выполняем очистку буфера корня дерева
 	result.clear();
 	/**
@@ -208,7 +224,7 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffe
 	 *       и довод был шире правды - трёхдоводного сведения без оснастки не звал никто
 	 *
 	 */
-	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0)){
+	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0) || (size == numeric_limits <size_t>::max())){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -463,6 +479,26 @@ bool awh::codec::abc::pack(const sign_t & sign, vector <uint8_t> & result) noexc
  *
  */
 bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & sign, error_t & error) noexcept {
+	// Независимая копия входа, лежащего в полях выходной записи
+	vector <uint8_t> copied;
+	// Если вход подан из полей выходной записи
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем получение адреса входа
+		const uintptr_t address = reinterpret_cast <uintptr_t> (buffer);
+		// Признак входа в корень дерева свёрток
+		const bool rooted = (!sign.root.empty() && (address >= reinterpret_cast <uintptr_t> (sign.root.data())) &&
+			(address < (reinterpret_cast <uintptr_t> (sign.root.data()) + sign.root.size())));
+		// Признак входа в октеты подписи
+		const bool signedOctets = (!sign.signature.empty() && (address >= reinterpret_cast <uintptr_t> (sign.signature.data())) &&
+			(address < (reinterpret_cast <uintptr_t> (sign.signature.data()) + sign.signature.size())));
+		// Если адрес входа принадлежит одному из полей
+		if(rooted || signedOctets){
+			// Выполняем копирование входа до очистки полей
+			copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+			// Перенаправляем чтение входа в независимую копию
+			buffer = copied.data();
+		}
+	}
 	// Выполняем сброс кода отказа снятия подписи
 	error = error_t::NONE;
 	// Выполняем очистку корня дерева свёрток

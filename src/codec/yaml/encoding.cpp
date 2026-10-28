@@ -25,6 +25,10 @@
  */
 #include <sys/log.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/yaml/encoding.hpp>
 
 /**
@@ -43,38 +47,20 @@ using namespace awh::codec::yaml;
  */
 namespace {
 	/**
-	 * @brief Значение старшего суррогата, с какого начинается их отрезок
-	 *
-	 */
-	static constexpr uint32_t SURROGATE_HIGH = 0xD800;
-
-	/**
 	 * @brief Значение младшего суррогата, с какого начинается их отрезок
 	 *
 	 */
 	static constexpr uint32_t SURROGATE_LOW = 0xDC00;
-
 	/**
 	 * @brief Значение, за каким отрезок суррогатов оканчивается
 	 *
 	 */
 	static constexpr uint32_t SURROGATE_END = 0xE000;
-
 	/**
-	 * @brief Перекодировочная таблица области 0x80-0x9F кодировки Windows-1252
-	 *
-	 * @details Кодировка эта совпадает с ISO-8859-1 всюду, кроме этой области: там,
-	 *          где у ISO-8859-1 управляющие знаки области C1, у неё знаки печатные. Пять
-	 *          значений области не определены вовсе и обозначены нулём.
+	 * @brief Значение старшего суррогата, с какого начинается их отрезок
 	 *
 	 */
-	static constexpr uint32_t CP1252_TABLE[32] = {
-		0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
-		0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
-		0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-		0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178
-	};
-
+	static constexpr uint32_t SURROGATE_HIGH = 0xD800;
 	/**
 	 * @brief Признак октета, переносимого в приведённый текст без разбора последовательности
 	 *
@@ -96,6 +82,20 @@ namespace {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
+	/**
+	 * @brief Перекодировочная таблица области 0x80-0x9F кодировки Windows-1252
+	 *
+	 * @details Кодировка эта совпадает с ISO-8859-1 всюду, кроме этой области: там,
+	 *          где у ISO-8859-1 управляющие знаки области C1, у неё знаки печатные. Пять
+	 *          значений области не определены вовсе и обозначены нулём.
+	 *
+	 */
+	static constexpr uint32_t CP1252_TABLE[32] = {
+		0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+		0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
+		0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+		0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178
+	};
 
 	/**
 	 * @brief Функция признака октета, переносимого без разбора последовательности
@@ -108,7 +108,6 @@ namespace {
 		// Выводим признак октета, переносимого в приведённый текст без разбора
 		return ((PORTABLE[letter >> 3] >> (letter & 0x07)) & 0x01) != 0;
 	}
-
 	/**
 	 * @brief Функция сборки знака Юникода из пары суррогатов
 	 *
@@ -117,7 +116,7 @@ namespace {
 	 * @return     собранный знак Юникода
 	 *
 	 */
-	static uint32_t paired(const uint32_t high, const uint32_t low) noexcept {
+	static constexpr uint32_t paired(const uint32_t high, const uint32_t low) noexcept {
 		// Выводим собранный из пары суррогатов знак Юникода
 		return (0x10000 + (((high - SURROGATE_HIGH) << 10) | (low - SURROGATE_LOW)));
 	}
@@ -130,7 +129,7 @@ namespace {
 	 * @return         длина метки порядка байтов, ноль - метки нет
 	 *
 	 */
-	static size_t signature(const uint8_t * buffer, const size_t size, const encoding_t encoding) noexcept {
+	static constexpr size_t signature(const uint8_t * buffer, const size_t size, const encoding_t encoding) noexcept {
 		/**
 		 * Определяем кодировку, метка которой разыскивается
 		 */
@@ -149,8 +148,10 @@ namespace {
 				 *       нулевых байта, знаку принадлежащих
 				 *
 				 */
-				return (((size >= 2) && (buffer[0] == 0xFF) && (buffer[1] == 0xFE) &&
-				 !((size >= 4) && (buffer[2] == 0x00) && (buffer[3] == 0x00))) ? 2 : 0);
+				return (
+					((size >= 2) && (buffer[0] == 0xFF) && (buffer[1] == 0xFE) &&
+					!((size >= 4) && (buffer[2] == 0x00) && (buffer[3] == 0x00))) ? 2 : 0
+				);
 			// Если разыскивается метка кодировки UTF-16 с прямым порядком байтов
 			case static_cast <uint8_t> (encoding_t::UTF16BE):
 				// Выводим длину метки порядка байтов кодировки UTF-16
@@ -158,13 +159,17 @@ namespace {
 			// Если разыскивается метка кодировки UTF-32 с обратным порядком байтов
 			case static_cast <uint8_t> (encoding_t::UTF32LE):
 				// Выводим длину метки порядка байтов кодировки UTF-32
-				return (((size >= 4) && (buffer[0] == 0xFF) && (buffer[1] == 0xFE) &&
-				 (buffer[2] == 0x00) && (buffer[3] == 0x00)) ? 4 : 0);
+				return (
+					((size >= 4) && (buffer[0] == 0xFF) && (buffer[1] == 0xFE) &&
+					(buffer[2] == 0x00) && (buffer[3] == 0x00)) ? 4 : 0
+				);
 			// Если разыскивается метка кодировки UTF-32 с прямым порядком байтов
 			case static_cast <uint8_t> (encoding_t::UTF32BE):
 				// Выводим длину метки порядка байтов кодировки UTF-32
-				return (((size >= 4) && (buffer[0] == 0x00) && (buffer[1] == 0x00) &&
-				 (buffer[2] == 0xFE) && (buffer[3] == 0xFF)) ? 4 : 0);
+				return (
+					((size >= 4) && (buffer[0] == 0x00) && (buffer[1] == 0x00) &&
+					(buffer[2] == 0xFE) && (buffer[3] == 0xFF)) ? 4 : 0
+				);
 			/**
 			 * Если разыскивается метка однобайтовой кодировки
 			 *
@@ -218,7 +223,7 @@ namespace {
 	 * @return         наибольшее количество байт, опознанию метки потребное
 	 *
 	 */
-	static size_t marking(const encoding_t encoding) noexcept {
+	static constexpr size_t marking(const encoding_t encoding) noexcept {
 		/**
 		 * Определяем кодировку, метка которой разыскивается
 		 */
@@ -285,20 +290,20 @@ namespace {
 };
 
 /**
- * @brief Метод получения длины последовательности UTF-8 по её ведущему байту
+ * @brief Функция получения длины последовательности UTF-8 по ведущему байту
  *
  * @details Тело общее - `awh::utf8::sequence`, лежащее в единице трансляции
  *          кодировщика: правило ведущего байта держится в одном месте. Подстановку в
  *          заголовке против этого тела меряли парой на кластере - выигрыша нет,
- *          отношения легли в полосу контроля двух сборок одного кода
+ *          отношения легли в полосу контроля двух сборок одного кода.
  *
  * @param leading ведущий байт последовательности
- * @return       длина последовательности в байтах, нулевая при ошибочном ведущем байте
+ * @return        количество байт последовательности, ноль - байт построен ошибочно
  *
  */
 size_t awh::codec::yaml::sequence(const uint8_t leading) noexcept {
 	// Выводим длину по общему телу, лежащему в единице трансляции кодировщика
-	return awh::utf8::sequence(leading);
+	return utf8::sequence(leading);
 }
 /**
  * @brief Функция разбора очередной последовательности UTF-8
@@ -306,7 +311,7 @@ size_t awh::codec::yaml::sequence(const uint8_t leading) noexcept {
  * @param text   последовательность знаков, из которой ведётся чтение
  * @param offset положение начала знака в последовательности
  * @param code   получаемый знак Юникода, при неудачном разборе не выставляется
- * @param length количество байт, разбором пройденных, при нехватке байт нулевое
+ * @param length количество байт, разбором пройденных, при нехватке байт - число байт налицо
  * @return       исход разбора последовательности
  *
  */
@@ -378,7 +383,7 @@ utf8_t awh::codec::yaml::inspect(const string_view text, const size_t offset, ui
 		 *
 		 * @details Первый продолжающий байт предел свой берёт у байта ведущего, а не общий
 		 *          `80..BF`: `E0` требует от него `A0`, а `F0` - `90`, ибо ниже пошла бы
-		 *          запись длиннее необходимой, и предел общий её пропускал бы
+		 *          запись длиннее необходимой, и предел общий её пропускал бы.
 		 *
 		 */
 		const uint8_t bottom = ((i > 1) ? 0x80 : ((leading == 0xE0) ? 0xA0 : ((leading == 0xF0) ? 0x90 : 0x80)));
@@ -387,7 +392,7 @@ utf8_t awh::codec::yaml::inspect(const string_view text, const size_t offset, ui
 		 *
 		 * @details `ED` требует от первого продолжающего байта не свыше `9F`, ибо выше
 		 *          пошли бы суррогаты, а `F4` - не свыше `8F`, ибо выше пошли бы точки
-		 *          свыше U+10FFFF
+		 *          свыше U+10FFFF.
 		 *
 		 * @note Пределами этими запись длиннее необходимой, суррогат и точка вне пределов
 		 *       закрываются разом, а граница негодной последовательности ложится по
@@ -425,17 +430,17 @@ utf8_t awh::codec::yaml::inspect(const string_view text, const size_t offset, ui
 	return utf8_t::VALID;
 }
 /**
- * @brief Метод разбора очередной последовательности UTF-8
+ * @brief Функция получения очередного знака Юникода последовательности UTF-8
  *
  * @details Тело общее - `awh::utf8::decode`: длина по ведущему байту, поверка продолжающих,
  *          запрет записи длиннее необходимой и отсев суррогатов держатся одним кодом.
  *          Равенство перебрано по всем подачам двух байт и по всем значениям записываемых
- *          знаков - нуль расхождений
+ *          знаков - нуль расхождений.
  *
  * @param text   последовательность знаков, из которой ведётся чтение
  * @param offset положение начала знака в последовательности
- * @param code   получаемый знак Юникода, при неудачном разборе не выставляется
- * @return      количество байт, разбором пройденных, либо ноль при неудаче
+ * @param code   получаемый знак Юникода
+ * @return       количество байт знака, ноль - знак битый либо оборванный
  *
  */
 size_t awh::codec::yaml::decode(const string_view text, const size_t offset, uint32_t & code) noexcept {
@@ -443,13 +448,13 @@ size_t awh::codec::yaml::decode(const string_view text, const size_t offset, uin
 	return awh::utf8::decode(text, offset, code);
 }
 /**
- * @brief Метод записи кодового значения последовательностью UTF-8
+ * @brief Функция записи знака Юникода последовательностью UTF-8
  *
- * @details Тело общее - `awh::utf8::encode`: побайтовая сборка записи живёт в одном месте
+ * @details Тело общее - `awh::utf8::encode`: побайтовая сборка записи живёт в одном месте.
  *
- * @param code   записываемое кодовое значение знака
- * @param result текст, к которому дописывается знак
- * @return       результат выполнения операции
+ * @param code   записываемый знак Юникода
+ * @param result строка, куда дописывается последовательность
+ * @return       признак успешной записи знака
  *
  */
 bool awh::codec::yaml::encode(const uint32_t code, string & result) noexcept {
@@ -488,6 +493,7 @@ bool awh::codec::yaml::printable(const uint32_t code) noexcept {
 	 *
 	 * @note Суррогаты сюда не попадают: отрезок оканчивается перед ними, а следующий
 	 *       начинается за ними
+	 *
 	 */
 	if((code >= 0xA0) && (code < SURROGATE_HIGH))
 		// Выводим признак принадлежности знака к печатным
@@ -496,27 +502,13 @@ bool awh::codec::yaml::printable(const uint32_t code) noexcept {
 	 * Если знак принадлежит к печатным знакам за отрезком суррогатов
 	 *
 	 * @note Два последних знака основной таблицы печатными не признаются описанием
+	 *
 	 */
 	if((code >= SURROGATE_END) && (code <= 0xFFFD))
 		// Выводим признак принадлежности знака к печатным
 		return true;
 	// Выводим признак принадлежности знака к печатным по таблицам сверх основной
 	return ((code >= 0x10000) && (code <= MAX_CODEPOINT));
-}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::yaml::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
- _signature(false), _forced(false), _leading(true), _surrogate(0) {}
-/**
- * @brief Метод вывода сообщения об отказе в лог
- *
- */
-void awh::codec::yaml::Decoder::report() const noexcept {
-	// Выполняем вывод сообщения об отказе приведения кодировки
-	awh::log::print("YAML encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
 }
 /**
  * @brief Метод сброса состояния приведения кодировки
@@ -577,12 +569,12 @@ bool awh::codec::yaml::Decoder::encoding(const encoding_t encoding) noexcept {
 		// Выводим признак того, что кодировка принята
 		return true;
 	}
-	// Запоминаем навязанную кодировку исходного текста
-	this->_encoding = encoding;
 	// Запоминаем признак навязывания кодировки извне
 	this->_forced = true;
 	// Запоминаем признак опознания кодировки
 	this->_sniffed = true;
+	// Запоминаем навязанную кодировку исходного текста
+	this->_encoding = encoding;
 	// Выводим признак того, что кодировка принята
 	return true;
 }
@@ -644,6 +636,7 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	 *
 	 * @note Метка эта начинается теми же двумя байтами, что и метка UTF-16, и оттого
 	 *       сличается прежде неё: сличив короткую первой, мы прочли бы весь текст парами
+	 *
 	 */
 	if((size >= 4) && (data[0] == 0xFF) && (data[1] == 0xFE) && (data[2] == 0x00) && (data[3] == 0x00)){
 		// Запоминаем опознанную кодировку исходного текста
@@ -653,7 +646,7 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	/**
 	 * Если текст открывается меткой порядка байтов кодировки UTF-32 с прямым порядком
 	 */
-	} else if((size >= 4) && (data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)){
+	} else if((size >= 4) && (data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0xFE) && (data[3] == 0xFF)) {
 		// Запоминаем опознанную кодировку исходного текста
 		this->_encoding = encoding_t::UTF32BE;
 		// Запоминаем признак открытия текста меткой порядка байтов
@@ -661,7 +654,7 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	/**
 	 * Если текст открывается меткой порядка байтов кодировки UTF-8
 	 */
-	} else if((size >= 3) && (data[0] == 0xEF) && (data[1] == 0xBB) && (data[2] == 0xBF)){
+	} else if((size >= 3) && (data[0] == 0xEF) && (data[1] == 0xBB) && (data[2] == 0xBF)) {
 		// Запоминаем опознанную кодировку исходного текста
 		this->_encoding = encoding_t::UTF8;
 		// Запоминаем признак открытия текста меткой порядка байтов
@@ -669,7 +662,7 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	/**
 	 * Если текст открывается меткой порядка байтов кодировки UTF-16 с обратным порядком
 	 */
-	} else if((size >= 2) && (data[0] == 0xFF) && (data[1] == 0xFE)){
+	} else if((size >= 2) && (data[0] == 0xFF) && (data[1] == 0xFE)) {
 		// Запоминаем опознанную кодировку исходного текста
 		this->_encoding = encoding_t::UTF16LE;
 		// Запоминаем признак открытия текста меткой порядка байтов
@@ -677,7 +670,7 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	/**
 	 * Если текст открывается меткой порядка байтов кодировки UTF-16 с прямым порядком
 	 */
-	} else if((size >= 2) && (data[0] == 0xFE) && (data[1] == 0xFF)){
+	} else if((size >= 2) && (data[0] == 0xFE) && (data[1] == 0xFF)) {
 		// Запоминаем опознанную кодировку исходного текста
 		this->_encoding = encoding_t::UTF16BE;
 		// Запоминаем признак открытия текста меткой порядка байтов
@@ -686,8 +679,9 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	 * Если текст меткой порядка байтов не открывается
 	 *
 	 * @note Опознание идёт расположением нулевых байтов: описание велит первому знаку
-	 *       потока быть знаком US-ASCII либо меткой, и нулевые байты вокруг него и
+	 *       потока быть знаком US-ASCII либо меткой, и нулевые байты вокруг него иawh::codec
 	 *       выдают ширину записи
+	 *
 	 */
 	} else if((size >= 4) && (data[0] == 0x00) && (data[1] == 0x00) && (data[2] == 0x00))
 		// Запоминаем опознанную кодировку исходного текста
@@ -739,10 +733,22 @@ bool awh::codec::yaml::Decoder::allowed(const uint32_t code) noexcept {
 	 * @note Отказом этим объявляется именно недопустимость знака, а не битая запись его:
 	 *       байты прочитаны верно, и ошибка не в них, а в том, что знак этот тексту YAML
 	 *       не принадлежит
+	 *
 	 */
 	this->_error = error_t::INVALID_CHARACTER;
-	// Выполняем вывод сообщения об отказе в лог
-	this->report();
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {code}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+	#endif
 	// Выводим признак недозволенности знака в тексте
 	return false;
 }
@@ -757,12 +763,12 @@ bool awh::codec::yaml::Decoder::allowed(const uint32_t code) noexcept {
  *
  */
 bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, const bool end, string & result) noexcept {
-	// Получаем приводимый кусок текста без знака
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
+		// Смещение разбираемой пары байтов
+	size_t offset = 0;
 	// Признак обратного порядка байтов записи
 	const bool little = (this->_encoding == encoding_t::UTF16LE);
-	// Смещение разбираемой пары байтов
-	size_t offset = 0;
+	// Получаем приводимый кусок текста без знака
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
 	/**
 	 * Выполняем перебор всех пар байтов приводимого куска
 	 */
@@ -784,8 +790,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			if((unit < SURROGATE_LOW) || (unit >= SURROGATE_END)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::UNPAIRED_SURROGATE;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+				#endif
 				// Выводим признак неудачного приведения куска
 				return false;
 			}
@@ -841,8 +858,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			if(!encode(paired(this->_surrogate, unit), result)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::INVALID_ENCODING;
-				// Выполняем вывод сообщения об отказе в лог
-				this->report();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+				#endif
 				// Выводим признак неудачного приведения куска
 				return false;
 			}
@@ -866,8 +894,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if((unit >= SURROGATE_LOW) && (unit < SURROGATE_END)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::UNPAIRED_SURROGATE;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -900,8 +939,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if(!encode(unit, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -916,8 +966,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if(end){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -930,8 +991,19 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 	if(end && (this->_surrogate != 0)){
 		// Запоминаем код ошибки приведения кодировки
 		this->_error = error_t::UNPAIRED_SURROGATE;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+		#endif
 		// Выводим признак неудачного приведения куска
 		return false;
 	}
@@ -949,12 +1021,12 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
  *
  */
 bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t size, const bool end, string & result) noexcept {
-	// Получаем приводимый кусок текста без знака
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
-	// Признак обратного порядка байтов записи
-	const bool little = (this->_encoding == encoding_t::UTF32LE);
 	// Смещение разбираемой четвёрки байтов
 	size_t offset = 0;
+	// Признак обратного порядка байтов записи
+	const bool little = (this->_encoding == encoding_t::UTF32LE);
+	// Получаем приводимый кусок текста без знака
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
 	/**
 	 * Выполняем перебор всех четвёрок байтов приводимого куска
 	 */
@@ -1012,8 +1084,19 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		if(!encode(code, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1028,8 +1111,19 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		if(end){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1049,12 +1143,12 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
  *
  */
 bool awh::codec::yaml::Decoder::single(const char * buffer, const size_t size, string & result) noexcept {
-	// Получаем приводимый кусок текста без знака
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
 	// Получаем признак кодировки US-ASCII
 	const bool strict = (this->_encoding == encoding_t::ASCII);
 	// Получаем признак кодировки Windows-1252
 	const bool windows = (this->_encoding == encoding_t::CP1252);
+	// Получаем приводимый кусок текста без знака
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
 	/**
 	 * Выполняем перебор всех байтов приводимого куска
 	 */
@@ -1065,8 +1159,19 @@ bool awh::codec::yaml::Decoder::single(const char * buffer, const size_t size, s
 		if(strict && (data[i] >= 0x80)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1078,8 +1183,10 @@ bool awh::codec::yaml::Decoder::single(const char * buffer, const size_t size, s
 		 *       знака равно значению его байта
 		 *
 		 */
-		const uint32_t code = ((windows && (data[i] >= 0x80) && (data[i] <= 0x9F)) ?
-			CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i]));
+		const uint32_t code = (
+			(windows && (data[i] >= 0x80) && (data[i] <= 0x9F)) ?
+			CP1252_TABLE[data[i] - 0x80] : static_cast <uint32_t> (data[i])
+		);
 		/**
 		 * Если знак в кодировке Windows-1252 не определён
 		 *
@@ -1092,8 +1199,19 @@ bool awh::codec::yaml::Decoder::single(const char * buffer, const size_t size, s
 		if(code == 0){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_CHARACTER;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1129,8 +1247,19 @@ bool awh::codec::yaml::Decoder::single(const char * buffer, const size_t size, s
 		if(!encode(code, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
-			// Выполняем вывод сообщения об отказе в лог
-			this->report();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+			#endif
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1159,6 +1288,28 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 	if(this->_error != error_t::NONE)
 		// Выводим признак неудачного приведения куска
 		return false;
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		// Запоминаем ошибку входных данных
+		this->_error = error_t::INTERNAL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML decoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+		#endif
+		// Выводим отказ до изменения буферов и состояния приведения
+		return false;
+	}
 	// Собираемый кусок текста вместе с удержанными от прошлого куска байтами
 	string chunk;
 	// Получаем приводимый кусок текста
@@ -1211,6 +1362,7 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 			 *
 			 * @note Опознания не вышло лишь потому, что текста ещё мало: удерживаем поданное
 			 *       целиком и ждём продолжения
+			 *
 			 */
 			if(!this->sniff(data, length, end)){
 				// Удерживаем поданный кусок до прихода следующего
@@ -1299,8 +1451,19 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 						result.append(text.data(), position);
 						// Запоминаем код ошибки приведения кодировки
 						this->_error = error_t::INVALID_ENCODING;
-						// Выполняем вывод сообщения об отказе в лог
-						this->report();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+						#endif
 						// Выводим признак неудачного приведения куска
 						return false;
 					}
@@ -1317,8 +1480,19 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 					result.append(text.data(), position);
 					// Запоминаем код ошибки приведения кодировки
 					this->_error = error_t::INVALID_ENCODING;
-					// Выполняем вывод сообщения об отказе в лог
-					this->report();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+					#endif
 					// Выводим признак неудачного приведения куска
 					return false;
 				}
@@ -1359,12 +1533,11 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 	/**
 	 * Запоминаем код ошибки приведения кодировки
 	 *
-	 * @warning Заход этот есть застава последнего рубежа, ничем не задетая: перебор
-	 *          выше несёт ветвь на всякую кодировку перечня, кроме NONE, а NONE до
-	 *          перебора не доходит - она либо разрешается обнюхиванием, либо кусок
-	 *          удерживается до прихода следующего. Сносу заход не подлежит: новый член
-	 *          перечня кодировок вернёт сюда управление, и молчаливый пропуск текста
-	 *          мимо приведения дал бы мусор вместо отказа
+	 * @warning Заход этот есть застава последнего рубежа: перебор выше несёт ветвь на
+	 *          всякую поддерживаемую кодировку, а NONE и SINGLE сюда приходят - NONE
+	 *          разрешается обнюхиванием, SINGLE отвергается. Сносу заход не подлежит:
+	 *          новый член перечня кодировок вернёт сюда управление, и молчаливый пропуск
+	 *          текста мимо приведения дал бы мусор вместо отказа
 	 *
 	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
 	 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
@@ -1378,9 +1551,9 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 	 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 	 *          слово: слог у одной руки в разное время разный
 	 *
-	 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ 07.09.2026: у перечня `encoding_t` девять членов,
-	 *       ветвями выбора стоят восемь, и без ветви остаётся ровно один - `NONE`, коего
-	 *       заход этот и ловит. Сличены члены перечня с ветвями выбора приведения
+	 * @note Довод проверен ПЕРЕЧИСЛЕНИЕМ: у общего перечня `encoding_t` десять членов,
+	 *       ветвями выбора стоят восемь, и без ветви остаются NONE и SINGLE, кои заход
+	 *       этот и ловит. Сличены члены перечня с ветвями выбора приведения
 	 *
 	 * @warning Сличать надлежит и МЕСТА ПРИСВОЕНИЯ: перечень разрядный, и значение вне
 	 *          членов попасть туда МОЖЕТ приведением снаружи - заслон стоит ровно на это.
@@ -1388,8 +1561,27 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 	 *
 	 */
 	this->_error = error_t::UNSUPPORTED_ENCODING;
-	// Выполняем вывод сообщения об отказе в лог
-	this->report();
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем отказ в журнал работы
+		log::debug("YAML encoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::yaml::message(this->_error));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем отказ в журнал работы
+		log::print("YAML encoding failed: %s", log::flag_t::WARNING, codec::yaml::message(this->_error));
+	#endif
 	// Выводим признак неудачного приведения куска
 	return false;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Decoder::Decoder() noexcept :
+ _forced(false), _leading(true),
+ _sniffed(false), _signature(false), _surrogate(0),
+ _error(error_t::NONE), _encoding(encoding_t::NONE) {}

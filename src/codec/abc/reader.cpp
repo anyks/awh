@@ -2965,7 +2965,7 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	 *       проверенного; установлено щупом по местам отказа 04.09.2026
 	 *
 	 */
-	if((this->_buffer.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+	if(size > (static_cast <size_t> (numeric_limits <uint32_t>::max()) - this->_buffer.size())){
 		// Выполняем установку кода отказа подачи
 		this->_error = error_t::OVERFLOW_LIMIT;
 		// Выводим признак неудачной подачи
@@ -3070,7 +3070,7 @@ void * awh::codec::abc::Reader::reserve(const size_t size) noexcept {
 	 *       некуда
 	 *
 	 */
-	if((offset + size) > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+	if(size > (static_cast <size_t> (numeric_limits <uint32_t>::max()) - offset)){
 		// Выполняем установку кода отказа выдачи места
 		this->_error = error_t::OVERFLOW_LIMIT;
 		// Выполняем сброс размера выданного места

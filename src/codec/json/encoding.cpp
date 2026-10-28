@@ -204,6 +204,17 @@ uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t
  */
 size_t awh::codec::json::decode(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept {
 	/**
+	 * Если смещение не указывает на байт исходного текста
+	 */
+	if(offset >= text.size()){
+		// Запоминаем отсутствие кодовой точки
+		valid = false;
+		// Устанавливаем знак замены на отказе
+		code = 0xFFFD;
+		// Выводим отсутствие разобранных байтов
+		return 0;
+	}
+	/**
 	 * Выводим разобранное встраиваемым посредником
 	 *
 	 * @note Тела своего функция не несёт намеренно: определение одно, входов два
@@ -1207,6 +1218,28 @@ bool awh::codec::json::Decoder::convert(const void * buffer, const size_t size, 
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		// Запоминаем ошибку входных данных
+		this->_error = error_t::INTERNAL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(this->_error));
+		#endif
+		// Выводим отказ до изменения буферов и состояния приведения
+		return false;
+	}
 	// Запоминаем признак того, что приведение текста началось
 	this->_started = true;
 	/**
@@ -1479,6 +1512,28 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		// Запоминаем ошибку входных данных
+		this->_error = error_t::INTERNAL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::json::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON decoding failed: %s", log::flag_t::WARNING, codec::json::message(this->_error));
+		#endif
+		// Выводим отказ до изменения буферов и состояния проверки
+		return false;
+	}
 	// Положение разбираемого байта в переданном буфере
 	size_t offset = 0;
 	// Запоминаем признак того, что приведение текста началось

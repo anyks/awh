@@ -60,13 +60,14 @@ namespace {
 	 *
 	 */
 	constexpr size_t HASHING_NAMES = 32;
+
 	/**
 	 * @brief Функция выработки свёртки записи имени поля отображения
 	 *
 	 * @details Свёртка эта СВОЯ, а не взятая у модуля шифрования, и наружу не выходит ни
 	 *          единым октетом. Взята FNV-1a: сличение имён ею не решается, а лишь
 	 *          ускоряется, и ложное совпадение стоит одного лишнего сличения октетов, а
-	 *          не ложного отказа
+	 *          не ложного отказа.
 	 *
 	 * @note Тело её повторяет тело такой же работы у разбора знак в знак. Расходиться им
 	 *       нельзя лишь в одном - в скорости; итог же у них никуда не выходит и ни с чем
@@ -77,7 +78,7 @@ namespace {
 	 * @return       выработанная свёртка записи имени поля
 	 *
 	 */
-	uint64_t digest(const uint8_t * buffer, const size_t size) noexcept {
+	static constexpr uint64_t digest(const uint8_t * buffer, const size_t size) noexcept {
 		// Собираемая свёртка записи имени поля
 		uint64_t result = 0xCBF29CE484222325ull;
 		/**
@@ -91,6 +92,27 @@ namespace {
 		}
 		// Выводим выработанную свёртку записи имени поля
 		return result;
+	}
+	/**
+	 * @brief Функция распознавания входа внутри собранной записи
+	 *
+	 * @param buffer буфер поданного содержимого
+	 * @param size   размер поданного содержимого
+	 * @param record собранная запись
+	 * @return       признак входа содержимого в собранную запись
+	 *
+	 */
+	static bool overlaps(const void * buffer, const size_t size, const vector <uint8_t> & record) noexcept {
+		// Если сравнивать адреса не требуется
+		if((buffer == nullptr) || (size == 0) || record.empty())
+			// Выводим отсутствие совпадения
+			return false;
+		// Выполняем получение адреса поданного содержимого
+		const uintptr_t address = reinterpret_cast <uintptr_t> (buffer);
+		// Выполняем получение адреса начала собранной записи
+		const uintptr_t begin = reinterpret_cast <uintptr_t> (record.data());
+		// Выводим признак входа адреса содержимого в собранную запись
+		return ((address >= begin) && (address < (begin + record.size())));
 	}
 };
 
@@ -1323,18 +1345,31 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 			return this->fail(error_t::INVALID_ENCODING);
 		}
 	}
+	// Адрес содержимого, укладываемого после заголовка
+	const char * text = value.data();
+	// Независимая копия содержимого, поданного из собственной записи
+	vector <uint8_t> copied;
+	// Если содержимое подано из собственной записи
+	if(::overlaps(value.data(), value.size(), this->_record)){
+		// Выполняем копирование содержимого до добавления заголовка
+		copied.assign(reinterpret_cast <const uint8_t *> (value.data()), (reinterpret_cast <const uint8_t *> (value.data()) + value.size()));
+		// Перенаправляем чтение содержимого в независимую копию
+		text = reinterpret_cast <const char *> (copied.data());
+	}
 	/**
 	 * Выполняем получение признака имени поля отображения: имя копируется всегда,
 	 * ибо сличается оно отрезком в буфере собираемой записи, а содержимое, уложенное
 	 * ссылкой, отрезка в нём не имеет вовсе
 	 */
 	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
+	// Получаем признак обязательной копии: независимая копия недолговечна для врезки
+	const bool copy = (key || !copied.empty());
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки строки вместе с её длиной
 	abc::put(this->_record, group_t::STRING, static_cast <uint64_t> (value.size()));
 	// Выполняем укладку октетов строки
-	this->content(value.data(), value.size(), key);
+	this->content(text, value.size(), copy);
 	/**
 	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя:
 	 * кусок есть часть значения, а не значение
@@ -1409,14 +1444,25 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 		// Объявляем отказ
 		return this->fail(error_t::INTERNAL);
 	}
+	// Независимая копия содержимого, поданного из собственной записи
+	vector <uint8_t> copied;
+	// Если содержимое подано из собственной записи
+	if(::overlaps(buffer, size, this->_record)){
+		// Выполняем копирование содержимого до добавления заголовка
+		copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+		// Перенаправляем чтение содержимого в независимую копию
+		buffer = copied.data();
+	}
 	// Выполняем получение признака имени поля отображения
 	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
+	// Получаем признак обязательной копии: независимая копия недолговечна для врезки
+	const bool copy = (key || !copied.empty());
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки двоичных данных вместе с их длиной
 	abc::put(this->_record, group_t::BLOB, static_cast <uint64_t> (size));
 	// Выполняем укладку октетов данных
-	this->content(buffer, size, key);
+	this->content(buffer, size, copy);
 	/**
 	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя
 	 *
@@ -1500,6 +1546,15 @@ bool awh::codec::abc::Writer::uuid(const void * buffer, const size_t size) noexc
 		// Объявляем отказ
 		return this->fail(error_t::INVALID_LENGTH);
 	}
+	// Независимая копия содержимого, поданного из собственной записи
+	vector <uint8_t> copied;
+	// Если содержимое подано из собственной записи
+	if(::overlaps(buffer, size, this->_record)){
+		// Выполняем копирование содержимого до добавления заголовка
+		copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+		// Перенаправляем чтение содержимого в независимую копию
+		buffer = copied.data();
+	}
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки опознавателя
@@ -1556,6 +1611,15 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 		#endif
 		// Объявляем отказ
 		return this->fail(error_t::INTERNAL);
+	}
+	// Независимая копия содержимого, поданного из собственной записи
+	vector <uint8_t> copied;
+	// Если содержимое подано из собственной записи
+	if(::overlaps(buffer, size, this->_record)){
+		// Выполняем копирование содержимого до добавления заголовка
+		copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+		// Перенаправляем чтение содержимого в независимую копию
+		buffer = copied.data();
 	}
 	// Выполняем получение указателя на октеты величины
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
@@ -1648,8 +1712,19 @@ bool awh::codec::abc::Writer::custom(const uint64_t subtype, const void * buffer
 		// Объявляем отказ
 		return this->fail(error_t::INTERNAL);
 	}
+	// Независимая копия содержимого, поданного из собственной записи
+	vector <uint8_t> copied;
+	// Если содержимое подано из собственной записи
+	if(::overlaps(buffer, size, this->_record)){
+		// Выполняем копирование содержимого до добавления заголовка
+		copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+		// Перенаправляем чтение содержимого в независимую копию
+		buffer = copied.data();
+	}
 	// Выполняем получение признака имени поля отображения
 	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
+	// Получаем признак обязательной копии: независимая копия недолговечна для врезки
+	const bool copy = (key || !copied.empty());
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки открытого расширения
@@ -1659,7 +1734,7 @@ bool awh::codec::abc::Writer::custom(const uint64_t subtype, const void * buffer
 	// Выполняем укладку длины октетов расширения
 	abc::put(this->_record, group_t::UNSIGNED, static_cast <uint64_t> (size));
 	// Выполняем укладку октетов расширения
-	this->content(buffer, size, key);
+	this->content(buffer, size, copy);
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }

@@ -303,7 +303,7 @@ bool awh::codec::abc::Assembler::append(const void * buffer, const size_t size, 
 	 *          соседним заслоном, что стоит выше и стережёт смену вида содержимого
 	 *
 	 */
-	if(!this->_pending.empty() && ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
+	if(!this->_pending.empty() && (size > (static_cast <size_t> (numeric_limits <uint32_t>::max()) - this->_pending.size()))){
 		/**
 		 * Если уложить накопленное кадром не вышло
 		 */

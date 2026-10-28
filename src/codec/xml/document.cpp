@@ -842,6 +842,28 @@ string awh::codec::xml::Document::dump() const noexcept {
  *
  */
 bool awh::codec::xml::Document::load(const string & filename) noexcept {
+	/**
+	 * Если адрес читаемого файла не задан
+	 */
+	if(filename.empty()){
+		// Запоминаем код отказа открытия файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML document failed: %s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, codec::xml::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML document failed: %s", log::flag_t::CRITICAL, codec::xml::message(this->_error));
+		#endif
+		// Выводим отказ до изменения дерева и обращения к файлу
+		return false;
+	}
 	// Выполняем очистку дерева разметки
 	this->clear();
 	/**

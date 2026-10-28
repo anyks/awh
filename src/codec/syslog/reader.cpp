@@ -2283,6 +2283,26 @@ void awh::codec::syslog::Reader::reset() noexcept {
  *
  */
 bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("SysLog input buffer is null with a nonzero size", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("SysLog input buffer is null with a nonzero size", log::flag_t::WARNING);
+		#endif
+		// Выводим отказ без изменения состояния подачи
+		return false;
+	}
 	// Если разбор уже прекращён ошибкой
 	if(this->_state == state_t::FAILED)
 		// Выводим отрицательный результат выполнения операции

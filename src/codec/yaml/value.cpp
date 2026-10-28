@@ -19,29 +19,37 @@
  */
 
 /**
- * Подключаем стандартные заголовочные файлы
+ * Стандартные заголовочные файлы
  */
 #include <cmath>
-#include <unordered_set>
-#include <cstdlib>
 #include <atomic>
 #include <limits>
-#include <type_traits>
+#include <cstdlib>
 #include <iterator>
+#include <type_traits>
+#include <unordered_set>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
+#include <sys/log.hpp>
 #include <num/lexical/lexical.hpp>
-#include <codec/yaml/value.hpp>
+
 /**
  * Подключаем общее приведение чисел кодеков
  *
  * @note Приведение вынесено из шести кодеков в одно место 01.09.2026; своя копия его,
  *       здесь прежде стоявшая, снята - две тождественные копии расходятся молча
+ *
  */
 #include <codec/numeric.hpp>
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/yaml/value.hpp>
+
 /**
  * Подключаем переносимую подмену целевого файла временным
  *
@@ -54,10 +62,9 @@
  * @warning Заголовок этот гасит макросы `windows.h` сам - `suppress.hpp` перед
  *          включением, `restore.hpp` после. Без того `duplicate_t::ERROR` обратился бы
  *          числом, и сборка развалилась бы вдали от места
- */
-
-/**
+ *
  * Используем стандартное пространство имён
+ *
  */
 using namespace std;
 
@@ -72,11 +79,74 @@ using namespace awh::codec::yaml;
  */
 namespace {
 	/**
-	 * @note Приведение дробного числа к затребованному виду держалось здесь СВОЕЙ копией,
-	 *       тело в тело равной общей `awh::codec::convert` из `src/codec/numeric.cpp`.
-	 *       Копий тех вынос 01.09.2026 оставил семь по всем кодекам, и расходятся они
-	 *       молча: правка края округления в одном месте оставляет прочие с прежним изъяном
+	 * Пространство имён библиотеки
 	 */
+	using namespace awh;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_YAML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_YAML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+
+	/**
+	 * @brief Предел роста вместилища обращением по номеру
+	 *
+	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
+	 *          этот рост стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе:
+	 *          сколько памяти есть у приложения, ведомо ему одному.
+	 *
+	 * @note Хранится оно беззнаковым числом с упорядоченным доступом: ставится предел
+	 *       единожды при заведении приложения, а читается всяким потоком, обращающимся
+	 *       по номеру
+	 *
+	 */
+	static atomic_size_t __awh_limit__(0x10000);
+
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
 	/**
 	 * @brief Функция назначения правила усечения переводов строк по содержимому
 	 *
@@ -85,7 +155,7 @@ namespace {
 	 *          одно и то же содержимое записывалось бы то `|`, то `|+` смотря по тому,
 	 *          откуда значение взялось, а признак `+` при одном переводе забирал бы
 	 *          блоку строку пустую, за ним стоящую, то есть менял бы уже не написание,
-	 *          а смысл
+	 *          а смысл.
 	 *
 	 * @note Простое правило берётся, коль скоро содержимое оканчивается ровно одним
 	 *       переводом строки, сохраняющее - коль скоро переводов в хвосте несколько.
@@ -93,23 +163,30 @@ namespace {
 	 *       переводов составленное, требует правила сохраняющего: простое обращает его
 	 *       в пустоту целиком
 	 *
+	 * @note Приведение дробного числа к затребованному виду держалось здесь СВОЕЙ копией,
+	 *       тело в тело равной общей `awh::codec::convert` из `src/codec/numeric.cpp`.
+	 *       Копий тех вынос 01.09.2026 оставил семь по всем кодекам, и расходятся они
+	 *       молча: правка края округления в одном месте оставляет прочие с прежним изъяном
+	 *
 	 * @param text содержимое, по какому назначается правило
 	 * @return     назначенное правило усечения переводов строк
 	 *
 	 */
-	static awh::codec::yaml::chomp_t chomping(const string & text) noexcept {
+	static AWH_YAML_INLINE codec::yaml::chomp_t chomping(const string & text) noexcept {
 		// Выводим назначенное по содержимому правило усечения переводов строк
-		return ((text.empty() || (text.back() != '\n')) ? awh::codec::yaml::chomp_t::STRIP :
-		 ((((text.size() > 1) && (text.at(text.size() - 2) == '\n')) ||
-		   (text.find_first_not_of('\n') == string::npos)) ? awh::codec::yaml::chomp_t::KEEP :
-		    awh::codec::yaml::chomp_t::CLIP));
+		return (
+			(text.empty() || (text.back() != '\n')) ? codec::yaml::chomp_t::STRIP :
+			((((text.size() > 1) && (text.at(text.size() - 2) == '\n')) ||
+			(text.find_first_not_of('\n') == string::npos)) ? codec::yaml::chomp_t::KEEP :
+		    codec::yaml::chomp_t::CLIP)
+		);
 	}
 	/**
 	 * @brief Функция записи имени звеном пути
 	 *
 	 * @details Путь записывается тем же порядком, каким записывает его контейнер JSON, а
-	 * порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
-	 * отмены - `~0`
+	 *          порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
+	 *          отмены - `~0`.
 	 *
 	 * @warning Записи эти обязательны: имя, косую черту несущее, выданное КАК ЕСТЬ,
 	 *          разомкнуло бы обход молча - `at()` разобрал бы такое звено на два и ушёл
@@ -122,9 +199,9 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static string escape(const string_view name) noexcept {
+	static AWH_YAML_INLINE string escape(const string_view name) noexcept {
 		// Собираемое звено пути
-		string result;
+		string result = "";
 		// Выполняем выделение места под звено пути
 		result.reserve(name.size());
 		/**
@@ -158,9 +235,9 @@ namespace {
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
 	 * @details Путь записывается тем же порядком, каким записывает его контейнер JSON, а
-	 * порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
-	 * отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
-	 * разбирался бы на два звена и уходил не туда
+	 *          порядок тот предписан RFC 6901: косая черта в имени записывается `~1`, а сам знак
+	 *          отмены - `~0`. Без снятия их имя, косую черту несущее, недостижимо вовсе - путь
+	 *          разбирался бы на два звена и уходил не туда.
 	 *
 	 * @note Порядок снятия предписан стандартом: снятие `~0` прежде `~1` обратило бы
 	 *       записанное `~01` в косую черту вместо `~1`
@@ -173,7 +250,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static bool unescape(string & token) noexcept {
+	static AWH_YAML_INLINE bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -212,13 +289,13 @@ namespace {
 	 *
 	 * @details Проверкой этой решается, чем является часть пути: номером значения
 	 *          перечня либо именем поля отображения. Отображение, поле числовое несущее,
-	 *          разыскивается именем - вид вместилища решает раньше вида записи
+	 *          разыскивается именем - вид вместилища решает раньше вида записи.
 	 *
 	 * @param text проверяемая запись
 	 * @return     признак числовой записи
 	 *
 	 */
-	static bool numbering(const string & text, size_t & index) noexcept {
+	static AWH_YAML_INLINE bool numbering(const string & text, size_t & index) noexcept {
 		/**
 		 * Если запись пуста вовсе
 		 */
@@ -231,11 +308,12 @@ namespace {
 		 * @details Описание RFC 6901 в разделе 4 велит номеру быть либо одиноким нулём,
 		 *          либо цифрою от единицы с цифрами за нею: запись `01` номером не
 		 *          является ВОВСЕ. Прежде она разбиралась номером наравне с `1`, и путь
-		 *          `/01` отдавал значение соседнее вместо отказа
+		 *          `/01` отдавал значение соседнее вместо отказа.
 		 *
 		 * @note Отступление это снято общим правилом: оно гласит, что
 		 *       описание стоит выше согласованности API, и коль скоро описание требует
 		 *       для метода своей повадки, выбирать надлежит описание
+		 *
 		 */
 		if((text.front() == '0') && (text.size() > 1))
 			// Выводим признак того, что запись номером не является
@@ -256,12 +334,12 @@ namespace {
 			 * Если добавление разряда выведет номер за предел разрядности
 			 *
 			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
-			 * заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
-			 * по такому пути отдавало бы соседнее значение молча. Вместилища такой длины
-			 * не бывает вовсе - номер этот номером не является
+			 *          заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
+			 *          по такому пути отдавало бы соседнее значение молча. Вместилища такой длины
+			 *          не бывает вовсе - номер этот номером не является.
 			 *
-			 * @note Пришло это находкою сессии владеющих значений JSON и XML, проверенной
-			 *       затем у себя
+			 * @note Пришло это находкою сессии владеющих значений JSON и XML, проверенной затем у себя
+			 *
 			 */
 			if(index > ((std::numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
 				// Выводим признак того, что запись номером не является
@@ -273,50 +351,34 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Функция получения ссылки на неопределённое значение
-	 *
-	 * @details Обращение постоянное, ничего не разыскавшее, обязано выдать ссылку, а
-	 *          не завести значение: значение это одно на весь кодек и живёт оно всю
-	 *          работу приложения
-	 *
-	 * @return ссылка на неопределённое значение
-	 *
-	 */
-	/**
-	 * Предел роста вместилища обращением по номеру
-	 *
-	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
-	 * этот рост стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе:
-	 * сколько памяти есть у приложения, ведомо ему одному
-	 *
-	 * @note Хранится оно беззнаковым числом с упорядоченным доступом: ставится предел
-	 *       единожды при заведении приложения, а читается всяким потоком, обращающимся
-	 *       по номеру
-	 *
-	 */
-	static atomic <size_t> LIMIT(0x10000);
-	/**
-	 * Получение неопределённого значения-заглушки
-	 */
-	static const awh::codec::yaml::Value & missing() noexcept {
-		// Неопределённое значение, обращением неудачным выдаваемое
-		static const awh::codec::yaml::Value result;
-		// Выводим ссылку на неопределённое значение
-		return result;
-	}
-	/**
 	 * @brief Функция получения ссылки на пустую запись
 	 *
 	 * @return ссылка на пустую запись
 	 *
 	 */
-	static const string & nothing() noexcept {
+	static AWH_YAML_INLINE const string & nothing() noexcept {
 		// Пустая запись, обращением неудачным выдаваемая
 		static const string result;
 		// Выводим ссылку на пустую запись
 		return result;
 	}
-}
+	/**
+	 * @brief Функция получения ссылки на неопределённое значение
+	 *
+	 * @details Обращение постоянное, ничего не разыскавшее, обязано выдать ссылку, а
+	 *          не завести значение: значение это одно на весь кодек и живёт оно всю
+	 *          работу приложения.
+	 *
+	 * @return ссылка на неопределённое значение
+	 *
+	 */
+	static AWH_YAML_INLINE const codec::yaml::value_t & missing() noexcept {
+		// Неопределённое значение, обращением неудачным выдаваемое
+		static const codec::yaml::value_t result;
+		// Выводим ссылку на неопределённое значение
+		return result;
+	}
+};
 
 /**
  * @brief Метод опознания вида числа по тексту значения
@@ -335,6 +397,16 @@ void awh::codec::yaml::Value::recognize() noexcept {
 bool awh::codec::yaml::Value::valid() const noexcept {
 	// Выводим признак определённости значения
 	return (this->_kind != kind_t::NONE);
+}
+/**
+ * @brief Оператор приведения к логическому типу
+ *
+ * @return признак действительности значения
+ *
+ */
+awh::codec::yaml::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
 }
 /**
  * @brief Метод извлечения вида значения
@@ -359,7 +431,7 @@ awh::codec::yaml::type_t awh::codec::yaml::Value::type() const noexcept {
 /**
  * @brief Метод проверки вида хранения значения
  *
- * @param type сличаемый вид хранения
+ * @param type сличаемый вид хранения, допускающий объединение видов
  * @return     признак совпадения вида
  *
  */
@@ -370,7 +442,7 @@ bool awh::codec::yaml::Value::is(const type_t type) const noexcept {
 /**
  * @brief Метод извлечения количества значений вместилища
  *
- * @return количество значений вместилища
+ * @return количество значений вместилища, у значения простого - ноль
  *
  */
 size_t awh::codec::yaml::Value::size() const noexcept {
@@ -394,10 +466,18 @@ bool awh::codec::yaml::Value::empty() const noexcept {
 void awh::codec::yaml::Value::clear() noexcept {
 	// Выполняем снос указателя поиска
 	this->unindex();
+	// Выполняем очистку метки значения
+	this->_tag.clear();
+	// Выполняем очистку содержимого значения
+	this->_text.clear();
+	// Выполняем очистку имён полей отображения
+	this->_names.clear();
+	// Выполняем очистку значений вместилища
+	this->_items.clear();
+	// Выполняем очистку якоря значения
+	this->_anchor.clear();
 	// Выполняем сброс вида хранимого значения
 	this->_kind = kind_t::NONE;
-	// Выполняем сброс вида хранения значения
-	this->_type = type_t::UNDEFINED;
 	// Выполняем сброс оформления записи значения
 	this->_style = style_t::PLAIN;
 	/**
@@ -407,27 +487,24 @@ void awh::codec::yaml::Value::clear() noexcept {
 	 *       есть само содержимое, и правило это единственное, при каком содержимое
 	 *       возвращается тем же, сколько бы переводов строк ни стояло в конце. Дерево
 	 *       документа перезаписывает блочные значения тем же правилом и по той же причине
+	 *
 	 */
 	this->_chomp = chomp_t::KEEP;
+	// Выполняем сброс кода отказа последней работы
+	this->_error = error_t::NONE;
 	// Выполняем сброс построения вместилища
 	this->_layout = layout_t::BLOCK;
+	// Выполняем сброс вида хранения значения
+	this->_type = type_t::UNDEFINED;
 	// Выполняем сброс разобранного числа
 	this->_number = numeric_t();
-	// Выполняем очистку содержимого значения
-	this->_text.clear();
-	// Выполняем очистку якоря значения
-	this->_anchor.clear();
-	// Выполняем очистку метки значения
-	this->_tag.clear();
-	// Выполняем очистку имён полей отображения
-	this->_names.clear();
-	// Выполняем очистку значений вместилища
-	this->_items.clear();
+	// Выполняем сброс положения отказа последней работы
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Метод извлечения содержимого значения
  *
- * @return содержимое значения
+ * @return содержимое значения тем видом, каким оно ложится в текст
  *
  */
 const string & awh::codec::yaml::Value::text() const noexcept {
@@ -438,7 +515,7 @@ const string & awh::codec::yaml::Value::text() const noexcept {
  * @brief Метод извлечения имени поля отображения по номеру
  *
  * @param index номер поля отображения
- * @return      имя поля отображения
+ * @return      имя поля отображения, пустое - поля с таким номером нет
  *
  */
 const string & awh::codec::yaml::Value::key(const size_t index) const noexcept {
@@ -474,7 +551,7 @@ void awh::codec::yaml::Value::style(const style_t style) noexcept {
 /**
  * @brief Метод извлечения правила усечения переводов строк
  *
- * @return правило усечения переводов строк
+ * @return правило усечения переводов строк блочного значения
  *
  */
 awh::codec::yaml::chomp_t awh::codec::yaml::Value::chomp() const noexcept {
@@ -514,7 +591,7 @@ void awh::codec::yaml::Value::layout(const layout_t layout) noexcept {
 /**
  * @brief Метод извлечения якоря значения
  *
- * @return якорь значения
+ * @return якорь значения, пустой - якоря нет
  *
  */
 const string & awh::codec::yaml::Value::anchor() const noexcept {
@@ -534,7 +611,7 @@ void awh::codec::yaml::Value::anchor(const string & anchor) noexcept {
 /**
  * @brief Метод извлечения метки значения
  *
- * @return метка значения
+ * @return метка значения, пустая - метки нет
  *
  */
 const string & awh::codec::yaml::Value::tag() const noexcept {
@@ -556,6 +633,7 @@ void awh::codec::yaml::Value::tag(const string & tag) noexcept {
 	 * @note Метку, вручную поставленную, зовущий пишет обыкновенно сокращением - `!!str`, -
 	 *       и местною она не является. Признак ставится одним лишь снятием с дерева, где
 	 *       сокращения чтением уже развёрнуты в полный указатель
+	 *
 	 */
 	this->_local = false;
 }
@@ -604,6 +682,7 @@ size_t awh::codec::yaml::Value::locate(const string & name) const noexcept {
 	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
 	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
 	 *       отпечатка на всякое имя
+	 *
 	 */
 	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
@@ -653,7 +732,7 @@ void awh::codec::yaml::Value::unindex() noexcept {
  * @return     ссылка на значение поля отображения
  *
  */
-const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const string & name) const noexcept {
+const awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] (const string & name) const noexcept {
 	/**
 	 * Если значение отображением не является
 	 */
@@ -679,13 +758,14 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const stri
  * @return     ссылка на значение поля отображения
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const string & name) noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] (const string & name) noexcept {
 	/**
 	 * Если значение отображением не является
 	 *
 	 * @note Значение перерождается отображением, а простое содержимое его теряется.
 	 *       Решено это так же, как решает розыск с заведением: обращение изменяемое есть
 	 *       заявление о том, что здесь стоит вместилище, и спорить с ним нечем
+	 *
 	 */
 	if(this->_kind != kind_t::MAPPING){
 		// Выполняем очистку прежнего значения
@@ -709,6 +789,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const string & n
 	 *
 	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
 	 *       самую квадратичность, от какой указатель и заводится
+	 *
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
@@ -727,7 +808,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const string & n
  * @return      ссылка на значение вместилища
  *
  */
-const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] (const size_t index) const noexcept {
 	/**
 	 * Если значения с таким номером вместилище не несёт
 	 */
@@ -738,6 +819,47 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size
 	return this->_items.at(index);
 }
 /**
+ * @brief Шаблон метода обращения к значению вместилища по номеру
+ *
+ * @tparam T вид имени искомой пары
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод обращения к значению вместилища по номеру
+ *
+ * @param index номер значения во вместилище
+ * @return      ссылка на значение вместилища
+ *
+ */
+typename enable_if <is_same <T, char>::value, const awh::codec::yaml::value_t &>::type awh::codec::yaml::Value::operator [] (const T name) const noexcept {
+	// Выводим значение пары, именем из одного знака разыскиваемое
+	return (* this)[string(1, name)];
+}
+/**
+ * @brief Шаблон метода обращения к значению вместилища по номеру
+ *
+ * @tparam T вид имени заводимой пары
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод обращения к значению вместилища по номеру
+ *
+ * @param index номер значения во вместилище
+ * @return      ссылка на значение вместилища
+ *
+ */
+typename enable_if <is_same <T, char>::value, awh::codec::yaml::value_t &>::type awh::codec::yaml::Value::operator [] (const T name) noexcept {
+	// Выводим значение пары, именем из одного знака заводимое
+	return (* this)[string(1, name)];
+}
+/**
+ * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
+ */
+template awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] <char> (const char) noexcept;
+template const awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] <char> (const char) const noexcept;
+/**
  * @brief Метод извлечения значения мусорного
  *
  * @details Значение это принимает на себя запись при неудачном обращении изменяемом:
@@ -747,9 +869,9 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size
  * @return значение мусорное
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::scrap() noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Value::scrap() noexcept {
 	// Значение мусорное, принимающее на себя запись при неудачном обращении
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем очистку значения мусорного от записанного прежде
 	result.clear();
 	// Выводим значение мусорное
@@ -763,7 +885,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::scrap() noexcept {
  */
 size_t awh::codec::yaml::Value::limit() noexcept {
 	// Выводим установленный предел роста вместилища
-	return ::LIMIT.load(std::memory_order_relaxed);
+	return ::__awh_limit__.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -773,7 +895,7 @@ size_t awh::codec::yaml::Value::limit() noexcept {
  */
 void awh::codec::yaml::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища
-	::LIMIT.store(value, std::memory_order_relaxed);
+	::__awh_limit__.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
@@ -782,7 +904,25 @@ void awh::codec::yaml::Value::limit(const size_t value) noexcept {
  * @return      ссылка на значение вместилища
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t index) noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Value::operator [] (const size_t index) noexcept {
+	/**
+	 * Если рост вместилища за поставленный предел выйдет
+	 *
+	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел этот
+	 *       рост и стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе -
+	 *       см. `Value::limit`
+	 *
+	 */
+	{
+		// Получаем поставленный предел роста вместилища
+		const size_t limit = ::__awh_limit__.load(std::memory_order_relaxed);
+		/**
+		 * Если предел поставлен и затребованный номер за него выходит
+		 */
+		if((index >= this->_items.max_size()) || ((this->_kind == kind_t::MAPPING) && (index >= this->_names.max_size())) || ((limit > 0) && (index >= limit)))
+			// Выводим значение мусорное
+			return value_t::scrap();
+	}
 	/**
 	 * Если значение вместилищем не является
 	 */
@@ -795,23 +935,6 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
 		this->_type = type_t::SEQUENCE;
 	}
 	/**
-	 * Если рост вместилища за поставленный предел выйдет
-	 *
-	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел этот
-	 *       рост и стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе -
-	 *       см. `Value::limit`
-	 */
-	{
-		// Получаем поставленный предел роста вместилища
-		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
-		/**
-		 * Если предел поставлен и затребованный номер за него выходит
-		 */
-		if((limit > 0) && (index >= limit))
-			// Выводим значение мусорное
-			return Value::scrap();
-	}
-	/**
 	 * Выполняем рост вместилища до затребованного номера
 	 */
 	while(index >= this->_items.size()){
@@ -820,10 +943,11 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
 		 *
 		 * @note Имя заводимому полю берётся номером его: отображение без имени поля
 		 *       записано быть не может, а рост по номеру заведение поля означает
+		 *
 		 */
 		if(this->_kind == kind_t::MAPPING){
 			// Выполняем добавление имени заводимого поля отображения
-			this->_names.push_back(std::to_string(this->_items.size()));
+			this->_names.push_back(::to_string(this->_items.size()));
 			/**
 			 * Выполняем снос указателя поиска
 			 *
@@ -831,6 +955,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
 			 *          розыск по нему отвечал бы отсутствием, тогда как перебор его
 			 *          находит. Ответ тем разнился бы по числу полей - до порога
 			 *          заведения указателя поле находилось, а за порогом пропадало
+			 *
 			 */
 			this->unindex();
 		}
@@ -847,7 +972,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
  * @return     ссылка на разысканное значение
  *
  */
-const awh::codec::yaml::Value & awh::codec::yaml::Value::at(const string & path) const noexcept {
+const awh::codec::yaml::value_t & awh::codec::yaml::Value::at(const string & path) const noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -856,10 +981,10 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::at(const string & path)
 	if(route.empty())
 		// Выводим текущее значение
 		return (* this);
-	// Получаем ссылку на значение, путём разыскиваемое
-	const Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	const value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -909,7 +1034,7 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::at(const string & path)
  * @return     ссылка на разысканное либо заведённое значение
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Value::place(const string & path) noexcept {
 	// Получаем путь к значению без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -925,11 +1050,12 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 	 *          заведённому дереву - размножение его и снятие - идут возвратно, и дерево
 	 *          небывалой глубины срывает на них стек. Записать такое дерево нельзя ни при
 	 *          каком пределе: запись отвергает его вложенностью своей, - оттого предел
-	 *          заведения ему и равен, ибо дерево, записать которое нельзя, заводить незачем
+	 *          заведения ему и равен, ибо дерево, записать которое нельзя, заводить незачем.
 	 *
 	 * @note Замер 18.08.2026: размножение значения валится у NetBSD amd64 при стеке 4 МБ
 	 *       между 32000 и 64000 уровней, у macOS arm64 при 8 МБ - около 65300. Предел в
 	 *       1024 держится оттого с запасом тридцатикратным даже на самом скупом стенде
+	 *
 	 */
 	{
 		// Количество звеньев пути к значению
@@ -945,12 +1071,12 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 		 */
 		if(links > static_cast <size_t> (MAX_DEPTH))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 	}
-	// Получаем ссылку на значение, путём разыскиваемое
-	Value * result = this;
 	// Начало очередной части пути
 	size_t start = 0;
+	// Получаем ссылку на значение, путём разыскиваемое
+	value_t * result = this;
 	/**
 	 * Выполняем перебор частей пути
 	 */
@@ -964,7 +1090,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 		 */
 		if(!::unescape(part))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		// Номер значения вместилища, частью пути заданный
 		size_t index = 0;
 		// Получаем признак того, что часть пути является номером
@@ -974,6 +1100,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 		 *
 		 * @note Вид заводимого вместилища решает запись части пути: часть числовая
 		 *       заводит перечень значений, а всякая иная - отображение пар
+		 *
 		 */
 		if((result->_kind != kind_t::SEQUENCE) && (result->_kind != kind_t::MAPPING)){
 			// Выполняем очистку прежнего значения
@@ -1010,7 +1137,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::yaml::Value::push(const Value & value) noexcept {
+bool awh::codec::yaml::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если значение неопределённым является
 	 */
@@ -1020,8 +1147,9 @@ bool awh::codec::yaml::Value::push(const Value & value) noexcept {
 		 *
 		 * @note Аргумент может ссылаться на текущее значение. Его копия должна
 		 *       сохранить неопределённый вид до превращения дерева в перечень
+		 *
 		 */
-		Value item = value;
+		value_t item = value;
 		// Назначаем значению вид перечня значений
 		this->_kind = kind_t::SEQUENCE;
 		// Назначаем значению вид хранения перечня значений
@@ -1037,6 +1165,7 @@ bool awh::codec::yaml::Value::push(const Value & value) noexcept {
 	 * @note Перерождения здесь нет намеренно: добавление в значение простое есть
 	 *       промах потребителя, и отказ его обнаруживает, тогда как перерождение
 	 *       потеряло бы содержимое молча
+	 *
 	 */
 	if(this->_kind != kind_t::SEQUENCE)
 		// Выводим признак неудачного добавления
@@ -1054,7 +1183,7 @@ bool awh::codec::yaml::Value::push(const Value & value) noexcept {
  * @return      признак успешности установки
  *
  */
-bool awh::codec::yaml::Value::insert(const string & name, const Value & value) noexcept {
+bool awh::codec::yaml::Value::insert(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если значение не допускает добавления именованной пары
 	 */
@@ -1068,8 +1197,9 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 	 *
 	 * @note Источником может быть само дерево или его потомок. Копия должна
 	 *       предшествовать изменению вида дерева и добавлению имени новой пары
+	 *
 	 */
-	Value item = value;
+	value_t item = value;
 	/**
 	 * Если значение неопределённым является
 	 */
@@ -1085,6 +1215,7 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 	 * @note Розыск ведётся указателем, а не перебором: сборка отображения вызовами
 	 *       этими шла бы иначе квадратичной - всякая установка перебирала бы все
 	 *       заведённые прежде поля
+	 *
 	 */
 	const size_t found = this->locate(key);
 	/**
@@ -1093,6 +1224,7 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 	 * @note Поле перезаписывается на своём месте: порядок полей отображения есть
 	 *       порядок их записи в текст, и перестановка поля при перезаписи его
 	 *       переменила бы текст там, где потребитель менял лишь значение
+	 *
 	 */
 	if(found < this->_names.size()){
 		// Выполняем перезапись значения поля отображения
@@ -1119,7 +1251,7 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::yaml::Value::append(const string & name, const Value & value) noexcept {
+bool awh::codec::yaml::Value::append(const string & name, const value_t & value) noexcept {
 	/**
 	 * Если значение не допускает добавления именованной пары
 	 */
@@ -1133,8 +1265,9 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 	 *
 	 * @note Источником может быть само дерево или его потомок. Копия должна
 	 *       предшествовать изменению вида дерева и добавлению имени новой пары
+	 *
 	 */
-	Value item = value;
+	value_t item = value;
 	/**
 	 * Если значение неопределённым является
 	 */
@@ -1150,13 +1283,13 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 	 * @note Розыска по имени здесь нет вовсе - тем метод и отличается от установки поля:
 	 *       разбор с настройкой `duplicate_t::KEEP` удерживает все вхождения
 	 *       повторяющегося имени, и воспроизвести такое отображение установкой нельзя
-	 */
-	/**
+	 *
 	 * Если указатель поиска заведён, ведём его приращением
 	 *
 	 * @note Занесение ведётся `emplace`, а не присваиванием: имена здесь ВПРАВЕ
 	 *       повторяться, и указатель обязан держать ПЕРВОЕ вхождение - ровно то, какое
 	 *       отдавал перебор
+	 *
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
@@ -1222,29 +1355,34 @@ bool awh::codec::yaml::Value::erase(const size_t index) noexcept {
 	 */
 	if(this->_kind == kind_t::MAPPING)
 		// Выполняем снятие имени поля отображения
-		this->_names.erase(std::next(this->_names.begin(), static_cast <ptrdiff_t> (index)));
+		this->_names.erase(::next(this->_names.begin(), static_cast <ptrdiff_t> (index)));
 	// Выполняем снятие значения вместилища
-	this->_items.erase(std::next(this->_items.begin(), static_cast <ptrdiff_t> (index)));
+	this->_items.erase(::next(this->_items.begin(), static_cast <ptrdiff_t> (index)));
 	/**
 	 * Выполняем снос указателя поиска
 	 *
 	 * @note Сносится он целиком, а не чинится: снятие сдвигает номера всех полей после
 	 *       снятого, и починка обошлась бы дороже заведения заново
+	 *
 	 */
 	this->unindex();
 	// Выводим признак успешного снятия
 	return true;
 }
 /**
- * @brief Шаблонный метод извлечения числа затребованным видом
+ * @brief Шамблон метода извлечения числа затребованным видом
  *
- * @tparam T      затребованный вид числа
- *
- * @param  result переменная, куда помещается извлечённое значение
- * @return        признак успешности извлечения
+ * @tparam T затребованный вид числа
  *
  */
 template <typename T>
+/**
+ * @brief Метод извлечения числа затребованным видом
+ *
+ * @param result извлекаемое число
+ * @return       результат извлечения числа
+ *
+ */
 bool awh::codec::yaml::Value::extract(T & result) const noexcept {
 	/**
 	 * Если значение является целым числом
@@ -1296,7 +1434,7 @@ bool awh::codec::yaml::Value::value(bool & result) const noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения целого числа шириною в один байт
+ * @brief Метод извлечения числа
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
@@ -1419,6 +1557,7 @@ bool awh::codec::yaml::Value::value(string & result) const noexcept {
 	 * @note Вместилище строкою не выдаётся: выдавать его пришлось бы сборкой текста, а
 	 *       сборка есть иная работа, и зовётся она иначе. Решено это дословно так же,
 	 *       как решено у дерева документа
+	 *
 	 */
 	if((this->_kind == kind_t::MAPPING) || (this->_kind == kind_t::SEQUENCE) || (this->_kind == kind_t::NONE))
 		// Выводим признак неудачного извлечения
@@ -1434,7 +1573,7 @@ bool awh::codec::yaml::Value::value(string & result) const noexcept {
  * @param value ссылка на узел документа
  *
  */
-void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
+void awh::codec::yaml::Value::absorb(const document_t::value_t & value) noexcept {
 	// Выполняем очистку прежнего значения
 	this->clear();
 	/**
@@ -1449,6 +1588,7 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	 * @note Сносу заход не подлежит: он снимает лишние обращения к свойствам и
 	 *       выражает договор прямо - свойство, поверку у себя потерявшее, без него
 	 *       отдало бы содержимое узла чужого
+	 *
 	 */
 	if(!value.valid())
 		// Выходим из снятия значения
@@ -1462,6 +1602,7 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	 *
 	 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте с директивой
 	 *       `%YAML 1.1`
+	 *
 	 */
 	this->_schema = value.schema();
 	// Выполняем снятие вида значения
@@ -1482,7 +1623,8 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	 *          правило сохраняющее приписало бы им лишний, а признак `+` при одном
 	 *          переводе забирал бы блоку строку пустую, за ним стоящую. Значение, из
 	 *          одних переводов составленное, требует правила сохраняющего: простое
-	 *          обращает его в пустоту целиком
+	 *          обращает его в пустоту целиком.
+	 *
 	 */
 	this->_chomp = ::chomping(this->_text);
 	// Выполняем снятие якоря значения
@@ -1494,6 +1636,7 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	 *
 	 * @note Метка, чтением выданная, местною является всегда, коли начинается знаком `!`:
 	 *       сокращения описания чтение разворачивает в полный указатель
+	 *
 	 */
 	this->_local = (!this->_tag.empty() && (this->_tag.front() == '!'));
 	/**
@@ -1505,7 +1648,7 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 		/**
 		 * Выполняем перебор значений вместилища
 		 */
-		for(Document::value_t item = value.begin(); item.valid(); item = item.next()){
+		for(document_t::value_t item = value.begin(); item.valid(); item = item.next()){
 			/**
 			 * Если вместилище является отображением пар
 			 */
@@ -1522,15 +1665,15 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 			 * @note Свойства имени пары кладутся к значению её - тому, что стоит за
 			 *       двоеточием: узла у имени пары нет ни у дерева, ни здесь, и держать их
 			 *       больше негде. Правило то же, каким держит их дерево
+			 *
 			 */
 			if(mapping){
-				// Выполняем снятие метки узла, имени пары предпосланной
-				this->_items.back()._keyAnchor.assign(item.keyAnchor());
 				// Выполняем снятие метки типа, имени пары предпосланной
 				this->_items.back()._keyTag.assign(item.keyTag());
+				// Выполняем снятие метки узла, имени пары предпосланной
+				this->_items.back()._keyAnchor.assign(item.keyAnchor());
 				// Запоминаем признак местного вида метки типа имени пары
-				this->_items.back()._keyLocal = (!this->_items.back()._keyTag.empty() &&
-				 (this->_items.back()._keyTag.front() == '!'));
+				this->_items.back()._keyLocal = (!this->_items.back()._keyTag.empty() && (this->_items.back()._keyTag.front() == '!'));
 			}
 		}
 		// Выходим из снятия значения
@@ -1542,12 +1685,13 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	 * @details Число **снимается с узла**, а не разбирается заново из записи его. Разбор
 	 *          заново шёл бы схемою своей, а узел разобран схемою документа, и записи
 	 *          вроде `0777` расходились бы: наречие 1.1 читает её восьмеричной, давая 511,
-	 *          а схема ядровая - десятичной, давая 777
+	 *          а схема ядровая - десятичной, давая 777.
 	 *
 	 * @note Нашёл это ворошитель сличением извлечения с деревом. Прежде здесь стоял разбор
 	 *       записи, и довод при нём стоял такой: «узел хранит число полем закрытым, а
 	 *       запись известна и разбор её дёшев». Довод был верен ценою, но неверен по сути -
 	 *       дёшев путь, ведущий не туда
+	 *
 	 */
 	if(this->_kind == kind_t::NUMBER){
 		/**
@@ -1596,7 +1740,6 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 	 * Если значение метку несёт
 	 */
 	if(!this->_tag.empty())
-		// Выполняем запись метки, значению предпосылаемой
 		/**
 		 * Выполняем запись метки типа, значению предпосланной
 		 *
@@ -1611,6 +1754,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		 * @warning Без признака этого метка местная круга не переживала: `!%21y`,
 		 *          с дерева снятая, возвращалась сокращением `!!y` - меткою ИНОЙ,
 		 *          описанием закреплённой, - и молча
+		 *
 		 */
 		writer.tag(this->_tag, this->_local);
 	/**
@@ -1631,15 +1775,14 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 * Выполняем перебор полей отображения
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
-				// Выполняем запись имени поля отображения
 				/**
 				 * Выполняем запись имени пары отображения вместе со свойствами его
 				 *
 				 * @note Свойства эти держит значение самой пары: узла у имени пары нет, и
 				 *       снятие их с дерева кладёт их именно туда
+				 *
 				 */
-				writer.key(this->key(i), this->_items.at(i)._keyAnchor,
-				 this->_items.at(i)._keyTag, this->_items.at(i)._keyLocal);
+				writer.key(this->key(i), this->_items.at(i)._keyAnchor, this->_items.at(i)._keyTag, this->_items.at(i)._keyLocal);
 				// Выполняем запись значения поля отображения
 				this->_items.at(i).compose(writer);
 			}
@@ -1671,12 +1814,13 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		 * @note Значение неопределённое записывается пустотою: обращение изменяемое
 		 *       заводит поле именно им, и запись такого поля обязана дать `null`, а не
 		 *       пропасть из текста вовсе
+		 *
 		 */
 		case static_cast <uint8_t> (kind_t::NONE):
 		/**
 		 * Если значение пустым является
 		 */
-		case static_cast <uint8_t> (kind_t::NUL): {
+		case static_cast <uint8_t> (kind_t::NIL): {
 			/**
 			 * Если запись пустоты дана самим значением
 			 */
@@ -1693,7 +1837,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *          пустым значением, а `value: !` - пара с пустым значением, меткою
 			 *          помеченным. Записью описания её выражать нельзя - метка, значению
 			 *          предпосланная, отменяет разрешение схемы, и `! null` вернулось бы
-			 *          строкою `null` вместо пустоты
+			 *          строкою `null` вместо пустоты.
 			 *
 			 * @note Словом `null` пустота не выражается нигде, даже корнем: схема защитная
 			 *       слова того не знает, и значение возвращалось бы обратно строкою.
@@ -1703,6 +1847,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *
 			 * @note Нашёл это ворошитель круговым ходом снятого значения на записи
 			 *       `value: !`
+			 *
 			 */
 			writer.blank();
 		} break;
@@ -1730,6 +1875,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *
 			 * @note Ограда решается наново: строка `12`, без ограды записанная, прочлась бы
 			 *       обратно числом, и перезапись переменила бы вид значения
+			 *
 			 */
 			if(this->_style == style_t::PLAIN)
 				// Выполняем запись строкового значения оградою, содержимым решаемой
@@ -1742,18 +1888,6 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		 */
 		case static_cast <uint8_t> (kind_t::NUMBER): {
 			/**
-			 * Выполняем запись числа записью описания
-			 *
-			 * @details Запись эта берётся описанием, а не удержанным написанием: двоичное
-			 *          `0b1010` да восьмеричное `0777` числами читает одно наречие 1.1, и
-			 *          значение, снятое с текста того наречия, возвращалось бы строкою
-			 *          всюду, где читают по 1.2. Оформления владеющее значение не
-			 *          удерживает - так решено договором о нём
-			 *
-			 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте с
-			 *       директивой `%YAML 1.1` и записью `0b1010`
-			 */
-			/**
 			 * Если число ни в один родной вид не вмещается
 			 *
 			 * @details Такое число хранится записью своей, а выдаётся дробным приближением:
@@ -1761,13 +1895,26 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *          приближением `1.2345678901234568e+28`, и круговой ход потерял бы
 			 *          число. Наречия записи такой не касаются - двоичных да восьмеричных
 			 *          записей той длины не бывает, - а перезапись несёт директиву наречия
-			 *          своего, и запись читается обратно тою же схемой
+			 *          своего, и запись читается обратно тою же схемой.
 			 *
 			 * @note Указал на это ведущий кодеков JSON и XML: у него дословно хранится
 			 *       ровно тот же вид, и по тому же доводу
+			 *
 			 */
 			if(this->is(type_t::EXTENDED) && !this->_text.empty())
-				// Выполняем запись числа дословно, как оно записью дано
+				/**
+				 * Выполняем запись числа записью описания
+				 *
+				 * @details Запись эта берётся описанием, а не удержанным написанием: двоичное
+				 *          `0b1010` да восьмеричное `0777` числами читает одно наречие 1.1, и
+				 *          значение, снятое с текста того наречия, возвращалось бы строкою
+				 *          всюду, где читают по 1.2. Оформления владеющее значение не
+				 *          удерживает - так решено договором о нём.
+				 *
+				 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте с
+				 *       директивой `%YAML 1.1` и записью `0b1010`
+				 *
+				 */
 				writer.raw(this->_text);
 			/**
 			 * Если число целым со знаком является
@@ -1795,10 +1942,11 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *          `yes` да `on` логическими читает одно наречие 1.1, и значение,
 			 *          снятое с текста того наречия, возвращалось бы строкою всюду, где
 			 *          читают по 1.2. Оформления владеющее значение не удерживает, а
-			 *          `true` с `false` читаются логическими у всех схем, кроме защитной
+			 *          `true` с `false` читаются логическими у всех схем, кроме защитной.
 			 *
 			 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте с
 			 *       директивой `%YAML 1.1` и записью `yes`
+			 *
 			 */
 			writer.value(this->_number.integer != 0);
 		} break;
@@ -1806,6 +1954,8 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		 * Если значение иного вида является
 		 */
 		default: {
+			// Получаем вид оформления, записи значения потребный
+			const style_t style = quoting(this->_text, this->_schema, false, false);
 			/**
 			 * Если запись значения перевод строки несёт
 			 *
@@ -1818,11 +1968,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 *
 			 * @note Дословно пишется лишь то, что правило признаёт ПРОСТЫМ: правило то
 			 *       же, каким пишет такое значение дерево
-			 */
-			// Получаем вид оформления, записи значения потребный
-			const style_t style = quoting(this->_text, this->_schema, false, false);
-			/**
-			 * Если запись значения ограды требует
+			 *
 			 */
 			if(style != style_t::PLAIN)
 				// Выполняем запись значения оградою, правилом назначенной
@@ -1851,17 +1997,30 @@ bool awh::codec::yaml::Value::parse(const string & text) noexcept {
  * @return         признак успешности разбора
  *
  */
-bool awh::codec::yaml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
+bool awh::codec::yaml::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
 	// Выполняем очистку прежнего значения
 	this->clear();
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Выполняем заведение дерева документа
 	document_t document(settings);
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
-	if(!document.parse(text))
+	if(!document.parse(text)){
+		// Запоминаем код отказа разбора текста документа
+		this->_error = document.error();
+		// Запоминаем место отказа разбора текста документа
+		this->_errorLocation = document.errorLocation();
+		// Если дерево кода не назвало, отказ считается внутренним
+		if(this->_error == error_t::NONE)
+			// Запоминаем внутренний код отказа
+			this->_error = error_t::INTERNAL;
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	/**
 	 * Если текст несёт более одного документа
 	 *
@@ -1871,10 +2030,14 @@ bool awh::codec::yaml::Value::parse(const string & text, const Document::setting
 	 *          длины. Поток есть дело дерева документа, оно потоки и держит
 	 *
 	 * @note Правило это решено одинаковым у кодеков, потоки допускающих
+	 *
 	 */
-	if(document.documents() > 1)
+	if(document.documents() > 1){
+		// Запоминаем код отказа: владеющее значение держит документ один
+		this->_error = error_t::UNEXPECTED_DOCUMENT;
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	// Выполняем снятие дерева документа собственной памятью
 	this->absorb(document.root());
 	// Выводим признак успешного разбора
@@ -1899,9 +2062,15 @@ bool awh::codec::yaml::Value::load(const string & filename) noexcept {
  * @return         признак успешности разбора
  *
  */
-bool awh::codec::yaml::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	// Выполняем очистку прежнего значения
-	this->clear();
+bool awh::codec::yaml::Value::load(const string & filename, const document_t::settings_t & settings) noexcept {
+	// Если адрес задан, прежнее значение снимается по общему договору отказа
+	if(!filename.empty())
+		// Выполняем очистку прежнего значения
+		this->clear();
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Выполняем заведение дерева документа
 	document_t document(settings);
 	/**
@@ -1915,8 +2084,11 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 		 *       одному признаку выдачи читающий не отличит несуществующий файл от
 		 *       негодного текста. У INI и TOML заслон этот стоит своим спросом наличия,
 		 *       и расхождение было неразличимо, пока отказ наводился иным путём
+		 *
 		 */
 		this->_error = document.error();
+		// Запоминаем место отказа чтения файла документа
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -1926,13 +2098,17 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 	 * @details Значение владеющее держит документ один, а поток о нескольких удержать
 	 *          не может вовсе: взять из него первый и отдать успехом значило бы потерять
 	 *          прочие молча - без кода отказа, без пустой выдачи, без расхождения
-	 *          длины. Поток есть дело дерева документа, оно потоки и держит
+	 *          длины. Поток есть дело дерева документа, оно потоки и держит.
 	 *
 	 * @note Правило это решено одинаковым у кодеков, потоки допускающих
+	 *
 	 */
-	if(document.documents() > 1)
+	if(document.documents() > 1){
+		// Запоминаем код отказа: владеющее значение держит документ один
+		this->_error = error_t::UNEXPECTED_DOCUMENT;
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	// Выполняем снятие дерева документа собственной памятью
 	this->absorb(document.root());
 	// Выводим признак успешного разбора
@@ -1948,13 +2124,15 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если значение неопределённым является
 	 *
 	 * @details Значение неопределённое есть отсутствие значения, а не пустота: текст
 	 *          `%YAML 1.1` несёт наречие и ни одного документа, и снятое с него значение
 	 *          неопределённо. Записать его словом `null` значило бы выдумать документ,
-	 *          какого не было
+	 *          какого не было.
 	 *
 	 * @note Поле неопределённое внутри вместилища записывается именно словом `null` -
 	 *       иного описание не знает, - и противоречия здесь нет: поле там есть, а
@@ -1967,6 +2145,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 	 *          пустой - записывать нечего, - и порча захода ни одной проверки не роняет,
 	 *          замерено. Сносу заход не подлежит: он снимает заведение потока записи
 	 *          там, где записывать нечего
+	 *
 	 */
 	if(!this->valid())
 		/**
@@ -1976,6 +2155,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 		 *       текст пустой не отказом, а тем, что записывать нечего, - ровно как и
 		 *       значение пустое. Отказом здесь был бы код выдуманный, а выдумка хуже
 		 *       молчания: потребитель судил бы о причине по имени, к делу не идущему
+		 *
 		 */
 		return string();
 	// Выполняем заведение потока записи
@@ -1992,8 +2172,9 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 	 *          же причине и по тому же условию
 	 *
 	 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте `---`
+	 *
 	 */
-	if((this->_kind == kind_t::NUL) && this->_items.empty() && this->_anchor.empty() && this->_tag.empty())
+	if((this->_kind == kind_t::NIL) && this->_items.empty() && this->_anchor.empty() && this->_tag.empty())
 		// Выполняем открытие записываемого документа
 		writer.document();
 	/**
@@ -2004,6 +2185,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 	 *       расходилась с перезаписью дерева, того же содержимого, на одну эту черту.
 	 *       Неявное же открытие спрашивает настройку `explicitStart` ровно так, как
 	 *       спрашивает её дерево у первого документа потока
+	 *
 	 */
 	this->compose(writer);
 	// Выполняем завершение записи документа
@@ -2015,6 +2197,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 	 *          записи, - и пустой текст означал разом и значение пустое, и отказ. Код
 	 *          потока переносится сюда затем, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: потребитель
 	 *          иначе сохранял бы пустой файл вместо своего документа. Найдено разбором
+	 *
 	 */
 	if(writer.error() != error_t::NONE)
 		// Запоминаем код отказа записи, потоком названный
@@ -2023,16 +2206,10 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 	return writer.take();
 }
 /**
- * @brief Метод перезаписи значения в текст YAML
- *
- * @return текст YAML
- *
- */
-/**
  * @brief Метод получения кода отказа последней работы
  *
  * @details Ход этот отвечает на вопрос «отчего запись пуста»: пустой текст означает разом
- * и значение пустое, и отказ записи, и различить их иначе потребителю нечем
+ *          и значение пустое, и отказ записи, и различить их иначе потребителю нечем.
  *
  * @note Прежде отказ записи молчал целиком - ни кода, ни сообщения в журнал, - и
  *       потребитель сохранял бы пустой файл вместо своего документа. Найдено разбором
@@ -2045,7 +2222,22 @@ awh::codec::yaml::error_t awh::codec::yaml::Value::error() const noexcept {
 	return this->_error;
 }
 /**
+ * @brief Метод получения места отказа последней работы над значением
+ *
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::yaml::location_t & awh::codec::yaml::Value::errorLocation() const noexcept {
+	// Выводим место отказа последней работы над владеющим значением
+	return this->_errorLocation;
+}
+/**
+ * @brief Метод перезаписи значения в текст YAML
+ *
  * Сборка текста значения строкой
+ *
+ * @return текст YAML
+ *
  */
 string awh::codec::yaml::Value::dump() const noexcept {
 	// Настройки записи собираемого текста
@@ -2056,6 +2248,7 @@ string awh::codec::yaml::Value::dump() const noexcept {
 	 * @note Берётся схема, значением удержанная: запись `on` логическою является лишь под
 	 *       наречием 1.1, и решать ограду иною схемою значило бы выдать текст, читаемый
 	 *       иначе, чем он записан
+	 *
 	 */
 	settings.schema = this->_schema;
 	/**
@@ -2063,6 +2256,7 @@ string awh::codec::yaml::Value::dump() const noexcept {
 	 *
 	 * @note Директива записывается лишь под схемою наречия 1.1: без неё чтение вернулось
 	 *       бы к схеме ядровой, и записи вроде `on` вернулись бы строками
+	 *
 	 */
 	settings.version = (this->_schema == schema_t::LEGACY);
 	// Выводим записанный текст YAML
@@ -2071,33 +2265,9 @@ string awh::codec::yaml::Value::dump() const noexcept {
 /**
  * @brief Метод переноса владеющего значения в дерево документа
  *
- * @details Перенос ведётся путём: вместилище объявляется у места пустым, а дети его
- * переносятся заходом сюда же по пути внутрь него. Путь ведётся от корня первого
- * документа, части его делятся косою чертой, а часть внутри перечня есть номер значения
- *
- * @note Имя пары, косую черту либо тильду несущее, переносу ПОДЛЕЖИТ: путь строится
- *       отменяющими записями RFC 6901 (`~1` и `~0`), и звено такое на узел чужой уже не
- *       указывает. Прежде здесь стоял отказ с доводом «путь такое имя выразить не
- *       может» - довод этот отменяющая запись и снимает
- *
- * @note Отказом отвечает ныне лишь имя ПУСТОЕ: молчаливый пропуск оставил бы
- *       потребителя с деревом без части его значения
- *
- * @warning Запись эта обязательна ЗДЕСЬ, а не у одного лишь перечня звеньев: перенос
- *          строит путь сам, из имён сырых, и без записи имя с косою чертой уводило бы
- *          перенос не туда. Нашёл это ворошитель сличением перенесённого со снятым
- *
- * @param document дерево документа, куда переносится значение
- * @param path     путь к месту переноса
- * @return         признак успешности переноса
- *
- */
-/**
- * @brief Метод переноса владеющего значения в дерево документа с целостью его
- *
  * @details Перенос обязан быть ЦЕЛЫМ: отказ посреди него оставлял дерево с частью
  *          перенесённого, и потребитель, отказ получивший, не знал ни того, какая часть
- *          легла, ни того, как её снять
+ *          легла, ни того, как её снять.
  *
  * @note Перенос ведётся на копии дерева, а с нею дерево и подменяется по успехе. Цена
  *       копии оправдана - перенос не есть быстрый путь, а целость его есть обещание,
@@ -2107,10 +2277,6 @@ string awh::codec::yaml::Value::dump() const noexcept {
  *       рекурсией, и копия на всяком его шаге стоила бы квадрата
  *
  * @note Правило это одно с правилом записи: отказ не оставляет текста рваным
- *
- * @param document дерево документа, куда переносится значение
- * @param path     путь, по какому укладывается значение
- * @return         признак успешности переноса
  *
  * @note Имена, руками собранные, записи подлежат все. Замерено щупом 07.09.2026: имя с
  *       переводом строки, со знаком управляющим и с двоеточием записываются оградою -
@@ -2122,26 +2288,31 @@ string awh::codec::yaml::Value::dump() const noexcept {
  *          пустого, прививка отвечает отказом 41 всякому имени - то находка #52, вынесенная
  *          отдельно, а не свойство имён
  *
+ * @param document дерево документа, куда переносится значение
+ * @param path     путь к месту переноса
+ * @return         признак успешности переноса
+ *
  */
-bool awh::codec::yaml::Value::graft(Document & document, const string & path) const noexcept {
+bool awh::codec::yaml::Value::graft(document_t & document, const string & path) const noexcept {
 	/**
 	 * Если глубина вложенности переносимого значения превышает потолок допустимого
 	 *
 	 * @details Прививка глубины не судила вовсе, и отказ на глубоком значении приходил
-	 * СЛУЧАЙНО - от пустого дерева, правку прежде не принимавшего. Стоило дать кодеку
-	 * дорогу строить документ с нуля, как случайный этот отказ пропал, и дерево стало
-	 * принимать значение, какого запись принять не может: `dump()` отвечает пустотою с
-	 * кодом `DEPTH_EXCEEDED`, и документ выходит незаписуемым
+	 *          СЛУЧАЙНО - от пустого дерева, правку прежде не принимавшего. Стоило дать кодеку
+	 *          дорогу строить документ с нуля, как случайный этот отказ пропал, и дерево стало
+	 *          принимать значение, какого запись принять не может: `dump()` отвечает пустотою с
+	 *          кодом `DEPTH_EXCEEDED`, и документ выходит незаписуемым.
 	 *
 	 * @note Правка эта родня находке у кодека TOML, где прививка судила годность значения
 	 *       не тем мерилом, каким судит её запись. Разряд один, и лечение одно
 	 *
 	 * @note Суждение идёт СТОПОЮ, а не возвратом: сторож, сам стек срывающий на глубоком
 	 *       дереве, стерёг бы ровно до той глубины, где он и нужен
+	 *
 	 */
 	{
 		// Стопа обхода дерева: узел и глубина его залегания
-		vector <pair <const Value *, size_t>> stack;
+		vector <pair <const value_t *, size_t>> stack;
 		// Выполняем помещение корня переносимого значения в стопу обхода
 		stack.emplace_back(this, static_cast <size_t> (1));
 		/**
@@ -2170,7 +2341,7 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 		}
 	}
 	// Рабочая копия дерева документа, куда ведётся перенос
-	Document staging(document);
+	document_t staging(document);
 	/**
 	 * Если уложить значение в рабочую копию не удалось
 	 */
@@ -2180,6 +2351,7 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 		 *
 		 * @note Код берётся у копии: она с отказом и пропадает, а потребитель обязан
 		 *       узнать причину - отказ без названной причины оставляет его ни с чем
+		 *
 		 */
 		document._error = staging.error();
 		// Выводим признак неудачного переноса
@@ -2191,14 +2363,21 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 	return true;
 }
 /**
- * Внедрение значения в документ по пути
+ * @brief Метод укладки владеющего значения в дерево документа
+ *
+ * @details Внедрение значения в документ по пути.
+ *
+ * @param document дерево документа, куда укладывается значение
+ * @param path     путь, по какому укладывается значение
+ * @return         признак успешности укладки
+ *
  */
-bool awh::codec::yaml::Value::implant(Document & document, const string & path) const noexcept {
+bool awh::codec::yaml::Value::implant(document_t & document, const string & path) const noexcept {
 	/**
 	 * @brief Функция установки свойств уложенному узлу
 	 *
 	 * @details Свойства ставятся ПОСЛЕ укладки значения: установка значения перестраивает
-	 *          перечень узлов, и свойства, поставленные прежде, достались бы узлу иному
+	 *          перечень узлов, и свойства, поставленные прежде, достались бы узлу иному.
 	 *
 	 * @note Прежде свойства не переносились вовсе, и двоичное содержимое теряло вид свой:
 	 *       `!!binary 12:30`, в чужое дерево перенесённое, наречием 1.1 читалось обратно
@@ -2221,6 +2400,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 		 *
 		 * @note Пустая установка узлу свойств не заводит, однако и звать её незачем:
 		 *       узел, свойств не имеющий, обходится дешевле
+		 *
 		 */
 		if(this->_anchor.empty() && this->_tag.empty())
 			// Выводим признак успешного переноса
@@ -2241,9 +2421,10 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 		 *          снятие метки вида не роняет ни одной проверки, схему защитную включая.
 		 *          Сокращение оставлено ради дешевизны: пустота кладётся прямо, минуя
 		 *          построение записи и обратное чтение её
+		 *
 		 */
+		case static_cast <uint8_t> (kind_t::NIL):
 		case static_cast <uint8_t> (kind_t::NONE):
-		case static_cast <uint8_t> (kind_t::NUL):
 			// Выводим признак успешности переноса пустого значения
 			return propped(document.reset(path));
 		/**
@@ -2251,6 +2432,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 		 *
 		 * @note Оформление записи переносится вместе со значением: ограда, значением
 		 *       несомая, есть часть записи его, а не украшение
+		 *
 		 */
 		case static_cast <uint8_t> (kind_t::STRING):
 			// Выводим признак успешности переноса строкового значения
@@ -2272,7 +2454,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 				/**
 				 * Если перенести очередное значение перечня не удалось
 				 */
-				if(!this->_items.at(i).implant(document, path + "/" + std::to_string(i)))
+				if(!this->_items.at(i).implant(document, path + "/" + ::to_string(i)))
 					// Выводим признак неудачного переноса
 					return false;
 			}
@@ -2281,6 +2463,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 			 *
 			 * @note Свойства ставятся ПОСЛЕ укладки детей: укладка перестраивает перечень
 			 *       узлов, и свойства, поставленные прежде, достались бы узлу иному
+			 *
 			 */
 			return propped(true);
 		}
@@ -2299,6 +2482,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 			 *
 			 * @note Держатся ради розыска повтора: имя, вторично встреченное, путём
 			 *       выразить нечем - путь `/b` указывает на первое вхождение всегда
+			 *
 			 */
 			unordered_set <string> laid;
 			/**
@@ -2312,6 +2496,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 				 *       такое имя выразить не может, а ныне выражает отменяющей записью
 				 *       `~1` по RFC 6901. Имя записывается звеном ниже, и путь ведёт к той
 				 *       самой паре
+				 *
 				 */
 				if((i >= this->_names.size()) || this->_names.at(i).empty()){
 					/**
@@ -2320,6 +2505,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 					 * @note Без него отказ выходил молчаливым: `graft()` берёт причину у
 					 *       копии дерева, а укладка её не называла вовсе, и потребитель
 					 *       получал ложь при истинном отказе - «ошибок не обнаружено»
+					 *
 					 */
 					document._error = error_t::INVALID_PATH;
 					// Выводим признак неудачного переноса
@@ -2333,6 +2519,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 				 *       и указывает на первое. Молчаливая укладка поверх первого потеряла бы
 				 *       пару, и потеря та была бы невидима: перезапись выглядела бы верной,
 				 *       недоставало бы лишь строки. Нашёл это ворошитель круговым переносом
+				 *
 				 */
 				if(!laid.emplace(this->_names.at(i)).second){
 					// Запоминаем код отказа переноса дереву укладки
@@ -2357,6 +2544,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 	 * @note Заход этот берут логические значения, числа, отметки времени и двоичное
 	 *       содержимое: записью своею они и держатся, а вид их решается обратным
 	 *       чтением её. Ограды они не получают: она обратила бы их в строки
+	 *
 	 */
 	return propped(document.imprint(path, string_view(this->_text)));
 }
@@ -2369,29 +2557,86 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
  */
 bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа записи файла значения
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"YAML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"YAML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи
+		return false;
+	}
+	/**
 	 * Если ссылка на значение недействительна
 	 *
 	 * @warning Поверка эта стоит ПРЕЖДЕ открытия файла намеренно: поток записи усекает
 	 *          цель при открытии, и значение, текста не дающее, сносило бы прежнее
 	 *          содержимое файла начисто, а запись отвечала бы УСПЕХОМ. Замерено щупом:
 	 *          файл в 38 байт обращался в нуль, а save() выдавал истину
+	 *
 	 */
 	if(!this->valid()){
-		// Выполняем вывод сообщения об отказе записи недействительного значения
-		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"YAML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				awh::log::flag_t::CRITICAL,
+				awh::codec::yaml::message(error_t::INVALID_PATH)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"YAML value failed: %s",
+				awh::log::flag_t::CRITICAL,
+				awh::codec::yaml::message(error_t::INVALID_PATH)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
 	// Получаем текст YAML, значением записанный
 	const string text = this->dump();
-	// Выполняем открытие записываемого файла
 	/**
 	 * Путь ко временному файлу, рядом с целевым лежащему
 	 *
 	 * @details Запись ведётся во временный файл, а цель подменяется переименованием -
-	 * действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
-	 * знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
-	 * работа прервана - оставлял потребителя без прежнего содержимого И без нового разом
+	 *          действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
+	 *          знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
+	 *          работа прервана - оставлял потребителя без прежнего содержимого И без нового разом.
 	 *
 	 * @warning Временный файл кладётся РЯДОМ с целевым, а не во временный каталог системы:
 	 *          переименование неделимо лишь в пределах одной файловой системы, а через
@@ -2403,30 +2648,49 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	 *
 	 * @note Порок найден перебором по всем кодекам рамки;
 	 *       у кодеков JSON, XML и CSV он закрыт месяцем раньше
+	 *
 	 */
 	const string temporary(filename + ".awh-tmp");
-	// Объект работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Если запись собранного текста настроек во временный файл не удалась
 	 */
-	if(!fs.write(temporary, text.data(), text.size())){
+	if(!::__awh_fs__.write(temporary, text.data(), text.size())){
 		/**
 		 * Запоминаем код отказа записи файла настроек
 		 *
 		 * @warning Причина различается по НАЛИЧИЮ временного файла: не заведись он вовсе -
 		 *          отказало ОТКРЫТИЕ, а заведись и не наполнись - отказала запись
+		 *
 		 */
-		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
+		this->_error = ((::__awh_fs__.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::yaml::message(this->_error));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"YAML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"YAML value failed: %s",
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2436,29 +2700,68 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	 * @warning Сброс ставится ДО подмены цели: запись, успехом отвеченная, лежит ещё во
 	 *          вместилище ядра, и подмена прежде сброса оставила бы цель указывающей на
 	 *          содержимое, до носителя не дошедшее
+	 *
 	 */
-	if(!fs.flush(temporary)){
+	if(!::__awh_fs__.flush(temporary)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::yaml::message(this->_error));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"YAML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"YAML value failed: %s",
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
 	 * Если подмена целевого файла временным не удалась
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
-		static_cast <void> (fs.unlink(temporary));
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 codec::yaml::message(this->_error));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"YAML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"YAML value failed: %s",
+				awh::log::flag_t::CRITICAL,
+				codec::yaml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2472,7 +2775,7 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
  * @return      признак совпадения значений
  *
  */
-bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::yaml::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если виды значений расходятся
 	 */
@@ -2495,10 +2798,11 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 		 * @details Порядок полей сличению не подлежит: описание порядка полей отображения
 		 *          не предписывает вовсе, и два текста, одни и те же поля разным порядком
 		 *          записавшие, суть один и тот же документ. Записи порядок значим и там
-		 *          сохраняется, а сличению он не указ
+		 *          сохраняется, а сличению он не указ.
 		 *
 		 * @note Решено это одинаково у всех кодеков: эталоном взят
 		 *       порядок, каким его видит JavaScript
+		 *
 		 */
 		if(this->_kind == kind_t::MAPPING){
 			// Признаки того, что поле сличаемого отображения уже сличено
@@ -2515,6 +2819,7 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 				 * @note Розыск ведётся среди полей, ещё не сличённых: отображение, снятое
 				 *       с текста, повторные имена нести может, и одно поле сличаемого
 				 *       не должно закрывать собою два поля сличающего
+				 *
 				 */
 				for(size_t j = 0; j < value._items.size(); j++){
 					/**
@@ -2535,10 +2840,10 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 					if(!(this->_items.at(i) == value._items.at(j)))
 						// Выполняем переход к следующему полю сличаемого отображения
 						continue;
-					// Выполняем установку признака сличённого поля
-					matched.at(j) = true;
 					// Выполняем установку признака разысканного поля
 					found = true;
+					// Выполняем установку признака сличённого поля
+					matched.at(j) = true;
 					// Выходим из розыска поля
 					break;
 				}
@@ -2557,6 +2862,7 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 		 *
 		 * @note Порядок значений перечня сличается: перечень порядком своим и определён,
 		 *       и перестановка значений его есть иной перечень
+		 *
 		 */
 		for(size_t i = 0; i < this->_items.size(); i++){
 			/**
@@ -2575,8 +2881,9 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 	 * @note Записи их сличению не подлежат: пустота, записанная пустотою же, и пустота,
 	 *       записанная словом `null`, суть одно и то же значение. Сличение записей
 	 *       развело бы дерево, снятое с текста, с деревом, собранным из значений языка
+	 *
 	 */
-	if((this->_kind == kind_t::NUL) || (this->_kind == kind_t::NONE))
+	if((this->_kind == kind_t::NIL) || (this->_kind == kind_t::NONE))
 		// Выводим признак совпадения значений
 		return true;
 	/**
@@ -2584,6 +2891,7 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Сличается само значение, а не запись его: `true` и `True` разнятся лишь
 	 *       написанием
+	 *
 	 */
 	if(this->_kind == kind_t::BOOL)
 		// Выводим признак совпадения логических значений
@@ -2594,6 +2902,7 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 	 * @note Сличается само число, а не запись его: `0x1F` и `31` суть одно число,
 	 *       записанное двумя способами. Целое сличается с целым, дробное с дробным -
 	 *       иначе `1` совпало бы с `1.0`, а виды их разнятся
+	 *
 	 */
 	if(this->_kind == kind_t::NUMBER){
 		/**
@@ -2614,11 +2923,12 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 		 * @details Знаковость есть свойство записи, а не числа: `-0` со знаком читается, а
 		 *          `0` без него, число же у них одно. Владеющее значение оформления не
 		 *          удерживает, и запись `-0` возвращается круговым ходом записью `0` -
-		 *          сличение по знаковости развело бы их
+		 *          сличение по знаковости развело бы их.
 		 *
 		 * @note Отрицательное со знаком целому без знака не равно никогда: сличение идёт
 		 *       лишь тогда, когда знаковое неотрицательно. Нашёл это ворошитель круговым
 		 *       ходом снятого значения на записи `-0`
+		 *
 		 */
 		if(this->is(type_t::INT) && value.is(type_t::INT)){
 			// Получаем целое со знаком того из чисел, какое знаковым является
@@ -2639,9 +2949,10 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
 			 * @details Нечисло не равно даже самому себе - таково правило языка, - и
 			 *          сличение обычное объявляло бы неравными два значения `.nan`. Тем
 			 *          всякий документ, нечисло несущий, переставал бы равняться сам себе, а
-			 *          сличение обязано быть возвратным прежде всего прочего
+			 *          сличение обязано быть возвратным прежде всего прочего.
 			 *
 			 * @note Нашёл это ворошитель круговым ходом снятого значения на записи `.nan`
+			 *
 			 */
 			if(::isnan(this->_number.real) || ::isnan(value._number.real))
 				// Выводим признак совпадения нечисел
@@ -2662,7 +2973,7 @@ bool awh::codec::yaml::Value::operator == (const Value & value) const noexcept {
  * @return      признак несовпадения значений
  *
  */
-bool awh::codec::yaml::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::yaml::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак несовпадения значений
 	return !((* this) == value);
 }
@@ -2673,75 +2984,45 @@ bool awh::codec::yaml::Value::operator != (const Value & value) const noexcept {
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & value) noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Value::operator = (const value_t & value) noexcept {
 	/**
 	 * Если присваивается значение само себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем вид хранимого значения до изменения текущего дерева
-	const kind_t kind = value._kind;
-	// Получаем вид хранения значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем схему опознания числа до изменения текущего дерева
-	const schema_t schema = value._schema;
-	// Получаем разобранное число до изменения текущего дерева
-	const numeric_t number = value._number;
-	// Получаем оформление записи значения до изменения текущего дерева
-	const style_t style = value._style;
-	// Получаем правило усечения переводов строк до изменения текущего дерева
-	const chomp_t chomp = value._chomp;
-	// Получаем построение вместилища до изменения текущего дерева
-	const layout_t layout = value._layout;
-	// Получаем содержимое значения до изменения текущего дерева
-	string text = value._text;
-	// Получаем якорь значения до изменения текущего дерева
-	string anchor = value._anchor;
-	// Получаем метку значения до изменения текущего дерева
-	string tag = value._tag;
-	// Получаем признак местного вида метки до изменения текущего дерева
-	const bool local = value._local;
-	// Получаем метку узла, имени пары предпосланную, до изменения текущего дерева
-	string keyAnchor = value._keyAnchor;
-	// Получаем метку типа, имени пары предпосланную, до изменения текущего дерева
-	string keyTag = value._keyTag;
-	// Получаем признак местного вида метки типа имени пары до изменения текущего дерева
-	const bool keyLocal = value._keyLocal;
-	// Получаем имена полей отображения до изменения текущего дерева
-	vector <string> names = value._names;
-	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items = value._items;
-	// Выполняем копирование вида хранимого значения
-	this->_kind = kind;
-	// Выполняем копирование вида хранения значения
-	this->_type = type;
-	// Выполняем копирование схемы опознания числа
-	this->_schema = schema;
-	// Выполняем копирование разобранного числа
-	this->_number = number;
-	// Выполняем копирование оформления записи значения
-	this->_style = style;
-	// Выполняем копирование правила усечения переводов строк
-	this->_chomp = chomp;
-	// Выполняем копирование построения вместилища
-	this->_layout = layout;
-	// Выполняем перенос подготовленной копии содержимого значения
-	this->_text = ::move(text);
-	// Выполняем перенос подготовленной копии якоря значения
-	this->_anchor = ::move(anchor);
 	// Выполняем перенос подготовленной копии метки значения
-	this->_tag = ::move(tag);
+	this->_tag = value._tag;
+	// Выполняем копирование вида хранимого значения
+	this->_kind = value._kind;
+	// Выполняем копирование вида хранения значения
+	this->_type = value._type;
+	// Выполняем перенос подготовленной копии содержимого значения
+	this->_text = value._text;
 	// Выполняем копирование признака местного вида метки
-	this->_local = local;
-	// Выполняем перенос подготовленной копии метки узла, имени пары предпосланной
-	this->_keyAnchor = ::move(keyAnchor);
-	// Выполняем перенос подготовленной копии метки типа, имени пары предпосланной
-	this->_keyTag = ::move(keyTag);
-	// Выполняем копирование признака местного вида метки типа имени пары
-	this->_keyLocal = keyLocal;
+	this->_local = value._local;
+	// Выполняем копирование оформления записи значения
+	this->_style = value._style;
+	// Выполняем копирование правила усечения переводов строк
+	this->_chomp = value._chomp;
 	// Выполняем перенос подготовленной копии имён полей отображения
-	this->_names = ::move(names);
+	this->_names = value._names;
+	// Выполняем перенос подготовленной копии метки типа, имени пары предпосланной
+	this->_keyTag = value._keyTag;
+	// Выполняем копирование схемы опознания числа
+	this->_schema = value._schema;
+	// Выполняем копирование разобранного числа
+	this->_number = value._number;
+	// Выполняем копирование построения вместилища
+	this->_layout = value._layout;
+	// Выполняем перенос подготовленной копии якоря значения
+	this->_anchor = value._anchor;
+	// Выполняем копирование признака местного вида метки типа имени пары
+	this->_keyLocal = value._keyLocal;
+	// Выполняем перенос подготовленной копии метки узла, имени пары предпосланной
+	this->_keyAnchor = value._keyAnchor;
+	// Получаем значения вместилища до изменения текущего дерева
+	auto items = value._items;
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем перенос подготовленной копии значений вместилища
@@ -2756,88 +3037,79 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) noexcept {
+awh::codec::yaml::Value & awh::codec::yaml::value_t::operator = (value_t && value) noexcept {
 	/**
 	 * Если присваивается значение само себе
 	 */
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Получаем вид хранимого значения до изменения текущего дерева
-	const kind_t kind = value._kind;
-	// Получаем вид хранения значения до изменения текущего дерева
-	const type_t type = value._type;
-	// Получаем схему опознания числа до изменения текущего дерева
-	const schema_t schema = value._schema;
-	// Получаем разобранное число до изменения текущего дерева
-	const numeric_t number = value._number;
-	// Получаем оформление записи значения до изменения текущего дерева
-	const style_t style = value._style;
-	// Получаем правило усечения переводов строк до изменения текущего дерева
-	const chomp_t chomp = value._chomp;
-	// Получаем построение вместилища до изменения текущего дерева
-	const layout_t layout = value._layout;
-	// Получаем содержимое значения до изменения текущего дерева
-	string text(::move(value._text));
-	// Получаем якорь значения до изменения текущего дерева
-	string anchor(::move(value._anchor));
-	// Получаем метку значения до изменения текущего дерева
-	string tag(::move(value._tag));
-	// Получаем признак местного вида метки до изменения текущего дерева
-	const bool local = value._local;
-	// Получаем метку узла, имени пары предпосланную, до изменения текущего дерева
-	string keyAnchor(::move(value._keyAnchor));
-	// Получаем метку типа, имени пары предпосланную, до изменения текущего дерева
-	string keyTag(::move(value._keyTag));
-	// Получаем признак местного вида метки типа имени пары до изменения текущего дерева
-	const bool keyLocal = value._keyLocal;
-	// Получаем имена полей отображения до изменения текущего дерева
-	vector <string> names(::move(value._names));
-	// Получаем указатель поиска до изменения текущего дерева
-	unique_ptr <unordered_map <string, size_t>> index(::move(value._index));
-	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items(::move(value._items));
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
 	 * @note Сброс выполняется до замены старого вместилища назначения: переносимое
 	 *       значение может быть его потомком, и после замены обращаться к нему нельзя
+	 *
 	 */
 	value.clear();
 	// Выполняем перенос вида хранимого значения
-	this->_kind = kind;
+	this->_kind = value._kind;
 	// Выполняем перенос вида хранения значения
-	this->_type = type;
-	// Выполняем перенос схемы опознания числа
-	this->_schema = schema;
-	// Выполняем перенос разобранного числа
-	this->_number = number;
+	this->_type = value._type;
 	// Выполняем перенос оформления записи значения
-	this->_style = style;
+	this->_style = value._style;
 	// Выполняем перенос правила усечения переводов строк
-	this->_chomp = chomp;
-	// Выполняем перенос построения вместилища
-	this->_layout = layout;
-	// Выполняем перенос содержимого значения
-	this->_text = ::move(text);
-	// Выполняем перенос якоря значения
-	this->_anchor = ::move(anchor);
-	// Выполняем перенос метки значения
-	this->_tag = ::move(tag);
+	this->_chomp = value._chomp;
 	// Выполняем перенос признака местного вида метки
-	this->_local = local;
-	// Выполняем перенос метки узла, имени пары предпосланной
-	this->_keyAnchor = ::move(keyAnchor);
-	// Выполняем перенос метки типа, имени пары предпосланной
-	this->_keyTag = ::move(keyTag);
+	this->_local = value._local;
+	// Выполняем перенос построения вместилища
+	this->_layout = value._layout;
+	// Выполняем перенос схемы опознания числа
+	this->_schema = value._schema;
+	// Выполняем перенос разобранного числа
+	this->_number = value._number;
 	// Выполняем перенос признака местного вида метки типа имени пары
-	this->_keyLocal = keyLocal;
+	this->_keyLocal = value._keyLocal;
+	// Выполняем перенос метки значения
+	this->_tag = ::move(value._tag);
+	// Выполняем перенос содержимого значения
+	this->_text = ::move(value._text);
 	// Выполняем перенос имён полей отображения
-	this->_names = ::move(names);
+	this->_names = ::move(value._names);
+	// Выполняем перенос якоря значения
+	this->_anchor = ::move(value._anchor);
+	// Выполняем перенос метки типа, имени пары предпосланной
+	this->_keyTag = ::move(value._keyTag);
+	// Выполняем перенос метки узла, имени пары предпосланной
+	this->_keyAnchor = ::move(value._keyAnchor);
+	// Получаем указатель поиска до изменения текущего дерева
+	auto index(::move(value._index));
+	// Получаем значения вместилища до изменения текущего дерева
+	auto items(::move(value._items));
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выполняем перенесение указателя поиска вместе с именами
 	this->_index = ::move(index);
 	// Выполняем перенос значений вместилища
 	this->_items = ::move(items);
+	// Сбрасываем признак местного вида метки
+	value._local = false;
+	// Сбрасываем признак местного вида метки типа имени пары
+	value._keyLocal = false;
+	// Сбрасываем вид хранимого значения
+	value._kind = kind_t::NONE;
+	// Сбрасываем правило усечения переводов строк
+	value._chomp = chomp_t::CLIP;
+	// Сбрасываем оформление записи значения
+	value._style = style_t::PLAIN;
+	// Сбрасываем вид хранения значения
+	value._type = type_t::UNDEFINED;
+	// Сбрасываем построение вместилища
+	value._layout = layout_t::BLOCK;
+	// Сбрасываем схему опознания числа
+	value._schema = schema_t::FAILSAFE;
+	// Сбрасываем разобранное число
+	value._number = numeric_t();
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2857,7 +3129,7 @@ awh::codec::yaml::Value::Value() noexcept :
  * @param kind вид заводимого значения
  *
  */
-awh::codec::yaml::Value::Value(const kind_t kind) noexcept : Value() {
+awh::codec::yaml::Value::Value(const kind_t kind) noexcept : value_t() {
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind;
 	/**
@@ -2865,15 +3137,30 @@ awh::codec::yaml::Value::Value(const kind_t kind) noexcept : Value() {
 	 */
 	switch(static_cast <uint8_t> (kind)){
 		// Если заводится отображение пар
-		case static_cast <uint8_t> (kind_t::MAPPING): this->_type = type_t::MAPPING; break;
+		case static_cast <uint8_t> (kind_t::MAPPING):
+			// Устанавливаем тип карты
+			this->_type = type_t::MAPPING;
+		break;
 		// Если заводится перечень значений
-		case static_cast <uint8_t> (kind_t::SEQUENCE): this->_type = type_t::SEQUENCE; break;
+		case static_cast <uint8_t> (kind_t::SEQUENCE):
+			// Устанавливаем тип последовательности
+			this->_type = type_t::SEQUENCE;
+		break;
 		// Если заводится пустое значение
-		case static_cast <uint8_t> (kind_t::NUL): this->_type = type_t::NUL; break;
+		case static_cast <uint8_t> (kind_t::NIL):
+			// Устанавливаем тип нулевого значения
+			this->_type = type_t::NIL;
+		break;
 		// Если заводится логическое значение
-		case static_cast <uint8_t> (kind_t::BOOL): this->_type = type_t::BOOL; break;
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Устанавливаем тип булевого значения
+			this->_type = type_t::BOOL;
+		break;
 		// Если заводится строковое значение
-		case static_cast <uint8_t> (kind_t::STRING): this->_type = type_t::STRING; break;
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Устанавливаем тип строкового значения
+			this->_type = type_t::STRING;
+		break;
 	}
 }
 /**
@@ -2882,7 +3169,7 @@ awh::codec::yaml::Value::Value(const kind_t kind) noexcept : Value() {
  * @param value заводимое значение
  *
  */
-awh::codec::yaml::Value::Value(const bool value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const bool value) noexcept : value_t() {
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind_t::BOOL;
 	// Выполняем установку вида хранения заводимого значения
@@ -2898,11 +3185,11 @@ awh::codec::yaml::Value::Value(const bool value) noexcept : Value() {
  * @param value заводимое значение
  *
  */
-awh::codec::yaml::Value::Value(const int64_t value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const int64_t value) noexcept : value_t() {
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind_t::NUMBER;
 	// Выполняем установку записи заводимого значения
-	this->_text.assign(std::to_string(value));
+	this->_text.assign(::to_string(value));
 	// Выполняем опознание вида числа по записи его
 	this->recognize();
 }
@@ -2912,11 +3199,11 @@ awh::codec::yaml::Value::Value(const int64_t value) noexcept : Value() {
  * @param value заводимое значение
  *
  */
-awh::codec::yaml::Value::Value(const uint64_t value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const uint64_t value) noexcept : value_t() {
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind_t::NUMBER;
 	// Выполняем установку записи заводимого значения
-	this->_text.assign(std::to_string(value));
+	this->_text.assign(::to_string(value));
 	// Выполняем опознание вида числа по записи его
 	this->recognize();
 }
@@ -2926,7 +3213,7 @@ awh::codec::yaml::Value::Value(const uint64_t value) noexcept : Value() {
  * @param value заводимое значение
  *
  */
-awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const double value) noexcept : value_t() {
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind_t::NUMBER;
 	/**
@@ -2934,6 +3221,7 @@ awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
 	 *
 	 * @note Записи эти берутся описанием наречия, а не выдачей библиотеки языка:
 	 *       `to_string` выдал бы `nan` и `inf`, а описание требует `.nan` и `.inf`
+	 *
 	 */
 	if(::isnan(value))
 		// Выполняем установку записи заводимого значения
@@ -2958,8 +3246,9 @@ awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
 		 *       Выдача `to_string` здесь негодна - она обрезает число шестью разрядами
 		 *       после точки, а прежний вид `"%.17g"` расходился с тремя прочими кодеками
 		 *       рамки, выдавая `0.1` как `0.10000000000000001`
+		 *
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+		const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 		// Определяем длину собранной записи дробного числа
 		const int length = (static_cast <bool> (output) ? static_cast <int> (output.ptr - buffer) : 0);
 		/**
@@ -2974,6 +3263,7 @@ awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
 		 *
 		 * @note Запись `1` схемою прочлась бы целым числом, а записывалось дробное: точка
 		 *       с нулём сохраняет вид числа при обратном чтении
+		 *
 		 */
 		if(this->_text.find_first_of(".eE") == string::npos)
 			// Выполняем добавление дробной части записи числа
@@ -2983,14 +3273,45 @@ awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
 	this->recognize();
 }
 /**
+ * @brief Шаблон конструктора целого числа записи любой
+ *
+ * @tparam T тип заводимого целого числа
+ * @tparam E тип предаваемого значения
+ *
+ */
+template <typename T, typename E>
+/**
  * @brief Конструктор целого числа записи любой
  *
  * @param value заводимое целое число
  *
  */
-template <typename T, typename E>
 awh::codec::yaml::Value::Value(const T value) noexcept :
- Value(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value)) {}
+ value_t(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value)) {}
+/**
+ * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
+ *
+ * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
+ *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
+ *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
+ *       `int64_t` НЕ является
+ *
+ */
+typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
+/**
+ * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
+ *
+ */
+typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
+/**
+ * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
+ */
+template awh::codec::yaml::Value::Value(const short) noexcept;
+template awh::codec::yaml::Value::Value(const unsigned short) noexcept;
+template awh::codec::yaml::Value::Value(const int) noexcept;
+template awh::codec::yaml::Value::Value(const unsigned int) noexcept;
+template awh::codec::yaml::Value::Value(const wide_t) noexcept;
+template awh::codec::yaml::Value::Value(const uwide_t) noexcept;
 /**
  * @brief Конструктор знака
  *
@@ -2999,7 +3320,7 @@ awh::codec::yaml::Value::Value(const T value) noexcept :
  *
  */
 awh::codec::yaml::Value::Value(const char value, const style_t style) noexcept :
- Value(string(1, value), style) {}
+ value_t(string(1, value), style) {}
 /**
  * @brief Конструктор строкового значения
  *
@@ -3007,13 +3328,13 @@ awh::codec::yaml::Value::Value(const char value, const style_t style) noexcept :
  * @param style оформление записи значения
  *
  */
-awh::codec::yaml::Value::Value(const string & value, const style_t style) noexcept : Value() {
+awh::codec::yaml::Value::Value(const string & value, const style_t style) noexcept : value_t() {
+	// Выполняем установку оформления записи значения
+	this->_style = style;
 	// Выполняем установку вида заводимого значения
 	this->_kind = kind_t::STRING;
 	// Выполняем установку вида хранения заводимого значения
 	this->_type = type_t::STRING;
-	// Выполняем установку оформления записи значения
-	this->_style = style;
 	// Выполняем установку записи заводимого значения
 	this->_text.assign(value);
 	/**
@@ -3023,6 +3344,7 @@ awh::codec::yaml::Value::Value(const string & value, const style_t style) noexce
 	 *       здесь стояло своё, и содержимое, ровно одним переводом строки оканчивающееся,
 	 *       получало правило сохраняющее вместо простого - в отличие от того же
 	 *       содержимого, снятого с дерева документа
+	 *
 	 */
 	this->_chomp = ::chomping(this->_text);
 }
@@ -3034,14 +3356,14 @@ awh::codec::yaml::Value::Value(const string & value, const style_t style) noexce
  *
  */
 awh::codec::yaml::Value::Value(const char * value, const style_t style) noexcept :
- Value(string((value != nullptr) ? value : ""), style) {}
+ value_t(string((value != nullptr) ? value : ""), style) {}
 /**
  * @brief Конструктор снятия значения со ссылки на узел документа
  *
  * @param value ссылка на узел документа
  *
  */
-awh::codec::yaml::Value::Value(const Document::value_t & value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const document_t::value_t & value) noexcept : value_t() {
 	// Выполняем снятие значения со ссылки на узел документа
 	this->absorb(value);
 }
@@ -3051,7 +3373,7 @@ awh::codec::yaml::Value::Value(const Document::value_t & value) noexcept : Value
  * @param value копируемое значение
  *
  */
-awh::codec::yaml::Value::Value(const Value & value) noexcept : Value() {
+awh::codec::yaml::Value::Value(const value_t & value) noexcept : value_t() {
 	// Выполняем копирование значения
 	(* this) = value;
 }
@@ -3061,19 +3383,20 @@ awh::codec::yaml::Value::Value(const Value & value) noexcept : Value() {
  * @param value переносимое значение
  *
  */
-awh::codec::yaml::Value::Value(Value && value) noexcept : Value() {
+awh::codec::yaml::Value::Value(value_t && value) noexcept : value_t() {
 	// Выполняем перенос значения
-	(* this) = std::move(value);
+	(* this) = ::move(value);
 }
+
 /**
  * @brief Метод получения вместилища, сборкой открытого
  *
  * @return ссылка на открытое вместилище
  *
  */
-awh::codec::yaml::Value & awh::codec::yaml::Builder::opened() noexcept {
+awh::codec::yaml::value_t & awh::codec::yaml::Builder::opened() noexcept {
 	// Получаем ссылку на вместилище, сборкой открытое
-	Value * result = &this->_root;
+	value_t * result = &this->_root;
 	/**
 	 * Выполняем перебор номеров пути к открытому вместилищу
 	 */
@@ -3090,7 +3413,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Builder::opened() noexcept {
  * @return      номер занесённого значения во вместилище
  *
  */
-size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
+size_t awh::codec::yaml::Builder::deposit(value_t && value) noexcept {
 	/**
 	 * Если значению предпослан якорь
 	 */
@@ -3110,7 +3433,7 @@ size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
 		this->_tag.clear();
 	}
 	// Получаем ссылку на вместилище, сборкой открытое
-	Value & owner = this->opened();
+	value_t & owner = this->opened();
 	/**
 	 * Если вместилище является отображением пар
 	 */
@@ -3132,6 +3455,7 @@ size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
 		 *       вхождение первое, и вместилище, следом открытое, собиралось бы не туда.
 		 *       Ловушка эта на скалярах не видна вовсе - вылезает лишь тогда, когда за
 		 *       добавлением открывается отображение либо перечень
+		 *
 		 */
 		if(appended){
 			// Выполняем добавление поля отображения рядом с одноимённым
@@ -3148,6 +3472,7 @@ size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
 		 *       вызовами шла бы иначе квадратичной. Концом же вместилища номер брать
 		 *       нельзя: имя, вторично поданное сборкою, перезаписывает поле на своём
 		 *       месте, и концом оказалось бы поле чужое
+		 *
 		 */
 		const size_t found = owner.search(name);
 		// Выводим номер занесённого поля отображения
@@ -3165,7 +3490,7 @@ size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
  * @return      признак успешности открытия
  *
  */
-bool awh::codec::yaml::Builder::expand(Value && value) noexcept {
+bool awh::codec::yaml::Builder::expand(value_t && value) noexcept {
 	/**
 	 * Если сборка завершена
 	 */
@@ -3195,24 +3520,25 @@ bool awh::codec::yaml::Builder::expand(Value && value) noexcept {
 			this->_tag.clear();
 		}
 		// Выполняем установку корня собираемого значения
-		this->_root = std::move(value);
+		this->_root = ::move(value);
 		// Выводим признак успешного открытия
 		return true;
 	}
 	// Получаем ссылку на вместилище, сборкой открытое
-	Value & owner = this->opened();
+	value_t & owner = this->opened();
 	/**
 	 * Если вместилище открытое отображением пар является, а имя поля не назначено
 	 *
 	 * @note Отказ здесь обнаруживает промах потребителя: поле отображения без имени
 	 *       записано быть не может, а имя, номером подставленное, спрятало бы промах
 	 *       и выдало бы текст, потребителем не задуманный
+	 *
 	 */
 	if((owner.kind() == kind_t::MAPPING) && !this->_keyed)
 		// Выводим признак неудачного занесения
 		return false;
 	// Выполняем занесение открываемого вместилища
-	const size_t index = this->deposit(std::move(value));
+	const size_t index = this->deposit(::move(value));
 	// Выполняем переход внутрь открытого вместилища
 	this->_path.push_back(index);
 	// Выводим признак успешного открытия
@@ -3227,11 +3553,11 @@ bool awh::codec::yaml::Builder::expand(Value && value) noexcept {
  */
 bool awh::codec::yaml::Builder::mapping(const layout_t layout) noexcept {
 	// Выполняем заведение открываемого отображения пар
-	Value value(kind_t::MAPPING);
+	value_t value(kind_t::MAPPING);
 	// Выполняем установку построения открываемого отображения
 	value.layout(layout);
 	// Выводим признак успешности открытия отображения пар
-	return this->expand(std::move(value));
+	return this->expand(::move(value));
 }
 /**
  * @brief Метод открытия перечня значений
@@ -3242,11 +3568,11 @@ bool awh::codec::yaml::Builder::mapping(const layout_t layout) noexcept {
  */
 bool awh::codec::yaml::Builder::sequence(const layout_t layout) noexcept {
 	// Выполняем заведение открываемого перечня значений
-	Value value(kind_t::SEQUENCE);
+	value_t value(kind_t::SEQUENCE);
 	// Выполняем установку построения открываемого перечня
 	value.layout(layout);
 	// Выводим признак успешности открытия перечня значений
-	return this->expand(std::move(value));
+	return this->expand(::move(value));
 }
 /**
  * @brief Метод закрытия открытого вместилища
@@ -3302,6 +3628,7 @@ bool awh::codec::yaml::Builder::key(const string & name) noexcept {
 	 * @note Отказ здесь обнаруживает промах потребителя: имя, назначенное дважды подряд,
 	 *       означает потерянное значение, и молчаливая замена первого имени вторым
 	 *       спрятала бы потерю
+	 *
 	 */
 	if(this->_keyed)
 		// Выводим признак неудачного назначения
@@ -3316,6 +3643,7 @@ bool awh::codec::yaml::Builder::key(const string & name) noexcept {
 	 * @note Признак принадлежит имени, а не сборке: без сброса одно добавление сделало
 	 *       бы добавлениями все поля до конца сборки, и перезапись поля перестала бы
 	 *       работать после первого же повтора
+	 *
 	 */
 	this->_appended = false;
 	// Выводим признак успешного назначения
@@ -3385,7 +3713,7 @@ bool awh::codec::yaml::Builder::tag(const string & name) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::yaml::Builder::value(const Value & value) noexcept {
+bool awh::codec::yaml::Builder::value(const value_t & value) noexcept {
 	/**
 	 * Если сборка завершена
 	 */
@@ -3397,10 +3725,11 @@ bool awh::codec::yaml::Builder::value(const Value & value) noexcept {
 	 *
 	 * @note Значение простое корнем сборку и завершает: вместилища, куда заносить
 	 *       следующее, у неё нет вовсе
+	 *
 	 */
 	if(this->_path.empty() && (this->_root.kind() != kind_t::MAPPING) && (this->_root.kind() != kind_t::SEQUENCE)){
 		// Выполняем заведение записываемого значения
-		Value result(value);
+		value_t result(value);
 		/**
 		 * Если корню предпослан якорь
 		 */
@@ -3420,26 +3749,27 @@ bool awh::codec::yaml::Builder::value(const Value & value) noexcept {
 			this->_tag.clear();
 		}
 		// Выполняем установку корня собираемого значения
-		this->_root = std::move(result);
+		this->_root = ::move(result);
 		// Выполняем завершение сборки
 		this->_done = true;
 		// Выводим признак успешной записи
 		return true;
 	}
 	// Получаем ссылку на вместилище, сборкой открытое
-	Value & owner = this->opened();
+	value_t & owner = this->opened();
 	/**
 	 * Если вместилище открытое отображением пар является, а имя поля не назначено
 	 *
 	 * @note Отказ здесь обнаруживает промах потребителя: поле отображения без имени
 	 *       записано быть не может, а имя, номером подставленное, спрятало бы промах
 	 *       и выдало бы текст, потребителем не задуманный
+	 *
 	 */
 	if((owner.kind() == kind_t::MAPPING) && !this->_keyed)
 		// Выводим признак неудачного занесения
 		return false;
 	// Выполняем занесение записываемого значения
-	this->deposit(Value(value));
+	this->deposit(value_t(value));
 	// Выводим признак успешной записи
 	return true;
 }
@@ -3451,7 +3781,7 @@ bool awh::codec::yaml::Builder::value(const Value & value) noexcept {
  */
 bool awh::codec::yaml::Builder::null() noexcept {
 	// Выводим признак успешности записи пустого значения
-	return this->value(Value(kind_t::NUL));
+	return this->value(value_t(kind_t::NIL));
 }
 /**
  * @brief Метод записи логического значения
@@ -3462,7 +3792,7 @@ bool awh::codec::yaml::Builder::null() noexcept {
  */
 bool awh::codec::yaml::Builder::value(const bool value) noexcept {
 	// Выводим признак успешности записи логического значения
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи целого числа со знаком
@@ -3473,7 +3803,7 @@ bool awh::codec::yaml::Builder::value(const bool value) noexcept {
  */
 bool awh::codec::yaml::Builder::value(const int64_t value) noexcept {
 	// Выводим признак успешности записи целого числа
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи целого числа без знака
@@ -3484,7 +3814,7 @@ bool awh::codec::yaml::Builder::value(const int64_t value) noexcept {
  */
 bool awh::codec::yaml::Builder::value(const uint64_t value) noexcept {
 	// Выводим признак успешности записи целого числа
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи дробного числа
@@ -3495,7 +3825,7 @@ bool awh::codec::yaml::Builder::value(const uint64_t value) noexcept {
  */
 bool awh::codec::yaml::Builder::value(const double value) noexcept {
 	// Выводим признак успешности записи дробного числа
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи строкового значения
@@ -3507,7 +3837,7 @@ bool awh::codec::yaml::Builder::value(const double value) noexcept {
  */
 bool awh::codec::yaml::Builder::value(const string & value, const style_t style) noexcept {
 	// Выводим признак успешности записи строкового значения
-	return this->value(Value(value, style));
+	return this->value(value_t(value, style));
 }
 /**
  * @brief Метод записи строкового значения
@@ -3519,7 +3849,7 @@ bool awh::codec::yaml::Builder::value(const string & value, const style_t style)
  */
 bool awh::codec::yaml::Builder::value(const char * value, const style_t style) noexcept {
 	// Выводим признак успешности записи строкового значения
-	return this->value(Value(value, style));
+	return this->value(value_t(value, style));
 }
 /**
  * @brief Метод извлечения глубины открытых вместилищ
@@ -3542,16 +3872,8 @@ size_t awh::codec::yaml::Builder::depth() const noexcept {
  *
  */
 void awh::codec::yaml::Builder::reset() noexcept {
-	// Выполняем очистку собираемого значения
-	this->_root.clear();
-	// Выполняем очистку пути к открытому вместилищу
-	this->_path.clear();
-	// Выполняем очистку имени поля отображения
-	this->_key.clear();
-	// Выполняем очистку якоря, значению предпосылаемого
-	this->_anchor.clear();
-	// Выполняем очистку метки, значению предпосылаемой
-	this->_tag.clear();
+	// Выполняем сброс признака завершённой сборки
+	this->_done = false;
 	// Выполняем сброс признака назначенного имени поля
 	this->_keyed = false;
 	/**
@@ -3559,10 +3881,19 @@ void awh::codec::yaml::Builder::reset() noexcept {
 	 *
 	 * @note Без сброса признак пережил бы изъятие собранного значения и лёг бы на сборку
 	 *       следующую
+	 *
 	 */
 	this->_appended = false;
-	// Выполняем сброс признака завершённой сборки
-	this->_done = false;
+	// Выполняем очистку имени поля отображения
+	this->_key.clear();
+	// Выполняем очистку метки, значению предпосылаемой
+	this->_tag.clear();
+	// Выполняем очистку собираемого значения
+	this->_root.clear();
+	// Выполняем очистку пути к открытому вместилищу
+	this->_path.clear();
+	// Выполняем очистку якоря, значению предпосылаемого
+	this->_anchor.clear();
 }
 /**
  * @brief Метод изъятия собранного значения
@@ -3570,9 +3901,9 @@ void awh::codec::yaml::Builder::reset() noexcept {
  * @return собранное значение
  *
  */
-awh::codec::yaml::Value awh::codec::yaml::Builder::finish() noexcept {
+awh::codec::yaml::value_t awh::codec::yaml::Builder::finish() noexcept {
 	// Получаем собранное значение
-	Value result(std::move(this->_root));
+	value_t result(::move(this->_root));
 	// Выполняем сброс сборки
 	this->reset();
 	// Выводим собранное значение
@@ -3582,56 +3913,5 @@ awh::codec::yaml::Value awh::codec::yaml::Builder::finish() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::yaml::Builder::Builder() noexcept : _keyed(false), _appended(false), _done(false) {}
-/**
- * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
- *
- * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
- *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
- *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
- *       `int64_t` НЕ является
- */
-typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
-/**
- * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
- *
- */
-typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
-/**
- * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
- */
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const short) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const int) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const wide_t) noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const uwide_t) noexcept;
-/**
- * @brief Оператор обращения к паре по имени из одного знака
- *
- * @param name имя искомой пары из одного знака
- * @return     найденное значение
- *
- */
-template <typename T>
-typename enable_if <is_same <T, char>::value, const awh::codec::yaml::Value &>::type awh::codec::yaml::Value::operator [] (const T name) const noexcept {
-	// Выводим значение пары, именем из одного знака разыскиваемое
-	return (* this)[string(1, name)];
-}
-/**
- * @brief Оператор заведения пары по имени из одного знака
- *
- * @param name имя заводимой пары из одного знака
- * @return     заведённое значение
- *
- */
-template <typename T>
-typename enable_if <is_same <T, char>::value, awh::codec::yaml::Value &>::type awh::codec::yaml::Value::operator [] (const T name) noexcept {
-	// Выводим значение пары, именем из одного знака заводимое
-	return (* this)[string(1, name)];
-}
-/**
- * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
- */
-template __AWH_SHARED_EXPORT__ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] <char> (const char) const noexcept;
-template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] <char> (const char) noexcept;
+awh::codec::yaml::Builder::Builder() noexcept :
+ _done(false), _keyed(false), _appended(false) {}

@@ -478,6 +478,22 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
  *
  */
 bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept {
+	// Независимая копия входа, лежащего в выходном буфере
+	vector <uint8_t> copied;
+	// Если вход лежит в выходном буфере
+	if((buffer != nullptr) && (size > 0) && !result.empty()){
+		// Выполняем получение адреса входа
+		const uintptr_t address = reinterpret_cast <uintptr_t> (buffer);
+		// Выполняем получение адреса начала выходного буфера
+		const uintptr_t begin = reinterpret_cast <uintptr_t> (result.data());
+		// Если адрес входа принадлежит выходному буферу
+		if((address >= begin) && (address < (begin + result.size()))){
+			// Выполняем копирование входа до очистки выходного буфера
+			copied.assign(reinterpret_cast <const uint8_t *> (buffer), (reinterpret_cast <const uint8_t *> (buffer) + size));
+			// Перенаправляем чтение входа в независимую копию
+			buffer = copied.data();
+		}
+	}
 	// Выполняем очистку буфера содержимого кадра
 	result.clear();
 	// Выполняем сброс снятых сведений о кадре

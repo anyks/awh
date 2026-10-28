@@ -1135,15 +1135,6 @@ const awh::codec::json::value_t & awh::codec::json::Value::operator [] (const si
  */
 awh::codec::json::value_t & awh::codec::json::Value::operator [] (const size_t index) noexcept {
 	/**
-	 * Если значение ещё не определено
-	 */
-	if(this->_kind == kind_t::NONE){
-		// Устанавливаем вид значения массивом
-		this->_kind = kind_t::ARRAY;
-		// Устанавливаем вид хранения значения массивом
-		this->_type = type_t::ARRAY;
-	}
-	/**
 	 * Если значение с таким номером уже заведено
 	 */
 	if(index < this->_items.size())
@@ -1156,7 +1147,7 @@ awh::codec::json::value_t & awh::codec::json::Value::operator [] (const size_t i
 	 *       взять неоткуда
 	 *
 	 */
-	if(this->_kind != kind_t::ARRAY)
+	if((this->_kind != kind_t::ARRAY) && (this->_kind != kind_t::NONE))
 		// Выводим значение мусорное
 		return value_t::scrap();
 	/**
@@ -1173,9 +1164,18 @@ awh::codec::json::value_t & awh::codec::json::Value::operator [] (const size_t i
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
-		if((limit > 0) && (index >= limit))
+		if((index >= this->_items.max_size()) || ((limit > 0) && (index >= limit)))
 			// Выводим значение мусорное
 			return value_t::scrap();
+	}
+	/**
+	 * Если значение ещё не определено
+	 */
+	if(this->_kind == kind_t::NONE){
+		// Устанавливаем вид значения массивом
+		this->_kind = kind_t::ARRAY;
+		// Устанавливаем вид хранения значения массивом
+		this->_type = type_t::ARRAY;
 	}
 	/**
 	 * Выполняем рост массива до затребованного номера значениями неопределёнными
@@ -1788,8 +1788,10 @@ bool awh::codec::json::Value::load(const string & filename, const document_t::se
 	if(!document.load(filename)){
 		// Получаем код отказа чтения файла документа
 		const error_t error = document.error();
-		// Выполняем очистку прежнего содержимого значения
-		this->clear();
+		// Если адрес задан, прежнее значение снимается по общему договору отказа
+		if(!filename.empty())
+			// Выполняем очистку прежнего содержимого значения
+			this->clear();
 		// Запоминаем код отказа чтения файла
 		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
 		// Запоминаем место отказа разбора текста

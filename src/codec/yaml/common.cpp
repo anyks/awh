@@ -24,15 +24,19 @@
  */
 #include <cmath>
 #include <cerrno>
+#include <limits>
 #include <cstdlib>
 #include <cstring>
-#include <limits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <encoding/ascii.hpp>
+#include <num/lexical/lexical.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <encoding/ascii.hpp>
-#include <num/lexical/lexical.hpp>
 #include <codec/yaml/common.hpp>
 #include <codec/yaml/encoding.hpp>
 
@@ -47,6 +51,25 @@ using namespace std;
 using namespace awh::codec::yaml;
 
 /**
+ * @brief Принудительная подстановка горячих обращений кодека
+ *
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_YAML_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_YAML_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Внутренние служебные объекты приведения названий кодировок
  *
  */
@@ -57,18 +80,18 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
-	 * Названия кодировок знаками US-ASCII ограничены, и привлекать сюда правила
-	 * местности незачем
+	 *          Названия кодировок знаками US-ASCII ограничены, и привлекать сюда правила
+	 *          местности незачем.
 	 *
 	 * @param first  первая последовательность знаков для сличения
 	 * @param second вторая последовательность знаков для сличения
 	 * @return       результат сличения
 	 *
 	 */
-	static bool compare(const string_view first, const string_view second) noexcept {
+	static AWH_YAML_INLINE bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков не совпадают
 		 */
@@ -97,11 +120,16 @@ namespace {
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция чтения дробного числа, к местности нечувствительная
 	 *
 	 * @details Чтение ведётся приведением `awh::lexical_t::fromChars`, разряда `LC_NUMERIC`
-	 * не знающим вовсе: запись читается по правилам местности «C» при любой действующей
-	 * местности. Тем же приведением читают дробное кодеки INI и TOML
+	 *          не знающим вовсе: запись читается по правилам местности «C» при любой действующей
+	 *          местности. Тем же приведением читают дробное кодеки INI и TOML.
 	 *
 	 * @note Прежде здесь стоял `strtod` с ПОДМЕНОЮ десятичного знака: точка в записи
 	 *       заменялась знаком действующей местности, ибо `strtod` местности ПОДЧИНЁН.
@@ -119,11 +147,6 @@ namespace {
 	 *       читает всякую запись десятичную; довод этот сохраняется полностью - основание
 	 *       выбирается зовущим выше, и сюда приходит запись уже десятичная
 	 *
-	 * @param text читаемая запись дробного числа
-	 * @return     прочитанное дробное число
-	 *
-	 */
-	/**
 	 * @note Связки строковые зовутся через `std::`, а НЕ через `::`: заголовок `<cstring>`
 	 *       обязан выложить имена в пространство `std`, а выкладывать ли их наравне в
 	 *       глобальное - оставлено на усмотрение реализации. У libc++ и у MinGW они там
@@ -133,10 +156,14 @@ namespace {
 	 *
 	 * @warning Разряд этот на рабочей машине НЕВИДИМ вовсе: там сборка идёт clang с libc++,
 	 *          где глобальные имена налицо. Ловится он лишь стендом с GCC
+	 *
+	 * @param text читаемая запись дробного числа
+	 * @return     прочитанное дробное число
+	 *
 	 */
-	static double decimal(const char * text) noexcept {
+	static AWH_YAML_INLINE double decimal(const char * text) noexcept {
 		// Прочитанное дробное число
-		double result = 0.;
+		double result = .0;
 		// Получаем длину читаемой записи дробного числа
 		const size_t length = ((text != nullptr) ? std::strlen(text) : 0);
 		/**
@@ -146,7 +173,7 @@ namespace {
 			// Выводим нулевое дробное число
 			return 0.;
 		// Выполняем чтение дробного числа записью, местности не знающей
-		const awh::lexical_t::result_t <char> outcome = awh::lexical_t::fromChars(text, (text + length), result);
+		const lexical_t::result_t <char> outcome = lexical_t::fromChars(text, (text + length), result);
 		/**
 		 * Если число за предел дробного вида вышло
 		 *
@@ -160,8 +187,9 @@ namespace {
 		 *       нулём при потере значимости, - ровно как выдавал его `strtod`. Замерено
 		 *       щупом на семи краевых записях: `1e400` даёт бесконечность, `1e-400` нуль, а
 		 *       поднормальное `1e-320` читается годным
+		 *
 		 */
-		if(outcome.error == awh::lexical::error_t::OVERFLOW_RANGE){
+		if(outcome.error == lexical::error_t::OVERFLOW_RANGE){
 			// Запоминаем разряд выхода за предел вида
 			errno = ERANGE;
 			// Выводим прочитанное дробное число
@@ -173,6 +201,7 @@ namespace {
 		 * @note Отказ здесь отвечает нулём наравне со `strtod`, каким чтение велось прежде:
 		 *       зовущие судят о годности записи СОБСТВЕННЫМ разбором до вызова, и второй
 		 *       свод правил здесь развёл бы толкования
+		 *
 		 */
 		if(!static_cast <bool> (outcome))
 			// Выводим нулевое дробное число
@@ -185,14 +214,14 @@ namespace {
 	 *
 	 * @details Сличение ведётся дословно, без приведения к одному регистру: описание
 	 *          дозволяет ровно три написания каждого слова - строчными, с прописной буквы
-	 *          и прописными, - а `nULL` не признаёт пустым значением
+	 *          и прописными, - а `nULL` не признаёт пустым значением.
 	 *
 	 * @param text     сличаемая запись значения
 	 * @param variants перечень допустимых написаний, оканчивающийся пустым указателем
 	 * @return         признак совпадения записи с одним из написаний
 	 *
 	 */
-	static bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {
+	static AWH_YAML_INLINE bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {
 		/**
 		 * Выполняем перебор всех допустимых написаний
 		 *
@@ -201,7 +230,8 @@ namespace {
 		 *          иной длины отбрасываются без просмотра знаков. Прежний перечень
 		 *          указателями на знаки в конец на всякой подаче значения измерял каждую
 		 *          строку заново, и `strlen` вместе с `memcmp` брали шестую часть времени
-		 *          построения дерева (замер 05.10.2026, профиль `service`)
+		 *          построения дерева (замер 05.10.2026, профиль `service`).
+		 *
 		 */
 		for(size_t index = 0; index < count; index++){
 			/**
@@ -222,7 +252,7 @@ namespace {
 	 * @return      признак того, что запись состоит из одних цифр
 	 *
 	 */
-	static bool digits(const string_view text, const bool score) noexcept {
+	static AWH_YAML_INLINE bool digits(const string_view text, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 */
@@ -249,6 +279,7 @@ namespace {
 			 *
 			 * @note Наречие 1.1 дозволяет разделять разряды знаком подчёркивания, наречие
 			 *       1.2 не дозволяет вовсе, и оттого дозволенность задаётся доводом
+			 *
 			 */
 			if(score && (letter == '_'))
 				// Выполняем переход к следующему знаку записи
@@ -268,7 +299,7 @@ namespace {
 	 * @return      признак соответствия записи системе счисления
 	 *
 	 */
-	static bool based(const string_view text, const uint8_t radix, const bool score) noexcept {
+	static AWH_YAML_INLINE bool based(const string_view text, const uint8_t radix, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 *
@@ -298,6 +329,7 @@ namespace {
 		 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
 		 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
 		 *          слово: слог у одной руки в разное время разный
+		 *
 		 */
 		if(text.empty())
 			// Выводим признак несоответствия записи
@@ -355,14 +387,14 @@ namespace {
 	 *
 	 * @details Проверяется лишь построение записи, преобразование не выполняется:
 	 *          дозволяются целая часть, дробная часть и порядок, причём хотя бы одна цифра
-	 *          обязана стоять до порядка
+	 *          обязана стоять до порядка.
 	 *
 	 * @param text  проверяемая запись числа без знака
 	 * @param score признак дозволенности знака подчёркивания между цифрами
 	 * @return      признак соответствия записи дробному числу
 	 *
 	 */
-	static bool floating(const string_view text, const bool score) noexcept {
+	static AWH_YAML_INLINE bool floating(const string_view text, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 *
@@ -399,20 +431,21 @@ namespace {
 		 *
 		 * @note Сносу заход не подлежит: без него разбор записи пустой обратился бы нулём
 		 *       вместо строки, случись поверка `count == 0` ниже ослабленной
+		 *
 		 */
 		if(text.empty())
 			// Выводим признак несоответствия записи
 			return false;
 		// Количество встреченных цифр целой и дробной частей
 		size_t count = 0;
+		// Количество встреченных цифр порядка
+		size_t digits = 0;
+		// Признак того, что знак порядка уже встречен
+		bool sign = false;
 		// Признак того, что точка уже встречена
 		bool point = false;
 		// Признак того, что буква порядка уже встречена
 		bool power = false;
-		// Количество встреченных цифр порядка
-		size_t digits = 0;
-		// Признак того, что знак порядка уже встречен
-		bool signed_ = false;
 		/**
 		 * Выполняем перебор всех знаков записи числа
 		 */
@@ -461,9 +494,9 @@ namespace {
 			/**
 			 * Если знак является знаком порядка, стоящим сразу за буквою его
 			 */
-			if(((letter == '-') || (letter == '+')) && power && !signed_ && (digits == 0)){
+			if(((letter == '-') || (letter == '+')) && power && !sign && (digits == 0)){
 				// Запоминаем встреченный знак порядка
-				signed_ = true;
+				sign = true;
 				// Выполняем переход к следующему знаку записи
 				continue;
 			}
@@ -494,7 +527,7 @@ namespace {
 	 * @return          самый узкий вид, число вмещающий
 	 *
 	 */
-	static type_t fitted(const bool negative, const uint64_t collected, numeric_t & result) noexcept {
+	static constexpr type_t fitted(const bool negative, const uint64_t collected, numeric_t & result) noexcept {
 		/**
 		 * Если запись несёт знак минус
 		 */
@@ -509,8 +542,10 @@ namespace {
 				return type_t::EXTENDED;
 			}
 			// Запоминаем разобранное число целым со знаком
-			result.integer = ((collected == (static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1ull)) ?
-			 numeric_limits <int64_t>::min() : -static_cast <int64_t> (collected));
+			result.integer = (
+				(collected == (static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1ull)) ?
+				numeric_limits <int64_t>::min() : -static_cast <int64_t> (collected)
+			);
 			// Запоминаем разобранное число дробным видом
 			result.real = static_cast <double> (result.integer);
 			// Запоминаем разобранное число целым без знака
@@ -538,10 +573,10 @@ namespace {
 		}
 		// Запоминаем разобранное число целым без знака
 		result.natural = collected;
-		// Запоминаем разобранное число целым со знаком
-		result.integer = static_cast <int64_t> (collected);
 		// Запоминаем разобранное число дробным видом
 		result.real = static_cast <double> (collected);
+		// Запоминаем разобранное число целым со знаком
+		result.integer = static_cast <int64_t> (collected);
 		/**
 		 * Если число вмещается в один байт без знака
 		 */
@@ -571,7 +606,7 @@ namespace {
 	 *          передаётся `strtod`: тот основания записи не знает вовсе и читает всякую
 	 *          запись десятичной. Запись `0xFFFFFFFFFFFFFFFFFF` он читал нулём - разрядов
 	 *          шестнадцатеричных без указателя `0x` он не признаёт, - а восьмеричную
-	 *          запись наречия 1.1 читал десятичной, завышая число на два порядка
+	 *          запись наречия 1.1 читал десятичной, завышая число на два порядка.
 	 *
 	 * @note Нашло это чтение кода с нуля
 	 *
@@ -581,17 +616,17 @@ namespace {
 	 * @return       дробное приближение записанного числа
 	 *
 	 */
-	static double approximate(const string & text, const size_t offset, const uint8_t radix) noexcept {
+	static AWH_YAML_INLINE double approximate(const string & text, const size_t offset, const uint8_t radix) noexcept {
 		// Собираемое дробное приближение числа
-		double result = 0.;
+		double result = .0;
 		/**
 		 * Выполняем перебор всех разрядов записи числа
 		 */
 		for(size_t i = offset; i < text.size(); i++){
-			// Получаем очередной разряд записи числа
-			const char letter = text[i];
 			// Величина, отвечающая разряду записи
 			uint8_t value = 0;
+			// Получаем очередной разряд записи числа
+			const char letter = text[i];
 			/**
 			 * Если разряд записан десятичной цифрой
 			 */
@@ -627,6 +662,7 @@ namespace {
 			 *       подчёркивания», - и разряды её прежде сверены с основанием связкою `based`.
 			 *       Подчёркивание есть единственный знак, какой `based` пропускает сверх
 			 *       разрядов, и до сюда он не доходит: сними отсев - и заход стал бы достижим
+			 *
 			 */
 			else break;
 			// Выполняем накопление числа очередным разрядом
@@ -640,23 +676,23 @@ namespace {
 	 *
 	 * @details Записью этой пользуются для времени и углов: `190:20:30` есть число
 	 *          685230, а `12:30` - число 750. Наречие 1.2 её не знает вовсе, и там это
-	 *          обыкновенная строка
+	 *          обыкновенная строка.
 	 *
 	 * @param text проверяемая запись числа без знака
 	 * @return     признак соответствия записи шестидесятиричному числу
 	 *
 	 */
-	static bool sexagesimal(const string_view text) noexcept {
+	static AWH_YAML_INLINE bool sexagesimal(const string_view text) noexcept {
 		/**
 		 * Если запись не несёт разделителя частей
 		 */
 		if(text.find(':') == string_view::npos)
 			// Выводим признак несоответствия записи
 			return false;
-		// Смещение начала очередной части записи
-		size_t offset = 0;
 		// Количество разобранных частей записи
 		size_t parts = 0;
+		// Смещение начала очередной части записи
+		size_t offset = 0;
 		/**
 		 * Выполняем перебор всех частей записи числа
 		 */
@@ -670,6 +706,7 @@ namespace {
 			 *
 			 * @note Последняя часть вправе быть дробной: запись `12:30.5` описанием
 			 *       дозволена, и знаменует она 750.5
+			 *
 			 */
 			if(!digits(part, true) && !((position == string_view::npos) && floating(part, true)))
 				// Выводим признак несоответствия записи
@@ -688,7 +725,7 @@ namespace {
 		// Выводим признак того, что запись несёт хотя бы две части
 		return (parts > 1);
 	}
-}
+};
 
 /**
  * @brief Функция получения текстового описания кода отказа
@@ -703,93 +740,181 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 	 */
 	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE): return "no error";
+		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим описание кода ошибки
+			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL): return "internal parsing error";
+		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим описание кода ошибки
+			return "internal parsing error";
 		// Если текст оборвался посреди значения
-		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF): return "the text broke off in the middle of a value";
+		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF):
+			// Выводим описание кода ошибки
+			return "the text broke off in the middle of a value";
 		// Если знак недопустим в этом месте текста
-		case static_cast <uint8_t> (error_t::INVALID_CHARACTER): return "the character is not allowed at this place of the text";
+		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
+			// Выводим описание кода ошибки
+			return "the character is not allowed at this place of the text";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case static_cast <uint8_t> (error_t::INVALID_ENCODING): return "the sequence of bytes does not fit the declared encoding";
+		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+			// Выводим описание кода ошибки
+			return "the sequence of bytes does not fit the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING): return "the declared encoding is not supported";
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
+			// Выводим описание кода ошибки
+			return "the declared encoding is not supported";
 		// Если отступ не отвечает ни одному из открытых уровней
-		case static_cast <uint8_t> (error_t::INVALID_INDENTATION): return "the indentation fits none of the opened levels";
+		case static_cast <uint8_t> (error_t::INVALID_INDENTATION):
+			// Выводим описание кода ошибки
+			return "the indentation fits none of the opened levels";
 		// Если отступ содержит знак горизонтальной подачи
-		case static_cast <uint8_t> (error_t::TAB_IN_INDENTATION): return "the indentation contains a tab character forbidden by the specification";
+		case static_cast <uint8_t> (error_t::TAB_IN_INDENTATION):
+			// Выводим описание кода ошибки
+			return "the indentation contains a tab character forbidden by the specification";
 		// Если скалярное значение не закрыто оградой
-		case static_cast <uint8_t> (error_t::UNTERMINATED_SCALAR): return "unterminated scalar value";
+		case static_cast <uint8_t> (error_t::UNTERMINATED_SCALAR):
+			// Выводим описание кода ошибки
+			return "unterminated scalar value";
 		// Если отменяющая последовательность не опознана
-		case static_cast <uint8_t> (error_t::INVALID_ESCAPE): return "unknown escape sequence";
+		case static_cast <uint8_t> (error_t::INVALID_ESCAPE):
+			// Выводим описание кода ошибки
+			return "unknown escape sequence";
 		// Если запись знака Юникода содержит недопустимые знаки
-		case static_cast <uint8_t> (error_t::INVALID_UNICODE): return "the record of a Unicode character contains invalid characters";
+		case static_cast <uint8_t> (error_t::INVALID_UNICODE):
+			// Выводим описание кода ошибки
+			return "the record of a Unicode character contains invalid characters";
 		// Если суррогат не образует пары
-		case static_cast <uint8_t> (error_t::UNPAIRED_SURROGATE): return "unpaired surrogate";
+		case static_cast <uint8_t> (error_t::UNPAIRED_SURROGATE):
+			// Выводим описание кода ошибки
+			return "unpaired surrogate";
 		// Если заголовок блочного значения построен ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_BLOCK_HEADER): return "malformed header of a block value";
+		case static_cast <uint8_t> (error_t::INVALID_BLOCK_HEADER):
+			// Выводим описание кода ошибки
+			return "malformed header of a block value";
 		// Если запись числа не отвечает действующей схеме
-		case static_cast <uint8_t> (error_t::INVALID_NUMBER): return "the record of a number does not fit the active schema";
+		case static_cast <uint8_t> (error_t::INVALID_NUMBER):
+			// Выводим описание кода ошибки
+			return "the record of a number does not fit the active schema";
 		// Если число не представимо затребованным видом
-		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE): return "the number is not representable by the requested type";
+		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE):
+			// Выводим описание кода ошибки
+			return "the number is not representable by the requested type";
 		// Если содержимое метки двоичного значения записано ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_BINARY): return "the content of the !!binary tag does not fit the base64 record";
+		case static_cast <uint8_t> (error_t::INVALID_BINARY):
+			// Выводим описание кода ошибки
+			return "the content of the !!binary tag does not fit the base64 record";
 		// Если отметка времени построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_STAMP): return "malformed datetime";
+		case static_cast <uint8_t> (error_t::INVALID_STAMP):
+			// Выводим описание кода ошибки
+			return "malformed datetime";
 		// Если ожидалось значение
-		case static_cast <uint8_t> (error_t::EXPECTED_VALUE): return "a value was expected";
+		case static_cast <uint8_t> (error_t::EXPECTED_VALUE):
+			// Выводим описание кода ошибки
+			return "a value was expected";
 		// Если ожидалось имя пары отображения
-		case static_cast <uint8_t> (error_t::EXPECTED_KEY): return "a name of a mapping pair was expected";
+		case static_cast <uint8_t> (error_t::EXPECTED_KEY):
+			// Выводим описание кода ошибки
+			return "a name of a mapping pair was expected";
 		// Если ожидалось двоеточие после имени пары
-		case static_cast <uint8_t> (error_t::EXPECTED_COLON): return "a colon after the name of a pair was expected";
+		case static_cast <uint8_t> (error_t::EXPECTED_COLON):
+			// Выводим описание кода ошибки
+			return "a colon after the name of a pair was expected";
 		// Если ожидалась запятая либо закрывающая скобка
-		case static_cast <uint8_t> (error_t::EXPECTED_COMMA): return "a comma or a closing bracket of a flow construction was expected";
+		case static_cast <uint8_t> (error_t::EXPECTED_COMMA):
+			// Выводим описание кода ошибки
+			return "a comma or a closing bracket of a flow construction was expected";
 		// Если поточное построение не закрыто скобкой
-		case static_cast <uint8_t> (error_t::UNCLOSED_FLOW): return "unclosed flow construction";
+		case static_cast <uint8_t> (error_t::UNCLOSED_FLOW):
+			// Выводим описание кода ошибки
+			return "unclosed flow construction";
 		// Если перечень и отображение смешаны на одном уровне
-		case static_cast <uint8_t> (error_t::MIXED_COLLECTION): return "a sequence and a mapping are mixed at the same level";
+		case static_cast <uint8_t> (error_t::MIXED_COLLECTION):
+			// Выводим описание кода ошибки
+			return "a sequence and a mapping are mixed at the same level";
 		// Если имя пары отображения объявлено повторно
-		case static_cast <uint8_t> (error_t::DUPLICATE_KEY): return "duplicate name of a mapping pair";
+		case static_cast <uint8_t> (error_t::DUPLICATE_KEY):
+			// Выводим описание кода ошибки
+			return "duplicate name of a mapping pair";
 		// Если составное имя пары встречено при запрещённых составных именах
-		case static_cast <uint8_t> (error_t::COMPLEX_KEY): return "a complex key while complex keys are forbidden";
+		case static_cast <uint8_t> (error_t::COMPLEX_KEY):
+			// Выводим описание кода ошибки
+			return "a complex key while complex keys are forbidden";
 		// Если ссылка указывает на метку, ещё не объявленную
-		case static_cast <uint8_t> (error_t::UNKNOWN_ALIAS): return "the alias refers to an anchor not yet declared";
+		case static_cast <uint8_t> (error_t::UNKNOWN_ALIAS):
+			// Выводим описание кода ошибки
+			return "the alias refers to an anchor not yet declared";
 		// Если метка с таким именем уже объявлена
-		case static_cast <uint8_t> (error_t::DUPLICATE_ANCHOR): return "duplicate anchor name";
+		case static_cast <uint8_t> (error_t::DUPLICATE_ANCHOR):
+			// Выводим описание кода ошибки
+			return "duplicate anchor name";
 		// Если ссылка указывает сама на себя
-		case static_cast <uint8_t> (error_t::RECURSIVE_ALIAS): return "the alias refers to itself through a chain of anchors";
+		case static_cast <uint8_t> (error_t::RECURSIVE_ALIAS):
+			// Выводим описание кода ошибки
+			return "the alias refers to itself through a chain of anchors";
 		// Если раскрытие ссылок порождает больше узлов, чем дозволено
-		case static_cast <uint8_t> (error_t::EXPANSION_EXCEEDED): return "the expansion of aliases produces more nodes than allowed";
+		case static_cast <uint8_t> (error_t::EXPANSION_EXCEEDED):
+			// Выводим описание кода ошибки
+			return "the expansion of aliases produces more nodes than allowed";
 		// Если метка типа построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_TAG): return "malformed tag";
+		case static_cast <uint8_t> (error_t::INVALID_TAG):
+			// Выводим описание кода ошибки
+			return "malformed tag";
 		// Если сокращение метки типа не объявлено директивой
-		case static_cast <uint8_t> (error_t::UNKNOWN_TAG_HANDLE): return "the tag handle is not declared by a %TAG directive";
+		case static_cast <uint8_t> (error_t::UNKNOWN_TAG_HANDLE):
+			// Выводим описание кода ошибки
+			return "the tag handle is not declared by a %TAG directive";
 		// Если содержимое не отвечает виду, заданному меткой типа
-		case static_cast <uint8_t> (error_t::TAG_MISMATCH): return "the content does not fit the type given by the tag";
+		case static_cast <uint8_t> (error_t::TAG_MISMATCH):
+			// Выводим описание кода ошибки
+			return "the content does not fit the type given by the tag";
 		// Если директива построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_DIRECTIVE): return "malformed directive";
+		case static_cast <uint8_t> (error_t::INVALID_DIRECTIVE):
+			// Выводим описание кода ошибки
+			return "malformed directive";
 		// Если объявленное наречие не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION): return "the version declared by the %YAML directive is not supported";
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION):
+			// Выводим описание кода ошибки
+			return "the version declared by the %YAML directive is not supported";
 		// Если начало нового документа встречено посреди значения
-		case static_cast <uint8_t> (error_t::UNEXPECTED_DOCUMENT): return "the start of a new document in the middle of a value";
+		case static_cast <uint8_t> (error_t::UNEXPECTED_DOCUMENT):
+			// Выводим описание кода ошибки
+			return "the start of a new document in the middle of a value";
 		// Если за окончанием документа стоят знаки
-		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS): return "characters beyond the end of the document";
+		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS):
+			// Выводим описание кода ошибки
+			return "characters beyond the end of the document";
 		// Если глубина вложенности превышает допустимую
-		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED): return "the depth of nesting exceeds the allowed one";
+		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED):
+			// Выводим описание кода ошибки
+			return "the depth of nesting exceeds the allowed one";
 		// Если длина скалярного значения превышает допустимую
-		case static_cast <uint8_t> (error_t::SCALAR_TOO_LONG): return "the length of a scalar value exceeds the allowed one";
+		case static_cast <uint8_t> (error_t::SCALAR_TOO_LONG):
+			// Выводим описание кода ошибки
+			return "the length of a scalar value exceeds the allowed one";
 		// Если длина записи числа превышает допустимую
-		case static_cast <uint8_t> (error_t::NUMBER_TOO_LONG): return "the length of the record of a number exceeds the allowed one";
+		case static_cast <uint8_t> (error_t::NUMBER_TOO_LONG):
+			// Выводим описание кода ошибки
+			return "the length of the record of a number exceeds the allowed one";
 		// Если длина имени метки превышает допустимую
-		case static_cast <uint8_t> (error_t::ANCHOR_TOO_LONG): return "the length of an anchor name exceeds the allowed one";
+		case static_cast <uint8_t> (error_t::ANCHOR_TOO_LONG):
+			// Выводим описание кода ошибки
+			return "the length of an anchor name exceeds the allowed one";
 		// Если количество узлов документа превышает допустимое
-		case static_cast <uint8_t> (error_t::TOO_MANY_NODES): return "the count of the nodes of the document exceeds the allowed one";
+		case static_cast <uint8_t> (error_t::TOO_MANY_NODES):
+			// Выводим описание кода ошибки
+			return "the count of the nodes of the document exceeds the allowed one";
 		// Если текст пуст, а документ затребован
-		case static_cast <uint8_t> (error_t::EMPTY_TEXT): return "the text is empty while a document is requested";
+		case static_cast <uint8_t> (error_t::EMPTY_TEXT):
+			// Выводим описание кода ошибки
+			return "the text is empty while a document is requested";
 		// Если превышен предел, заданный настройками разбора
-		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT): return "a limit set by the settings of the parsing is exceeded";
+		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
+			// Выводим описание кода ошибки
+			return "a limit set by the settings of the parsing is exceeded";
 		// Если настройки записи противоречат толкованию читающего
-		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS): return "the settings of the writing contradict the interpretation of the reader";
+		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS):
+			// Выводим описание кода ошибки
+			return "the settings of the writing contradict the interpretation of the reader";
 		// Если файл документа открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
@@ -847,23 +972,41 @@ const char * awh::codec::yaml::name(const kind_t kind) noexcept {
 	 */
 	switch(static_cast <uint8_t> (kind)){
 		// Если узел не определён
-		case static_cast <uint8_t> (kind_t::NONE): return "none";
+		case static_cast <uint8_t> (kind_t::NONE):
+			// Выводим название вида узла
+			return "none";
 		// Если узел является пустым значением
-		case static_cast <uint8_t> (kind_t::NUL): return "null";
+		case static_cast <uint8_t> (kind_t::NIL):
+			// Выводим название вида узла
+			return "null";
 		// Если узел является логическим значением
-		case static_cast <uint8_t> (kind_t::BOOL): return "bool";
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Выводим название вида узла
+			return "bool";
 		// Если узел является числом
-		case static_cast <uint8_t> (kind_t::NUMBER): return "number";
+		case static_cast <uint8_t> (kind_t::NUMBER):
+			// Выводим название вида узла
+			return "number";
 		// Если узел является строкой
-		case static_cast <uint8_t> (kind_t::STRING): return "string";
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Выводим название вида узла
+			return "string";
 		// Если узел является двоичным содержимым
-		case static_cast <uint8_t> (kind_t::BINARY): return "binary";
+		case static_cast <uint8_t> (kind_t::BINARY):
+			// Выводим название вида узла
+			return "binary";
 		// Если узел является отметкой времени
-		case static_cast <uint8_t> (kind_t::STAMP): return "stamp";
+		case static_cast <uint8_t> (kind_t::STAMP):
+			// Выводим название вида узла
+			return "stamp";
 		// Если узел является перечнем значений
-		case static_cast <uint8_t> (kind_t::SEQUENCE): return "sequence";
+		case static_cast <uint8_t> (kind_t::SEQUENCE):
+			// Выводим название вида узла
+			return "sequence";
 		// Если узел является отображением пар
-		case static_cast <uint8_t> (kind_t::MAPPING): return "mapping";
+		case static_cast <uint8_t> (kind_t::MAPPING):
+			// Выводим название вида узла
+			return "mapping";
 	}
 	// Выводим название неизвестного вида узла
 	return "unknown";
@@ -881,43 +1024,81 @@ const char * awh::codec::yaml::name(const type_t type) noexcept {
 	 */
 	switch(static_cast <uint32_t> (type)){
 		// Если значения нет вовсе
-		case static_cast <uint32_t> (type_t::UNDEFINED): return "undefined";
+		case static_cast <uint32_t> (type_t::UNDEFINED):
+			// Выводим название вида значения
+			return "undefined";
 		// Если значение является пустым
-		case static_cast <uint32_t> (type_t::NUL): return "null";
+		case static_cast <uint32_t> (type_t::NIL):
+			// Выводим название вида значения
+			return "null";
 		// Если значение является логическим
-		case static_cast <uint32_t> (type_t::BOOL): return "bool";
+		case static_cast <uint32_t> (type_t::BOOL):
+			// Выводим название вида значения
+			return "bool";
 		// Если значение является строкой
-		case static_cast <uint32_t> (type_t::STRING): return "string";
+		case static_cast <uint32_t> (type_t::STRING):
+			// Выводим название вида значения
+			return "string";
 		// Если значение является перечнем
-		case static_cast <uint32_t> (type_t::SEQUENCE): return "sequence";
+		case static_cast <uint32_t> (type_t::SEQUENCE):
+			// Выводим название вида значения
+			return "sequence";
 		// Если значение является отображением
-		case static_cast <uint32_t> (type_t::MAPPING): return "mapping";
+		case static_cast <uint32_t> (type_t::MAPPING):
+			// Выводим название вида значения
+			return "mapping";
 		// Если значение является целым со знаком шириною в один байт
-		case static_cast <uint32_t> (type_t::INT8): return "int8";
+		case static_cast <uint32_t> (type_t::INT8):
+			// Выводим название вида значения
+			return "int8";
 		// Если значение является целым со знаком шириною в два байта
-		case static_cast <uint32_t> (type_t::INT16): return "int16";
+		case static_cast <uint32_t> (type_t::INT16):
+			// Выводим название вида значения
+			return "int16";
 		// Если значение является целым со знаком шириною в четыре байта
-		case static_cast <uint32_t> (type_t::INT32): return "int32";
+		case static_cast <uint32_t> (type_t::INT32):
+			// Выводим название вида значения
+			return "int32";
 		// Если значение является целым со знаком шириною в восемь байтов
-		case static_cast <uint32_t> (type_t::INT64): return "int64";
+		case static_cast <uint32_t> (type_t::INT64):
+			// Выводим название вида значения
+			return "int64";
 		// Если значение является целым без знака шириною в один байт
-		case static_cast <uint32_t> (type_t::UINT8): return "uint8";
+		case static_cast <uint32_t> (type_t::UINT8):
+			// Выводим название вида значения
+			return "uint8";
 		// Если значение является целым без знака шириною в два байта
-		case static_cast <uint32_t> (type_t::UINT16): return "uint16";
+		case static_cast <uint32_t> (type_t::UINT16):
+			// Выводим название вида значения
+			return "uint16";
 		// Если значение является целым без знака шириною в четыре байта
-		case static_cast <uint32_t> (type_t::UINT32): return "uint32";
+		case static_cast <uint32_t> (type_t::UINT32):
+			// Выводим название вида значения
+			return "uint32";
 		// Если значение является целым без знака шириною в восемь байтов
-		case static_cast <uint32_t> (type_t::UINT64): return "uint64";
+		case static_cast <uint32_t> (type_t::UINT64):
+			// Выводим название вида значения
+			return "uint64";
 		// Если значение является дробным одинарной точности
-		case static_cast <uint32_t> (type_t::FLOAT): return "float";
+		case static_cast <uint32_t> (type_t::FLOAT):
+			// Выводим название вида значения
+			return "float";
 		// Если значение является дробным двойной точности
-		case static_cast <uint32_t> (type_t::DOUBLE): return "double";
+		case static_cast <uint32_t> (type_t::DOUBLE):
+			// Выводим название вида значения
+			return "double";
 		// Если значение является числом, не вместимым ни в один родной вид
-		case static_cast <uint32_t> (type_t::EXTENDED): return "extended";
+		case static_cast <uint32_t> (type_t::EXTENDED):
+			// Выводим название вида значения
+			return "extended";
 		// Если значение является двоичным содержимым
-		case static_cast <uint32_t> (type_t::BINARY): return "binary";
+		case static_cast <uint32_t> (type_t::BINARY):
+			// Выводим название вида значения
+			return "binary";
 		// Если значение является отметкой времени
-		case static_cast <uint32_t> (type_t::STAMP): return "stamp";
+		case static_cast <uint32_t> (type_t::STAMP):
+			// Выводим название вида значения
+			return "stamp";
 	}
 	// Выводим название неизвестного вида значения
 	return "unknown";
@@ -935,33 +1116,61 @@ const char * awh::codec::yaml::name(const event_t event) noexcept {
 	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если событие не определено
-		case static_cast <uint8_t> (event_t::NONE): return "NONE";
+		case static_cast <uint8_t> (event_t::NONE):
+			// Выводим название события чтения
+			return "NONE";
 		// Если получено начало потока документов
-		case static_cast <uint8_t> (event_t::STREAM_START): return "STREAM_START";
+		case static_cast <uint8_t> (event_t::STREAM_START):
+			// Выводим название события чтения
+			return "STREAM_START";
 		// Если получен конец потока документов
-		case static_cast <uint8_t> (event_t::STREAM_END): return "STREAM_END";
+		case static_cast <uint8_t> (event_t::STREAM_END):
+			// Выводим название события чтения
+			return "STREAM_END";
 		// Если получено начало документа
-		case static_cast <uint8_t> (event_t::DOCUMENT_START): return "DOCUMENT_START";
+		case static_cast <uint8_t> (event_t::DOCUMENT_START):
+			// Выводим название события чтения
+			return "DOCUMENT_START";
 		// Если получен конец документа
-		case static_cast <uint8_t> (event_t::DOCUMENT_END): return "DOCUMENT_END";
+		case static_cast <uint8_t> (event_t::DOCUMENT_END):
+			// Выводим название события чтения
+			return "DOCUMENT_END";
 		// Если получено начало отображения
-		case static_cast <uint8_t> (event_t::MAPPING_START): return "MAPPING_START";
+		case static_cast <uint8_t> (event_t::MAPPING_START):
+			// Выводим название события чтения
+			return "MAPPING_START";
 		// Если получен конец отображения
-		case static_cast <uint8_t> (event_t::MAPPING_END): return "MAPPING_END";
+		case static_cast <uint8_t> (event_t::MAPPING_END):
+			// Выводим название события чтения
+			return "MAPPING_END";
 		// Если получено начало перечня
-		case static_cast <uint8_t> (event_t::SEQUENCE_START): return "SEQUENCE_START";
+		case static_cast <uint8_t> (event_t::SEQUENCE_START):
+			// Выводим название события чтения
+			return "SEQUENCE_START";
 		// Если получен конец перечня
-		case static_cast <uint8_t> (event_t::SEQUENCE_END): return "SEQUENCE_END";
+		case static_cast <uint8_t> (event_t::SEQUENCE_END):
+			// Выводим название события чтения
+			return "SEQUENCE_END";
 		// Если получено скалярное значение
-		case static_cast <uint8_t> (event_t::SCALAR): return "SCALAR";
+		case static_cast <uint8_t> (event_t::SCALAR):
+			// Выводим название события чтения
+			return "SCALAR";
 		// Если получена ссылка на метку
-		case static_cast <uint8_t> (event_t::ALIAS): return "ALIAS";
+		case static_cast <uint8_t> (event_t::ALIAS):
+			// Выводим название события чтения
+			return "ALIAS";
 		// Если получено примечание
-		case static_cast <uint8_t> (event_t::COMMENT): return "COMMENT";
+		case static_cast <uint8_t> (event_t::COMMENT):
+			// Выводим название события чтения
+			return "COMMENT";
 		// Если получена пустая строка
-		case static_cast <uint8_t> (event_t::BLANK): return "BLANK";
+		case static_cast <uint8_t> (event_t::BLANK):
+			// Выводим название события чтения
+			return "BLANK";
 		// Если текст разобран до конца
-		case static_cast <uint8_t> (event_t::FINISH): return "FINISH";
+		case static_cast <uint8_t> (event_t::FINISH):
+			// Выводим название события чтения
+			return "FINISH";
 	}
 	// Выводим название неизвестного события чтения
 	return "UNKNOWN";
@@ -985,19 +1194,33 @@ kind_t awh::codec::yaml::kind(const type_t type) noexcept {
 	 */
 	switch(static_cast <uint32_t> (type)){
 		// Если значение является пустым
-		case static_cast <uint32_t> (type_t::NUL): return kind_t::NUL;
+		case static_cast <uint32_t> (type_t::NIL):
+			// Выводим вид узла документа
+			return kind_t::NIL;
 		// Если значение является логическим
-		case static_cast <uint32_t> (type_t::BOOL): return kind_t::BOOL;
+		case static_cast <uint32_t> (type_t::BOOL):
+			// Выводим вид узла документа
+			return kind_t::BOOL;
 		// Если значение является строкой
-		case static_cast <uint32_t> (type_t::STRING): return kind_t::STRING;
+		case static_cast <uint32_t> (type_t::STRING):
+			// Выводим вид узла документа
+			return kind_t::STRING;
 		// Если значение является двоичным содержимым
-		case static_cast <uint32_t> (type_t::BINARY): return kind_t::BINARY;
+		case static_cast <uint32_t> (type_t::BINARY):
+			// Выводим вид узла документа
+			return kind_t::BINARY;
 		// Если значение является отметкой времени
-		case static_cast <uint32_t> (type_t::STAMP): return kind_t::STAMP;
+		case static_cast <uint32_t> (type_t::STAMP):
+			// Выводим вид узла документа
+			return kind_t::STAMP;
 		// Если значение является перечнем
-		case static_cast <uint32_t> (type_t::SEQUENCE): return kind_t::SEQUENCE;
+		case static_cast <uint32_t> (type_t::SEQUENCE):
+			// Выводим вид узла документа
+			return kind_t::SEQUENCE;
 		// Если значение является отображением
-		case static_cast <uint32_t> (type_t::MAPPING): return kind_t::MAPPING;
+		case static_cast <uint32_t> (type_t::MAPPING):
+			// Выводим вид узла документа
+			return kind_t::MAPPING;
 	}
 	// Выводим вид неопределённого узла
 	return kind_t::NONE;
@@ -1022,10 +1245,11 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 *       вовсе. Разбор так и поступает - пара `ключ:` выдаётся им пустой при всякой
 	 *       схеме, - а правка дерева поступала иначе и обращала пустое значение в пустую
 	 *       строку. Нашёл расхождение это ворошитель круговым переносом
+	 *
 	 */
 	if(text.empty())
 		// Выводим вид пустого значения
-		return type_t::NUL;
+		return type_t::NIL;
 	/**
 	 * Если действует схема, признающая одни лишь строки
 	 */
@@ -1038,24 +1262,25 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 * @details Из плана работ (задача №52): снятие всей функции давало
 	 *          ×1.08…×1.53 на скалярных текстах. Развилка отсекает сравнения
 	 *          с перечнями null/bool/чисел для всего, что с первого знака
-	 *          очевидно строкою, и оставляет прежний ход для типа-кандидата
+	 *          очевидно строкою, и оставляет прежний ход для типа-кандидата.
 	 *
 	 * @note Перечень знаков: `~` и `n`/`N` открывают пустое значение, `t`/`T`
 	 *       и `f`/`F` - логическое ядровой схемы, `y`/`Y`/`o`/`O` - логическое
 	 *       наречия 1.1, цифры и `-`/`+`/`.` открывают число. Всё прочее
 	 *       есть строка без дальнейших проб
+	 *
 	 */
 	const char first = text.front();
 	/**
 	 * Если первый знак не указывает на null, логическое или число
 	 */
 	if((first != '~') && (first != 'n') && (first != 'N') &&
-	   (first != 't') && (first != 'T') && (first != 'f') && (first != 'F') &&
-	   ((schema != schema_t::LEGACY) || ((first != 'y') && (first != 'Y') && (first != 'o') && (first != 'O'))) &&
-	   ((first < '0') || (first > '9')) && (first != '-') && (first != '+') && (first != '.')){
+	   (first != 't') && (first != 'T') && (first != 'f') &&
+	   (first != 'F') && ((schema != schema_t::LEGACY) || ((first != 'y') &&
+	   (first != 'Y') && (first != 'o') && (first != 'O'))) && ((first < '0') ||
+	   (first > '9')) && (first != '-') && (first != '+') && (first != '.'))
 		// Выводим вид строкового значения
 		return type_t::STRING;
-	}
 	/**
 	 * Если действует схема строгого соответствия правилам JSON
 	 */
@@ -1065,7 +1290,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		 */
 		if(text.compare("null") == 0)
 			// Выводим вид пустого значения
-			return type_t::NUL;
+			return type_t::NIL;
 		/**
 		 * Если запись является логическим значением
 		 */
@@ -1079,6 +1304,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		 *
 		 * @note Правила JSON строже прочих: ведущий плюс запрещён, ведущий нуль запрещён,
 		 *       знак подчёркивания запрещён тоже
+		 *
 		 */
 		if(!number.empty() && (digits(number, false) || floating(number, false))){
 			/**
@@ -1102,7 +1328,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 */
 	if(matches(text, NULLS, (sizeof(NULLS) / sizeof(NULLS[0]))))
 		// Выводим вид пустого значения
-		return type_t::NUL;
+		return type_t::NIL;
 	/**
 	 * Перечень написаний логического значения ядровой схемы
 	 */
@@ -1122,6 +1348,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		 *
 		 * @note Написания эти и породили беду, известную под именем норвежской: страна
 		 *       NO, записанная без ограды, обращается в ложь
+		 *
 		 */
 		static constexpr string_view LEGACY_BOOLEANS[] = {
 			"y", "Y", "yes", "Yes", "YES", "n", "N", "no", "No", "NO",
@@ -1141,7 +1368,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 * @details Наречие 1.2 дозволяет знак ОДНОЙ ЛИШЬ записи десятичной: описание даёт
 	 *          целому лексику `[-+]?[0-9]+ | 0o[0-7]+ | 0x[0-9a-fA-F]+`, и знак стоит
 	 *          в ней только у первой из трёх. Наречие же 1.1 дозволяет знак всякой
-	 *          записи, шестнадцатеричной да двоичной в том числе
+	 *          записи, шестнадцатеричной да двоичной в том числе.
 	 *
 	 * @warning Прежде знак снимался разом для всех оснований, и запись `+0x10` читалась
 	 *          числом даже схемою 1.2, описанию вопреки. Нашло это сличение записей с
@@ -1150,6 +1377,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 * @note Указатель основания берётся строчным, и `0X10` есть строка у обеих схем:
 	 *       описание 1.2 даёт `0x[0-9a-fA-F]+`, описание 1.1 - `[-+]?0x[0-9a-fA-F_]+`,
 	 *       и заглавной буквы нет ни в одном из них
+	 *
 	 */
 	const bool signed_ = ((text.front() == '-') || (text.front() == '+'));
 	// Получаем запись числа без знака
@@ -1175,6 +1403,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 *
 	 * @note Величина эта знака не имеет: запись `-.nan` описанием не предусмотрена, и
 	 *       оттого сличается она с записью целиком, а не с записью без знака
+	 *
 	 */
 	static constexpr string_view NOT_NUMBERS[] = {".nan", ".NaN", ".NAN"};
 	/**
@@ -1198,6 +1427,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 *
 	 * @warning Прежде заход этот шёл при ВСЯКОЙ схеме, и наречие 1.1 читало `0o17`
 	 *          числом, описанию своему вопреки
+	 *
 	 */
 	if((number.size() > 2) && !signed_ && (schema != schema_t::LEGACY) && (number.at(0) == '0') && (number.at(1) == 'o') && based(number.substr(2), 8, score))
 		// Выводим сборный вид числа
@@ -1217,6 +1447,7 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		 *
 		 * @note Ведущий нуль знаменует здесь восьмеричную запись, и `0777` есть 511.
 		 *       Наречие 1.2 такую запись числом не признаёт вовсе - там это строка
+		 *
 		 */
 		if((number.size() > 1) && (number.at(0) == '0') && based(number.substr(1), 8, score))
 			// Выводим сборный вид числа
@@ -1317,6 +1548,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	 *
 	 * @note Пустое значение, записанное без ограды, прочтётся пустым значением, а не
 	 *       пустой строкой: разница эта значаща, и оттого пустая строка ограду получает
+	 *
 	 */
 	if(text.empty())
 		// Выводим вид записи одинарной оградой
@@ -1329,6 +1561,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	 *          того, чем значение разрешается. Нашёл это ворошитель сличением перезаписи:
 	 *          значение с переводом строки получало ограду одинарную и растекалось по
 	 *          строкам, обратным чтением уже не читаясь
+	 *
 	 */
 	for(size_t i = 0; i < text.size();){
 		// Знак Юникода, очередной последовательностью записанный
@@ -1340,6 +1573,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 		 *
 		 * @note Записать такое можно лишь отменяющей последовательностью побайтно, и ограда
 		 *       ему нужна двойная
+		 *
 		 */
 		if(length == 0)
 			// Выводим вид записи двойной оградой
@@ -1351,6 +1585,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 		 *       лишь отменяющей последовательностью. Проверка идёт по знаку Юникода, а не
 		 *       по байту: знак `U+0081` записан байтами `C2 81`, из коих управляющим не
 		 *       является ни один. Нашёл это ворошитель сличением перезаписи
+		 *
 		 */
 		if(!printable(code))
 			// Выводим вид записи двойной оградой
@@ -1361,6 +1596,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 		 * @note Печатными они числятся - описание дозволяет их прямо, - однако без ограды
 		 *       передать их нельзя: перевод строки оборвал бы запись, а подача съелась бы
 		 *       снятием отступа
+		 *
 		 */
 		if((code == 0x09) || (code == 0x0A) || (code == 0x0D))
 			// Выводим вид записи двойной оградой
@@ -1374,6 +1610,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	 * @note Проверка эта - оборотная сторона разрешения: запись, которую чтение разрешит
 	 *       числом либо логическим значением, обязана получить ограду, иначе строка `12`
 	 *       вернётся числом
+	 *
 	 */
 	if(stringly && (resolve(text, schema) != type_t::STRING))
 		// Выводим вид записи одинарной оградой
@@ -1395,6 +1632,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 			 *       безобидны. Ограду они получают и там, и там: запись вправе собрать
 			 *       перечень поточным построением, и значение, годное блочному построению,
 			 *       но негодное поточному, обратилось бы в ловушку при смене вида
+			 *
 			 */
 			case '[':
 			case ']':
@@ -1410,6 +1648,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 			 *       директиву и примечание - но лишь стоя первыми. Внутри записи они
 			 *       обыкновенны: `100%` есть строка, а `b#c` есть строка `b#c`, ибо
 			 *       примечание открывается знаком решётки лишь за пробельным знаком
+			 *
 			 */
 			case '&':
 			case '*':
@@ -1435,6 +1674,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 			 * @note Двоеточие отделяет имя пары от значения лишь тогда, когда за ним стоит
 			 *       пробельный знак либо конец записи. Имя пары строже: там двоеточие
 			 *       недопустимо вовсе, ибо чтение оборвало бы имя на нём
+			 *
 			 */
 			case ':': {
 				/**
@@ -1456,6 +1696,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 			 * @note Знак этот открывает примечание лишь тогда, когда перед ним стоит
 			 *       пробельный знак. Первым знаком записи он тоже недопустим, но случай
 			 *       этот разобран выше
+			 *
 			 */
 			case ' ': {
 				/**
@@ -1472,6 +1713,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	 *
 	 * @note Обвязка пробелами при чтении без ограды снимается, и значение вернулось бы
 	 *       иным
+	 *
 	 */
 	if((text.front() == ' ') || (text.back() == ' '))
 		// Выводим вид записи одинарной оградой
@@ -1510,6 +1752,7 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	 *
 	 * @note Разрешение стоит прежде разбора нарочно: своды правил у них разойтись не
 	 *       вправе, и разбор берётся лишь за то, что разрешение числом признало
+	 *
 	 */
 	if(!(static_cast <uint32_t> (resolve(text, schema)) & static_cast <uint32_t> (type_t::NUMBER)))
 		// Выводим признак того, что запись числом не является
@@ -1545,7 +1788,7 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 		return type_t::DOUBLE;
 	}
 	// Собираемая запись числа без знаков подчёркивания
-	string plain;
+	string plain = "";
 	// Выполняем упреждающее выделение памяти под собираемую запись
 	plain.reserve(number.size());
 	/**
@@ -1557,15 +1800,16 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 		 *
 		 * @note Знак этот наречие 1.1 дозволяет между разрядами для удобочитаемости, и
 		 *       числом он не является: снимается он прежде разбора
+		 *
 		 */
 		if(letter != '_')
 			// Выполняем добавление знака к собираемой записи
 			plain.push_back(letter);
 	}
-	// Основание системы счисления записи числа
-	uint8_t radix = 10;
 	// Смещение начала разрядов записи числа
 	size_t offset = 0;
+	// Основание системы счисления записи числа
+	uint8_t radix = 10;
 	/**
 	 * Если запись открывается указателем системы счисления
 	 */
@@ -1584,6 +1828,7 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 			 *
 			 * @note Двоичную запись знает лишь наречие 1.1, и разрешение до разбора её
 			 *       не допустит, коли действует иная схема
+			 *
 			 */
 			case 'b':
 			case 'B': radix = 2; offset = 2; break;
@@ -1594,8 +1839,10 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	 *
 	 * @note Ведущий нуль знаменует здесь восьмеричную запись, и `0777` есть 511. Наречие
 	 *       1.2 такую запись числом не признаёт вовсе, и разрешение сюда не пропустит
+	 *
 	 */
-	if((radix == 10) && (schema == schema_t::LEGACY) && (plain.size() > 1) && (plain.at(0) == '0') &&
+	if((radix == 10) && (schema == schema_t::LEGACY) &&
+	   (plain.size() > 1) && (plain.at(0) == '0') &&
 	   (plain.find_first_not_of("01234567", 1) == string::npos)){
 		// Запоминаем восьмеричное основание системы счисления
 		radix = 8;
@@ -1607,14 +1854,15 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	 *
 	 * @details Запись эту знает лишь наречие 1.1: `12:30` есть 750, а `1:00:00` есть
 	 *          3600. Собирается число по разрядам, ибо разбор языка её не знает вовсе
+	 *
 	 */
 	if((radix == 10) && (schema == schema_t::LEGACY) && (plain.find(':') != string::npos)){
-		// Собираемое число шестидесятиричной записи
-		double collected = 0.;
-		// Признак того, что запись несёт дробную часть
-		bool fractional = false;
 		// Смещение начала очередного разряда записи
 		size_t position = 0;
+		// Собираемое число шестидесятиричной записи
+		double collected = .0;
+		// Признак того, что запись несёт дробную часть
+		bool fractional = false;
 		/**
 		 * Выполняем перебор всех разрядов шестидесятиричной записи
 		 */
@@ -1653,7 +1901,8 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 			 *          их описанием не ограничено вовсе: запись из десятка разрядов выходит за
 			 *          предел целого. Приведение такого числа к целому есть неопределённое
 			 *          поведение, и оттого оно выдаётся дробным видом. Нашёл это ворошитель
-			 *          под UBSan
+			 *          под UBSan.
+			 *
 			 */
 			if(collected >= static_cast <double> (numeric_limits <uint64_t>::max()))
 				// Выводим вид дробного числа двойной точности
@@ -1691,6 +1940,7 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 		 *       признаком, и нулём она тоже не является. Числа же поднормальные - вроде
 		 *       `1e-320` - представимы, пусть и точностью урезанной: признак выхода за
 		 *       предел стоит и у них, и оттого сличается сам исход, а не один признак
+		 *
 		 */
 		if((errno == ERANGE) && (::isinf(result.real) || (result.real == 0.)))
 			// Выводим вид числа, ни в один родной вид не вместимого
@@ -1708,6 +1958,7 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	 * @note Число, ни в один родной вид не вместившееся, хранится записью своей и
 	 *       выдаётся дробным приближением: отбросить его значило бы потерять содержимое,
 	 *       записанное текстом верно
+	 *
 	 */
 	if(errno == ERANGE){
 		/**
@@ -1715,9 +1966,9 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 		 *
 		 * @note Приближение десятичной записи снимается разбором дробного числа, а записи
 		 *       иного основания - сборкою по разрядам: разбор оснований не знает
+		 *
 		 */
-		result.real = ((radix == 10) ? ::decimal(plain.c_str() + offset) :
-		 approximate(plain, offset, radix));
+		result.real = ((radix == 10) ? ::decimal(plain.c_str() + offset) : approximate(plain, offset, radix));
 		/**
 		 * Если запись несёт знак минус
 		 */
@@ -1730,9 +1981,8 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	// Выводим самый узкий вид, разобранное число вмещающий
 	return fitted(negative, collected, result);
 }
-
 /**
- * @brief Метод получения названия кодировки
+ * @brief Функция получения названия кодировки
  *
  * @param encoding кодировка исходного текста
  * @return         общепринятое название кодировки
@@ -1774,7 +2024,11 @@ const char * awh::codec::yaml::name(const encoding_t encoding) noexcept {
 		// Если кодировкой является Windows-1252
 		case static_cast <uint8_t> (encoding_t::CP1252):
 			// Выводим название кодировки
-			return "WINDOWS-1252";
+			return "windows-1252";
+		// Если кодировка однобайтовая, взятая таблицею
+		case static_cast <uint8_t> (encoding_t::SINGLE):
+			// Выводим обозначение вида кодировки
+			return "single-byte";
 		/**
 		 * Если кодировка не определена вовсе
 		 *
@@ -1782,6 +2036,7 @@ const char * awh::codec::yaml::name(const encoding_t encoding) noexcept {
 		 *       «unknown» остаётся значению, членом перечня НЕ ЯВЛЯЮЩЕМУСЯ. Иначе имя
 		 *       кодировки неопределённой неотличимо от имени мусора, и потребитель,
 		 *       имя печатающий, о разнице не узнает
+		 *
 		 */
 		case static_cast <uint8_t> (encoding_t::NONE):
 			// Выводим название неопределённой кодировки
@@ -1790,9 +2045,8 @@ const char * awh::codec::yaml::name(const encoding_t encoding) noexcept {
 	// Выводим название значения, членом перечня не являющегося
 	return "unknown";
 }
-
 /**
- * @brief Метод определения кодировки по её названию
+ * @brief Функция определения кодировки по её названию
  *
  * @param text название кодировки в любом регистре
  * @return     определённая кодировка исходного текста
@@ -1829,6 +2083,7 @@ awh::codec::yaml::encoding_t awh::codec::yaml::encoding(const string_view text) 
 	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
 	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
 	 *       основание по умолчанию
+	 *
 	 */
 	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
 		// Выводим определённую кодировку
@@ -1863,6 +2118,7 @@ awh::codec::yaml::encoding_t awh::codec::yaml::encoding(const string_view text) 
 	 * @note Кодировка эта с ISO-8859-1 не совпадает и отдельной ветвью разбирается
 	 *       намеренно: там, где у ISO-8859-1 управляющие знаки области C1, у неё
 	 *       знаки печатные - денежный знак евро, кавычки-лапки, тире
+	 *
 	 */
 	if(::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252") || ::compare(text, "WINDOWS1252"))
 		// Выводим определённую кодировку
@@ -1876,34 +2132,26 @@ awh::codec::yaml::encoding_t awh::codec::yaml::encoding(const string_view text) 
 	// Выводим неопределённую кодировку
 	return encoding_t::NONE;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::codec::yaml::Span::Span() noexcept : offset(0), length(0) {}
 
 /**
  * @brief Конструктор
  *
- * @param offset смещение начала отрезка в хранилище знаков
- * @param length длина отрезка в байтах
- *
  */
-awh::codec::yaml::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::yaml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0), depth(0) {}
+awh::codec::yaml::Location::Location() noexcept : depth(0) {}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::yaml::Stamp::Stamp() noexcept :
- year(0), month(0), day(0), hour(0), minute(0), second(0),
- nanoseconds(0), offset(0), zulu(false), spaced(false) {}
+ zulu(false), spaced(false),
+ day(0), hour(0), month(0),
+ minute(0), second(0), offset(0),
+ year(0), nanoseconds(0) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::yaml::Numeric::Numeric() noexcept : integer(0), natural(0), real(0.) {}
+awh::codec::yaml::Numeric::Numeric() noexcept :
+ real(.0), integer(0), natural(0) {}

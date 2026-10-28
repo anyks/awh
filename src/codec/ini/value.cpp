@@ -646,6 +646,19 @@ const awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const size
  */
 awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const size_t index) noexcept {
 	/**
+	 * Если обращение требует роста вместилища
+	 */
+	if(index >= this->_items.size()){
+		// Получаем предел роста вместилища по номеру
+		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
+		/**
+		 * Если размер не представим либо выходит за поставленный предел
+		 */
+		if((index >= this->_items.max_size()) || ((this->_type == type_t::TABLE) && (index >= this->_names.max_size())) || ((limit > 0) && (index >= limit)))
+			// Выводим значение мусорное без изменения исходного значения
+			return value_t::scrap();
+	}
+	/**
 	 * Если значение вместилищем не является вовсе
 	 *
 	 * @note Обращение по номеру заводит перечень, а не вместилище пар: имени у номера
@@ -662,14 +675,6 @@ awh::codec::ini::value_t & awh::codec::ini::Value::operator [] (const size_t ind
 	 * Если номер за пределы вместилища выходит
 	 */
 	if(index >= this->_items.size()){
-		// Получаем предел роста вместилища по номеру
-		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
-		/**
-		 * Если рост вместилища предел превышает
-		 */
-		if((limit > 0) && ((index + 1) > limit))
-			// Выводим значение мусорное
-			return value_t::scrap();
 		/**
 		 * Если значение является вместилищем пар
 		 */

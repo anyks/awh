@@ -1886,6 +1886,28 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
  *
  */
 bool awh::codec::json::Document::load(const string & filename) noexcept {
+	/**
+	 * Если адрес читаемого файла не задан
+	 */
+	if(filename.empty()){
+		// Запоминаем код отказа открытия файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("JSON document failed: %s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, codec::json::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("JSON document failed: %s", log::flag_t::CRITICAL, codec::json::message(this->_error));
+		#endif
+		// Выводим отказ до изменения дерева и обращения к файлу
+		return false;
+	}
 	// Выполняем очистку документа
 	this->clear();
 	/**

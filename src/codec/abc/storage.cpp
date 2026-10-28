@@ -78,10 +78,6 @@ bool awh::codec::abc::Storage::fail(const error_t error) noexcept {
  *
  */
 bool awh::codec::abc::Storage::open(const string & filename) noexcept {
-	// Выполняем закрытие ранее открытого файла контейнера
-	this->close();
-	// Выполняем сброс кода отказа работы с файлом
-	this->_error = error_t::NONE;
 	/**
 	 * Если открываемое файлом не является
 	 *
@@ -92,7 +88,7 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 	 *       файлом ни один из них не зовётся
 	 *
 	 */
-	if(::__awh_fs__.type(filename) != fs_t::type_t::FILE){
+	if(filename.empty() || (::__awh_fs__.type(filename) != fs_t::type_t::FILE)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -111,6 +107,10 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 		// Выводим признак неудачно открытого файла
 		return false;
 	}
+	// Выполняем закрытие ранее открытого файла после проверки нового адреса
+	this->close();
+	// Выполняем сброс кода отказа работы с файлом
+	this->_error = error_t::NONE;
 	/**
 	 * Выполняем заведение объектов файла контейнера
 	 *
@@ -138,10 +138,6 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
  *
  */
 bool awh::codec::abc::Storage::create(const string & filename) noexcept {
-	// Выполняем закрытие ранее открытого файла контейнера
-	this->close();
-	// Выполняем сброс кода отказа работы с файлом
-	this->_error = error_t::NONE;
 	/**
 	 * Если завести файл контейнера пустым не удалось
 	 *
@@ -151,7 +147,7 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	 *       отказ до первой записи: заведение описателя у файловой системы ленивое
 	 *
 	 */
-	if(!::__awh_fs__.truncate(filename)){
+	if(filename.empty() || !::__awh_fs__.truncate(filename)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -170,12 +166,16 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 		// Выводим признак неудачно заведённого файла
 		return false;
 	}
+	// Выполняем закрытие ранее открытого файла после заведения нового
+	this->close();
 	// Выполняем сброс полной длины контейнера
 	this->_length = 0;
 	// Отмечаем хранилище привязанным к файлу контейнера
 	this->_opened = true;
 	// Выполняем запоминание названия файла контейнера
 	this->_filename = filename;
+	// Выполняем сброс кода отказа работы с файлом
+	this->_error = error_t::NONE;
 	/**
 	 * Выполняем заведение объектов файла контейнера
 	 *
@@ -576,6 +576,28 @@ bool awh::codec::abc::Storage::bind(fetcher_t & fetcher) noexcept {
  *
  */
 bool awh::codec::abc::Storage::store(const string & filename, const void * buffer, const size_t size) noexcept {
+	/**
+	 * Если адрес назначенного файла не задан
+	 */
+	if(filename.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNWRITABLE_SINK));
+		#endif
+		// Объявляем отказ до изменения привязки и заведения временного файла
+		this->fail(error_t::UNWRITABLE_SINK);
+		// Выводим признак неудачной записи
+		return false;
+	}
 	// Если буфер октетов собранного контейнера не существует
 	if((buffer == nullptr) && (size > 0)){
 		/**
@@ -737,6 +759,28 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
  *
  */
 bool awh::codec::abc::Storage::fetch(const string & filename, vector <uint8_t> & result, const uint64_t limit) noexcept {
+	/**
+	 * Если адрес читаемого файла не задан
+	 */
+	if(filename.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {filename, limit}, log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error_t::UNREADABLE_SOURCE));
+		#endif
+		// Объявляем отказ до изменения привязки и выходного буфера
+		this->fail(error_t::UNREADABLE_SOURCE);
+		// Выводим признак неудачного чтения
+		return false;
+	}
 	// Выполняем очистку вычитываемых октетов
 	result.clear();
 	/**

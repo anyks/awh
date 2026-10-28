@@ -598,6 +598,28 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		// Запоминаем ошибку входных данных
+		this->_error = error_t::INTERNAL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::xml::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(this->_error));
+		#endif
+		// Выводим отказ до изменения буферов и состояния приведения
+		return false;
+	}
 	// Получаем буфер очередного куска исходного текста
 	const char * data = reinterpret_cast <const char *> (buffer);
 	/**

@@ -1778,12 +1778,6 @@ const awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size
  */
 awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size_t index) noexcept {
 	/**
-	 * Если узел ещё не определён
-	 */
-	if(this->_kind == kind_t::NONE)
-		// Устанавливаем вид узла разметкой
-		this->_kind = kind_t::ELEMENT;
-	/**
 	 * Если вложенный узел с таким номером уже заведён
 	 */
 	if(index < this->_items.size()){
@@ -1805,7 +1799,7 @@ awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size_t ind
 	/**
 	 * Если узел вложенных узлов иметь не может
 	 */
-	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT))
+	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT) && (this->_kind != kind_t::NONE))
 		// Выводим значение мусорное
 		return value_t::scrap();
 	/**
@@ -1822,10 +1816,16 @@ awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size_t ind
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
-		if((limit > 0) && (index >= limit))
+		if((index >= this->_items.max_size()) || ((limit > 0) && (index >= limit)))
 			// Выводим значение мусорное
 			return value_t::scrap();
 	}
+	/**
+	 * Если узел ещё не определён
+	 */
+	if(this->_kind == kind_t::NONE)
+		// Устанавливаем вид узла разметкой
+		this->_kind = kind_t::ELEMENT;
 	/**
 	 * Выполняем рост перечня вложенных узлов до затребованного номера
 	 */
@@ -3086,8 +3086,10 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 *
 	 */
 	if(type != fs_t::type_t::FILE){
-		// Выполняем очистку прежнего содержимого значения
-		this->clear();
+		// Если адрес задан, прежнее значение снимается по общему договору отказа
+		if(!filename.empty())
+			// Выполняем очистку прежнего содержимого значения
+			this->clear();
 		/**
 		 * Запоминаем код отказа открытия файла разметки
 		 *
@@ -4415,23 +4417,25 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::valu
 		if(child == INVALID_NODE)
 			// Выводим признак недействительности заведённого узла
 			return INVALID_NODE;
+		// Заново получаем родителя после возможного перераспределения арены
+		auto & owner = this->_nodes.at(result);
 		/**
 		 * Если вложенное содержимое у узла первое
 		 */
-		if(index.first == INVALID_NODE)
+		if(owner.first == INVALID_NODE)
 			// Устанавливаем индекс первого вложенного узла
-			index.first = child;
+			owner.first = child;
 		/**
 		 * Если вложенное содержимое у узла не первое
 		 */
 		else {
 			// Устанавливаем индекс следующего узла того же уровня у предыдущего соседа
-			this->_nodes.at(index.last).next = child;
+			this->_nodes.at(owner.last).next = child;
 			// Устанавливаем индекс предыдущего узла того же уровня у заведённого узла
-			this->_nodes.at(child).prev = index.last;
+			this->_nodes.at(child).prev = owner.last;
 		}
 		// Устанавливаем индекс последнего вложенного узла
-		index.last = child;
+		owner.last = child;
 	}
 	// Выводим индекс заведённого узла дерева разметки
 	return result;

@@ -1358,6 +1358,28 @@ bool awh::codec::ini::Decoder::convert(const void * buffer, const size_t size, c
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если объявленные байты не обеспечены входным буфером
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		// Запоминаем ошибку входных данных
+		this->_error = error_t::INTERNAL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("INI decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end}, log::flag_t::WARNING, codec::ini::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("INI decoding failed: %s", log::flag_t::WARNING, codec::ini::message(this->_error));
+		#endif
+		// Выводим отказ до изменения буферов и состояния приведения
+		return false;
+	}
 	// Запоминаем признак того, что приведение текста началось
 	this->_started = true;
 	/**

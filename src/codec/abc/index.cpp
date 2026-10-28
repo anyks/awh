@@ -323,8 +323,6 @@ void awh::codec::abc::Fetcher::crypto(const crypto_t * value) noexcept {
  *
  */
 bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noexcept {
-	// Выполняем сброс состояния выборки записей
-	this->reset();
 	/**
 	 * Если работа чтения октетов контейнера нам не передана
 	 */
@@ -347,6 +345,8 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
+	// Выполняем сброс состояния выборки после проверки источника
+	this->reset();
 	// Выполняем установку работы чтения октетов контейнера
 	this->_source = ::move(source);
 	// Буфер вычитанных октетов заголовка опознания контейнера

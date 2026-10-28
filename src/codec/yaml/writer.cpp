@@ -23,16 +23,20 @@
  * Стандартные заголовочные файлы
  */
 #include <cmath>
-#include <cstring>
 #include <cstdio>
+#include <cstring>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/log.hpp>
+#include <num/lexical/lexical.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <num/lexical/lexical.hpp>
 #include <codec/yaml/writer.hpp>
 #include <codec/yaml/encoding.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -50,10 +54,34 @@ using namespace awh::codec::yaml;
  */
 namespace {
 	/**
-	 * Начало меток типов, описанием заданных
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
 	 *
 	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_YAML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_YAML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * Начало меток типов, описанием заданных
+	 */
 	static constexpr string_view STANDARD_TAG = "tag:yaml.org,2002:";
+
 	/**
 	 * @brief Функция проверки пересечения входного среза с выходным буфером
 	 *
@@ -62,7 +90,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	bool overlaps(const string & buffer, const string_view text) noexcept {
+	static AWH_YAML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -78,7 +106,7 @@ namespace {
 	 * @details Черта конца есть принадлежность конца текста, а не хода записи: текст,
 	 *          дословно перенесённый, несёт её уже сам, и завершение, черту дописывающее,
 	 *          выдавало бы её вторым разом. Написание `...\n...\n` описанию противно -
-	 *          вторая черта закрывает документ пустой, текстом не заданный
+	 *          вторая черта закрывает документ пустой, текстом не заданный.
 	 *
 	 * @note Найдено замером: набор проверок дословного переноса с чертою конца не нёс, и
 	 *       удвоение держалось при зелёном наборе
@@ -87,7 +115,7 @@ namespace {
 	 * @return     признак того, что текст чертою конца закрыт
 	 *
 	 */
-	static bool finalized(const string & text) noexcept {
+	static AWH_YAML_INLINE bool finalized(const string & text) noexcept {
 		// Смещение конца просматриваемой части текста
 		size_t bottom = text.length();
 		/**
@@ -96,6 +124,7 @@ namespace {
 		 * @note Строки пустые да примечания черте не мешают: стоя за нею, они её не
 		 *       отменяют, и значимой считается первая непустая строка снизу. Ход тот же,
 		 *       каким дерево отыскивает конец содержимого документа
+		 *
 		 */
 		while(bottom > 0){
 			/**
@@ -127,6 +156,7 @@ namespace {
 			 *       не от места за отступом её, - иначе строка пустая откатывала бы
 			 *       просмотр на то же место, и перебор стоял бы вечно. Найдено зависанием
 			 *       набора проверок
+			 *
 			 */
 			const size_t heading = start;
 			/**
@@ -138,6 +168,7 @@ namespace {
 			 *       выдавало бы черту вторым разом. Нашёл это ворошитель на тексте
 			 *       `\t...`, и правило это писано в трёх местах: у чтения, у дерева и
 			 *       здесь - расходиться им нельзя
+			 *
 			 */
 			while((start < finish) && ((text.at(start) == ' ') || (text.at(start) == '\t')))
 				// Выполняем переход к следующему знаку строки
@@ -148,6 +179,7 @@ namespace {
 			 * @note Примечание черте не мешает: написание `... # хвост` есть черта конца
 			 *       наравне с голою. Знак `#` примечание открывает лишь при пробельном
 			 *       знаке перед ним либо в начале строки - иначе он знак содержимого
+			 *
 			 */
 			for(size_t i = start; i < finish; i++){
 				/**
@@ -165,6 +197,7 @@ namespace {
 			 *
 			 * @note Пробельные знаки черте не мешают: черта, за которою стоит пробел либо
 			 *       табуляция, чертою быть не перестаёт - чтение принимает её ровно так же
+			 *
 			 */
 			while((finish > start) && ((text.at(finish - 1) == ' ') || (text.at(finish - 1) == '\t')))
 				// Выполняем переход к знаку выше
@@ -183,13 +216,13 @@ namespace {
 			 *
 			 * @note Черта стоит с начала строки и ничего, кроме себя, не несёт: отступ ей
 			 *       описанием не отведён вовсе
+			 *
 			 */
 			return (((finish - start) == 3) && (text.compare(start, 3, "...") == 0));
 		}
 		// Выводим признак того, что текст чертою конца не закрыт
 		return false;
 	}
-
 	/**
 	 * @brief Функция записи метки типа долевыми записями знаков
 	 *
@@ -197,7 +230,7 @@ namespace {
 	 *          принадлежащие, записываются долею с точкою кода: восклицательный знак в
 	 *          записи метки есть `%21`. Чтение раскрытие это снимает, и запись обязана
 	 *          вернуть его - иначе метка, прочитанная и записанная обратно, описанию
-	 *          противна и потребителю стороннему негодна
+	 *          противна и потребителю стороннему негодна.
 	 *
 	 * @note Запятая да скобки записи дословной принадлежат, а сокращению - нет: описание
 	 *       правилом `ns-tag-char` изымает их у сокращения, дабы поточное построение
@@ -208,7 +241,7 @@ namespace {
 	 * @param result   строка, куда дописывается запись метки типа
 	 *
 	 */
-	static void escaped(const string & name, const bool verbatim, string & result) noexcept {
+	static AWH_YAML_INLINE void escaped(const string & name, const bool verbatim, string & result) noexcept {
 		// Разряды долевой записи знака
 		static const char * const DIGITS = "0123456789ABCDEF";
 		/**
@@ -220,8 +253,10 @@ namespace {
 			/**
 			 * Если знак есть буква либо цифра
 			 */
-			bool allowed = (((letter >= 'a') && (letter <= 'z')) ||
-			 ((letter >= 'A') && (letter <= 'Z')) || ((letter >= '0') && (letter <= '9')));
+			bool allowed = (
+				((letter >= 'a') && (letter <= 'z')) ||
+				((letter >= 'A') && (letter <= 'Z')) || ((letter >= '0') && (letter <= '9'))
+			);
 			/**
 			 * Если знак буквою и цифрою не является
 			 */
@@ -249,6 +284,7 @@ namespace {
 			 *
 			 * @note Доля сама дозволена описанием, а записывается всё же долею: иначе
 			 *       чтение сняло бы её вместе с двумя знаками за нею
+			 *
 			 */
 			if(allowed)
 				// Выполняем присоединение знака к записи метки типа
@@ -266,7 +302,6 @@ namespace {
 			}
 		}
 	}
-
 	/**
 	 * @brief Функция записи знака Юникода отменяющей последовательностью
 	 *
@@ -274,11 +309,11 @@ namespace {
 	 * @param result строка, куда дописывается последовательность
 	 *
 	 */
-	static void escaped(const uint32_t code, string & result) noexcept {
-		// Разряды шестнадцатеричной записи знака
-		static const char * const DIGITS = "0123456789ABCDEF";
+	static AWH_YAML_INLINE void escaped(const uint32_t code, string & result) noexcept {
 		// Количество разрядов записи знака
 		size_t digits = 2;
+		// Разряды шестнадцатеричной записи знака
+		static const char * const DIGITS = "0123456789ABCDEF";
 		/**
 		 * Если знак в два байта не укладывается
 		 *
@@ -309,6 +344,7 @@ namespace {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(code > 0xFFFF){
 			// Выполняем добавление начала отменяющей последовательности
@@ -332,33 +368,8 @@ namespace {
 			// Выполняем добавление очередного разряда записи знака
 			result.push_back(DIGITS[(code >> ((i - 1) * 4)) & 0x0F]);
 	}
-}
+};
 
-/**
- * @brief Конструктор
- *
- */
-awh::codec::yaml::Writer::Settings::Settings() noexcept :
- schema(schema_t::CORE), layout(layout_t::BLOCK), quoting(style_t::PLAIN), indent(2),
- sequenceIndent(false), explicitStart(false), explicitEnd(false), version(false),
- malformed(malformed_t::REPLACE) {}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::yaml::Writer::Writer() noexcept :
- _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
-/**
- * @brief Конструктор
- *
- * @param settings настройки записи текста
- *
- */
-awh::codec::yaml::Writer::Writer(const settings_t & settings) noexcept :
- _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
-	// Выполняем установку настроек записи текста
-	this->settings(settings);
-}
 /**
  * @brief Метод получения настроек записи текста
  *
@@ -373,9 +384,10 @@ const awh::codec::yaml::Writer::settings_t & awh::codec::yaml::Writer::settings(
  * @brief Метод установки настроек записи текста
  *
  * @param settings устанавливаемые настройки записи
+ * @return         признак принятия настроек записи
  *
  */
-void awh::codec::yaml::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::yaml::Writer::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки записи текста
 	this->_settings = settings;
 	/**
@@ -384,46 +396,60 @@ void awh::codec::yaml::Writer::settings(const settings_t & settings) noexcept {
 	 * @note Знак горизонтальной подачи описанием в отступе запрещён прямо, и нулевая
 	 *       ширина отступом быть не может: записанное такою шириною не прочлось бы
 	 *       никаким разбором, ибо вложенность выражается там одним отступом
+	 *
 	 */
 	if(this->_settings.indent == 0)
 		// Устанавливаем ширину отступа по умолчанию
 		this->_settings.indent = 2;
+	// Выводим признак принятия настроек
+	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Writer::Settings::Settings() noexcept :
+ version(false), explicitEnd(false),
+ explicitStart(false), sequenceIndent(false),
+ indent(2), schema(schema_t::CORE),
+ layout(layout_t::BLOCK), quoting(style_t::PLAIN),
+ malformed(malformed_t::REPLACE) {}
+
 /**
  * @brief Метод сброса состояния записи текста
  *
  */
-void awh::codec::yaml::Writer::clear() noexcept {
-	// Выполняем сброс собранного текста
-	this->_result.clear();
+void awh::codec::yaml::Writer::reset() noexcept {
+	// Выполняем сброс количества изъятых байтов
+	this->_taken = 0;
+	// Выполняем сброс отступа, следующему вместилищу назначенного
+	this->_margin = 0;
+	// Выполняем сброс признака записанного имени пары
+	this->_keyed = false;
+	// Выполняем сброс признака открытого документа
+	this->_opened = false;
+	// Выполняем сброс признака открытой строки
+	this->_hanging = false;
 	// Выполняем сброс признака отказа по негодной кодировке
 	this->_refused = false;
-	// Выполняем сброс кода ошибки последней операции записи
-	this->_error = error_t::NONE;
+	// Выполняем сброс признака записи содержимого блочного значения
+	this->_verbatim = false;
+	// Выполняем сброс признака дословного переноса открытой строки
+	this->_transferred = false;
+	// Выполняем сброс метки типа, узла своего ожидающей
+	this->_tag.clear();
+	// Выполняем сброс метки типа, имени пары предпосылаемой
+	this->_keyTag.clear();
+	// Выполняем сброс собранного текста
+	this->_result.clear();
 	// Выполняем сброс стопы открытых вместилищ
 	this->_levels.clear();
 	// Выполняем сброс имени метки, узла своего ожидающей
 	this->_anchor.clear();
 	// Выполняем сброс имени метки, имени пары предпосылаемой
 	this->_keyAnchor.clear();
-	// Выполняем сброс метки типа, имени пары предпосылаемой
-	this->_keyTag.clear();
-	// Выполняем сброс метки типа, узла своего ожидающей
-	this->_tag.clear();
-	// Выполняем сброс отступа, следующему вместилищу назначенного
-	this->_margin = 0;
-	// Выполняем сброс признака записанного имени пары
-	this->_keyed = false;
-	// Выполняем сброс признака открытой строки
-	this->_hanging = false;
-	// Выполняем сброс признака записи содержимого блочного значения
-	this->_verbatim = false;
-	// Выполняем сброс признака дословного переноса открытой строки
-	this->_transferred = false;
-	// Выполняем сброс признака открытого документа
-	this->_opened = false;
-	// Выполняем сброс количества изъятых байтов
-	this->_taken = 0;
+	// Выполняем сброс кода ошибки последней операции записи
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод получения собранного текста
@@ -457,43 +483,44 @@ string awh::codec::yaml::Writer::take() noexcept {
 	 *
 	 * @details Текст, оборванный отказом на половине, негоден вовсе: разобрать его
 	 *          нельзя, а отличить от целого глазом трудно. Изъятие отдаёт пустоту и
-	 *          сбрасывает собранное
+	 *          сбрасывает собранное.
 	 *
 	 * @details Судится ВСЯКИЙ отказ, а не одна негодная кодировка: отказ у записи
 	 *          липкий, и запись, его получившая, отвергнутой части в текст уже не
 	 *          положит. Прежде судился один лишь признак негодной кодировки, и
 	 *          превышение предела вложенности выдавало текст без отвергнутой части -
-	 *          обрубок в 1024 уровня, от целого глазом неотличимый
+	 *          обрубок в 1024 уровня, от целого глазом неотличимый.
 	 *
 	 * @note Правило это решено одинаковым у всех кодеков: TOML тем же условием судит
 	 *       рваность вместе с готовностью, XML - код отказа
+	 *
 	 */
 	if(this->_refused || (this->_error != error_t::NONE)){
 		/**
 		 * Запоминаем код отказа, сборку пережить обязанный
 		 *
 		 * @details Сброс сборки чистит и код отказа, и оттого причина ТЕРЯЛАСЬ ровно там,
-		 * где потребитель её и спрашивает: он забирал текст, получал пустоту и, спросив
-		 * `error()`, видел `NONE` - отсутствие отказа при отказе. Замерено правилом
-		 * `malformed_t::REFUSE`: до изъятия код 4, после изъятия нуль
+		 *          где потребитель её и спрашивает: он забирал текст, получал пустоту и, спросив
+		 *          `error()`, видел `NONE` - отсутствие отказа при отказе. Замерено правилом
+		 *          `malformed_t::REFUSE`: до изъятия код 4, после изъятия нуль.
 		 *
 		 * @note Сброс сборки нужен: полусобранный текст разобрать нельзя, а отличить его
 		 *       от целого глазом трудно. Терять при том причину незачем - она и есть
 		 *       единственное, что у потребителя остаётся
+		 *
 		 */
-		const error_t reason = ((this->_error != error_t::NONE) ?
-		 this->_error : error_t::INVALID_ENCODING);
+		const error_t reason = ((this->_error != error_t::NONE) ? this->_error : error_t::INVALID_ENCODING);
 		// Выполняем сброс собранного текста
-		this->clear();
+		this->reset();
 		// Запоминаем код отказа записи, сброс сборки пережить обязанный
 		this->_error = reason;
 		// Выводим пустой текст
-		return string();
+		return "";
 	}
 	// Выполняем учёт изъятых из сборщика байтов
 	this->_taken += static_cast <uint64_t> (this->_result.size());
 	// Изымаемый из сборщика текст
-	string result;
+	string result = "";
 	// Выполняем перенос собранного текста изымаемому
 	result.swap(this->_result);
 	// Выводим изъятый из сборщика текст
@@ -542,8 +569,9 @@ uint32_t awh::codec::yaml::Writer::indent() const noexcept {
 /**
  * @brief Метод дословной записи готовых строк текста
  *
- * @param text переносимые строки текста
- * @return     признак успешного переноса строк
+ * @param text   переносимые строки текста
+ * @param indent отступ, на каком строки стояли в исходном тексте
+ * @return       признак успешного переноса строк
  *
  */
 bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t indent) noexcept {
@@ -557,6 +585,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -572,6 +601,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 	 *
 	 * @note Дословные строки начинаются с новой строки, а значение пары обязано лечь за
 	 *       двоеточием её: перенос лёг бы не на своё место
+	 *
 	 */
 	if(this->_keyed)
 		// Выводим признак неудачного переноса строк
@@ -587,6 +617,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 		 *
 		 * @note Внутри скобок отступ не значит ничего, и строки блочного написания там
 		 *       прочлись бы вкривь
+		 *
 		 */
 		if(level.layout == layout_t::FLOW)
 			// Выводим признак неудачного переноса строк
@@ -596,6 +627,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 		 *
 		 * @note Сжатое написание кладёт первую запись в ту же строку, а дословные строки
 		 *       начинаются с новой: написание это переносу негодно
+		 *
 		 */
 		if(level.empty && level.attached)
 			// Выводим признак неудачного переноса строк
@@ -615,12 +647,12 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 		 * Выполняем перебор всех переносимых строк
 		 */
 		while(offset < text.size()){
+			// Количество пробельных знаков отступа очередной строки
+			size_t spaces = 0;
 			// Разыскиваем знак конца очередной переносимой строки
 			const size_t position = text.find('\n', offset);
 			// Получаем длину очередной переносимой строки
 			const size_t length = (((position == string_view::npos) ? text.size() : position) - offset);
-			// Количество пробельных знаков отступа очередной строки
-			size_t spaces = 0;
 			/**
 			 * Выполняем счёт пробельных знаков отступа очередной строки
 			 */
@@ -633,6 +665,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 			 * @note Снять пришлось бы содержимое строки, а не отступ её: перенос такой лёг бы
 			 *       вкривь, и отказ отсылает содержимое сборке заново. Пустая строка отступа
 			 *       не несёт вовсе и помехой не является
+			 *
 			 */
 			if((spaces < shift) && (spaces < length))
 				// Выводим признак неудачного переноса строк
@@ -660,6 +693,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 	 *
 	 * @note Байты переносятся тогда нетронутыми вовсе, и перезапись выходит побайтово той
 	 *       же, какою текст читался
+	 *
 	 */
 	if(target == indent)
 		// Выполняем перенос строк в собираемый текст
@@ -683,6 +717,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 			 *
 			 * @note Отступ пустой строке не пишется: пробелы в ней стали бы содержимым
 			 *       блочного значения, буде строка та внутри него стоит
+			 *
 			 */
 			if(length > 0){
 				/**
@@ -692,9 +727,11 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 					// Выполняем добавление отступа, переносом прибавленного
 					this->_result.append(static_cast <size_t> (target - indent), ' ');
 				// Выполняем перенос строки без отступа, переносом снятого
-				this->_result.append(text.substr((offset + ((target < indent) ?
-				 static_cast <size_t> (indent - target) : 0)),
-				 (length - ((target < indent) ? static_cast <size_t> (indent - target) : 0))));
+				this->_result.append(
+					text.substr((offset + ((target < indent) ?
+					static_cast <size_t> (indent - target) : 0)),
+					(length - ((target < indent) ? static_cast <size_t> (indent - target) : 0)))
+				);
 			}
 			/**
 			 * Если знака конца строки в переносимом больше нет
@@ -716,6 +753,7 @@ bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t i
 	 *       обходится. Дословный перенос отдаёт байты исходные, и строка, возвратом
 	 *       закрытая, приходила сюда открытой - следующая запись ложилась к ней вплотную,
 	 *       и текст `a: 1\rb: 2` перезаписывался как `a: 1b: 2`
+	 *
 	 */
 	if((this->_result.back() != '\n') && (this->_result.back() != '\r')){
 		// Запоминаем признак открытой строки
@@ -746,6 +784,7 @@ void awh::codec::yaml::Writer::line() noexcept {
 			 *
 			 * @note Пробелы эти содержимым не являются: строка `- ` есть запись перечня с
 			 *       пустым значением, и пробел в конце её обратным чтением не читается вовсе
+			 *
 			 */
 			while((position > 0) && (this->_result[position - 1] == ' '))
 				// Выполняем переход к предыдущему знаку строки
@@ -753,10 +792,10 @@ void awh::codec::yaml::Writer::line() noexcept {
 			// Выполняем усечение закрываемой строки до записанного содержимого её
 			this->_result.erase(position);
 		}
-		// Выполняем закрытие открытой строки
-		this->_result.push_back('\n');
 		// Выполняем сброс признака открытой строки
 		this->_hanging = false;
+		// Выполняем закрытие открытой строки
+		this->_result.push_back('\n');
 	}
 	// Выполняем сброс признака дословного переноса открытой строки
 	this->_transferred = false;
@@ -784,6 +823,7 @@ void awh::codec::yaml::Writer::spaced() noexcept {
 		 *       перенос отдаёт байты исходные, и строка, возвратом закрытая, получала
 		 *       разделитель записей пробелом - запись следующая уходила отступом вглубь и
 		 *       становилась потомком соседа своего вместо сестры
+		 *
 		 */
 		case ' ':
 		case '\r':
@@ -793,6 +833,7 @@ void awh::codec::yaml::Writer::spaced() noexcept {
 		 *
 		 * @note Скобка сама разделителем и служит: пробел за нею вошёл бы в запись пустым
 		 *       местом, а первое значение построения от скобки отделять нечем
+		 *
 		 */
 		case '[':
 		case '{':
@@ -812,8 +853,6 @@ void awh::codec::yaml::Writer::spaced() noexcept {
 bool awh::codec::yaml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	// Выполняем вывод сообщения об отказе записи текста
-	awh::log::print("YAML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error));
 	// Выводим признак отказа для выхода из записи
 	return false;
 }
@@ -840,6 +879,7 @@ void awh::codec::yaml::Writer::properties() noexcept {
 		 * @note Свойства строку открывают наравне со значением: узел, корнем документа
 		 *       стоящий, вместилища над собою не имеет, и без признака этого черта первой
 		 *       записи его липла к метке вплотную. Нашёл это ворошитель сличением перезаписи
+		 *
 		 */
 		this->_hanging = true;
 	}
@@ -860,10 +900,6 @@ void awh::codec::yaml::Writer::properties() noexcept {
 /**
  * @brief Метод постановки записи на своё место в собираемом тексте
  *
- * @return признак допустимости записи в этом месте
- *
- */
-/**
  * @warning Связка эта отказа НЕ ВЫДАЁТ вовсе: единственный выход её - согласие, и
  *          оттого недостижимы все шесть строк распространения отказа у зовущих её с
  *          проверкою «if(!enter(...))». Строки эти пересечение прогонов числило
@@ -880,6 +916,9 @@ void awh::codec::yaml::Writer::properties() noexcept {
  *
  * @note Обвязка отказа у зовущих оставлена намеренно: связка ведёт запись, и отказать она
  *       может впредь - снятие обвязки пришлось бы возвращать по частям
+ *
+ * @return признак допустимости записи в этом месте
+ *
  */
 bool awh::codec::yaml::Writer::enter() noexcept {
 	/**
@@ -894,12 +933,12 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 	 *       постановка записи на место есть узел, где сходятся открытие документа,
 	 *       незакрытое имя пары и открытая строка. Заведись у неё случай негодный -
 	 *       записи пошли бы не на своё место молча, а так они получат отказ с причиной
-	 */
-	/**
+	 *
 	 * Если документ ещё не открыт
 	 *
 	 * @note Черта начала пишется прежде первой же записи, а не в конструкторе: сборщик,
 	 *       ничего не записавший, обязан отдавать текст пустой, а не одну черту
+	 *
 	 */
 	if(!this->_opened){
 		// Запоминаем признак открытого документа
@@ -915,6 +954,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 		 *
 		 * @note Документ с директивами обязан открыться чертою всегда: без неё неведомо,
 		 *       где кончаются директивы и начинается содержимое
+		 *
 		 */
 		if(this->_settings.version || this->_settings.explicitStart)
 			// Выполняем добавление черты начала документа
@@ -925,6 +965,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 	 *
 	 * @note Значение стоит в той же строке, что и имя, и места себе не ищет: место его
 	 *       уже занято двоеточием, за которым оно и пишется
+	 *
 	 */
 	if(this->_keyed){
 		// Выполняем сброс признака записанного имени пары
@@ -940,11 +981,14 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 		 * @note Без того запись `имя:` с примечанием за нею выдавала значение отдельной
 		 *       строкой на отступе имени, и обратное чтение отвергало текст отказом.
 		 *       Нашёл это ворошитель правкой дерева
+		 *
 		 */
 		if(!this->_hanging && !this->_levels.empty())
 			// Выполняем добавление отступа значения пары, имени её глубже стоящего
-			this->_result.append((this->_levels.back().indent +
-			 ((this->_settings.indent > 0) ? this->_settings.indent : 1)), ' ');
+			this->_result.append(
+				(this->_levels.back().indent +
+				((this->_settings.indent > 0) ? this->_settings.indent : 1)), ' '
+			);
 		// Выводим признак допустимости записи в этом месте
 		return true;
 	}
@@ -953,6 +997,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 	 *
 	 * @note Значение вне вместилищ есть содержимое документа целиком, и стоит оно с
 	 *       начала строки
+	 *
 	 */
 	if(this->_levels.empty()){
 		// Выполняем закрытие открытой строки
@@ -982,6 +1027,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 	 *
 	 * @note Вместилище, значением перечня стоящее, открывается сразу за чертой значения,
 	 *       и первая запись его стоит в той же строке
+	 *
 	 */
 	if(level.empty && level.attached){
 		// Запоминаем признак наполнения вместилища
@@ -992,7 +1038,8 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 		 * @details Черта нужна и здесь: сжатое написание перечня внутри перечня есть
 		 *          `- - значение`, а не `- значение`. Без неё первая запись вложенного
 		 *          перечня становилась значением записи объемлющего, а прочие записи его
-		 *          строкою ниже читались отказом. Нашёл это ворошитель на перезаписи
+		 *          строкою ниже читались отказом. Нашёл это ворошитель на перезаписи.
+		 *
 		 */
 		if(level.kind == kind_t::SEQUENCE){
 			// Выполняем добавление черты значения перечня
@@ -1031,7 +1078,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
  */
 bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) noexcept {
 	// Приведённая запись, срезом выданная
-	string_view record;
+	string_view record = "";
 	/**
 	 * Если привести запись не удалось
 	 */
@@ -1044,6 +1091,7 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
 	 * @note Перенос здесь обязателен: договор этого вида велит выдать запись строкою, а
 	 *       ядро приведения выдало срез исходной. Зовущие, коим срез годится, зовут ядро
 	 *       напрямую и переноса этого избегают
+	 *
 	 */
 	if(record.data() != result.data())
 		// Выполняем перенос приведённой записи
@@ -1056,7 +1104,7 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
  *
  * @details Выдаётся СРЕЗ, а не строка: запись, негодных последовательностей не несущая,
  *          изменения не требует вовсе, и переносить её куда-либо незачем. Срез тогда
- *          указывает на исходную запись, а накопитель остаётся пустым
+ *          указывает на исходную запись, а накопитель остаётся пустым.
  *
  * @note Перенос этот стоил выделения памяти на каждое записываемое значение. Наружу он
  *       торчал у libstdc++, где короткий запас строки вмещает 15 октетов против 22 у
@@ -1079,6 +1127,7 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 	 *
 	 * @note Правило это оставлено потребителю, кому кодировка безразлична вовсе: разбор
 	 *       такой записи отвечает отказом, и потребитель, правило выбравший, о том знает
+	 *
 	 */
 	if(this->_settings.malformed == malformed_t::PASS){
 		// Выдаём срез исходной записи
@@ -1095,6 +1144,7 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 	 *
 	 * @note Разбор ведётся тем же телом, каким его ведёт чтение: второе такое тело
 	 *       разошлось бы с первым, и запись выдавала бы то, чего чтение не принимает
+	 *
 	 */
 	while(position < text.size()){
 		// Разобранный знак Юникода
@@ -1113,6 +1163,7 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 			 * @note Годная запись не копируется вовсе до первой негодной последовательности:
 			 *       записи такие составляют подавляющее большинство, и лишний обход их
 			 *       лёг бы платою на всякую запись ради редкого случая
+			 *
 			 */
 			if(malformed)
 				// Выполняем перенос годной последовательности
@@ -1127,6 +1178,7 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 		 *
 		 * @note Отвергается она **ничего не записав**: отказ посреди записи оставил бы в
 		 *       тексте имя поля без значения, а это хуже негодного байта
+		 *
 		 */
 		if(this->_settings.malformed == malformed_t::REFUSE){
 			/**
@@ -1134,24 +1186,39 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 			 *
 			 * @note Без того изъятие отдало бы текст, оборванный на половине: разобрать его
 			 *       нельзя, а отличить от целого глазом трудно
+			 *
 			 */
 			this->_refused = true;
 			/**
 			 * Запоминаем код отказа записи негодной кодировкою
 			 *
 			 * @details Отказ этот прежде был НЕМ: запись отвечала ложью, а кода не ставила,
-			 * и потребитель, спросивший причину, получал `NONE` - отсутствие отказа при
-			 * отказе. Замерено подачею одинокого продолжающего октета `0x80` при правиле
-			 * `malformed_t::REFUSE`: отказ есть, код нуль
+			 *          и потребитель, спросивший причину, получал `NONE` - отсутствие отказа при
+			 *          отказе. Замерено подачею одинокого продолжающего октета `0x80` при правиле
+			 *          `malformed_t::REFUSE`: отказ есть, код нуль.
 			 *
 			 * @note Код тот же, каким отвечают писатели INI и TOML на ту же подачу при том же
 			 *       правиле. Прежде у них отказ был БЕЗУСЛОВЕН, и запись здесь звала расхождение
 			 *       предписанным устройством - довод тот был ложен: у тех кодеков стояло
 			 *       обратное правило с обратным доводом. Настройка заведена у обоих 08.09.2026
 			 *       тем же составом и умолчанием
+			 *
 			 */
 			this->_error = error_t::INVALID_ENCODING;
-			// Выводим признак непригодности записи
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {text, result, record}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
@@ -1171,12 +1238,10 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 		 * @note Длина здесь есть наибольшая часть последовательности, разбором отмеренная,
 		 *       и знак замены положен на неё один. Переход при том обязан двинуться хотя бы
 		 *       на байт: длина нулевая остановила бы обход записи навсегда
+		 *
 		 */
 		position += ((length > 0) ? length : 1);
 	}
-	/**
-	 * Если запись негодных последовательностей не несла вовсе
-	 */
 	// Выдаём срез приведённой записи либо исходной, коли менять было нечего
 	record = (malformed ? string_view(result) : string_view(text));
 	// Выводим признак пригодности записи
@@ -1198,16 +1263,17 @@ void awh::codec::yaml::Writer::quoted(const string_view text, const style_t styl
 		 * Если значение обносится одинарной оградою
 		 */
 		case static_cast <uint8_t> (style_t::SINGLE): {
-			// Выполняем добавление открывающей ограды значения
-			this->_result.push_back('\'');
 			// Начало отрезка знаков, удвоения не требующих
 			size_t start = 0;
+			// Выполняем добавление открывающей ограды значения
+			this->_result.push_back('\'');
 			/**
 			 * Выполняем перебор знаков записываемого значения
 			 *
 			 * @note Знаки переносятся отрезком целиком, а не поодиночке: внутри одинарной
 			 *       ограды удвоения требует одна лишь кавычка, и всё между кавычками есть
 			 *       готовый отрезок. Побайтовый перенос стоил здесь впятеро дороже
+			 *
 			 */
 			for(size_t i = 0; i < text.size(); i++){
 				/**
@@ -1232,10 +1298,10 @@ void awh::codec::yaml::Writer::quoted(const string_view text, const style_t styl
 		 * Если значение обносится двойной оградою
 		 */
 		case static_cast <uint8_t> (style_t::DOUBLE): {
-			// Выполняем добавление открывающей ограды значения
-			this->_result.push_back('"');
 			// Начало отрезка знаков, отмены не требующих
 			size_t start = 0;
+			// Выполняем добавление открывающей ограды значения
+			this->_result.push_back('"');
 			/**
 			 * Выполняем перебор знаков записываемого значения
 			 */
@@ -1278,6 +1344,7 @@ void awh::codec::yaml::Writer::quoted(const string_view text, const style_t styl
 				 * @note Путь этот выделен ради скорости: знаки US-ASCII составляют
 				 *       подавляющее большинство всякого текста, и разбор последовательности
 				 *       им не нужен вовсе. Отрезок при том не прерывается ни на знак
+				 *
 				 */
 				if((static_cast <uint8_t> (letter) >= 0x20) && (static_cast <uint8_t> (letter) < 0x7F)){
 					// Выполняем переход к следующему знаку значения
@@ -1308,6 +1375,7 @@ void awh::codec::yaml::Writer::quoted(const string_view text, const style_t styl
 				 * @note Годная последовательность в отрезок входит целиком: разрывать
 				 *       отрезок на всяком знаке кириллицы значило бы платить за каждый из
 				 *       них отдельным переносом
+				 *
 				 */
 				if(printable(code)){
 					// Выполняем переход к следующему знаку значения
@@ -1350,15 +1418,30 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 	 * @details Предел записи фиксирован значением «MAX_DEPTH» и ограничивает число
 	 *          одновременно открытых вместилищ. Предел чтения может быть изменён
 	 *          настройкой «maxDepth», поэтому допустимая глубина чтения и записи
-	 *          может различаться
+	 *          может различаться.
 	 *
 	 * @note Сборка текста по владеющему значению использует рекурсию и прекращает
 	 *       спуск при отказе открытия вместилища. Сборка по дереву документа
 	 *       использует явный стек и подчиняется тому же пределу записи
+	 *
 	 */
-	if(this->_levels.size() >= MAX_DEPTH)
-		// Выводим признак неудачного открытия вместилища
+	if(this->_levels.size() >= MAX_DEPTH){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {kind, layout}, log::flag_t::CRITICAL, codec::yaml::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::DEPTH_EXCEEDED);
+	}
 	// Получаем построение, каким записывается открываемое вместилище
 	layout_t nesting = layout;
 	/**
@@ -1370,6 +1453,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 		 *
 		 * @note Блочное построение внутри поточного описанием запрещено прямо: внутри
 		 *       скобок отступ не значит ничего, и выразить им вложенность нечем
+		 *
 		 */
 		if(this->_levels.back().layout == layout_t::FLOW)
 			// Запоминаем поточное построение открываемого вместилища
@@ -1394,9 +1478,12 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 		 *
 		 * @note Перечень, значением пары стоящий, описанием дозволено писать и на отступе
 		 *       имени её, и глубже: оба написания читаются одинаково
+		 *
 		 */
-		indent = (this->_levels.empty() ? 0 : (this->_levels.back().indent +
-		 (((kind == kind_t::SEQUENCE) && !this->_settings.sequenceIndent) ? 0 : this->_settings.indent)));
+		indent = (
+			this->_levels.empty() ? 0 : (this->_levels.back().indent +
+			(((kind == kind_t::SEQUENCE) && !this->_settings.sequenceIndent) ? 0 : this->_settings.indent))
+		);
 	/**
 	 * Если вместилище открывается значением объемлющего построения
 	 */
@@ -1422,10 +1509,25 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
-		if(!this->enter())
-			// Выводим признак неудачного открытия вместилища
+		if(!this->enter()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), static_cast <uint16_t> (layout)}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::UNEXPECTED_CONTENT);
+		}
 		/**
 		 * Если объемлющее вместилище является перечнем блочного построения
 		 */
@@ -1440,6 +1542,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 			 *       метка стала бы между чертою объемлющей записи и чертою вложенной, и
 			 *       прочтения такому написанию нет. Вместилище со свойствами оттого
 			 *       открывается строкою ниже
+			 *
 			 */
 			attached = (this->_anchor.empty() && this->_tag.empty());
 		/**
@@ -1455,10 +1558,10 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 	if(nesting == layout_t::FLOW){
 		// Выполняем добавление разделителя записей перед построением
 		this->spaced();
-		// Выполняем добавление открывающей скобки построения
-		this->_result.push_back((kind == kind_t::SEQUENCE) ? '[' : '{');
 		// Запоминаем признак открытой строки
 		this->_hanging = true;
+		// Выполняем добавление открывающей скобки построения
+		this->_result.push_back((kind == kind_t::SEQUENCE) ? '[' : '{');
 	}
 	/**
 	 * Если вместилищу назначен отступ, а построение его блочное
@@ -1467,8 +1570,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 	 *       написание отступ свой берёт от черты объемлющей записи, и назначенный не
 	 *       отменяет его: назначение служит переносу детей, а перенос сжатому написанию
 	 *       негоден и без того
-	 */
-	/**
+	 *
 	 * @note Отображению отступ назначается лишь тогда, когда он объемлющего глубже:
 	 *       отображение, легшее на отступ объемлющего, парою его же и прочтётся, а
 	 *       вложенность пропадёт вовсе. Написание `- \n null:\n  key_2: 1` тем и
@@ -1476,9 +1578,10 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 	 *       а не ребёнком. Перечню равенство дозволено: черта записи вложенность
 	 *       выражает и без отступа, и написание `key:\n- a` законно. Нашёл это
 	 *       ворошитель правкой дерева при удержании исходного текста
+	 *
 	 */
 	if((appointed > 0) && (nesting == layout_t::BLOCK) && !attached &&
-	   ((kind != kind_t::MAPPING) || this->_levels.empty() || (appointed > this->_levels.back().indent)))
+	  ((kind != kind_t::MAPPING) || this->_levels.empty() || (appointed > this->_levels.back().indent)))
 		// Запоминаем отступ, вместилищу назначенный
 		indent = appointed;
 	// Выполняем открытие вместилища записи
@@ -1499,6 +1602,7 @@ bool awh::codec::yaml::Writer::mapping() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1520,6 +1624,7 @@ bool awh::codec::yaml::Writer::mapping(const layout_t layout) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1540,6 +1645,7 @@ bool awh::codec::yaml::Writer::sequence() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1561,6 +1667,7 @@ bool awh::codec::yaml::Writer::sequence(const layout_t layout) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1581,6 +1688,7 @@ bool awh::codec::yaml::Writer::close() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -1588,9 +1696,23 @@ bool awh::codec::yaml::Writer::close() noexcept {
 	/**
 	 * Если ни одно вместилище не открыто
 	 */
-	if(this->_levels.empty())
-		// Выводим признак неудачного закрытия вместилища
+	if(this->_levels.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Получаем закрываемое вместилище записи
 	const level_t level = this->_levels.back();
 	// Выполняем снятие закрываемого вместилища со стопы
@@ -1613,6 +1735,7 @@ bool awh::codec::yaml::Writer::close() noexcept {
 		 * @note Строка закрывается лишь тогда, когда поточное построение стояло само по
 		 *       себе: построение внутри построения строки не закрывает, ибо за ним стоит
 		 *       ещё запятая либо скобка
+		 *
 		 */
 		if(this->_levels.empty() || (this->_levels.back().layout == layout_t::BLOCK))
 			// Выполняем закрытие открытой строки
@@ -1627,6 +1750,7 @@ bool awh::codec::yaml::Writer::close() noexcept {
 	 *          содержимое, а содержимого нет вовсе. Записью пустого вместилища остаются
 	 *          одни скобки, и записать их надлежит прежде закрытия строки - иначе они
 	 *          оказались бы строкою ниже, отдельно от имени своей пары
+	 *
 	 */
 	if(level.empty){
 		// Выполняем сброс признака записанного имени пары
@@ -1654,10 +1778,11 @@ bool awh::codec::yaml::Writer::close() noexcept {
 	return true;
 }
 /**
- * @brief Метод записи имени пары отображения
+ * @brief Метод записи имени пары отображения с меткою, ему предпосланной
  *
- * @param name записываемое имя пары отображения
- * @return     признак успешной записи имени пары
+ * @param name   записываемое имя пары отображения
+ * @param anchor метка, имени пары предпосылаемая
+ * @return       признак успешной записи имени пары
  *
  */
 bool awh::codec::yaml::Writer::key(const string & name, const string & anchor) noexcept {
@@ -1701,7 +1826,7 @@ bool awh::codec::yaml::Writer::key(const string & name, const string & anchor, c
 	 */
 	if(!tag.empty()){
 		// Накопленная прежде метка типа, узла своего ожидающая
-		string pending;
+		string pending = "";
 		/**
 		 * Выполняем изъятие метки типа, узла своего ожидающей
 		 *
@@ -1713,6 +1838,7 @@ bool awh::codec::yaml::Writer::key(const string & name, const string & anchor, c
 		 *          Замерено порчею: снятие изъятия не роняет ни одной проверки. Оставлено
 		 *          заставою - зовущий волен поставить метку значения и до имени пары, и
 		 *          тогда она пропала бы молча
+		 *
 		 */
 		pending.swap(this->_tag);
 		/**
@@ -1733,7 +1859,13 @@ bool awh::codec::yaml::Writer::key(const string & name, const string & anchor, c
 	return this->key(name);
 }
 /**
+ * @brief Метод записи имени пары отображения
+ *
  * Запись имени пары отображения
+ *
+ * @param name записываемое имя пары отображения
+ * @return     признак успешной записи имени пары
+ *
  */
 bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	/**
@@ -1742,12 +1874,13 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -1757,15 +1890,43 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	/**
 	 * Если ни одно вместилище не открыто либо открыт перечень значений
 	 */
-	if(this->_levels.empty() || (this->_levels.back().kind != kind_t::MAPPING))
-		// Выводим признак неудачной записи имени пары
+	if(this->_levels.empty() || (this->_levels.back().kind != kind_t::MAPPING)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	/**
 	 * Если имя пары записано, а значение её ещё нет
 	 */
-	if(this->_keyed)
-		// Выводим признак неудачной записи имени пары
+	if(this->_keyed){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	/**
 	 * Если поставить запись на своё место не удалось
 	 *
@@ -1787,10 +1948,25 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
-	if(!this->enter())
-		// Выводим признак неудачной записи имени пары
+	if(!this->enter()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем добавление разделителя записей перед именем пары
 	this->spaced();
 	/**
@@ -1800,6 +1976,7 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 *       а узлом пары является ЗНАЧЕНИЕ её - метка ушла бы за двоеточие и пометила бы
 	 *       не ту запись. Написание `&m a: b` обращалось тем в `a: &m b`, и ссылка вела
 	 *       к значению вместо имени
+	 *
 	 */
 	if(!this->_keyAnchor.empty()){
 		// Выполняем добавление знака метки
@@ -1820,6 +1997,7 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 *       узла своего, а узлом пары является ЗНАЧЕНИЕ её - метка ушла бы за двоеточие и
 	 *       пометила бы не ту запись. Написание `!!str a: b` обращалось тем в `a: !!str b`,
 	 *       и вид назначался значению вместо имени
+	 *
 	 */
 	if(!this->_keyTag.empty()){
 		// Выполняем добавление метки типа, имени пары предпосланной
@@ -1836,19 +2014,21 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 *
 	 * @note Имя пары ограды требует чаще значения: двоеточие с пробелом внутри его
 	 *       разделило бы пару надвое, а разбор прочёл бы половину имени именем
-	 */
-	/**
+	 *
 	 * @note Настройка ограды поднимается до двойной там, где выбранная содержимого не
 	 *       несёт: одинарная ограда переводу строки отмены не имеет вовсе, и значение,
 	 *       ею обнесённое, растекалось бы по строкам, а обратным чтением свёртывалось бы
 	 *       в пробел. Прежде тело quoting() звалось лишь при ограде PLAIN, отчего
 	 *       настройка SINGLE обращалась в потерю содержимого. Нашёл это ворошитель
 	 *       круговым ходом перезаписи иным оформлением
+	 *
 	 */
-	const style_t style = ((this->_settings.quoting == style_t::PLAIN) ?
-	 quoting(record, this->_settings.schema, true) :
-	 ((quoting(record, this->_settings.schema, true) == style_t::DOUBLE) ?
-	  style_t::DOUBLE : this->_settings.quoting));
+	const style_t style = (
+		(this->_settings.quoting == style_t::PLAIN) ?
+		quoting(record, this->_settings.schema, true) :
+		((quoting(record, this->_settings.schema, true) == style_t::DOUBLE) ?
+		style_t::DOUBLE : this->_settings.quoting)
+	);
 	// Выполняем запись имени пары выбранной оградою
 	this->quoted(record, style);
 	// Выполняем добавление разделителя имени пары
@@ -1874,12 +2054,13 @@ bool awh::codec::yaml::Writer::anchor(const string & name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -1889,9 +2070,23 @@ bool awh::codec::yaml::Writer::anchor(const string & name) noexcept {
 	/**
 	 * Если имя метки построено ошибочно
 	 */
-	if(record.empty() || !anchored(record))
-		// Выводим признак неудачной записи метки
+	if(record.empty() || !anchored(record)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_CHARACTER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_CHARACTER));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_CHARACTER);
+	}
 	// Запоминаем имя метки, узла своего ожидающей
 	this->_anchor.assign(record);
 	// Выводим признак успешной записи метки
@@ -1923,12 +2118,13 @@ bool awh::codec::yaml::Writer::tag(const string & name, const bool local) noexce
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -1938,9 +2134,23 @@ bool awh::codec::yaml::Writer::tag(const string & name, const bool local) noexce
 	/**
 	 * Если метка типа пуста
 	 */
-	if(record.empty())
-		// Выводим признак неудачной записи метки типа
+	if(record.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name, local}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_TAG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_TAG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_TAG);
+	}
 	/**
 	 * Если метка типа передана сокращением своим
 	 */
@@ -1954,8 +2164,7 @@ bool awh::codec::yaml::Writer::tag(const string & name, const bool local) noexce
 		 *       разворачивает в полный указатель прежде дерева. Оттого всё, что стоит
 		 *       за рукоятью, есть указатель, и знак `!` в нём - знак указателя, долею
 		 *       записываемый, а не ограда рукояти
-		 */
-		/**
+		 *
 		 * @warning Рукоять берётся в один знак у метки МЕСТНОЙ всегда: метка `!%21y` есть
 		 *          метка местная с указателем `!y`, а чтение долю раскрывает - и запись её
 		 *          приходит сюда видом `!!y`, от сокращения описания неотличимым. Взяв
@@ -1965,6 +2174,7 @@ bool awh::codec::yaml::Writer::tag(const string & name, const bool local) noexce
 		 *          и ветвь ниже обращает его обратно сама
 		 *
 		 * @note Нашёл это ворошитель круговым ходом снятого значения на метке `!%21y`
+		 *
 		 */
 		const size_t handle = ((!local && (record.length() > 1) && (record[1] == '!')) ? 2 : 1);
 		// Запоминаем рукоять сокращения метки типа
@@ -1982,6 +2192,7 @@ bool awh::codec::yaml::Writer::tag(const string & name, const bool local) noexce
 		 *          а её читающий разбирает уже рукоятью `!x!` с указателем `y` - метка
 		 *          выходит ИНАЯ, и молча. Нашёл ворошитель, как только в набор его
 		 *          добавлены были метки с долевыми записями знаков
+		 *
 		 */
 		escaped(record.substr(handle), false, this->_tag);
 		// Выводим признак успешной записи метки типа
@@ -2021,12 +2232,13 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -2036,18 +2248,47 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	/**
 	 * Если имя метки построено ошибочно
 	 */
-	if(record.empty() || !anchored(record))
-		// Выводим признак неудачной записи ссылки
+	if(record.empty() || !anchored(record)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_CHARACTER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_CHARACTER));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_CHARACTER);
+	}
 	/**
 	 * Если ссылке предпослано свойство узла
 	 *
 	 * @note Ссылка узлом не является - она указывает на узел, прежде объявленный, - и
 	 *       своих свойств иметь не вправе
+	 *
 	 */
-	if(!this->_anchor.empty() || !this->_tag.empty())
-		// Выводим признак неудачной записи ссылки
+	if(!this->_anchor.empty() || !this->_tag.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	/**
 	 * Если поставить запись на своё место не удалось
 	 *
@@ -2069,10 +2310,25 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
-	if(!this->enter())
-		// Выводим признак неудачной записи ссылки
+	if(!this->enter()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем добавление разделителя записей перед ссылкой
 	this->spaced();
 	// Выполняем добавление знака ссылки
@@ -2115,6 +2371,7 @@ bool awh::codec::yaml::Writer::raw(const string & value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2140,10 +2397,25 @@ bool awh::codec::yaml::Writer::raw(const string & value) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
-	if(!this->enter())
-		// Выводим признак неудачной записи содержимого
+	if(!this->enter()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем запись свойств узла, накопленных прежде него
 	this->properties();
 	/**
@@ -2165,6 +2437,7 @@ bool awh::codec::yaml::Writer::raw(const string & value) noexcept {
 		 *       документа стоящее, вместилища над собою не имеет, и ставить признак было
 		 *       некому - строка оставалась незакрытой, а черта следующего документа
 		 *       приписывалась к ней вплотную. Нашёл это ворошитель сличением перезаписи
+		 *
 		 */
 		this->_hanging = (!this->_result.empty() && (this->_result.back() != '\n') && (this->_result.back() != '\r'));
 		// Выполняем закрытие строки записанного содержимого
@@ -2187,6 +2460,7 @@ bool awh::codec::yaml::Writer::null() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2207,6 +2481,7 @@ bool awh::codec::yaml::Writer::blank() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2218,6 +2493,7 @@ bool awh::codec::yaml::Writer::blank() noexcept {
 	 *       второе пропало бы из текста молча. Нашёл это ворошитель круговым ходом
 	 *       перезаписи иным оформлением, а правило подтверждено эталоном 5KJE набора
 	 *       yaml-test-suite: висячая запятая значения не заводит
+	 *
 	 */
 	if(!this->_levels.empty() && (this->_levels.back().layout == layout_t::FLOW)){
 		/**
@@ -2229,7 +2505,8 @@ bool awh::codec::yaml::Writer::blank() noexcept {
 		 *          Пустота потому пишется здесь пустотою же: место её держит сама метка,
 		 *          и `{a: !}` есть пара со значением пустым, меткою помеченным. Запись эту
 		 *          разбор прежде отвергал - чинилось это вместе с настоящею правкой, ибо
-		 *          иначе записывающий давал бы текст, каким свой же разбор давится
+		 *          иначе записывающий давал бы текст, каким свой же разбор давится.
+		 *
 		 */
 		if(this->_anchor.empty() && this->_tag.empty()){
 			/**
@@ -2237,13 +2514,13 @@ bool awh::codec::yaml::Writer::blank() noexcept {
 			 */
 			if(this->_settings.schema == schema_t::FAILSAFE)
 				// Выполняем запись пустоты оградою пустою
-				return this->value(string(), style_t::SINGLE);
+				return this->value("", style_t::SINGLE);
 			// Выполняем запись пустоты записью описания
 			return this->raw("null");
 		}
 	}
 	// Выполняем запись пустоты пустотою же
-	return this->raw(string());
+	return this->raw("");
 }
 /**
  * @brief Метод записи логического значения
@@ -2259,6 +2536,7 @@ bool awh::codec::yaml::Writer::value(const bool value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2267,22 +2545,28 @@ bool awh::codec::yaml::Writer::value(const bool value) noexcept {
 	return this->raw(value ? "true" : "false");
 }
 /**
- * @brief Метод записи целого числа записи любой
+ * @brief Шаблон метода записи числового значения
+ *
+ * @tparam T вид записываемого целого числа
  *
  * @details Приём этот отвечает за написания, ширины которым отведено менее восьми байтов,
  *          - `short`, `int`, `long`, `size_t` и прочие. Без него запись `value(1)`
  *          расходилась бы между целым со знаком, целым без знака и дробным видами
- *          приведением равной силы, и сборка отвечала бы двусмысленностью
+ *          приведением равной силы, и сборка отвечала бы двусмысленностью.
  *
  * @note Знаковость выбирает вид, которому число доводится: число без знака уходит через
  *       `uint64_t`, а со знаком через `int64_t`. Обход через один лишь `int64_t` обращал
  *       бы `4294967295u` в отрицательное
  *
- * @param value записываемое целое число
+ */
+template <typename T, typename>
+/**
+ * @brief Метод записи числового целого значения
+ *
+ * @param value записываемое числовое целое значение
  * @return      признак успешной записи значения
  *
  */
-template <typename T, typename>
 bool awh::codec::yaml::Writer::value(const T value) noexcept {
 	/**
 	 * Если записывается целое число без знака
@@ -2310,18 +2594,19 @@ bool awh::codec::yaml::Writer::value(const T value) noexcept {
  *       шаблон обходивший, снят, и `value('z')` пишет ныне 122 - ровно так, как пишет его
  *       кодек JSON. Без порождения сборка отвечала бы нехваткою символа при связывании, а
  *       не молча: замерено стендом наречия сразу по снятии приёма
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <char, void> (const char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <signed char, void> (const signed char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned char, void> (const unsigned char) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <short, void> (const short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned short, void> (const unsigned short) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <int, void> (const int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned int, void> (const unsigned int) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <long, void> (const long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned long, void> (const unsigned long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <long long, void> (const long long) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
+template bool awh::codec::yaml::Writer::value <char, void> (const char) noexcept;
+template bool awh::codec::yaml::Writer::value <signed char, void> (const signed char) noexcept;
+template bool awh::codec::yaml::Writer::value <unsigned char, void> (const unsigned char) noexcept;
+template bool awh::codec::yaml::Writer::value <short, void> (const short) noexcept;
+template bool awh::codec::yaml::Writer::value <unsigned short, void> (const unsigned short) noexcept;
+template bool awh::codec::yaml::Writer::value <int, void> (const int) noexcept;
+template bool awh::codec::yaml::Writer::value <unsigned int, void> (const unsigned int) noexcept;
+template bool awh::codec::yaml::Writer::value <long, void> (const long) noexcept;
+template bool awh::codec::yaml::Writer::value <unsigned long, void> (const unsigned long) noexcept;
+template bool awh::codec::yaml::Writer::value <long long, void> (const long long) noexcept;
+template bool awh::codec::yaml::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
 /**
  * @brief Метод записи строкового значения заданной оградою
  *
@@ -2346,14 +2631,15 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Накопитель под приведённую запись
-	string buffer;
+	string buffer = "";
 	// Приведённая запись, срезом выданная
-	string_view record;
+	string_view record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -2366,7 +2652,7 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	 * @details Ограда, вызывающим назначенная, содержимое передать НЕ ВСЯКОЕ может:
 	 *          перевод строки внутри ограды одинарной прочтётся обратно пробелом -
 	 *          свёрткою строк, - а внутри голой записи оборвёт её вовсе. Передать такое
-	 *          можно лишь оградою двойной, отменяющими последовательностями
+	 *          можно лишь оградою двойной, отменяющими последовательностями.
 	 *
 	 * @note Правило это ровно то же, каким живёт запись по настройке: там ограда
 	 *       поднимается до несущей содержимое, а здесь поднималась не была - ограда
@@ -2374,6 +2660,7 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	 *       своею оградою, при перезаписи теряло переводы строк МОЛЧА: текст выходил
 	 *       годным, а содержимое иным. Нашло это сличение двух путей перезаписи на
 	 *       наборе yaml-test-suite, случаи PRH3, T4YY и NAT4
+	 *
 	 */
 	const bool demanded = (record.find_first_of("\n\r") != string_view::npos);
 	/**
@@ -2385,6 +2672,7 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	 * @note Судится ровно перевод строки, а не годность записи вообще: байт негодный
 	 *       при правиле пропуска уходит в текст как есть намеренно, и поднимать из-за
 	 *       него ограду значило бы отменить это правило стороною
+	 *
 	 */
 	if(demanded && ((style == style_t::PLAIN) || (style == style_t::SINGLE)))
 		// Выполняем запись значения оградою, содержимое несущей
@@ -2422,10 +2710,25 @@ bool awh::codec::yaml::Writer::written(const string_view record, const style_t s
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
-	if(!this->enter())
-		// Выводим признак неудачной записи значения
+	if(!this->enter()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {record, style}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем запись свойств узла, накопленных прежде него
 	this->properties();
 	/**
@@ -2433,6 +2736,7 @@ bool awh::codec::yaml::Writer::written(const string_view record, const style_t s
 	 *
 	 * @note Пустое значение без ограды пишется пустотою же, и разделитель перед нею
 	 *       оставил бы в конце строки пробел, ничего не значащий
+	 *
 	 */
 	if(!record.empty() || (style != style_t::PLAIN))
 		// Выполняем добавление разделителя записей перед значением
@@ -2475,14 +2779,15 @@ bool awh::codec::yaml::Writer::value(const string & value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Накопитель под приведённую запись
-	string buffer;
+	string buffer = "";
 	// Приведённая запись, срезом выданная
-	string_view record;
+	string_view record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -2495,25 +2800,28 @@ bool awh::codec::yaml::Writer::value(const string & value) noexcept {
 	 * @note Ограда ставится там, где без неё запись прочлась бы иначе: `12` без ограды
 	 *       есть число, а `no` схемою наречия 1.1 есть ложь. Решает это одно тело на весь
 	 *       кодек - то же самое, которым решает и разбор
-	 */
-	/**
+	 *
 	 * @note Настройка ограды поднимается до двойной там, где выбранная содержимого не
 	 *       несёт: одинарная ограда переводу строки отмены не имеет вовсе, и значение,
 	 *       ею обнесённое, растекалось бы по строкам, а обратным чтением свёртывалось бы
 	 *       в пробел. Прежде тело quoting() звалось лишь при ограде PLAIN, отчего
 	 *       настройка SINGLE обращалась в потерю содержимого. Нашёл это ворошитель
 	 *       круговым ходом перезаписи иным оформлением
+	 *
 	 */
-	const style_t style = ((this->_settings.quoting == style_t::PLAIN) ?
-	 quoting(record, this->_settings.schema, false) :
-	 ((quoting(record, this->_settings.schema, false) == style_t::DOUBLE) ?
-	  style_t::DOUBLE : this->_settings.quoting));
+	const style_t style = (
+		(this->_settings.quoting == style_t::PLAIN) ?
+		quoting(record, this->_settings.schema, false) :
+		((quoting(record, this->_settings.schema, false) == style_t::DOUBLE) ?
+		style_t::DOUBLE : this->_settings.quoting)
+	);
 	/**
 	 * Выполняем запись строкового значения выбранной оградою
 	 *
 	 * @note Зовётся запись приведённого, а не общая: приведение уже выполнено выше, и
 	 *       повторное завело бы строку вторично - выделение на каждое значение сверх
 	 *       необходимого
+	 *
 	 */
 	return this->written(record, style);
 }
@@ -2531,6 +2839,7 @@ bool awh::codec::yaml::Writer::value(const char * value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2552,12 +2861,13 @@ bool awh::codec::yaml::Writer::value(const int64_t value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Выполняем запись целого числа со знаком
-	return this->raw(to_string(value));
+	return this->raw(::to_string(value));
 }
 /**
  * @brief Метод записи целого числа без знака
@@ -2573,12 +2883,13 @@ bool awh::codec::yaml::Writer::value(const uint64_t value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Выполняем запись целого числа без знака
-	return this->raw(to_string(value));
+	return this->raw(::to_string(value));
 }
 /**
  * @brief Метод записи дробного числа
@@ -2594,6 +2905,7 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -2619,7 +2931,7 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 *          значащими разрядами, - и число `0.1` выходило как `0.10000000000000001`.
 	 *          Обратимость та давала, но ВИДОМ наречие YAML расходилось с тремя прочими
 	 *          кодеками рамки: JSON, TOML и INI пишут дробное через `toChars` кратчайшею
-	 *          формою. Замерено 08.09.2026 на семи значениях: расходились шесть из семи
+	 *          формою. Замерено 08.09.2026 на семи значениях: расходились шесть из семи.
 	 *
 	 * @note Договор типов и извлечения наречия YAML взят у кодека JSON ДОСЛОВНО, и вид
 	 *       записи числа есть часть его: расходился здесь YAML, а не трое прочих
@@ -2628,8 +2940,9 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 *       `toChars` ведёт запись по правилам местности «C» и разряда `LC_NUMERIC` не
 	 *       знает вовсе. Прежде `snprintf` стоял среди трёх кодеков один, и глухота
 	 *       наречия к локали держалась той подменою; ныне все четверо глухи ПО УСТРОЙСТВУ
+	 *
 	 */
-	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	// Определяем длину собранной записи дробного числа
 	const int length = (static_cast <bool> (output) ? static_cast <int> (output.ptr - buffer) : 0);
 	/**
@@ -2656,10 +2969,25 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
-	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
-		// Выводим признак неудачной записи значения
+	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INTERNAL));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INTERNAL));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INTERNAL);
+	}
 	// Получаем собранную запись дробного числа
 	string result(buffer, static_cast <size_t> (length));
 	/**
@@ -2667,9 +2995,9 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 *
 	 * @note Запись `1` схемою прочлась бы целым числом, а записывалось дробное: точка с
 	 *       нулём сохраняет вид числа при обратном чтении
+	 *
 	 */
-	if((result.find_first_of(".eE") == string::npos) && (result.find("inf") == string::npos) &&
-	   (result.find("nan") == string::npos))
+	if((result.find_first_of(".eE") == string::npos) && (result.find("inf") == string::npos) && (result.find("nan") == string::npos))
 		// Выполняем добавление дробной части записи числа
 		result.append(".0");
 	// Выполняем запись дробного числа
@@ -2691,12 +3019,13 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -2708,6 +3037,7 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 *
 	 * @note Блочное значение внутри скобок описанием запрещено: оканчивается оно отступом,
 	 *       а внутри скобок отступ не значит ничего
+	 *
 	 */
 	if(!this->_levels.empty() && (this->_levels.back().layout == layout_t::FLOW))
 		// Выводим признак неудачной записи значения
@@ -2715,9 +3045,23 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	/**
 	 * Если вид блочного значения задан неверно
 	 */
-	if((style != style_t::LITERAL) && (style != style_t::FOLDED))
-		// Выполняем запоминание отказа заголовка блочного значения
+	if((style != style_t::LITERAL) && (style != style_t::FOLDED)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), static_cast <uint16_t> (chomp)}, log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_BLOCK_HEADER));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::INVALID_BLOCK_HEADER));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_BLOCK_HEADER);
+	}
 	/**
 	 * Если содержимое несёт знак возврата каретки
 	 *
@@ -2726,6 +3070,7 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 *          записанный, обратным чтением пропал бы. Отказом запись отсылает содержимое
 	 *          ограде двойной, где знак передаётся отменяющей последовательностью. Нашёл
 	 *          это ворошитель на тексте с окончаниями строк `CR LF`
+	 *
 	 */
 	if(record.find('\r') != string::npos)
 		// Выводим признак неудачной записи значения
@@ -2738,13 +3083,14 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 * Если блочное значение записывается свёрткою строк
 	 *
 	 * @details Свёртка складывает строки пробелом, а пробег переводов уменьшает на
-	 * один: чтобы содержимое прочлось обратно тем же самым, всякий пробег переводов
-	 * его надлежит нарастить на один перевод. Строка же, пробелом открытая, свёртке
-	 * не подлежит вовсе - переводы вокруг неё сохраняются как есть, - и содержимое
-	 * с такою строкой свёрткою не передаётся ни при каком наращивании
+	 *          один: чтобы содержимое прочлось обратно тем же самым, всякий пробег переводов
+	 *          его надлежит нарастить на один перевод. Строка же, пробелом открытая, свёртке
+	 *          не подлежит вовсе - переводы вокруг неё сохраняются как есть, - и содержимое
+	 *          с такою строкой свёрткою не передаётся ни при каком наращивании.
 	 *
 	 * @note Нашёл это ворошитель сличением перезаписи: содержимое, перевод несущее,
 	 *       записывалось строкой на строку, а обратным чтением складывалось пробелом
+	 *
 	 */
 	if(chosen == style_t::FOLDED){
 		// Количество концевых переводов строк содержимого
@@ -2755,16 +3101,17 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 		 * @note Переводы эти свёрткою не затрагиваются вовсе: правило усечения
 		 *       применяется после свёртки, и записываются они тем же порядком, каким
 		 *       записывает их вид дословный
+		 *
 		 */
 		while((tail < content.size()) && (content[content.size() - (tail + 1)] == '\n'))
 			// Выполняем учёт очередного концевого перевода строки
 			tail++;
-		// Получаем содержимое значения без концевых переводов строк
-		const string_view body(content.data(), (content.size() - tail));
 		// Признак того, что содержимое свёрткою передаётся
 		bool foldable = true;
+		// Получаем содержимое значения без концевых переводов строк
+		const string_view body(content.data(), (content.size() - tail));
 		// Собираемое содержимое, свёрткою наращённое
-		string folded;
+		string folded = "";
 		// Выполняем резервирование памяти под собираемое содержимое
 		folded.reserve(content.size() + 16);
 		// Смещение начала очередной строки содержимого
@@ -2775,6 +3122,7 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 		 * @note Пустые строки, содержимому предпосланные, свёртке не подлежат вовсе:
 		 *       складывать их пробелом не с чем, и чтение сохраняет их переводами как
 		 *       есть. Наращивание их выдало бы переводов больше записанного
+		 *
 		 */
 		while((offset < body.size()) && (body[offset] == '\n')){
 			// Выполняем добавление очередного перевода строки
@@ -2794,15 +3142,16 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 			 * Если строка содержимого открывается пробельным знаком
 			 *
 			 * @details Строка, пробелом открытая, чтением принимается стоящею глубже
-			 * отступа содержимого, а такая строка свёртке не подлежит ни собою, ни
-			 * соседкой своей: переводы вокруг неё сохраняются как есть, и наращивание
-			 * их выдало бы переводов больше записанного
+			 *          отступа содержимого, а такая строка свёртке не подлежит ни собою, ни
+			 *          соседкой своей: переводы вокруг неё сохраняются как есть, и наращивание
+			 *          их выдало бы переводов больше записанного.
 			 *
 			 * @note Указатель отступа тут не выручает, хотя пробел первой строки он и
 			 *       снимает: отступ, указателем заданный, обязан совпасть с отступом
 			 *       записи, а совпадение это держится на настройке ширины отступа.
 			 *       Полагаться на него в передаче содержимого значило бы связать
 			 *       правильность записи с настройкою вида её
+			 *
 			 */
 			if((length > 0) && ((body[offset] == ' ') || (body[offset] == '\t'))){
 				// Запоминаем невозможность передачи содержимого свёрткою
@@ -2867,6 +3216,7 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
 	 */
 	if(!this->enter())
 		// Выводим признак неудачной записи значения
@@ -2875,16 +3225,17 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	this->properties();
 	// Выполняем добавление разделителя записей перед заголовком
 	this->spaced();
-	// Выполняем добавление знака вида блочного значения
-	this->_result.push_back((chosen == style_t::LITERAL) ? '|' : '>');
 	// Смещение первой непустой строки записываемого содержимого
 	size_t leading = 0;
+	// Выполняем добавление знака вида блочного значения
+	this->_result.push_back((chosen == style_t::LITERAL) ? '|' : '>');
 	/**
 	 * Выполняем розыск первой непустой строки записываемого содержимого
 	 *
 	 * @note Отступ содержимого читается по первой непустой строке его, а не по первой
 	 *       вовсе: строки пустые отступа не несут. Нашёл это ворошитель сличением
 	 *       перезаписи - содержимое, пустыми строками открытое, теряло пробел свой
+	 *
 	 */
 	while((leading < content.size()) && (content[leading] == '\n'))
 		// Выполняем переход к следующей строке содержимого
@@ -2894,7 +3245,8 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 *
 	 * @details Отступ содержимого читается по первой непустой строке его, и пробел в её
 	 *          начале был бы принят за отступ. Указатель отступа снимает разночтение,
-	 *          назвав отступ прямо
+	 *          назвав отступ прямо.
+	 *
 	 */
 	if((leading < content.size()) && ((content[leading] == ' ') || (content[leading] == '\t')))
 		// Выполняем добавление указателя отступа заголовка
@@ -2903,11 +3255,19 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 * Определяем правило усечения переводов строк
 	 */
 	switch(static_cast <uint8_t> (chomp)){
-		// Если переводы строк снимаются все
-		case static_cast <uint8_t> (chomp_t::STRIP): this->_result.push_back('-'); break;
 		// Если переводы строк сохраняются все
-		case static_cast <uint8_t> (chomp_t::KEEP): this->_result.push_back('+'); break;
+		case static_cast <uint8_t> (chomp_t::KEEP):
+			// Добавляем знак плюса
+			this->_result.push_back('+');
+		break;
+		// Если переводы строк снимаются все
+		case static_cast <uint8_t> (chomp_t::STRIP):
+			// Добавляем знак минуса
+			this->_result.push_back('-');
+		break;
 	}
+	// Смещение начала очередной строки содержимого
+	size_t offset = 0;
 	/**
 	 * Запоминаем признак открытой строки
 	 *
@@ -2915,14 +3275,13 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 *       Значение, корнем документа стоящее, вместилища над собою не имеет, и признак
 	 *       этот ставить было некому: содержимое ложилось в строку заголовка. Нашёл это
 	 *       ворошитель сличением перезаписи
+	 *
 	 */
 	this->_hanging = true;
 	// Запоминаем признак записи содержимого блочного значения
 	this->_verbatim = true;
 	// Получаем отступ содержимого блочного значения
 	const uint32_t indent = ((this->_levels.empty() ? 0 : this->_levels.back().indent) + this->_settings.indent);
-	// Смещение начала очередной строки содержимого
-	size_t offset = 0;
 	/**
 	 * Выполняем перебор всех строк записываемого содержимого
 	 */
@@ -2930,13 +3289,16 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 		// Разыскиваем знак конца очередной строки содержимого
 		const size_t position = content.find('\n', offset);
 		// Получаем очередную строку записываемого содержимого
-		const string_view line((content.data() + offset),
-		 (((position == string::npos) ? content.size() : position) - offset));
+		const string_view line(
+			(content.data() + offset),
+			(((position == string::npos) ? content.size() : position) - offset)
+		);
 		/**
 		 * Если строка содержимого исчерпала его
 		 *
 		 * @note Содержимое, переводом строки оканчивающееся, даёт строку пустую последнею,
 		 *       и записывать её незачем: перевод её уже записан строкою прежней
+		 *
 		 */
 		if(line.empty() && (position == string::npos) && (offset == content.size()))
 			// Выходим из перебора строк содержимого
@@ -2948,6 +3310,7 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 		 *
 		 * @note Отступ пустой строке не пишется: пробелы в ней стали бы содержимым её, и
 		 *       обратное чтение выдало бы строку из пробелов вместо пустой
+		 *
 		 */
 		if(!line.empty()){
 			// Выполняем добавление отступа строки содержимого
@@ -2987,12 +3350,13 @@ bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -3004,10 +3368,25 @@ bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
 	 *
 	 * @note Примечание внутри скобок описанием дозволено, однако оканчивает оно строку, а
 	 *       строку поточного построения оканчивать нечем: запись пошла бы вкривь
+	 *
 	 */
-	if(!this->_levels.empty() && (this->_levels.back().layout == layout_t::FLOW))
-		// Выводим признак неудачной записи примечания
+	if(!this->_levels.empty() && (this->_levels.back().layout == layout_t::FLOW)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем закрытие открытой строки
 	this->line();
 	/**
@@ -3046,12 +3425,13 @@ bool awh::codec::yaml::Writer::trailing(const string & text) noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Запись, к годной кодировке приведённая
-	string record;
+	string record = "";
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
@@ -3063,10 +3443,25 @@ bool awh::codec::yaml::Writer::trailing(const string & text) noexcept {
 	 *
 	 * @note Примечание это дописывается к строке уже записанной, и без неё дописывать его
 	 *       некуда: собственной строкой пишется примечание иным способом
+	 *
 	 */
-	if(this->_result.empty() || (this->_result.back() != '\n'))
-		// Выводим признак неудачной записи примечания
+	if(this->_result.empty() || (this->_result.back() != '\n')){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем снятие перевода строки с конца собранного текста
 	this->_result.pop_back();
 	// Выполняем добавление разделителя записей перед примечанием
@@ -3100,6 +3495,7 @@ bool awh::codec::yaml::Writer::document() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -3107,9 +3503,23 @@ bool awh::codec::yaml::Writer::document() noexcept {
 	/**
 	 * Если вместилища предыдущего документа не закрыты
 	 */
-	if(!this->_levels.empty())
-		// Выводим признак неудачного открытия документа
+	if(!this->_levels.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("YAML writing failed: %s", log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
+	}
 	// Выполняем закрытие открытой строки
 	this->line();
 	/**
@@ -3120,20 +3530,21 @@ bool awh::codec::yaml::Writer::document() noexcept {
 	 *       конец потока директив помечает черта `...`, а без неё разбор принимает
 	 *       строку `%YAML 1.1` за содержимое. Нашла это перезапись потока из документов
 	 *       разных наречий
+	 *
 	 */
 	if(this->_opened && (this->_settings.explicitEnd || this->_settings.version))
 		// Выполняем добавление черты конца документа
 		this->_result.append("...\n");
 	/**
 	 * Если директива наречия текста затребована
-	 */
-	/**
+	 *
 	 * Если директива наречия записывается
 	 *
 	 * @note Наречие берётся схемою: схема 1.1 обязана объявляться директивой `%YAML 1.1`,
 	 *       иначе чтение вернётся к схеме ядровой и записи вроде `on` вернутся строками.
 	 *       Прежде здесь стояло `1.2` неизменно, и место это разошлось с таким же местом
 	 *       открытия первого документа
+	 *
 	 */
 	if(this->_settings.version)
 		// Выполняем добавление директивы наречия текста
@@ -3158,6 +3569,7 @@ bool awh::codec::yaml::Writer::finish() noexcept {
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
 	 *       принимает вовсе. Иначе потребитель, кода отказа не сверивший, получил бы
 	 *       текст без отвергнутой части и не заметил бы пропажи
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
@@ -3194,6 +3606,7 @@ bool awh::codec::yaml::Writer::finish() noexcept {
 		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
 		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 		 *          слоями, и разойдись слои - станет видимым немедля
+		 *
 		 */
 		if(!this->close())
 			// Выводим признак неудачного завершения записи
@@ -3205,6 +3618,7 @@ bool awh::codec::yaml::Writer::finish() noexcept {
 	 * @details Строка, дословно перенесённая, закрытия не требует: перевод строки за нею
 	 *          был бы знаком, исходным текстом не данным, и перезапись разошлась бы с ним
 	 *          на этот знак. Текст без перевода строки в конце описанием дозволен
+	 *
 	 */
 	if(!this->_transferred)
 		// Выполняем закрытие открытой строки
@@ -3221,10 +3635,33 @@ bool awh::codec::yaml::Writer::finish() noexcept {
 /**
  * @brief Конструктор
  *
+ */
+awh::codec::yaml::Writer::Writer() noexcept :
+ _keyed(false), _opened(false), _refused(false),
+ _hanging(false), _verbatim(false), _transferred(false),
+ _margin(0), _taken(0), _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста
+ *
+ */
+awh::codec::yaml::Writer::Writer(const settings_t & settings) noexcept :
+ _keyed(false), _opened(false), _refused(false),
+ _hanging(false), _verbatim(false), _transferred(false),
+ _margin(0), _taken(0), _error(error_t::NONE) {
+	// Выполняем установку настроек записи текста
+	this->settings(settings);
+}
+
+/**
+ * @brief Конструктор
+ *
  * @param kind     вид открытого вместилища
  * @param layout   построение, каким записывается вместилище
  * @param indent   отступ содержимого вместилища
  * @param attached признак продолжения строки первой записью
  *
  */
-awh::codec::yaml::Writer::Level::Level(const kind_t kind, const layout_t layout, const uint32_t indent, const bool attached) noexcept : kind(kind), layout(layout), indent(indent), empty(true), attached(attached) {}
+awh::codec::yaml::Writer::Level::Level(const kind_t kind, const layout_t layout, const uint32_t indent, const bool attached) noexcept :
+ empty(true), attached(attached), indent(indent), kind(kind), layout(layout) {}

@@ -678,6 +678,28 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
  *
  */
 bool awh::codec::csv::Document::load(const string & filename) noexcept {
+	/**
+	 * Если адрес читаемого файла не задан
+	 */
+	if(filename.empty()){
+		// Запоминаем код отказа открытия файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV document failed: %s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, codec::csv::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV document failed: %s", log::flag_t::CRITICAL, codec::csv::message(this->_error));
+		#endif
+		// Выводим отказ до изменения таблицы и обращения к файлу
+		return false;
+	}
 	// Выполняем очистку таблицы
 	this->clear();
 	// Сбрасываем объект потокового чтения записей
@@ -902,10 +924,6 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::csv::Document::read(const string & filename, const function <bool (const vector <string_view> &)> & callback) noexcept {
-	// Выполняем очистку таблицы
-	this->clear();
-	// Сбрасываем объект потокового чтения записей
-	this->_reader.reset();
 	/**
 	 * Если обработчик записей не передан
 	 */
@@ -928,6 +946,32 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		// Выводим признак неудачного чтения
 		return false;
 	}
+	/**
+	 * Если адрес читаемого файла не задан
+	 */
+	if(filename.empty()){
+		// Запоминаем код отказа открытия файла
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CSV document failed: %s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, codec::csv::message(this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CSV document failed: %s", log::flag_t::CRITICAL, codec::csv::message(this->_error));
+		#endif
+		// Выводим отказ до изменения таблицы и обращения к файлу
+		return false;
+	}
+	// Выполняем очистку таблицы
+	this->clear();
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
 	/**
 	 * Разряд пути спрашивается ОДНАЖДЫ: ходу этому стоит обращение к файловой
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
@@ -1144,10 +1188,6 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
  *
  */
 bool awh::codec::csv::Document::parse(const string_view text, const function <bool (const vector <string_view> &)> & callback) noexcept {
-	// Выполняем очистку таблицы
-	this->clear();
-	// Сбрасываем объект потокового чтения записей
-	this->_reader.reset();
 	/**
 	 * Если обработчик записей не передан
 	 */
@@ -1170,6 +1210,10 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 		// Выводим признак неудачного разбора
 		return false;
 	}
+	// Выполняем очистку таблицы после проверки обработчика
+	this->clear();
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
 	// Буфер знаков текущей записи
 	string storage = "";
 	// Указания на поля текущей записи в буфере
@@ -2251,7 +2295,7 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 	 *          чужое содержимое, отказа при этом нет никакого
 	 *
 	 */
-	if((this->_storage.size() + length) > ::LIMIT){
+	if(length > (::LIMIT - this->_storage.size())){
 		// Запоминаем код отказа построения таблицы
 		this->_error = error_t::STORAGE_EXHAUSTED;
 		// Выводим признак неудачного добавления записи
@@ -2341,7 +2385,7 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 	 *          чужое содержимое, отказа при этом нет никакого
 	 *
 	 */
-	if((this->_storage.size() + length) > ::LIMIT){
+	if(length > (::LIMIT - this->_storage.size())){
 		// Запоминаем код отказа построения таблицы
 		this->_error = error_t::STORAGE_EXHAUSTED;
 		// Выводим признак неудачного добавления записи

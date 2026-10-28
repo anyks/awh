@@ -545,7 +545,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 *          сменою вида содержимого, соседним заслоном выше
 	 *
 	 */
-	if(!this->_pending.empty() && ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
+	if(!this->_pending.empty() && (size > (static_cast <size_t> (numeric_limits <uint32_t>::max()) - this->_pending.size()))){
 		/**
 		 * Если уложить накопленное кадром не вышло
 		 */
@@ -764,8 +764,6 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
  *
  */
 bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t length) noexcept {
-	// Выполняем сброс состояния правки контейнера
-	this->reset();
 	/**
 	 * Если работы чтения либо записи октетов контейнера нам не переданы
 	 */
@@ -788,6 +786,8 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
+	// Выполняем сброс состояния правки после проверки работ чтения и записи
+	this->reset();
 	// Буфер вычитанных октетов заголовка опознания контейнера
 	vector <uint8_t> buffer;
 	// Выполняем установку полной длины контейнера на носителе

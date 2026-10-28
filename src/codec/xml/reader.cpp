@@ -4140,10 +4140,10 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 					if(!this->_scratch.empty()){
 						// Запоминаем положение отложенного отказа в исходном тексте
 						this->_postponed = pos;
-						// Снимаем занесённый отказ до поры выдачи накопленного
-						this->_error = error_t::NONE;
 						// Запоминаем отказ, отложенный до выдачи накопленного содержимого
 						this->_deferred = this->_error;
+						// Снимаем занесённый отказ до поры выдачи накопленного
+						this->_error = error_t::NONE;
 						// Запоминаем конец выдаваемого содержимого
 						end = pos;
 						// Выходим из перебора знаков содержимого
@@ -8771,10 +8771,10 @@ bool awh::codec::xml::Reader::next() noexcept {
 	 *
 	 */
 	if(this->_deferred != error_t::NONE){
-		// Выполняем сброс отложенного отказа разбора
-		this->_deferred = error_t::NONE;
 		// Получаем отложенный отказ разбора
 		const error_t error = this->_deferred;
+		// Выполняем сброс отложенного отказа разбора
+		this->_deferred = error_t::NONE;
 		// Запоминаем положение обнаруженной ошибки
 		this->_errorLocation = this->locate(this->_postponed);
 		// Выполняем досчёт места обнаруженной ошибки

@@ -937,7 +937,7 @@ bool awh::codec::toml::Document::spacious(const size_t length) noexcept {
 	 *       где два числа разошлись именно так - износом записи, а не промахом счёта
 	 *
 	 */
-	if((this->_store.length() + length) > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+	if(length > (static_cast <size_t> (numeric_limits <uint32_t>::max()) - this->_store.length())){
 		/**
 		 * Запоминаем код ошибки правки дерева настроек
 		 *
@@ -4328,7 +4328,7 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 	 *       «/private/tmp», и без разрешения её каталог опознавался бы ссылкою
 	 *
 	 */
-	if(::__awh_fs__.type(filename, false) == fs_t::type_t::DIR){
+	if(!filename.empty() && (::__awh_fs__.type(filename, false) == fs_t::type_t::DIR)){
 		// Выполняем сброс дерева настроек
 		this->clear();
 		// Запоминаем код отказа чтения файла настроек
@@ -4357,9 +4357,11 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 	 *       «файл пуст» стали бы неразличимы
 	 *
 	 */
-	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
-		// Выполняем сброс дерева настроек
-		this->clear();
+	if(filename.empty() || (::__awh_fs__.type(filename, false) != fs_t::type_t::FILE)){
+		// Если адрес задан, прежнее дерево снимается по общему договору отказа
+		if(!filename.empty())
+			// Выполняем сброс дерева настроек
+			this->clear();
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**

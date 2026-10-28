@@ -513,7 +513,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 *       вместо отказа, отличить какой потребителю нечем
 	 *
 	 */
-	if(::directory(filename)){
+	if(!filename.empty() && ::directory(filename)){
 		/**
 		 * Запоминаем код ошибки чтения файла
 		 *
@@ -571,7 +571,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 *       давал без единой жалобы - то есть отказ был выдуман мною, а не системой
 	 *
 	 */
-	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
+	if(filename.empty() || (::__awh_fs__.type(filename, false) != fs_t::type_t::FILE)){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -1287,8 +1287,8 @@ bool awh::codec::syslog::Document::erase(const string & path) noexcept {
 	 * Выполняем обход дерева события по звеньям пути, кроме последнего
 	 */
 	for(size_t i = 0; (i + 1) < links.size(); i++){
-		// Если вместилище звена пути отображением не является
-		if(current->type() != type_t::MAP){
+		// Если вместилище не является отображением либо звено пути отсутствует
+		if((current->type() != type_t::MAP) || !current->contains(links.at(i))){
 			// Запоминаем код ошибки отсутствия поля
 			this->_error = error_t::UNKNOWN_FIELD;
 			// Выводим отрицательный признак сноса значения

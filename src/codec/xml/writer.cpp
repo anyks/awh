@@ -778,9 +778,10 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 			 * Копируем объявления до изменения выходного буфера
 			 */
 			for(size_t i = 0; i < declares->size(); i++){
-				// Сохраняем обе строки объявления
-				stored.emplace_back((*declares)[i].uri);
+				// Сохраняем префикс объявления
 				stored.emplace_back((*declares)[i].prefix);
+				// Сохраняем обозначение пространства имён
+				stored.emplace_back((*declares)[i].uri);
 				// Связываем срезы с независимым хранилищем
 				bindings[i].prefix = stored[i * 2];
 				// Привязываем срез пространства имён к независимому хранилищу

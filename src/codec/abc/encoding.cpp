@@ -107,6 +107,12 @@ namespace {
  */
 void awh::codec::abc::fixed(vector <uint8_t> & result, const uint64_t value, const uint8_t width) noexcept {
 	/**
+	 * Если ширина записи превышает разрядность значения
+	 */
+	if(width > sizeof(value))
+		// Выходим до записи октетов и сдвига за предел разрядности
+		return;
+	/**
 	 * Дописываем октеты укладываемой записи
 	 *
 	 * @warning Отведение места через `resize` здесь НЕГОДНО, и это проверено замером:
@@ -128,6 +134,12 @@ void awh::codec::abc::fixed(vector <uint8_t> & result, const uint64_t value, con
  *
  */
 void awh::codec::abc::fixed(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
+	/**
+	 * Если ширина записи превышает разрядность значения
+	 */
+	if(width > sizeof(value))
+		// Выходим до записи октетов и сдвига за предел разрядности
+		return;
 	/**
 	 * Если буфер укладываемой записи не существует
 	 *
@@ -264,6 +276,12 @@ void awh::codec::abc::real(vector <uint8_t> & result, const double value) noexce
 uint64_t awh::codec::abc::gather(const uint8_t * buffer, const uint8_t width) noexcept {
 	// Собираемое значение
 	uint64_t result = 0;
+	/**
+	 * Если ширина записи превышает разрядность результата
+	 */
+	if(width > sizeof(result))
+		// Выводим отказ до чтения октетов и сдвига за предел разрядности
+		return result;
 	// Если буфер поданной записи не существует
 	if(buffer == nullptr)
 		// Выводим собранное значение
@@ -550,6 +568,22 @@ bool awh::codec::abc::utf8(const uint8_t * buffer, const size_t size, size_t & p
  *
  */
 void awh::codec::abc::repair(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) noexcept {
+	// Независимая копия входа, лежащего в выходном буфере
+	vector <uint8_t> copied;
+	// Если вход лежит в выходном буфере
+	if((buffer != nullptr) && (size > 0) && !result.empty()){
+		// Выполняем получение адреса входа
+		const uintptr_t address = reinterpret_cast <uintptr_t> (buffer);
+		// Выполняем получение адреса начала выходного буфера
+		const uintptr_t begin = reinterpret_cast <uintptr_t> (result.data());
+		// Если адрес входа принадлежит выходному буферу
+		if((address >= begin) && (address < (begin + result.size()))){
+			// Выполняем копирование входа до очистки выходного буфера
+			copied.assign(buffer, (buffer + size));
+			// Перенаправляем чтение входа в независимую копию
+			buffer = copied.data();
+		}
+	}
 	// Выполняем очистку буфера исправленной строки
 	result.clear();
 	// Если буфер исправляемой строки не существует
