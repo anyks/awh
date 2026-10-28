@@ -2027,13 +2027,13 @@ void awh::Network_Address::zone(string_view zone) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {zone}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2171,13 +2171,13 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {host}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {host}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2210,13 +2210,13 @@ array <uint8_t, 6> awh::Network_Address::mac() const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2257,17 +2257,17 @@ void awh::Network_Address::mac(const array <uint8_t, 6> & addr) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{addr.front(), addr.back()},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Выполняем очистку буфера данных
@@ -2349,17 +2349,17 @@ uint32_t awh::Network_Address::v4(const endian_t endian) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (endian)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2412,17 +2412,17 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{addr, static_cast <uint16_t> (endian)},
-				awh::log::flag_t::CRITICAL, error.what()
+				log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2500,17 +2500,17 @@ array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const noexce
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (endian)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2563,17 +2563,17 @@ void awh::Network_Address::v6(const array <uint8_t, 16> & addr, const endian_t e
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{addr.front(), addr.back(), static_cast <uint16_t> (endian)},
-				awh::log::flag_t::CRITICAL, error.what()
+				log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2676,17 +2676,17 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{static_cast <uint16_t> (endian)},
-				awh::log::flag_t::CRITICAL, error.what()
+				log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2804,17 +2804,17 @@ void awh::Network_Address::source(const net::addr_t * value, const endian_t endi
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{static_cast <uint16_t> (endian)},
-				awh::log::flag_t::CRITICAL, error.what()
+				log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2928,7 +2928,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если запись длины префикса длиннее допустимого
 								return false;
 							// Получаем префикс сети
-							if(awh::fmk::atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 32)
+							if(fmk::atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 32)
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом
@@ -2991,7 +2991,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если запись длины префикса длиннее допустимого
 								return false;
 							// Получаем префикс сети
-							if(awh::fmk::atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 128)
+							if(fmk::atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 128)
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом
@@ -3033,8 +3033,8 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					 *
 					 */
 					return (
-						awh::fmk::compare("http://", addr.substr(0, 7)) ||
-						awh::fmk::compare("https://", addr.substr(0, 8))
+						fmk::compare("http://", addr.substr(0, 7)) ||
+						fmk::compare("https://", addr.substr(0, 8))
 					);
 				}
 				// Если адрес принадлежит к адресу файловой системы
@@ -3045,8 +3045,19 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					  ((addr[0] == '\\') && (addr[1] == '\\'))))
 						// Возвращаем результат проверки
 						return true;
-					// Unix: начинается с / или ~ или .
-					return ((addr.front() == '/') || (addr.front() == '~') || (addr.front() == '.'));
+					/**
+					 * Unix: начинается с `/` или `~` или `.` или `@`
+					 *
+					 * @note Ведущая собака - абстрактное имя сокета домена UNIX: имени
+					 *       в файловой системе нет, живёт оно в пространстве ядра. Несёт
+					 *       его ядро Linux, а MS Windows - изображением, именованным
+					 *       каналом, выведенным из имени за собакой
+					 *
+					 */
+					return (
+						(addr.front() == '/') || (addr.front() == '~') ||
+						(addr.front() == '.') || ((addr.front() == '@') && (addr.length() > 1))
+					);
 				}
 				// Если адрес принадлежит к доменным именам
 				case static_cast <uint8_t> (type_t::FQDN): {
@@ -3063,7 +3074,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					 *       нему читало за пределами представления
 					 *
 					 */
-					if(awh::fmk::compare("localhost", addr))
+					if(fmk::compare("localhost", addr))
 						// Если адрес равен localhost
 						return true;
 					// Начальное и конечное значение итератора
@@ -3113,17 +3124,17 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{addr, static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3228,17 +3239,17 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3322,17 +3333,17 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{mask, static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3411,17 +3422,17 @@ string awh::Network_Address::prefix2Mask(const uint8_t prefix, const type_t type
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3545,17 +3556,17 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3655,17 +3666,17 @@ bool awh::Network_Address::range(string_view begin, string_view end, const uint8
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{begin, end, static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3765,17 +3776,17 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{network, static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3909,17 +3920,17 @@ bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, co
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{network, prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4221,13 +4232,13 @@ awh::Network_Address::own_t awh::Network_Address::own() const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4323,13 +4334,13 @@ string awh::Network_Address::arpa() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4384,7 +4395,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 				// Если точка найдена
 				if(pos != string::npos){
 					// Если мы нашли суффикс IPv4
-					if(awh::fmk::compare(".in-addr.arpa", addr.substr(pos))){
+					if(fmk::compare(".in-addr.arpa", addr.substr(pos))){
 						// Проверяем, что перед суффиксом ровно 4 метки (3 точки), иначе формат неверен
 						if(::count(addr.begin(), addr.begin() + pos, '.') != 3)
 							// Возвращаем ошибку
@@ -4424,7 +4435,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 										return fail();
 								}
 								// Извлекаем полученное число
-								const uint32_t octet = awh::fmk::atoi <uint32_t> (string_view{addr.data() + begin, length});
+								const uint32_t octet = fmk::atoi <uint32_t> (string_view{addr.data() + begin, length});
 								// Если число за пределы октета выходит
 								if(octet > 255)
 									// Возвращаем ошибку
@@ -4442,7 +4453,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 						// Возвращаем true
 						return true;
 					// Если мы нашли суффикс IPv6
-					} else if(awh::fmk::compare(".ip6.arpa", addr.substr(pos))) {
+					} else if(fmk::compare(".ip6.arpa", addr.substr(pos))) {
 						// Извлекаем основную часть (без ".ip6.arpa")
 						string_view data(addr.data(), addr.size() - 9);
 						// Должно быть ровно 63 символа: 32 hex + 31 точка
@@ -4506,13 +4517,13 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Выполняем очистку буфера данных
@@ -4618,13 +4629,13 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Выполняем очистку буфера данных
@@ -4731,17 +4742,17 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{addr, static_cast <uint16_t> (type)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Выполняем очистку буфера данных
@@ -6077,17 +6088,17 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (size), static_cast <uint16_t> (flag), static_cast <uint16_t> (separator)},
-					awh::log::flag_t::CRITICAL, error.what()
+					log::flag_t::CRITICAL, error.what()
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	/**
@@ -6195,13 +6206,13 @@ bool awh::Network_Address::operator < (const net_addr_t & addr) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6262,13 +6273,13 @@ bool awh::Network_Address::operator > (const net_addr_t & addr) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6329,13 +6340,13 @@ bool awh::Network_Address::operator <= (const net_addr_t & addr) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6396,13 +6407,13 @@ bool awh::Network_Address::operator >= (const net_addr_t & addr) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6483,13 +6494,13 @@ bool awh::Network_Address::operator == (const net_addr_t & addr) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6531,13 +6542,13 @@ awh::Network_Address & awh::Network_Address::operator = (const net_addr_t & addr
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем текущий объект
