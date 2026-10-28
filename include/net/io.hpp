@@ -250,6 +250,53 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод получения числа адресов, уложенных в заявку подключения
+					 *
+					 * @details Список у connect() движка сливается в одну многодомную заявку,
+					 *          и это число показывает, сколько адресов назначения в неё легло:
+					 *          у владельца заявки оно равно числу узлов списка, а узел, чей адрес
+					 *          вошёл в чужую заявку, собственной заявки не подаёт и хранит ноль.
+					 *          Одиночное подключение даёт единицу.
+					 *
+					 * @param id идентификатор события
+					 * @return   число адресов назначения в заявке подключения
+					 *
+					 * \~english
+					 * @brief Method of getting the number of the addresses laid into the connection request
+					 *
+					 * @details The list at the engine connect() is merged into a single multi-homed
+					 *          request, and this number shows how many destination addresses have been
+					 *          laid into it: at the owner of the request it equals the number of the
+					 *          nodes of the list, while a node whose address has entered another's
+					 *          request submits none of its own and keeps zero. A single connection
+					 *          gives one.
+					 *
+					 * @param id identifier of the event
+					 * @return   number of the destination addresses in the connection request
+					 *
+					 * \~
+					 */
+					uint8_t addresses(const event::id_t id) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод получения параметров статуса инициализации SCTP
+					 *
+					 * @param id идентификатор события
+					 * @return   параметры статуса инициализации SCTP
+					 *
+					 * \~english
+					 * @brief Method of getting the parameters of the status of the initialization of SCTP
+					 *
+					 * @param id identifier of the event
+					 * @return   parameters of the status of the initialization of SCTP
+					 *
+					 * \~
+					 */
+					net::sctp::status_t status(const event::id_t id) const noexcept;
+				public:
+					/**
+					 * \~russian
 					 * @brief Метод получения информационных метаданных SCTP сообщения
 					 *
 					 * @param id идентификатор события
@@ -281,22 +328,6 @@ namespace awh {
 					 */
 					void messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept;
 				public:
-					/**
-					 * \~russian
-					 * @brief Метод получения параметров статуса инициализации SCTP
-					 *
-					 * @param id идентификатор события
-					 * @return   параметры статуса инициализации SCTP
-					 *
-					 * \~english
-					 * @brief Method of getting the parameters of the status of the initialization of SCTP
-					 *
-					 * @param id identifier of the event
-					 * @return   parameters of the status of the initialization of SCTP
-					 *
-					 * \~
-					 */
-					net::sctp::status_t status(const event::id_t id) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки параметров инициализации SCTP
@@ -610,28 +641,6 @@ namespace awh {
 					 * \~
 					 */
 					void on(const event::id_t id, engine::callback::sctp::message_t cb) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					explicit Stream_Control_Transmission_Protocol() noexcept;
-					/**
-					 * \~russian
-					 * @brief Деструктор
-					 *
-					 *
-					 * \~english
-					 * @brief Destructor
-					 *
-					 * \~
-					 */
-					virtual ~Stream_Control_Transmission_Protocol() noexcept;
 			} sctp_t;
 		#endif
 		/**
