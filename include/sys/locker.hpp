@@ -49,16 +49,33 @@
  * process.h, и имя приводится к нему тем же приёмом, что и в sys/os.hpp
  */
 #if defined(_MSC_VER)
+	/**
+	 * Системный заголовочный файл
+	 */
 	#include <process.h>
+
+	/**
+	 * Если функция getpid не найдена
+	 */
 	#if !defined(getpid)
+		/**
+		 * Подменяем функцию на системную в Windows API
+		 */
 		#define getpid _getpid
 	#endif
+
 	/**
 	 * Тип идентификатора процесса POSIX у нативного MSVC не заведён: `_getpid` отдаёт
 	 * `int`, им же и приводим
 	 */
 	typedef int pid_t;
+/**
+ * Если компилятор не принадлежит к Visual Studio
+ */
 #else
+	/**
+	 * Системный заголовочный файл
+	 */
 	#include <unistd.h>
 #endif
 
@@ -71,7 +88,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -94,7 +110,9 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the trait determining the support of shared_lock
+	 *
 	 * @note Works in C++17 through SFINAE
+	 *
 	 * @tparam T data type to check the support of shared_lock for
 	 *
 	 * \~
@@ -121,7 +139,9 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template determining the support of shared_lock
+	 *
 	 * @note Works in C++17 through SFINAE
+	 *
 	 * @tparam T data type to check the support of shared_lock for
 	 *
 	 * \~
@@ -163,6 +183,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function for additional actions on a change of the value of the property
+			 *
 			 * @param value new value of the property
 			 *
 			 * \~
@@ -177,6 +198,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Conversion operator to the boolean type for getting the current value of the property
+			 *
 			 * @return current value of the property
 			 *
 			 * \~
@@ -195,6 +217,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Inequality comparison operator of the value of the property with the given boolean value
+			 *
 			 * @param value boolean value to compare with
 			 * @return      result of the comparison
 			 *
@@ -213,6 +236,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Equality comparison operator of the value of the property with the given boolean value
+			 *
 			 * @param value boolean value to compare with
 			 * @return      result of the comparison
 			 *
@@ -232,6 +256,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator for copying the value of the property from another property
+			 *
 			 * @param other another property to copy the value from
 			 * @return      reference to the current object for a chain of assignments
 			 *
@@ -251,6 +276,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator for changing the value of the property
+			 *
 			 * @param value new value of the property
 			 * @return      reference to the current object for a chain of assignments
 			 *
@@ -279,6 +305,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param value    initial value of the property
 			 * @param callback callback function for additional actions on a change of the value
 			 *
@@ -296,6 +323,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the state of the locks
+	 *
 	 * @tparam MutexType data type of the state of the locks
 	 *
 	 * \~
@@ -320,6 +348,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the data format of the locker
+			 *
 			 * @tparam T data type of the locker
 			 *
 			 * \~
@@ -358,7 +387,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Guarantees the existence of the working mutex taking into account a change of the process
-			 * @note Performs the lazy creation of the mutex and its recreation after fork
+			 *
+			 * @note   Performs the lazy creation of the mutex and its recreation after fork
+			 *
 			 * @return pointer to the current working mutex
 			 *
 			 * \~
@@ -389,6 +420,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method that will be called on a change of the flag of enabling/disabling the locks
+			 *
 			 * @param value new value of the flag
 			 *
 			 * \~
@@ -412,6 +444,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Conversion operator to a mutex
+			 *
 			 * @note Lazily creates the mutex on demand (for example, for condition_variable)
 			 *
 			 * \~
@@ -427,7 +460,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Оператор копирования
 			 *
-			 *
 			 * \~english
 			 * @brief Copy assignment operator
 			 *
@@ -439,7 +471,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор копирования
 			 *
-			 *
 			 * \~english
 			 * @brief Copy constructor
 			 *
@@ -450,7 +481,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -469,6 +499,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Callback function for changing the flag of enabling/disabling the locks
+				 *
 				 * @param value new value of the flag
 				 *
 				 * \~
@@ -490,6 +521,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the state of the locks
+	 *
 	 * @tparam T data of the state of the locks
 	 *
 	 * \~
@@ -514,6 +546,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the state of the locks
+	 *
 	 * @tparam MutexType data type of the state of the locks
 	 *
 	 * \~
@@ -561,7 +594,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Оператор копирования
 			 *
-			 *
 			 * \~english
 			 * @brief Copy assignment operator
 			 *
@@ -572,7 +604,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор копирования
-			 *
 			 *
 			 * \~english
 			 * @brief Copy constructor
@@ -589,6 +620,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of locking in the exclusive mode
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -617,6 +649,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of unlocking in the exclusive mode
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -646,6 +679,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of shared locking
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -659,6 +693,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of shared locking
+			 *
 			 * @return result of performing the operation
 			 *
 			 * \~
@@ -677,6 +712,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of unique locking when shared_lock is supported
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -690,6 +726,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of unique locking when shared_lock is not supported
+			 *
 			 * @return result of performing the operation
 			 *
 			 * \~
@@ -709,6 +746,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of shared unlocking
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -722,6 +760,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of shared unlocking
+			 *
 			 * @return result of performing the operation
 			 *
 			 * \~
@@ -740,6 +779,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of unique unlocking when shared_lock is supported
+			 *
 			 * @tparam M data type of the mutex
 			 *
 			 * \~
@@ -753,6 +793,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of unique unlocking when shared_lock is not supported
+			 *
 			 * @return result of performing the operation
 			 *
 			 * \~
@@ -816,6 +857,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param state object of the state of the locks
 			 * @param mode  locking mode (Exclusive by default for backward compatibility)
 			 *
@@ -839,7 +881,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Деструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Destructor
 			 *
@@ -860,6 +901,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the locker
+	 *
 	 * @tparam MutexType data of the locker
 	 *
 	 * \~
