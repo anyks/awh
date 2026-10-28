@@ -166,8 +166,8 @@ awh::proto::portmap::PCP::Option::Option() noexcept : code(option_t::NONE) {}
  *
  */
 awh::proto::portmap::PCP::Request::Request() noexcept :
- opcode(opcode_t::MAP), proto(proto_t::ALL), lifeTime(0),
- internalPort(0), externalPort(0), remotePort(0),
+ proto(proto_t::ALL), opcode(opcode_t::MAP), lifeTime(0),
+ remotePort(0), internalPort(0), externalPort(0),
  nonce{0}, client{0}, external{0}, remote{0} {}
 
 /**
@@ -175,9 +175,9 @@ awh::proto::portmap::PCP::Request::Request() noexcept :
  *
  */
 awh::proto::portmap::PCP::Answer::Answer() noexcept :
- opcode(opcode_t::ANNOUNCE), result(result_t::SUCCESS), proto(proto_t::ALL),
- lifeTime(0), epoch(0), internalPort(0), externalPort(0), remotePort(0),
- nonce{0}, external{0}, remote{0} {}
+ proto(proto_t::ALL), result(result_t::SUCCESS), opcode(opcode_t::ANNOUNCE),
+ epoch(0), lifeTime(0), remotePort(0), internalPort(0), externalPort(0),
+ nonce{0}, remote{0}, external{0} {}
 
 /**
  * @brief Метод сборки запроса к маршрутизатору

@@ -151,7 +151,7 @@ awh::proto::portmap::NAT_PMP::Answer::Answer() noexcept :
  *
  */
 awh::proto::portmap::NAT_PMP::Request::Request() noexcept :
- proto(proto_t::NONE), internalPort(0), externalPort(0), lifeTime(0) {}
+ proto(proto_t::NONE), lifeTime(0), internalPort(0), externalPort(0) {}
 
 /**
  * @brief Метод сборки запроса внешнего адреса маршрутизатора
