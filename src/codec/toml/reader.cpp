@@ -576,7 +576,7 @@ string_view awh::codec::toml::Reader::intern(const string_view name) noexcept {
 	 *       отведённого перенесло бы содержимое блока, обесценив ссылки на имена
 	 *
 	 */
-	if(this->_blocks.empty() || ((this->_blocks.back().length() + name.length()) > this->_blocks.back().capacity())){
+	if(this->_blocks.empty() || (name.length() > (this->_blocks.back().capacity() - this->_blocks.back().length()))){
 		// Выполняем заведение очередного блока хранилища
 		this->_blocks.push_back(string());
 		// Выполняем отведение места под содержимое блока хранилища

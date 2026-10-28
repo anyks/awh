@@ -4242,7 +4242,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::valu
 		 *          недостижимость - разница с двойным прикрытием существенная
 		 *
 		 */
-		if((this->_storage.size() + text.length()) > STORAGE_LIMIT){
+		if(text.length() > (STORAGE_LIMIT - this->_storage.size())){
 			// Запоминаем, что дерево вышло за отведённый ему предел
 			overflow = true;
 			// Выводим пустой отрезок общего хранилища знаков

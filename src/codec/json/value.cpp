@@ -3188,7 +3188,7 @@ uint32_t awh::codec::json::Document::transplant(const json::value_t & value, con
 		 *          всякого признака отказа
 		 *
 		 */
-		if((this->_storage.size() + name->size()) > ::STORAGE_LIMIT){
+		if(name->size() > (::STORAGE_LIMIT - this->_storage.size())){
 			// Запоминаем код отказа переноса значения
 			this->_error = error_t::STORAGE_EXHAUSTED;
 			// Выводим размах перенесённого поддерева
@@ -3259,7 +3259,7 @@ uint32_t awh::codec::json::Document::transplant(const json::value_t & value, con
 			 *       отказа от 04.09.2026
 			 *
 			 */
-			if((this->_storage.size() + value.text().size()) > ::STORAGE_LIMIT){
+			if(value.text().size() > (::STORAGE_LIMIT - this->_storage.size())){
 				// Запоминаем код отказа переноса значения
 				this->_error = error_t::STORAGE_EXHAUSTED;
 				// Выводим размах перенесённого поддерева
@@ -3295,7 +3295,7 @@ uint32_t awh::codec::json::Document::transplant(const json::value_t & value, con
 				 *          одной проверки
 				 *
 				 */
-				if((this->_storage.size() + record.size()) > ::STORAGE_LIMIT){
+				if(record.size() > (::STORAGE_LIMIT - this->_storage.size())){
 					// Запоминаем код отказа переноса значения
 					this->_error = error_t::STORAGE_EXHAUSTED;
 					// Выводим размах перенесённого поддерева

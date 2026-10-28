@@ -342,7 +342,7 @@ string_view awh::codec::ini::Document::get(const span_t & span) const noexcept {
 	 *          слово: слог у одной руки в разное время разный
 	 *
 	 */
-	if((static_cast <size_t> (span.offset) + static_cast <size_t> (span.length)) > this->_store.length())
+	if((span.offset > this->_store.length()) || (span.length > (this->_store.length() - span.offset)))
 		// Выводим пустую последовательность знаков
 		return "";
 	// Выводим содержимое отрезка хранилища знаков

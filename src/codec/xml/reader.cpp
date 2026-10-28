@@ -1097,10 +1097,8 @@ string_view awh::codec::xml::Reader::view(const span_t & span) const noexcept {
 	/**
 	 * Если отрезок выходит за пределы хранилища знаков
 	 *
-	 * @warning Сложение выполняется в разрядности размера, а не в разрядности самих
-	 *          полей отрезка: у отрезка они 32-разрядные, и сложение в ней при
-	 *          близком к пределу смещении обращается в ноль, отчего проверка
-	 *          пропускает отрезок, лежащий за пределами хранилища
+	 * @warning Границы поверяются без сложения смещения и длины: сумма могла бы
+	 *          переполниться и пропустить отрезок, лежащий за пределами хранилища
 	 *
 	 * @note Заслон этот набором не покрыт, и молчание карты покрытия означает здесь
 	 *       СОБЛЮДЕНИЕ ПОРЯДКА, а не недостижимость. Хранилище знаков не только растёт:
@@ -1115,7 +1113,7 @@ string_view awh::codec::xml::Reader::view(const span_t & span) const noexcept {
 	 *          последовательности
 	 *
 	 */
-	if((static_cast <size_t> (span.offset) + static_cast <size_t> (span.length)) > this->_names.size())
+	if((span.offset > this->_names.size()) || (span.length > (this->_names.size() - span.offset)))
 		// Выводим пустую последовательность знаков
 		return "";
 	// Выводим последовательность знаков указанного отрезка
@@ -1167,7 +1165,7 @@ awh::codec::xml::span_t awh::codec::xml::Reader::store(const string_view text) n
 	 *          разница существенная, и смешивать их в отчёте нельзя
 	 *
 	 */
-	if((this->_names.size() + text.length()) > static_cast <size_t> (0xFFFFFFFFu)){
+	if(text.length() > (static_cast <size_t> (0xFFFFFFFFu) - this->_names.size())){
 		// Выполняем отказ разбора с сообщением о нём в журнал
 		this->refuse(error_t::STORAGE_EXHAUSTED);
 		// Выводим пустой отрезок хранилища знаков
@@ -7162,7 +7160,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		/**
 		 * Если количество атрибутов узла превысило допустимое
 		 */
-		if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes)){
+		if((this->_settings.maxAttributes > 0) && ((this->_declares.size() >= this->_settings.maxAttributes) ||
+		   (this->_attributes.size() >= (this->_settings.maxAttributes - this->_declares.size())))){
 			// Запоминаем положение обнаруженной ошибки
 			this->_errorLocation = this->locate(pos);
 			// Выполняем досчёт места обнаруженной ошибки
@@ -7351,7 +7350,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 				 *       перечня атрибутов в описании типа документа
 				 *
 				 */
-				if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes)){
+				if((this->_settings.maxAttributes > 0) && ((this->_declares.size() >= this->_settings.maxAttributes) ||
+				   (this->_attributes.size() >= (this->_settings.maxAttributes - this->_declares.size())))){
 					// Запоминаем положение обнаруженной ошибки
 					this->_errorLocation = this->locate(this->_offset);
 					// Выполняем досчёт места обнаруженной ошибки

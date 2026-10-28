@@ -463,7 +463,7 @@ void awh::codec::csv::Document::consume() noexcept {
 				 *       четырёхбайтовыми смещениями
 				 *
 				 */
-				if((this->_names.size() + value.length()) > ::LIMIT){
+				if(value.length() > (::LIMIT - this->_names.size())){
 					// Запоминаем код отказа сборки таблицы
 					this->_error = error_t::STORAGE_EXHAUSTED;
 					// Прекращаем сбор событий разбора
@@ -504,7 +504,7 @@ void awh::codec::csv::Document::consume() noexcept {
 				 *       таблицу
 				 *
 				 */
-				if(((this->_storage.size() + value.length()) > ::LIMIT) || (this->_fields.size() >= ::LIMIT)){
+				if((value.length() > (::LIMIT - this->_storage.size())) || (this->_fields.size() >= ::LIMIT)){
 					// Запоминаем код отказа сборки таблицы
 					this->_error = error_t::STORAGE_EXHAUSTED;
 					// Прекращаем сбор событий разбора
@@ -2170,7 +2170,7 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
 		 *       четырёхбайтовыми смещениями
 		 *
 		 */
-		if((this->_names.size() + name.length()) > ::LIMIT){
+		if(name.length() > (::LIMIT - this->_names.size())){
 			// Очищаем хранилище имён столбцов
 			this->_names.clear();
 			// Очищаем указания на имена столбцов

@@ -1129,7 +1129,7 @@ uint32_t awh::codec::yaml::Document::deposit(const string_view text) noexcept {
 	 *          здешняя же бережёт лишь само вычисление смещения от переполнения
 	 *
 	 */
-	if((this->_storage.size() + text.size()) > static_cast <size_t> (NO_ORIGIN)){
+	if(text.size() > (static_cast <size_t> (NO_ORIGIN) - this->_storage.size())){
 		// Запоминаем код отказа переполнения хранилища знаков
 		this->_error = error_t::STORAGE_EXHAUSTED;
 		/**
@@ -2661,7 +2661,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 				 *          слово: слог у одной руки в разное время разный
 				 *
 				 */
-				if((this->_nodes.size() + extent) > MAX_NODES){
+				if(extent > (MAX_NODES - this->_nodes.size())){
 					// Запоминаем код ошибки разбора текста
 					this->_error = error_t::TOO_MANY_NODES;
 					// Запоминаем положение отказа разбора
@@ -2690,7 +2690,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 				 *       того, чтобы поднятие то не сняло ограду вовсе
 				 *
 				 */
-				if((this->_nodes.size() + extent) > limit){
+				if(extent > (limit - this->_nodes.size())){
 					// Запоминаем код ошибки разбора текста
 					this->_error = error_t::EXPANSION_EXCEEDED;
 					// Запоминаем положение отказа разбора

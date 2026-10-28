@@ -142,7 +142,7 @@ string_view awh::codec::xml::Document::get(const span_t & span) const noexcept {
 	 *          чтением за пределами хранилища - порчей памяти вместо пустой выдачи
 	 *
 	 */
-	if((static_cast <size_t> (span.offset) + span.length) > this->_storage.size())
+	if((span.offset > this->_storage.size()) || (span.length > (this->_storage.size() - span.offset)))
 		// Выводим пустую последовательность знаков
 		return "";
 	// Выводим последовательность знаков указанного отрезка
@@ -233,7 +233,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 *          настройкою не открывается: открыть его значило бы дозволить усечение
 		 *
 		 */
-		if((this->_storage.size() + value.length()) > STORAGE_LIMIT){
+		if(value.length() > (STORAGE_LIMIT - this->_storage.size())){
 			// Запоминаем, что дерево вышло за отведённый ему предел
 			overflow = true;
 			// Выводим пустой отрезок общего хранилища знаков

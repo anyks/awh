@@ -7290,7 +7290,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				/**
 				 * Если глубина вложенности предел превышает
 				 */
-				if((this->_levels.size() + this->_flow.size()) >= limit){
+				if(this->_levels.size() >= (limit - this->_flow.size())){
 					/**
 					 * Если включён режим отладки
 					 */
