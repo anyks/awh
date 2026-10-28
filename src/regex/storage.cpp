@@ -27,9 +27,13 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <regex/storage.hpp>
 
 /**
@@ -87,13 +91,32 @@ namespace {
  */
 namespace {
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_REGEX_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция записи восьмиразрядного числа
 	 *
 	 * @param value  записываемое число
 	 * @param result запись хранилища
 	 *
 	 */
-	inline void write8(const uint8_t value, string & result) noexcept {
+	static AWH_REGEX_INLINE void write8(const uint8_t value, string & result) noexcept {
 		// Записываем числ
 		result.push_back(static_cast <char> (value));
 	}
@@ -104,7 +127,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	inline void write16(const uint16_t value, string & result) noexcept {
+	static AWH_REGEX_INLINE void write16(const uint16_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -126,7 +149,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	[[maybe_unused]] inline void write32(const uint32_t value, string & result) noexcept {
+	[[maybe_unused]] static AWH_REGEX_INLINE void write32(const uint32_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -141,7 +164,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	inline void write64(const uint64_t value, string & result) noexcept {
+	static AWH_REGEX_INLINE void write64(const uint64_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -162,7 +185,7 @@ namespace {
 	 *          соразмерно объёму прочитанного.
 	 *
 	 */
-	inline void writeVar(uint32_t value, string & result) noexcept {
+	static AWH_REGEX_INLINE void writeVar(uint32_t value, string & result) noexcept {
 		/**
 		 * Записываем числ семиразрядными долями
 		 */
@@ -184,7 +207,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	inline bool readVar(string_view data, size_t & offset, uint32_t & value) noexcept {
+	static AWH_REGEX_INLINE bool readVar(string_view data, size_t & offset, uint32_t & value) noexcept {
 		// Сбрасываем прочитанного числа
 		value = 0;
 		/**
@@ -224,7 +247,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	inline void writeText(const string & value, string & result) noexcept {
+	static AWH_REGEX_INLINE void writeText(const string & value, string & result) noexcept {
 		// Записываем длину последовательности
 		writeVar(static_cast <uint32_t> (value.size()), result);
 		// Записываем содержимого последовательности
@@ -239,7 +262,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	inline bool read8(string_view data, size_t & offset, uint8_t & value) noexcept {
+	static AWH_REGEX_INLINE bool read8(string_view data, size_t & offset, uint8_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -260,7 +283,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	inline bool read16(string_view data, size_t & offset, uint16_t & value) noexcept {
+	static AWH_REGEX_INLINE bool read16(string_view data, size_t & offset, uint16_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -289,7 +312,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	[[maybe_unused]] inline bool read32(string_view data, size_t & offset, uint32_t & value) noexcept {
+	[[maybe_unused]] static AWH_REGEX_INLINE bool read32(string_view data, size_t & offset, uint32_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -316,7 +339,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	inline bool read64(string_view data, size_t & offset, uint64_t & value) noexcept {
+	static AWH_REGEX_INLINE bool read64(string_view data, size_t & offset, uint64_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -343,7 +366,7 @@ namespace {
 	 * @return       результат чтения последовательности
 	 *
 	 */
-	inline bool readText(string_view data, size_t & offset, string & value) noexcept {
+	static AWH_REGEX_INLINE bool readText(string_view data, size_t & offset, string & value) noexcept {
 		// Длина прочитанной последовательности
 		uint32_t length = 0;
 		/**
@@ -376,7 +399,7 @@ namespace {
 	 *          восстановление сличает опознание со своим.
 	 *
 	 */
-	inline uint16_t platform() noexcept {
+	static AWH_REGEX_INLINE uint16_t platform() noexcept {
 		// Проба порядка байтов машины
 		const uint32_t probe = 0x01020304;
 		// Собираемое опознание устройства машины
@@ -411,7 +434,7 @@ namespace {
 	 *          какого порождён.
 	 *
 	 */
-	inline uint64_t hardware() noexcept {
+	static AWH_REGEX_INLINE uint64_t hardware() noexcept {
 		// Собираемое опознание машины
 		uint64_t result = 0xCBF29CE484222325ull;
 		/**
@@ -483,7 +506,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	inline void align(string & result) noexcept {
+	static AWH_REGEX_INLINE void align(string & result) noexcept {
 		/**
 		 * Добавляем байтов заполнения до границы
 		 */
@@ -492,11 +515,14 @@ namespace {
 			result.push_back('\0');
 	}
 	/**
-	 * @brief Функция записи набора образом памяти
+	 * @brief Шаблон функции записи набора образом памяти
 	 *
-	 * @tparam T       тип записи набора
-	 * @param  records записываемый набор
-	 * @param  result  запись хранилища
+	 * @tparam T тип записи набора
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция записи набора образом памяти
 	 *
 	 * @details Набор пишется образом памяти затем, чтобы восстановление его
 	 *          свелось к установке обзора на участок записи, минуя размещение
@@ -504,9 +530,11 @@ namespace {
 	 *          обзор выдаёт записи типом, а обращение к ним по указанию
 	 *          невыровненному допустимо не всякой машиной.
 	 *
+	 * @param records записываемый набор
+	 * @param result  запись хранилища
+	 *
 	 */
-	template <typename T>
-	inline void writeRegion(const awh::regex::Sequence <T> & records, string & result) noexcept {
+	static AWH_REGEX_INLINE void writeRegion(const awh::regex::Sequence <T> & records, string & result) noexcept {
 		// Записываем количество записей набора
 		writeVar(static_cast <uint32_t> (records.size()), result);
 		// Выравниваем записю по границе восьми байтов
@@ -541,7 +569,7 @@ namespace {
 	 * @return         результат восстановления набора
 	 *
 	 */
-	inline bool readRegion(string_view data, size_t & offset, const size_t limit, awh::regex::Sequence <T> & records) noexcept {
+	static AWH_REGEX_INLINE bool readRegion(string_view data, size_t & offset, const size_t limit, awh::regex::Sequence <T> & records) noexcept {
 		// Количество записей восстанавливаемого набора
 		uint32_t count = 0;
 		/**
@@ -616,11 +644,11 @@ namespace {
 	 *          на сумму в этом не полагается.
 	 *
 	 */
-	inline uint64_t checksum(string_view data) noexcept {
-		// Накопленная контрольная сумма записи
-		uint64_t result = 0xCBF29CE484222325ull;
+	static AWH_REGEX_INLINE uint64_t checksum(string_view data) noexcept {
 		// Получаем позицию чтения записи
 		size_t offset = 0;
+		// Накопленная контрольная сумма записи
+		uint64_t result = 0xCBF29CE484222325ull;
 		/**
 		 * Перебираем записю восьмибайтовыми долями
 		 *
@@ -811,7 +839,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если соглашение о переводе строки набором не заведено
 	 */
-	if(convention > static_cast <uint8_t> (newline_t::NIL)){
+	if(convention > static_cast <uint8_t> (newline_t::ANYCRLF)){
 		// Устанавливаем ошибку неверного устройства записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Восстановление программы: отказ
@@ -1601,11 +1629,10 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 	return true;
 }
 /**
- * @brief Метод записи собранных выражений
+ * @brief Метод записи программы регулярного выражения
  *
- * @param expressions набор собранных выражений
- * @param result      запись хранилища
- * @return            результат записи собранных выражений
+ * @param program записываемая программа
+ * @param result  запись хранилища
  *
  */
 bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & result) const noexcept {
@@ -1860,7 +1887,7 @@ bool awh::regex::Storage::load(string_view data, vector <exp_t> & result) const 
 	return this->restore(make_shared <const string> (data), result);
 }
 /**
- * @brief Метод восстановления собранных выражений с передачей записи во владение
+ * @brief Метод восстановления собранных выражений
  *
  * @param data   запись хранилища
  * @param result набор восстановленных выражений
@@ -1872,9 +1899,9 @@ bool awh::regex::Storage::adopt(string && data, vector <exp_t> & result) const n
 	return this->restore(make_shared <const string> (::move(data)), result);
 }
 /**
- * @brief Метод восстановления собранных выражений из записи, взятой во владение
+ * @brief Метод восстановления собранных выражений из записи
  *
- * @param blob   запись хранилища
+ * @param blob   запись хранилища, взятая во владение
  * @param result набор восстановленных выражений
  * @return       результат восстановления собранных выражений
  *
@@ -1905,7 +1932,7 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 /**
  * @brief Метод восстановления собранных выражений телом своим
  *
- * @param blob   запись хранилища
+ * @param blob   запись хранилища, взятая во владение
  * @param result набор восстановленных выражений
  * @return       результат восстановления собранных выражений
  *
@@ -1970,10 +1997,10 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	}
 	// Опознание устройства машины
 	uint16_t machine = 0;
-	// Метод сжатия записи хранилища и признак шифрования её
-	uint8_t method = 0, sealed = 0;
 	// Байты выравнивания заголовка записи
 	uint16_t padding = 0;
+	// Метод сжатия записи хранилища и признак шифрования её
+	uint8_t method = 0, sealed = 0;
 	/**
 	 * Если чтение опознания устройства машины не выполнено
 	 */
@@ -2468,9 +2495,11 @@ void awh::regex::Storage::trusted(const bool mode) noexcept {
 	this->_trusted = mode;
 }
 /**
- * @brief Метод извлечения кода ошибки хранилища
+ * @brief Метод установки сжатия записи хранилища
  *
- * @return код ошибки хранилища собранных выражений
+ * @param method метод сжатия записи хранилища
+ * @param pack   обработчик сжатия записи хранилища
+ * @param unpack обработчик разжатия записи хранилища
  *
  */
 void awh::regex::Storage::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
@@ -2518,14 +2547,15 @@ awh::regex::storage_error_t awh::regex::Storage::error() const noexcept {
 }
 
 /**
- * @brief Конструктор хранилища
+ * @brief Конструктор
  *
  */
 awh::regex::Storage::Storage() noexcept :
  _trusted(false), _ciphered(false), _lifetime(0),
- _method(compressor::method_t::NONE), _error(storage_error_t::NONE) {}
+ _method(compressor::method_t::NONE),
+ _error(storage_error_t::NONE) {}
 /**
- * @brief Деструктор хранилища
+ * @brief Деструктор
  *
  */
-awh::regex::Storage::~Storage() noexcept {}
+awh::regex::Storage::~Storage() noexcept = default;

@@ -29,10 +29,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/probe.hpp>
-#include <regex/parser.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/unicode.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <regex/probe.hpp>
+#include <regex/parser.hpp>
 
 /**
  * Подключаем внутренние помощники модуля
@@ -55,13 +59,32 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_REGEX_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция приведения режима компиляции к его числовому значению
 	 *
 	 * @param value режим компиляции регулярного выражения
 	 * @return      числовое значение режима компиляции
 	 *
 	 */
-	inline uint32_t flagOf(const regex::flag_t value) noexcept {
+	static constexpr uint32_t flagOf(const regex::flag_t value) noexcept {
 		// Приводим режим компиляции к числовому значению
 		return static_cast <uint32_t> (value);
 	}
@@ -72,7 +95,7 @@ namespace {
 	 * @return       числовое значение шестнадцатеричной цифры
 	 *
 	 */
-	inline uint32_t hexValue(const char letter) noexcept {
+	static AWH_REGEX_INLINE uint32_t hexValue(const char letter) noexcept {
 		/**
 		 * Если символ является десятичной цифрой
 		 */
@@ -90,7 +113,7 @@ namespace {
 	 * @return       результат проверки допустимости символа имени группы
 	 *
 	 */
-	inline bool isNameChar(const char letter, const bool first) noexcept {
+	static AWH_REGEX_INLINE bool isNameChar(const char letter, const bool first) noexcept {
 		/**
 		 * Если проверяется первый символ имени группы
 		 */
@@ -114,7 +137,7 @@ namespace {
 	 * @return       результат извлечения числа
 	 *
 	 */
-	static bool numbering(const string_view text, uint32_t & result) noexcept {
+	static AWH_REGEX_INLINE bool numbering(const string_view text, uint32_t & result) noexcept {
 		// Извлекаемое десятичное число
 		uint64_t value = 0;
 		/**
@@ -161,7 +184,7 @@ namespace {
 	 * @return        результат проверки размещения элемента сортировки
 	 *
 	 */
-	static bool collating(const string_view pattern, const size_t pos) noexcept {
+	static AWH_REGEX_INLINE bool collating(const string_view pattern, const size_t pos) noexcept {
 		// Получаем размер текста регулярного выражения
 		const size_t size = pattern.size();
 		/**
@@ -647,7 +670,7 @@ const string & awh::regex::Parser::name(const uint32_t index) const noexcept {
 /**
  * @brief Метод извлечения соответствия имён групп их номерам
  *
- * @return соответствие имён именованных групп их номерам
+ * @return соответствие имён именованных групп наборам их номеров
  *
  */
 const unordered_map <string, vector <uint32_t>> & awh::regex::Parser::groups() const noexcept {
@@ -913,10 +936,9 @@ void awh::regex::Parser::normalize(class_t & value) const noexcept {
 	value.ranges.resize(index + 1);
 }
 /**
- * @brief Метод создания узла класса символов
+ * @brief Метод создания узла любого символа с учётом соглашения
  *
- * @param value класс символов для размещения в хранилище классов
- * @return      индекс созданного узла в арене узлов
+ * @return индекс созданного узла в арене узлов
  *
  */
 awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
@@ -2435,6 +2457,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
  * @param result класс символов для добавления диапазонов
  * @param code   кодовое значение разобранного одиночного символа
  * @param single флаг разбора одиночного символа
+ * @param ending флаг разбора верхнего края диапазона
  * @return       результат выполнения разбора
  *
  */
@@ -5690,7 +5713,7 @@ void awh::regex::Parser::settings() noexcept {
 /**
  * @brief Метод предварительного прохода по регулярному выражению
  *
- * @return результат выполнения прохода
+ * @return результат выполнения предварительного прохода
  *
  */
 bool awh::regex::Parser::prescan() noexcept {
@@ -6475,11 +6498,11 @@ bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexce
  *
  */
 awh::regex::Parser::Parser() noexcept :
- _barrier(false), _counted(false), _resolving(false),
- _restricted(false), _pos(0), _errorPos(0),
- _root(INVALID_NODE), _look(0), _depth(0),
- _total(0), _flags(0), _begin(0),
- _kinds(0), _verbs(0), _options(0),
+ _barrier(false), _counted(false),
+ _resolving(false), _restricted(false),
+ _pos(0), _errorPos(0), _root(INVALID_NODE),
+ _look(0), _depth(0), _total(0), _flags(0),
+ _begin(0), _kinds(0), _verbs(0), _options(0),
  _captures(0), _classCount(0), _stepLimit(~0u),
  _heapLimit(~0u), _depthLimit(~0u),
  _error(error_t::NONE), _convention(newline_t::LF) {
@@ -6488,12 +6511,13 @@ awh::regex::Parser::Parser() noexcept :
 }
 
 /**
- * @brief Конструктор отложенной ссылки на именованную группу
+ * @brief Конструктор
  *
  */
-awh::regex::Parser::Deferred::Deferred() noexcept : node(INVALID_NODE), name(0), offset(0) {}
+awh::regex::Parser::Deferred::Deferred() noexcept :
+ node(INVALID_NODE), name(0), offset(0) {}
 /**
- * @brief Деструктор разбора регулярного выражения
+ * @brief Деструктор
  *
  */
-awh::regex::Parser::~Parser() noexcept {}
+awh::regex::Parser::~Parser() noexcept = default;

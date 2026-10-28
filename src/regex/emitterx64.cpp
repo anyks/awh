@@ -49,9 +49,13 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <regex/emitter.hpp>
 
 /**
@@ -69,6 +73,25 @@ using namespace std;
  *
  */
 namespace {
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_REGEX_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
+
 	/**
 	 * @brief Размер участка доводов, вызывающим отводимого
 	 *
@@ -161,7 +184,7 @@ namespace {
 	 * @param value размещаемый байт команды
 	 *
 	 */
-	inline void emit8(vector <uint8_t> & code, const uint8_t value) noexcept {
+	static AWH_REGEX_INLINE void emit8(vector <uint8_t> & code, const uint8_t value) noexcept {
 		// Размещаем байт команды
 		code.push_back(value);
 	}
@@ -172,7 +195,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	inline void emit32(vector <uint8_t> & code, const uint32_t value) noexcept {
+	static AWH_REGEX_INLINE void emit32(vector <uint8_t> & code, const uint32_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -187,7 +210,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	inline void emit64(vector <uint8_t> & code, const uint64_t value) noexcept {
+	static AWH_REGEX_INLINE void emit64(vector <uint8_t> & code, const uint64_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -210,7 +233,7 @@ namespace {
 	 *          назначает обращение к разрядной сетке шириною восемь байтов.
 	 *
 	 */
-	inline uint8_t rex(const bool wide, const uint32_t reg, const uint32_t index, const uint32_t base) noexcept {
+	static constexpr uint8_t rex(const bool wide, const uint32_t reg, const uint32_t index, const uint32_t base) noexcept {
 		// Выводим собранный байт расширения набора регистров
 		return static_cast <uint8_t> (0x40u | (wide ? 0x08u : 0x00u) | (((reg >> 3) & 0x01u) << 2) | (((index >> 3) & 0x01u) << 1) | ((base >> 3) & 0x01u));
 	}
@@ -223,7 +246,7 @@ namespace {
 	 * @return     собранный байт указания способа обращения
 	 *
 	 */
-	inline uint8_t modrm(const uint8_t mode, const uint32_t reg, const uint32_t rm) noexcept {
+	static constexpr uint8_t modrm(const uint8_t mode, const uint32_t reg, const uint32_t rm) noexcept {
 		// Выводим собранный байт указания способа обращения
 		return static_cast <uint8_t> ((mode << 6) | ((reg & 0x07u) << 3) | (rm & 0x07u));
 	}
@@ -236,7 +259,7 @@ namespace {
 	 * @return      собранный байт уточнения обращения к памяти
 	 *
 	 */
-	inline uint8_t sib(const uint8_t scale, const uint32_t index, const uint32_t base) noexcept {
+	static constexpr uint8_t sib(const uint8_t scale, const uint32_t index, const uint32_t base) noexcept {
 		// Выводим собранный байт уточнения обращения к памяти
 		return static_cast <uint8_t> ((scale << 6) | ((index & 0x07u) << 3) | (base & 0x07u));
 	}
@@ -255,7 +278,7 @@ namespace {
 	 *          путей, ошибиться в каких легко.
 	 *
 	 */
-	inline void memory(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
+	static AWH_REGEX_INLINE void memory(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
 		// Размещаем байт расширения набора регистров
 		emit8(code, rex(true, reg, 0, base));
 		// Размещаем код команды процессора
@@ -631,10 +654,10 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	emit8(this->_code, modrm(0x03, right, left));
 }
 /**
- * @brief Метод размещения сравнения значения регистра с числом
+ * @brief Метод размещения сравнения значений регистров
  *
- * @param reg   регистр сравниваемого значения
- * @param value сравниваемое число
+ * @param first  регистр уменьшаемого значения
+ * @param second регистр вычитаемого значения
  *
  */
 void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcept {
@@ -767,10 +790,10 @@ void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept 
 	emit8(this->_code, modrm(0x03, operand, result));
 }
 /**
- * @brief Метод размещения записи числа в регистр
+ * @brief Метод размещения переноса значения регистра
  *
- * @param target регистр назначения записи
- * @param value  записываемое число
+ * @param target регистр назначения переноса
+ * @param source регистр источника переноса
  *
  */
 void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcept {
@@ -856,7 +879,7 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), (index * 8));
 }
 /**
- * @brief Метод размещения чтения значения по смещению
+ * @brief Метод размещения чтения значения из памяти
  *
  * @param target регистр прочитанного значения
  * @param base   регистр адреса начала области чтения
@@ -890,7 +913,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
- * @brief Метод размещения записи значения по смещению
+ * @brief Метод размещения записи значения регистра в память
  *
  * @param source регистр записываемого значения
  * @param base   регистр адреса начала области записи
@@ -924,11 +947,11 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	memory(this->_code, 0x89, static_cast <uint32_t> (source), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
- * @brief Метод размещения чтения значения из памяти по адресу в регистре
+ * @brief Метод размещения чтения значения из памяти
  *
  * @param target регистр прочитанного значения
  * @param base   регистр адреса начала области чтения
- * @param offset регистр номера читаемого значения в области
+ * @param index  номер читаемого значения в области
  *
  */
 void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
@@ -962,11 +985,11 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	emit8(this->_code, 0x00);
 }
 /**
- * @brief Метод размещения записи значения регистра в память по адресу в регистре
+ * @brief Метод размещения записи значения регистра в память
  *
  * @param source регистр записываемого значения
  * @param base   регистр адреса начала области записи
- * @param offset регистр номера записываемого значения в области
+ * @param index  номер записываемого значения в области
  *
  */
 void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
@@ -986,7 +1009,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_
 	emit8(this->_code, 0x00);
 }
 /**
- * @brief Метод размещения вызова подпрограммы по адресу регистра
+ * @brief Метод размещения вызова подпрограммы по адресу в регистре
  *
  * @param reg регистр адреса вызываемой подпрограммы
  *
@@ -1008,7 +1031,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 /**
  * @brief Метод размещения вычисления адреса метки
  *
- * @param target регистр вычисленного адреса метки
+ * @param target регистр вычисленного адреса
  * @param label  номер метки, адрес какой вычисляется
  *
  */
@@ -1062,9 +1085,9 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	emit32(this->_code, 0);
 }
 /**
- * @brief Метод размещения перехода по адресу регистра
+ * @brief Метод размещения перехода по адресу в регистре
  *
- * @param reg регистр адреса перехода
+ * @param reg регистр адреса выполняемого перехода
  *
  */
 void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
@@ -1094,7 +1117,10 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
  */
 void awh::regex::Emitter::landing() noexcept {
 	/**
+	 * @brief Метод размещения завершения вызова
+	 *
 	 * Метка цели перехода набору команд x86-64 не нужна
+	 *
 	 */
 }
 /**
@@ -1160,7 +1186,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 	return true;
 }
 /**
- * @brief Метод размещения поиска байта непрерывного диапазона средствами SSE2
+ * @brief Метод размещения поиска первого байта непрерывного диапазона
  *
  * @param lower нижняя граница диапазона включительно
  * @param upper верхняя граница диапазона включительно

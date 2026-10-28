@@ -27,11 +27,15 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
+ */
+#include <encoding/unicode/unicode.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
  */
 #include <regex/probe.hpp>
 #include <regex/backtrack.hpp>
-#include <encoding/unicode/unicode.hpp>
 
 /**
  * Подключаем внутренние помощники модуля
@@ -572,10 +576,14 @@ void awh::regex::Backtrack::ceiling(const size_t ceiling) noexcept {
 	 */
 	this->_ceiling = ((ceiling > 0) ? ceiling : numeric_limits <size_t>::max());
 	/**
-	 * Восстанавливаем предельного объёма работы сопоставления
+	 * @brief Метод извлечения кода ошибки последней операции
+	 *
+	 * @details Восстанавливаем предельного объёма работы сопоставления.
 	 *
 	 * @note Объём этот выставляется вызывающей стороною перед каждым сопоставлением,
 	 *       однако до первого из них он равен потолку прежнему, и его надо обновить
+	 *
+	 * @return код ошибки последней операции сопоставления
 	 *
 	 */
 	this->_budget = this->_ceiling;
@@ -591,9 +599,9 @@ awh::regex::error_t awh::regex::Backtrack::error() const noexcept {
 	return this->_error;
 }
 /**
- * @brief Метод извлечения адреса глагола отметки совпадения последнего
+ * @brief Метод извлечения адреса глагола отметки попытки последней
  *
- * @return адрес глагола отметки совпадения последнего
+ * @return адрес глагола отметки попытки последней
  *
  */
 size_t awh::regex::Backtrack::failed() const noexcept {
@@ -1495,12 +1503,12 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
 /**
  * @brief Метод исполнения программы с заданной инструкции
  *
- * @param address адрес инструкции, с которой начинается исполнение
- * @param pos     позиция в тексте, с которой начинается исполнение
- * @param base    глубина набора точек возврата, ниже которой возврат недопустим
- * @param bound   позиция, в которой обязано завершиться исполнение
- * @param end     позиция завершения исполнения программы
- * @return        результат исполнения программы
+ * @param pc    адрес инструкции, с которой начинается исполнение
+ * @param pos   позиция в тексте, с которой начинается исполнение
+ * @param base  глубина набора точек возврата, ниже которой возврат недопустим
+ * @param bound позиция, в которой обязано завершиться исполнение
+ * @param end   позиция завершения исполнения программы
+ * @return      результат исполнения программы
  *
  */
 bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept {
@@ -3568,7 +3576,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		return this->search(program, text, start, captures, mode);
 	}
 	/**
-	 * @brief Метод сопоставления регулярного выражения с текстом под прокладкой стека
+	 * @brief Метод сопоставления регулярного выражения под прокладкой стека
 	 *
 	 * @param program  исполняемая программа регулярного выражения
 	 * @param text     текст для сопоставления
@@ -4338,37 +4346,50 @@ awh::regex::Backtrack::Backtrack() noexcept :
  _identity(0), _program(nullptr) {}
 
 /**
- * @brief Конструктор точки возврата
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Point::Point() noexcept : frame(false), seek(0), control(0), pos(0), span(0), journal(0), pc(0), cell(0) {}
+awh::regex::Backtrack::Point::Point() noexcept :
+ frame(false), seek(0), control(0), pos(0),
+ span(0), journal(0), pc(0), cell(0) {}
+
 /**
- * @brief Конструктор записи журнала
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Change::Change() noexcept : value(0), slot(0) {}
+awh::regex::Backtrack::Change::Change() noexcept :
+ value(0), slot(0) {}
+
 /**
- * @brief Конструктор таблицы принадлежности значений байта классу символов
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Table::Table() noexcept : modes(0), bytes{0} {}
+awh::regex::Backtrack::Table::Table() noexcept :
+ modes(0), bytes{0} {}
+
 /**
- * @brief Конструктор записи розыска
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Lookup::Lookup() noexcept : modes(0), bytes(nullptr) {}
+awh::regex::Backtrack::Lookup::Lookup() noexcept :
+ modes(0), bytes(nullptr) {}
+
 /**
- * @brief Конструктор записи отметки
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Remark::Remark() noexcept : value(0), cell(0) {}
+awh::regex::Backtrack::Remark::Remark() noexcept :
+ value(0), cell(0) {}
+
 /**
- * @brief Конструктор записи кадра
+ * @brief Конструктор
  *
  */
-awh::regex::Backtrack::Frame::Frame() noexcept : pos(0), depth(0), parent(0), journal(0), back(0), number(0) {}
+awh::regex::Backtrack::Frame::Frame() noexcept :
+ pos(0), depth(0), parent(0), journal(0), back(0), number(0) {}
+
 /**
- * @brief Деструктор модуля возвратов
+ * @brief Деструктор
  *
  */
 awh::regex::Backtrack::~Backtrack() noexcept = default;

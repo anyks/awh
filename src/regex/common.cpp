@@ -20,7 +20,7 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
  */
 #include <regex/common.hpp>
 
@@ -34,26 +34,39 @@ using namespace std;
  */
 namespace awh {
 	/**
+	 * @brief Конструктор
+	 *
 	 * Пространство имён типов и алгоритмов разбора регулярных выражений
+	 *
 	 */
 	namespace regex {
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по умолчанию
+		 *
 		 */
 		ClassRef::ClassRef() noexcept :
 		 negative(false), ranges(0),
-		 rangeCount(0), properties(0), propertyCount(0) {}
+		 rangeCount(0), properties(0),
+		 propertyCount(0) {}
 
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по умолчанию
+		 *
 		 */
 		Range::Range() noexcept : end(0), begin(0) {}
 
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по нижней и верхней границам
 		 *
 		 * @param begin нижняя граница диапазона включительно
 		 * @param end   верхняя граница диапазона включительно
+		 *
 		 */
 		Range::Range(const uint32_t begin, const uint32_t end) noexcept : end(end), begin(begin) {}
 
@@ -63,20 +76,29 @@ namespace awh {
 		Property::Property() noexcept : id(0), negative(false) {}
 
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по идентификатору и признаку отрицания
 		 *
 		 * @param id       идентификатор свойства Юникода
-		 * @param negative признак отрицания свойства Юникода
+		 * @param negative флаг отрицания свойства
+		 *
 		 */
 		Property::Property(const uint16_t id, const bool negative) noexcept : id(id), negative(negative ? 1 : 0) {}
 
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по умолчанию
+		 *
 		 */
 		Class::Class() noexcept : negative(false) {}
 
 		/**
+		 * @brief Конструктор
+		 *
 		 * Конструктор по умолчанию
+		 *
 		 */
 		ClassView::ClassView() noexcept : negative(false) {}
 	};

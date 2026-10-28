@@ -27,7 +27,7 @@
 #include <algorithm>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
 #include <regex/text.hpp>
 #include <regex/probe.hpp>
@@ -107,11 +107,11 @@ namespace {
 				 * Узлы, исполнением детерминированным не воспроизводимые
 				 */
 				case static_cast <uint8_t> (node_t::BACKREF):
-				case static_cast <uint8_t> (node_t::GRAPHEME):
 				case static_cast <uint8_t> (node_t::RECURSE):
-				case static_cast <uint8_t> (node_t::LOOKAROUND):
-				case static_cast <uint8_t> (node_t::CONDITION):
 				case static_cast <uint8_t> (node_t::CONTROL):
+				case static_cast <uint8_t> (node_t::GRAPHEME):
+				case static_cast <uint8_t> (node_t::CONDITION):
+				case static_cast <uint8_t> (node_t::LOOKAROUND):
 					// Выводим непринадлежность выражения регулярному подмножеству
 					return false;
 				/**
@@ -2658,14 +2658,14 @@ bool awh::regex::Compiler::literal(const node_id_t id, string & result) const no
 	return false;
 }
 /**
- * @brief Метод измерения литерала, сопоставляемого узлом целиком
+ * @brief Метод дополнения литерала, сопоставляемого узлом целиком
  *
  * @details Условия те же, что у дополнения литерала, и сличаются они в том же
  *          порядке. Литерал не формируется: разбор обязательного литерала
  *          сличает литералы длиною, а формирует строку лишь победившему.
  *
  * @param id     индекс узла в арене узлов
- * @param length длина литерала узла в байтах
+ * @param result дополняемый литерал совпадения
  * @return       результат сопоставления узла литералом
  *
  */
@@ -6037,12 +6037,12 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 }
 
 /**
- * @brief Конструктор записи отрезка выражения
+ * @brief Конструктор
  *
  */
 awh::regex::Compiler::Piece::Piece() noexcept : length(0), count(0), first(INVALID_NODE) {}
 /**
- * @brief Деструктор разбора регулярного выражения
+ * @brief Деструктор
  *
  */
 awh::regex::Compiler::~Compiler() noexcept = default;

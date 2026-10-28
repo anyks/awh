@@ -31,9 +31,13 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
+#include <num/lexical/lexical.hpp>
+#include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <regex/grok/grok.hpp>
-#include <num/lexical/lexical.hpp>
-#include <num/lexical/lexical.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -91,10 +95,10 @@ namespace {
 	 *
 	 */
 	static uint64_t checksum(string_view data) noexcept {
-		// Накопленная контрольная сумма содержимого
-		uint64_t result = 0xCBF29CE484222325ull;
 		// Получаем позицию чтения содержимого
 		size_t offset = 0;
+		// Накопленная контрольная сумма содержимого
+		uint64_t result = 0xCBF29CE484222325ull;
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
@@ -269,6 +273,7 @@ namespace {
 		 * Если число начинается знаком минуса
 		 *
 		 * @details Знак плюса записью числа JSON не дозволен вовсе.
+		 *
 		 */
 		if(text.front() == '-'){
 			// Запоминаем отрицательность числа
@@ -287,6 +292,7 @@ namespace {
 		 *
 		 * @details Ведущие нули записью числа JSON не дозволены: «007» числом
 		 *          не является, тогда как «0» и «0.5» являются.
+		 *
 		 */
 		if(text.at(pos) == '0')
 			// Переходим к знаку следующему
@@ -301,15 +307,16 @@ namespace {
 		 * Если число несёт дробную часть
 		 */
 		if((pos < text.size()) && (text.at(pos) == '.')){
-			// Запоминаем наличие дробной части
-			fraction = true;
 			// Переходим к знаку следующему
 			pos++;
+			// Запоминаем наличие дробной части
+			fraction = true;
 			/**
 			 * Если дробная часть цифр не несёт
 			 *
 			 * @details Запись «3.» числом JSON не является: после точки
 			 *          обязана стоять хотя бы одна цифра.
+			 *
 			 */
 			if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
 				// Выводим результат разбора захвата числом
@@ -325,10 +332,10 @@ namespace {
 		 * Если число несёт порядок
 		 */
 		if((pos < text.size()) && ((text.at(pos) == 'e') || (text.at(pos) == 'E'))){
-			// Запоминаем наличие порядка
-			fraction = true;
 			// Переходим к знаку следующему
 			pos++;
+			// Запоминаем наличие порядка
+			fraction = true;
 			/**
 			 * Если порядок несёт знак
 			 */
@@ -371,21 +378,21 @@ size_t awh::Grok::Hash::operator () (const key_t & key) const noexcept {
 /**
  * @brief Метод подсчёта групп захвата участка текста выражения
  *
- * @param text   участок текста регулярного выражения
- * @param number номер очередной группы захвата
- *
  * @details Номер группы захвата определяется порядком открывающих скобок в
  *          тексте выражения окончательном, поэтому подсчёт ведёт не только
  *          скобки, порождённые ссылками с полем, но и скобки, записанные в
  *          тексте шаблона впрямую: набор встроенный несёт и группы
  *          безымянные, и группы именованные.
  *
+ * @param text   участок текста регулярного выражения
+ * @param number номер очередной группы захвата
+ *
  */
 void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
-	// Признак экранирования очередного символа
-	bool escaped = false;
 	// Признак нахождения внутри класса символов
 	bool klass = false;
+	// Признак экранирования очередного символа
+	bool escaped = false;
 	/**
 	 * Выполняем перебор символов участка текста выражения
 	 */
@@ -461,6 +468,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		 *          «(?'имя'» и «(?P<имя>». Записи «(?<=» и «(?<!» открывают
 		 *          проверку ретроспективную и захвата не выполняют, поэтому
 		 *          отличаются по символу, за скобкой угловой следующему.
+		 *
 		 */
 		if(((i + 2) < text.size()) && (text[i + 2] == 'P') && ((i + 3) < text.size()) && (text[i + 3] == '<')){
 			// Выполняем увеличение номера группы захвата
@@ -525,6 +533,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		 * @details Знак процента экранируется обратной косой чертой, и
 		 *          экранированный знак ссылки не открывает: текст «\%{» несёт
 		 *          знак процента буквальный.
+		 *
 		 */
 		if((i > 0) && (body[i - 1] == '\\'))
 			// Переходим к следующему символу
@@ -544,10 +553,10 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		result.append(body.substr(offset, (i - offset)));
 		// Выполняем подсчёт групп захвата перенесённого участка текста
 		this->account(body.substr(offset, (i - offset)), number);
+		// Название поля ссылки
+		string_view field = "";
 		// Получаем текст ссылки на шаблон
 		string_view reference = body.substr(i + 2, (end - i - 2));
-		// Название поля ссылки
-		string_view field;
 		// Вид значения поля ссылки
 		kind_t kind = kind_t::TEXT;
 		// Выполняем поиск разделителя названия шаблона и названия поля
@@ -713,9 +722,9 @@ void awh::Grok::reset() noexcept {
 	/**
 	 * Выполняем перебор встроенного набора шаблонов
 	 */
-	for(size_t i = 0; i < awh::grok::PATTERNS_COUNT; i++)
+	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++)
 		// Выполняем добавление шаблона в реестр
-		this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
+		this->_patterns.emplace(grok::PATTERNS[i].name, grok::PATTERNS[i].body);
 	// Выполняем очистку кэша собранных шаблонов
 	this->_cache.clear();
 }
@@ -767,7 +776,7 @@ bool awh::Grok::erase(string_view name) noexcept {
  */
 string awh::Grok::pattern(string_view name) const noexcept {
 	// Текст шаблона реестра
-	string result;
+	string result = "";
 	/**
 	 * Если название шаблона пусто
 	 */
@@ -907,10 +916,10 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	auto expression = make_shared <awh::grok::expression_t> ();
 	// Устанавливаем исходный текст шаблона
 	expression->pattern.assign(pattern);
-	// Набор шаблонов, разворот каких не завершён
-	vector <string> stack;
 	// Номер очередной группы захвата
 	uint32_t number = 0;
+	// Набор шаблонов, разворот каких не завершён
+	vector <string> stack;
 	/**
 	 * Выполняем разворот ссылок текста шаблона
 	 */
@@ -918,10 +927,10 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		// Выводим результат разворота ссылок текста шаблона
 		return this->expand(pattern, expression->expression, expression->fields, stack, number, 0);
 	};
-	// Признак выполнения разворота ссылок текста шаблона
-	bool unfolded = false;
 	// Выполняем разворот ссылок текста шаблона
 	unfolded = unfold();
+	// Признак выполнения разворота ссылок текста шаблона
+	bool unfolded = false;
 	/**
 	 * Если разворот ссылок текста шаблона не выполнен
 	 */
@@ -931,7 +940,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL);
+			log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {pattern, flags}, log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -948,6 +957,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	 * @details Режим DUPNAMES устанавливается всегда: тексты шаблонов несут
 	 *          именованные группы впрямую, и одно название встречается в
 	 *          ветвях, объединяемых шаблоном вышестоящим.
+	 *
 	 */
 	expression->exp = this->_regexp.build(expression->expression, (flags | static_cast <uint32_t> (flag_t::DUPNAMES)));
 	/**
@@ -1073,12 +1083,12 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, unordered_map <string,
 	return true;
 }
 /**
- * @brief Метод извлечения значений полей из текста
+ * @brief Метод извлечения именованных полей из текста
  *
  * @param text   текст для сопоставления
  * @param exp    собранный шаблон
- * @param result набор извлечённых значений полей
- * @return       результат извлечения значений полей из текста
+ * @param result набор извлечённых полей
+ * @return       результат извлечения именованных полей из текста
  *
  */
 bool awh::Grok::exec(string_view text, const exp_t & exp, vector <value_t> & result) const noexcept {
@@ -1133,7 +1143,7 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, vector <value_t> & res
 	return true;
 }
 /**
- * @brief Метод вывода набора значений полей значением JSON
+ * @brief Метод вывода набора значений полей записью JSON
  *
  * @details Значение собирается сборщиком кодека, а не складывается текстом:
  *          экранирование, запись чисел родным их видом и настройки вида записи
@@ -1141,12 +1151,13 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, vector <value_t> & res
  *          захват лечь числом: вид полю объявляет он, и никто иной.
  *
  * @param values набор значений полей
- * @return       значение JSON набора значений полей
+ * @param pretty признак вывода записи с отступами
+ * @return       запись JSON набора значений полей
  *
  */
 awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcept {
 	// Создаём сборщик значения JSON
-	awh::codec::json::builder_t builder;
+	codec::json::builder_t builder;
 	// Выполняем открытие объекта значения JSON
 	builder.object();
 	/**
@@ -1252,12 +1263,13 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 	return builder.finish();
 }
 /**
- * @brief Метод вывода извлечённых полей значением JSON
+ * @brief Метод вывода извлечённых полей записью JSON
  *
  * @param text   текст для сопоставления
  * @param exp    собранный шаблон
- * @param result значение JSON извлечённых полей
- * @return       результат вывода извлечённых полей значением JSON
+ * @param result запись JSON извлечённых полей
+ * @param pretty признак вывода записи с отступами
+ * @return       результат вывода извлечённых полей записью JSON
  *
  */
 bool awh::Grok::json(string_view text, const exp_t & exp, grok::json_t & result) const noexcept {
@@ -1316,12 +1328,12 @@ awh::Grok::error_t awh::Grok::error() const noexcept {
  *
  */
 size_t awh::Grok::read(string_view text) noexcept {
+	// Позиция начала очередной строки набора
+	size_t begin = 0;
 	// Количество шаблонов, принятых реестром
 	size_t result = 0;
 	// Выполняем сброс кода ошибки разбора шаблона
 	this->_error = error_t::NONE;
-	// Позиция начала очередной строки набора
-	size_t begin = 0;
 	/**
 	 * Выполняем перебор строк набора шаблонов
 	 */
@@ -1344,6 +1356,7 @@ size_t awh::Grok::read(string_view text) noexcept {
 		 * @details Набор шаблонов приходит и от систем, где строки завершаются
 		 *          парой знаков, поэтому возврат каретки отсекается: иначе он
 		 *          вошёл бы в текст шаблона и обратился в сопоставляемый знак.
+		 *
 		 */
 		while(!line.empty() && ((line.back() == '\r') || (line.back() == ' ') || (line.back() == '\t')))
 			// Выполняем отсечение последнего знака строки
@@ -1409,10 +1422,10 @@ void awh::Grok::trusted(const bool mode) noexcept {
  *
  */
 void awh::Grok::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
-	// Выполняем установку метода сжатия части записи, шаблоны описывающей
-	this->_method = method;
 	// Выполняем установку обработчика сжатия части записи
 	this->_pack = pack;
+	// Выполняем установку метода сжатия части записи, шаблоны описывающей
+	this->_method = method;
 	// Выполняем установку обработчика разбора сжатой части записи
 	this->_unpack = unpack;
 	// Выполняем установку сжатия записи собранных выражений
@@ -1471,7 +1484,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		// Выполняем добавление собранного регулярного выражения в набор
 		records.push_back(expression->exp);
 	// Содержимое части записи, шаблоны описывающей
-	string payload;
+	string payload = "";
 	// Выполняем запись набора режимов сборки выражения
 	writeNumber(static_cast <uint64_t> (flags), payload);
 	// Выполняем запись количества собранных шаблонов
@@ -1499,7 +1512,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		}
 	}
 	// Сжатое содержимое части записи, шаблоны описывающей
-	string packed;
+	string packed = "";
 	/**
 	 * Если часть записи, шаблоны описывающая, подлежит сжатию
 	 */
@@ -1529,6 +1542,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	 * @details Опознание и версия пишутся шириною постоянной, а не числом
 	 *          переменной длины: заголовок записи надлежит опознавать по
 	 *          первым её байтам, не разбирая содержимого.
+	 *
 	 */
 	for(uint8_t shift = 0; shift < 64; shift += 8)
 		// Выполняем запись очередного байта опознания
@@ -1568,7 +1582,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	// Выполняем запись содержимого части записи, шаблоны описывающей
 	result.append(placed);
 	// Запись хранилища собранных регулярных выражений
-	string storage;
+	string storage = "";
 	/**
 	 * Если запись собранных регулярных выражений не выполнена
 	 */
@@ -1669,10 +1683,10 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		// Выводим результат восстановления собранных шаблонов
 		return false;
 	}
-	// Получаем метод сжатия части записи, шаблоны описывающей
-	const uint8_t method = static_cast <uint8_t> (record[offset++]);
 	// Размеры содержимого части записи до сжатия и после него
 	uint64_t origin = 0, length = 0;
+	// Получаем метод сжатия части записи, шаблоны описывающей
+	const uint8_t method = static_cast <uint8_t> (record[offset++]);
 	/**
 	 * Если чтение размеров содержимого части записи не выполнено
 	 */
@@ -1726,7 +1740,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		return false;
 	}
 	// Восстановленное содержимое части записи, шаблоны описывающей
-	string content;
+	string content = "";
 	/**
 	 * Если часть записи, шаблоны описывающая, сжата
 	 */
@@ -1744,7 +1758,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		 * Если разбор сжатого содержимого части записи не выполнен
 		 */
 		if(!this->_unpack(record.substr(offset, static_cast <size_t> (placed)), content) ||
-		 (content.size() != static_cast <size_t> (origin))){
+		  (content.size() != static_cast <size_t> (origin))){
 			// Устанавливаем код ошибки невыполненного разбора сжатой части записи
 			this->_error = error_t::STORAGE_PACKING;
 			// Выводим результат восстановления собранных шаблонов
@@ -1788,7 +1802,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		return false;
 	}
 	// Набор восстанавливаемых шаблонов Grok
-	vector <shared_ptr <awh::grok::expression_t>> expressions;
+	vector <shared_ptr <grok::expression_t>> expressions;
 	// Выполняем размещение набора восстанавливаемых шаблонов
 	expressions.reserve(static_cast <size_t> (count));
 	/**
@@ -1796,15 +1810,15 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	 */
 	for(uint64_t i = 0; i < count; i++){
 		// Создаём восстанавливаемый шаблон Grok
-		auto expression = make_shared <awh::grok::expression_t> ();
+		auto expression = make_shared <grok::expression_t> ();
 		// Количество полей восстанавливаемого шаблона
 		uint64_t fields = 0;
 		/**
 		 * Если чтение текстов шаблона либо количества полей не выполнено
 		 */
 		if(!readText(record, offset, expression->pattern) ||
-		 !readText(record, offset, expression->expression) ||
-		 !readNumber(record, offset, fields)){
+		   !readText(record, offset, expression->expression) ||
+		   !readNumber(record, offset, fields)){
 			// Устанавливаем код ошибки восстановления собранных шаблонов
 			this->_error = error_t::STORAGE_TRUNCATED;
 			// Выводим результат восстановления собранных шаблонов
@@ -1826,7 +1840,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		 */
 		for(uint64_t j = 0; j < fields; j++){
 			// Восстанавливаемое поле шаблона
-			awh::grok::field_t field;
+			grok::field_t field;
 			// Номер группы захвата поля
 			uint64_t number = 0;
 			/**
@@ -1869,7 +1883,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		expressions.push_back(::move(expression));
 	}
 	// Набор восстановленных регулярных выражений
-	vector <awh::regex::storage_t::exp_t> records;
+	vector <regex::storage_t::exp_t> records;
 	/**
 	 * Если восстановление собранных регулярных выражений не выполнено
 	 */
@@ -1923,19 +1937,18 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
  *
  */
 awh::Grok::Grok() noexcept :
- _regexp(), _error(error_t::NONE), _storage(),
- _method(compressor::method_t::NONE) {
+ _error(error_t::NONE), _method(compressor::method_t::NONE) {
 	// Выполняем размещение реестра шаблонов
-	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
+	this->_patterns.reserve(grok::PATTERNS_COUNT);
 	/**
 	 * Выполняем перебор встроенного набора шаблонов
 	 */
-	for(size_t i = 0; i < awh::grok::PATTERNS_COUNT; i++)
+	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++)
 		// Выполняем добавление шаблона в реестр
-		this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
+		this->_patterns.emplace(grok::PATTERNS[i].name, grok::PATTERNS[i].body);
 }
 /**
- * @brief Деструктор реестра шаблонов
+ * @brief Деструктор
  *
  */
-awh::Grok::~Grok() noexcept {}
+awh::Grok::~Grok() noexcept = default;

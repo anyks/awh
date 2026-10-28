@@ -27,7 +27,7 @@
 #include <algorithm>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
 #include <regex/dfa.hpp>
 #include <regex/probe.hpp>
@@ -138,14 +138,14 @@ awh::regex::Dfa::Dfa() noexcept :
  *
  */
 void awh::regex::Dfa::reset() noexcept {
-	// Очищаем набор построенных состояний
-	this->_states.clear();
 	// Очищаем набор признаков состояний
 	this->_marks.clear();
 	// Очищаем таблицу переходов состояний
 	this->_table.clear();
 	// Очищаем соответствие наборов состояний их индексам
 	this->_cache.clear();
+	// Очищаем набор построенных состояний
+	this->_states.clear();
 	// Сбрасываем соответствие признаков положения исходным состояниям
 	::memset(this->_entries, 0xFF, sizeof(this->_entries));
 }
@@ -392,17 +392,29 @@ bool awh::regex::Dfa::assertion(const anchor_t type, const uint32_t flags, const
 	 */
 	switch(static_cast <uint8_t> (type)){
 		// Проверяем привязкю к началу текста
-		case static_cast <uint8_t> (anchor_t::TEXT_BEGIN): return begin;
+		case static_cast <uint8_t> (anchor_t::TEXT_BEGIN):
+			// Выводим результат проверки привязки к позиции в тексте
+			return begin;
 		// Проверяем привязкю к концу текста
-		case static_cast <uint8_t> (anchor_t::TEXT_END): return finish;
+		case static_cast <uint8_t> (anchor_t::TEXT_END):
+			// Выводим результат проверки привязки к позиции в тексте
+			return finish;
 		// Проверяем привязкю к концу текста с переводом строки
-		case static_cast <uint8_t> (anchor_t::TEXT_FINISH): return (finish || (following && ending));
+		case static_cast <uint8_t> (anchor_t::TEXT_FINISH):
+			// Выводим результат проверки привязки к позиции в тексте
+			return (finish || (following && ending));
 		// Проверяем привязкю к началу попытки сопоставления
-		case static_cast <uint8_t> (anchor_t::SEARCH_HEAD): return ((context & static_cast <uint32_t> (context_t::ATTEMPT)) != 0);
+		case static_cast <uint8_t> (anchor_t::SEARCH_HEAD):
+			// Выводим результат проверки привязки к позиции в тексте
+			return ((context & static_cast <uint32_t> (context_t::ATTEMPT)) != 0);
 		// Проверяем привязкю к границе слова
-		case static_cast <uint8_t> (anchor_t::WORD_EDGE): return (before != after);
+		case static_cast <uint8_t> (anchor_t::WORD_EDGE):
+			// Выводим результат проверки привязки к позиции в тексте
+			return (before != after);
 		// Проверяем привязкю к положению вне границы слова
-		case static_cast <uint8_t> (anchor_t::WORD_INNER): return (before == after);
+		case static_cast <uint8_t> (anchor_t::WORD_INNER):
+			// Выводим результат проверки привязки к позиции в тексте
+			return (before == after);
 		/**
 		 * Проверяем привязкю к началу текста либо строки
 		 */
@@ -1306,12 +1318,12 @@ bool awh::regex::Dfa::test(const program_t & program, string_view text, const si
 }
 
 /**
- * @brief Конструктор состояния детерминированного исполнения
+ * @brief Конструктор
  *
  */
 awh::regex::Dfa::State::State() noexcept : sparse(false), context(0) {}
 /**
- * @brief Деструктор детерминированного сопоставителя
+ * @brief Деструктор
  *
  */
-awh::regex::Dfa::~Dfa() noexcept {}
+awh::regex::Dfa::~Dfa() noexcept = default;

@@ -99,9 +99,13 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <regex/emitter.hpp>
 
 /**
@@ -119,6 +123,30 @@ using namespace std;
  *
  */
 namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_REGEX_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
+
 	/**
 	 * @brief Сдвиг окна при вызове подпрограммы в парах регистров
 	 *
@@ -271,6 +299,21 @@ namespace {
 	 *
 	 */
 	constexpr uint32_t MAX_LITERAL = 0x7FFFFFFF;
+	/**
+	 * @brief Маски каналов, операции принимающих
+	 *
+	 * @details Сняты оракулом - ассемблером GNU стенда МЦСТ: операция выкладывалась
+	 *          в каждый из шести каналов, и принятые им отмечены разрядом. Сличены
+	 *          и выданные им слоги: слог операции во всех каналах одинаков байт
+	 *          в байт, а различает их лишь разряд головного слога, - оттого
+	 *          перекладка операции в канал иной перекодирования не требует.
+	 *
+	 */
+	constexpr uint8_t ARITHMETIC = 0x3F; // Сложение, вычитание и сдвиг - все шесть каналов
+	constexpr uint8_t COMPARISON = 0x1B; // Сравнение - каналы нулевой, первый, третий и четвёртый
+	constexpr uint8_t LOADING    = 0x2D; // Чтение из памяти - каналы нулевой, второй, третий и пятый
+	constexpr uint8_t STORING    = 0x24; // Запись в память - каналы второй и пятый
+	constexpr uint8_t PRIVILEGED = 0x01; // Перенос адреса и чтение счётчика - канал нулевой
 
 	/**
 	 * @brief Широкая команда процессора в сборке
@@ -325,7 +368,7 @@ namespace {
 	 * @param bundle размещаемая широкая команда
 	 *
 	 */
-	static void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
+	static AWH_REGEX_INLINE void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
 		// Количество слов головной части широкой команды
 		size_t middle = (bundle.stubbed ? 1 : 0);
 		/**
@@ -466,10 +509,12 @@ namespace {
 	 * @return       собранный слог операции
 	 *
 	 */
-	inline uint32_t alop(const uint8_t opcode, const uint8_t src1, const uint8_t src2, const uint8_t dst) noexcept {
+	static constexpr uint32_t alop(const uint8_t opcode, const uint8_t src1, const uint8_t src2, const uint8_t dst) noexcept {
 		// Выводим собранный слог арифметико-логической операции
-		return ((static_cast <uint32_t> (opcode) << 24) | (static_cast <uint32_t> (src1) << 16) |
-		 (static_cast <uint32_t> (src2) << 8) | static_cast <uint32_t> (dst));
+		return (
+			(static_cast <uint32_t> (opcode) << 24) | (static_cast <uint32_t> (src1) << 16) |
+			(static_cast <uint32_t> (src2) << 8) | static_cast <uint32_t> (dst)
+		);
 	}
 	/**
 	 * @brief Функция вывода поля довода для регистра окна
@@ -478,7 +523,7 @@ namespace {
 	 * @return    поле довода, регистр обозначающее
 	 *
 	 */
-	inline uint8_t reg(const awh::regex::emitter_t::reg_t reg) noexcept {
+	static constexpr uint8_t reg(const regex::emitter_t::reg_t reg) noexcept {
 		// Выводим поле довода, регистр окна обозначающее
 		return static_cast <uint8_t> (0x80 | static_cast <uint8_t> (reg));
 	}
@@ -489,7 +534,7 @@ namespace {
 	 * @return       поле довода, регистр обозначающее
 	 *
 	 */
-	inline uint8_t place(const uint8_t number) noexcept {
+	static constexpr uint8_t place(const uint8_t number) noexcept {
 		// Выводим поле довода, регистр окна обозначающее
 		return static_cast <uint8_t> (0x80 | number);
 	}
@@ -502,7 +547,7 @@ namespace {
 	 * @return     собранный слог коротких операций
 	 *
 	 */
-	inline uint32_t transfer(const uint8_t ctpr, const uint8_t kind, const uint8_t pred) noexcept {
+	static constexpr uint32_t transfer(const uint8_t ctpr, const uint8_t kind, const uint8_t pred) noexcept {
 		// Выводим собранный слог коротких операций
 		return (
 			(0xC0000000u | (static_cast <uint32_t> (ctpr) << 10) |
@@ -516,26 +561,10 @@ namespace {
 	 * @return       собранный слог управления
 	 *
 	 */
-	inline uint32_t prepare(const int64_t offset) noexcept {
+	static constexpr uint32_t prepare(const int64_t offset) noexcept {
 		// Выводим собранный слог управления подготовки перехода
 		return (0x40000000u | (static_cast <uint32_t> (static_cast <int32_t> (offset / 8)) & 0x0FFFFFFFu));
 	}
-	/**
-	 * @brief Маски каналов, операции принимающих
-	 *
-	 * @details Сняты оракулом - ассемблером GNU стенда МЦСТ: операция выкладывалась
-	 *          в каждый из шести каналов, и принятые им отмечены разрядом. Сличены
-	 *          и выданные им слоги: слог операции во всех каналах одинаков байт
-	 *          в байт, а различает их лишь разряд головного слога, - оттого
-	 *          перекладка операции в канал иной перекодирования не требует
-	 *
-	 */
-	constexpr uint8_t ARITHMETIC = 0x3F; // Сложение, вычитание и сдвиг - все шесть каналов
-	constexpr uint8_t COMPARISON = 0x1B; // Сравнение - каналы нулевой, первый, третий и четвёртый
-	constexpr uint8_t LOADING    = 0x2D; // Чтение из памяти - каналы нулевой, второй, третий и пятый
-	constexpr uint8_t STORING    = 0x24; // Запись в память - каналы второй и пятый
-	constexpr uint8_t PRIVILEGED = 0x01; // Перенос адреса и чтение счётчика - канал нулевой
-
 	/**
 	 * @brief Функция сборки маски регистра для учёта зависимостей
 	 *
@@ -543,20 +572,21 @@ namespace {
 	 * @return    маска, регистру отвечающая
 	 *
 	 */
-	inline uint32_t mask(const awh::regex::Emitter::reg_t reg) noexcept {
+	static constexpr uint32_t mask(const regex::Emitter::reg_t reg) noexcept {
 		// Выводим маску, регистру отвечающую
 		return (1u << (static_cast <uint8_t> (reg) & 0x1F));
 	}
 };
 
 /**
- * @brief Конструктор широкой команды, слоги её обнуляющий
+ * @brief Конструктор широкой команды
  *
  */
 awh::regex::Emitter::Packed::Packed() noexcept :
- first(false), second(false), opened(false), stubbed(false), extended(false),
- literals(0), predicates(0), ales(0), cs0(0), cs1(0), stub(0), writes(0),
- has{}, als{}, lts{} {}
+ first(false), second(false), opened(false),
+ stubbed(false), extended(false), literals(0),
+ predicates(0), ales(0), cs0(0), cs1(0),
+ stub(0), writes(0), has{}, als{}, lts{} {}
 
 /**
  * @brief Метод выдачи широкой команды, к выдаче отложенной
@@ -978,10 +1008,10 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	this->_packed.predicates = 0x07;
 }
 /**
- * @brief Метод размещения сравнения значения регистра с числом
+ * @brief Метод размещения сравнения значений регистров
  *
- * @param reg   регистр сравниваемого значения
- * @param value сравниваемое число
+ * @param first  регистр уменьшаемого значения
+ * @param second регистр вычитаемого значения
  *
  */
 void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcept {
@@ -1194,10 +1224,10 @@ void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept 
 	this->_packed.als[slot] = ::alop(OP_ADDD, CONSTANT, ::reg(source), ::reg(target));
 }
 /**
- * @brief Метод размещения записи числа в регистр
+ * @brief Метод размещения переноса значения регистра
  *
- * @param target регистр назначения записи
- * @param value  записываемое число
+ * @param target регистр назначения переноса
+ * @param source регистр источника переноса
  *
  */
 void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcept {
@@ -1234,14 +1264,14 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 	 * Если число размещается слогом литерала двойным
 	 */
 	} else {
-		// Собираем слог записи слога литерала двойного
-		write.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, DOUBLE, ::reg(target));
+		// Устанавливаем количество слогов литералов
+		write.literals = 2;
 		// Устанавливаем младшей половины числа
 		write.lts[0] = static_cast <uint32_t> (value & 0xFFFFFFFFull);
 		// Устанавливаем старшей половины числа
 		write.lts[1] = static_cast <uint32_t> (value >> 32);
-		// Устанавливаем количество слогов литералов
-		write.literals = 2;
+		// Собираем слог записи слога литерала двойного
+		write.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, DOUBLE, ::reg(target));
 	}
 	// Размещаем записю числа в регистр
 	::emit(this->_code, write);
@@ -1456,11 +1486,11 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	this->_stamp = this->_code.size();
 }
 /**
- * @brief Метод размещения чтения значения из памяти по адресу в регистре
+ * @brief Метод размещения чтения значения из памяти
  *
  * @param target регистр прочитанного значения
  * @param base   регистр адреса начала области чтения
- * @param offset регистр номера читаемого значения в области
+ * @param index  номер читаемого значения в области
  *
  */
 void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
@@ -1498,11 +1528,11 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	::emit(this->_code, fetch);
 }
 /**
- * @brief Метод размещения записи значения регистра в память по адресу в регистре
+ * @brief Метод размещения записи значения регистра в память
  *
  * @param source регистр записываемого значения
  * @param base   регистр адреса начала области записи
- * @param offset регистр номера записываемого значения в области
+ * @param index  номер записываемого значения в области
  *
  */
 void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
@@ -1717,14 +1747,6 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 void awh::regex::Emitter::landing() noexcept {
 	// Выдаём широкой команды, к выдаче отложенной: управление сюда приходит либо отсюда уходит
 	this->flush();
-	/**
-	 * Метки цели процессор не требует
-	 *
-	 * @details Переход по адресу в регистре исполняется записью значения в
-	 *          регистр подготовки: пометки цели, подобной «bti» у ARM64,
-	 *          набор команд не имеет.
-	 *
-	 */
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }

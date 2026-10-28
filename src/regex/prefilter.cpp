@@ -24,7 +24,7 @@
 #include <regex/common.hpp>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочный файл модуля
  */
 #include <regex/prefilter.hpp>
 
@@ -249,7 +249,7 @@ namespace {
 	 * @return      номер младшего установленного разряда
 	 *
 	 */
-	inline size_t trailing(const uint64_t value) noexcept {
+	static constexpr size_t trailing(const uint64_t value) noexcept {
 		/**
 		 * Если компилятор является Visual Studio
 		 */
@@ -1410,7 +1410,9 @@ void awh::regex::Prefilter::finalize() noexcept {
  *
  * @param text текст сопоставления
  * @param pos  позиция начала проверяемого участка текста
- * @return     позиция первого вхождения литерала не левее заданной либо «npos»
+ * @return     позиция первого вхождения литерала не левее заданной либо
+ *             «npos» при его отсутствии; литерал пустой входит в заданную
+ *             позицию, если она не лежит за концом текста
  *
  */
 size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const noexcept {
@@ -2034,7 +2036,7 @@ size_t awh::regex::windowed(const string_view text, const string_view what, cons
 	return regex::paired(text, what, pos, 0, (((what.size() - 1) < SPACING) ? (what.size() - 1) : SPACING));
 }
 /**
- * @brief Метод поиска последовательности в окне со счётом ложных кандидатов
+ * @brief Функция поиска последовательности в окне со счётом ложных кандидатов
  *
  * @param text     текст сопоставления
  * @param what     искомая последовательность
@@ -2459,7 +2461,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 	return size;
 }
 /**
- * @brief Метод поиска последовательности в тексте по заданной паре байтов
+ * @brief Функция поиска последовательности в тексте по заданной паре байтов
  *
  * @param text   текст сопоставления
  * @param what   искомая последовательность

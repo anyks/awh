@@ -33,7 +33,10 @@
 #include "internal/helpers.inc"
 
 /**
+ * @brief Конструктор
+ *
  * Используем стандартное пространство имён
+ *
  */
 using namespace std;
 
@@ -44,9 +47,9 @@ using namespace std;
 awh::regex::Engine::Engine() noexcept : _error(error_t::NONE) {}
 
 /**
- * @brief Метод извлечения кода ошибки последней операции
+ * @brief Метод извлечения имени отметки совпадения последнего
  *
- * @return код ошибки последней операции движка
+ * @return имя отметки совпадения последнего
  *
  */
 const string & awh::regex::Engine::marker() const noexcept {
@@ -56,7 +59,7 @@ const string & awh::regex::Engine::marker() const noexcept {
 /**
  * @brief Метод извлечения кода ошибки последней операции
  *
- * @return код ошибки последней операции
+ * @return код ошибки последней операции движка
  *
  */
 awh::regex::error_t awh::regex::Engine::error() const noexcept {
@@ -650,12 +653,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	return this->_pike.exec(expression.forward, text, start, this->_spare, mode_t::VERIFIED);
 }
 /**
- * @brief Метод сопоставления регулярного выражения с текстом
- *
- * @param text     текст для сопоставления
- * @param start    позиция начала поиска совпадения
- * @param captures набор границ совпадения и захваченных групп
- * @return         результат поиска совпадения
+ * @brief Метод сброса отметки совпадения последнего
  *
  */
 void awh::regex::Engine::reset() noexcept {
@@ -667,7 +665,7 @@ void awh::regex::Engine::reset() noexcept {
 		this->_marker.clear();
 }
 /**
- * @brief Метод сопоставления текста выражением движка
+ * @brief Метод сопоставления регулярного выражения с текстом
  *
  * @param text     текст для сопоставления
  * @param start    позиция начала поиска совпадения
@@ -1143,9 +1141,11 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
  * @brief Конструктор выражения движка
  *
  */
-awh::regex::Expression::Expression() noexcept : ready(false), automatic(false), reversible(false), backtracking(false) {}
+awh::regex::Expression::Expression() noexcept :
+ ready(false), automatic(false),
+ reversible(false), backtracking(false) {}
 /**
- * @brief Деструктор движка регулярных выражений
+ * @brief Деструктор
  *
  */
-awh::regex::Engine::~Engine() noexcept {}
+awh::regex::Engine::~Engine() noexcept = default;

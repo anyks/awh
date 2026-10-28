@@ -28,11 +28,15 @@
 #include <functional>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
+ */
+#include <encoding/unicode/unicode.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
  */
 #include <regex/text.hpp>
 #include <regex/codegen.hpp>
-#include <encoding/unicode/unicode.hpp>
 
 /**
  * Подключаем внутренние помощники модуля
@@ -1030,9 +1034,13 @@ namespace {
 	 * @return     результат проверки принадлежности инструкции
 	 *
 	 */
-	inline bool singular(const regex::opcode_t type) noexcept {
+	static constexpr bool singular(const regex::opcode_t type) noexcept {
 		// Проверка принадлежности инструкции
-		return ((type == regex::opcode_t::CHAR) || (type == regex::opcode_t::CLASS) || (type == regex::opcode_t::ANY));
+		return (
+			(type == regex::opcode_t::CHAR) ||
+			(type == regex::opcode_t::CLASS) ||
+			(type == regex::opcode_t::ANY)
+		);
 	}
 	/**
 	 * @brief Функция проверки поглощения текста телом вызываемого подвыражения
@@ -4774,7 +4782,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	size_t depth = 0;
 	/**
-	 * @brief Метод получения регистра, места уровня несущего
+	 * @brief Функция получения регистра, места уровня несущего
 	 *
 	 * @details Области нулевого уровня живут кадром стека, а не записью:
 	 *          записи проходов отводятся поверх основания, и величина
@@ -4787,7 +4795,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		return (((depth > 0) || !splitting) ? reg_t::RECORD : reg_t::STACK);
 	};
 	/**
-	 * @brief Метод получения основания мест цепочек ветвей уровня
+	 * @brief Функция получения основания мест цепочек ветвей уровня
 	 *
 	 * @details Места цепочек идут сразу за местами рядов повторения, а число
 	 *          их у кадра и у записи разное: кадр размечен по всем рядам

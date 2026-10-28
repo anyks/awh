@@ -20,9 +20,13 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файлй модуля
+ */
 #include <regex/emitter.hpp>
 
 /**
@@ -50,6 +54,25 @@ using namespace std;
 	 *
 	 */
 	namespace {
+		/**
+		 * @brief Принудительная подстановка горячих обращений кодека
+		 *
+		 */
+		#if defined(_MSC_VER)
+			/**
+			 * Принудительная подстановка средствами Visual Studio
+			 */
+			#define AWH_REGEX_INLINE __forceinline
+		/**
+		 * Если компилятор принадлежит к семейству GCC или Clang
+		 */
+		#else
+			/**
+			 * Принудительная подстановка средствами GCC и Clang
+			 */
+			#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+		#endif
+
 		/**
 		 * @brief Наибольший номер значения таблицы адресов обстановки
 		 *
@@ -104,17 +127,17 @@ using namespace std;
 		/**
 		 * @brief Функция размещения команды в последовательности байтов
 		 *
-		 * @param code    порождаемая последовательность команд процессора
-		 * @param command размещаемая команда процессора
-		 *
 		 * @details Команда размещается байтами от младшего: набор команд ARM64
 		 *          исполняется процессорами порядка байтов младшего впереди.
 		 *
+		 * @param code    порождаемая последовательность команд процессора
+		 * @param command размещаемая команда процессора
+		 *
 		 */
-		inline void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
+		static AWH_REGEX_INLINE void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
 			/**
-			* Размещаем команду байтами от младшего
-			*/
+			 * Размещаем команду байтами от младшего
+			 */
 			for(uint8_t shift = 0; shift < 32; shift += 8)
 				// Размещаем очередного байта команды
 				code.push_back(static_cast <uint8_t> ((command >> shift) & 0xFF));
@@ -127,7 +150,7 @@ using namespace std;
 		 * @param value    вписываемое значение полей команды
 		 *
 		 */
-		inline void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
+		static AWH_REGEX_INLINE void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
 			// Собираемая размещённая команда процессора
 			uint32_t command = 0;
 			/**
@@ -153,7 +176,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t compare(const uint32_t first, const uint32_t second) noexcept {
+		static constexpr uint32_t compare(const uint32_t first, const uint32_t second) noexcept {
 			// Выводим собранную команду «subs xzr, first, second»
 			return (0xEB000000u | (second << 16) | (first << 5) | 31u);
 		}
@@ -165,7 +188,7 @@ using namespace std;
 		 * @return      собранная команда процессора
 		 *
 		 */
-		inline uint32_t compare(const uint32_t reg, const uint32_t value, const bool) noexcept {
+		static constexpr uint32_t compare(const uint32_t reg, const uint32_t value, const bool) noexcept {
 			/**
 			 * Выводим собранную команду «subs xzr, xreg, #value»
 			 *
@@ -186,7 +209,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t add(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
+		static constexpr uint32_t add(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
 			/**
 			 * Выводим собранную команду «add xtarget, xsource, #value»
 			 *
@@ -206,7 +229,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
+		static constexpr uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
 			/**
 			 * Выводим собранную команду «sub xtarget, xsource, #value»
 			 *
@@ -225,7 +248,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t move(const uint32_t target, const uint32_t source) noexcept {
+		static constexpr uint32_t move(const uint32_t target, const uint32_t source) noexcept {
 			// Выводим собранную команду «orr xtarget, xzr, xsource»
 			return (0xAA0003E0u | (source << 16) | target);
 		}
@@ -239,7 +262,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t writing(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
+		static constexpr uint32_t writing(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
 			// Выводим собранную команду «movz xtarget, #value, lsl #shift» либо «movk»
 			return ((keep ? 0xF2800000u : 0xD2800000u) | (shift << 21) | (value << 5) | target);
 		}
@@ -252,7 +275,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t load(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t load(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «ldrb wtarget, [xbase, xoffset]»
 			return (0x38606800u | (offset << 16) | (base << 5) | target);
 		}
@@ -265,7 +288,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t fetch(const uint32_t target, const uint32_t base, const uint32_t index) noexcept {
+		static constexpr uint32_t fetch(const uint32_t target, const uint32_t base, const uint32_t index) noexcept {
 			// Выводим собранную команду «ldr xtarget, [xbase, #(index * 8)]»
 			return (0xF9400000u | (index << 10) | (base << 5) | target);
 		}
@@ -278,7 +301,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t store(const uint32_t source, const uint32_t base, const uint32_t index) noexcept {
+		static constexpr uint32_t store(const uint32_t source, const uint32_t base, const uint32_t index) noexcept {
 			// Выводим собранную команду «str xsource, [xbase, #(index * 8)]»
 			return (0xF9000000u | (index << 10) | (base << 5) | source);
 		}
@@ -291,7 +314,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t gather(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t gather(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «ldr xtarget, [xbase, xoffset, lsl #3]»
 			return (0xF8607800u | (offset << 16) | (base << 5) | target);
 		}
@@ -304,7 +327,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		inline uint32_t scatter(const uint32_t source, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t scatter(const uint32_t source, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «str xsource, [xbase, xoffset, lsl #3]»
 			return (0xF8207800u | (offset << 16) | (base << 5) | source);
 		}
@@ -505,11 +528,15 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	// Устанавливаем положени метки перехода
 	this->_labels.at(label) = this->_code.size();
 	/**
+	 * @brief Метод извлечения порождённой последовательности команд
+	 *
 	 * Обрываем ряд записей в память
 	 *
 	 * @details Через метку управление приходит со стороны, отчего содержимое
 	 *          регистров ряду более не известно и снятие чтения избыточного
 	 *          стало бы неверным.
+	 *
+	 * @return порождённая последовательность команд процессора
 	 *
 	 */
 	this->_stamp = SIZE_MAX;
@@ -746,10 +773,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		::emit(this->_code, ::compare(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
 	}
 	/**
-	 * @brief Метод размещения сравнения значения регистра с числом
+	 * @brief Метод размещения сравнения значений регистров
 	 *
-	 * @param reg   регистр сравниваемого значения
-	 * @param value сравниваемое число
+	 * @param first  регистр уменьшаемого значения
+	 * @param second регистр вычитаемого значения
 	 *
 	 */
 	void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcept {
@@ -860,14 +887,14 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		::emit(this->_code, ::move(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
 	}
 	/**
-	 * @brief Метод размещения записи числа в регистр
+	 * @brief Метод размещения переноса значения регистра
 	 *
 	 * @details Число записывается по шестнадцать разрядов: первая записанная часть
 	 *          обнуляет прочие разряды регистра, последующие их сохраняют. Части,
 	 *          равные нулю, пропускаются, отчего малое число записывается одной командой.
 	 *
-	 * @param target регистр назначения записи
-	 * @param value  записываемое число
+	 * @param target регистр назначения переноса
+	 * @param source регистр источника переноса
 	 *
 	 */
 	void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcept {
@@ -1060,11 +1087,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_stamp = this->_code.size();
 	}
 	/**
-	 * @brief Метод размещения чтения значения из памяти по адресу в регистре
+	 * @brief Метод размещения чтения значения из памяти
 	 *
 	 * @param target регистр прочитанного значения
 	 * @param base   регистр адреса начала области чтения
-	 * @param offset регистр номера читаемого значения в области
+	 * @param index  номер читаемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
@@ -1072,11 +1099,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		::emit(this->_code, ::gather(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
-	 * @brief Метод размещения записи значения регистра в память по адресу в регистре
+	 * @brief Метод размещения записи значения регистра в память
 	 *
 	 * @param source регистр записываемого значения
 	 * @param base   регистр адреса начала области записи
-	 * @param offset регистр номера записываемого значения в области
+	 * @param index  номер записываемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
@@ -1276,9 +1303,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
  */
 #elif !defined(__aarch64__) && !defined(_M_ARM64) && !defined(__x86_64__) && !defined(_M_X64) && !defined(__e2k__)
 	/**
-	 * @brief Метод порождения пролога подпрограммы сопоставителя
+	 * @brief Метод размещения входа в порождаемый сопоставитель
 	 *
-	 * @param frame не используется: порождение набору команд недоступно
+	 * @param frame размер отводимого кадра вызова в байтах
 	 *
 	 */
 	void awh::regex::Emitter::prologue([[maybe_unused]] const uint32_t frame) noexcept {
@@ -1286,9 +1313,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения эпилога подпрограммы сопоставителя
+	 * @brief Метод размещения выхода из порождаемого сопоставителя
 	 *
-	 * @param frame не используется: порождение набору команд недоступно
+	 * @param frame размер освобождаемого кадра вызова в байтах
 	 *
 	 */
 	void awh::regex::Emitter::epilogue([[maybe_unused]] const uint32_t frame) noexcept {
@@ -1296,9 +1323,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения входа во вложенную подпрограмму
+	 * @brief Метод отведения записи вложенного уровня
 	 *
-	 * @param frame не используется: порождение набору команд недоступно
+	 * @param frame размер отводимой записи в байтах
 	 *
 	 */
 	void awh::regex::Emitter::enter([[maybe_unused]] const uint32_t frame) noexcept {
@@ -1306,9 +1333,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения выхода из вложенной подпрограммы
+	 * @brief Метод снятия записи вложенного уровня
 	 *
-	 * @param frame не используется: порождение набору команд недоступно
+	 * @param frame размер снимаемой записи в байтах
 	 *
 	 */
 	void awh::regex::Emitter::leave([[maybe_unused]] const uint32_t frame) noexcept {
@@ -1330,9 +1357,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->place(label);
 	}
 	/**
-	 * @brief Метод порождения безусловного перехода
+	 * @brief Метод размещения перехода к метке
 	 *
-	 * @param label не используется: порождение набору команд недоступно
+	 * @param label номер метки, к какой выполняется переход
 	 *
 	 */
 	void awh::regex::Emitter::jump([[maybe_unused]] const size_t label) noexcept {
@@ -1340,10 +1367,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения перехода по условию
+	 * @brief Метод размещения перехода к метке по условию
 	 *
-	 * @param cond не используется: порождение набору команд недоступно
-	 * @param label не используется: порождение набору команд недоступно
+	 * @param cond  условие выполнения перехода
+	 * @param label номер метки, к какой выполняется переход
 	 *
 	 */
 	void awh::regex::Emitter::branch([[maybe_unused]] const cond_t cond, [[maybe_unused]] const size_t label) noexcept {
@@ -1351,10 +1378,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения сравнения регистров
+	 * @brief Метод размещения сравнения значений регистров
 	 *
-	 * @param first не используется: порождение набору команд недоступно
-	 * @param second не используется: порождение набору команд недоступно
+	 * @param first  регистр уменьшаемого значения
+	 * @param second регистр вычитаемого значения
 	 *
 	 */
 	void awh::regex::Emitter::compare([[maybe_unused]] const reg_t first, [[maybe_unused]] const reg_t second) noexcept {
@@ -1362,10 +1389,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения сравнения регистра с постоянной
+	 * @brief Метод размещения сравнения значений регистров
 	 *
-	 * @param reg не используется: порождение набору команд недоступно
-	 * @param value не используется: порождение набору команд недоступно
+	 * @param first  регистр уменьшаемого значения
+	 * @param second регистр вычитаемого значения
 	 *
 	 */
 	void awh::regex::Emitter::compare([[maybe_unused]] const reg_t reg, [[maybe_unused]] const uint32_t value) noexcept {
@@ -1373,11 +1400,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения сложения с постоянной
+	 * @brief Метод размещения сложения значения регистра с числом
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param source не используется: порождение набору команд недоступно
-	 * @param value не используется: порождение набору команд недоступно
+	 * @param target регистр итога сложения
+	 * @param source регистр слагаемого значения
+	 * @param value  прибавляемое число
 	 *
 	 */
 	void awh::regex::Emitter::add([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source, [[maybe_unused]] const uint32_t value) noexcept {
@@ -1385,11 +1412,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения вычитания постоянной
+	 * @brief Метод размещения вычитания числа из значения регистра
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param source не используется: порождение набору команд недоступно
-	 * @param value не используется: порождение набору команд недоступно
+	 * @param target регистр итога вычитания
+	 * @param source регистр уменьшаемого значения
+	 * @param value  вычитаемое число
 	 *
 	 */
 	void awh::regex::Emitter::sub([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source, [[maybe_unused]] const uint32_t value) noexcept {
@@ -1397,10 +1424,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения пересылки регистра
+	 * @brief Метод размещения переноса значения регистра
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param source не используется: порождение набору команд недоступно
+	 * @param target регистр назначения переноса
+	 * @param source регистр источника переноса
 	 *
 	 */
 	void awh::regex::Emitter::move([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source) noexcept {
@@ -1408,10 +1435,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения загрузки постоянной
+	 * @brief Метод размещения переноса значения регистра
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param value не используется: порождение набору команд недоступно
+	 * @param target регистр назначения переноса
+	 * @param source регистр источника переноса
 	 *
 	 */
 	void awh::regex::Emitter::move([[maybe_unused]] const reg_t target, [[maybe_unused]] const uint64_t value) noexcept {
@@ -1419,11 +1446,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения чтения байта по смещению
+	 * @brief Метод размещения чтения байта текста
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param base не используется: порождение набору команд недоступно
-	 * @param offset не используется: порождение набору команд недоступно
+	 * @param target регистр прочитанного значения байта
+	 * @param base   регистр адреса начала области чтения
+	 * @param offset регистр смещения читаемого байта
 	 *
 	 */
 	void awh::regex::Emitter::load([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
@@ -1431,10 +1458,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения чтения поля обстановки
+	 * @brief Метод размещения чтения значения обстановки исполнения
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param index не используется: порождение набору команд недоступно
+	 * @param target регистр прочитанного значения
+	 * @param index  номер значения в таблице адресов обстановки
 	 *
 	 */
 	void awh::regex::Emitter::context([[maybe_unused]] const reg_t target, [[maybe_unused]] const uint32_t index) noexcept {
@@ -1442,11 +1469,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения чтения ячейки по индексу
+	 * @brief Метод размещения чтения значения из памяти
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param base не используется: порождение набору команд недоступно
-	 * @param index не используется: порождение набору команд недоступно
+	 * @param target регистр прочитанного значения
+	 * @param base   регистр адреса начала области чтения
+	 * @param index  номер читаемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::fetch([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const uint32_t index) noexcept {
@@ -1454,11 +1481,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения записи ячейки по индексу
+	 * @brief Метод размещения записи значения регистра в память
 	 *
-	 * @param source не используется: порождение набору команд недоступно
-	 * @param base не используется: порождение набору команд недоступно
-	 * @param index не используется: порождение набору команд недоступно
+	 * @param source регистр записываемого значения
+	 * @param base   регистр адреса начала области записи
+	 * @param index  номер записываемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::store([[maybe_unused]] const reg_t source, [[maybe_unused]] const reg_t base, [[maybe_unused]] const uint32_t index) noexcept {
@@ -1466,11 +1493,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения чтения ячейки по смещению в регистре
+	 * @brief Метод размещения чтения значения из памяти
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param base не используется: порождение набору команд недоступно
-	 * @param offset не используется: порождение набору команд недоступно
+	 * @param target регистр прочитанного значения
+	 * @param base   регистр адреса начала области чтения
+	 * @param index  номер читаемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::fetch([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
@@ -1478,11 +1505,11 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения записи ячейки по смещению в регистре
+	 * @brief Метод размещения записи значения регистра в память
 	 *
-	 * @param source не используется: порождение набору команд недоступно
-	 * @param base не используется: порождение набору команд недоступно
-	 * @param offset не используется: порождение набору команд недоступно
+	 * @param source регистр записываемого значения
+	 * @param base   регистр адреса начала области записи
+	 * @param index  номер записываемого значения в области
 	 *
 	 */
 	void awh::regex::Emitter::store([[maybe_unused]] const reg_t source, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
@@ -1490,9 +1517,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения вызова подпрограммы по адресу
+	 * @brief Метод размещения вызова подпрограммы по адресу в регистре
 	 *
-	 * @param reg не используется: порождение набору команд недоступно
+	 * @param reg регистр адреса вызываемой подпрограммы
 	 *
 	 */
 	void awh::regex::Emitter::call([[maybe_unused]] const reg_t reg) noexcept {
@@ -1500,10 +1527,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения вычисления адреса метки
+	 * @brief Метод размещения вычисления адреса метки
 	 *
-	 * @param target не используется: порождение набору команд недоступно
-	 * @param label не используется: порождение набору команд недоступно
+	 * @param target регистр вычисленного адреса
+	 * @param label  номер метки, адрес какой вычисляется
 	 *
 	 */
 	void awh::regex::Emitter::address([[maybe_unused]] const reg_t target, [[maybe_unused]] const size_t label) noexcept {
@@ -1511,9 +1538,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения перехода по адресу в регистре
+	 * @brief Метод размещения перехода по адресу в регистре
 	 *
-	 * @param reg не используется: порождение набору команд недоступно
+	 * @param reg регистр адреса выполняемого перехода
 	 *
 	 */
 	void awh::regex::Emitter::proceed([[maybe_unused]] const reg_t reg) noexcept {
@@ -1521,7 +1548,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения метки приземления перехода
+	 * @brief Метод размещения метки цели перехода по адресу в регистре
 	 *
 	 */
 	void awh::regex::Emitter::landing() noexcept {
@@ -1529,7 +1556,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		this->_failed = true;
 	}
 	/**
-	 * @brief Метод порождения возврата из подпрограммы
+	 * @brief Метод размещения завершения вызова
 	 *
 	 */
 	void awh::regex::Emitter::ret() noexcept {
@@ -1539,7 +1566,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	/**
 	 * @brief Метод разрешения отложенных переходов
 	 *
-	 * @return результат разрешения: отказ, ибо порождение набору команд недоступно
+	 * @return результат разрешения отложенных переходов
 	 *
 	 */
 	bool awh::regex::Emitter::resolve() noexcept {
@@ -1549,8 +1576,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		return false;
 	}
 #endif
+
 /**
- * @brief Конструктор записи в память
+ * @brief Конструктор записи
  *
  * @param source регистр записанного значения
  * @param base   регистр адреса начала области записи
@@ -1559,8 +1587,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
  */
 awh::regex::Emitter::Stored::Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept :
  base(base), source(source), index(index) {}
+
 /**
- * @brief Конструктор отложенного перехода
+ * @brief Конструктор
  *
  */
 awh::regex::Emitter::Fixup::Fixup() noexcept : kind(kind_t::JUMP), label(0), position(0) {}

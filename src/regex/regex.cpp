@@ -24,9 +24,13 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
-#include <regex/regex.hpp>
-#include <regex/text.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <regex/text.hpp>
+#include <regex/regex.hpp>
 
 /**
  * Подключаем внутренние помощники модуля
@@ -72,20 +76,22 @@ namespace {
 	 *
 	 */
 	typedef struct Report {
+		// Признак отложенного снятия кода ошибки с движка
+		bool defer;
 		// Смещение ошибки в тексте регулярного выражения
 		size_t offset;
 		// Текст ошибки последней операции потока
 		string message;
 		// Код ошибки последней операции потока
 		regex::error_t error;
-		// Признак отложенного снятия кода ошибки с движка
-		bool defer;
 		/**
-		* @brief Конструктор
-		*
-		*/
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Report() noexcept :
-		offset(0), error(regex::error_t::NONE), defer(false) {}
+		 defer(false),
+		 offset(0), message{""},
+		 error(regex::error_t::NONE) {}
 	} report_t;
 
 	/**
@@ -181,9 +187,9 @@ void awh::RegularExpression::receive() const noexcept {
 	report().defer = true;
 }
 /**
- * @brief Метод извлечения кода ошибки последней сборки
+ * @brief Метод извлечения кода ошибки последней операции
  *
- * @return код ошибки последней операции сборки
+ * @return код ошибки последней операции потока исполнения
  *
  */
 awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
@@ -208,7 +214,7 @@ awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	return rep.error;
 }
 /**
- * @brief Метод извлечения смещения ошибки последней сборки
+ * @brief Метод извлечения смещения ошибки последней операции
  *
  * @return смещение ошибки в тексте регулярного выражения
  *
@@ -228,9 +234,9 @@ const string & awh::RegularExpression::marker() const noexcept {
 	return this->_engine.marker();
 }
 /**
- * @brief Метод извлечения текста ошибки последней сборки
+ * @brief Метод извлечения текста ошибки последней операции
  *
- * @return текст ошибки последней операции сборки
+ * @return текст ошибки последней операции потока исполнения
  *
  */
 const string & awh::RegularExpression::message() const noexcept {
@@ -293,10 +299,10 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
 	 */
 	if(!verified(text, exp)){
-		// Устанавливаем ошибку неверной записи текста сопоставления
-		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Снимаем признак отложенного снятия кода ошибки
 		report().defer = false;
+		// Устанавливаем ошибку неверной записи текста сопоставления
+		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Проверка наличия совпадения: отказ
 		return false;
 	}
@@ -340,12 +346,12 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
  *
  */
 awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern, const uint32_t flags) const noexcept {
-	// Сбрасываем код ошибки последней операции сборки
-	report().error = error_t::NONE;
 	// Сбрасываем смещение ошибки в тексте выражения
 	report().offset = 0;
 	// Очищаем текст ошибки последней операции сборки
 	report().message.clear();
+	// Сбрасываем код ошибки последней операции сборки
+	report().error = error_t::NONE;
 	// Создаём ключ кэша собранных регулярных выражений
 	const key_t key = make_pair(flags, string(pattern));
 	/**
@@ -706,7 +712,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	 */
 	if(!exp)
 		// Выводим отсутствие захваченного текста
-		return string_view();
+		return "";
 	// Ищем именю в соответствии имён групп наборам их номеров
 	auto i = exp->names.find(string(name));
 	/**
@@ -714,7 +720,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	 */
 	if(i == exp->names.end())
 		// Выводим отсутствие захваченного текста
-		return string_view();
+		return "";
 	/**
 	 * Перебираем номеров групп, объявленных этим именем
 	 *
@@ -742,7 +748,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 		return text.substr(bound.first, (bound.second - bound.first));
 	}
 	// Выводим отсутствие захваченного текста
-	return string_view();
+	return "";
 }
 /**
  * @brief Конструктор
