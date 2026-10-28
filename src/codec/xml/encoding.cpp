@@ -20,7 +20,7 @@
  */
 
 /**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
 #include <cstring>
 
@@ -30,6 +30,10 @@
 #include <sys/log.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <codec/xml/encoding.hpp>
 
 /**
@@ -50,6 +54,25 @@ namespace {
 	 * Пространство имён контейнера XML
 	 */
 	using namespace awh::codec::xml;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_XML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_XML_INLINE inline __attribute__((always_inline))
+	#endif
 
 	/**
 	 * @brief Наибольшее количество байтов начала текста, удерживаемых для определения кодировки
@@ -92,7 +115,7 @@ namespace {
 	 * @return       определённая кодировка исходного текста
 	 *
 	 */
-	static encoding_t detect(const char * buffer, const size_t size, size_t & length) noexcept {
+	static AWH_XML_INLINE encoding_t detect(const char * buffer, const size_t size, size_t & length) noexcept {
 		// Выполняем сброс длины обнаруженной метки порядка байтов
 		length = 0;
 		/**
@@ -106,6 +129,7 @@ namespace {
 		 *          не поддерживается», и разбор ПУСТОГО текста жаловался на кодировку
 		 *          вместо отсутствия корневого узла. Потребитель по такому отказу искал
 		 *          бы изъян кодировки, какого нет вовсе
+		 *
 		 */
 		if((buffer == nullptr) || (size == 0))
 			// Выводим кодировку, принятую по умолчанию
@@ -128,7 +152,8 @@ namespace {
 		 *
 		 * @note Кодировка выводится неопределённой, а отказ заносит звучащий: определение
 		 *       кодировки отказов не выдаёт вовсе, и заводить их ему ради одного случая
-		 *       значило бы менять договор метода
+		 *       значило бы менять договор функции
+		 *
 		 */
 		if((size >= 4) &&
 		   (((data[0] == 0xFF) && (data[1] == 0xFE) && (data[2] == 0x00) && (data[3] == 0x00)) ||
@@ -191,13 +216,13 @@ namespace {
 	 * @return       объявленная кодировка исходного текста
 	 *
 	 */
-	static encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known, string_view & label) noexcept {
+	static AWH_XML_INLINE encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known, string_view & label) noexcept {
 		// Выполняем сброс имени объявленной кодировки
-		label = string_view();
-		// Выполняем сброс признака готовности объявления разметки
-		ready = false;
+		label = "";
 		// Выполняем сброс признака поддержки объявленной кодировки
 		known = true;
+		// Выполняем сброс признака готовности объявления разметки
+		ready = false;
 		/**
 		 * Если начало текста не является объявлением разметки
 		 */
@@ -219,6 +244,8 @@ namespace {
 			return encoding_t::NONE;
 		// Запоминаем, что объявление разметки прочитано до конца
 		ready = true;
+		// Положение названия поля кодировки в объявлении разметки
+		size_t pos = string_view::npos;
 		/**
 		 * Выполняем поиск названия поля кодировки в объявлении разметки
 		 *
@@ -231,10 +258,9 @@ namespace {
 		 *
 		 * @note Поиск ведётся по всем вхождениям, а не по первому: первое из них
 		 *       вправе оказаться частью значения, тогда как поле стоит следом
+		 *
 		 */
 		const string_view declaration = text.substr(0, end);
-		// Положение названия поля кодировки в объявлении разметки
-		size_t pos = string_view::npos;
 		/**
 		 * Выполняем перебор всех вхождений названия поля кодировки
 		 */
@@ -300,6 +326,7 @@ namespace {
 		 * @note Признак снимается здесь, а не поиском названия поля по началу
 		 *       текста: слово «encoding» встречается и в содержимом документа -
 		 *       скажем, в имени атрибута «encodingStyle» ответа по договору SOAP
+		 *
 		 */
 		known = (result != encoding_t::NONE);
 		// Выводим определённую по названию кодировку
@@ -308,7 +335,7 @@ namespace {
 };
 
 /**
- * @brief Метод проверки знака на допустимость в разметке
+ * @brief Функция проверки знака на допустимость в разметке
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -324,7 +351,7 @@ bool awh::codec::xml::isChar(const uint32_t code) noexcept {
 	);
 }
 /**
- * @brief Метод проверки знака на пробельность
+ * @brief Функция проверки знака на пробельность
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -335,7 +362,7 @@ bool awh::codec::xml::isSpace(const uint32_t code) noexcept {
 	return ((code == 0x20) || (code == 0x09) || (code == 0x0A) || (code == 0x0D));
 }
 /**
- * @brief Метод проверки знака на допустимость в начале имени
+ * @brief Функция проверки знака на допустимость в начале имени
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -347,6 +374,7 @@ bool awh::codec::xml::isNameStart(const uint32_t code) noexcept {
 	 *
 	 * @note Разряд знаков US-ASCII проверяется первым: подавляющее большинство имён
 	 *       в разметке состоит именно из них, и лишние сличения здесь ни к чему
+	 *
 	 */
 	if(code < 0x80)
 		// Выводим результат проверки принадлежности знака разрядам US-ASCII
@@ -372,7 +400,7 @@ bool awh::codec::xml::isNameStart(const uint32_t code) noexcept {
 	);
 }
 /**
- * @brief Метод проверки знака на допустимость внутри имени
+ * @brief Функция проверки знака на допустимость внутри имени
  *
  * @param code кодовое значение проверяемого знака
  * @return     результат проверки
@@ -398,7 +426,7 @@ bool awh::codec::xml::isName(const uint32_t code) noexcept {
 	);
 }
 /**
- * @brief Метод проверки имени на правильность построения
+ * @brief Функция проверки имени на правильность построения
  *
  * @details Судья этот ОБЩИЙ: им судит и запись разметки, и правка владеющего значения.
  *          Прежде он стоял внутри записи двумя её собственными помощниками - `correct()` и
@@ -445,6 +473,7 @@ bool awh::codec::xml::nameable(const string_view name, const bool separator) noe
 		 *       задаётся вызывающим: разделитель в МЕСТНОМ имени недопустим. Имя же,
 		 *       записываемое дословно, приходит из разбора без пространств имён - там
 		 *       делить его не на что, и разделитель в нём обычным знаком имени и стоит
+		 *
 		 */
 		if(!separator && (code == ':'))
 			// Выводим отрицательный результат проверки
@@ -456,7 +485,7 @@ bool awh::codec::xml::nameable(const string_view name, const bool separator) noe
 	return true;
 }
 /**
- * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+ * @brief Функция чтения кодового значения из текста в кодировке UTF-8
  *
  * @note Тело общее - `awh::utf8::decode`: правило ведущего октета, пределы первого
  *       продолжающего и длина наибольшей годной части держатся в одном месте для всех
@@ -476,10 +505,10 @@ bool awh::codec::xml::nameable(const string_view name, const bool separator) noe
  */
 uint32_t awh::codec::xml::decode(const char * buffer, const size_t size, size_t & length) noexcept {
 	// Выводим прочитанное общим телом, лежащим в единице трансляции кодировщика
-	return awh::utf8::decode(buffer, size, length);
+	return utf8::decode(buffer, size, length);
 }
 /**
- * @brief Метод записи кодового значения в кодировке UTF-8
+ * @brief Функция записи кодового значения в кодировке UTF-8
  *
  * @param code   записываемое кодовое значение знака
  * @param result текст, к которому дописывается знак
@@ -488,7 +517,7 @@ uint32_t awh::codec::xml::decode(const char * buffer, const size_t size, size_t 
  */
 bool awh::codec::xml::encode(const uint32_t code, string & result) noexcept {
 	// Выводим запись общим телом, лежащим в единице трансляции кодировщика
-	return awh::utf8::encode(code, result);
+	return utf8::encode(code, result);
 }
 /**
  * @brief Метод получения признака обнаружения метки порядка байтов
@@ -535,6 +564,7 @@ bool awh::codec::xml::Decoder::encoding(const encoding_t encoding) noexcept {
 	 * @warning Договор этот общий с кодеком JSON и закреплён щупом договора:
 	 *          расхождение двух кодеков на одном и том же обращении было бы
 	 *          ловушкой тем более опасной, что молчаливой
+	 *
 	 */
 	if(encoding == encoding_t::NONE){
 		// Выполняем снятие признака навязанной извне кодировки
@@ -575,6 +605,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 	 *
 	 * @note Начало текста удерживается до тех пор, пока кодировка не определена
 	 *       окончательно: приводить содержимое, не зная его кодировки, нельзя
+	 *
 	 */
 	if(!this->_started){
 		/**
@@ -602,6 +633,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			 *
 			 * @note Метка порядка байтов снимается лишь тогда, когда отвечает
 			 *       навязанной кодировке: иначе она является содержимым текста
+			 *
 			 */
 			if(this->_forced){
 				/**
@@ -625,21 +657,50 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * @note Договор этот общий с кодеками JSON и CSV: расхождение трёх кодеков
 				 *       на одном и том же тексте было бы ловушкой тем более опасной, что
 				 *       молчаливой
+				 *
 				 */
-				if((length > 0) && (detected != this->_encoding))
-					// Выполняем отказ приведения с сообщением о нём в журнал
+				if((length > 0) && (detected != this->_encoding)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
+				}
 			/**
 			 * Если кодировка определена неподдерживаемой
 			 *
 			 * @note Определение отвечает неопределённою кодировкой лишь у метки UTF-32:
 			 *       приведение её не знает, и разбирать текст вслепую нельзя
+			 *
 			 */
-			} else if(detected == encoding_t::NONE)
-				// Выводим ошибку неподдерживаемой кодировки исходного текста
+			} else if(detected == encoding_t::NONE) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::UNSUPPORTED_ENCODING);
 			// Запоминаем определённую кодировку исходного текста
-			else this->_encoding = detected;
+			} else this->_encoding = detected;
 			/**
 			 * Если метка порядка байтов обнаружена
 			 */
@@ -657,15 +718,15 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		 *
 		 * @note Объявление разметки записывается знаками US-ASCII, и в таких
 		 *       кодировках оно читается без предварительного приведения
+		 *
 		 */
 		if(!this->_forced && (this->_encoding != encoding_t::UTF16LE) && (this->_encoding != encoding_t::UTF16BE)){
-			// Признак того, что объявление разметки прочитано до конца
-			bool ready = false;
 			// Признак того, что объявленная кодировка поддерживается
 			bool known = true;
-			// Выполняем чтение кодировки из объявления разметки
+			// Признак того, что объявление разметки прочитано до конца
+			bool ready = false;
 			// Имя объявленной кодировки исходного текста
-			string_view label;
+			string_view label = "";
 			// Выполняем чтение кодировки из объявления разметки
 			const encoding_t declared = ::declared(this->_prolog.data(), this->_prolog.size(), ready, known, label);
 			/**
@@ -682,7 +743,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если объявленная кодировка не отвечает однобайтовой записи начала текста
 				 */
 				if((declared == encoding_t::UTF16LE) || (declared == encoding_t::UTF16BE)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -691,9 +765,23 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * @note Метка порядка байтов достовернее объявления: объявление является
 				 *       частью текста и прочитано быть не может, пока кодировка неизвестна.
 				 *       Расхождение означает подложное объявление, а не выбор между ними
+				 *
 				 */
 				if(this->_signed && (declared != this->_encoding)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				// Запоминаем объявленную кодировку исходного текста
@@ -711,6 +799,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 *
 				 * @note Берётся одна лишь таблица, а не перекодирование целиком: `transcode`
 				 *       работает целою строкою, тогда как чтение идёт кусками
+				 *
 				 */
 				const charset::encoding_t single = charset::encoding(label);
 				// Получаем таблицу опознанной однобайтовой кодировки
@@ -727,7 +816,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если кодировка не опознана и общим модулем
 				 */
 				} else {
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::UNSUPPORTED_ENCODING);
 				}
 			}
@@ -735,7 +837,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		// Запоминаем, что приведение текста началось
 		this->_started = true;
 		// Выполняем изъятие накопленного начала исходного текста
-		const string prolog(::move(this->_prolog));
+		const string prolog = ::move(this->_prolog);
 		// Выполняем очистку накопленного начала исходного текста
 		this->_prolog.clear();
 		// Выполняем приведение накопленного начала исходного текста
@@ -746,11 +848,11 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(this->_encoding){
+	switch(static_cast <uint8_t> (this->_encoding)){
 		/**
 		 * Если кодировкой является UTF-8
 		 */
-		case encoding_t::UTF8: {
+		case static_cast <uint8_t> (encoding_t::UTF8): {
 			/**
 			 * Выполняем дочитывание удержанной последовательности знака
 			 */
@@ -772,17 +874,31 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 *       запись надлежит дочитать следующим куском, а запись построенную
 				 *       ошибочно - отвергнуть; по одному кодовому значению эти два решения
 				 *       неразличимы, и прежде их разбиряли по нулевой длине
+				 *
 				 */
-				const awh::utf8::utf8_t state = awh::utf8::inspect(this->_pending, this->_length, code, length);
+				const utf8::utf8_t state = utf8::inspect(this->_pending, this->_length, code, length);
 				/**
 				 * Если последовательности знака не хватает байтов до конца подачи
 				 */
-				if(state == awh::utf8::utf8_t::TRUNCATED){
+				if(state == utf8::utf8_t::TRUNCATED){
 					/**
 					 * Если исходный текст на этом окончен
 					 */
 					if(end){
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выводим положительный результат выполнения операции
@@ -792,14 +908,40 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
@@ -815,6 +957,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			 * @note Проверенное дописывается к приведённому тексту целыми отрезками, а
 			 *       не по знаку: дозапись каждого знака в отдельности обходится дороже
 			 *       самой проверки
+			 *
 			 */
 			size_t begin = offset;
 			/**
@@ -827,6 +970,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * @note Содержимое разметки почти целиком состоит из знаков US-ASCII, и
 				 *       проверка их пословно обходится в разы дешевле побайтовой: слово
 				 *       без старших разрядов и без управляющих знаков пропускается целиком
+				 *
 				 */
 				while((offset + sizeof(uint64_t)) <= size){
 					// Считываемое машинное слово исходного текста
@@ -872,9 +1016,23 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 						 *       события по приведённому тексту, и потеря начала отрезка отняла бы у
 						 *       него события всей уже пройденной разметки: выдача разбора зависела бы
 						 *       тогда от того, где легла граница куска исходного текста
+						 *
 						 */
 						result.append(data + begin, offset - begin);
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_CHARACTER);
 					}
 					// Выполняем переход к следующему знаку
@@ -890,6 +1048,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 *          знаков за пределами US-ASCII в разметке. Проверка их на месте избавляет от
 				 *          чтения кодового значения: всякое значение, записываемое двумя байтами, в
 				 *          разметке допустимо, и проверить остаётся лишь построение последовательности.
+				 *
 				 */
 				if(((letter & 0xE0) == 0xC0) && ((offset + 1) < size)){
 					/**
@@ -898,7 +1057,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					if((letter < 0xC2) || ((static_cast <uint8_t> (data[offset + 1]) & 0xC0) != 0x80)){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем переход к следующему знаку
@@ -913,6 +1085,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 *          такие знаки столь же преобладают, как двухбайтовые в разметке на
 				 *          кириллице. Проверка их на месте обходится теми же несколькими сличениями,
 				 *          что и чтение кодового значения, но без самого чтения.
+				 *
 				 */
 				if(((letter & 0xF0) == 0xE0) && ((offset + 2) < size)){
 					// Получаем второй байт последовательности знака
@@ -925,13 +1098,27 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * @note Проверяется построение продолжающих байтов, запись значения
 					 *       длиннее необходимого и запись половины суррогатной пары:
 					 *       кодового значения для этого читать не требуется
+					 *
 					 */
 					if(((second & 0xC0) != 0x80) || ((third & 0xC0) != 0x80) ||
 					   ((letter == 0xE0) && (second < 0xA0)) ||
 					   ((letter == 0xED) && (second >= 0xA0))){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					/**
@@ -939,11 +1126,25 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 *
 					 * @note Тремя байтами из недопустимых записываются лишь два значения,
 					 *       отведённые договором о всеобщей кодировке под неназначенные
+					 *
 					 */
 					if((letter == 0xEF) && (second == 0xBF) && ((third == 0xBE) || (third == 0xBF))){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_CHARACTER);
 					}
 					// Выполняем переход к следующему знаку
@@ -956,18 +1157,31 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				// Кодовое значение прочитанного знака
 				uint32_t code = 0;
 				// Выполняем разбор очередной последовательности с исходом разбора
-				const awh::utf8::utf8_t state = awh::utf8::inspect(reinterpret_cast <const char *> (data + offset), size - offset, code, length);
+				const utf8::utf8_t state = utf8::inspect(reinterpret_cast <const char *> (data + offset), size - offset, code, length);
 				/**
 				 * Если последовательности знака не хватает байтов до конца подачи
 				 */
-				if(state == awh::utf8::utf8_t::TRUNCATED){
+				if(state == utf8::utf8_t::TRUNCATED){
 					/**
 					 * Если исходный текст на этом окончен
 					 */
 					if(end){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем добавление проверенного отрезка к приведённому тексту
@@ -985,7 +1199,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Выполняем добавление проверенного отрезка к приведённому тексту
 					result.append(data + begin, offset - begin);
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
@@ -1009,11 +1236,25 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 				 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 				 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+				 *
 				 */
 				if(!isChar(code)){
 					// Выполняем добавление проверенного отрезка к приведённому тексту
 					result.append(data + begin, offset - begin);
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем переход к следующему знаку
@@ -1025,8 +1266,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		/**
 		 * Если кодировкой является UTF-16 в любом из порядков байтов
 		 */
-		case encoding_t::UTF16LE:
-		case encoding_t::UTF16BE: {
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
+		case static_cast <uint8_t> (encoding_t::UTF16BE): {
 			// Получаем признак обратного порядка байтов
 			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			/**
@@ -1080,7 +1321,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если прочитанная половина не является младшей половиной суррогатной пары
 					 */
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
-						// Выполняем отказ приведения с сообщением о нём в журнал
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+						#endif
+						// Объявляем отказ приведения
 						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем сборку кодового значения знака из суррогатной пары
@@ -1099,25 +1353,51 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если прочитана младшая половина суррогатной пары без старшей
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
-				encode(code, result);
+				::encode(code, result);
 			}
 		} break;
 		/**
-		 * Если кодировкой является ISO-8859-1 либо US-ASCII
+		 * Если кодировкой является US-ASCII либо ISO-8859-1
 		 */
-		case encoding_t::LATIN1:
-		case encoding_t::ASCII: {
+		case static_cast <uint8_t> (encoding_t::ASCII):
+		case static_cast <uint8_t> (encoding_t::LATIN1): {
 			// Получаем признак кодировки US-ASCII
 			const bool strict = (this->_encoding == encoding_t::ASCII);
 			/**
@@ -1130,18 +1410,44 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если знак выходит за пределы US-ASCII вопреки объявленной кодировке
 				 */
 				if(strict && (code >= 0x80)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
-				encode(code, result);
+				::encode(code, result);
 			}
 		} break;
 		/**
@@ -1150,8 +1456,9 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		 * @note Разбор этот состояния НЕ ИМЕЕТ: байт приходит - знак выдаётся. Оттого
 		 *       границы кусков ему безразличны по устройству, и переноса недобранной
 		 *       последовательности здесь нет вовсе - в отличие от UTF-8 и UTF-16
+		 *
 		 */
-		case encoding_t::SINGLE: {
+		case static_cast <uint8_t> (encoding_t::SINGLE): {
 			/**
 			 * Если таблица кодировки не задана
 			 *
@@ -1163,9 +1470,23 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			 *       её на пустоту; место присвоения самой таблицы тоже одно, и обратно в
 			 *       пустоту она не сбрасывается нигде - ни сбросом приведения, ни иным
 			 *       путём. Связка потому и держится, что оба присвоения единственны
+			 *
 			 */
 			if(this->_table == nullptr){
-				// Выполняем отказ приведения с сообщением о нём в журнал
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+				#endif
+				// Объявляем отказ приведения
 				return this->refuse(error_t::UNSUPPORTED_ENCODING);
 			}
 			/**
@@ -1178,34 +1499,53 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Выполняем отказ приведения с сообщением о нём в журнал
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_CHARACTER));
+					#endif
+					// Объявляем отказ приведения
 					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
-				encode(code, result);
+				::encode(code, result);
 			}
 		} break;
 		/**
-		 * Если кодировка исходного текста не определена
+		 * Если кодировка исходного текста кодеком не поддерживается
 		 *
-		 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: до разбора кодировка непременно
-		 *       определена - либо навязана извне, либо снята с метки порядка байтов, либо
-		 *       взята из объявления разметки, либо принята UTF-8 по умолчанию. Неопознанная
-		 *       же кодировка объявления отвергается прежде, своим отказом
+		 * @note Общий перечень шире поддерживаемого кодеком: UTF-32 и CP1252 приходят
+		 *       сюда от потребителя, задавшего их настройкой, и получают отказ.
+		 *       Прежний довод о недостижимости относился к перечню без этих видов
 		 *
 		 * @warning Снимать заслон нельзя: он оберегает разбор от обхождения с текстом по
 		 *          неизвестным правилам, и добавление нового вида кодировки без своей ветви
 		 *          обратилось бы сюда - отказом, а не молчаливым разбором вслепую
 		 *
-		 * @note Довод подкреплён замером 07.09.2026: тело даёт ноль и у набора проверок,
-		 *       и у ворошителя за 60 000 подач, при живом стороже
-		 *
-		 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
-		 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
-		 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
 		 */
 		default: {
-			// Выполняем отказ приведения с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::UNSUPPORTED_ENCODING));
+			#endif
+			// Объявляем отказ приведения
 			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	}
@@ -1213,7 +1553,20 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 	 * Если исходный текст окончен, оставив незавершённую последовательность знака
 	 */
 	if(end && ((this->_length > 0) || (this->_surrogate != 0))){
-		// Выполняем отказ приведения с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {buffer, size, end, result}, log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML decoding failed: %s", log::flag_t::WARNING, codec::xml::message(error_t::INVALID_ENCODING));
+		#endif
+		// Объявляем отказ приведения
 		return this->refuse(error_t::INVALID_ENCODING);
 	}
 	// Выводим положительный результат выполнения операции
@@ -1234,10 +1587,10 @@ awh::codec::xml::error_t awh::codec::xml::Decoder::error() const noexcept {
  *
  */
 void awh::codec::xml::Decoder::reset() noexcept {
-	// Выполняем сброс определённой кодировки исходного текста
-	this->_encoding = encoding_t::NONE;
-	// Выполняем сброс кода ошибки последней операции приведения
-	this->_error = error_t::NONE;
+	// Выполняем сброс количества удержанных байтов последовательности
+	this->_length = 0;
+	// Выполняем сброс удержанной старшей половины суррогатной пары
+	this->_surrogate = 0;
 	// Выполняем сброс признака навязанной извне кодировки
 	this->_forced = false;
 	// Выполняем сброс признака обработанной метки порядка байтов
@@ -1248,15 +1601,11 @@ void awh::codec::xml::Decoder::reset() noexcept {
 	this->_started = false;
 	// Выполняем сброс удержанных байтов начала текста
 	this->_prolog.clear();
-	// Выполняем сброс количества удержанных байтов последовательности
-	this->_length = 0;
-	// Выполняем сброс удержанной старшей половины суррогатной пары
-	this->_surrogate = 0;
+	// Выполняем сброс кода ошибки последней операции приведения
+	this->_error = error_t::NONE;
+	// Выполняем сброс определённой кодировки исходного текста
+	this->_encoding = encoding_t::NONE;
 }
-/**
- * @brief Конструктор
- *
- */
 /**
  * @brief Метод отказа приведения с сообщением о нём в журнал
  *
@@ -1267,23 +1616,6 @@ void awh::codec::xml::Decoder::reset() noexcept {
 bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки приведения
 	this->_error = error;
-	/**
-	 * Выполняем запись об отказе приведения в журнал
-	 *
-	 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
-	 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем отказ приведения в журнал работы
-		awh::log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {},
-		                  awh::log::flag_t::WARNING, message(error));
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем отказ приведения в журнал работы
-		awh::log::print("XML decoding failed: %s", awh::log::flag_t::WARNING, message(error));
-	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
@@ -1292,8 +1624,11 @@ bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
  *
  */
 awh::codec::xml::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false), _marked(false),
- _signed(false), _started(false), _length(0), _surrogate(0) {
+ _forced(false), _marked(false),
+ _signed(false), _started(false),
+ _length(0), _surrogate(0),
+ _error(error_t::NONE),
+ _encoding(encoding_t::NONE) {
 	// Выполняем сброс удержанных байтов последовательности
 	::memset(this->_pending, 0, sizeof(this->_pending));
 }

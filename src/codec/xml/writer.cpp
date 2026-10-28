@@ -20,7 +20,7 @@
  */
 
 /**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
 #include <functional>
 
@@ -28,10 +28,14 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
+#include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/xml/writer.hpp>
 #include <codec/xml/encoding.hpp>
 #include <codec/xml/document.hpp>
-#include <encoding/unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -44,6 +48,25 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_XML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_XML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция проверки пересечения входного среза с выходным буфером
 	 *
 	 * @param buffer выходной буфер
@@ -51,7 +74,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static bool overlaps(const string & buffer, const string_view text) noexcept {
+	static AWH_XML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -68,10 +91,8 @@ namespace {
  *
  */
 awh::codec::xml::Writer::Settings::Settings() noexcept :
- collapse(true),
- escapeNonAscii(false),
- indent(1), maxDepth(0),
- format(format_t::COMPACT), 
+ collapse(true), escapeNonAscii(false),
+ indent(1), maxDepth(0), format(format_t::COMPACT), 
  separator(separator_t::TABS) {}
 
 /**
@@ -113,6 +134,7 @@ void awh::codec::xml::Writer::indent() noexcept {
 	 *
 	 * @note Переводы строк при этом остаются: нарядная запись без отступов читается
 	 *       построчно, а вложенность отмечает самой разметкой
+	 *
 	 */
 	if(this->_settings.separator == separator_t::NONE)
 		// Выходим из записи отступа
@@ -124,14 +146,14 @@ void awh::codec::xml::Writer::indent() noexcept {
 	);
 }
 /**
- * @brief Метод проверки последовательности знаков на пригодность к записи
+ * @brief Метод проверки допустимости знаков дословно записываемой последовательности
  *
  * @details Проверяются и построение записи UTF-8, и допустимость самих знаков в
  *          разметке: последовательность попадает в текст как есть, экранированию не подлежит,
  *          и негодный знак прочёлся бы обратно уже негодной разметкой.
  *
  * @note Применяется там, где экранирование договором запрещено - в примечании, в
- * дословном разделе и в указании обработчику
+ *       дословном разделе и в указании обработчику
  *
  * @param text проверяемая последовательность знаков
  * @return     результат выполнения операции
@@ -150,14 +172,40 @@ bool awh::codec::xml::Writer::verify(const string_view text) noexcept {
 		 * Если знак прочитать не удалось
 		 */
 		if((length == 0) || (code == utf8::INVALID_CODEPOINT)){
-			// Выполняем отказ записи с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак недопустим в разметке
 		 */
 		if(!isChar(code)){
-			// Выполняем отказ записи с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		// Выполняем переход к следующему знаку последовательности
@@ -187,14 +235,40 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 		 * Если знак прочитать не удалось
 		 */
 		if((length == 0) || (code == utf8::INVALID_CODEPOINT)){
-			// Выполняем отказ записи с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text, attribute}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ENCODING));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ENCODING));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак недопустим в разметке
 		 */
 		if(!isChar(code)){
-			// Выполняем отказ записи с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text, attribute}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CHARACTER));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CHARACTER));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		/**
@@ -211,6 +285,7 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 			 * @note Знак экранируется и там, где договор того не требует: иначе
 			 *       последовательность конца дословного раздела, записанная текстом,
 			 *       прочтётся обратно уже разметкой
+			 *
 			 */
 			case '>': this->_text.append("&gt;"); break;
 			/**
@@ -218,6 +293,7 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 			 *
 			 * @note Возврат каретки приводится чтением к переводу строки, и записать
 			 *       его дословно можно лишь числовой ссылкой
+			 *
 			 */
 			case '\r': this->_text.append("&#13;"); break;
 			// Если обнаружен прочий знак
@@ -230,12 +306,12 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 					 * Определяем очередной знак значения атрибута
 					 */
 					switch(code){
+						// Если обнаружена горизонтальная табуляция
+						case '\t': this->_text.append("&#9;"); break;
 						// Если обнаружен знак двойной кавычки
 						case '"': this->_text.append("&quot;"); break;
 						// Если обнаружен перевод строки
 						case '\n': this->_text.append("&#10;"); break;
-						// Если обнаружена горизонтальная табуляция
-						case '\t': this->_text.append("&#9;"); break;
 						// Если обнаружен прочий знак
 						default: {
 							/**
@@ -328,6 +404,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 				 * @note Имя без префикса попало бы в объявленное по умолчанию
 				 *       пространство имён, а записать требуется имя без него: объявление
 				 *       по умолчанию отменяется при записываемом узле
+				 *
 				 */
 				if(!this->_scopes[i - 1].uri.empty() && !attribute){
 					/**
@@ -343,6 +420,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 					 * @warning Снимать отказ нельзя: он единственный оберегает от записи
 					 *          двух объявлений по умолчанию у одной метки - текста,
 					 *          договором не дозволенного
+					 *
 					 */
 					if(!this->occupy("xmlns"))
 						// Выводим отрицательный результат выполнения операции
@@ -355,10 +433,10 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 						this->_scopes.emplace_back();
 					// Получаем связывание, отведённое под объявление
 					scope_t & scope = this->_scopes[this->_bindings++];
-					// Выполняем очистку назначенного прежде префикса
-					scope.prefix.clear();
 					// Выполняем очистку обозначения связанного пространства имён
 					scope.uri.clear();
+					// Выполняем очистку назначенного прежде префикса
+					scope.prefix.clear();
 					// Выполняем подсчёт связываний, объявленных узлом
 					this->_opened[this->_depth - 1].bindings++;
 				}
@@ -384,6 +462,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 			 *
 			 * @note Объявление по умолчанию на атрибуты не распространяется: атрибуту
 			 *       требуется именно префикс
+			 *
 			 */
 			if(scope.prefix.empty() && attribute)
 				// Выполняем переход к следующему связыванию
@@ -395,6 +474,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 			 *
 			 * @note Тот же префикс мог быть перевязан на иное пространство имён вложенным
 			 *       узлом: выдать его здесь означало бы записать имя в чужом пространстве
+			 *
 			 */
 			for(size_t j = this->_bindings; j > i; j--){
 				/**
@@ -432,7 +512,20 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	 * Если обозначение отведено договором объявлениям пространств имён
 	 */
 	if(uri.compare(XMLNS_NAMESPACE) == 0){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {uri, attribute, result}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAMESPACE);
 	}
 	/**
@@ -441,12 +534,13 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	 * @note Назначенный префикс сличается с уже действующими: назначить занятый
 	 *       означало бы перевязать его на иное пространство имён, отчего все ранее
 	 *       записанные с ним имена сменили бы пространство имён при обратном чтении
+	 *
 	 */
 	for(;;){
-		// Собираем очередной назначаемый префикс
-		result.assign("n").append(::to_string(++this->_counter));
 		// Признак того, что назначаемый префикс уже занят
 		bool taken = false;
+		// Собираем очередной назначаемый префикс
+		result.assign("n").append(::to_string(++this->_counter));
 		/**
 		 * Выполняем перебор всех действующих связываний
 		 */
@@ -497,6 +591,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	 *
 	 * @warning Снимать отказ нельзя: он последний на дороге, и следствием была бы метка с
 	 *          двумя объявлениями одного префикса
+	 *
 	 */
 	if(!this->occupy(string("xmlns:").append(result)))
 		// Выводим отрицательный результат выполнения операции
@@ -517,10 +612,10 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 		this->_scopes.emplace_back();
 	// Получаем связывание, отведённое под объявление
 	scope_t & scope = this->_scopes[this->_bindings++];
-	// Запоминаем назначенный префикс
-	scope.prefix.assign(result);
 	// Запоминаем обозначение связанного пространства имён
 	scope.uri.assign(uri);
+	// Запоминаем назначенный префикс
+	scope.prefix.assign(result);
 	// Выполняем подсчёт связываний, объявленных узлом
 	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
@@ -540,11 +635,14 @@ const awh::codec::xml::Writer::settings_t & awh::codec::xml::Writer::settings() 
  * @brief Метод установки настроек записи
  *
  * @param settings настройки записи текста разметки
+ * @return         признак принятия настроек записи
  *
  */
-void awh::codec::xml::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::xml::Writer::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки записи текста разметки
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Метод записи объявления разметки
@@ -568,7 +666,20 @@ bool awh::codec::xml::Writer::declaration(const standalone_t standalone) noexcep
 	 *
 	 */
 	if(this->_taken || !this->_text.empty()){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {standalone}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_DECLARATION));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_DECLARATION));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_DECLARATION);
 	}
 	// Выполняем добавление объявления разметки
@@ -609,6 +720,10 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
  * @param uri      обозначение пространства имён открываемого узла
  * @param declares связывания префиксов, объявляемые самим узлом
  * @param prefix   желаемый префикс имени узла, пустой - на выбор потока
+ * @param oneline  признак записи содержимого узла в одну строку без отступов
+ * @param verbatim признак записи имени узла дословно, вместе с разделителем
+ *                 префикса: разбор без пространств имён кладёт имя в дерево целиком,
+ *                 и делить его нечем
  * @return         результат выполнения операции
  *
  */
@@ -619,10 +734,12 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 /**
  * @brief Метод открытия узла разметки с заданными объявлениями
  *
- * @param local    местное имя открываемого узла
- * @param uri      обозначение пространства имён открываемого узла
+ * @param local     местное имя открываемого узла
+ * @param uri       обозначение пространства имён открываемого узла
  * @param declares  объявления пространств имён, записываемые узлу
  * @param preferred префикс, каким имя узла записано в исходном тексте
+ * @param verbatim  признак записи имён узла дословно, без пространств имён
+ * @param oneline   признак записи содержимого узла в одну строку
  * @return          результат выполнения операции
  *
  */
@@ -643,27 +760,27 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	}
 	// Если входные срезы пересекаются с выходным буфером
 	if(shared){
-		// Сохраняем имя, пространство имён и желаемый префикс
-		const string name(local), space(uri), choice(preferred != nullptr ? *preferred : string_view());
-		// Срез сохранённого желаемого префикса
-		const string_view selected(choice);
 		// Хранилище строк объявлений и их независимые срезы
 		vector <string> stored;
 		// Привязки префиксов и пространств имён объявлений
 		vector <binding_t> bindings;
+		// Сохраняем имя, пространство имён и желаемый префикс
+		const string name(local), space(uri), choice(preferred != nullptr ? *preferred : string_view());
+		// Срез сохранённого желаемого префикса
+		const string_view selected(choice);
 		// Если объявления переданы вызывающим
 		if(declares != nullptr){
-			// Отводим место заранее, чтобы перемещение строк не портило срезы
-			stored.reserve(declares->size() * 2);
 			// Отводим место под привязки по числу объявлений
 			bindings.resize(declares->size());
+			// Отводим место заранее, чтобы перемещение строк не портило срезы
+			stored.reserve(declares->size() * 2);
 			/**
 			 * Копируем объявления до изменения выходного буфера
 			 */
 			for(size_t i = 0; i < declares->size(); i++){
 				// Сохраняем обе строки объявления
-				stored.emplace_back((*declares)[i].prefix);
 				stored.emplace_back((*declares)[i].uri);
+				stored.emplace_back((*declares)[i].prefix);
 				// Связываем срезы с независимым хранилищем
 				bindings[i].prefix = stored[i * 2];
 				// Привязываем срез пространства имён к независимому хранилищу
@@ -682,18 +799,47 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	/**
 	 * Если имя открываемого узла построено ошибочно
 	 */
-	if(!nameable(local, verbatim))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(!nameable(local, verbatim)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, uri, preferred, verbatim, oneline}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAME));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAME));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAME);
+	}
 	/**
 	 * Если корневой узел разметки в тексте уже записан
 	 *
 	 * @note Правильно построенный текст разметки вмещает единственный корневой
 	 *       узел, и второй такой узел записи не подлежит
+	 *
 	 */
-	if((this->_depth == 0) && this->_root)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if((this->_depth == 0) && this->_root){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, uri, preferred, verbatim, oneline}, log::flag_t::CRITICAL, codec::xml::message(error_t::MULTIPLE_ROOTS));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::MULTIPLE_ROOTS));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::MULTIPLE_ROOTS);
+	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	/**
@@ -712,15 +858,31 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *       задачи глубина записи больше не грозит. Держать здесь предел разбора значило
 	 *       бы отвергать дерево, разобранное с поднятым пределом глубины, - разобранное
 	 *       обязано записываться обратно
+	 *
 	 */
-	if((this->_settings.maxDepth > 0) && (this->_depth >= this->_settings.maxDepth))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if((this->_settings.maxDepth > 0) && (this->_depth >= this->_settings.maxDepth)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, uri, preferred, verbatim, oneline}, log::flag_t::CRITICAL, codec::xml::message(error_t::DEPTH_EXCEEDED));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::DEPTH_EXCEEDED));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::DEPTH_EXCEEDED);
+	}
 	/**
 	 * Если объемлющий узел записывается в одну строку
 	 *
 	 * @note Отступ внутри такого узла переменил бы его содержимое: пробельные знаки
 	 *       там значимы наравне с прочими
+	 *
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].oneline)
 		// Выполняем запись отступа перед узлом
@@ -732,6 +894,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *
 	 * @note Заводится она однажды и дальше переиспользуется: закрытие узла
 	 *       записи не уничтожает, а лишь уменьшает глубину стека
+	 *
 	 */
 	if(this->_depth >= this->_opened.size())
 		// Выполняем заведение записи под очередной уровень вложенности
@@ -743,6 +906,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *
 	 * @note Очистка хранилищ ёмкости их не отнимает, и следующему узлу они
 	 *       достаются уже готовыми: ради этого записи и переиспользуются
+	 *
 	 */
 	opened.name.clear();
 	// Очищаем перечень имён открытого узла
@@ -772,7 +936,8 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *          заданный префикс уже связанным и своего не назначает. Так и сохраняется
 	 *          запись имён исходного текста при обратной записи дерева - переназначенный
 	 *          префикс смысла имён не меняет, но меняет сам текст, а договор о подписи
-	 *          XML сличает документы знак в знак
+	 *          XML сличает документы знак в знак.
+	 *
 	 */
 	if(declares != nullptr){
 		/**
@@ -788,7 +953,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 		}
 	}
 	// Назначенный узлу префикс пространства имён
-	string prefix;
+	string prefix = "";
 	/**
 	 * Если имя узла записывается дословно
 	 */
@@ -807,7 +972,8 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *          ближайшее к узлу, а их бывает несколько: одно и то же пространство имён
 	 *          вправе быть объявлено и по умолчанию, и под префиксом. Ближайшее из них
 	 *          не обязано совпадать с тем, каким имя записано в исходном тексте, и
-	 *          обратная запись меняла бы тогда запись имени, смысла его не меняя
+	 *          обратная запись меняла бы тогда запись имени, смысла его не меняя.
+	 *
 	 */
 	if(preferred != nullptr){
 		/**
@@ -820,6 +986,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 			 * @note Перебор прекращается на первом же совпадении префикса: ближайшее
 			 *       связывание перекрывает все прочие с тем же префиксом, и годится
 			 *       заданный префикс лишь тогда, когда связан он с нужным обозначением
+			 *
 			 */
 			if(this->_scopes[i - 1].prefix.compare(* preferred) == 0){
 				// Запоминаем, годится ли заданный префикс имени узла
@@ -847,6 +1014,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 * @note Имя собирается прямо в записи открытого узла - там оно всё равно
 	 *       требуется закрывающей метке. Сборка сцеплением дала бы на каждый узел
 	 *       до трёх посредников, из которых в дело идёт лишь последний
+	 *
 	 */
 	string & name = this->_opened[this->_depth - 1].name;
 	/**
@@ -863,6 +1031,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 * @note Префикс становится известен лишь после подбора, а объявления, подбором
 	 *       дописанные, стоят в тексте уже за именем: префикс встраивается на своё
 	 *       место отрезком собранного имени, без посредника под запись «префикс:»
+	 *
 	 */
 	if(!prefix.empty())
 		// Выполняем встраивание префикса с разделителем перед именем узла
@@ -887,7 +1056,20 @@ bool awh::codec::xml::Writer::close() noexcept {
 	 * Если закрывать нечего
 	 */
 	if(this->_depth == 0){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, codec::xml::message(error_t::UNEXPECTED_CLOSE_TAG));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::UNEXPECTED_CLOSE_TAG));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::UNEXPECTED_CLOSE_TAG);
 	}
 	/**
@@ -898,6 +1080,7 @@ bool awh::codec::xml::Writer::close() noexcept {
 	 *          метода. Снимок же переносом отнял бы у записи её хранилища
 	 *          вместе с занятой ими памятью, ради сбережения которой стек и
 	 *          перестал записи уничтожать
+	 *
 	 */
 	const opened_t & opened = this->_opened[this->_depth - 1];
 	/**
@@ -935,12 +1118,10 @@ bool awh::codec::xml::Writer::close() noexcept {
 	return true;
 }
 /**
- * @brief Метод записи атрибута открытого узла
+ * @brief Метод занятия имени атрибута открытым узлом
  *
- * @param local местное имя атрибута
- * @param value значение атрибута
- * @param uri   обозначение пространства имён атрибута
- * @return      результат выполнения операции
+ * @param name имя атрибута в том виде, в каком оно попадает в текст
+ * @return     результат выполнения операции
  *
  */
 bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
@@ -952,7 +1133,20 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 		 * Если имя атрибута узлу уже записано
 		 */
 		if(item == name){
-			// Выполняем отказ записи с сообщением о нём в журнал
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, codec::xml::message(error_t::DUPLICATE_ATTRIBUTE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::DUPLICATE_ATTRIBUTE));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 		}
 	}
@@ -962,12 +1156,14 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 	return true;
 }
 /**
- * @brief Метод записи атрибута при открытом узле с дословной записью имени
+ * @brief Метод записи атрибута открытого узла
  *
- * @param local    имя атрибута, записываемое как есть
+ * @param local    местное имя атрибута
  * @param value    значение атрибута
  * @param uri      обозначение пространства имён атрибута
- * @param verbatim признак дословной записи имени атрибута
+ * @param verbatim признак записи имени атрибута дословно, вместе с разделителем
+ *                 префикса: разбор без пространств имён кладёт имя в дерево целиком,
+ *                 и делить его нечем
  * @return         результат выполнения операции
  *
  */
@@ -986,14 +1182,40 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 * Если метка узла уже завершена
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, value, uri, verbatim}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	/**
 	 * Если имя атрибута построено ошибочно
 	 */
 	if(!nameable(local, verbatim)){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, value, uri, verbatim}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAME));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAME));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAME);
 	}
 	/**
@@ -1002,9 +1224,23 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 * @note Объявление пространства имён записывается отдельным методом: записанное
 	 *       атрибутом, оно попало бы в текст мимо учёта действующих связываний, и
 	 *       записываемые следом имена получили бы не то пространство имён
+	 *
 	 */
 	if(!verbatim && (local.compare("xmlns") == 0)){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, value, uri, verbatim}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	/**
@@ -1013,6 +1249,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 * @note Новый префикс того же пространства имён не создаёт нового атрибута.
 	 *       Объявления xmlns учитываются отдельно, а дословный режим сохраняет
 	 *       имена без разрешения пространств имён, как и соответствующий разбор.
+	 *
 	 */
 	if(!verbatim && !uri.empty()){
 		/**
@@ -1033,9 +1270,23 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 				// Если найден действующий префикс
 				if(this->_scopes[i - 1].prefix.compare(string_view(name).substr(0, offset)) == 0){
 					// Если совпадает также пространство имён
-					if(this->_scopes[i - 1].uri.compare(uri) == 0)
-						// Отвергаем повторное расширенное имя
+					if(this->_scopes[i - 1].uri.compare(uri) == 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {local, value, uri, verbatim}, log::flag_t::CRITICAL, codec::xml::message(error_t::DUPLICATE_ATTRIBUTE));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::DUPLICATE_ATTRIBUTE));
+						#endif
+						// Объявляем отказ записи
 						return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
+					}
 					// Более дальние связывания этого префикса уже перекрыты
 					break;
 				}
@@ -1061,6 +1312,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 *          ни у libstdc++ - имена атрибутов короче запаса строки обеих, и сборка
 	 *          укладывалась в него. Держится правка на том лишь, что работа эта
 	 *          заведомо лишняя; выигрыша в замерах ей не приписывать
+	 *
 	 */
 	if(prefix.empty()){
 		/**
@@ -1127,58 +1379,159 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	/**
 	 * Если метка узла уже завершена
 	 */
-	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_ATTRIBUTE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_ATTRIBUTE);
+	}
 	/**
 	 * Если префикс объявления построен ошибочно
 	 */
-	if(!prefix.empty() && !nameable(prefix, false))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(!prefix.empty() && !nameable(prefix, false)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PREFIX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PREFIX));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_PREFIX);
+	}
 	/**
 	 * Если выполняется попытка переопределить отведённый договором префикс
 	 */
-	if((prefix.compare("xmlns") == 0) || ((prefix.compare("xml") == 0) && (uri.compare(XML_NAMESPACE) != 0)))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if((prefix.compare("xmlns") == 0) || ((prefix.compare("xml") == 0) && (uri.compare(XML_NAMESPACE) != 0))){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PREFIX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PREFIX));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::RESERVED_PREFIX);
+	}
 	/**
 	 * Если объявлению для префикса дано пустое обозначение
 	 */
-	if(!prefix.empty() && uri.empty())
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(!prefix.empty() && uri.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAMESPACE);
+	}
 	/**
 	 * Если обычному префиксу дано отведённое договором пространство имён
 	 *
 	 * @details Пространство имён это отведено договором префиксу «xml» и никакому
 	 *          иному: связывание с ним чужого префикса запрещено наравне с
-	 *          переопределением самого префикса
+	 *          переопределением самого префикса.
+	 *
 	 */
-	if(!prefix.empty() && (prefix.compare("xml") != 0) && (uri.compare(XML_NAMESPACE) == 0))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(!prefix.empty() && (prefix.compare("xml") != 0) && (uri.compare(XML_NAMESPACE) == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PREFIX));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PREFIX));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::RESERVED_PREFIX);
+	}
 	/**
 	 * Если объявлению дано пространство имён объявлений
 	 *
 	 * @details Пространство имён это отведено самим объявлениям и связыванию не
-	 *          подлежит ни префиксом, ни объявлением по умолчанию
+	 *          подлежит ни префиксом, ни объявлением по умолчанию.
+	 *
 	 */
-	if(uri.compare(XMLNS_NAMESPACE) == 0)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(uri.compare(XMLNS_NAMESPACE) == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAMESPACE);
+	}
 	/**
 	 * Если объявлению по умолчанию дано отведённое договором пространство имён
 	 *
 	 * @note Правила эти повторяют разбор: запись, их не соблюдающая, собрала бы
 	 *       текст, который собственное чтение отвергает, - и обнаружилось бы это
 	 *       уже у принимающей стороны
+	 *
 	 */
-	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NAMESPACE);
+	}
 	// Действующее пространство имён переопределяемого префикса
-	string_view previous;
+	string_view previous = "";
 	// Пустой префикс без объявления означает отсутствие пространства имён
 	bool bound = prefix.empty();
 	/**
@@ -1212,9 +1565,23 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 		const size_t separator = opened.name.find(':');
 		// Если пространство имён уже используется именем элемента
 		if(!opened.name.empty() && ((separator == string::npos) ? prefix.empty() :
-		   (string_view(opened.name).substr(0, separator).compare(prefix) == 0)))
-			// Отвергаем изменение пространства имён записанного элемента
+		   (string_view(opened.name).substr(0, separator).compare(prefix) == 0))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+			#endif
+			// Объявляем отказ записи
 			return this->refuse(error_t::INVALID_NAMESPACE);
+		}
 		/**
 		 * Проверяем атрибуты только для непустого префикса
 		 *
@@ -1229,14 +1596,28 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 				// Получаем положение разделителя префикса в имени атрибута
 				const size_t offset = item.find(':');
 				// Если атрибут уже использует переопределяемое пространство имён
-				if((offset != string::npos) && (string_view(item).substr(0, offset).compare(prefix) == 0))
-					// Отвергаем изменение пространства имён записанного атрибута
+				if((offset != string::npos) && (string_view(item).substr(0, offset).compare(prefix) == 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {prefix, uri}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NAMESPACE));
+					#endif
+					// Объявляем отказ записи
 					return this->refuse(error_t::INVALID_NAMESPACE);
+				}
 			}
 		}
 	}
 	// Собираемое имя объявления в том виде, в каком оно попадает в текст
-	string name("xmlns");
+	string name = "xmlns";
 	/**
 	 * Если объявление выполняется для префикса
 	 */
@@ -1273,10 +1654,10 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 		this->_scopes.emplace_back();
 	// Получаем связывание, отведённое под объявление
 	scope_t & scope = this->_scopes[this->_bindings++];
-	// Запоминаем префикс объявления
-	scope.prefix.assign(prefix);
 	// Запоминаем обозначение объявляемого пространства имён
 	scope.uri.assign(uri);
+	// Запоминаем префикс объявления
+	scope.prefix.assign(prefix);
 	// Выполняем подсчёт связываний, объявленных узлом
 	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
@@ -1303,9 +1684,23 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_depth == 0)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(this->_depth == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::CONTENT_OUTSIDE_ROOT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::CONTENT_OUTSIDE_ROOT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
+	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	// Запоминаем, что узел содержит вложенное содержимое
@@ -1334,18 +1729,47 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_depth == 0)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(this->_depth == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::CONTENT_OUTSIDE_ROOT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::CONTENT_OUTSIDE_ROOT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
+	}
 	/**
 	 * Если содержимое содержит последовательность конца дословного раздела
 	 *
 	 * @note Разрезать такое содержимое на несколько разделов запись не станет:
 	 *       вызывающий записывает не то, что имел в виду, и знать об этом обязан
+	 *
 	 */
-	if(text.find("]]>") != string_view::npos)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(text.find("]]>") != string_view::npos){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CDATA));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_CDATA));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_CDATA);
+	}
 	/**
 	 * Если содержимое раздела построено ошибочно
 	 */
@@ -1383,7 +1807,20 @@ bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
 	 * Если содержимое примечания построено ошибочно
 	 */
 	if((text.find("--") != string_view::npos) || (!text.empty() && (text.back() == '-'))){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_COMMENT));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_COMMENT));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_COMMENT);
 	}
 	/**
@@ -1408,6 +1845,7 @@ bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
 	 *
 	 * @note Отступ внутри такого узла переменил бы его содержимое: пробельные знаки
 	 *       там значимы наравне с прочими
+	 *
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].oneline)
 		// Выполняем запись отступа перед примечанием
@@ -1444,23 +1882,66 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	 *          указаний обработчику не распространяется, делить её не на что и префикс
 	 *          ей не назначается. Проверка правилом местного имени отвергала бы цель с
 	 *          разделителем, а разбор с выключенным разрешением префиксов такую цель
-	 *          принимает - разобранное дерево обратно бы не записывалось
+	 *          принимает - разобранное дерево обратно бы не записывалось.
+	 *
 	 */
-	if(!nameable(target, true))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(!nameable(target, true)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {target, text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PROCESSING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PROCESSING));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_PROCESSING);
+	}
 	/**
 	 * Если целью указания обработчику является отведённое договором имя
 	 */
-	if((target.length() == 3) && ((target[0] | 0x20) == 'x') && ((target[1] | 0x20) == 'm') && ((target[2] | 0x20) == 'l'))
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if((target.length() == 3) && ((target[0] | 0x20) == 'x') && ((target[1] | 0x20) == 'm') && ((target[2] | 0x20) == 'l')){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {target, text}, log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PROCESSING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::RESERVED_PROCESSING));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::RESERVED_PROCESSING);
+	}
 	/**
 	 * Если данные указания обработчику содержат его завершение
 	 */
-	if(text.find("?>") != string_view::npos)
-		// Выполняем отказ записи с сообщением о нём в журнал
+	if(text.find("?>") != string_view::npos){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {target, text}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PROCESSING));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_PROCESSING));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_PROCESSING);
+	}
 	/**
 	 * Если данные указания обработчику построены ошибочно
 	 */
@@ -1483,6 +1964,7 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	 *
 	 * @note Отступ внутри такого узла переменил бы его содержимое: пробельные знаки
 	 *       там значимы наравне с прочими
+	 *
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].oneline)
 		// Выполняем запись отступа перед указанием обработчику
@@ -1554,6 +2036,7 @@ bool awh::codec::xml::Writer::element(const node_t & node) noexcept {
 	 *          бы значимое содержимое. Обход вверх ведётся до первого узла, обращение задавшего.
 	 *
 	 * @note Обход недорог: он делается единожды на всю запись дерева, а не на узел
+	 *
 	 */
 	for(node_t parent = node.parent(); parent.valid(); parent = parent.parent()){
 		// Если объемлющий узел узлом разметки не является, обращения он не задаёт
@@ -1565,6 +2048,7 @@ bool awh::codec::xml::Writer::element(const node_t & node) noexcept {
 		 *
 		 * @note Атрибут отыскивается обоими написаниями: с выключенным разрешением
 		 *       префиксов имя его в дереве не разделено и пространства имён не имеет
+		 *
 		 */
 		const string_view spacing = (!parent.attribute("space", XML_NAMESPACE).empty() ?
 			parent.attribute("space", XML_NAMESPACE) : parent.attribute("xml:space"));
@@ -1601,9 +2085,23 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 	 *       записи. Заведение клейма условие это отменило, а довод сторожа пережил
 	 *       собственную неверность. Отсюда правило: довод недостижимости обязан называть
 	 *       условие, каким держится, - иначе перемена условия его не касается
+	 *
 	 */
 	if(!node.valid()){
-		// Выполняем отказ записи с сообщением о нём в журнал
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {preserve}, log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NODE));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("XML writing failed: %s", log::flag_t::CRITICAL, codec::xml::message(error_t::INVALID_NODE));
+		#endif
+		// Объявляем отказ записи
 		return this->refuse(error_t::INVALID_NODE);
 	}
 	/**
@@ -1614,20 +2112,20 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 	 *          дерево, разобранное с поднятым пределом глубины, обратно бы не записывалось.
 	 *
 	 */
-	struct Frame {
+	typedef struct Frame {
 		// Вложенный узел, подлежащий записи следующим
 		node_t child;
+		// Признак того, что узел несёт вложенные узлы, отступа требующие
+		bool nested = false;
 		// Признак сохранения пробельного содержимого внутри узла
 		bool keeping = false;
 		// Признак записи содержимого узла в одну строку
 		bool oneline = false;
-		// Признак того, что узел несёт вложенные узлы, отступа требующие
-		bool nested = false;
 		// Признак того, что узел подлежит закрытию по исчерпании вложенных
 		bool closing = false;
-	};
+	} frame_t;
 	// Стек обхода дерева разметки
-	vector <Frame> stack;
+	vector <frame_t> stack;
 	// Узел, подлежащий записи на этом заходе
 	node_t current = node;
 	// Признак сохранения пробельного содержимого, унаследованный узлом
@@ -1643,7 +2141,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			// Если стек обхода исчерпан, обход завершён
 			if(stack.empty()) break;
 			// Получаем кадр обхода, лежащий на вершине стека
-			Frame & top = stack.back();
+			frame_t & top = stack.back();
 			// Вложенный узел, подлежащий записи следующим
 			node_t next = top.child;
 			/**
@@ -1659,6 +2157,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			 * @note Узлы, где пробельные знаки значимы, сюда не попадают: смешанное
 			 *       содержимое и сохранение пробелов записываются в одну строку, и отступов
 			 *       там не появляется вовсе
+			 *
 			 */
 			while(next.valid() && !top.oneline && top.nested && (this->_settings.format == format_t::PRETTY)){
 				// Признак того, что вложенный узел является пробельным содержимым
@@ -1666,10 +2165,10 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				/**
 				 * Определяем вид вложенного узла дерева
 				 */
-				switch(next.kind()){
+				switch(static_cast <uint8_t> (next.kind())){
 					// Если вложенный узел является текстовым либо пробельным содержимым
-					case kind_t::TEXT:
-					case kind_t::SPACE:
+					case static_cast <uint8_t> (kind_t::TEXT):
+					case static_cast <uint8_t> (kind_t::SPACE):
 						// Запоминаем, что вложенный узел является пробельным содержимым
 						blank = true;
 					break;
@@ -1680,15 +2179,15 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 					 *
 					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 *
 					 */
-					case kind_t::NONE:
-					case kind_t::DOCUMENT:
-					case kind_t::ELEMENT:
-					case kind_t::CDATA:
-					case kind_t::COMMENT:
-					case kind_t::PROCESSING:
-					case kind_t::DOCTYPE:
-					break;
+					case static_cast <uint8_t> (kind_t::NONE):
+					case static_cast <uint8_t> (kind_t::CDATA):
+					case static_cast <uint8_t> (kind_t::DOCTYPE):
+					case static_cast <uint8_t> (kind_t::COMMENT):
+					case static_cast <uint8_t> (kind_t::ELEMENT):
+					case static_cast <uint8_t> (kind_t::DOCUMENT):
+					case static_cast <uint8_t> (kind_t::PROCESSING): break;
 				}
 				// Если вложенный узел пробельным содержимым не является, пропускать нечего
 				if(!blank) break;
@@ -1724,6 +2223,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 * @warning Снимать перенос нельзя: он стоит ровно на страже того, что договор разбора и
 				 *          прививки не разойдётся с договором записи. Разойдись они - и без него наружу
 				 *          ушёл бы обрывок текста под видом успеха, а узел остался бы незакрытым
+				 *
 				 */
 				if(closing && !this->close())
 					// Выводим отрицательный результат выполнения операции
@@ -1741,40 +2241,47 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 		/**
 		 * Определяем вид записываемого узла дерева
 		 */
-		switch(current.kind()){
+		switch(static_cast <uint8_t> (current.kind())){
 			/**
 			 * Если записывается корень дерева разметки
 			 */
-			case kind_t::DOCUMENT: {
+			case static_cast <uint8_t> (kind_t::DOCUMENT): {
 				// Собираемый кадр обхода узлов верхнего уровня
-				Frame frame;
-				// Запоминаем первый узел верхнего уровня
-				frame.child = current.first();
-				// Запоминаем сохранение пробельного содержимого, унаследованное корнем
-				frame.keeping = inherited;
-				// Запоминаем, что узлы верхнего уровня в одну строку не сводятся
-				frame.oneline = false;
+				frame_t frame;
 				// Запоминаем, что пропуск пробельного содержимого корню не положен
 				frame.nested = false;
 				// Запоминаем, что закрывать корень дерева разметки не требуется
 				frame.closing = false;
+				// Запоминаем, что узлы верхнего уровня в одну строку не сводятся
+				frame.oneline = false;
+				// Запоминаем сохранение пробельного содержимого, унаследованное корнем
+				frame.keeping = inherited;
+				// Запоминаем первый узел верхнего уровня
+				frame.child = current.first();
 				// Выполняем размещение собранного кадра на стеке обхода
 				stack.push_back(frame);
 			} break;
 			/**
 			 * Если записывается узел разметки
 			 */
-			case kind_t::ELEMENT: {
+			case static_cast <uint8_t> (kind_t::ELEMENT): {
+				// Признак того, что узел несёт непробельное содержимое
+				bool wordy = false;
+				// Признак того, что узел несёт вложенные узлы, отступа требующие
+				bool nested = false;
+				// Признак сохранения пробельного содержимого, заданный либо унаследованный
+				bool keeping = inherited;
+				// Получаем префикс, каким имя узла записано в исходном тексте
+				const string_view preferred = current.name().prefix;
 				/**
 				 * Получаем объявления пространств имён, записанные узлу
 				 *
 				 * @note Объявления применяются при открытии узла, а не после: имя узла
 				 *       записывается первым, и префикс ему требуется прежде, чем объявления
 				 *       попадут в текст
+				 *
 				 */
 				const vector <binding_t> declares = current.bindings();
-				// Получаем префикс, каким имя узла записано в исходном тексте
-				const string_view preferred = current.name().prefix;
 				/**
 				 * Определяем, записываются ли имена узла дословно
 				 *
@@ -1785,19 +2292,15 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 *
 				 * @note Признаком служит сам разделитель в имени: разбор с пространствами имён
 				 *       имя делит и разделителя в местном имени не оставляет
+				 *
 				 */
 				const bool verbatim = (current.name().uri.empty() && (current.name().local.find(':') != string_view::npos));
-				// Признак сохранения пробельного содержимого, заданный либо унаследованный
-				bool keeping = inherited;
-				// Признак того, что узел несёт непробельное содержимое
-				bool wordy = false;
-				// Признак того, что узел несёт вложенные узлы, отступа требующие
-				bool nested = false;
 				/**
 				 * Если запись ведётся нарядным видом
 				 *
 				 * @note Расчёт нужен одной лишь нарядной записи: сжатая запись отступов не
 				 *       ставит вовсе, и содержимое узла ей менять нечем
+				 *
 				 */
 				if(this->_settings.format == format_t::PRETTY){
 					/**
@@ -1808,6 +2311,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 					 *          него нет вовсе, а записан он целиком. Искать его следует обоими
 					 *          написаниями, иначе запись теряет значимое содержимое там, где разбор вёлся
 					 *          без пространств имён.
+					 *
 					 */
 					const string_view spacing = (
 						!current.attribute("space", XML_NAMESPACE).empty() ?
@@ -1822,6 +2326,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 					 *
 					 * @note Значение, договором не отведённое, толкуется отменой наравне с
 					 *       `default` - тем же самым образом, каким его толкует чтение
+					 *
 					 */
 					keeping = (spacing.empty() ? inherited : (spacing.compare("preserve") == 0));
 					/**
@@ -1831,21 +2336,22 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 						/**
 						 * Определяем вид вложенного узла дерева
 						 */
-						switch(child.kind()){
+						switch(static_cast <uint8_t> (child.kind())){
 							/**
 							 * Если вложенный узел является разделом дословного текста
 							 *
 							 * @note Раздел дословного текста значим сам по себе, каким бы ни было
 							 *       его содержимое: он ставится там, где знаки берутся дословно, и
 							 *       отступ рядом с ним переменил бы содержимое объемлющего узла
+							 *
 							 */
-							case kind_t::CDATA:
+							case static_cast <uint8_t> (kind_t::CDATA):
 								// Запоминаем, что узел несёт значимое содержимое
 								wordy = true;
 							break;
 							// Если вложенный узел является содержимым
-							case kind_t::TEXT:
-							case kind_t::SPACE: {
+							case static_cast <uint8_t> (kind_t::TEXT):
+							case static_cast <uint8_t> (kind_t::SPACE): {
 								// Получаем содержимое вложенного узла
 								const string content = child.text();
 								/**
@@ -1864,9 +2370,9 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 								}
 							} break;
 							// Если вложенный узел является узлом разметки, примечанием либо указанием
-							case kind_t::ELEMENT:
-							case kind_t::COMMENT:
-							case kind_t::PROCESSING:
+							case static_cast <uint8_t> (kind_t::ELEMENT):
+							case static_cast <uint8_t> (kind_t::COMMENT):
+							case static_cast <uint8_t> (kind_t::PROCESSING):
 								// Запоминаем, что узел несёт вложенные узлы
 								nested = true;
 							break;
@@ -1877,11 +2383,11 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 							 *
 							 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 							 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+							 *
 							 */
-							case kind_t::NONE:
-							case kind_t::DOCUMENT:
-							case kind_t::DOCTYPE:
-							break;
+							case static_cast <uint8_t> (kind_t::NONE):
+							case static_cast <uint8_t> (kind_t::DOCTYPE):
+							case static_cast <uint8_t> (kind_t::DOCUMENT): break;
 						}
 					}
 				}
@@ -1896,6 +2402,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 *
 				 * @note Узел, вложенных узлов не несущий, отступов не получает и так: внутри
 				 * него отступать нечего
+				 *
 				 */
 				const bool oneline = (keeping || (wordy && nested));
 				/**
@@ -1919,6 +2426,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 * @warning Снимать перенос нельзя: он стоит ровно на страже того, что договор разбора и
 				 *          прививки не разойдётся с договором записи. Разойдись они - и без него наружу
 				 *          ушёл бы обрывок текста под видом успеха, а узел остался бы незакрытым
+				 *
 				 */
 				if(!this->open(current.name().local, current.name().uri, (declares.empty() ? nullptr : &declares), &preferred, verbatim, oneline))
 					// Выводим отрицательный результат выполнения операции
@@ -1948,6 +2456,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 					 * @warning Снимать перенос нельзя: он стоит ровно на страже того, что договор разбора и
 					 *          прививки не разойдётся с договором записи. Разойдись они - и без него наружу
 					 *          ушёл бы обрывок текста под видом успеха, а узел остался бы незакрытым
+					 *
 					 */
 					if(!this->attribute(
 						attribute.name.local, attribute.value, attribute.name.uri,
@@ -1957,55 +2466,56 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 						return false;
 				}
 				// Собираемый кадр обхода вложенных узлов
-				Frame frame;
-				// Запоминаем первый вложенный узел
-				frame.child = current.first();
+				frame_t frame;
+				// Запоминаем, что узел подлежит закрытию по исчерпании вложенных
+				frame.closing = true;
+				// Запоминаем, несёт ли узел вложенные узлы, отступа требующие
+				frame.nested = nested;
 				// Запоминаем сохранение пробельного содержимого, наследуемое вложенными
 				frame.keeping = keeping;
 				// Запоминаем, записывается ли содержимое узла в одну строку
 				frame.oneline = oneline;
-				// Запоминаем, несёт ли узел вложенные узлы, отступа требующие
-				frame.nested = nested;
-				// Запоминаем, что узел подлежит закрытию по исчерпании вложенных
-				frame.closing = true;
+				// Запоминаем первый вложенный узел
+				frame.child = current.first();
 				// Выполняем размещение собранного кадра на стеке обхода
 				stack.push_back(frame);
 			} break;
 			// Если записывается текстовое содержимое
-			case kind_t::TEXT:
+			case static_cast <uint8_t> (kind_t::TEXT):
 			/**
 			 * Если записывается незначимое пробельное содержимое
 			 *
 			 * @note Пробельное содержимое записывается наравне с текстовым: отделено оно
 			 *       лишь для того, кто его различает, а из записи выпадать не вправе
+			 *
 			 */
-			case kind_t::SPACE:
+			case static_cast <uint8_t> (kind_t::SPACE): {
 				// Если записать содержимое не удалось, выводим отрицательный результат
 				if(!this->text(current.text()))
 					// Выводим отрицательрый результат
 					return false;
-			break;
+			} break;
 			// Если записывается раздел дословного текста
-			case kind_t::CDATA:
+			case static_cast <uint8_t> (kind_t::CDATA): {
 				// Если записать раздел дословного текста не удалось
 				if(!this->cdata(current.text()))
 					// Выводим отрицательрый результат
 					return false;
-			break;
+			} break;
 			// Если записывается примечание
-			case kind_t::COMMENT:
+			case static_cast <uint8_t> (kind_t::COMMENT): {
 				// Если записать примечание не удалось, выводим отрицательный результат
 				if(!this->comment(current.text()))
 					// Выводим отрицательрый результат
 					return false;
-			break;
+			} break;
 			// Если записывается указание обработчику
-			case kind_t::PROCESSING:
+			case static_cast <uint8_t> (kind_t::PROCESSING): {
 				// Если записать указание обработчику не удалось
 				if(!this->processing(current.name().local, current.text()))
 					// Выводим отрицательрый результат
 					return false;
-			break;
+			} break;
 			/**
 			 * Если разбор дошёл до видов, обработки здесь не требующих
 			 *
@@ -2013,10 +2523,10 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			 *
 			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 *
 			 */
-			case kind_t::NONE:
-			case kind_t::DOCTYPE:
-			break;
+			case static_cast <uint8_t> (kind_t::NONE):
+			case static_cast <uint8_t> (kind_t::DOCTYPE): break;
 		}
 		// Выполняем сброс узла, записанного на этом заходе
 		current = node_t();
@@ -2061,6 +2571,7 @@ const string & awh::codec::xml::Writer::text() const noexcept {
 	 *
 	 * @note Собранное при этом не стирается: оно остаётся на месте и доступно отладке
 	 *       через сам объект, а наружу отдаётся пустой текст
+	 *
 	 */
 	if(this->_error != error_t::NONE){
 		// Пустой текст разметки, выдаваемый по прекращённой записи
@@ -2093,26 +2604,25 @@ string awh::codec::xml::Writer::take() noexcept {
 	 *
 	 * @note Условие то же, каким закрыта выдача текста: изъятие обходило бы её стороною
 	 *       и отдавало наружу ту самую негодную разметку, какую выдача не отдаёт
+	 *
 	 */
 	if(this->_error != error_t::NONE)
 		// Выводим пустой текст разметки
-		return string();
+		return "";
 	// Сохраняем признак выданного текста, в том числе при повторном пустом изъятии
 	this->_taken = (this->_taken || !this->_text.empty());
 	// Изымаемый собранный текст разметки
-	string result;
+	string result = "";
 	// Выполняем изъятие собранного текста разметки
 	result.swap(this->_text);
 	// Выводим изъятый собранный текст разметки
 	return result;
 }
 /**
- * @brief Метод очистки собранного текста разметки
+ * @brief Метод сброса записи в исходное состояние
  *
  */
-void awh::codec::xml::Writer::clear() noexcept {
-	// Выполняем сброс кода ошибки записи
-	this->_error = error_t::NONE;
+void awh::codec::xml::Writer::reset() noexcept {
 	// Выполняем сброс признака записанного корневого узла
 	this->_root = false;
 	// Сбрасываем признак изъятого текста для нового документа
@@ -2125,12 +2635,15 @@ void awh::codec::xml::Writer::clear() noexcept {
 	 * @note Хранилище записей при этом сберегается: очистка сбрасывает лишь
 	 *       глубину, и переиспользованный объект записи заводит их заново не с
 	 *       пустого места
+	 *
 	 */
 	this->_depth = 0;
-	// Выполняем очистку действующих связываний префиксов
-	this->_bindings = 0;
 	// Выполняем сброс счётчика назначенных префиксов
 	this->_counter = 0;
+	// Выполняем очистку действующих связываний префиксов
+	this->_bindings = 0;
+	// Выполняем сброс кода ошибки записи
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод отказа записи с сообщением о нём в журнал
@@ -2142,23 +2655,6 @@ void awh::codec::xml::Writer::clear() noexcept {
 bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	/**
-	 * Выполняем запись об отказе записи разметки в журнал
-	 *
-	 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: разбор получает
-	 *       текст извне и негодности его не виноват, тогда как записывается то, что
-	 *       собрало само приложение. Негодное здесь означает дефект у потребителя
-	 */
-	#if defined(DEBUG_MODE)
-		// Записываем отказ записи в журнал работы
-		log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, message(error));
-	/**
-	 * Если режим отладки не включён
-	 */
-	#else
-		// Записываем отказ записи в журнал работы
-		log::print("XML writing failed: %s", log::flag_t::CRITICAL, message(error));
-	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
@@ -2186,8 +2682,8 @@ awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
  *
  */
 awh::codec::xml::Writer::~Writer() noexcept {
-	// Выполняем очистку собранного текста разметки
-	this->clear();
+	// Выполняем сброс собранного текста разметки
+	this->reset();
 }
 
 /**

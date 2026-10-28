@@ -31,7 +31,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <encoding/ascii.hpp>
-#include <codec/ini/common.hpp>
 #include <num/lexical/lexical.hpp>
 
 /**
@@ -42,6 +41,11 @@
  *
  */
 #include <codec/numeric.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/ini/common.hpp>
 
 /**
  * Используем стандартное пространство имён

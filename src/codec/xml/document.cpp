@@ -20,7 +20,7 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Стандартные заголовочные файлы
  */
 #include <cstdio>
 #include <cstring>
@@ -29,7 +29,12 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/xml/writer.hpp>
 #include <codec/xml/document.hpp>
 
@@ -44,9 +49,19 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+	/**
 	 * Пространство имён контейнера XML
 	 */
 	using namespace awh::codec::xml;
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
 
 	/**
 	 * @brief Наибольший допустимый объём хранилища знаков дерева разметки
@@ -57,6 +72,32 @@ namespace {
 	 *
 	 */
 	constexpr size_t STORAGE_LIMIT = 0xFFFFFFFF;
+
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
 };
 
 /**
@@ -64,45 +105,15 @@ namespace {
  *
  */
 awh::codec::xml::Document::Record::Record() noexcept :
- kind(kind_t::NONE), attribute(0), attributes(0), parent(INVALID_NODE),
- first(INVALID_NODE), last(INVALID_NODE), next(INVALID_NODE), prev(INVALID_NODE) {}
+ kind(kind_t::NONE), last(INVALID_NODE),
+ next(INVALID_NODE), prev(INVALID_NODE),
+ parent(INVALID_NODE), first(INVALID_NODE),
+ attribute(0), attributes(0) {}
+
 /**
- * @brief Метод получения последовательности знаков по отрезку хранилища
+ * @brief Метод получения количества вложенных узлов корня разметки
  *
- * @param span отрезок общего хранилища знаков
- * @return     последовательность знаков указанного отрезка
- *
- */
-/**
- * @brief Функция проверки годности каталога, куда ложится файл
- *
- * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
- * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
- * записи отвергают нулевой размер и файла не заводят
- *
- * @note Путь без разделителя означает каталог текущий, и он годен всегда
- *
- * @param fs   объект работы с файловой системой
- * @param path путь к заводимому файлу
- * @return     признак того, что каталог для записи годен
- *
- */
-static bool writable(const awh::fs_t & fs, const string & path) noexcept {
-	// Положение последнего разделителя пути
-	const size_t slash = path.find_last_of("/\\");
-	/**
-	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
-	 */
-	if(slash == string::npos)
-		// Выводим признак годности каталога текущего
-		return true;
-	// Выводим признак того, что каталог назначения каталогом и является
-	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
-}
-/**
- * @brief Метод получения количества узлов дерева
- *
- * @return количество узлов в арене дерева разметки
+ * @return количество вложенных узлов корня разметки
  *
  */
 size_t awh::codec::xml::Document::size() const noexcept {
@@ -110,10 +121,10 @@ size_t awh::codec::xml::Document::size() const noexcept {
 	return this->element().size();
 }
 /**
- * @brief Метод получения содержимого по отрезку хранилища знаков
+ * @brief Метод получения последовательности знаков по отрезку хранилища
  *
- * @param span отрезок хранилища знаков
- * @return     содержимое, на которое указывает отрезок
+ * @param span отрезок общего хранилища знаков
+ * @return     последовательность знаков указанного отрезка
  *
  */
 string_view awh::codec::xml::Document::get(const span_t & span) const noexcept {
@@ -129,10 +140,11 @@ string_view awh::codec::xml::Document::get(const span_t & span) const noexcept {
 	 * @warning Снимать его нельзя ни при каком объёме проверок: молчание доказывает
 	 *          порядок лишь на пройденных дорогах, а нарушение порядка обратилось бы
 	 *          чтением за пределами хранилища - порчей памяти вместо пустой выдачи
+	 *
 	 */
 	if((static_cast <size_t> (span.offset) + span.length) > this->_storage.size())
 		// Выводим пустую последовательность знаков
-		return string_view();
+		return "";
 	// Выводим последовательность знаков указанного отрезка
 	return string_view(this->_storage.data() + span.offset, span.length);
 }
@@ -146,12 +158,12 @@ string_view awh::codec::xml::Document::get(const span_t & span) const noexcept {
 awh::codec::xml::name_t awh::codec::xml::Document::get(const title_t & title) const noexcept {
 	// Собираемое имя с учётом пространства имён
 	name_t result;
-	// Запоминаем префикс имени
-	result.prefix = this->get(title.prefix);
-	// Запоминаем местное имя
-	result.local = this->get(title.local);
 	// Запоминаем обозначение пространства имён
 	result.uri = this->get(title.uri);
+	// Запоминаем местное имя
+	result.local = this->get(title.local);
+	// Запоминаем префикс имени
+	result.prefix = this->get(title.prefix);
 	// Выводим собранное имя
 	return result;
 }
@@ -178,6 +190,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 *       Платёж отвода — нулевые реаллокации векторов; платёж прохода — половина
 		 *       времени разбора крупных сценариев. На крупных корпусах рост векторов
 		 *       идёт удвоением, и цена реаллокации на большей части текста невелика.
+		 *
 		 */
 		constexpr size_t LIMIT = 0x100000;
 		// Отводим место под узлы дерева разметки
@@ -195,10 +208,11 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 *          предназначено потоковое чтение. Проверка ведётся при самом размещении, а
 	 *          не по его итогу: выход за предел усёк бы положение молча, и дерево вышло
 	 *          бы не с отказом, а с отрезками, указывающими не туда
+	 *
 	 */
 	bool overflow = false;
 	/**
-	 * @brief Метод размещения последовательности знаков в хранилище дерева
+	 * @brief Функция размещения последовательности знаков в хранилище дерева
 	 *
 	 * @param value размещаемая последовательность знаков
 	 * @return      отрезок общего хранилища знаков
@@ -217,6 +231,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 *          всякая правка размещения в хранилище обязана перечитывать эту ветвь
 		 *          глазами. Предел этот разрядностью отрезка задан, а не выбором, и
 		 *          настройкою не открывается: открыть его значило бы дозволить усечение
+		 *
 		 */
 		if((this->_storage.size() + value.length()) > STORAGE_LIMIT){
 			// Запоминаем, что дерево вышло за отведённый ему предел
@@ -244,10 +259,11 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 * @note Используем пределовое значение вместо честного подсчёта: эвристика срабатывает
 	 *       лишь на крупных таблицах, и небольшое расхождение с действительным числом узлов
 	 *       в пределах порога не страшно
+	 *
 	 */
 	const bool merge = (this->_nodes.capacity() >= 128);
 	/**
-	 * @brief Метод размещения части имени в хранилище дерева со сведением повторов
+	 * @brief Функция размещения части имени в хранилище дерева со сведением повторов
 	 *
 	 * @param value размещаемая часть имени
 	 * @return      отрезок общего хранилища знаков
@@ -258,6 +274,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 * Если повторы не сводятся либо размещаемая часть имени пуста
 		 *
 		 * @note Пустое имя места не занимает, и заводить ему запись в таблице незачем
+		 *
 		 */
 		if(!merge || value.empty())
 			// Выводим отрезок размещённой части имени
@@ -280,7 +297,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		return result;
 	};
 	/**
-	 * @brief Метод размещения имени в хранилище дерева
+	 * @brief Функция размещения имени в хранилище дерева
 	 *
 	 * @param name размещаемое имя с учётом пространства имён
 	 * @return     запись имени в арене дерева разметки
@@ -289,17 +306,18 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	auto title = [&store, &intern](const name_t & name) noexcept -> title_t {
 		// Собираемая запись имени
 		title_t result;
+		// Выполняем размещение местного имени
+		result.local = store(name.local);
 		/**
 		 * Выполняем размещение префикса и местного имени
 		 *
 		 * @details Местное имя и префикс - собственная запись узла, и повторяются они
 		 *          лишь тогда, когда узлы одинаково названы. Отыскание их в таблице
 		 *          повторов обходится дороже размещения: замер на ответе по договору
-		 *          SOAP дал шестую часть скорости разбора за двадцатую часть памяти
+		 *          SOAP дал шестую часть скорости разбора за двадцатую часть памяти.
+		 *
 		 */
 		result.prefix = store(name.prefix);
-		// Выполняем размещение местного имени
-		result.local = store(name.local);
 		/**
 		 * Выполняем размещение обозначения пространства имён со сведением повторов
 		 *
@@ -307,14 +325,15 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 *          оно берётся из связывания префикса и по устройству разметки одно и
 		 *          то же у всех узлов области видимости. Размещать его при каждом узле
 		 *          значит переписывать одну и ту же последовательность знаков тысячи
-		 *          раз, а длиной она превосходит и имя узла, и содержимое его
+		 *          раз, а длиной она превосходит и имя узла, и содержимое его.
+		 *
 		 */
 		result.uri = intern(name.uri);
 		// Выводим собранную запись имени
 		return result;
 	};
 	/**
-	 * @brief Метод добавления узла к дереву разметки
+	 * @brief Функция добавления узла к дереву разметки
 	 *
 	 * @param parent индекс родительского узла
 	 * @param kind   вид добавляемого узла
@@ -332,6 +351,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 * @warning Ограда эта набором НЕ СЛИЧАЕТСЯ, как и ограда хранилища выше: добраться
 		 *          до неё требует четырёх миллиардов узлов настоящим текстом. Молчание
 		 *          карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не исправность
+		 *
 		 */
 		if(this->_nodes.size() >= INVALID_NODE){
 			// Запоминаем, что дерево вышло за отведённый ему предел
@@ -387,6 +407,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 * @note Молчание карты покрытия здесь означает недостижимость, а не
 	 *       непроверенность; снимать прикрытие нельзя - оно оберегает от правки,
 	 *       заводящей чтение полем либо подающей текст дважды
+	 *
 	 */
 	if(!this->_reader.feed(text)){
 		// Запоминаем код ошибки разбора
@@ -399,6 +420,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 * Выполняем очистку дерева разметки
 		 *
 		 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
+		 *
 		 */
 		this->clear();
 		// Запоминаем кодировку, какою исходный текст разметки прочитан
@@ -415,6 +437,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 *
 	 * @note Кодировка снимается сразу по подаче текста: чтение живёт лишь внутри разбора,
 	 *       и спросить его после выхода нельзя вовсе
+	 *
 	 */
 	this->_encoding = this->_reader.encoding();
 	/**
@@ -433,6 +456,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		 * @warning Снимать ветвь нельзя: без неё дерево, за предел вышедшее, выдавалось бы за
 		 *          разобранное целиком - узлы сверх предела молча пропали бы, а разбор
 		 *          отчитался бы успехом
+		 *
 		 */
 		if(overflow){
 			// Запоминаем положение обнаруженной ошибки
@@ -443,6 +467,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			 * Выполняем очистку дерева разметки
 			 *
 			 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
+			 *
 			 */
 			this->clear();
 			// Запоминаем кодировку, какою исходный текст разметки прочитан
@@ -463,6 +488,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			 *
 			 * @warning Снимать заслон нельзя: без него смещение усекается МОЛЧА, и узел
 			 *          указывает на чужие знаки - порча данных без признака отказа
+			 *
 			 */
 			this->_error = error_t::STORAGE_EXHAUSTED;
 			// Запоминаем положение обнаруженной ошибки
@@ -472,12 +498,13 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			 *
 			 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: текст
 			 *       разобрался, а места под дерево не хватило - беда своя, не чужая
+			 *
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ построения документа в журнал работы
 				log::debug(
 					"XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
-				    {location.line, location.column},
+				    {text},
 					log::flag_t::CRITICAL,
 				    static_cast <unsigned long long> (location.line),
 				    static_cast <unsigned long long> (location.column), message(this->_error)
@@ -500,11 +527,11 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 		/**
 		 * Определяем вид полученного события разбора
 		 */
-		switch(this->_reader.event()){
+		switch(static_cast <uint8_t> (this->_reader.event())){
 			/**
 			 * Если получено начало узла разметки
 			 */
-			case event_t::ELEMENT_OPEN: {
+			case static_cast <uint8_t> (event_t::ELEMENT_OPEN): {
 				// Выполняем добавление узла разметки к дереву
 				const node_id_t id = append(parent, kind_t::ELEMENT);
 				// Если добавить узел не удалось, разбор прекращается пределом
@@ -522,6 +549,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 				 *
 				 * @note Отрезок хранилища связываний заводится лишь объявившим узлам: объявляют
 				 *       их считанные из всего дерева, а место в записи узла заняли бы все
+				 *
 				 */
 				if(!this->_reader.bindings().empty()){
 					// Собираемый отрезок хранилища связываний узла
@@ -553,6 +581,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 					 *          узлами выше: добраться до неё требует четырёх миллиардов
 					 *          свойств настоящим текстом. Молчание карты покрытия здесь
 					 *          означает НЕПРОВЕРЕННОСТЬ, а не исправность
+					 *
 					 */
 					if(this->_attributes.size() >= STORAGE_LIMIT){
 						// Запоминаем, что дерево вышло за отведённый ему предел
@@ -579,7 +608,7 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			/**
 			 * Если получен конец узла разметки
 			 */
-			case event_t::ELEMENT_CLOSE: {
+			case static_cast <uint8_t> (event_t::ELEMENT_CLOSE): {
 				/**
 				 * Если родительский узел указан
 				 */
@@ -590,43 +619,60 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			/**
 			 * Если получено содержимое узла
 			 */
-			case event_t::TEXT:
-			case event_t::SPACE:
-			case event_t::CDATA:
-			case event_t::COMMENT:
-			case event_t::DOCTYPE:
-			case event_t::PROCESSING: {
+			case static_cast <uint8_t> (event_t::TEXT):
+			case static_cast <uint8_t> (event_t::SPACE):
+			case static_cast <uint8_t> (event_t::CDATA):
+			case static_cast <uint8_t> (event_t::COMMENT):
+			case static_cast <uint8_t> (event_t::DOCTYPE):
+			case static_cast <uint8_t> (event_t::PROCESSING): {
 				// Вид добавляемого узла дерева
 				kind_t kind = kind_t::TEXT;
 				/**
 				 * Определяем вид полученного события разбора
 				 */
-				switch(this->_reader.event()){
+				switch(static_cast <uint8_t> (this->_reader.event())){
 					// Если получен раздел дословного текста
-					case event_t::CDATA: kind = kind_t::CDATA; break;
+					case static_cast <uint8_t> (event_t::CDATA):
+						// Выполняем формирование узла дерева
+						kind = kind_t::CDATA;
+					break;
 					// Если получено незначимое пробельное содержимое
-					case event_t::SPACE: kind = kind_t::SPACE; break;
+					case static_cast <uint8_t> (event_t::SPACE):
+						// Выполняем формирование узла дерева
+						kind = kind_t::SPACE;
+					break;
 					// Если получено примечание
-					case event_t::COMMENT: kind = kind_t::COMMENT; break;
+					case static_cast <uint8_t> (event_t::COMMENT):
+						// Выполняем формирование узла дерева
+						kind = kind_t::COMMENT;
+					break;
 					// Если получено описание типа документа
-					case event_t::DOCTYPE: kind = kind_t::DOCTYPE; break;
+					case static_cast <uint8_t> (event_t::DOCTYPE):
+						// Выполняем формирование узла дерева
+						kind = kind_t::DOCTYPE;
+					break;
 					// Если получено указание обработчику
-					case event_t::PROCESSING: kind = kind_t::PROCESSING; break;
+					case static_cast <uint8_t> (event_t::PROCESSING):
+						// Выполняем формирование узла дерева
+						kind = kind_t::PROCESSING;
+					break;
 					/**
 					 * Если разбор дошёл до членов перечня, обработки здесь не требующих
 					 *
-					 * @note Строения дерева они здесь не меняют: объявление снимается настройками, границы узлов и текст разобраны выше своим случаем, а конец текста и неопределённое событие содержимого не несут
+					 * @note Строения дерева они здесь не меняют: объявление снимается настройками,
+					 *       границы узлов и текст разобраны выше своим случаем, а конец текста и
+					 *       неопределённое событие содержимого не несут
 					 *
 					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 *
 					 */
-					case event_t::NONE:
-					case event_t::DECLARATION:
-					case event_t::ELEMENT_OPEN:
-					case event_t::ELEMENT_CLOSE:
-					case event_t::TEXT:
-					case event_t::FINISH:
-					break;
+					case static_cast <uint8_t> (event_t::NONE):
+					case static_cast <uint8_t> (event_t::TEXT):
+					case static_cast <uint8_t> (event_t::FINISH):
+					case static_cast <uint8_t> (event_t::DECLARATION):
+					case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
+					case static_cast <uint8_t> (event_t::ELEMENT_CLOSE): break;
 				}
 				// Выполняем добавление узла к дереву
 				const node_id_t id = append(parent, kind);
@@ -652,11 +698,11 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 			 *
 			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 *
 			 */
-			case event_t::NONE:
-			case event_t::DECLARATION:
-			case event_t::FINISH:
-			break;
+			case static_cast <uint8_t> (event_t::NONE):
+			case static_cast <uint8_t> (event_t::FINISH):
+			case static_cast <uint8_t> (event_t::DECLARATION): break;
 		}
 	}
 	/**
@@ -664,24 +710,26 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 *
 	 * @note Признак проверяется и здесь: событие, выведшее дерево за предел, бывает и
 	 *       последним, и тогда проверка в начале следующего обхода не выполнится вовсе
+	 *
 	 */
 	if(overflow || (this->_reader.state() != state_t::FINISHED)){
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		const encoding_t encoding = this->_reader.encoding();
 		// Запоминаем код ошибки разбора
 		const error_t error = (overflow ? error_t::STORAGE_EXHAUSTED : this->_reader.error());
 		// Запоминаем положение обнаруженной ошибки
 		const location_t location = (overflow ? this->_reader.location() : this->_reader.errorLocation());
-		// Запоминаем кодировку, какою исходный текст разметки прочитан
-		const encoding_t encoding = this->_reader.encoding();
 		/**
 		 * Выполняем очистку дерева разметки
 		 *
 		 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
+		 *
 		 */
 		this->clear();
-		// Запоминаем кодировку, какою исходный текст разметки прочитан
-		this->_encoding = encoding;
 		// Запоминаем код ошибки разбора
 		this->_error = error;
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		this->_encoding = encoding;
 		// Запоминаем положение обнаруженной ошибки
 		this->_errorLocation = location;
 		// Выводим отрицательный результат выполнения операции
@@ -693,15 +741,16 @@ bool awh::codec::xml::Document::parse(const string_view text) noexcept {
 	 * @note Таблица нужна лишь на время сборки дерева: она удерживает вторую копию
 	 *       каждого сведённого обозначения, а собранному дереву довольно отрезков
 	 *       хранилища знаков
+	 *
 	 */
 	this->_interned.clear();
 	// Выводим положительный результат выполнения операции
 	return true;
 }
 /**
- * @brief Метод получения кода ошибки разбора
+ * @brief Метод извлечения кода отказа последней работы над деревом
  *
- * @return код ошибки последней операции разбора
+ * @return код отказа последней работы
  *
  */
 awh::codec::xml::error_t awh::codec::xml::Document::error() const noexcept {
@@ -741,7 +790,8 @@ string awh::codec::xml::Document::dump() const noexcept {
 	 * @details У отказа записи места в исходном тексте нет вовсе, а код и положение
 	 *          прежнего разбора, запись пережив, складывались бы с нею в донесение стройное, но
 	 *          ложное: успешная запись отвечала бы кодом давно исправленного отказа. Документ
-	 *          JSON и таблица CSV держатся того же правила
+	 *          JSON и таблица CSV держатся того же правила.
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -758,6 +808,7 @@ string awh::codec::xml::Document::dump() const noexcept {
 	 *          какого снесён единственный узел разметки, пустым по этому счёту не
 	 *          выглядит. Замер: запись такого дерева отдавала ПУСТОЙ текст с кодом
 	 *          «нет ошибки», то есть отказ был неотличим от успеха
+	 *
 	 */
 	if(!this->element().valid()){
 		// Запоминаем код отказа записи дерева без корневого узла
@@ -766,12 +817,13 @@ string awh::codec::xml::Document::dump() const noexcept {
 		return "";
 	}
 	// Объект записи текста документа
-	this->_writer.clear();
+	this->_writer.reset();
 	/**
 	 * Если запись дерева разметки не удалась
 	 *
 	 * @note Код отказа кладётся в дерево, а текст выдаётся пустой: иначе потребитель
 	 *       получил бы половину разметки, не отличимую от целой
+	 *
 	 */
 	if(!this->_writer.element(this->root())){
 		// Запоминаем код отказа записи текста разметки
@@ -797,7 +849,7 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
 	 * кодами отказа
 	 */
-	const fs_t::type_t type = this->_fs.type(filename);
+	const fs_t::type_t type = ::__awh_fs__.type(filename);
 	/**
 	 * Если адрес указывает на каталог
 	 *
@@ -808,18 +860,33 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *       не открывается ВОВСЕ: поток отвечает отказом с кодом 13, и распознавание,
 	 *       стоящее после открытия, там мёртво - каталог отвечал бы кодом отказа
 	 *       ОТКРЫТИЯ вместо кода отказа чтения. Замерено на стенде Windows 11 ARM64
+	 *
 	 */
 	if(type == fs_t::type_t::DIR){
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -828,41 +895,60 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *
 	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
+	 *
 	 */
 	if(type != fs_t::type_t::FILE){
 		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Собираемый текст разметки
-	string text;
+	string text = "";
 	/**
 	 * Величина файла разметки, чтением ожидаемая
 	 *
 	 * @note Спрашивается ДО чтения: заслон ниже сличает собранное с нею, и без величины
 	 *       оборванное чтение было бы неотличимо от файла, вправду короткого
+	 *
 	 */
-	const uintmax_t expected = this->_fs.size(filename);
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	/**
 	 * Выполняем чтение файла разметки кусками
 	 *
 	 * @note Чтение ведётся ходом файловой системы, а не потоком: приведение пути к
 	 *       широкому виду живёт там, и узкий путь под MS Windows ложился бы на диск
 	 *       искажённым - кириллический адрес при этом не находился бы ничем
+	 *
 	 */
-	this->_fs.read(filename, 0x4000, [&text](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
-		// Пропускаем смещение куска и остаток, сборке текста они не нужны
-		static_cast <void> (offset);
+	::__awh_fs__.read(filename, 0x4000, [&text](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+		/**
+		 * Пропускаем смещение куска и остаток, сборке текста они не нужны
+		 */
 		static_cast <void> (left);
+		static_cast <void> (offset);
 		// Добавляем прочитанный кусок файла к собираемому тексту
 		text.append(reinterpret_cast <const char *> (buffer), size);
 		// Выводим признак продолжения чтения файла разметки
@@ -886,8 +972,7 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: без него оборванное чтение выглядело бы разметкой,
 	 *          прочитанной до конца, - успехом на половине данных
-	 */
-	/**
+	 *
 	 * @note Заслон этот ПЕРЕКРЫТ по всем воспроизводимым дорогам и оттого набором не покрыт:
 	 *       каталог отсеивается проверкой до открытия, файл неоткрываемый - проверкой
 	 *       открытия, а `bad()` требует сбоя самого устройства ввода-вывода. Замерено
@@ -897,18 +982,33 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: без него оборванное чтение уходило бы разбору
 	 *          усечённым текстом, и потребитель принял бы часть за целое
+	 *
 	 */
 	if(static_cast <uintmax_t> (text.size()) < expected){
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -919,13 +1019,26 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
  * @brief Метод установки настроек дерева разметки
  *
  * @param settings устанавливаемые настройки дерева разметки
+ * @return         признак принятия настроек документа
  *
  */
-void awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
+bool awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
 	// Устанавливаем настройки потоковой записи
 	this->_writer.settings(settings.writer);
 	// Устанавливаем настройки потокового чтения
 	this->_reader.settings(settings.reader);
+	// Выводим признак принятия настроек
+	return true;
+}
+/**
+ * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+ *
+ * @return настройки записи текста
+ *
+ */
+awh::codec::xml::writer_t::settings_t awh::codec::xml::Document::writing() const noexcept {
+	// Выводим настройки записи, писателем действующие
+	return this->_writer.settings();
 }
 /**
  * @brief Метод записи дерева разметки в файл
@@ -935,6 +1048,43 @@ void awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
  *
  */
 bool awh::codec::xml::Document::save(const string & filename) const noexcept {
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа записи файла разметки
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи файла разметки
+		return false;
+	}
 	// Получаем собранный текст разметки
 	const string text = this->dump();
 	/**
@@ -942,6 +1092,7 @@ bool awh::codec::xml::Document::save(const string & filename) const noexcept {
 	 *
 	 * @note Выдача текста код отказа уже поставила, коли отказала: здесь он лишь
 	 *       дополняется случаем дерева ПУСТОГО, где записывать попросту нечего
+	 *
 	 */
 	if(text.empty()){
 		/**
@@ -961,6 +1112,7 @@ bool awh::codec::xml::Document::save(const string & filename) const noexcept {
 		 *
 		 * @warning Снимать ветвь нельзя: без неё сохранение отвечало бы неудачей с кодом
 		 *          `NONE`, а это худший из исходов - отказ, себя не называющий
+		 *
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код отказа записи дерева без корневого узла
@@ -981,37 +1133,51 @@ bool awh::codec::xml::Document::save(const string & filename) const noexcept {
 	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Открываем временный файл для записи
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
 	 *
 	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
 	 *       и остаток прежнего сохранения торчал бы хвостом за концом записанного.
 	 *       Прежде усечение делал сам поток признаком `trunc`
+	 *
 	 */
-	static_cast <void> (this->_fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Выполняем запись текста разметки во временный файл
 	 *
 	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 *
 	 */
-	const bool written = this->_fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(this->_fs, temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * Выполняем вывод сообщения об отказе
-		 *
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1019,26 +1185,40 @@ bool awh::codec::xml::Document::save(const string & filename) const noexcept {
 	 * Если запись текста разметки в файл не удалась
 	 *
 	 * @details Исход спрашивается у САМОЙ записи: ход её отдаёт признак успеха, и успехом
-	 * считается запись всего буфера - частичная есть тот же отказ
+	 *          считается запись всего буфера - частичная есть тот же отказ.
 	 *
 	 * @note Прежде здесь стояло явное закрытие потока: он сбрасывал буфер разрушением
 	 *       своим, то есть уже ПОСЛЕ вычисления возвращаемого значения. Ход файловой
 	 *       системы буфера за собою не держит
+	 *
 	 */
 	if(!written){
 		// Запоминаем код отказа записи файла разметки
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
-		 * Выполняем вывод сообщения об отказе
-		 *
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1053,28 +1233,43 @@ bool awh::codec::xml::Document::save(const string & filename) const noexcept {
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
-	static_cast <void> (this->_fs.flush(temporary, true));
+	static_cast <void> (::__awh_fs__.flush(temporary, true));
 	/**
 	 * Если перенос собранного текста на место цели не удался
 	 *
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
+	 *
 	 */
-	if(!this->_fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
-		 * Выполняем вывод сообщения об отказе
-		 *
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		log::print("XML document failed: %s", log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML document failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML document failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1148,14 +1343,9 @@ void awh::codec::xml::Document::clear() noexcept {
 	 *
 	 * @note Узлы, снятые прежде, тем и обращаются в непригодные: очистка меняет нумерацию
 	 *       узлов, и узел с прежним опознавателем указывал бы на чужой узел
+	 *
 	 */
 	this->_stamp++;
-	// Выполняем сброс кода ошибки разбора
-	this->_error = error_t::NONE;
-	// Выполняем сброс положения обнаруженной ошибки
-	this->_errorLocation = location_t();
-	// Выполняем сброс кодировки прочитанного текста разметки
-	this->_encoding = encoding_t::NONE;
 	// Выполняем очистку арены узлов дерева разметки
 	this->_nodes.clear();
 	/**
@@ -1163,10 +1353,9 @@ void awh::codec::xml::Document::clear() noexcept {
 	 *
 	 * @warning Очистка эта обязательна: ключи отображений суть виды в общее хранилище
 	 *          знаков, и пережившие его очистку они указывали бы в освобождённую память
+	 *
 	 */
 	this->_index.clear();
-	// Выполняем очистку хранилища атрибутов
-	this->_attributes.clear();
 	// Выполняем очистку хранилища связываний префиксов
 	this->_scopes.clear();
 	// Выполняем очистку отрезков хранилища связываний
@@ -1175,6 +1364,14 @@ void awh::codec::xml::Document::clear() noexcept {
 	this->_storage.clear();
 	// Выполняем очистку таблицы размещённых имён
 	this->_interned.clear();
+	// Выполняем очистку хранилища атрибутов
+	this->_attributes.clear();
+	// Выполняем сброс кода ошибки разбора
+	this->_error = error_t::NONE;
+	// Выполняем сброс кодировки прочитанного текста разметки
+	this->_encoding = encoding_t::NONE;
+	// Выполняем сброс положения обнаруженной ошибки
+	this->_errorLocation = location_t();
 }
 /**
  * @brief Конструктор
@@ -1195,7 +1392,6 @@ awh::codec::xml::Document::Document(const settings_t & settings) noexcept :
 	// Устанавливаем настройки чтения и записи событий
 	this->settings(settings);
 }
-
 /**
  * @brief Деструктор
  *
@@ -1209,15 +1405,15 @@ awh::codec::xml::Document::~Document() noexcept {
  * @brief Заводитель узла дерева разметки
  *
  * @details Клеймо поколения снимается здесь, а не местом заведения узла: узлы заводятся
- * двумя десятками мест, и снятие клейма в самом заводителе не потребовало правки ни в
- * одном из них
+ *          двумя десятками мест, и снятие клейма в самом заводителе не потребовало правки ни в
+ *          одном из них.
  *
  * @param document дерево разметки, которому узел принадлежит
  * @param id       опознаватель узла в арене дерева
  *
  */
 awh::codec::xml::Node::Node(const Document * document, const node_id_t id) noexcept :
- _document(document), _id(id), _stamp((document != nullptr) ? document->_stamp : 0) {}
+ _id(id), _stamp((document != nullptr) ? document->_stamp : 0), _document(document) {}
 /**
  * @brief Метод проверки узла на пригодность
  *
@@ -1234,6 +1430,7 @@ bool awh::codec::xml::Node::valid() const noexcept {
 		 *
 		 * @note Стоит оно ПОСЛЕДНИМ нарочно: замер соседнего кодека JSON дал 13 % платы
 		 *       при сличении перед проверкой номера и 3 % при сличении после неё
+		 *
 		 */
 		(this->_stamp == this->_document->_stamp)
 	);
@@ -1323,6 +1520,7 @@ size_t awh::codec::xml::Node::size() const noexcept {
 	 * @note Счёт ведётся обходом, а не полем записи: поле такое пришлось бы править
 	 *       всякою прививкой да сносом, и расхождение его с цепочкою узлов было бы
 	 *       молчаливым. Цепочка же и есть единственный источник истины о детях
+	 *
 	 */
 	for(node_t node = this->first(); node.valid(); node = node.next())
 		// Выполняем учёт очередного вложенного узла
@@ -1331,9 +1529,9 @@ size_t awh::codec::xml::Node::size() const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения содержимого узла разметки
+ * @brief Метод получения содержимого узла
  *
- * @return содержимое узла, собранное из его текстовых звеньев
+ * @return содержимое узла
  *
  */
 string awh::codec::xml::Node::text() const noexcept {
@@ -1362,6 +1560,7 @@ string awh::codec::xml::Node::text() const noexcept {
 	 * @note Содержимым узла разметки считается содержимое всех вложенных в него
 	 *       текстовых узлов подряд, на любой глубине: разметка внутри содержимого
 	 *       текст не разрывает
+	 *
 	 */
 	for(node_t node = this->first(); node.valid();){
 		// Получаем вид очередного узла поддерева
@@ -1372,6 +1571,7 @@ string awh::codec::xml::Node::text() const noexcept {
 		 * @note Пробельное содержимое собирается наравне с текстовым: отделено оно
 		 *       или нет, задаётся настройкой разбора, а содержимое узла от настроек
 		 *       разбора зависеть не вправе. Отбор ведётся видом узла
+		 *
 		 */
 		if((kind == kind_t::TEXT) || (kind == kind_t::CDATA) || (kind == kind_t::SPACE))
 			// Выполняем добавление содержимого к собираемому
@@ -1520,6 +1720,7 @@ awh::codec::xml::node_t awh::codec::xml::Node::child(const string_view local, co
 	 * @note Сличение это стоит впереди поиска намеренно: у дерева, ни одного широкого
 	 *       родителя не имеющего, отображений нет вовсе, и платить за поиск по номеру
 	 *       родителя на всяком розыске такому дереву не за что
+	 *
 	 */
 	if(!this->_document->_index.empty()){
 		// Выполняем поиск отображения имён вложенных узлов родителя
@@ -1545,6 +1746,7 @@ awh::codec::xml::node_t awh::codec::xml::Node::child(const string_view local, co
 			 *       довольно в подавляющем большинстве случаев. Разойдись пространства
 			 *       имён - розыск откатывается к перебору ниже, а тот отвечает по договору
 			 *       в точности
+			 *
 			 */
 			if(node.name().is(uri, local))
 				// Выводим разысканный узел разметки
@@ -1565,15 +1767,15 @@ awh::codec::xml::node_t awh::codec::xml::Node::child(const string_view local, co
 			 * Если узел обнаружен дальше порога заведения отображения
 			 *
 			 * @details Место находки и служит признаком широты родителя: нашлось дальше
-			 * порога - значит детей у родителя заведомо больше порога, и заводить
-			 * отображение пора. Признак этот выбран оттого, что числа детей из записи узла
-			 * не узнать, а перебирать их ради счёта значило бы лишить перебор раннего
-			 * выхода
+			 *          порога - значит детей у родителя заведомо больше порога, и заводить
+			 *          отображение пора. Признак этот выбран оттого, что числа детей из записи узла
+			 *          не узнать, а перебирать их ради счёта значило бы лишить перебор раннего выхода.
 			 *
 			 * @warning Ранний выход отсюда убирать НЕЛЬЗЯ. Первая правка считала детей до
 			 *          конца ради этого решения, и обычный вид разметки - розыск, отвечающий
 			 *          первым же ребёнком, - просел на родителе о шестнадцати детях с 8.7 до
 			 *          25.2 нс, то есть ВТРОЕ
+			 *
 			 */
 			if(count > INDEX_THRESHOLD)
 				// Выполняем заведение отображения имён вложенных узлов родителя
@@ -1588,6 +1790,7 @@ awh::codec::xml::node_t awh::codec::xml::Node::child(const string_view local, co
 	 * @note Розыск, ничего не обнаруживший, перебирает всех детей и число их знает точно:
 	 *       заводить отображение по нему и надлежит, иначе розыск отсутствующего имени у
 	 *       широкого родителя оставался бы перебором навсегда
+	 *
 	 */
 	if(count > INDEX_THRESHOLD)
 		// Выполняем заведение отображения имён вложенных узлов родителя
@@ -1621,6 +1824,7 @@ void awh::codec::xml::Node::reindex() const noexcept {
 		 *
 		 * @note Узлы текста, примечаний и указаний в отображение не попадают вовсе: розыск
 		 *       по имени их не разыскивает
+		 *
 		 */
 		if(node.kind() != kind_t::ELEMENT)
 			// Выполняем переход к следующему вложенному узлу
@@ -1630,6 +1834,7 @@ void awh::codec::xml::Node::reindex() const noexcept {
 		 *
 		 * @note Занятое имя не перезаписывается, а лишь считается: отображение хранит ПЕРВОЕ
 		 *       вхождение, а число одноимённых нужно выдаче всех совпавших
+		 *
 		 */
 		const auto added = index.emplace(node.name().local, Document::entry_t(node._id));
 		/**
@@ -1681,12 +1886,13 @@ vector <awh::codec::xml::node_t> awh::codec::xml::Node::children(const string_vi
 			 * Если узел с таким местным именем у родителя один
 			 *
 			 * @details Случай этот у широкого родителя разных имён - единственный, и он же
-			 * прежде был всего дороже: перебор всей цепочки ради одного совпавшего стоил у
-			 * родителя о 20000 детях 118.6 мкс на обращение и рос квадратом
+			 *          прежде был всего дороже: перебор всей цепочки ради одного совпавшего стоил у
+			 *          родителя о 20000 детях 118.6 мкс на обращение и рос квадратом.
 			 *
 			 * @note Перебор при нескольких одноимённых оставлен намеренно: там велика и сама
-			 * выдача, и перебор платится не зря - у родителя о 20000 детях ОДНОГО имени он
-			 * стоит семи наносекунд на выданный узел, то есть предела
+			 *       выдача, и перебор платится не зря - у родителя о 20000 детях ОДНОГО имени он
+			 *       стоит семи наносекунд на выданный узел, то есть предела
+			 *
 			 */
 			if(j->second.count == 1){
 				// Получаем узел, разысканный отображением
@@ -1722,6 +1928,7 @@ vector <awh::codec::xml::node_t> awh::codec::xml::Node::children(const string_vi
 	 *       знает точно: заводить отображение по нему и надлежит. Без этого выдача осталась
 	 *       бы перебором навсегда - она сама отображения не заводила, а розыск одного узла
 	 *       потребитель мог и не звать вовсе
+	 *
 	 */
 	if(count > INDEX_THRESHOLD)
 		// Выполняем заведение отображения имён вложенных узлов родителя
@@ -1805,7 +2012,7 @@ vector <awh::codec::xml::attribute_t> awh::codec::xml::Node::attributes() const 
 	 */
 	for(uint32_t i = 0; i < record.attributes; i++){
 		// Получаем запись очередного атрибута
-		const Document::property_t & property = this->_document->_attributes[record.attribute + i];
+		const document_t::property_t & property = this->_document->_attributes[record.attribute + i];
 		// Собираемый атрибут узла
 		attribute_t attribute;
 		// Запоминаем имя атрибута
@@ -1852,7 +2059,7 @@ vector <awh::codec::xml::binding_t> awh::codec::xml::Node::bindings() const noex
 	 */
 	for(uint32_t index = 0; index < i->second.length; index++){
 		// Получаем запись очередного связывания префикса
-		const Document::scope_t & scope = this->_document->_scopes[i->second.offset + index];
+		const document_t::scope_t & scope = this->_document->_scopes[i->second.offset + index];
 		// Собираемое объявление пространства имён
 		binding_t binding;
 		// Запоминаем префикс объявления
@@ -1879,15 +2086,15 @@ string_view awh::codec::xml::Node::attribute(const string_view local, const stri
 	 */
 	if(!this->valid())
 		// Выводим пустую последовательность знаков
-		return string_view();
+		return "";
 	// Получаем запись текущего узла
-	const Document::record_t & record = this->_document->_nodes[this->_id];
+	const document_t::record_t & record = this->_document->_nodes[this->_id];
 	/**
 	 * Выполняем перебор всех атрибутов узла
 	 */
 	for(uint32_t i = 0; i < record.attributes; i++){
 		// Получаем запись очередного атрибута
-		const Document::property_t & property = this->_document->_attributes[record.attribute + i];
+		const document_t::property_t & property = this->_document->_attributes[record.attribute + i];
 		/**
 		 * Если имя атрибута совпадает с искомым
 		 */
@@ -1896,7 +2103,7 @@ string_view awh::codec::xml::Node::attribute(const string_view local, const stri
 			return this->_document->get(property.value);
 	}
 	// Выводим пустую последовательность знаков
-	return string_view();
+	return "";
 }
 /**
  * @brief Метод проверки наличия атрибута у узла
@@ -1914,7 +2121,7 @@ bool awh::codec::xml::Node::has(const string_view local, const string_view uri) 
 		// Выводим отрицательный результат проверки
 		return false;
 	// Получаем запись текущего узла
-	const Document::record_t & record = this->_document->_nodes[this->_id];
+	const document_t::record_t & record = this->_document->_nodes[this->_id];
 	/**
 	 * Выполняем перебор всех атрибутов узла
 	 */
@@ -1933,12 +2140,15 @@ bool awh::codec::xml::Node::has(const string_view local, const string_view uri) 
  * @brief Конструктор
  *
  */
-awh::codec::xml::Node::Node() noexcept : _document(nullptr), _id(INVALID_NODE), _stamp(0) {}
+awh::codec::xml::Node::Node() noexcept :
+ _id(INVALID_NODE), _stamp(0), _document(nullptr) {}
+
 /**
  * @brief Конструктор
  *
  */
 awh::codec::xml::Document::Property::Property() noexcept : defaulted(false) {}
+
 /**
  * @brief Конструктор
  *
@@ -1946,11 +2156,3 @@ awh::codec::xml::Document::Property::Property() noexcept : defaulted(false) {}
  *
  */
 awh::codec::xml::Document::Entry::Entry(const node_id_t first) noexcept : first(first), count(1) {}
-/**
- * @brief Псевдоним сброса состояния документа (см. clear())
- *
- */
-void awh::codec::xml::Document::reset() noexcept {
-	// Сносим содержимое документа, возвращая его к пустому состоянию
-	this->clear();
-}

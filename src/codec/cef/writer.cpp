@@ -26,11 +26,6 @@
 #include <limits>
 
 /**
- * Подавляем системные макросы, занявшие имена членов перечислений ниже
- */
-#include <sys/macro/suppress.hpp>
-
-/**
  * Подключаем заголовочный файл проекта
  */
 #include <sys/log.hpp>
@@ -49,6 +44,11 @@
  */
 #include <codec/cef/writer.hpp>
 #include <codec/cef/dictionary.hpp>
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже
+ */
+#include <sys/macro/suppress.hpp>
 
 /**
  * Используем стандартное пространство имён

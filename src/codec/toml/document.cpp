@@ -29,11 +29,12 @@
 #include <unordered_set>
 
 /**
- * Подавляем системные макросы, занявшие имена членов перечислений ниже:
- * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
- * Имена снимаются лишь на время объявлений - возврат в конце файла
+ * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/suppress.hpp>
+#include <sys/fs.hpp>
+#include <sys/log.hpp>
+#include <encoding/ascii.hpp>
+#include <encoding/unicode/utf8.hpp>
 
 /**
  * Подключаем общее приведение и разбор чисел кодеков
@@ -61,17 +62,16 @@
 #include <codec/toml/value.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <sys/fs.hpp>
-#include <sys/log.hpp>
-#include <encoding/ascii.hpp>
-#include <encoding/unicode/utf8.hpp>
-
-/**
  * Подключаем заголовочный файл модуля
  */
 #include <codec/toml/document.hpp>
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include <sys/macro/suppress.hpp>
 
 /**
  * Используем стандартное пространство имён

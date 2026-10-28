@@ -31,10 +31,15 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/log.hpp>
-#include <codec/xml/value.hpp>
 #include <num/lexical/lexical.hpp>
 #include <encoding/unicode/utf8.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/xml/value.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,9 +52,35 @@ using namespace std;
  */
 namespace {
 	/**
-	 * Размер куска, каким читается файл разметки
+	 * Используем пространство имён AWH
 	 */
-	static constexpr size_t CHUNK = 0x10000;
+	using namespace awh;
+
+	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_XML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_XML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Объект для работы с файловой системой
+	 *
+	 */
+	static thread_local fs_t __awh_fs__;
+
 	/**
 	 * @brief Предел роста перечня вложенных узлов обращением по номеру
 	 *
@@ -65,7 +96,12 @@ namespace {
 	 *       при заведении приложения, а читается всяким потоком, обращающимся по номеру
 	 *
 	 */
-	static std::atomic <size_t> LIMIT(0x10000);
+	static atomic_size_t __awh_limit__ = 0x10000;
+
+	/**
+	 * Размер куска, каким читается файл разметки
+	 */
+	static constexpr size_t CHUNK = 0x10000;
 	/**
 	 * @brief Наибольший допустимый объём хранилища знаков дерева разметки
 	 *
@@ -78,13 +114,14 @@ namespace {
 	 *
 	 */
 	static constexpr size_t STORAGE_LIMIT = 0xFFFFFFFF;
+
 	/**
 	 * @brief Функция извлечения пустой строки
 	 *
 	 * @return пустая строка
 	 *
 	 */
-	static const string & empty() noexcept {
+	static AWH_XML_INLINE const string & empty() noexcept {
 		// Пустая строка, выдаваемая при отсутствии содержимого
 		static const string result;
 		// Выводим пустую строку
@@ -103,7 +140,7 @@ namespace {
 	 * @return       признак успешности разбора
 	 *
 	 */
-	static bool tokens(const string & path, vector <string> & result) noexcept {
+	static AWH_XML_INLINE bool tokens(const string & path, vector <string> & result) noexcept {
 		// Выполняем очистку перечня звеньев пути
 		result.clear();
 		/**
@@ -174,7 +211,7 @@ namespace {
 	 * @return       признак того, что звено является номером узла
 	 *
 	 */
-	static bool numbered(const string & token, size_t & result) noexcept {
+	static AWH_XML_INLINE bool numbered(const string & token, size_t & result) noexcept {
 		/**
 		 * Если содержимое звена номером узла не является
 		 */
@@ -197,12 +234,12 @@ namespace {
 			 * Если добавление разряда выведет номер за предел разрядности
 			 *
 			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
-			 * заворотом: `18446744073709551617` обращалось бы единицей, и обращение по
-			 * такому пути отдавало бы соседнее значение молча. Вместилища такой длины не
-			 * бывает вовсе - номер этот номером не является
+			 *          заворотом: `18446744073709551617` обращалось бы единицей, и обращение по
+			 *          такому пути отдавало бы соседнее значение молча. Вместилища такой длины не
+			 *          бывает вовсе - номер этот номером не является.
 			 *
 			 */
-			if(result > ((std::numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
+			if(result > ((numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
 				// Выводим признак того, что звено номером не является
 				return false;
 			// Добавляем разряд к номеру вложенного узла
@@ -211,7 +248,86 @@ namespace {
 		// Выводим признак того, что звено является номером узла
 		return true;
 	}
-}
+	/**
+	 * @brief Разворачивание значения вида документ до его корневого узла разметки
+	 *
+	 * @details Разбор текста отдаёт значение вида документ, а прививка корня требует узла
+	 *          разметки. Развернуть его числом детей НЕЛЬЗЯ: договор XML 1.0 допускает прологу
+	 *          примечания, указания обработчику и объявление типа документа, и всякое из них делает
+	 *          детей больше одного, тогда как узел разметки в документе остаётся ровно один - второй
+	 *          такой отвергается самим добавлением.
+	 *
+	 * @warning Прежняя редакция разворачивала документ ровно при ОДНОМ ребёнке, отчего круг
+	 *          «разбор - прививка» рвался на всяком тексте с прологом: текст `<!-- c --><r/>`
+	 *          разбирался успешно, а прививка разобранного значения отвечала `MISSING_ROOT`,
+	 *          хотя корневой узел в значении был. Замерено 09.09.2026
+	 *
+	 * @note Разворачивание это отведено ОДНОЙ ЛИШЬ прививке корня по пустому пути: та заменяет
+	 *       корневой узел, оставляя пролог принимающего дерева на месте, и пролог источника к
+	 *       делу не идёт - у приёмника свой. Прививка же по пути заменяет узел узлом, и там
+	 *       документ с прологом разворачивать нельзя: прочие дети терялись бы молча
+	 *
+	 * @param value разворачиваемое значение
+	 * @return      корневой узел разметки, либо само значение, если развернуть его нельзя
+	 *
+	 */
+	static AWH_XML_INLINE const codec::xml::value_t & unwrapDocument(const codec::xml::value_t & value) noexcept {
+		/**
+		 * Если значение видом своим является документом
+		 */
+		if(value.kind() == codec::xml::kind_t::DOCUMENT){
+			// Количество разысканных узлов разметки и положение последнего из них
+			size_t count = 0, index = 0;
+			/**
+			 * Выполняем перебор всех детей документа
+			 */
+			for(size_t i = 0; i < value.size(); i++){
+				/**
+				 * Если ребёнок узлом разметки является
+				 */
+				if(value[i].kind() == codec::xml::kind_t::ELEMENT){
+					// Увеличиваем количество разысканных узлов разметки
+					count++;
+					// Запоминаем положение разысканного узла разметки
+					index = i;
+				}
+			}
+			/**
+			 * Если узел разметки в документе разыскан ровно один
+			 */
+			if(count == 1)
+				// Выводим разысканный корневой узел разметки
+				return value[index];
+		}
+		// Выводим значение как оно есть, разворачиванию оно не подлежит
+		return value;
+	}
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
+};
 
 /**
  * @brief Метод проверки определённости значения
@@ -224,30 +340,14 @@ bool awh::codec::xml::Value::valid() const noexcept {
 	return (this->_kind != kind_t::NONE);
 }
 /**
- * @brief Функция проверки годности каталога, куда ложится файл
+ * @brief Оператор приведения к логическому типу
  *
- * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
- *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
- *          записи отвергают нулевой размер и файла не заводят.
- *
- * @note Путь без разделителя означает каталог текущий, и он годен всегда
- *
- * @param fs   объект работы с файловой системой
- * @param path путь к заводимому файлу
- * @return     признак того, что каталог для записи годен
+ * @return признак действительности значения
  *
  */
-static bool writable(const awh::fs_t & fs, const string & path) noexcept {
-	// Положение последнего разделителя пути
-	const size_t slash = path.find_last_of("/\\");
-	/**
-	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
-	 */
-	if(slash == string::npos)
-		// Выводим признак годности каталога текущего
-		return true;
-	// Выводим признак того, что каталог назначения каталогом и является
-	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
+awh::codec::xml::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
 }
 /**
  * @brief Метод получения кода отказа последней работы над значением
@@ -264,6 +364,16 @@ static bool writable(const awh::fs_t & fs, const string & path) noexcept {
 awh::codec::xml::error_t awh::codec::xml::Value::error() const noexcept {
 	// Выводим код отказа последней работы над значением
 	return this->_error;
+}
+/**
+ * @brief Метод получения места отказа последней работы над значением
+ *
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::xml::location_t & awh::codec::xml::Value::errorLocation() const noexcept {
+	// Выводим место отказа последней работы над значением
+	return this->_errorLocation;
 }
 /**
  * @brief Метод извлечения вида узла
@@ -318,24 +428,27 @@ void awh::codec::xml::Value::clear() noexcept {
 	 *
 	 * @note Очистка возвращает значение к первозданному виду, и код отказа, её
 	 *       пережив, указывал бы на причину, которой более нет
+	 *
 	 */
 	this->_error = error_t::NONE;
-	// Выполняем очистку префикса пространства имён
-	this->_prefix.clear();
-	// Выполняем очистку местного имени узла
-	this->_local.clear();
+	// Выполняем сброс отображения имён свойств узла
+	this->reproperty();
 	// Выполняем очистку обозначения пространства имён
 	this->_uri.clear();
 	// Выполняем очистку собственного содержимого узла
 	this->_text.clear();
-	// Выполняем очистку свойств узла
-	this->_attributes.clear();
-	// Выполняем сброс отображения имён свойств узла
-	this->reproperty();
-	// Выполняем очистку связываний префиксов
-	this->_bindings.clear();
 	// Выполняем очистку вложенных узлов
 	this->_items.clear();
+	// Выполняем очистку местного имени узла
+	this->_local.clear();
+	// Выполняем очистку префикса пространства имён
+	this->_prefix.clear();
+	// Выполняем очистку связываний префиксов
+	this->_bindings.clear();
+	// Выполняем очистку свойств узла
+	this->_attributes.clear();
+	// Выполняем сброс положения отказа последней работы
+	this->_errorLocation = location_t();
 	// Выполняем сброс отображения имён вложенных узлов
 	this->reindex();
 }
@@ -348,12 +461,12 @@ void awh::codec::xml::Value::clear() noexcept {
 awh::codec::xml::name_t awh::codec::xml::Value::name() const noexcept {
 	// Собираемое имя узла
 	name_t result;
-	// Устанавливаем префикс пространства имён имени узла
-	result.prefix = string_view(this->_prefix);
-	// Устанавливаем местное имя узла
-	result.local = string_view(this->_local);
 	// Устанавливаем обозначение пространства имён узла
 	result.uri = string_view(this->_uri);
+	// Устанавливаем местное имя узла
+	result.local = string_view(this->_local);
+	// Устанавливаем префикс пространства имён имени узла
+	result.prefix = string_view(this->_prefix);
 	// Выводим собранное имя узла
 	return result;
 }
@@ -370,7 +483,7 @@ const string & awh::codec::xml::Value::local() const noexcept {
 /**
  * @brief Метод извлечения обозначения пространства имён узла
  *
- * @return обозначение пространства имён узла
+ * @return обозначение пространства имён узла, пустое - имя без пространства
  *
  */
 const string & awh::codec::xml::Value::uri() const noexcept {
@@ -380,7 +493,7 @@ const string & awh::codec::xml::Value::uri() const noexcept {
 /**
  * @brief Метод извлечения префикса пространства имён узла
  *
- * @return префикс пространства имён узла
+ * @return префикс пространства имён, пустой - префикса нет
  *
  */
 const string & awh::codec::xml::Value::prefix() const noexcept {
@@ -408,6 +521,7 @@ void awh::codec::xml::Value::name(const string & local, const string & uri, cons
 	 *          ВСЁ ДЕРЕВО целиком: выдача текста отвечала бы пустотою, а отличить её от
 	 *          отказа записи потребителю нечем. Всплывало это ростом перечня по номеру,
 	 *          где заведённые узлы вида не имеют по устройству
+	 *
 	 */
 	if(this->_kind == kind_t::NONE)
 		// Устанавливаем вид узла разметкой
@@ -416,10 +530,10 @@ void awh::codec::xml::Value::name(const string & local, const string & uri, cons
 	 * Если имя построено ошибочно
 	 *
 	 * @details Имя, договору не отвечающее, лишает записи ВСЁ ДЕРЕВО целиком: выдача
-	 * текста отвечает пустотою, а отличить её от отказа записи потребителю нечем -
-	 * довод тот же, что и у перерождения узла выше. Замер: `value[0].name("а б")` и
-	 * далее `value.dump()` выдавал пустую строку по всему дереву без всякого отказа,
-	 * и так же отзывались имена `1а`, `<`, `&` и имя пустое
+	 *          текста отвечает пустотою, а отличить её от отказа записи потребителю нечем -
+	 *          довод тот же, что и у перерождения узла выше. Замер: `value[0].name("а б")` и
+	 *          далее `value.dump()` выдавал пустую строку по всему дереву без всякого отказа,
+	 *          и так же отзывались имена `1а`, `<`, `&` и имя пустое.
 	 *
 	 * @note Указание НЕ СБЫВАЕТСЯ, а не отвергается отказом: своего канала отказа у
 	 *       установки нет вовсе, а имя прежнее целость дерева сберегает. Правило это -
@@ -429,14 +543,15 @@ void awh::codec::xml::Value::name(const string & local, const string & uri, cons
 	 * @note Судится имя тем же судьёй, каким судит его запись, и с тем же допуском
 	 *       разделителя префикса: имя без префикса и без обозначения пространства имён
 	 *       записывается дословно, и разделитель в нём законен
+	 *
 	 */
 	if(!nameable(local, (prefix.empty() && uri.empty())))
 		// Выходим из метода, оставляя имя прежним
 		return;
-	// Устанавливаем местное имя узла
-	this->_local = local;
 	// Устанавливаем обозначение пространства имён узла
 	this->_uri = uri;
+	// Устанавливаем местное имя узла
+	this->_local = local;
 	// Устанавливаем префикс пространства имён узла
 	this->_prefix = prefix;
 }
@@ -454,11 +569,11 @@ void awh::codec::xml::Value::gather(string & result) const noexcept {
 		/**
 		 * Определяем вид вложенного узла
 		 */
-		switch(item._kind){
+		switch(static_cast <uint8_t> (item._kind)){
 			// Если узел является текстовым содержимым либо дословным разделом
-			case kind_t::TEXT:
-			case kind_t::CDATA:
-			case kind_t::SPACE:
+			case static_cast <uint8_t> (kind_t::TEXT):
+			case static_cast <uint8_t> (kind_t::CDATA):
+			case static_cast <uint8_t> (kind_t::SPACE):
 				// Добавляем содержимое узла к собираемому содержимому
 				result.append(item._text);
 			break;
@@ -467,8 +582,9 @@ void awh::codec::xml::Value::gather(string & result) const noexcept {
 			 *
 			 * @note Содержимое вложенной разметки собирается наравне со своим: ровно так
 			 *       его собирает и узел дерева
+			 *
 			 */
-			case kind_t::ELEMENT:
+			case static_cast <uint8_t> (kind_t::ELEMENT):
 				// Выполняем сбор содержимого вложенного узла разметки
 				item.gather(result);
 			break;
@@ -479,13 +595,13 @@ void awh::codec::xml::Value::gather(string & result) const noexcept {
 			 *
 			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 			 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+			 *
 			 */
-			case kind_t::NONE:
-			case kind_t::DOCUMENT:
-			case kind_t::COMMENT:
-			case kind_t::PROCESSING:
-			case kind_t::DOCTYPE:
-			break;
+			case static_cast <uint8_t> (kind_t::NONE):
+			case static_cast <uint8_t> (kind_t::COMMENT):
+			case static_cast <uint8_t> (kind_t::DOCTYPE):
+			case static_cast <uint8_t> (kind_t::DOCUMENT):
+			case static_cast <uint8_t> (kind_t::PROCESSING): break;
 		}
 	}
 }
@@ -499,14 +615,14 @@ string awh::codec::xml::Value::text() const noexcept {
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		// Если узел владеет содержимым своим
-		case kind_t::TEXT:
-		case kind_t::CDATA:
-		case kind_t::SPACE:
-		case kind_t::COMMENT:
-		case kind_t::PROCESSING:
-		case kind_t::DOCTYPE:
+		case static_cast <uint8_t> (kind_t::TEXT):
+		case static_cast <uint8_t> (kind_t::CDATA):
+		case static_cast <uint8_t> (kind_t::SPACE):
+		case static_cast <uint8_t> (kind_t::COMMENT):
+		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case static_cast <uint8_t> (kind_t::PROCESSING):
 			// Выводим собственное содержимое узла
 			return this->_text;
 		/**
@@ -516,14 +632,14 @@ string awh::codec::xml::Value::text() const noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NONE:
-		case kind_t::DOCUMENT:
-		case kind_t::ELEMENT:
-		break;
+		case static_cast <uint8_t> (kind_t::NONE):
+		case static_cast <uint8_t> (kind_t::ELEMENT):
+		case static_cast <uint8_t> (kind_t::DOCUMENT): break;
 	}
 	// Собираемое содержимое вложенных текстовых узлов
-	string result;
+	string result = "";
 	// Выполняем сбор содержимого вложенных текстовых узлов
 	this->gather(result);
 	// Выводим собранное содержимое узла
@@ -540,14 +656,15 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		/**
 		 * Если узел ещё не определён
 		 *
 		 * @note Значение неопределённое перерождается узлом текстовым: содержимое без
 		 *       имени есть текст, и иного вида, годного ему, у разметки нет
+		 *
 		 */
-		case kind_t::NONE:
+		case static_cast <uint8_t> (kind_t::NONE):
 			// Устанавливаем вид узла текстовым содержимым
 			this->_kind = kind_t::TEXT;
 		/**
@@ -555,26 +672,29 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 		 *
 		 * @note Пометка обязательна: без неё собиратель числит проваливание недосмотром и
 		 *       предупреждает, а намеренное неотличимо от забытого `break`
+		 *
 		 */
 		[[fallthrough]];
 		// Если узел владеет содержимым своим
-		case kind_t::TEXT:
-		case kind_t::CDATA:
-		case kind_t::SPACE:
-		case kind_t::COMMENT:
-		case kind_t::PROCESSING:
-		case kind_t::DOCTYPE:
+		case static_cast <uint8_t> (kind_t::TEXT):
+		case static_cast <uint8_t> (kind_t::CDATA):
+		case static_cast <uint8_t> (kind_t::SPACE):
+		case static_cast <uint8_t> (kind_t::COMMENT):
+		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case static_cast <uint8_t> (kind_t::PROCESSING): {
 			// Устанавливаем собственное содержимое узла
 			this->_text = text;
 			// Выводим признак успешной установки
 			return true;
+		}
 		/**
 		 * Если узел является узлом разметки
 		 *
 		 * @note Собственного содержимого у разметки нет вовсе: установка заменяет все
 		 *       вложенные узлы одним узлом текстовым
+		 *
 		 */
-		case kind_t::ELEMENT: {
+		case static_cast <uint8_t> (kind_t::ELEMENT): {
 			// Выполняем очистку вложенных узлов
 			this->_items.clear();
 			/**
@@ -589,10 +709,11 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 			 *
 			 * @note Установлено сличением правки с её перезаписью 23.08.2026; приём
 			 *       сличения взят из работы над модулем YAML
+			 *
 			 */
 			if(!text.empty())
 				// Добавляем во вложенные узлы узел текстового содержимого
-				this->_items.push_back(Value(kind_t::TEXT, text));
+				this->_items.push_back(value_t(kind_t::TEXT, text));
 			// Выполняем сброс отображения имён вложенных узлов
 			this->reindex();
 			// Выводим признак успешной установки
@@ -605,9 +726,9 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::DOCUMENT:
-		break;
+		case static_cast <uint8_t> (kind_t::DOCUMENT): break;
 	}
 	// Выводим признак неудачной установки
 	return false;
@@ -637,6 +758,7 @@ const string & awh::codec::xml::Value::attribute(const string & local, const str
 	 * @note Сличение идёт по паре обозначения пространства имён и местного имени, а не по
 	 *       записи с префиксом: отвечающие по UPnP ставят префиксы всякий по-своему, и
 	 *       сличение записью на них разваливается
+	 *
 	 */
 	const size_t index = this->property(local, uri);
 	/**
@@ -670,6 +792,7 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	 *
 	 * @note Свойства принадлежат разметке и никому иному: у текстового содержимого,
 	 *       примечания и дословного раздела свойств не бывает вовсе
+	 *
 	 */
 	if(this->_kind != kind_t::ELEMENT)
 		// Выводим признак неудачной установки
@@ -683,6 +806,7 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	 *
 	 * @note Здесь отказ поднимается настоящий: у установки свойства свой канал отказа
 	 *       есть, и молчаливое неисполнение было бы хуже отказа
+	 *
 	 */
 	if(!nameable(local, (prefix.empty() && uri.empty())))
 		// Выводим признак неудачной установки
@@ -695,6 +819,7 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	 * @note Пара имени и пространства имён у свойства неизменна, и отображение правки
 	 *       здесь не требует: свойство перезаписывается на СВОЁМ месте, номер его не
 	 *       двигается, а ключом отображения служит именно эта пара
+	 *
 	 */
 	if(index != string::npos){
 		// Выполняем перезапись значения свойства на своём месте
@@ -706,14 +831,14 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	}
 	// Заводим свойство узла разметки
 	this->_attributes.emplace_back();
-	// Устанавливаем префикс пространства имён свойства
-	this->_attributes.back().prefix = prefix;
-	// Устанавливаем местное имя свойства
-	this->_attributes.back().local = local;
 	// Устанавливаем обозначение пространства имён свойства
 	this->_attributes.back().uri = uri;
+	// Устанавливаем местное имя свойства
+	this->_attributes.back().local = local;
 	// Устанавливаем значение свойства
 	this->_attributes.back().value = value;
+	// Устанавливаем префикс пространства имён свойства
+	this->_attributes.back().prefix = prefix;
 	// Выполняем учёт заведённого свойства узла в отображении имён
 	this->propertied(local, uri);
 	// Выводим признак успешной установки
@@ -746,7 +871,6 @@ bool awh::codec::xml::Value::detach(const string & local, const string & uri) no
 	 * Если свойство узла разыскано
 	 */
 	if(index != string::npos){
-		// Выполняем снятие свойства узла
 		// Получаем признак снятия последнего свойства перечня
 		const bool trailing = (index == (this->_attributes.size() - 1));
 		// Выполняем снятие свойства узла
@@ -757,6 +881,7 @@ bool awh::codec::xml::Value::detach(const string & local, const string & uri) no
 		 * @warning Сброс здесь обязателен и правкой не заменяется: снятие свойства из
 		 *          середины перечня сдвигает номера ВСЕХ свойств, следующих за ним, и
 		 *          отображение стало бы указывать мимо
+		 *
 		 */
 		if(!trailing)
 			// Выполняем сброс отображения имён свойств узла
@@ -765,14 +890,15 @@ bool awh::codec::xml::Value::detach(const string & local, const string & uri) no
 		 * Если отображение имён свойств заведено, а снято свойство последнее
 		 *
 		 * @details Номера прочих свойств снятие последнего не двигает, и сноса отображения
-		 * оно не требует: довольно изъять из него одну запись. Снос обошёлся бы разбором
-		 * всего отображения, тогда как сдвигать в перечне при том нечего вовсе
+		 *          оно не требует: довольно изъять из него одну запись. Снос обошёлся бы разбором
+		 *          всего отображения, тогда как сдвигать в перечне при том нечего вовсе.
 		 *
 		 * @note Замерено 23.08.2026: снос отображения стоил 132 мкс при 16384 свойствах,
 		 *       тогда как само изъятие из перечня - 15 нс. Разряд сложности снятия
 		 *       последнего сносом обращался из постоянного в линейный
+		 *
 		 */
-		else if(this->_propertied){
+		else if(this->_propertied) {
 			// Выполняем поиск местного имени снятого свойства в отображении
 			auto i = this->_properties.find(local);
 			/**
@@ -842,10 +968,10 @@ bool awh::codec::xml::Value::binding(const string & prefix, const string & uri) 
 	}
 	// Заводим связывание префикса
 	this->_bindings.emplace_back();
-	// Устанавливаем объявляемый префикс
-	this->_bindings.back().prefix = prefix;
 	// Устанавливаем обозначение пространства имён
 	this->_bindings.back().uri = uri;
+	// Устанавливаем объявляемый префикс
+	this->_bindings.back().prefix = prefix;
 	// Выводим признак успешного объявления
 	return true;
 }
@@ -857,7 +983,7 @@ bool awh::codec::xml::Value::binding(const string & prefix, const string & uri) 
  */
 size_t awh::codec::xml::Value::limit() noexcept {
 	// Выводим установленный предел роста вместилища
-	return ::LIMIT.load(std::memory_order_relaxed);
+	return ::__awh_limit__.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -867,7 +993,7 @@ size_t awh::codec::xml::Value::limit() noexcept {
  */
 void awh::codec::xml::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища
-	::LIMIT.store(value, std::memory_order_relaxed);
+	::__awh_limit__.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод извлечения значения неопределённого
@@ -875,9 +1001,9 @@ void awh::codec::xml::Value::limit(const size_t value) noexcept {
  * @return значение неопределённое
  *
  */
-const awh::codec::xml::Value & awh::codec::xml::Value::undefined() noexcept {
+const awh::codec::xml::value_t & awh::codec::xml::Value::undefined() noexcept {
 	// Значение неопределённое, выдаваемое при неудачном обращении
-	static const Value result;
+	static const value_t result;
 	// Выводим значение неопределённое
 	return result;
 }
@@ -887,9 +1013,9 @@ const awh::codec::xml::Value & awh::codec::xml::Value::undefined() noexcept {
  * @return значение мусорное
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::scrap() noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::scrap() noexcept {
 	// Значение мусорное, принимающее на себя запись при неудачном обращении
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем очистку значения мусорного от записанного прежде
 	result.clear();
 	// Выводим значение мусорное
@@ -899,7 +1025,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::scrap() noexcept {
  * @brief Метод розыска номера вложенного узла разметки по местному имени
  *
  * @details Узел о немногих детях разыскивается перебором, широкий - отображением,
- *          заводимым при первом же обращении
+ *          заводимым при первом же обращении.
  *
  * @note Отображение хранит ПЕРВОЕ вхождение имени: повтор имени у соседних узлов есть
  *       обычный вид разметки, а перебор отвечал первым из них. Оттого наполнение идёт
@@ -921,6 +1047,7 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
 	 *       перебор ОДИН раз. Прежде быстрый путь по первому узлу разметки стоял выше
 	 *       всех ветвей, и узкий узел перебирался дважды - плата на розыск выросла у него
 	 *       на десятую-пятую часть
+	 *
 	 */
 	if(this->_items.size() <= INDEX_THRESHOLD){
 		/**
@@ -941,9 +1068,9 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
 	 * Выполняем перебор вложенных узлов до первого узла разметки
 	 *
 	 * @details Розыск отвечает ПЕРВЫМ узлом разметки с разыскиваемым именем, и когда им
-	 * оказывается первый же узел разметки вовсе, отвечать надлежит немедля. Случай этот
-	 * у разметки самый частый: широкий узел о повторяющемся имени - `<item>` подряд -
-	 * есть обычный её вид, а отображение о таком узле хранит одну-единственную запись
+	 *          оказывается первый же узел разметки вовсе, отвечать надлежит немедля. Случай этот
+	 *          у разметки самый частый: широкий узел о повторяющемся имени - `<item>` подряд -
+	 *          есть обычный её вид, а отображение о таком узле хранит одну-единственную запись.
 	 *
 	 * @note Без этого пути обычный вид разметки просел бы ВТРОЕ: замерено 22.08.2026 на
 	 *       узле о 20000 детях одного имени - 0.0037 мкс перебором против 0.0124 мкс
@@ -952,6 +1079,7 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
 	 *
 	 * @note Перебор ограничен узлами до первого узла разметки, а не всеми: узлов текста и
 	 *       примечаний перед первым узлом разметки бывает считанное число
+	 *
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		/**
@@ -985,6 +1113,7 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
 			 * @note Узлы текста, примечаний и указаний в отображение не попадают вовсе:
 			 *       розыск по имени их не разыскивает, а место в отображении они заняли бы
 			 *       наравне с прочими
+			 *
 			 */
 			if(this->_items.at(i)._kind != kind_t::ELEMENT)
 				// Выполняем переход к следующему вложенному узлу
@@ -994,6 +1123,7 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
 			 *
 			 * @note Занятое имя не перезаписывается, а лишь считается: отображение хранит
 			 *       ПЕРВОЕ вхождение, а число одноимённых нужно выдаче всех совпавших
+			 *
 			 */
 			const auto added = this->_index.emplace(this->_items.at(i)._local, entry_t(i));
 			/**
@@ -1017,7 +1147,7 @@ size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
  * @details Долив отображения обязателен там, где узел заводится В КОНЕЦ перечня: сброс
  *          вместо долива обращает заведение узлов подряд в перестроение отображения на
  *          всякой вставке. Замерено 22.08.2026: сброс дал 382 мкс на одну вставку при
- *          20000 узлах против 18 мкс перебором - вдвадцатеро ХУЖЕ прежнего
+ *          20000 узлах против 18 мкс перебором - вдвадцатеро ХУЖЕ прежнего.
  *
  * @note Повтор имени отображение оставит за первым вхождением: `emplace` занятого ключа
  *       не перезаписывает
@@ -1041,7 +1171,9 @@ void awh::codec::xml::Value::indexed(const string & local) const noexcept {
 	}
 }
 /**
- * @brief Метод сброса отображения имён вложенных узлов
+ * @brief Метод снятия вложенного узла разметки с правкой отображения имён
+ *
+ * @param index номер снимаемого вложенного узла
  *
  */
 void awh::codec::xml::Value::detached(const size_t index) noexcept {
@@ -1059,6 +1191,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 * @warning Сброс здесь обязателен и правкой не заменяется: снятие узла из середины
 	 *          перечня сдвигает номера ВСЕХ узлов, следующих за ним, и отображение стало
 	 *          бы указывать мимо
+	 *
 	 */
 	if(!trailing || !this->_indexed){
 		// Выполняем сброс отображения имён вложенных узлов
@@ -1071,6 +1204,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 *
 	 * @note Отображение ведётся по узлам разметки, и узлов текста в нём нет вовсе:
 	 *       снятие такого узла правки отображения не требует никакой
+	 *
 	 */
 	if(kind != kind_t::ELEMENT)
 		// Выходим из метода
@@ -1088,6 +1222,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 * @warning Снимать ветвь нельзя: рассогласование без неё продолжает жить, и розыск по
 	 *          имени указывает МИМО - на узел, стоящий ныне под тем номером. Отказом это не
 	 *          оглашается ничем, и потребитель получает чужое содержимое за своё
+	 *
 	 */
 	if(i == this->_index.end()){
 		// Выполняем сброс отображения имён вложенных узлов
@@ -1117,6 +1252,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 * @note Ветвь оставлена намеренно и мёртвым кодом не считается: она стережёт то самое
 	 *       условие, каким довод выше и держится. Изменись правило ведения первого
 	 *       вхождения - и она обратится из недостижимой в работающую, а не в порчу
+	 *
 	 */
 	if(i->second.first == index){
 		// Выполняем сброс отображения имён вложенных узлов
@@ -1141,8 +1277,8 @@ void awh::codec::xml::Value::reindex() const noexcept {
  * @brief Метод розыска номера свойства узла по имени и пространству имён
  *
  * @details Отображение заводится по требованию, начиная с порога `INDEX_THRESHOLD`: у узла
- * о двух-трёх свойствах перебор дешевле отображения, и заведение его на всяком узле
- * платило бы за разметку обычную ради разметки редкой
+ *          о двух-трёх свойствах перебор дешевле отображения, и заведение его на всяком узле
+ *          платило бы за разметку обычную ради разметки редкой.
  *
  * @note Сличение идёт по ПАРЕ имени и пространства имён, и двух свойств с одинаковой парой
  *       у узла не бывает: установка перезаписывает такое свойство на его же месте. Оттого
@@ -1150,9 +1286,9 @@ void awh::codec::xml::Value::reindex() const noexcept {
  *       отличие от розыска вложенных узлов, где первое вхождение имени вправе принадлежать
  *       чужому пространству имён
  *
- * @param  local местное имя разыскиваемого свойства
- * @param  uri   обозначение пространства имён свойства
- * @return       номер разысканного свойства либо признак отсутствия
+ * @param local местное имя разыскиваемого свойства
+ * @param uri   обозначение пространства имён свойства
+ * @return      номер разысканного свойства либо признак отсутствия
  *
  */
 size_t awh::codec::xml::Value::property(const string & local, const string & uri) const noexcept {
@@ -1161,6 +1297,7 @@ size_t awh::codec::xml::Value::property(const string & local, const string & uri
 	 *
 	 * @note Ветвь эта стоит ПЕРВОЙ намеренно: узел об одном-двух свойствах не должен
 	 *       платить ни сличением признака заведённости, ни обращением к отображению
+	 *
 	 */
 	if(this->_attributes.size() < INDEX_THRESHOLD){
 		/**
@@ -1240,7 +1377,7 @@ void awh::codec::xml::Value::reproperty() const noexcept {
 	this->_propertied = false;
 }
 /**
- * @brief Метод проверки наличия вложенного узла разметки
+ * @brief Метод проверки наличия вложенного узла разметки с указанным именем
  *
  * @param local местное имя разыскиваемого узла
  * @param uri   обозначение пространства имён узла
@@ -1252,6 +1389,7 @@ bool awh::codec::xml::Value::contains(const string & local, const string & uri) 
 	 * Если количество вложенных узлов превышает порог заведения отображения
 	 *
 	 * @note Розыск заводит отображение сам, и звать его довольно
+	 *
 	 */
 	if(this->_items.size() > INDEX_THRESHOLD){
 		// Выполняем розыск номера вложенного узла разметки по местному имени
@@ -1261,6 +1399,7 @@ bool awh::codec::xml::Value::contains(const string & local, const string & uri) 
 		 *
 		 * @note Отсутствие местного имени в отображении отвечает разом за все пространства
 		 *       имён: узла с таким именем у родителя нет ни в одном из них
+		 *
 		 */
 		if(offset == static_cast <size_t> (~0ull))
 			// Выводим отсутствие вложенного узла
@@ -1273,6 +1412,7 @@ bool awh::codec::xml::Value::contains(const string & local, const string & uri) 
 		 * @note При нескольких одноимённых сличать надлежит перебором: отображение хранит
 		 *       ПЕРВОЕ вхождение, а оно могло прийтись на узел чужого пространства имён,
 		 *       тогда как затребованному отвечал бы следующий за ним
+		 *
 		 */
 		if((i != this->_index.end()) && (i->second.count == 1))
 			// Выводим признак совпадения пространства имён единственного узла
@@ -1300,14 +1440,15 @@ bool awh::codec::xml::Value::contains(const string & local, const string & uri) 
  * @return      перечень указаний на разысканные узлы
  *
  */
-vector <const awh::codec::xml::Value *> awh::codec::xml::Value::children(const string & local, const string & uri) const noexcept {
+vector <const awh::codec::xml::value_t *> awh::codec::xml::Value::children(const string & local, const string & uri) const noexcept {
 	// Собираемый перечень указаний на разысканные узлы
-	vector <const Value *> result;
+	vector <const value_t *> result;
 	/**
 	 * Если количество вложенных узлов превышает порог заведения отображения
 	 *
 	 * @note Розыск заводит отображение сам, и звать его довольно: выдача совпавших своего
 	 *       отображения не заводит, а перебирает перечень целиком по самому своему делу
+	 *
 	 */
 	if(this->_items.size() > INDEX_THRESHOLD){
 		// Выполняем розыск номера вложенного узла разметки по местному имени
@@ -1324,15 +1465,16 @@ vector <const awh::codec::xml::Value *> awh::codec::xml::Value::children(const s
 		 * Если вложенный узел с таким именем один
 		 *
 		 * @details Случай этот у широкого узла разных имён единственный и прежде был всего
-		 * дороже: перебор всего перечня ради одного совпавшего стоил 40.8 мкс на обращение
-		 * при 20000 детях и рос квадратом
+		 *          дороже: перебор всего перечня ради одного совпавшего стоил 40.8 мкс на обращение
+		 *          при 20000 детях и рос квадратом.
 		 *
 		 * @note Перебор при нескольких одноимённых оставлен намеренно: там велика и сама
-		 * выдача, и перебор платится не зря
+		 *       выдача, и перебор платится не зря
+		 *
 		 */
 		if((i != this->_index.end()) && (i->second.count == 1)){
 			// Получаем разысканный вложенный узел разметки
-			const Value & item = this->_items.at(offset);
+			const value_t & item = this->_items.at(offset);
 			/**
 			 * Если разысканный узел несёт и затребованное пространство имён
 			 */
@@ -1364,7 +1506,7 @@ vector <const awh::codec::xml::Value *> awh::codec::xml::Value::children(const s
  * @return     ссылка на разысканный узел
  *
  */
-const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) const noexcept {
+const awh::codec::xml::value_t & awh::codec::xml::Value::at(const string & path) const noexcept {
 	// Перечень звеньев пути к разыскиваемому узлу
 	vector <string> parts;
 	/**
@@ -1372,9 +1514,9 @@ const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) c
 	 */
 	if(!::tokens(path, parts))
 		// Выводим значение неопределённое
-		return Value::undefined();
+		return value_t::undefined();
 	// Ссылка на разыскиваемый узел
-	const Value * result = this;
+	const value_t * result = this;
 	/**
 	 * Выполняем разбор пути звено за звеном
 	 */
@@ -1390,7 +1532,7 @@ const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) c
 			 */
 			if(index >= result->_items.size())
 				// Выводим значение неопределённое
-				return Value::undefined();
+				return value_t::undefined();
 			// Выполняем переход к вложенному узлу
 			result = &result->_items.at(index);
 			// Выполняем переход к следующему звену пути
@@ -1403,7 +1545,7 @@ const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) c
 		 */
 		if(found == static_cast <size_t> (~0ull))
 			// Выводим значение неопределённое
-			return Value::undefined();
+			return value_t::undefined();
 		// Выполняем переход к разысканному узлу разметки
 		result = &result->_items.at(found);
 	}
@@ -1417,7 +1559,7 @@ const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) c
  * @return     ссылка на разысканный либо заведённый узел
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::place(const string & path) noexcept {
 	// Перечень звеньев пути к разыскиваемому узлу
 	vector <string> parts;
 	/**
@@ -1425,15 +1567,15 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 	 */
 	if(!::tokens(path, parts))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	/**
 	 * Если путь заводит вложенность глубже, чем её умеет чтение и запись
 	 *
 	 * @details Заведение по пути идёт последовательно и стека не берёт вовсе, зато его
-	 * берут размножение дерева, снятие его, запись и перенос в арену: работы эти
-	 * возвратны, и дерево небывалой глубины срывает на них стек. Предел заведения оттого
-	 * равен пределу вложенности чтения - дерево, которое ни прочесть, ни записать нельзя,
-	 * заводить незачем
+	 *          берут размножение дерева, снятие его, запись и перенос в арену: работы эти
+	 *          возвратны, и дерево небывалой глубины срывает на них стек. Предел заведения оттого
+	 *          равен пределу вложенности чтения - дерево, которое ни прочесть, ни записать нельзя,
+	 *          заводить незачем.
 	 *
 	 * @note Замер срыва по стендам: NetBSD при стеке 4 МБ валится около 9 000 уровней,
 	 *       OpenBSD при тех же 4 МБ - около 12 000, macOS при 8 МБ - около 25 000.
@@ -1442,9 +1584,9 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 	 */
 	if(parts.size() > static_cast <size_t> (MAX_DEPTH))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	// Ссылка на разыскиваемый узел
-	Value * result = this;
+	value_t * result = this;
 	/**
 	 * Выполняем разбор пути звено за звеном
 	 */
@@ -1456,6 +1598,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 		 *
 		 * @note Звено числовое недостающего не заводит: имени у заводимого узла взять
 		 *       неоткуда, а узел разметки без имени разметкой не является вовсе
+		 *
 		 */
 		if(::numbered(token, index)){
 			/**
@@ -1463,7 +1606,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 			 */
 			if(index >= result->_items.size())
 				// Выводим значение мусорное
-				return Value::scrap();
+				return value_t::scrap();
 			// Выполняем переход к вложенному узлу
 			result = &result->_items.at(index);
 			// Выполняем переход к следующему звену пути
@@ -1480,7 +1623,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 		 */
 		if((result->_kind != kind_t::ELEMENT) && (result->_kind != kind_t::DOCUMENT))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 		// Выполняем розыск номера вложенного узла разметки по имени звена пути
 		size_t found = result->lookup(token);
 		/**
@@ -1488,7 +1631,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 		 */
 		if(found == static_cast <size_t> (~0ull)){
 			// Заводим вложенный узел разметки с именем звена пути
-			result->_items.push_back(Value(token));
+			result->_items.push_back(value_t(token));
 			// Выполняем учёт заведённого узла разметки в отображении имён
 			result->indexed(token);
 			// Запоминаем номер заведённого узла разметки
@@ -1504,6 +1647,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 			 *          присвоить узлу иное имя вместе со значением. Довод тот же, что и при
 			 *          обращении по имени: имя хранится у самого узла, и родитель правки не
 			 *          наблюдает
+			 *
 			 */
 			result->reindex();
 		// Выполняем переход к разысканному либо заведённому узлу разметки
@@ -1513,13 +1657,13 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 	return (* result);
 }
 /**
- * @brief Метод обращения к вложенному узлу разметки по местному имени
+ * @brief Оператор обращения к вложенному узлу разметки по местному имени
  *
  * @param local местное имя вложенного узла
  * @return      ссылка на первый вложенный узел с таким именем
  *
  */
-const awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & local) const noexcept {
+const awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const string & local) const noexcept {
 	// Выполняем розыск номера вложенного узла разметки по местному имени
 	const size_t offset = this->lookup(local);
 	/**
@@ -1529,16 +1673,17 @@ const awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string
 		// Выводим ссылку на разысканный узел разметки
 		return this->_items.at(offset);
 	// Выводим значение неопределённое
-	return Value::undefined();
+	return value_t::undefined();
 }
 /**
- * @brief Метод обращения к вложенному узлу разметки по местному имени с заведением недостающего
+ * @brief Оператор обращения к вложенному узлу разметки по местному имени с
+ *        заведением недостающего
  *
  * @param local местное имя вложенного узла
  * @return      ссылка на первый вложенный узел с таким именем
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & local) noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const string & local) noexcept {
 	/**
 	 * Если узел ещё не определён
 	 */
@@ -1550,15 +1695,15 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & loc
 	 */
 	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	// Выполняем розыск номера вложенного узла разметки по местному имени
 	const size_t offset = this->lookup(local);
 	/**
 	 * Если заведение узла обратило бы документ в двукорневой
 	 *
 	 * @details Договор разметки знает у документа ровно ОДИН узел разметки верхнего
-	 * уровня, и правило это кодеку известно - отказ `MULTIPLE_ROOTS` заведён именно
-	 * под него. Здесь оно и прикладывается к правке дерева
+	 *          уровня, и правило это кодеку известно - отказ `MULTIPLE_ROOTS` заведён именно
+	 *          под него. Здесь оно и прикладывается к правке дерева.
 	 *
 	 * @warning Заслона этого не было до 07.09.2026, и обращение по имени, у документа
 	 *          не сыскавшемуся, заводило ВТОРОЙ корень молча. Документ от того делался
@@ -1570,6 +1715,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & loc
 	 * @note Ответ мусорным значением взят по образцу кодека JSON: обращение, значение
 	 *       испортить способное, есть промах потребителя, и молча ломать построенное
 	 *       обращение не вправе
+	 *
 	 */
 	if((offset == static_cast <size_t> (~0ull)) && (this->_kind == kind_t::DOCUMENT)){
 		/**
@@ -1579,7 +1725,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & loc
 			// Если узел разметки верхнего уровня документу уже принадлежит
 			if(item.kind() == kind_t::ELEMENT)
 				// Выводим значение мусорное
-				return Value::scrap();
+				return value_t::scrap();
 		}
 	}
 	/**
@@ -1599,37 +1745,38 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & loc
 		 * @note Заведение узла НОВОГО сброса не требует и идёт доливом: имя его родителю
 		 *       известно, и подменить его получивший ссылку может лишь тем же присваиванием,
 		 *       а оно приходит уже следующим обращением
+		 *
 		 */
 		this->reindex();
 		// Выводим ссылку на разысканный узел разметки
 		return this->_items.at(offset);
 	}
 	// Заводим вложенный узел разметки с затребованным именем
-	this->_items.push_back(Value(local));
+	this->_items.push_back(value_t(local));
 	// Выполняем учёт заведённого узла разметки в отображении имён
 	this->indexed(local);
 	// Выводим ссылку на заведённый узел разметки
 	return this->_items.back();
 }
 /**
- * @brief Метод обращения к вложенному узлу по номеру
+ * @brief Оператор обращения к вложенному узлу по номеру
  *
  * @param index номер вложенного узла
  * @return      ссылка на вложенный узел
  *
  */
-const awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size_t index) const noexcept {
 	// Выводим ссылку на вложенный узел, если узел с таким номером заведён
-	return ((index < this->_items.size()) ? this->_items.at(index) : Value::undefined());
+	return ((index < this->_items.size()) ? this->_items.at(index) : value_t::undefined());
 }
 /**
- * @brief Метод обращения к вложенному узлу по номеру с заведением недостающего
+ * @brief Оператор обращения к вложенному узлу по номеру с заведением недостающего
  *
  * @param index номер вложенного узла
  * @return      ссылка на вложенный узел
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index) noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::operator [] (const size_t index) noexcept {
 	/**
 	 * Если узел ещё не определён
 	 */
@@ -1649,6 +1796,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 		 *          роста, стоящий ниже, не проходится. Первая правка сброс поставила лишь
 		 *          туда, и подмена узла отображение пережила: розыск отвечал об имени
 		 *          снесённом, что оно есть, а о новом - что его нет
+		 *
 		 */
 		this->reindex();
 		// Выводим ссылку на вложенный узел
@@ -1659,23 +1807,24 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	 */
 	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT))
 		// Выводим значение мусорное
-		return Value::scrap();
+		return value_t::scrap();
 	/**
 	 * Если рост вместилища выйдет за поставленный предел
 	 *
 	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
 	 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
 	 *       его вовсе - см. `Value::limit`
+	 *
 	 */
 	{
 		// Получаем поставленный предел роста вместилища
-		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
+		const size_t limit = ::__awh_limit__.load(std::memory_order_relaxed);
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
 		if((limit > 0) && (index >= limit))
 			// Выводим значение мусорное
-			return Value::scrap();
+			return value_t::scrap();
 	}
 	/**
 	 * Выполняем рост перечня вложенных узлов до затребованного номера
@@ -1692,6 +1841,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	 *          вправе положить туда узел разметки с каким угодно именем - хоть на место
 	 *          заведённого только что, хоть поверх давнего. Имя хранится у самого узла, и
 	 *          правку эту родитель не наблюдает
+	 *
 	 */
 	this->reindex();
 	// Выводим ссылку на вложенный узел
@@ -1701,7 +1851,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
  * @brief Метод подсчёта корневых узлов разметки, значением вносимых
  *
  * @details Запись узел вида документа РАЗВОРАЧИВАЕТ, выдавая одно лишь содержимое его:
- * документ, вложенный в разметку, записывается верно, а вот число корней он вносит своё
+ *          документ, вложенный в разметку, записывается верно, а вот число корней он вносит своё.
  *
  * @return количество корневых узлов разметки
  *
@@ -1718,6 +1868,7 @@ uint32_t awh::codec::xml::Value::roots() const noexcept {
 	 *
 	 * @note Текст, примечание и указание обработчику корнями не являются вовсе и
 	 *       у документа стоят законно - подле единственного корневого узла разметки
+	 *
 	 */
 	if(this->_kind != kind_t::DOCUMENT)
 		// Выводим отсутствие вносимых корней
@@ -1740,7 +1891,7 @@ uint32_t awh::codec::xml::Value::roots() const noexcept {
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::xml::Value::push(const Value & value) noexcept {
+bool awh::codec::xml::Value::push(const value_t & value) noexcept {
 	/**
 	 * Если узел ещё не определён
 	 */
@@ -1765,6 +1916,7 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 	 *          Узел без вида добавлению не препятствует нарочно: рост перечня с
 	 *          последующим именованием есть законный порядок работы, и узел такой
 	 *          добывается указанием, а не копией
+	 *
 	 */
 	if((value._kind == kind_t::ELEMENT) && value._local.empty())
 		// Выводим признак неудачного добавления
@@ -1773,11 +1925,11 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 	 * Если добавление заводит документу второй корневой узел разметки
 	 *
 	 * @details Договор велит документу иметь ровно один корневой узел, и второй лишает
-	 * записи ВСЁ ДЕРЕВО целиком - довод тот же, что и у разметки безымянной выше.
-	 * Замер: `value.parse("<а/>")` и добавление корня иного значения отвечали успехом,
-	 * `valid()` отвечал истиной, а `dump()` выдавал пустую строку без всякого отказа.
-	 * Тем же оборачивалось и добавление значения в самоё себя: разбор даёт узел вида
-	 * документа, и добавление его к себе же ставило рядом два корня
+	 *          записи ВСЁ ДЕРЕВО целиком - довод тот же, что и у разметки безымянной выше.
+	 *          Замер: `value.parse("<а/>")` и добавление корня иного значения отвечали успехом,
+	 *          `valid()` отвечал истиной, а `dump()` выдавал пустую строку без всякого отказа.
+	 *          Тем же оборачивалось и добавление значения в самоё себя: разбор даёт узел вида
+	 *          документа, и добавление его к себе же ставило рядом два корня.
 	 *
 	 * @note Запись узел вида документа РАЗВОРАЧИВАЕТ: документ, вложенный в разметку,
 	 *       записывается верно, и запрета ему здесь нет - считаются лишь корни,
@@ -1786,6 +1938,7 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 	 * @note Рост перечня через `operator []` заслоном этим НЕ покрыт нарочно: узлы
 	 *       заводятся там неопределёнными, корней не внося, а именуются они после -
 	 *       ровно так же, как выведен из-под соседнего заслона узел без вида
+	 *
 	 */
 	if((this->_kind == kind_t::DOCUMENT) && ((this->roots() + value.roots()) > 1))
 		// Выводим признак неудачного добавления
@@ -1798,6 +1951,7 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 	 * @note Узлы текста, примечаний и указаний в отображении не учитываются вовсе, а
 	 *       заведение их В КОНЕЦ номеров прежних узлов не сдвигает: сбрасывать
 	 *       отображение ради них было бы напрасной тратой
+	 *
 	 */
 	if(value._kind == kind_t::ELEMENT)
 		// Выполняем учёт заведённого узла разметки в отображении имён
@@ -1813,7 +1967,7 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
  * @return      признак успешности установки
  *
  */
-bool awh::codec::xml::Value::insert(const string & local, const Value & value) noexcept {
+bool awh::codec::xml::Value::insert(const string & local, const value_t & value) noexcept {
 	/**
 	 * Если узел ещё не определён
 	 */
@@ -1836,10 +1990,10 @@ bool awh::codec::xml::Value::insert(const string & local, const Value & value) n
 		if((this->_items.at(i)._kind == kind_t::ELEMENT) && (this->_items.at(i)._local.compare(local) == 0)){
 			// Выполняем перезапись вложенного узла на своём месте
 			this->_items.at(i) = value;
-			// Устанавливаем вид перезаписанного узла разметкой
-			this->_items.at(i)._kind = kind_t::ELEMENT;
 			// Устанавливаем имя перезаписанного узла затребованным
 			this->_items.at(i)._local = local;
+			// Устанавливаем вид перезаписанного узла разметкой
+			this->_items.at(i)._kind = kind_t::ELEMENT;
 			// Выводим признак успешной установки
 			return true;
 		}
@@ -1848,12 +2002,13 @@ bool awh::codec::xml::Value::insert(const string & local, const Value & value) n
 	 * Если установка заводит документу второй корневой узел разметки
 	 *
 	 * @details Довод тот же, что и у добавления узла: договор велит документу иметь ровно
-	 * один корневой узел, а второй лишает записи всё дерево целиком - без отказа и без
-	 * следа. Перезапись узла, ИМЯ КОТОРОГО ЗАНЯТО, идёт выше и заслона не требует:
-	 * корень там сменяется корнем, и число их не растёт
+	 *          один корневой узел, а второй лишает записи всё дерево целиком - без отказа и без
+	 *          следа. Перезапись узла, ИМЯ КОТОРОГО ЗАНЯТО, идёт выше и заслона не требует:
+	 *          корень там сменяется корнем, и число их не растёт.
 	 *
 	 * @note Устанавливаемый узел становится разметкой каким бы он ни пришёл, и корень
 	 *       он вносит ровно один - потому и сличается число с единицей
+	 *
 	 */
 	if((this->_kind == kind_t::DOCUMENT) && (this->roots() > 0))
 		// Выводим признак неудачной установки
@@ -1870,6 +2025,7 @@ bool awh::codec::xml::Value::insert(const string & local, const Value & value) n
 	 * @note Учёт идёт ПОСЛЕ установки имени, а не сразу за добавлением: добавляемый узел
 	 *       приходит со своим собственным именем, и учтённое до установки указывало бы
 	 *       на узел под чужим именем
+	 *
 	 */
 	this->indexed(local);
 	// Выводим признак успешной установки
@@ -1888,6 +2044,7 @@ bool awh::codec::xml::Value::erase(const string & local, const string & uri) noe
 	 * Если количество вложенных узлов превышает порог заведения отображения
 	 *
 	 * @note Розыск заводит отображение сам, и звать его довольно
+	 *
 	 */
 	if(this->_items.size() > INDEX_THRESHOLD){
 		// Выполняем розыск номера вложенного узла разметки по местному имени
@@ -1897,6 +2054,7 @@ bool awh::codec::xml::Value::erase(const string & local, const string & uri) noe
 		 *
 		 * @note Отсутствие местного имени в отображении отвечает разом за все пространства
 		 *       имён: узла с таким именем у родителя нет ни в одном из них
+		 *
 		 */
 		if(offset == static_cast <size_t> (~0ull))
 			// Выводим признак неудачного снятия
@@ -1909,6 +2067,7 @@ bool awh::codec::xml::Value::erase(const string & local, const string & uri) noe
 		 * @warning При нескольких одноимённых снимать надлежит перебором: отображение
 		 *          хранит ПЕРВОЕ вхождение, а оно могло прийтись на узел чужого
 		 *          пространства имён - и снятие сняло бы чужой узел вместо затребованного
+		 *
 		 */
 		if((i != this->_index.end()) && (i->second.count == 1)){
 			/**
@@ -1992,32 +2151,35 @@ bool awh::codec::xml::Value::value(bool & result) const noexcept {
 	return false;
 }
 /**
- * @brief Шаблонный метод извлечения числа затребованным видом
+ * @brief Шаблон метода извлечения числа затребованным видом
+ *
+ * @tparam T затребованный вид числа
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения числа затребованным видом
  *
  * @details Число разбирается из содержимого узла: своих видов у разметки нет вовсе,
- * всякое содержимое её есть текст. Знаковость и дробность решаются записью, ровно как
- * их решает разбор числа у кодека JSON
+ *          всякое содержимое её есть текст. Знаковость и дробность решаются записью, ровно как
+ *          их решает разбор числа у кодека JSON.
  *
  * @note Сам разбор ведётся общим для всей разметки местом: дверь эта и дверь дерева
  *       документа обязаны отвечать на одну запись одинаково, а прежде разбор был
  *       написан дважды и написания расходились по четырём правилам разом. Сведены они
  *       решением от 01.09.2026
  *
- * @tparam T      затребованный вид числа
- *
- * @param  result переменная, куда помещается извлечённое значение
- * @return        признак успешности извлечения
+ * @param result результат извлечения числа
  *
  */
-template <typename T>
 bool awh::codec::xml::Value::extract(T & result) const noexcept {
 	// Получаем содержимое узла
 	const string text = this->text();
 	// Выводим признак успешности разбора числа общим для всей разметки местом
-	return awh::codec::xml::numeric <T> (text, result);
+	return codec::xml::numeric <T> (text, result);
 }
 /**
- * @brief Метод извлечения числа видом `int8_t`
+ * @brief Метод извлечения числа
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
@@ -2156,11 +2318,11 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		/**
 		 * Если узел является корнем дерева
 		 */
-		case kind_t::DOCUMENT: {
+		case static_cast <uint8_t> (kind_t::DOCUMENT): {
 			/**
 			 * Выполняем перебор всех вложенных узлов
 			 */
@@ -2178,12 +2340,13 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 		/**
 		 * Если узел является узлом разметки
 		 */
-		case kind_t::ELEMENT: {
+		case static_cast <uint8_t> (kind_t::ELEMENT): {
 			/**
 			 * Собираемые связывания префиксов, объявляемые самим узлом
 			 *
 			 * @note Отрезки указывают на память самого значения и живут дольше записи:
 			 *       копии здесь были бы платой ни за что
+			 *
 			 */
 			vector <binding_t> declares;
 			// Выполняем выделение памяти под связывания префиксов
@@ -2206,8 +2369,7 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 *       метка узла собирается разом, и объявить связывание после открытия
 			 *       значит опоздать - поток записи к тому времени уже назначил бы префикс
 			 *       сам, а поданное следом объявление легло бы в метку вторым
-			 */
-			/**
+			 *
 			 * Признак смешанного содержимого узла: разом и непробельный текст, и вложенные узлы
 			 *
 			 * @note Отступ нарядной записи внутри такого узла содержимым и является: перевод
@@ -2217,6 +2379,7 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 *
 			 * @note Древесный путь записи заслон этот держит сам, и рассуждение там то же;
 			 *       расходиться двум путям одной настройки нечем
+			 *
 			 */
 			bool wordy = false, nested = false;
 			/**
@@ -2226,9 +2389,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 				/**
 				 * Определяем вид вложенного содержимого
 				 */
-				switch(item.kind()){
+				switch(static_cast <uint8_t> (item.kind())){
 					// Если вложенным содержимым является текст
-					case kind_t::TEXT: {
+					case static_cast <uint8_t> (kind_t::TEXT): {
 						// Получаем содержимое текстового узла
 						const string content = item.text();
 						/**
@@ -2252,15 +2415,16 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 					 * @note Раздел дословного текста значим сам по себе, каким бы ни было его
 					 *       содержимое: он ставится там, где знаки берутся дословно, и отступ
 					 *       подле него содержимое меняет. Древесный путь записи судит так же
+					 *
 					 */
-					case kind_t::CDATA:
+					case static_cast <uint8_t> (kind_t::CDATA):
 						// Запоминаем, что узел несёт непробельное содержимое
 						wordy = true;
 					break;
 					// Если вложенным содержимым является узел разметки, примечание либо указание
-					case kind_t::ELEMENT:
-					case kind_t::COMMENT:
-					case kind_t::PROCESSING:
+					case static_cast <uint8_t> (kind_t::ELEMENT):
+					case static_cast <uint8_t> (kind_t::COMMENT):
+					case static_cast <uint8_t> (kind_t::PROCESSING):
 						// Запоминаем, что узел несёт вложенные узлы
 						nested = true;
 					break;
@@ -2271,12 +2435,12 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 					 *
 					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
 					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 *
 					 */
-					case kind_t::NONE:
-					case kind_t::DOCUMENT:
-					case kind_t::DOCTYPE:
-					case kind_t::SPACE:
-					break;
+					case static_cast <uint8_t> (kind_t::NONE):
+					case static_cast <uint8_t> (kind_t::SPACE):
+					case static_cast <uint8_t> (kind_t::DOCTYPE):
+					case static_cast <uint8_t> (kind_t::DOCUMENT): break;
 				}
 			}
 			/**
@@ -2288,6 +2452,7 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 *
 			 * @note Древесный путь записи наследует его тем же порядком; расходиться двум путям
 			 *       одной настройки нечем
+			 *
 			 */
 			bool keeping = preserve;
 			/**
@@ -2308,15 +2473,16 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 * Выполняем открытие узла разметки
 			 *
 			 * @details Имя записывается ДОСЛОВНО, когда у узла нет ни префикса, ни
-			 * обозначения пространства имён: разбор с выключенными пространствами имён
-			 * кладёт имя в дерево целиком, вместе с разделителем префикса, и делить его
-			 * там не на что. Прежде дословность записи не передавалась вовсе, и всякое
-			 * значение, разобранное без пространств имён, записи НЕ ПОДЛЕЖАЛО: замер дал
-			 * `<н:узел>` разобранным, а запись всего дерева - пустой строкой без отказа
+			 *          обозначения пространства имён: разбор с выключенными пространствами имён
+			 *          кладёт имя в дерево целиком, вместе с разделителем префикса, и делить его
+			 *          там не на что. Прежде дословность записи не передавалась вовсе, и всякое
+			 *          значение, разобранное без пространств имён, записи НЕ ПОДЛЕЖАЛО: замер дал
+			 *          `<н:узел>` разобранным, а запись всего дерева - пустой строкой без отказа.
 			 *
 			 * @note Судья имени разнится лишь допуском разделителя префикса, а имя,
 			 *       разобранное С пространствами имён, разделителя в местной части не
 			 *       содержит вовсе: там оба суда совпадают, и признак этот на них не влияет
+			 *
 			 */
 			if(!writer.open(this->_local, this->_uri, declares, this->_prefix, (keeping || (wordy && nested)), (this->_prefix.empty() && this->_uri.empty())))
 				// Выводим признак неуспешности записи
@@ -2325,8 +2491,8 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 * Признак пропуска пробельного содержимого при нарядной записи
 			 *
 			 * @details Нарядная запись ставит свой отступ, и прежние пробельные узлы
-			 * при том лишние: сохранённые наравне с новым отступом, они дают запись ни
-			 * верную, ни красивую - прежние переводы строк вперемешку с новыми
+			 *          при том лишние: сохранённые наравне с новым отступом, они дают запись ни
+			 *          верную, ни красивую - прежние переводы строк вперемешку с новыми.
 			 *
 			 * @note Правило это дословно повторяет древесный путь записи: там пробельные
 			 *       дети узла со вложенными узлами при нарядной записи пропускаются.
@@ -2334,6 +2500,7 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			 *
 			 * @note Узел со смешанным содержимым сюда не попадает: ему отступов не ставят
 			 *       вовсе, и пробелы его - содержимое
+			 *
 			 */
 			const bool skipping = (!keeping && nested && !wordy && (writer.settings().format == format_t::PRETTY));
 			/**
@@ -2342,12 +2509,12 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			for(auto & item : this->_attributes){
 				/**
 				 * Если запись свойства узла завершилась отказом
-				 */
-				/**
+				 *
 				 * Выполняем запись свойства узла разметки
 				 *
 				 * @note Довод дословности тот же, что и у имени узла: свойство, разобранное
 				 *       без пространств имён, держит разделитель префикса в местном имени
+				 *
 				 */
 				if(!writer.attribute(item.local, item.value, item.uri, (item.prefix.empty() && item.uri.empty())))
 					// Выводим признак неуспешности записи
@@ -2361,6 +2528,8 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 				 * Если пробельное содержимое при нарядной записи пропускается
 				 */
 				if(skipping && (item.kind() == kind_t::TEXT)){
+					// Признак того, что содержимое состоит из одних пробельных знаков
+					bool blank = true;
 					/**
 					 * Получаем содержимое текстового узла
 					 *
@@ -2374,10 +2543,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 					 *          довод выше и держится. Разойдись правило вычисления признака
 					 *          словесности с правилом пропуска - и просмотр обратится из
 					 *          недостижимого в работающий, а не в утрату содержимого
+					 *
 					 */
 					const string content = item.text();
-					// Признак того, что содержимое состоит из одних пробельных знаков
-					bool blank = true;
 					/**
 					 * Выполняем перебор всех знаков содержимого
 					 */
@@ -2406,20 +2574,20 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			return writer.close();
 		}
 		// Если узел является текстовым содержимым либо пробельным
-		case kind_t::TEXT:
-		case kind_t::SPACE:
+		case static_cast <uint8_t> (kind_t::TEXT):
+		case static_cast <uint8_t> (kind_t::SPACE):
 			// Выводим признак успешности записи текстового содержимого
 			return writer.text(this->_text);
 		// Если узел является дословным разделом
-		case kind_t::CDATA:
+		case static_cast <uint8_t> (kind_t::CDATA):
 			// Выводим признак успешности записи дословного раздела
 			return writer.cdata(this->_text);
 		// Если узел является примечанием
-		case kind_t::COMMENT:
+		case static_cast <uint8_t> (kind_t::COMMENT):
 			// Выводим признак успешности записи примечания
 			return writer.comment(this->_text);
 		// Если узел является указанием обработчику
-		case kind_t::PROCESSING:
+		case static_cast <uint8_t> (kind_t::PROCESSING):
 			// Выводим признак успешности записи указания обработчику
 			return writer.processing(this->_local, this->_text);
 		/**
@@ -2428,8 +2596,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 		 * @note Записи описания типа документа поток записи не имеет вовсе: описание это
 		 *       принадлежит тексту исходному, а собранный нами текст своего описания не
 		 *       требует. Узел такой пропускается молча
+		 *
 		 */
-		case kind_t::DOCTYPE:
+		case static_cast <uint8_t> (kind_t::DOCTYPE):
 			// Выводим признак успешности записи
 			return true;
 		/**
@@ -2439,9 +2608,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NONE:
-		break;
+		case static_cast <uint8_t> (kind_t::NONE): break;
 	}
 	// Выводим признак неуспешности записи узла неопознанного вида
 	return false;
@@ -2449,7 +2618,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 /**
  * @brief Метод снятия значения с узла дерева разметки
  *
- * @param node узел дерева разметки
+ * @param node  узел дерева разметки
+ * @param depth глубина вложенности снимаемого узла
+ * @return      признак успешности снятия
  *
  */
 bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, const bool reset) noexcept {
@@ -2459,6 +2630,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	 * @note Значение, заведённое под снятие только что (в перечне вложенных узлов или
 	 *       конструктором), чистого вида и без того: очистка такого стоит двенадцать
 	 *       обращений к полям на каждый узел дерева и ничего не меняет
+	 *
 	 */
 	if(reset)
 		// Выполняем очистку прежнего содержимого значения
@@ -2473,20 +2645,18 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	 * Если глубина вложенности снимаемого узла превышает допустимую
 	 *
 	 * @details Дерево разметки плоско и глубины не боится, а снятие его возвратно:
-	 * глубина ложится прямо на стек вызовов, и дерево в 20 000 уровней стек срывало.
-	 * Разбор текста во владеющее значение предел этот держит сам, огранивая настройку,
-	 * а дерево, собранное потребителем напрямую, приходит сюда каким угодно
+	 *          глубина ложится прямо на стек вызовов, и дерево в 20 000 уровней стек срывало.
+	 *          Разбор текста во владеющее значение предел этот держит сам, огранивая настройку,
+	 *          а дерево, собранное потребителем напрямую, приходит сюда каким угодно.
 	 *
 	 * @note Отказ оставляет значение неопределённым - ровно как оставляет его узел
 	 *       недействительный: своего кода отказа у снятия нет, и заводить его ради
 	 *       одного этого места значило бы городить канал там, где довольно `valid()`
-	 */
-	/**
+	 *
 	 * @note Сличение идёт строгим: корень дерева стоит уровнем нулевым, а узлы разметки
 	 *       считаются с первого - предел же задан числом узлов, и нестрогое сличение
 	 *       отвергало бы текст ровно по пределу, чтением принятый
-	 */
-	/**
+	 *
 	 * @note Заслон этот ЗАПАСНОЙ и набором не покрыт: снятие узла зовётся возвратом от
 	 *       корня, а глубина дерева ограждена прежде - разбор отвергает текст глубже предела
 	 *       своим сторожем, и до снятия такое дерево не доходит. Проверка
@@ -2505,6 +2675,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	 *          когда снятие позовут новым ходом - из места, где глубина не с нуля. Отказ его
 	 *          виден кодом `DEPTH_EXCEEDED`, и код этот прежде не ставился вовсе - беда была
 	 *          найдена 04.09.2026 сведением кода и сообщения к одной истине
+	 *
 	 */
 	if(depth > static_cast <uint32_t> (MAX_DEPTH)){
 		/**
@@ -2516,10 +2687,31 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 		 *          читающий, отличить превышение глубины от прочих отказов не мог ничем.
 		 *          Найдено 04.09.2026 при сведении кода и сообщения к одной истине: место
 		 *          это осталось единственным, где сообщение было, а кода не было
+		 *
 		 */
 		this->_error = error_t::DEPTH_EXCEEDED;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{depth, reset},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного снятия
 		return false;
 	}
@@ -2536,21 +2728,21 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(this->_kind){
+	switch(static_cast <uint8_t> (this->_kind)){
 		// Если узел владеет содержимым своим
-		case kind_t::TEXT:
-		case kind_t::CDATA:
-		case kind_t::SPACE:
-		case kind_t::COMMENT:
-		case kind_t::PROCESSING:
-		case kind_t::DOCTYPE:
+		case static_cast <uint8_t> (kind_t::TEXT):
+		case static_cast <uint8_t> (kind_t::CDATA):
+		case static_cast <uint8_t> (kind_t::SPACE):
+		case static_cast <uint8_t> (kind_t::COMMENT):
+		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case static_cast <uint8_t> (kind_t::PROCESSING):
 			// Выполняем снятие собственного содержимого узла
 			this->_text = node.text();
 		break;
 		/**
 		 * Если узел является узлом разметки
 		 */
-		case kind_t::ELEMENT: {
+		case static_cast <uint8_t> (kind_t::ELEMENT): {
 			// Получаем свойства узла дерева разметки
 			const vector <attribute_t> attributes = node.attributes();
 			// Выполняем выделение памяти под свойства узла
@@ -2571,12 +2763,14 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 				this->_attributes.back().value.assign(item.value.data(), item.value.size());
 			}
 			/**
+			 * Получаем связывания префиксов узла дерева разметки
+			 *
 			 * @note Сброса отображения имён свойств здесь НЕТ намеренно: заполнение
 			 *       начинается с очистки значения, а она отображение уже сбросила.
 			 *       Сброс повторный был бы тихой самопочинкой - он скрыл бы забытую
 			 *       очистку вместо того, чтобы её показать
+			 *
 			 */
-			// Получаем связывания префиксов узла дерева разметки
 			const vector <binding_t> bindings = node.bindings();
 			// Выполняем выделение памяти под связывания префиксов
 			this->_bindings.reserve(bindings.size());
@@ -2599,10 +2793,10 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case kind_t::NONE:
-		case kind_t::DOCUMENT:
-		break;
+		case static_cast <uint8_t> (kind_t::NONE):
+		case static_cast <uint8_t> (kind_t::DOCUMENT): break;
 	}
 	// Количество вложенных узлов дерева разметки
 	size_t count = 0;
@@ -2617,6 +2811,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	 *
 	 * @note Проход этот идёт по ссылкам соседей и памяти не берёт вовсе, тогда как
 	 *       устраняет он именно выделения памяти
+	 *
 	 */
 	for(node_t item = node.first(); item.valid(); item = item.next())
 		// Увеличиваем количество вложенных узлов
@@ -2635,6 +2830,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 		 * @note Отказ идёт вверх до самого корня, и значение остаётся неопределённым
 		 *       ЦЕЛИКОМ: оставь мы снятое до отказа, и потребитель получил бы дерево,
 		 *       молча усечённое посередине, - потеря худшая, чем отказ
+		 *
 		 */
 		if(!this->_items.back().absorb(item, depth + 1, false)){
 			/**
@@ -2646,6 +2842,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 			 *          - отказ, себя не называющий, - и звучащий, журнала не читающий,
 			 *          отличить превышение глубины от прочих причин не мог ничем. Замер
 			 *          05.09.2026: снятие дерева глубиною 1100 отвечало «негодно, код 0»
+			 *
 			 */
 			const error_t error = this->_items.back().error();
 			// Выполняем очистку снятого содержимого значения
@@ -2657,6 +2854,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 			 *       у того значения, которому снятие заказано, а не у вложенного,
 			 *       наружу не выданного вовсе. Дерево ставится негодным целиком, и
 			 *       причина обязана быть при нём целиком же
+			 *
 			 */
 			this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
 			// Выводим признак неудачного снятия
@@ -2668,6 +2866,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 	 *
 	 * @note Наполнение идёт перечнем напрямую, и сброс довольно выполнить единожды по
 	 *       окончании перебора, а не на всяком заведённом узле
+	 *
 	 */
 	this->reindex();
 	// Выводим признак успешного снятия
@@ -2676,8 +2875,9 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, c
 /**
  * @brief Метод разбора текста разметки во владеющее значение
  *
- * @param text разбираемый текст разметки
- * @return     признак успешности разбора
+ * @param text     разбираемый текст разметки
+ * @param settings настройки чтения текста разметки
+ * @return         признак успешности разбора
  *
  */
 bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings_t & settings) noexcept {
@@ -2693,8 +2893,11 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *          ставится заново всякой работе» в том самом месте, где работа начинается, и
 	 *          оберегает от правки, что уведёт дорогу мимо очистки. Стерегомость его
 	 *          зависит от устройства СОСЕДА, а не от него самого
+	 *
 	 */
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	// Создаём настройки документа
 	document_t::settings_t documentSettings;
 	// Настройки разбора, огранённые пределом возвратных работ
@@ -2720,6 +2923,7 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *       и разбор текста, дереву доступного, отказывал бы значению по причине,
 	 *       к самому тексту отношения не имеющей. Предел же выдаёт отказ
 	 *       `DEPTH_EXCEEDED` ровно там, где текст его и превысил
+	 *
 	 */
 	if((documentSettings.reader.maxDepth == 0) || (documentSettings.reader.maxDepth > MAX_DEPTH))
 		// Выполняем огранение предела вложенности
@@ -2737,10 +2941,13 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 		/**
 		 * Запоминаем код отказа разбора
 		 *
-		 * @note Код снимается ДО очистки, а ставится после неё: очистка канал отказа
-		 *       сбрасывает наравне с содержимым, и обратный порядок терял бы код
+		 * @note Код и место снимаются ДО очистки, а ставятся после неё: очистка
+		 *       сбрасывает оба, и обратный порядок терял бы и код, и место
+		 *
 		 */
 		this->_error = ((error != error_t::NONE) ? error : error_t::INTERNAL);
+		// Запоминаем место отказа разбора текста разметки
+		this->_errorLocation = document.errorLocation();
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -2757,11 +2964,14 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	if(!this->absorb(document.root())){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		/**
+		 * Запоминаем код отказа снятия разобранного дерева
+		 *
 		 * @note Заслон ПЕРЕКРЫТ огранением и набором не покрыт: разбор сводит всякий
 		 *       предел глубины к потолку `MAX_DEPTH` молча и до чтения, и текст глубже
 		 *       потолка отвергается ЧТЕНИЕМ, кодом с дерева снятым. Отказ снятия здесь
@@ -2772,21 +2982,25 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 		 *
 		 * @warning Снимать нельзя: он последний, кто назовёт причину, если огранение
 		 *          когда-нибудь снимут либо потолок чтения поднимут выше потолка снятия
+		 *
 		 */
-		// Запоминаем код отказа снятия разобранного дерева
 		this->_error = error_t::DEPTH_EXCEEDED;
 		// Выводим признак неудачного разбора
 		return false;
 	}
-	/**
-	 * Выполняем раздачу объекта фреймворка вложенным значениям
-	 *
-	 * @note Раздача идёт наравне с журналом и по той же причине: вложенные заводятся
-	 *       разбором, объекта у них нет вовсе, и сохранение вложенного значения без него
-	 *       отвечало бы отказом там, где корень сохраняется исправно
-	 */
 	// Выводим признак успешного разбора
 	return true;
+}
+/**
+ * @brief Метод разбора текста настроек
+ *
+ * @param text разбираемый текст настроек
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::xml::Value::parse(const string & text) noexcept {
+	// Выполняем разбор текста настройками по умолчанию
+	return this->parse(text, reader_t::settings_t());
 }
 /**
  * @brief Метод разбора текста разметки из файла
@@ -2808,21 +3022,19 @@ bool awh::codec::xml::Value::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::xml::Value::load(const string & filename, const reader_t::settings_t & settings) noexcept {
-	// Объект для работы с файловой системой
-	fs_t fs;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Разряд пути спрашивается ОДНАЖДЫ: ходу этому стоит обращение к файловой
-	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
-	 * кодами отказа
+	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными кодами отказа
 	 */
-	const fs_t::type_t type = fs.type(filename);
+	const fs_t::type_t type = ::__awh_fs__.type(filename);
 	/**
 	 * Если файл разметки физическим файлом не является
 	 *
 	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
-	 */
-	/**
+	 *
 	 * Если адрес указывает на каталог
 	 *
 	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
@@ -2834,6 +3046,7 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 *       поток отвечает отказом с кодом 13, и распознавание, стоящее после открытия,
 	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
 	 *       чтения. Замерено на стенде Windows 11 ARM64
+	 *
 	 */
 	if(type == fs_t::type_t::DIR){
 		// Выполняем очистку прежнего содержимого значения
@@ -2841,13 +3054,27 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -2856,42 +3083,69 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 *
 	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
+	 *
 	 */
 	if(type != fs_t::type_t::FILE){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		/**
+		 * Запоминаем код отказа открытия файла разметки
+		 *
 		 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
 		 *       настоящего вывода открытие файла отказывало бы молча, тогда как отказ
 		 *       разбора того же файла в лог уходит
+		 *
 		 */
-		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Собираемый текст разметки
-	string text;
+	string text = "";
 	/**
 	 * Величина файла разметки, чтением ожидаемая
 	 *
 	 * @note Спрашивается ДО чтения: заслон ниже сличает собранное с нею, и без величины
 	 *       оборванное чтение было бы неотличимо от файла, вправду короткого
+	 *
 	 */
-	const uintmax_t expected = fs.size(filename);
+	const uintmax_t expected = ::__awh_fs__.size(filename);
 	/**
 	 * Выполняем чтение файла разметки кусками
 	 *
 	 * @note Чтение ведётся ходом файловой системы, а не потоком: приведение пути к
 	 *       широкому виду живёт там, и узкий путь под MS Windows ложился бы на диск
 	 *       искажённым - кириллический адрес при этом не находился бы ничем
+	 *
 	 */
-	fs.read(filename, ::CHUNK, [&text](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
-		// Пропускаем смещение куска и остаток, сборке текста они не нужны
-		static_cast <void> (offset);
+	::__awh_fs__.read(filename, ::CHUNK, [&text](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+		/**
+		 * Пропускаем смещение куска и остаток, сборке текста они не нужны
+		 */
 		static_cast <void> (left);
+		static_cast <void> (offset);
 		// Добавляем прочитанный кусок файла к собираемому тексту
 		text.append(reinterpret_cast <const char *> (buffer), size);
 		// Выводим признак продолжения чтения файла разметки
@@ -2901,16 +3155,15 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 * Если чтение файла оборвалось отказом
 	 *
 	 * @details Отказ чтения от конца файла по одному лишь количеству прочитанного
-	 * неотличим: каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
-	 * отказом, и без этой проверки он выглядел бы файлом пустым. Разбор таблицы пустой
-	 * текст принимает таблицей без записей и отвечал на каталог УСПЕХОМ, а разбор JSON и
-	 * разметки отвечали `EMPTY_TEXT` - доводом ложным, отправляющим искать изъян в
-	 * содержимом файла вместо изъяна доступа к нему
+	 *          неотличим: каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
+	 *          отказом, и без этой проверки он выглядел бы файлом пустым. Разбор таблицы пустой
+	 *          текст принимает таблицей без записей и отвечал на каталог УСПЕХОМ, а разбор JSON и
+	 *          разметки отвечали `EMPTY_TEXT` - доводом ложным, отправляющим искать изъян в
+	 *          содержимом файла вместо изъяна доступа к нему.
 	 *
 	 * @note Проверка стоит после цикла, а не внутри: признак негодности потока
 	 *       сбрасывается лишь явно, и после цикла он тот же
-	 */
-	/**
+	 *
 	 * @note Заслон этот ПЕРЕКРЫТ по всем воспроизводимым дорогам и оттого набором не покрыт:
 	 *       каталог отсеивается проверкой до открытия, файл неоткрываемый - проверкой
 	 *       открытия, а `bad()` требует сбоя самого устройства ввода-вывода. Замерено
@@ -2920,6 +3173,7 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 *
 	 * @warning Снимать заслон нельзя: без него оборванное чтение уходило бы разбору
 	 *          усечённым текстом, и потребитель принял бы часть за целое
+	 *
 	 */
 	if(static_cast <uintmax_t> (text.size()) < expected){
 		/**
@@ -2939,18 +3193,33 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 		 *       прожил незамеченным - щуп подменою кода его найти не мог, ибо код здесь
 		 *       гиб раньше, чем его успевали спросить. Тот же заслон и с тем же доводом
 		 *       стоит у дерева разметки и у документа JSON
+		 *
 		 */
 		this->clear();
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -2982,17 +3251,20 @@ string awh::codec::xml::Value::dump(const format_t format) const noexcept {
 string awh::codec::xml::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
 	/**
 	 * Если значение не определено вовсе
 	 *
 	 * @details Пустота отказом НЕ ЯВЛЯЕТСЯ: писать попросту нечего, и кода отказа тут
-	 * быть не должно. Сборка узла неопознанного вида отвечает неуспехом, и сторож
-	 * `INTERNAL`, за нею стоящий, принимал пустое значение за изъян самой записи -
-	 * замер дал `dump()` пустым при коде 1 у значения, только что заведённого
+	 *          быть не должно. Сборка узла неопознанного вида отвечает неуспехом, и сторож
+	 *          `INTERNAL`, за нею стоящий, принимал пустое значение за изъян самой записи -
+	 *          замер дал `dump()` пустым при коде 1 у значения, только что заведённого.
 	 *
 	 * @note Договор общий у трёх кодеков: пустой текст при коде `NONE` значит «писать
 	 *       нечего», а пустой текст при коде поставленном - «записать нельзя».
 	 *       Документ JSON и таблица CSV отвечают на пустоту ровно так же
+	 *
 	 */
 	if(!this->valid())
 		// Выводим пустой текст значения
@@ -3009,11 +3281,12 @@ string awh::codec::xml::Value::dump(const writer_t::settings_t & settings) const
 		 * Запоминаем код отказа записи
 		 *
 		 * @details Отказ идёт от записи, и код у неё свой: значение лишь передаёт его
-		 * своему звучащему. Прежде отказ этот пропадал вовсе - выдача отвечала пустым
-		 * текстом, а отличить её от значения пустого было нечем
+		 *          своему звучащему. Прежде отказ этот пропадал вовсе - выдача отвечала пустым
+		 *          текстом, а отличить её от значения пустого было нечем.
 		 *
 		 * @note Отказ без кода означал бы изъян самой записи, и обойти его молчанием
 		 *       нельзя: код `INTERNAL` стоит здесь сторожем этого случая
+		 *
 		 */
 		this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 		// Выводим пустой текст значения
@@ -3047,6 +3320,43 @@ bool awh::codec::xml::Value::save(const string & filename, const format_t format
  *
  */
 bool awh::codec::xml::Value::save(const string & filename, const writer_t::settings_t & settings) const noexcept {
+	/**
+	 * Если адрес записываемого файла не задан вовсе либо каталог для записи негоден
+	 *
+	 * @note Проверка стоит прежде сборки текста: запись по пустому адресу отказом тем
+	 *       же отвечает, но лишь по собранный впустую текст, а отказ пути опознаётся
+	 *       безо всякой работы. Код отказа сходится с не заведённым временным файлом -
+	 *       тем самым, каким отвечает запись по негодному пути
+	 *
+	 */
+	if(filename.empty() || !::directory(filename)){
+		// Запоминаем код отказа открытия файла значения
+		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
+		// Выводим признак неудачной записи файла значения
+		return false;
+	}
 	// Получаем собранный текст значения
 	const string text = this->dump(settings);
 	/**
@@ -3058,6 +3368,7 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 		 *
 		 * @note Выдача текста код отказа уже поставила, коли отказала: здесь он лишь
 		 *       дополняется случаем значения ПУСТОГО, где записывать попросту нечего
+		 *
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код отказа записи значения без корневого узла
@@ -3069,44 +3380,58 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 	 * Адрес временного файла, куда собирается текст разметки
 	 *
 	 * @details Текст пишется рядом с целью и переносится на неё лишь по успешном
-	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
-	 * записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
-	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
-	 * как вызов отвечал отказом. Тем же порядком пользуются сохранения обоих документов
-	 * да таблицы CSV
+	 *          завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
+	 *          записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
+	 *          ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
+	 *          как вызов отвечал отказом. Тем же порядком пользуются сохранения обоих документов
+	 *          да таблицы CSV.
+	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Открываем временный файл разметки для записи
-	// Объект для работы с файловой системой
-	fs_t fs;
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
 	 *
 	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
 	 *       и остаток прежнего сохранения торчал бы хвостом за концом записанного
+	 *
 	 */
-	static_cast <void> (fs.unlink(temporary));
+	static_cast <void> (::__awh_fs__.unlink(temporary));
 	/**
 	 * Выполняем запись текста разметки во временный файл
 	 *
 	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 *
 	 */
-	const bool written = fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
-	if(!::writable(fs, temporary)){
+	if(!::directory(temporary)){
 		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3114,21 +3439,36 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 	 * Если запись текста разметки в файл не удалась
 	 *
 	 * @details Исход спрашивается у САМОЙ записи: ход её отдаёт признак успеха, и успехом
-	 * считается запись всего буфера - частичная есть тот же отказ
+	 *          считается запись всего буфера - частичная есть тот же отказ.
+	 *
 	 */
 	if(!written){
 		// Запоминаем код отказа записи файла разметки
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла разметки
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3136,34 +3476,50 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
-	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
-	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
-	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
-	 * и заведён
+	 *          лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 *          указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 *          у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 *          и заведён.
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
-	static_cast <void> (fs.flush(temporary, true));
+	static_cast <void> (::__awh_fs__.flush(temporary, true));
 	/**
 	 * Если перенос собранного текста разметки на место цели не удался
 	 *
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
+	 *
 	 */
-	if(!fs.replaceAddress(temporary, filename)){
+	if(!::__awh_fs__.replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла разметки
-		static_cast <void> (fs.unlink(temporary));
+		static_cast <void> (::__awh_fs__.unlink(temporary));
 		/**
-		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
-		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
-		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
-		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 * Если включён режим отладки
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"XML value failed: %s", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"XML value failed: %s",
+				log::flag_t::CRITICAL,
+				codec::xml::message(this->_error)
+			);
+		#endif
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3177,7 +3533,7 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
  * @return      признак совпадения значений
  *
  */
-bool awh::codec::xml::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::xml::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * Если виды сличаемых узлов разнятся
 	 */
@@ -3189,6 +3545,7 @@ bool awh::codec::xml::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Префикс сличению не подлежит: одно и то же имя, записанное разными
 	 *       префиксами, есть одно и то же имя
+	 *
 	 */
 	if((this->_local.compare(value._local) != 0) || (this->_uri.compare(value._uri) != 0))
 		// Выводим признак несовпадения значений
@@ -3210,6 +3567,7 @@ bool awh::codec::xml::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Порядок свойств сличению не подлежит: свойства узла суть набор, и порядок
 	 *       записи их описание разметки не предписывает вовсе
+	 *
 	 */
 	for(auto & item : this->_attributes){
 		/**
@@ -3236,6 +3594,7 @@ bool awh::codec::xml::Value::operator == (const Value & value) const noexcept {
 	 *
 	 * @note Порядок вложенных узлов сличению подлежит: содержимое разметки определено
 	 *       порядком своим, и два узла, разнящиеся порядком детей, разнятся по сути
+	 *
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		/**
@@ -3255,42 +3614,42 @@ bool awh::codec::xml::Value::operator == (const Value & value) const noexcept {
  * @return      признак несовпадения значений
  *
  */
-bool awh::codec::xml::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::xml::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак несовпадения значений
 	return !((* this) == value);
 }
 /**
- * @brief Оператор присваивания копированием
+ * @brief Оператор присваивания копией
  *
  * @param value присваиваемое значение
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::operator = (const Value & value) noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::operator = (const value_t & value) noexcept {
 	/**
 	 * Если значение присваивается само себе
 	 */
 	if(&value == this)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Выполняем копирование вида хранимого узла
-	this->_kind = value._kind;
-	// Выполняем копирование префикса пространства имён
-	this->_prefix = value._prefix;
-	// Выполняем копирование местного имени узла
-	this->_local = value._local;
 	// Выполняем копирование обозначения пространства имён
 	this->_uri = value._uri;
+	// Выполняем копирование вида хранимого узла
+	this->_kind = value._kind;
 	// Выполняем копирование собственного содержимого узла
 	this->_text = value._text;
+	// Выполняем копирование местного имени узла
+	this->_local = value._local;
+	// Выполняем копирование префикса пространства имён
+	this->_prefix = value._prefix;
 	// Выполняем копирование свойств узла
 	this->_attributes = value._attributes;
 	// Выполняем сброс отображения имён свойств узла
 	this->reproperty();
-	// Выполняем копирование связываний префиксов
-	this->_bindings = value._bindings;
 	// Выполняем копирование вложенных узлов
 	this->_items = value._items;
+	// Выполняем копирование связываний префиксов
+	this->_bindings = value._bindings;
 	// Выполняем сброс отображения имён вложенных узлов
 	this->reindex();
 	// Выводим ссылку на текущее значение
@@ -3303,7 +3662,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (const Value & value
  * @return      ссылка на текущее значение
  *
  */
-awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noexcept {
+awh::codec::xml::value_t & awh::codec::xml::Value::operator = (value_t && value) noexcept {
 	/**
 	 * Если значение присваивается само себе
 	 */
@@ -3312,26 +3671,28 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
 		return (* this);
 	// Выполняем перенос вида хранимого узла
 	this->_kind = value._kind;
-	// Выполняем перенос префикса пространства имён
-	this->_prefix = ::move(value._prefix);
-	// Выполняем перенос местного имени узла
-	this->_local = ::move(value._local);
 	// Выполняем перенос обозначения пространства имён
 	this->_uri = ::move(value._uri);
 	// Выполняем перенос собственного содержимого узла
 	this->_text = ::move(value._text);
+	// Выполняем перенос местного имени узла
+	this->_local = ::move(value._local);
+	// Выполняем перенос префикса пространства имён
+	this->_prefix = ::move(value._prefix);
 	// Выполняем перенос свойств узла
 	this->_attributes = ::move(value._attributes);
 	// Выполняем сброс отображения имён свойств узла
 	this->reproperty();
+	// Получаем вложенные узлы до уничтожения прежнего дерева
+	auto items = ::move(value._items);
 	// Выполняем перенос связываний префиксов
 	this->_bindings = ::move(value._bindings);
+	// Очищаем источник, пока прежнее дерево ещё удерживает его
+	value.clear();
 	// Выполняем перенос вложенных узлов
-	this->_items = ::move(value._items);
+	this->_items = ::move(items);
 	// Выполняем сброс отображения имён вложенных узлов
 	this->reindex();
-	// Выполняем очистку значения, у какого содержимое отобрано
-	value.clear();
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -3395,7 +3756,7 @@ awh::codec::xml::Value::Value(const node_t & node) noexcept :
  * @param value копируемое значение
  *
  */
-awh::codec::xml::Value::Value(const Value & value) noexcept :
+awh::codec::xml::Value::Value(const value_t & value) noexcept :
  _indexed(false), _propertied(false),
  _kind(value._kind), _error(value._error),
  _uri{value._uri}, _text{value._text},
@@ -3409,7 +3770,7 @@ awh::codec::xml::Value::Value(const Value & value) noexcept :
  * @param value переносимое значение
  *
  */
-awh::codec::xml::Value::Value(Value && value) noexcept :
+awh::codec::xml::Value::Value(value_t && value) noexcept :
  _indexed(false), _propertied(false),
  _kind(value._kind), _error(value._error),
  _uri(::move(value._uri)), _text(::move(value._text)),
@@ -3420,6 +3781,7 @@ awh::codec::xml::Value::Value(Value && value) noexcept :
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
+
 /**
  * @brief Конструктор
  *
@@ -3453,6 +3815,7 @@ awh::codec::xml::value_t * awh::codec::xml::Builder::attach(const value_t & valu
 	 * @warning Снимать их нельзя: выданное указание разыменовывается вызывающими без
 	 *          оглядки, и послабление вида собираемого значения обратилось бы обращением
 	 *          по пустому указанию
+	 *
 	 */
 	if(this->_nesting.empty()){
 		/**
@@ -3460,6 +3823,7 @@ awh::codec::xml::value_t * awh::codec::xml::Builder::attach(const value_t & valu
 		 *
 		 * @note Собираемое заводится корнем дерева: разметка одного корня требует, а
 		 *       сборщик волен собрать перед ним и примечание, и указание обработчику
+		 *
 		 */
 		if(!this->_result.valid())
 			// Заводим собираемое значение корнем дерева
@@ -3471,6 +3835,7 @@ awh::codec::xml::value_t * awh::codec::xml::Builder::attach(const value_t & valu
 		 *       выше: собираемое значение заводится корнем дерева строкою прежде, и корень
 		 *       этот узлы принимать способен всегда. Там же и замер сличением двух сборок от
 		 *       07.09.2026, и указание, как ставить порчу ради такого замера
+		 *
 		 */
 		if(!this->_result.push(value))
 			// Выводим признак неудачного помещения
@@ -3521,6 +3886,7 @@ bool awh::codec::xml::Builder::open(const string & local, const string & uri, co
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	if(result == nullptr)
 		// Выводим признак неудачного открытия
@@ -3563,6 +3929,7 @@ bool awh::codec::xml::Builder::attribute(const string & local, const string & va
 	 * Если ни одного узла не открыто
 	 *
 	 * @note Свойство принадлежит узлу, а не сборке: объявить его в пустоте нельзя
+	 *
 	 */
 	if(this->_nesting.empty())
 		// Выводим признак неудачного объявления
@@ -3643,6 +4010,7 @@ bool awh::codec::xml::Builder::processing(const string & target, const string & 
 	 *
 	 * @note Цель хранится местным именем узла: своего поля под неё не заведено, ибо
 	 *       имени у указания обработчику нет, а цель его именем и является
+	 *
 	 */
 	value.name(target);
 	// Выводим признак успешности записи указания обработчику
@@ -3695,6 +4063,7 @@ awh::codec::xml::value_t awh::codec::xml::Builder::finish() noexcept {
 	 *
 	 * @note Корень дерева заводится сборкой всегда, а нужен он лишь тогда, когда узлов у
 	 *       сборки несколько: собравшему один узел разметки корень ни к чему
+	 *
 	 */
 	if((result.kind() == kind_t::DOCUMENT) && (result.size() == 1))
 		// Выводим единственный собранный узел
@@ -3710,14 +4079,14 @@ awh::codec::xml::value_t awh::codec::xml::Builder::finish() noexcept {
  * @return       индекс заведённого узла либо признак недействительности
  *
  */
-awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Value & value, const node_id_t parent) noexcept {
+awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::value_t & value, const node_id_t parent) noexcept {
 	/**
 	 * Если переносимое значение является корнем дерева
 	 *
 	 * @details Корень вмещает содержимое текста целиком и узлом разметки не является
-	 * вовсе: узлом внутри дерева ему не бывать, ибо родителя корень не имеет по
-	 * устройству. Записи наружу изъян этот не торчал - запись корень пропускает,
-	 * выводя одно содержимое его, - зато обход дерева отдавал бы корень ребёнком
+	 *          вовсе: узлом внутри дерева ему не бывать, ибо родителя корень не имеет по
+	 *          устройству. Записи наружу изъян этот не торчал - запись корень пропускает,
+	 *          выводя одно содержимое его, - зато обход дерева отдавал бы корень ребёнком.
 	 *
 	 * @note Проверка стоит в переносе, а не в прививке, и оттого стережёт и вложенное
 	 *       содержимое: значение, собранное вручную, вправе нести корень и внутри себя
@@ -3730,10 +4099,10 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	 * Если переносимый узел разметки несёт ошибочно построенное имя
 	 *
 	 * @details Имя узлу достаётся конструктором значения, а тот своего канала отказа не
-	 * имеет и принимал прежде ЛЮБУЮ последовательность знаков. Дерево оттого принимало
-	 * узел с именем негодным молча - прививка отвечала успехом, - а изъян всплывал лишь
-	 * записью: `dump()` выдавал пустую строку при коде `INVALID_NAME`, и потребитель
-	 * узнавал о беде далеко от места, где её завёл
+	 *          имеет и принимал прежде ЛЮБУЮ последовательность знаков. Дерево оттого принимало
+	 *          узел с именем негодным молча - прививка отвечала успехом, - а изъян всплывал лишь
+	 *          записью: `dump()` выдавал пустую строку при коде `INVALID_NAME`, и потребитель
+	 *          узнавал о беде далеко от места, где её завёл.
 	 *
 	 * @note Замерено 07.09.2026: значение с именами `1bad`, `a b`, `<x>` и `a\x01b`
 	 *       прививалось признаком УСПЕХА, а запись дерева выдавала пустоту. Печатью в
@@ -3752,6 +4121,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	 *          своим входом и негодное отвергает отказом, отчего в значение оно не
 	 *          попадает вовсе. Расхождение это - имя узла принималось, имя свойства нет -
 	 *          и было изъяном
+	 *
 	 */
 	if(value.kind() == kind_t::ELEMENT){
 		// Получаем имя переносимого узла разметки
@@ -3768,32 +4138,25 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	}
 	// Признак выхода дерева за отведённый ему предел
 	bool overflow = false;
-	/**
-	 * @brief Метод размещения последовательности знаков в хранилище дерева
-	 *
-	 * @param text размещаемая последовательность знаков
-	 * @return     отрезок общего хранилища знаков
-	 *
-	 */
 	// Код отказа содержимого, записи не подлежащего
 	error_t unwritable = error_t::NONE;
 	/**
-	 * @brief Метод суждения о пригодности содержимого к записи
+	 * @brief Функция суждения о пригодности содержимого к записи
 	 *
 	 * @details Судит тем же судьёй, каким судит запись: чтением кодовых значений и
-	 * признанием знака `isChar()`. Договор XML знака, вне его области лежащего, не
-	 * допускает нигде - ни в тексте, ни в значении свойства, - и подменить его нечем:
-	 * настройки записи, знак негодный заменяющей либо пропускающей, у разметки нет, в
-	 * отличие от кодека JSON, где выбор этот дан тремя видами `malformed_t`
+	 *          признанием знака `isChar()`. Договор XML знака, вне его области лежащего, не
+	 *          допускает нигде - ни в тексте, ни в значении свойства, - и подменить его нечем:
+	 *          настройки записи, знак негодный заменяющей либо пропускающей, у разметки нет, в
+	 *          отличие от кодека JSON, где выбор этот дан тремя видами `malformed_t`.
 	 *
 	 * @warning Судятся здесь ОБЕ причины - и негодная последовательность байтов, и знак,
-	 * вне области договора лежащий, - и граница эта ШИРЕ, чем у кодеков INI и TOML, где при
-	 * правке судится лишь годность последовательности. Расхождение намеренное и держится на
-	 * договорах: у тех знак управляющий записи не мешает - она ограждает его - либо зависит
-	 * от настроек записи, какие вправе смениться между правкой и записью, а о написанном
-	 * судить по настройке нельзя. У разметки же знак, вне области `isChar` лежащий, запрещён
-	 * договором БЕЗУСЛОВНО: ни ограждения, ни ссылки на него XML 1.0 не даёт, и настройки,
-	 * его дозволяющей, нет ни одной. Оттого здесь он и судится наравне с последовательностью
+	 *          вне области договора лежащий, - и граница эта ШИРЕ, чем у кодеков INI и TOML, где при
+	 *          правке судится лишь годность последовательности. Расхождение намеренное и держится на
+	 *          договорах: у тех знак управляющий записи не мешает - она ограждает его - либо зависит
+	 *          от настроек записи, какие вправе смениться между правкой и записью, а о написанном
+	 *          судить по настройке нельзя. У разметки же знак, вне области `isChar` лежащий, запрещён
+	 *          договором БЕЗУСЛОВНО: ни ограждения, ни ссылки на него XML 1.0 не даёт, и настройки,
+	 *          его дозволяющей, нет ни одной. Оттого здесь он и судится наравне с последовательностью
 	 *
 	 * @note Выдаётся не признак, а КОД отказа, и коды те же, какими отвечает запись:
 	 *       негодная последовательность байтов зовётся `INVALID_ENCODING`, а знак, вне
@@ -3831,14 +4194,22 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		// Выводим признак содержимого, записи подлежащего
 		return error_t::NONE;
 	};
-	// Построение, размещающее содержимое в хранилище значений
+	/**
+	 * @brief Функция размещения последовательности знаков в хранилище дерева
+	 *
+	 * @param text размещаемая последовательность знаков
+	 * @return     отрезок общего хранилища знаков
+	 *
+	 */
 	auto store = [this, &overflow, &unwritable, &writable](const string & text) noexcept -> span_t {
+		// Получаем код суждения о пригодности содержимого к записи
+		const error_t judged = writable(text);
 		/**
 		 * Если размещаемое содержимое записи не подлежит
 		 *
 		 * @details Суждение стоит здесь, у единственных ворот в хранилище дерева, а не при
-		 * каждом виде содержимого порознь: имя, текст, значение свойства и обозначение
-		 * пространства имён проходят все через них, и одно суждение стережёт их разом
+		 *          каждом виде содержимого порознь: имя, текст, значение свойства и обозначение
+		 *          пространства имён проходят все через них, и одно суждение стережёт их разом.
 		 *
 		 * @note Найдено 08.09.2026 тем же чтением, каким найдено принятие негодного имени:
 		 *       значение, собранное руками и несущее в тексте негодную последовательность
@@ -3849,11 +4220,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		 * @warning Разбор через эти ворота НЕ ХОДИТ: дерево он строит сам, и суждение это
 		 *          лежит на дороге одной лишь прививки. Оттого и цена его не ложится на
 		 *          разбор, а к записи прибавляется вторым проходом лишь у собранного руками
-		 */
-		// Получаем код суждения о пригодности содержимого к записи
-		const error_t judged = writable(text);
-		/**
-		 * Если размещаемое содержимое записи не подлежит
+		 *
 		 */
 		if(judged != error_t::NONE){
 			// Запоминаем код отказа содержимого, записи не подлежащего
@@ -3871,6 +4238,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 		 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 		 *          недостижимость - разница с двойным прикрытием существенная
+		 *
 		 */
 		if((this->_storage.size() + text.length()) > STORAGE_LIMIT){
 			// Запоминаем, что дерево вышло за отведённый ему предел
@@ -3894,41 +4262,46 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 	 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 	 *          недостижимость - разница с двойным прикрытием существенная
+	 *
 	 */
 	if(static_cast <size_t> (result) >= static_cast <size_t> (INVALID_NODE))
 		// Выводим признак недействительности заведённого узла
 		return INVALID_NODE;
 	// Выполняем заведение записи узла в арене дерева разметки
 	this->_nodes.emplace_back();
-	// Устанавливаем вид заводимого узла дерева разметки
-	this->_nodes.at(result).kind = value.kind();
+	// Получаем текущее значение нидекса
+	auto & index = this->_nodes.at(result);
 	// Устанавливаем индекс родительского узла
-	this->_nodes.at(result).parent = parent;
+	index.parent = parent;
+	// Устанавливаем вид заводимого узла дерева разметки
+	index.kind = value.kind();
 	// Выполняем размещение префикса имени узла
-	this->_nodes.at(result).name.prefix = store(value.prefix());
+	index.name.prefix = store(value.prefix());
 	// Выполняем размещение местного имени узла
-	this->_nodes.at(result).name.local = store(value.local());
+	index.name.local = store(value.local());
 	// Выполняем размещение обозначения пространства имён узла
-	this->_nodes.at(result).name.uri = store(value.uri());
+	index.name.uri = store(value.uri());
 	/**
 	 * Если узел разметки содержимого не несёт
 	 *
 	 * @note Содержимое узла разметки лежит вложенными узлами, а собственное содержимое
 	 *       есть у текстовых узлов, примечаний и указаний обработчику
+	 *
 	 */
 	if(value.kind() != kind_t::ELEMENT)
 		// Выполняем размещение содержимого узла
-		this->_nodes.at(result).value = store(value.text());
+		index.value = store(value.text());
 	/**
 	 * Выполняем размещение атрибутов узла отрезком подряд
 	 *
 	 * @note Размещаются они прежде обхода вложенного содержимого намеренно: отрезок задан
 	 *       началом и количеством, и атрибуты вложенных узлов, размещённые посреди,
 	 *       разорвали бы отрезок надвое
+	 *
 	 */
 	{
 		// Устанавливаем индекс первого атрибута узла в хранилище атрибутов
-		this->_nodes.at(result).attribute = static_cast <uint32_t> (this->_attributes.size());
+		index.attribute = static_cast <uint32_t> (this->_attributes.size());
 		/**
 		 * Выполняем перебор всех атрибутов переносимого значения
 		 */
@@ -3943,23 +4316,24 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 			 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 			 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 			 *          недостижимость - разница с двойным прикрытием существенная
+			 *
 			 */
 			if(this->_attributes.size() >= STORAGE_LIMIT)
 				// Выводим признак недействительности заведённого узла
 				return INVALID_NODE;
 			// Выполняем заведение записи атрибута в хранилище атрибутов
 			this->_attributes.emplace_back();
-			// Выполняем размещение префикса имени атрибута
-			this->_attributes.back().name.prefix = store(item.prefix);
-			// Выполняем размещение местного имени атрибута
-			this->_attributes.back().name.local = store(item.local);
-			// Выполняем размещение обозначения пространства имён атрибута
-			this->_attributes.back().name.uri = store(item.uri);
 			// Выполняем размещение значения атрибута
 			this->_attributes.back().value = store(item.value);
+			// Выполняем размещение обозначения пространства имён атрибута
+			this->_attributes.back().name.uri = store(item.uri);
+			// Выполняем размещение местного имени атрибута
+			this->_attributes.back().name.local = store(item.local);
+			// Выполняем размещение префикса имени атрибута
+			this->_attributes.back().name.prefix = store(item.prefix);
 		}
 		// Устанавливаем количество атрибутов узла
-		this->_nodes.at(result).attributes = static_cast <uint32_t> (this->_attributes.size() - this->_nodes.at(result).attribute);
+		index.attributes = static_cast <uint32_t> (this->_attributes.size() - index.attribute);
 	}
 	/**
 	 * Если переносимое значение объявляет пространства имён
@@ -3978,16 +4352,17 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 			 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 			 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 			 *          недостижимость - разница с двойным прикрытием существенная
+			 *
 			 */
 			if(this->_scopes.size() >= STORAGE_LIMIT)
 				// Выводим признак недействительности заведённого узла
 				return INVALID_NODE;
 			// Выполняем заведение записи связывания префикса в хранилище связываний
 			this->_scopes.emplace_back();
-			// Выполняем размещение префикса связывания
-			this->_scopes.back().prefix = store(item.prefix);
 			// Выполняем размещение обозначения объявляемого пространства имён
 			this->_scopes.back().uri = store(item.uri);
+			// Выполняем размещение префикса связывания
+			this->_scopes.back().prefix = store(item.prefix);
 		}
 		// Выполняем привязку отрезка связываний к заведённому узлу
 		this->_scoped.emplace(result, span_t(offset, static_cast <uint32_t> (this->_scopes.size() - offset)));
@@ -4003,6 +4378,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 	 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 	 *          недостижимость - разница с двойным прикрытием существенная
+	 *
 	 */
 	if(overflow)
 		// Выводим признак недействительности заведённого узла
@@ -4013,6 +4389,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 	 * @note Проверка стоит рядом с проверкой предела и по тому же доводу: хранилище
 	 *       пополняется всем содержимым узла разом, и одна проверка наперёд стерегла бы
 	 *       лишь часть его
+	 *
 	 */
 	if(unwritable != error_t::NONE){
 		// Запоминаем код отказа переноса узла с содержимым, записи не подлежащим
@@ -4033,6 +4410,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		 *          достижение предела требует четырёх гигабайт текста либо четырёх миллиардов
 		 *          узлов. Молчание карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не
 		 *          недостижимость - разница с двойным прикрытием существенная
+		 *
 		 */
 		if(child == INVALID_NODE)
 			// Выводим признак недействительности заведённого узла
@@ -4040,32 +4418,24 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		/**
 		 * Если вложенное содержимое у узла первое
 		 */
-		if(this->_nodes.at(result).first == INVALID_NODE)
+		if(index.first == INVALID_NODE)
 			// Устанавливаем индекс первого вложенного узла
-			this->_nodes.at(result).first = child;
+			index.first = child;
 		/**
 		 * Если вложенное содержимое у узла не первое
 		 */
 		else {
 			// Устанавливаем индекс следующего узла того же уровня у предыдущего соседа
-			this->_nodes.at(this->_nodes.at(result).last).next = child;
+			this->_nodes.at(index.last).next = child;
 			// Устанавливаем индекс предыдущего узла того же уровня у заведённого узла
-			this->_nodes.at(child).prev = this->_nodes.at(result).last;
+			this->_nodes.at(child).prev = index.last;
 		}
 		// Устанавливаем индекс последнего вложенного узла
-		this->_nodes.at(result).last = child;
+		index.last = child;
 	}
 	// Выводим индекс заведённого узла дерева разметки
 	return result;
 }
-/**
- * @brief Метод прививки владеющего значения в дерево разметки
- *
- * @param path  путь к прививаемому месту
- * @param value прививаемое владеющее значение
- * @return      признак успешности прививки
- *
- */
 /**
  * @brief Метод розыска узла дерева по пути
  *
@@ -4092,13 +4462,14 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::locate(const string & path
 	 * Если разыскиваемый путь пуст, разыскивается корневой узел разметки
 	 *
 	 * @details Корень арены узлом разметки не является вовсе и содержимое текста лишь
-	 * вмещает, а пустой путь ведёт к единственному узлу разметки верхнего уровня - тому
-	 * самому, какой заводит и заменяет прививка пустым путём. Без согласия этого путь
-	 * трактовался бы двояко: прививка писала бы корневой узел, а опрос наличия и
-	 * извлечение его не видели бы вовсе
+	 *          вмещает, а пустой путь ведёт к единственному узлу разметки верхнего уровня - тому
+	 *          самому, какой заводит и заменяет прививка пустым путём. Без согласия этого путь
+	 *          трактовался бы двояко: прививка писала бы корневой узел, а опрос наличия и
+	 *          извлечение его не видели бы вовсе.
 	 *
 	 * @note Документ JSON пустым указателем по RFC 6901 обозначает корень свой тем же
 	 *       порядком, и опрос наличия отвечает у него согласием
+	 *
 	 */
 	if(parts.empty()){
 		/**
@@ -4129,6 +4500,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::locate(const string & path
 		 *          примечания в корень, - и он станет достижим немедля. Без него розыск
 		 *          вернул бы номер узла, элементом не являющегося, и обращение по пути ушло
 		 *          бы к примечанию как к узлу разметки
+		 *
 		 */
 		return INVALID_NODE;
 	}
@@ -4211,10 +4583,10 @@ vector <string> awh::codec::xml::Document::keys(const string & path) const noexc
 	 * Разыскиваемый узел, дети коего перечисляются
 	 *
 	 * @details Пустой путь берётся здесь КОРНЕМ АРЕНЫ, а не корневым узлом разметки, куда
-	 * ведёт `at("")`. Расхождение это вынужденное и держится на склейке: обход строит путь
-	 * к ребёнку как `путь + "/" + звено`, и для пустого пути склейка эта считает от корня
-	 * арены. Отдай мы здесь детей корневого узла разметки - склейка дала бы `/b` там, где
-	 * узел лежит по `/r/b`, и обход разомкнулся бы на первом же шаге
+	 *          ведёт `at("")`. Расхождение это вынужденное и держится на склейке: обход строит путь
+	 *          к ребёнку как `путь + "/" + звено`, и для пустого пути склейка эта считает от корня
+	 *          арены. Отдай мы здесь детей корневого узла разметки - склейка дала бы `/b` там, где
+	 *          узел лежит по `/r/b`, и обход разомкнулся бы на первом же шаге.
 	 *
 	 * @note Замер до правки: у дерева `<r><a/><a/><b>текст</b></r>` обход по звеньям корня
 	 *       не разыскивал НИ ОДНОГО ребёнка - все пути вели в никуда, а перебор при том
@@ -4223,6 +4595,7 @@ vector <string> awh::codec::xml::Document::keys(const string & path) const noexc
 	 *
 	 * @note Оттого же `keys("")` отдаёт ОДНО звено - имя корневого узла разметки, - а не
 	 *       детей его: у документа корневой элемент ровно один по XML 1.0
+	 *
 	 */
 	const node_id_t target = (path.empty() ? static_cast <node_id_t> (0) : this->locate(path));
 	/**
@@ -4238,6 +4611,7 @@ vector <string> awh::codec::xml::Document::keys(const string & path) const noexc
 	 *       тому, однозначно ли имя СРЕДИ ВСЕХ детей, а узнать это, не досмотрев до
 	 *       конца, нельзя. Решай мы на первом проходе - первый из двух одноимённых узлов
 	 *       получил бы имя звеном, второй номер, и обход стал бы зависеть от порядка
+	 *
 	 */
 	unordered_map <string_view, size_t> counts;
 	/**
@@ -4264,6 +4638,7 @@ vector <string> awh::codec::xml::Document::keys(const string & path) const noexc
 		 *
 		 * @note Имя годится звеном лишь при единственности: звено по имени разыскивает
 		 *       ПЕРВЫЙ узел с этим именем, и второму одноимённому оно вело бы не туда
+		 *
 		 */
 		if(!local.empty() && (counts[local] == 1))
 			// Выполняем добавление имени узла звеном пути
@@ -4289,6 +4664,7 @@ awh::codec::xml::node_t awh::codec::xml::Document::at(const string & path) const
 	 *
 	 * @note Выдаётся узел НЕПРИГОДНЫЙ, а не отказ: пригодность его спрашивается
 	 *       ходом `valid()`, ровно как у прочих ходов обхода дерева
+	 *
 	 */
 	if(target == INVALID_NODE)
 		// Выводим непригодный узел дерева разметки
@@ -4297,79 +4673,22 @@ awh::codec::xml::node_t awh::codec::xml::Document::at(const string & path) const
 	return node_t(this, target);
 }
 /**
- * @brief Метод правки дерева разметки по пути
+ * @brief Метод прививки владеющего значения в дерево разметки
  *
- * @param path  путь к правимому месту
- * @param value устанавливаемое владеющее значение
- * @return      признак успешности правки
- *
- */
-/**
- * @brief Разворачивание значения вида документ до его корневого узла разметки
- *
- * @details Разбор текста отдаёт значение вида документ, а прививка корня требует узла
- * разметки. Развернуть его числом детей НЕЛЬЗЯ: договор XML 1.0 допускает прологу
- * примечания, указания обработчику и объявление типа документа, и всякое из них делает
- * детей больше одного, тогда как узел разметки в документе остаётся ровно один - второй
- * такой отвергается самим добавлением
- *
- * @warning Прежняя редакция разворачивала документ ровно при ОДНОМ ребёнке, отчего круг
- *          «разбор - прививка» рвался на всяком тексте с прологом: текст `<!-- c --><r/>`
- *          разбирался успешно, а прививка разобранного значения отвечала `MISSING_ROOT`,
- *          хотя корневой узел в значении был. Замерено 09.09.2026
- *
- * @note Разворачивание это отведено ОДНОЙ ЛИШЬ прививке корня по пустому пути: та заменяет
- *       корневой узел, оставляя пролог принимающего дерева на месте, и пролог источника к
- *       делу не идёт - у приёмника свой. Прививка же по пути заменяет узел узлом, и там
- *       документ с прологом разворачивать нельзя: прочие дети терялись бы молча
- *
- * @param value разворачиваемое значение
- * @return      корневой узел разметки, либо само значение, если развернуть его нельзя
+ * @param path  путь к прививаемому месту
+ * @param value прививаемое владеющее значение
+ * @return      признак успешности прививки
  *
  */
-static const awh::codec::xml::Value & unwrapDocument(const awh::codec::xml::Value & value) noexcept {
-	/**
-	 * Если значение видом своим является документом
-	 */
-	if(value.kind() == awh::codec::xml::kind_t::DOCUMENT){
-		// Количество разысканных узлов разметки и положение последнего из них
-		size_t count = 0, index = 0;
-		/**
-		 * Выполняем перебор всех детей документа
-		 */
-		for(size_t i = 0; i < value.size(); i++){
-			/**
-			 * Если ребёнок узлом разметки является
-			 */
-			if(value[i].kind() == awh::codec::xml::kind_t::ELEMENT){
-				// Увеличиваем количество разысканных узлов разметки
-				count++;
-				// Запоминаем положение разысканного узла разметки
-				index = i;
-			}
-		}
-		/**
-		 * Если узел разметки в документе разыскан ровно один
-		 */
-		if(count == 1)
-			// Выводим разысканный корневой узел разметки
-			return value[index];
-	}
-	// Выводим значение как оно есть, разворачиванию оно не подлежит
-	return value;
-}
-/**
- * Установка владеющего значения по пути
- */
-bool awh::codec::xml::Document::set(const string & path, const xml::Value & value) noexcept {
+bool awh::codec::xml::Document::set(const string & path, const xml::value_t & value) noexcept {
 	/**
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
-	 * иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
-	 * за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
-	 * прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
-	 * которого более нет. Документ JSON и таблица CSV держатся того же правила
+	 *          иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
+	 *          за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
+	 *          прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
+	 *          которого более нет. Документ JSON и таблица CSV держатся того же правила.
 	 *
 	 * @note Отказ самой правки кода не ставит: путь, ведущий в никуда, оглашается
 	 *       возвратом `false`, и он потребителю виден прямо. Код отведён работам, чей
@@ -4380,6 +4699,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *          ставит» держится всего прочего, и прибавляя сюда новый отказ, выбирать
 	 *          между ними надлежит осознанно. Замер 17.09.2026: у дерева JSON исключения
 	 *          нет вовсе - корнем его бывает значение любого вида
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -4394,15 +4714,16 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 * Если прививаемый путь пуст, прививке подлежит корневой узел разметки
 	 *
 	 * @details Пустой путь заводит дерево с нуля либо заменяет корневой узел разметки
-	 * целиком. Без хода этого дерево разметки НЕЛЬЗЯ БЫЛО ПОСТРОИТЬ ВОВСЕ, минуя разбор
-	 * текста: розыск по пустому пути отвергается сам, а прививка требовала места
-	 * существующего. Документ JSON тем же пустым указателем заводит корень своего
-	 * дерева, а таблица CSV строится с нуля добавлением записей
+	 *          целиком. Без хода этого дерево разметки НЕЛЬЗЯ БЫЛО ПОСТРОИТЬ ВОВСЕ, минуя разбор
+	 *          текста: розыск по пустому пути отвергается сам, а прививка требовала места
+	 *          существующего. Документ JSON тем же пустым указателем заводит корень своего
+	 *          дерева, а таблица CSV строится с нуля добавлением записей.
 	 *
 	 * @note Корнем дерева разметки становится ОДИН ЛИШЬ УЗЕЛ РАЗМЕТКИ: XML 1.0 требует
 	 *       у документа ровно один корневой элемент, и текст, примечание либо указание
 	 *       обработчику корнем ему не бывать. Расхождение это с документом JSON, где
 	 *       корнем становится значение любого вида, идёт от стандарта, а не от произвола
+	 *
 	 */
 	if(path.empty()){
 		/**
@@ -4410,8 +4731,9 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		 *
 		 * @note Правило это то же самое, каким прививка по пути разворачивает корень,
 		 *       разбором текста заведённый
+		 *
 		 */
-		const xml::Value & element = ::unwrapDocument(value);
+		const xml::value_t & element = ::unwrapDocument(value);
 		/**
 		 * Если прививаемое значение узлом разметки не является
 		 */
@@ -4426,6 +4748,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		 *
 		 * @note Корень этот узлом разметки не является и содержимое текста лишь вмещает:
 		 *       разбор заводит его всегда, а построение с нуля обязано завести его само
+		 *
 		 */
 		if(this->_nodes.empty()){
 			// Выполняем заведение записи корня дерева разметки
@@ -4462,6 +4785,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		 *
 		 * @warning Снимать отказ нельзя: непригодный номер узла пошёл бы в перевязку связей
 		 *          соседства, и обход дерева оборвался бы МОЛЧА
+		 *
 		 */
 		if(graft == INVALID_NODE)
 			// Выводим признак неудачной прививки
@@ -4472,10 +4796,14 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		if(current != INVALID_NODE){
 			// Получаем индексы соседей заменяемого корневого узла разметки
 			const node_id_t prev = this->_nodes.at(current).prev, next = this->_nodes.at(current).next;
-			// Устанавливаем индекс предыдущего узла того же уровня
-			this->_nodes.at(graft).prev = prev;
-			// Устанавливаем индекс следующего узла того же уровня
-			this->_nodes.at(graft).next = next;
+			{
+				// Получаем текущее значение индекса узла
+				auto & index = this->_nodes.at(graft);
+				// Устанавливаем индекс предыдущего узла того же уровня
+				index.prev = prev;
+				// Устанавливаем индекс следующего узла того же уровня
+				index.next = next;
+			}
 			/**
 			 * Если предыдущий сосед у заменяемого узла есть
 			 */
@@ -4492,12 +4820,14 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 				this->_nodes.at(next).prev = graft;
 			// Если следующего соседа у заменяемого узла нет, привитый узел становится последним
 			else this->_nodes.at(0).last = graft;
-			// Выполняем отвязку заменённого корневого узла от дерева
-			this->_nodes.at(current).parent = INVALID_NODE;
+			// Получаем текущее значение индекса узла
+			auto & index = this->_nodes.at(current);
 			// Устанавливаем отсутствие предыдущего узла того же уровня у заменённого узла
-			this->_nodes.at(current).prev = INVALID_NODE;
+			index.prev = INVALID_NODE;
 			// Устанавливаем отсутствие следующего узла того же уровня у заменённого узла
-			this->_nodes.at(current).next = INVALID_NODE;
+			index.next = INVALID_NODE;
+			// Выполняем отвязку заменённого корневого узла от дерева
+			index.parent = INVALID_NODE;
 		/**
 		 * Если корневого узла разметки у дерева не было, привитый узел встаёт последним
 		 */
@@ -4506,8 +4836,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 			this->_nodes.at(graft).prev = this->_nodes.at(0).last;
 			/**
 			 * Если узлы верхнего уровня у дерева уже есть
-			 */
-			/**
+			 *
 			 * @note Половина эта НЕДОСТИЖИМА тем же доводом, что и розыск корня выше: сюда
 			 *       приходит дерево, корневого элемента НЕ имеющее, а такое дерево бывает
 			 *       лишь ПУСТЫМ - обе дороги построения иного не дают. У пустого же дерева
@@ -4516,6 +4845,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 			 * @warning Снимать нельзя по тому же доводу: заведись третья дорога построения,
 			 *          и привитый корень встал бы первым поверх уже стоящих соседей, оборвав
 			 *          цепочку верхнего уровня МОЛЧА
+			 *
 			 */
 			if(this->_nodes.at(0).last != INVALID_NODE)
 				// Устанавливаем индекс следующего узла того же уровня у последнего соседа
@@ -4531,6 +4861,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		 * @warning Очистка эта обязательна по тем же двум причинам, по каким она стоит у
 		 *          прививки по пути: рост общего хранилища знаков обращает ключи
 		 *          отображений висячими, а перевязка цепочки детей - отвязанными
+		 *
 		 */
 		this->_index.clear();
 		/**
@@ -4538,6 +4869,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		 *
 		 * @note Прививка корня нумерацию узлов правит, а через очистку не проходит: без
 		 *       клейма здесь узлы, снятые до прививки, отвечали бы пригодностью
+		 *
 		 */
 		this->_stamp++;
 		// Выводим признак успешной прививки корня дерева разметки
@@ -4548,6 +4880,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *
 	 * @note Розыск ведётся общею работой: прививка, опрос наличия и извлечение узла
 	 *       обязаны разыскивать по пути по одним правилам
+	 *
 	 */
 	const node_id_t target = this->locate(path);
 	/**
@@ -4556,8 +4889,10 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	if(target == INVALID_NODE)
 		// Выводим признак неудачной прививки
 		return false;
+	// Получаем текущее значение индекса узла
+	auto & index = this->_nodes.at(target);
 	// Получаем индекс родительского узла прививаемого места
-	const node_id_t parent = this->_nodes.at(target).parent;
+	const node_id_t parent = index.parent;
 	/**
 	 * Если прививаемое место родителя не имеет вовсе
 	 *
@@ -4578,6 +4913,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 * @warning Снимать его нельзя: он оберегает обращение к перечню узлов по признаку
 	 *          недействительности, и послабление отказа выше обратилось бы чтением за
 	 *          пределами перечня
+	 *
 	 */
 	if(parent == INVALID_NODE)
 		// Выводим признак неудачной прививки
@@ -4595,9 +4931,9 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *          на месте, оттого документ ей позволено развернуть до узла разметки. Здесь
 	 *          же узел заменяется узлом, и документ с прологом одним узлом не станет -
 	 *          выбирать из него молча значило бы терять прочих детей без огласки
+	 *
 	 */
-	const node_id_t graft = this->transplant(((value.kind() == kind_t::DOCUMENT) && (value.size() == 1)) ?
-		value[static_cast <size_t> (0)] : value, parent);
+	const node_id_t graft = this->transplant(((value.kind() == kind_t::DOCUMENT) && (value.size() == 1)) ? value[static_cast <size_t> (0)] : value, parent);
 	/**
 	 * Если перенос прививаемого значения завершился отказом
 	 */
@@ -4605,11 +4941,15 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 		// Выводим признак неудачной прививки
 		return false;
 	// Получаем индексы соседей заменяемого узла
-	const node_id_t prev = this->_nodes.at(target).prev, next = this->_nodes.at(target).next;
-	// Устанавливаем индекс предыдущего узла того же уровня
-	this->_nodes.at(graft).prev = prev;
-	// Устанавливаем индекс следующего узла того же уровня
-	this->_nodes.at(graft).next = next;
+	const node_id_t prev = index.prev, next = index.next;
+	{
+		// Получаем текущее значение индекса узла
+		auto & index = this->_nodes.at(graft);
+		// Устанавливаем индекс предыдущего узла того же уровня
+		index.prev = prev;
+		// Устанавливаем индекс следующего узла того же уровня
+		index.next = next;
+	}
 	/**
 	 * Если предыдущий сосед у заменяемого узла есть
 	 */
@@ -4631,12 +4971,13 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *
 	 * @note Узлы заменённого поддерева остаются в арене недостижимыми: перенумерование
 	 *       их обесценило бы всякую ссылку на дерево, выданную наружу прежде
+	 *
 	 */
-	this->_nodes.at(target).parent = INVALID_NODE;
+	index.parent = INVALID_NODE;
 	// Устанавливаем отсутствие предыдущего узла того же уровня у заменённого узла
-	this->_nodes.at(target).prev = INVALID_NODE;
+	index.prev = INVALID_NODE;
 	// Устанавливаем отсутствие следующего узла того же уровня у заменённого узла
-	this->_nodes.at(target).next = INVALID_NODE;
+	index.next = INVALID_NODE;
 	/**
 	 * Выполняем очистку отображений имён вложенных узлов
 	 *
@@ -4647,6 +4988,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *
 	 * @note Сбрасываются ВСЕ отображения, а не одно лишь родительское: рост хранилища
 	 *       обращает висячими ключи у всех родителей разом, а не у одного
+	 *
 	 */
 	this->_index.clear();
 	/**
@@ -4654,6 +4996,7 @@ bool awh::codec::xml::Document::set(const string & path, const xml::Value & valu
 	 *
 	 * @note Прививка нумерацию узлов правит, а через очистку не проходит: без клейма здесь
 	 *       узлы, снятые до прививки, отвечали бы пригодностью и отдавали бы чужое
+	 *
 	 */
 	this->_stamp++;
 	// Выводим признак успешной прививки
@@ -4671,14 +5014,15 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
-	 * иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
-	 * за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
-	 * прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
-	 * которого более нет. Документ JSON и таблица CSV держатся того же правила
+	 *          иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
+	 *          за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
+	 *          прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
+	 *          которого более нет. Документ JSON и таблица CSV держатся того же правила.
 	 *
 	 * @note Отказ самой правки кода не ставит: путь, ведущий в никуда, оглашается
 	 *       возвратом `false`, и он потребителю виден прямо. Код отведён работам, чей
 	 *       отказ иначе неотличим от пустого исхода
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -4687,12 +5031,13 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	 * Если сносимый путь пуст, сносу подлежал бы корневой узел разметки
 	 *
 	 * @details Снос этот отвергается: XML 1.0 требует у документа ровно один корневой
-	 * элемент, и дерево, корня лишённое, записи не подлежит вовсе. Заменить корень целиком
-	 * дозволено прививкой пустым путём, а снести его - нет. Документ JSON пустой указатель
-	 * сносом отвергает тем же порядком
+	 *          элемент, и дерево, корня лишённое, записи не подлежит вовсе. Заменить корень целиком
+	 *          дозволено прививкой пустым путём, а снести его - нет. Документ JSON пустой указатель
+	 *          сносом отвергает тем же порядком.
 	 *
 	 * @note Заслон этот стоит ДО розыска намеренно: розыск по пустому пути корневой узел
 	 *       разметки отыскивает, и без заслона снос удался бы
+	 *
 	 */
 	if(path.empty())
 		// Выводим признак неудачного сноса
@@ -4702,6 +5047,7 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	 *
 	 * @note Розыск ведётся общею работой: правка, снос, сброс и извлечение узла обязаны
 	 *       разыскивать по пути по одним правилам
+	 *
 	 */
 	const node_id_t target = this->locate(path);
 	/**
@@ -4710,8 +5056,10 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	if(target == INVALID_NODE)
 		// Выводим признак неудачного сноса
 		return false;
+	// Получаем текущее значение индекса узла
+	auto & index = this->_nodes.at(target);
 	// Получаем индекс родительского узла сносимого узла
-	const node_id_t parent = this->_nodes.at(target).parent;
+	const node_id_t parent = index.parent;
 	/**
 	 * Если сносимый узел родителя не имеет вовсе
 	 *
@@ -4728,12 +5076,13 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ - он лишь не нашёл подачи. Довод
 	 *          рода "соседний слой отсеивает прежде" падал четырежды за 07.09.2026,
 	 *          и всякий раз оттого, что закрыта была дорога известная, а не всякая
+	 *
 	 */
 	if(parent == INVALID_NODE)
 		// Выводим признак неудачного сноса
 		return false;
 	// Получаем индексы соседей сносимого узла
-	const node_id_t prev = this->_nodes.at(target).prev, next = this->_nodes.at(target).next;
+	const node_id_t prev = index.prev, next = index.next;
 	/**
 	 * Если предыдущий сосед у сносимого узла есть
 	 */
@@ -4751,21 +5100,23 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	// Если следующего соседа у сносимого узла нет, последним становится предыдущий
 	else this->_nodes.at(parent).last = prev;
 	/**
-	 * Выполняем отвязку снесённого узла от дерева разметки
+	 * @brief Устанавливаем отсутствие предыдущего узла того же уровня у снесённого узла
 	 *
 	 * @note Узлы снесённого поддерева остаются в арене недостижимыми: перенумерование
 	 *       их обесценило бы всякую ссылку на дерево, выданную наружу прежде
+	 *
 	 */
-	this->_nodes.at(target).parent = INVALID_NODE;
-	// Устанавливаем отсутствие предыдущего узла того же уровня у снесённого узла
-	this->_nodes.at(target).prev = INVALID_NODE;
+	index.prev = INVALID_NODE;
 	// Устанавливаем отсутствие следующего узла того же уровня у снесённого узла
-	this->_nodes.at(target).next = INVALID_NODE;
+	index.next = INVALID_NODE;
+	// Выполняем отвязку снесённого узла от дерева разметки
+	index.parent = INVALID_NODE;
 	/**
 	 * Выполняем очистку отображений имён вложенных узлов
 	 *
 	 * @note Снос перевязывает цепочку детей, и отображение родителя отвечало бы узлом,
 	 *       из дерева уже отвязанным
+	 *
 	 */
 	this->_index.clear();
 	/**
@@ -4773,6 +5124,7 @@ bool awh::codec::xml::Document::erase(const string & path) noexcept {
 	 *
 	 * @note Снос связи узлов правит, а через очистку не проходит: без клейма узлы,
 	 *       снятые до сноса, отвечали бы пригодностью и вели бы по снесённой цепочке
+	 *
 	 */
 	this->_stamp++;
 	// Выводим признак успешного сноса
@@ -4790,14 +5142,15 @@ bool awh::codec::xml::Document::reset(const string & path) noexcept {
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
-	 * иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
-	 * за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
-	 * прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
-	 * которого более нет. Документ JSON и таблица CSV держатся того же правила
+	 *          иначе код прежнего отказа переживал бы работу удавшуюся, и звучащий принял бы его
+	 *          за отказ её. Замер: разбор отказывал в строке 3 столбце 1, следом удавалась
+	 *          прививка, а `error()` отвечал кодом разбора - вместе с положением в тексте,
+	 *          которого более нет. Документ JSON и таблица CSV держатся того же правила.
 	 *
 	 * @note Отказ самой правки кода не ставит: путь, ведущий в никуда, оглашается
 	 *       возвратом `false`, и он потребителю виден прямо. Код отведён работам, чей
 	 *       отказ иначе неотличим от пустого исхода
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -4818,23 +5171,28 @@ bool awh::codec::xml::Document::reset(const string & path) noexcept {
 	 * @note Отвязывается лишь ПЕРВЫЙ уровень вложенности: узлы глубже остаются связаны
 	 *       со своими родителями, а недостижимыми становятся все разом - вместе с тем
 	 *       родителем, какой отвязан
+	 *
 	 */
 	for(node_id_t child = this->_nodes.at(target).first; child != INVALID_NODE;){
+		// Получаем текущее значение индекса узла
+		auto & index = this->_nodes.at(child);
 		// Запоминаем индекс следующего вложенного узла
-		const node_id_t next = this->_nodes.at(child).next;
-		// Выполняем отвязку вложенного узла от родителя его
-		this->_nodes.at(child).parent = INVALID_NODE;
+		const node_id_t next = index.next;
 		// Устанавливаем отсутствие предыдущего узла того же уровня
-		this->_nodes.at(child).prev = INVALID_NODE;
+		index.prev = INVALID_NODE;
 		// Устанавливаем отсутствие следующего узла того же уровня
-		this->_nodes.at(child).next = INVALID_NODE;
+		index.next = INVALID_NODE;
+		// Выполняем отвязку вложенного узла от родителя его
+		index.parent = INVALID_NODE;
 		// Выполняем переход к следующему вложенному узлу
 		child = next;
 	}
-	// Устанавливаем отсутствие первого вложенного узла у сброшенного узла
-	this->_nodes.at(target).first = INVALID_NODE;
+	// Получаем текущее значение индекса узла
+	auto & index = this->_nodes.at(target);
 	// Устанавливаем отсутствие последнего вложенного узла у сброшенного узла
-	this->_nodes.at(target).last = INVALID_NODE;
+	index.last = INVALID_NODE;
+	// Устанавливаем отсутствие первого вложенного узла у сброшенного узла
+	index.first = INVALID_NODE;
 	/**
 	 * Выполняем очистку отображений имён вложенных узлов
 	 */
@@ -4847,63 +5205,74 @@ bool awh::codec::xml::Document::reset(const string & path) noexcept {
 	return true;
 }
 /**
+ * @brief Шаблон метода обращения к дочернему узлу по написанию знака
+ *
+ * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
+ */
+template <typename T>
+/**
  * @brief Метод обращения к дочернему узлу по написанию знака
  *
  * @details Написание знака есть ТЕКСТ: разыскивается имя из одного знака, а не номер.
- * Без этого метода `v['z']` молча обращался к узлу под номером 122
+ *          Без этого метода `v['z']` молча обращался к узлу под номером 122.
  *
- * @tparam T разряд обращения, ограда пропускает ровно знак
- *
- * @param  name разыскиваемое имя из одного знака
- * @return      ссылка на дочерний узел
+ * @param name разыскиваемое имя из одного знака
+ * @return     ссылка на дочерний узел
  *
  */
-template <typename T>
-typename std::enable_if <std::is_same <T, char>::value, const awh::codec::xml::Value &>::type
-// Оператор чтения дочернего узла по имени из одного знака
-awh::codec::xml::Value::operator [] (const T name) const noexcept {
+typename std::enable_if <std::is_same <T, char>::value, const awh::codec::xml::value_t &>::type awh::codec::xml::Value::operator [] (const T name) const noexcept {
 	// Выполняем обращение к дочернему узлу по имени из одного знака
 	return (* this)[string(1, name)];
 }
+/**
+ * @brief Шаблон метода обращения к дочернему узлу по написанию знака с заведением недостающего
+ *
+ * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
+ */
+template <typename T>
 /**
  * @brief Метод обращения к дочернему узлу по написанию знака с заведением недостающего
  *
- * @tparam T разряд обращения, ограда пропускает ровно знак
- *
- * @param  name разыскиваемое имя из одного знака
- * @return      ссылка на дочерний узел
+ * @param name разыскиваемое имя из одного знака
+ * @return     ссылка на дочерний узел
  *
  */
-template <typename T>
-typename std::enable_if <std::is_same <T, char>::value, awh::codec::xml::Value &>::type
-// Оператор неконстантного обращения к дочернему узлу по имени из одного знака
-awh::codec::xml::Value::operator [] (const T name) noexcept {
+typename std::enable_if <std::is_same <T, char>::value, awh::codec::xml::value_t &>::type awh::codec::xml::Value::operator [] (const T name) noexcept {
 	// Выполняем обращение к дочернему узлу по имени из одного знака
 	return (* this)[string(1, name)];
 }
 /**
+ * Явное заведение обращения к дочернему узлу по имени из одного знака
+ */
+template typename std::enable_if <std::is_same <char, char>::value, awh::codec::xml::value_t &>::type
+awh::codec::xml::Value::operator [] <char> (const char) noexcept;
+/**
  * Выполняем создание шаблонов обращения по написанию знака
  */
-template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, const awh::codec::xml::Value &>::type
+template typename std::enable_if <std::is_same <char, char>::value, const awh::codec::xml::value_t &>::type
 awh::codec::xml::Value::operator [] <char> (const char) const noexcept;
-// Явное заведение обращения к дочернему узлу по имени из одного знака
-template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::xml::Value &>::type
-awh::codec::xml::Value::operator [] <char> (const char) noexcept;
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::xml::Value::Property::Property() noexcept : uri{""}, value{""}, local{""}, prefix{""} {}
+awh::codec::xml::Value::Property::Property() noexcept :
+ uri{""}, value{""}, local{""}, prefix{""} {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::xml::Value::Namespace::Namespace() noexcept : uri{""}, prefix{""} {}
+awh::codec::xml::Value::Namespace::Namespace() noexcept :
+ uri{""}, prefix{""} {}
+
 /**
  * @brief Конструктор
  *
  * @param first номер первого вложенного узла с этим именем
  *
  */
-awh::codec::xml::Value::Entry::Entry(const size_t first) noexcept : first(first), count(1) {}
+awh::codec::xml::Value::Entry::Entry(const size_t first) noexcept :
+ first(first), count(1) {}

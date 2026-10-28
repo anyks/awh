@@ -20,12 +20,19 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Стандартный заголовочный файл
  */
 #include <limits>
 
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/numeric.hpp>
 #include <codec/xml/common.hpp>
 
@@ -45,13 +52,40 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_XML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_XML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
+	 * @brief Шаблон структуры посредника приведения вида ЯЗЫКА к тождественному разрядному виду
+	 *
+	 * @tparam T        тип неразрядного вида
+	 * @tparam typename тип по умолчанию
+	 *
+	 */
+	template <typename T, typename = void>
+	/**
 	 * @brief Посредник приведения вида ЯЗЫКА к тождественному разрядному виду
 	 *
 	 * @details Общее место кодеков порождено разрядными обозначениями - `int8_t`…`uint64_t`, -
-	 * и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
-	 * лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
-	 * всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
-	 * такой вид есть то же самое представление, и перенос через него не теряет ни разряда
+	 *          и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
+	 *          лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
+	 *          всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
+	 *          такой вид есть то же самое представление, и перенос через него не теряет ни разряда.
 	 *
 	 * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ, и какому виду языка они
 	 *          отвечают, решает система. У macOS ARM64 `int64_t` есть `long long`, у Linux
@@ -63,20 +97,27 @@ namespace {
 	 * @note Тела в общем месте для этого не требуется: посредник не порождает нового
 	 *       обращения, а ведёт вызов к уже порождённому. Общее место остаётся заботою
 	 *       того, кто зовёт `awh::codec::numeric` НАПРЯМУЮ, минуя кодек
+	 *
 	 */
-	template <typename T, typename = void>
-	struct fixed_t {
+	struct Fixed {
 		// Виду неразрядному отвечает он сам
 		typedef T type;
 	};
+	/**
+	 * @brief Шаблон структуры посредника приведения для видов целочисленных
+	 *
+	 * @tparam T тип неразрядного вида
+	 *
+	 */
+	template <typename T>
 	/**
 	 * @brief Посредник приведения для видов целочисленных
 	 *
 	 * @note Признак `bool` исключён намеренно: ширина его системою не задана, и разрядного
 	 *       вида, ему тождественного, не существует вовсе
+	 *
 	 */
-	template <typename T>
-	struct fixed_t <T, typename std::enable_if <std::is_integral <T>::value && !std::is_same <T, bool>::value>::type> {
+	struct Fixed <T, typename std::enable_if <std::is_integral <T>::value && !std::is_same <T, bool>::value>::type> {
 		// Разрядный вид той же ширины и той же знаковости
 		typedef typename std::conditional <std::is_signed <T>::value,
 			typename std::conditional <sizeof(T) == 1, int8_t,
@@ -88,20 +129,32 @@ namespace {
 		// Завершаем определение беззнакового типа соответствующей ширины
 		>::type type;
 	};
+	/**
+	 * @brief Шаблон структуры посредника
+	 *
+	 * @tparam T тип посредника
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Создаём тип данных посредника
+	 *
+	 */
+	using fixed_t = Fixed <T>;
 
 	/**
-	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
-	 * Названия кодировок договором ограничены знаками US-ASCII, и привлекать сюда
-	 * правила местности незачем
+	 *          Названия кодировок договором ограничены знаками US-ASCII, и привлекать сюда
+	 *          правила местности незачем.
 	 *
 	 * @param first  первая последовательность знаков для сличения
 	 * @param second вторая последовательность знаков для сличения
 	 * @return       результат сличения
 	 *
 	 */
-	static bool compare(const string_view first, const string_view second) noexcept {
+	static AWH_XML_INLINE bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков не совпадают
 		 */
@@ -123,17 +176,17 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Метод отбрасывания пробельной обвязки содержимого разметки
+	 * @brief Функция отбрасывания пробельной обвязки содержимого разметки
 	 *
 	 * @details Пробельными считаются знаки, признанные таковыми договором XML: пробел,
-	 * знак табуляции, возврат каретки и перевод строки. Обвязка в содержимом появляется
-	 * сама собой при записи с отступами, и отбрасывать её приходится всегда
+	 *          знак табуляции, возврат каретки и перевод строки. Обвязка в содержимом появляется
+	 *          сама собой при записи с отступами, и отбрасывать её приходится всегда.
 	 *
 	 * @param text обрабатываемое содержимое
 	 * @return     содержимое без пробельной обвязки по краям
 	 *
 	 */
-	string_view trim(const string_view text) noexcept {
+	static AWH_XML_INLINE string_view trim(const string_view text) noexcept {
 		// Начало значащей части содержимого
 		size_t begin = 0;
 		// Конец значащей части содержимого
@@ -190,7 +243,7 @@ bool awh::codec::xml::Name::operator != (const Name & name) const noexcept {
 	return !this->is(name.uri, name.local);
 }
 /**
- * @brief Метод получения описания кода ошибки разбора
+ * @brief Функция получения описания кода ошибки разбора
  *
  * @param error код ошибки разбора
  * @return      описание кода ошибки на английском языке
@@ -210,198 +263,199 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 	 * @warning Возвращать приведение нельзя: сторожем тут выступает собиратель, а не
 	 *          проверка. Проверка описаний перечень перебрать не может - о том, что код
 	 *          объявлен, ей узнать неоткуда
+	 *
 	 */
-	switch(error){
+	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case error_t::NONE:
+		case static_cast <uint8_t> (error_t::NONE):
 			// Выводим описание кода ошибки
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case error_t::INTERNAL:
+		case static_cast <uint8_t> (error_t::INTERNAL):
 			// Выводим описание кода ошибки
 			return "internal parser error";
 		// Если знак недопустим в разметке
-		case error_t::INVALID_CHARACTER:
+		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
 			// Выводим описание кода ошибки
 			return "character is not allowed in XML";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case error_t::INVALID_ENCODING:
+		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
 			// Выводим описание кода ошибки
 			return "invalid byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case error_t::UNSUPPORTED_ENCODING:
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
 			// Выводим описание кода ошибки
 			return "unsupported encoding";
 		// Если объявление разметки построено ошибочно
-		case error_t::INVALID_DECLARATION:
+		case static_cast <uint8_t> (error_t::INVALID_DECLARATION):
 			// Выводим описание кода ошибки
 			return "malformed XML declaration";
 		// Если объявленное издание разметки не поддерживается
-		case error_t::UNSUPPORTED_VERSION:
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION):
 			// Выводим описание кода ошибки
 			return "unsupported XML version";
 		// Если имя содержит недопустимые знаки либо пусто
-		case error_t::INVALID_NAME:
+		case static_cast <uint8_t> (error_t::INVALID_NAME):
 			// Выводим описание кода ошибки
 			return "invalid name";
 		// Если длина имени превышает допустимую
-		case error_t::NAME_TOO_LONG:
+		case static_cast <uint8_t> (error_t::NAME_TOO_LONG):
 			// Выводим описание кода ошибки
 			return "name is too long";
 		// Если метка построена ошибочно
-		case error_t::INVALID_TAG:
+		case static_cast <uint8_t> (error_t::INVALID_TAG):
 			// Выводим описание кода ошибки
 			return "malformed tag";
 		// Если метка не закрыта до конца текста
-		case error_t::UNCLOSED_TAG:
+		case static_cast <uint8_t> (error_t::UNCLOSED_TAG):
 			// Выводим описание кода ошибки
 			return "unclosed tag";
 		// Если имя закрывающей метки не совпадает с открывающей
-		case error_t::MISMATCHED_TAG:
+		case static_cast <uint8_t> (error_t::MISMATCHED_TAG):
 			// Выводим описание кода ошибки
 			return "end tag does not match start tag";
 		// Если обнаружена закрывающая метка без соответствующей открывающей
-		case error_t::UNEXPECTED_CLOSE_TAG:
+		case static_cast <uint8_t> (error_t::UNEXPECTED_CLOSE_TAG):
 			// Выводим описание кода ошибки
 			return "end tag without matching start tag";
 		// Если в тексте более одного корневого узла
-		case error_t::MULTIPLE_ROOTS:
+		case static_cast <uint8_t> (error_t::MULTIPLE_ROOTS):
 			// Выводим описание кода ошибки
 			return "more than one root element";
 		// Если в тексте отсутствует корневой узел
-		case error_t::MISSING_ROOT:
+		case static_cast <uint8_t> (error_t::MISSING_ROOT):
 			// Выводим описание кода ошибки
 			return "document has no root element";
 		// Если текстовое содержимое обнаружено вне корневого узла
-		case error_t::CONTENT_OUTSIDE_ROOT:
+		case static_cast <uint8_t> (error_t::CONTENT_OUTSIDE_ROOT):
 			// Выводим описание кода ошибки
 			return "character data outside of root element";
 		// Если превышена допустимая глубина вложенности узлов
-		case error_t::DEPTH_EXCEEDED:
+		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED):
 			// Выводим описание кода ошибки
 			return "maximum element nesting depth exceeded";
 		// Если атрибут построен ошибочно
-		case error_t::INVALID_ATTRIBUTE:
+		case static_cast <uint8_t> (error_t::INVALID_ATTRIBUTE):
 			// Выводим описание кода ошибки
 			return "malformed attribute";
 		// Если атрибут с таким именем в узле уже объявлен
-		case error_t::DUPLICATE_ATTRIBUTE:
+		case static_cast <uint8_t> (error_t::DUPLICATE_ATTRIBUTE):
 			// Выводим описание кода ошибки
 			return "duplicate attribute name";
 		// Если значение атрибута не заключено в кавычки
-		case error_t::UNQUOTED_ATTRIBUTE:
+		case static_cast <uint8_t> (error_t::UNQUOTED_ATTRIBUTE):
 			// Выводим описание кода ошибки
 			return "attribute value is not quoted";
 		// Если ссылка на сущность построена ошибочно
-		case error_t::INVALID_REFERENCE:
+		case static_cast <uint8_t> (error_t::INVALID_REFERENCE):
 			// Выводим описание кода ошибки
 			return "malformed entity reference";
 		// Если обнаружена ссылка на необъявленную сущность
-		case error_t::UNKNOWN_ENTITY:
+		case static_cast <uint8_t> (error_t::UNKNOWN_ENTITY):
 			// Выводим описание кода ошибки
 			return "reference to undeclared entity";
 		// Если встречена ссылка на внешнюю либо неразбираемую сущность там, где она запрещена
-		case error_t::EXTERNAL_ENTITY:
+		case static_cast <uint8_t> (error_t::EXTERNAL_ENTITY):
 			// Выводим описание кода ошибки
 			return "reference to an external or unparsed entity is not allowed here";
 		// Если сущность ссылается сама на себя
-		case error_t::RECURSIVE_ENTITY:
+		case static_cast <uint8_t> (error_t::RECURSIVE_ENTITY):
 			// Выводим описание кода ошибки
 			return "recursive entity reference";
 		// Если превышена допустимая глубина вложенности сущностей
-		case error_t::ENTITY_DEPTH_EXCEEDED:
+		case static_cast <uint8_t> (error_t::ENTITY_DEPTH_EXCEEDED):
 			// Выводим описание кода ошибки
 			return "maximum entity nesting depth exceeded";
 		// Если превышен допустимый объём подстановки сущностей
-		case error_t::ENTITY_LIMIT_EXCEEDED:
+		case static_cast <uint8_t> (error_t::ENTITY_LIMIT_EXCEEDED):
 			// Выводим описание кода ошибки
 			return "maximum entity expansion size exceeded";
 		// Если превышено допустимое количество объявленных сущностей
-		case error_t::ENTITY_COUNT_EXCEEDED:
+		case static_cast <uint8_t> (error_t::ENTITY_COUNT_EXCEEDED):
 			// Выводим описание кода ошибки
 			return "too many entity declarations";
 		// Если числовая ссылка построена ошибочно либо указывает на недопустимое кодовое значение
-		case error_t::INVALID_CHAR_REFERENCE:
+		case static_cast <uint8_t> (error_t::INVALID_CHAR_REFERENCE):
 			// Выводим описание кода ошибки
 			return "malformed or out-of-range character reference";
 		// Если примечание построено ошибочно
-		case error_t::INVALID_COMMENT:
+		case static_cast <uint8_t> (error_t::INVALID_COMMENT):
 			// Выводим описание кода ошибки
 			return "malformed comment";
 		// Если раздел дословного текста построен ошибочно
-		case error_t::INVALID_CDATA:
+		case static_cast <uint8_t> (error_t::INVALID_CDATA):
 			// Выводим описание кода ошибки
 			return "malformed CDATA section";
 		// Если указание обработчику построено ошибочно
-		case error_t::INVALID_PROCESSING:
+		case static_cast <uint8_t> (error_t::INVALID_PROCESSING):
 			// Выводим описание кода ошибки
 			return "malformed processing instruction";
 		// Если имя указания обработчику отведено договором
-		case error_t::RESERVED_PROCESSING:
+		case static_cast <uint8_t> (error_t::RESERVED_PROCESSING):
 			// Выводим описание кода ошибки
 			return "processing instruction target is reserved";
 		// Если описание типа документа построено ошибочно
-		case error_t::INVALID_DOCTYPE:
+		case static_cast <uint8_t> (error_t::INVALID_DOCTYPE):
 			// Выводим описание кода ошибки
 			return "malformed document type declaration";
 		// Если описание типа документа расположено не на своём месте
-		case error_t::DOCTYPE_MISPLACED:
+		case static_cast <uint8_t> (error_t::DOCTYPE_MISPLACED):
 			// Выводим описание кода ошибки
 			return "document type declaration is misplaced";
 		// Если префикс пространства имён построен ошибочно
-		case error_t::INVALID_PREFIX:
+		case static_cast <uint8_t> (error_t::INVALID_PREFIX):
 			// Выводим описание кода ошибки
 			return "malformed namespace prefix";
 		// Если префикс не связан ни с одним пространством имён
-		case error_t::UNBOUND_PREFIX:
+		case static_cast <uint8_t> (error_t::UNBOUND_PREFIX):
 			// Выводим описание кода ошибки
 			return "namespace prefix is not bound";
 		// Если выполнена попытка переопределить отведённый договором префикс
-		case error_t::RESERVED_PREFIX:
+		case static_cast <uint8_t> (error_t::RESERVED_PREFIX):
 			// Выводим описание кода ошибки
 			return "reserved namespace prefix cannot be redefined";
 		// Если объявлению пространства имён дано недопустимое значение
-		case error_t::INVALID_NAMESPACE:
+		case static_cast <uint8_t> (error_t::INVALID_NAMESPACE):
 			// Выводим описание кода ошибки
 			return "invalid namespace declaration";
 		// Если превышен предел, заданный настройками разбора
-		case error_t::OVERFLOW_LIMIT:
+		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
 			// Выводим описание кода ошибки
 			return "configured parser limit exceeded";
 		// Если разбираемый текст не помещается в разрядность хранилища
-		case error_t::STORAGE_EXHAUSTED:
+		case static_cast <uint8_t> (error_t::STORAGE_EXHAUSTED):
 			// Выводим описание кода ошибки
 			return "the text does not fit the width of the parser storage";
 		// Если количество атрибутов у узла превышает допустимое
-		case error_t::TOO_MANY_ATTRIBUTES:
+		case static_cast <uint8_t> (error_t::TOO_MANY_ATTRIBUTES):
 			// Выводим описание кода ошибки
 			return "too many attributes in the element";
 		// Если построение разметки пересекает границу подставленной сущности
-		case error_t::ENTITY_BOUNDARY:
+		case static_cast <uint8_t> (error_t::ENTITY_BOUNDARY):
 			// Выводим описание кода ошибки
 			return "logical structure crosses entity boundary";
 		// Если файл разметки открыть не удалось
-		case error_t::FILE_NOT_OPENED:
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the markup file";
 		// Если подача продолжена после объявленного конца текста
-		case error_t::TEXT_ALREADY_ENDED:
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
 			// Выводим описание кода ошибки
 			return "feeding continued after the text was declared complete";
 		// Если текст разметки записать в файл не удалось
-		case error_t::FILE_NOT_WRITTEN:
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
 			// Выводим описание кода ошибки
 			return "cannot write the markup file";
 		// Если файл разметки прочитать не удалось
-		case error_t::FILE_NOT_READ:
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ):
 			// Выводим описание кода ошибки
 			return "cannot read the markup file";
 		// Если переданный узел дерева непригоден
-		case error_t::INVALID_NODE:
+		case static_cast <uint8_t> (error_t::INVALID_NODE):
 			// Выводим описание кода ошибки
 			return "the passed tree node is unfit";
 		// Если кодировка сменена посреди подачи текста
-		case error_t::ENCODING_ALREADY_CHOSEN:
+		case static_cast <uint8_t> (error_t::ENCODING_ALREADY_CHOSEN):
 			// Выводим описание кода ошибки
 			return "the encoding cannot be changed in the middle of the feed";
 	}
@@ -409,7 +463,7 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 	return "unknown error";
 }
 /**
- * @brief Метод получения названия кодировки
+ * @brief Функция получения названия кодировки
  *
  * @param encoding кодировка исходного текста
  * @return         общепринятое название кодировки
@@ -419,34 +473,47 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(encoding){
+	switch(static_cast <uint8_t> (encoding)){
 		// Если кодировкой является UTF-8
-		case encoding_t::UTF8:
+		case static_cast <uint8_t> (encoding_t::UTF8):
 			// Выводим название кодировки
 			return "UTF-8";
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case encoding_t::UTF16LE:
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
 			// Выводим название кодировки
 			return "UTF-16LE";
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case encoding_t::UTF16BE:
+		case static_cast <uint8_t> (encoding_t::UTF16BE):
 			// Выводим название кодировки
 			return "UTF-16BE";
 		// Если кодировкой является ISO-8859-1
-		case encoding_t::LATIN1:
+		case static_cast <uint8_t> (encoding_t::LATIN1):
 			// Выводим название кодировки
 			return "ISO-8859-1";
 		// Если кодировкой является US-ASCII
-		case encoding_t::ASCII:
+		case static_cast <uint8_t> (encoding_t::ASCII):
 			// Выводим название кодировки
 			return "US-ASCII";
+		// Если кодировкой является UTF-32 с обратным порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32LE):
+			// Выводим название кодировки
+			return "UTF-32LE";
+		// Если кодировкой является UTF-32 с прямым порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32BE):
+			// Выводим название кодировки
+			return "UTF-32BE";
+		// Если кодировкой является Windows-1252
+		case static_cast <uint8_t> (encoding_t::CP1252):
+			// Выводим название кодировки
+			return "windows-1252";
 		/**
 		 * Если кодировка взята таблицею у общего модуля кодировок
 		 *
 		 * @note Имени самой кодировки вид этот не несёт: какая именно взята, хранится
 		 *       таблицею у разбора, а сюда приходит один лишь вид
+		 *
 		 */
-		case encoding_t::SINGLE:
+		case static_cast <uint8_t> (encoding_t::SINGLE):
 			// Выводим обозначение вида кодировки
 			return "single-byte";
 		/**
@@ -454,8 +521,9 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 		 *
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 *
 		 */
-		case encoding_t::NONE:
+		case static_cast <uint8_t> (encoding_t::NONE):
 			/**
 			 * Выводим название неопределённой кодировки
 			 *
@@ -463,6 +531,7 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 			 *       перечню не принадлежащая: два разных случая были неотличимы, а
 			 *       звучащий, вписывающий название в журнал, получал дыру в сообщении.
 			 *       Кодеки документа и таблицы зовут эти случаи «none» и «unknown»
+			 *
 			 */
 			return "none";
 	}
@@ -470,7 +539,7 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 	return "unknown";
 }
 /**
- * @brief Метод определения кодировки по её названию
+ * @brief Функция определения кодировки по её названию
  *
  * @param text название кодировки в любом регистре
  * @return     определённая кодировка исходного текста
@@ -507,6 +576,7 @@ awh::codec::xml::encoding_t awh::codec::xml::encoding(const string_view text) no
 	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
 	 *       поэтому объявление разбирается в кодировку с прямым порядком лишь
 	 *       как основание по умолчанию договора
+	 *
 	 */
 	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
 		// Выводим определённую кодировку
@@ -527,7 +597,7 @@ awh::codec::xml::encoding_t awh::codec::xml::encoding(const string_view text) no
 	return encoding_t::NONE;
 }
 /**
- * @brief Метод разбора целого числа со знаком из содержимого разметки
+ * @brief Функция разбора целого числа со знаком из содержимого разметки
  *
  * @param text   разбираемое содержимое
  * @param result ссылка на результат разбора
@@ -551,11 +621,12 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	 * @details Договор XSD (W3C XML Schema Part 2, §3.3.13) даёт `xs:integer` лексику
 	 *          `[\-+]?[0-9]+`, где плюс дозволен наравне с минусом, а разбор `fromChars`
 	 *          следует правилам языка и плюса не принимает вовсе. Оттого плюс снимается
-	 *          здесь, и разбору достаётся остаток
+	 *          здесь, и разбору достаётся остаток.
 	 *
 	 * @note Довод общий с соседним входом `real`, приведённым к лексике XSD прежде: мера
 	 *       строгости у входов одного кодека расходиться не должна. Замер 16.09.2026:
 	 *       `+5` отвергалось целым, будучи принятым дробным
+	 *
 	 */
 	if(digits.front() == '+')
 		// Выполняем снятие ведущего знака плюса
@@ -580,6 +651,7 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
@@ -591,7 +663,7 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	return false;
 }
 /**
- * @brief Метод разбора целого числа без знака из содержимого разметки
+ * @brief Функция разбора целого числа без знака из содержимого разметки
  *
  * @param text   разбираемое содержимое
  * @param result ссылка на результат разбора
@@ -614,6 +686,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	 *       указание на ожидаемую запись. Договор XSD (§3.3.20) дозволяет `-0` и у
 	 *       `xs:nonNegativeInteger`, но запись эта для беззнакового типа бессмысленна,
 	 *       и отвергается она намеренно
+	 *
 	 */
 	if(value.front() == '-')
 		// Выводим признак неудачного разбора
@@ -626,6 +699,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	 * @note Плюс договором XSD дозволен, а `fromChars` его не принимает - оттого он
 	 *       снимается здесь. Прежде плюс отвергался наравне с минусом, и `+5`
 	 *       беззнаковым не читалось, будучи по договору законным
+	 *
 	 */
 	if(digits.front() == '+')
 		// Выполняем снятие ведущего знака плюса
@@ -640,7 +714,6 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	uint64_t number = 0;
 	// Выполняем разбор целого числа без знака
 	const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), digits.data() + digits.length(), number);
-	// Выводим признак успешного разбора, если число разобрано целиком
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
@@ -651,6 +724,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
@@ -662,7 +736,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	return false;
 }
 /**
- * @brief Метод разбора числа с плавающей точкой из содержимого разметки
+ * @brief Функция разбора числа с плавающей точкой из содержимого разметки
  *
  * @param text   разбираемое содержимое
  * @param result ссылка на результат разбора
@@ -683,7 +757,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *
 	 * @details Договор XSD (W3C XML Schema Part 2, §3.2.5) допускает ровно четыре
 	 *          особых написания: `INF`, `+INF`, `-INF` и `NaN`, и РЕГИСТР В НИХ
-	 *          ЗНАЧИМ - иных написаний лексика не содержит вовсе
+	 *          ЗНАЧИМ - иных написаний лексика не содержит вовсе.
 	 *
 	 * @warning Сличение ведётся ТОЧНОЕ и ДО общего разбора намеренно: разбор числа
 	 *          `fromChars` следует правилам языка, а не XSD, и принимает `inf`, `nan`,
@@ -692,6 +766,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *          числом. Соседний вход `boolean` при этом держался строго - `True` и
 	 *          `TRUE` отвергал, - и мера строгости у двух входов одного кодека
 	 *          расходилась
+	 *
 	 */
 	if((value.compare("INF") == 0) || (value.compare("+INF") == 0)){
 		// Запоминаем положительную бесконечность
@@ -722,6 +797,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *       плюса не принимает вовсе. Оттого плюс снимается здесь, и разбору
 	 *       достаётся остаток. Замер 16.09.2026: `+1.5`, `+0.5e-3` и `+INF`
 	 *       отвергались, будучи по договору XSD вполне законными
+	 *
 	 */
 	string_view digits = value;
 	/**
@@ -737,8 +813,9 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *          `inf`, `nan`, `infinity` и всякое иное, что `fromChars` принял бы по
 	 *          правилам языка. Законные же особые значения разобраны ВЫШЕ точным
 	 *          сличением и сюда не доходят
+	 *
 	 */
-	if(digits.empty() || (!awh::ascii::isDigit(digits.front()) && (digits.front() != '.')))
+	if(digits.empty() || (!ascii::isDigit(digits.front()) && (digits.front() != '.')))
 		// Выводим признак неудачного разбора
 		return false;
 	// Содержимое, разбору подлежащее: без ведущего плюса, знак минуса сохраняя
@@ -747,7 +824,6 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
 	const lexical_t::result_t <char> res = lexical_t::fromChars(parsed.data(), parsed.data() + parsed.length(), number);
-	// Выводим признак успешного разбора, если число разобрано целиком
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
@@ -758,6 +834,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
+	 *
 	 */
 	if(static_cast <bool> (res) && (res.ptr == (parsed.data() + parsed.length()))){
 		// Запоминаем разобранное значение
@@ -769,7 +846,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	return false;
 }
 /**
- * @brief Метод разбора логического значения из содержимого разметки
+ * @brief Функция разбора логического значения из содержимого разметки
  *
  * @param text   разбираемое содержимое
  * @param result ссылка на результат разбора
@@ -785,6 +862,7 @@ bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
 	 * @note Регистр записи учитывается намеренно: договор XSD иных написаний
 	 *       логического значения не допускает, а «True» из чужого ответа лучше
 	 *       отвергнуть явно, чем принять за истину и разойтись с отправителем
+	 *
 	 */
 	if((value.compare("true") == 0) || (value.compare("1") == 0)){
 		// Запоминаем разобранное логическое значение
@@ -805,23 +883,38 @@ bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
 	return false;
 }
 /**
- * @brief Шаблонный метод извлечения числа из содержимого разметки затребованным видом
+ * @brief Шаблон функции разбора числа из содержимого разметки
  *
  * @details Разбор ведётся общим для всех кодеков рамки местом: договор извлечения един,
- * и держаться он обязан в одном написании. Прежде разбор был написан у разметки дважды -
- * у дерева документа и у самостоятельного значения, - и написания расходились по четырём
- * правилам разом: пробельная обвязка, записи `nan` и `inf`, показатель степени при
- * извлечении целым и запись, в разрядность не вмещающаяся. Сведены они решением
- * от 01.09.2026
+ *          и держаться он обязан в одном написании. Прежде разбор был написан у разметки дважды -
+ *          у дерева документа и у самостоятельного значения, - и написания расходились по четырём
+ *          правилам разом: пробельная обвязка, записи `nan` и `inf`, показатель степени при
+ *          извлечении целым и запись, в разрядность не вмещающаяся. Сведены они решением от 01.09.2026.
  *
- * @tparam T      затребованный вид числа
- *
- * @param  text   разбираемое содержимое
- * @param  result ссылка на результат разбора
- * @return        признак успешного разбора
+ * @tparam T тип числа результата разбора
  *
  */
 template <typename T>
+/**
+ * @brief Функция разбора числа из содержимого разметки
+ *
+ * @details Пробельная обвязка отбрасывается, а вид разбора решается ЗАПИСЬЮ,
+ *          а не затребованным видом: `1e2` и `300.5` извлекаются и целым, округляясь по
+ *          правилам приведения, а запись, в разрядность не вмещающаяся, выдаётся пределом
+ *          затребованного вида. Уклад этот повторяет договор извлечения кодека JSON знак
+ *          в знак и заведён решением от 01.09.2026, снявшим расхождение двух
+ *          дверей разметки по четырём правилам разом. Записи `nan` и `inf` числом не
+ *          считаются. Затребованный вид отдельного указания не требует.
+ *
+ * @note Переменная-приёмник при ОТКАЗЕ не трогается вовсе и сохраняет то, что
+ *       несла до вызова. Уклад этот един у всех трёх кодеков и снят замером
+ *       01.09.2026 по двадцати путям отказа
+ *
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
+ *
+ */
 bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
 	// Разрядный вид, тождественный виду языка приёмника
 	typedef typename fixed_t <T>::type fixed;
@@ -830,7 +923,7 @@ bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
 	 */
 	if constexpr(std::is_same <T, fixed>::value)
 		// Выводим признак успешности извлечения числа общим для кодеков местом
-		return awh::codec::numeric <T> (text, result);
+		return codec::numeric <T> (text, result);
 	/**
 	 * Если вид приёмника есть иной вид языка той же ширины
 	 */
@@ -838,12 +931,13 @@ bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
 		// Приёмник разрядного вида для извлечения числа
 		fixed value = fixed();
 		// Выполняем извлечение числа общим для кодеков местом
-		const bool ok = awh::codec::numeric <fixed> (text, value);
+		const bool ok = codec::numeric <fixed> (text, value);
 		/**
 		 * Если извлечение числа удалось
 		 *
 		 * @note Приёмник ставится ЛИШЬ при успехе: общее место при отказе приёмника не
 		 *       трогает, и перенос безусловный портил бы прежнее его содержимое
+		 *
 		 */
 		if(ok)
 			// Выполняем перенос извлечённого числа приёмнику вида языка
@@ -862,8 +956,9 @@ bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
  * @note Вид `char` не порождается НАМЕРЕННО, и довод тот же, что у записи: `char` есть
  *       вид знака, а не числа, и разбор текста в него потребителю ни к чему. Виды
  *       `signed char` и `unsigned char` порождаются - они берутся числами осознанно
+ *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <bool> (const string_view, bool &) noexcept;
+template bool awh::codec::xml::numeric <bool> (const string_view, bool &) noexcept;
 /**
  * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
  *
@@ -880,38 +975,20 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <bool> (const strin
  *       система, и решает по-разному
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <char> (const string_view, char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <signed char> (const string_view, signed char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <short> (const string_view, short &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int> (const string_view, int &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <long> (const string_view, long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <long long> (const string_view, long long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <float> (const string_view, float &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <double> (const string_view, double &) noexcept;
-/**
- * @brief Конструктор
- *
- */
-awh::codec::xml::Span::Span() noexcept : offset(0), length(0) {}
+template bool awh::codec::xml::numeric <char> (const string_view, char &) noexcept;
+template bool awh::codec::xml::numeric <signed char> (const string_view, signed char &) noexcept;
+template bool awh::codec::xml::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
+template bool awh::codec::xml::numeric <short> (const string_view, short &) noexcept;
+template bool awh::codec::xml::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
+template bool awh::codec::xml::numeric <int> (const string_view, int &) noexcept;
+template bool awh::codec::xml::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
+template bool awh::codec::xml::numeric <long> (const string_view, long &) noexcept;
+template bool awh::codec::xml::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
+template bool awh::codec::xml::numeric <long long> (const string_view, long long &) noexcept;
+template bool awh::codec::xml::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
+template bool awh::codec::xml::numeric <float> (const string_view, float &) noexcept;
+template bool awh::codec::xml::numeric <double> (const string_view, double &) noexcept;
 
-/**
- * @brief Конструктор
- *
- * @param offset смещение начала отрезка в хранилище знаков
- * @param length длина отрезка в байтах
- *
- */
-awh::codec::xml::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
-/**
- * @brief Конструктор
- *
- */
-awh::codec::xml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
 /**
  * @brief Конструктор
  *
