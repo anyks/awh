@@ -6824,7 +6824,7 @@ namespace timer {
 	 * @return текущее время в миллисекундах
 	 *
 	 */
-	static AWH_KQUEUE_INLINE uint64_t timestamp() noexcept {
+	static uint64_t timestamp() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 *

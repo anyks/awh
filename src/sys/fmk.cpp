@@ -1623,7 +1623,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
+		static uint64_t timestamp() noexcept {
 			/**
 			 * Возвращаем текущее время монотонных часов в миллисекундах
 			 *
@@ -1687,7 +1687,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
+		static uint64_t timestamp() noexcept {
 			/**
 			 * Объект структуры для хранения времени
 			 *
@@ -1833,7 +1833,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
+		static uint64_t timestamp() noexcept {
 			/**
 			 * Если набором команд является ARM64
 			 *
@@ -1995,7 +1995,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
+		static uint64_t timestamp() noexcept {
 			/**
 			 * Если операционной системой является macOS
 			 *
