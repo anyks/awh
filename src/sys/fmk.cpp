@@ -140,10 +140,12 @@ namespace ascii = awh::ascii;
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+	
+	/**
 	 * @brief Функция перевода широкого символа в верхний регистр
-	 *
-	 * @param letter переводимый символ
-	 * @return       символ, переведённый в верхний регистр
 	 *
 	 * @details У операционных систем POSIX перевод выполняет towupper, опирающийся на
 	 *          локаль LC_CTYPE. У MS Windows опереться на неё нельзя: setlocale там
@@ -152,17 +154,20 @@ namespace {
 	 *          и отвечает лишь на пустую строку, ставящую локаль системы. А значит, набор
 	 *          букв, какие towupper там переведёт, определяется не приложением, а тем,
 	 *          какой язык выбран у машины: на русской Windows кириллица переводится, на
-	 *          английской - остаётся нетронутой
+	 *          английской - остаётся нетронутой.
 	 *
 	 *          Поэтому у MS Windows перевод выполняется средствами системы: LCMapStringEx
 	 *          с локалью LOCALE_NAME_INVARIANT знает таблицу Юникода целиком и от выбранного
-	 *          у машины языка не зависит
+	 *          у машины языка не зависит.
 	 *
 	 * @note Быстрый путь для ASCII заведён затем, что перевод строк идёт посимвольно, а
 	 *       обращение к средствам системы дороже сличения с границей диапазона
 	 *
+	 * @param letter переводимый символ
+	 * @return       символ, переведённый в верхний регистр
+	 *
 	 */
-	wint_t wideUpper(const wint_t letter) noexcept {
+	static AWH_FMK_INLINE wint_t wideUpper(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -198,7 +203,7 @@ namespace {
 	 * @details Пояснение к работе средства смотрите у wideUpper
 	 *
 	 */
-	wint_t wideLower(const wint_t letter) noexcept {
+	static AWH_FMK_INLINE wint_t wideLower(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -233,7 +238,7 @@ namespace {
 	 * @return     результирующая широкая строка (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
 	 *
 	 */
-	wstring utf8ToWide(const char * data, const size_t size) noexcept {
+	static AWH_FMK_INLINE wstring utf8ToWide(const char * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -388,7 +393,7 @@ namespace {
 	 * @return     результирующая строка в кодировке UTF-8
 	 *
 	 */
-	string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
+	static AWH_FMK_INLINE string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -498,7 +503,7 @@ namespace {
 	 *          наименьшим из тех, при котором запись читается обратно ровно тем же
 	 *          числом. Подбор даёт краткую запись, не теряя при этом ни одного
 	 *          значащего разряда: число 0.111 остаётся записью «0.111», а результат
-	 *          деления 1536 на 1024 - записью «1.5»
+	 *          деления 1536 на 1024 - записью «1.5».
 	 *
 	 * @details Запись выполняется средствами языка Си, а не функцией std::to_chars:
 	 *          записывать числа с плавающей точкой та умеет далеко не везде, а
@@ -513,7 +518,7 @@ namespace {
 	 * @return          число в безэкспоненциальной форме
 	 *
 	 */
-	string noexpFixed(const double number, const int32_t precision) noexcept {
+	static AWH_FMK_INLINE string noexpFixed(const double number, const int32_t precision) noexcept {
 		// Если число не является конечным, записывать нечего
 		if(!::isfinite(number))
 			// Выводим нулевой результат
@@ -695,7 +700,6 @@ namespace {
 		// Выводим полученную запись числа
 		return result;
 	}
-
 	/**
 	 * @brief Шаблон функции разделения строк на составляющие
 	 *
@@ -712,7 +716,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	T & split(string_view str, string_view delim, T & container) noexcept {
+	static AWH_FMK_INLINE T & split(string_view str, string_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -830,7 +834,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	T & split(wstring_view str, wstring_view delim, T & container) noexcept {
+	static AWH_FMK_INLINE T & split(wstring_view str, wstring_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -1254,7 +1258,7 @@ namespace {
 	 * @param callback  функция обратного вызова для каждой найденной записи
 	 *
 	 */
-	void kvParse(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
+	static AWH_FMK_INLINE void kvParse(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
 		// Тип текстового представления обрабатываемых данных
 		using view_t = basic_string_view <T>;
 		// Получаем размер обрабатываемого текста
@@ -1489,7 +1493,7 @@ namespace {
 	 *       оставляет
 	 *
 	 */
-	void raiseCoreLimit() noexcept {
+	static AWH_FMK_INLINE void raiseCoreLimit() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1515,7 +1519,7 @@ namespace {
 	 *       отдало бы ему половину прежнего кода и половину нового
 	 *
 	 */
-	void startup() noexcept {
+	static AWH_FMK_INLINE void startup() noexcept {
 		// Поднимаем предел дампа ядра: в выпускной сборке это пусто
 		::raiseCoreLimit();
 		/**
@@ -1538,7 +1542,7 @@ namespace {
 	 *       заведение это - одно на процесс
 	 *
 	 */
-	void seizeAllocator() noexcept {
+	static AWH_FMK_INLINE void seizeAllocator() noexcept {
 		// Выполняем заведение один раз на весь процесс
 		std::call_once(::__awh_startup_once__, &::startup);
 	}
@@ -1619,7 +1623,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static uint64_t timestamp() noexcept {
+		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
 			/**
 			 * Возвращаем текущее время монотонных часов в миллисекундах
 			 *
@@ -1659,7 +1663,7 @@ namespace timer {
 		 * @return идентификатор источника монотонного времени
 		 *
 		 */
-		static clockid_t monotonic() noexcept {
+		static AWH_FMK_INLINE clockid_t monotonic() noexcept {
 			// Шаг дешёвых монотонных часов
 			struct timespec resolution{};
 			// Если шаг дешёвых часов получен и он не превышает миллисекунды
@@ -1683,7 +1687,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static uint64_t timestamp() noexcept {
+		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
 			/**
 			 * Объект структуры для хранения времени
 			 *
@@ -1737,7 +1741,7 @@ namespace timer {
 			 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
 			 *
 			 */
-			static uint64_t frequency() noexcept {
+			static AWH_FMK_INLINE uint64_t frequency() noexcept {
 				// Частота счётчика системного таймера
 				uint64_t result = 0;
 				/**
@@ -1829,7 +1833,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static uint64_t timestamp() noexcept {
+		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
 			/**
 			 * Если набором команд является ARM64
 			 *
@@ -1892,7 +1896,7 @@ namespace timer {
 			 * @return идентификатор источника монотонного времени
 			 *
 			 */
-			static clockid_t monotonic() noexcept {
+			static AWH_FMK_INLINE clockid_t monotonic() noexcept {
 				// Частота системного таймера
 				int32_t hz = 0;
 				// Размер получаемого значения
@@ -1936,7 +1940,7 @@ namespace timer {
 			 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
 			 *
 			 */
-			static uint64_t frequency() noexcept {
+			static AWH_FMK_INLINE uint64_t frequency() noexcept {
 				// Частота счётчика системного таймера
 				uint64_t result = 0;
 				// Выполняем чтение частоты счётчика системного таймера
@@ -1991,7 +1995,7 @@ namespace timer {
 		 * @return текущее время в миллисекундах
 		 *
 		 */
-		static uint64_t timestamp() noexcept {
+		static AWH_FMK_INLINE uint64_t timestamp() noexcept {
 			/**
 			 * Если операционной системой является macOS
 			 *
