@@ -3207,6 +3207,185 @@ namespace {
 };
 
 /**
+ * @brief Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
+ *
+ */
+namespace io {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Прототип функции обработки события удаления узла
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool destroy(::io::node_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки пользовательского события
+	 *
+	 * @param  узел пользователя в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool user(::io::user_t *, const engine::io_t *) noexcept;
+	/**
+	 * @brief Прототип функции создания сокета события
+	 *
+	 * @param  узел для которого создаётся сокет
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат создания сокета
+	 *
+	 */
+	static bool socket(::io::node_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события ошибки
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  код ошибки
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool error(::io::node_t *, const int32_t) noexcept;
+	/**
+	 * @brief Прототип функции возврата неотданного остатка очереди потребителю
+	 *
+	 * @param  узел события
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void spill(::io::node_t *) noexcept;
+	/**
+	 * @brief Прототип функции обновления токенов ограничения пропускной способности
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  режим ограничения пропускной способности события (egress или ingress)
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool tokens(::io::node_t *, const event::limiting_t) noexcept;
+	/**
+	 * @brief Прототип функции прерывания ожидающего подключения клиента
+	 *
+	 * @param  узел клиента, подключение которого прерывается
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения прерывания
+	 *
+	 */
+	static bool abandon(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции отсрочки узла до пополнения общего ведра токенов
+	 *
+	 * @param  узел, подлежащий отсрочке
+	 * @param  режим ограничения пропускной способности (egress или ingress)
+	 * @param  время отсрочки в миллисекундах
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void postpone(::io::node_t *, const event::limiting_t, const uint32_t) noexcept;
+	/**
+	 * @brief Прототип функции обработки события изменения файла или каталога
+	 *
+	 * @param  узел каталога в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool change(::io::dir_t *, const engine::io_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события подключения
+	 *
+	 * @param  узел клиента в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события принятия подключения
+	 *
+	 * @param  узел сервера в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события записи
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool write(::io::node_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции опроса событий
+	 *
+	 * @param  объект события kqueue
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr) noexcept;
+	/**
+	 * @brief Прототип функции обработки события чтения
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
+	 *
+	 * @param  узел сервера в котором произошло событие
+	 * @param  буфер данных подключения
+	 * @param  размер буфера данных подключения
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool origin(::io::server_t *, const uint8_t *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
+};
+
+/**
  * @brief Пространство имён очереди изменений ядра
  *
  */
@@ -3238,13 +3417,13 @@ namespace events {
 	 * @param fd закрываемый дескриптор
 	 *
 	 */
-	static inline void close(const awh::net::socket_t fd) noexcept {
+	static AWH_KQUEUE_INLINE void close(const awh::net::socket_t fd) noexcept {
 		// Снимаем из очереди изменений все записи по закрываемому дескриптору
 		::events::forget(fd);
 		// Закрываем сам дескриптор
 		::close(fd);
 	}
-}
+};
 
 /**
  * @brief Инкапсулируем статические функции в пространство имён файловой системы
@@ -3263,7 +3442,7 @@ namespace fs {
 	 * @return      полная строка пути
 	 *
 	 */
-	static AWH_KQUEUE_INLINE string fullpath(const string_view input) noexcept {
+	static string fullpath(const string_view input) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3411,7 +3590,7 @@ namespace fs {
 	 * @return      фактическая длина структуры адреса либо 0 при негодной строке
 	 *
 	 */
-	static AWH_KQUEUE_INLINE socklen_t unixSocketAddress(struct sockaddr_un & addr, const string_view input) noexcept {
+	static socklen_t unixSocketAddress(struct sockaddr_un & addr, const string_view input) noexcept {
 		// Обнуляем всю структуру адреса
 		::memset(&addr, 0, sizeof(addr));
 		// Если строка имени пуста, выводим отказ
@@ -3450,7 +3629,7 @@ namespace fs {
 	 * @return     строка адреса UNIX-сокета
 	 *
 	 */
-	static AWH_KQUEUE_INLINE string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
+	static string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
 		// Проверяем корректность длины структуры
 		if(size <= offsetof(struct sockaddr_un, sun_path))
 			// Возвращаем пустую строку
@@ -3913,185 +4092,6 @@ namespace bandwidth {
 };
 
 /**
- * @brief Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
- *
- */
-namespace io {
-	/**
-	 * Используем пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Прототип функции обработки события удаления узла
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool destroy(::io::node_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки пользовательского события
-	 *
-	 * @param  узел пользователя в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool user(::io::user_t *, const engine::io_t *) noexcept;
-	/**
-	 * @brief Прототип функции создания сокета события
-	 *
-	 * @param  узел для которого создаётся сокет
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат создания сокета
-	 *
-	 */
-	static bool socket(::io::node_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события ошибки
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  код ошибки
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool error(::io::node_t *, const int32_t) noexcept;
-	/**
-	 * @brief Прототип функции возврата неотданного остатка очереди потребителю
-	 *
-	 * @param  узел события
-	 * @param  объект работы с логами
-	 *
-	 */
-	static void spill(::io::node_t *) noexcept;
-	/**
-	 * @brief Прототип функции обновления токенов ограничения пропускной способности
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  режим ограничения пропускной способности события (egress или ingress)
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool tokens(::io::node_t *, const event::limiting_t) noexcept;
-	/**
-	 * @brief Прототип функции прерывания ожидающего подключения клиента
-	 *
-	 * @param  узел клиента, подключение которого прерывается
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения прерывания
-	 *
-	 */
-	static bool abandon(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции отсрочки узла до пополнения общего ведра токенов
-	 *
-	 * @param  узел, подлежащий отсрочке
-	 * @param  режим ограничения пропускной способности (egress или ingress)
-	 * @param  время отсрочки в миллисекундах
-	 * @param  объект работы с логами
-	 *
-	 */
-	static void postpone(::io::node_t *, const event::limiting_t, const uint32_t) noexcept;
-	/**
-	 * @brief Прототип функции обработки события изменения файла или каталога
-	 *
-	 * @param  узел каталога в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool change(::io::dir_t *, const engine::io_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события подключения
-	 *
-	 * @param  узел клиента в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события принятия подключения
-	 *
-	 * @param  узел сервера в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события записи
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool write(::io::node_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции опроса событий
-	 *
-	 * @param  объект события kqueue
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr) noexcept;
-	/**
-	 * @brief Прототип функции обработки события чтения
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
-	 *
-	 * @param  узел сервера в котором произошло событие
-	 * @param  буфер данных подключения
-	 * @param  размер буфера данных подключения
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool origin(::io::server_t *, const uint8_t *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
-};
-
-/**
  * @brief Инкапсулируем статические объекты и переменные в локальное пространство имён
  *
  */
@@ -4307,7 +4307,7 @@ namespace local {
 	 * @return текущее время в наносекундах
 	 *
 	 */
-	static AWH_KQUEUE_INLINE uint64_t nanostamp() noexcept {
+	static uint64_t nanostamp() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 *
@@ -4447,7 +4447,7 @@ namespace local {
 	 * @return окно всплеска в долях секунды
 	 *
 	 */
-	static AWH_KQUEUE_INLINE double window() noexcept {
+	static double window() noexcept {
 		/**
 		 * @brief Функция вычисления окна всплеска по частоте тика ядра
 		 *
@@ -4535,7 +4535,7 @@ namespace local {
 	 * @return         время ожидания в миллисекундах, ноль - ожидание не требуется
 	 *
 	 */
-	static AWH_KQUEUE_INLINE uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
+	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
 		// Определяем, к какому направлению относится списание
 		const bool egress = (limiting == awh::event::limiting_t::EGRESS);
 		// Получаем предел выбранного направления
@@ -4601,7 +4601,7 @@ namespace local {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool commit([[maybe_unused]] const eth_t * eth) noexcept {
+	static bool commit([[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -5561,7 +5561,7 @@ namespace events {
 	 * @param fd закрываемый дескриптор
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void forget(const awh::net::socket_t fd) noexcept {
+	static void forget(const awh::net::socket_t fd) noexcept {
 		// Если очередь изменений пуста, снимать нечего
 		if(::local::change.empty())
 			// Выходим из функции
@@ -5656,7 +5656,7 @@ namespace events {
 	 * @param ev объект события для добавления
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void add(struct kevent && ev) noexcept {
+	static void add(struct kevent && ev) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -5926,7 +5926,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
+	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -6030,7 +6030,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
+	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -6289,7 +6289,7 @@ namespace handoff {
 	 * @param label метка передачи
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
+	static void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
 		/**
 		 * @warning Описатель УДВАИВАЕТСЯ, а не запоминается как есть. Отметка живёт до
 		 *          ближайшего исходящего сообщения переносчика, а настоящий `sendmsg`
@@ -6332,7 +6332,7 @@ namespace handoff {
 	 * @param id идентификатор узла-переносчика
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void forget(const event::id_t id) noexcept {
+	static void forget(const event::id_t id) noexcept {
 		// Выполняем поиск отметок отложенной передачи узла
 		auto i = ::handoff::__awh_outgoing__.find(id);
 		// Если отметок у узла нет, снимать нечего
@@ -6376,7 +6376,7 @@ namespace handoff {
 	 * @return       количество отправленных октетов
 	 *
 	 */
-	static AWH_KQUEUE_INLINE ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size) noexcept {
+	static ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если узел ведёт обмен именованным каналом - пишем в него записью, а не отправкой
 		 *
@@ -6522,7 +6522,7 @@ namespace handoff {
 	 * @param carrier узел-переносчик, которым описатели приехали
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void collect(struct msghdr & message, const event::id_t carrier) noexcept {
+	static void collect(struct msghdr & message, const event::id_t carrier) noexcept {
 		/**
 		 * Перебираем все служебные данные принятого сообщения
 		 */
@@ -6563,7 +6563,7 @@ namespace handoff {
 	 * @return       количество принятых октетов
 	 *
 	 */
-	static AWH_KQUEUE_INLINE ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size) noexcept {
+	static ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size) noexcept {
 		/**
 		 * Если узел ведёт обмен именованным каналом - читаем его чтением, а не приёмом
 		 *
@@ -6633,7 +6633,7 @@ namespace handoff {
 				log::print("descriptor handover: control data was truncated by the kernel", log::flag_t::CRITICAL);
 			// Складываем приехавшие описатели в порядке их прибытия
 			::handoff::collect(message, node->id);
-		 /**
+		/**
 		 * Дочитываем запись до её границы, если она не уместилась в буфер целиком
 		 *
 		 * @details Границу записи эти системы отдают флагом MSG_EOR, и приём без
@@ -6706,7 +6706,7 @@ namespace handoff {
 	 *          иначе они текут.
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void disband() noexcept {
+	static void disband() noexcept {
 		/**
 		 * Перебираем все придержанные описатели
 		 */
@@ -7080,7 +7080,7 @@ namespace timer {
 	 * @return    остаток срока в миллисекундах, либо ноль, если запись чужая
 	 *
 	 */
-	static AWH_KQUEUE_INLINE uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
+	static uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если запись принадлежит иному событию либо иному сроку, остатка нет
 		if((__awh_continued__.did != eid) || (__awh_continued__.dtid != tid))
 			// Выводим отсутствие остатка
@@ -7313,7 +7313,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7458,7 +7458,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -7556,7 +7556,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
+		static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 			// Если таймаут ожидания уже активирован для данного события
 			if(tm.status == event::status_t::PENDING){
 				// Ищем таймер в списке активных таймеров по ключу таймера
@@ -7599,7 +7599,7 @@ namespace timer {
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static AWH_KQUEUE_INLINE bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
+		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
@@ -7742,7 +7742,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -8043,7 +8043,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static AWH_KQUEUE_INLINE bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -8767,7 +8767,7 @@ namespace timer {
 		 * @return    объект чанка для данного события
 		 *
 		 */
-		static AWH_KQUEUE_INLINE chunk_t * __get_chunk__(const event::id_t eid) noexcept {
+		static chunk_t * __get_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, расширяем его
@@ -8892,7 +8892,7 @@ namespace timer {
 		 * @param index индекс элемента в куче
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __sift_up__(const int32_t index) noexcept {
+		static void __sift_up__(const int32_t index) noexcept {
 			// Если элемент уже в корне, подниматься некуда
 			if(index <= 0)
 				// Выходим из функции
@@ -8946,7 +8946,7 @@ namespace timer {
 		 * @param index индекс элемента в куче
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __sift_down__(int32_t index) noexcept {
+		static void __sift_down__(int32_t index) noexcept {
 			// Получаем размер кучи, который будет использоваться для определения границ при опускании элемента вниз по куче
 			const int32_t size = static_cast <int32_t> (__awh_heap__.size());
 			// Если элемента с таким индексом в куче нет, опускать нечего
@@ -9005,7 +9005,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9150,7 +9150,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -9268,7 +9268,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
+		static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 			// Если таймаут ожидания уже активирован для данного события
 			if(tm.status == event::status_t::PENDING){
 				// Вычисляем индекс чанка для данного идентификатора события
@@ -9363,7 +9363,7 @@ namespace timer {
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static AWH_KQUEUE_INLINE bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
+		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
@@ -9524,7 +9524,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9879,7 +9879,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static AWH_KQUEUE_INLINE bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -10579,7 +10579,7 @@ namespace sctp {
 		 * @param end    признак завершения сообщения на этом куске
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void encode(uint8_t * buffer, const struct sctp_sndrcvinfo & info, const bool end, const size_t length) noexcept {
+		static void encode(uint8_t * buffer, const struct sctp_sndrcvinfo & info, const bool end, const size_t length) noexcept {
 			// Флаги отправки сообщения
 			uint16_t flags = static_cast <uint16_t> (info.sinfo_flags);
 			// Если сообщение на этом куске не завершается
@@ -10613,7 +10613,7 @@ namespace sctp {
 		 * @param end    признак завершения сообщения на этом куске
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void decode(const uint8_t * buffer, struct sctp_sndrcvinfo & info, bool & end, size_t & length) noexcept {
+		static void decode(const uint8_t * buffer, struct sctp_sndrcvinfo & info, bool & end, size_t & length) noexcept {
 			// Флаги отправки сообщения
 			uint16_t flags = 0;
 			// Читаем длину полезной нагрузки записи
@@ -10700,7 +10700,7 @@ namespace sctp {
 	 * @return      свободное место очереди за вычетом головы настроек
 	 *
 	 */
-	static constexpr size_t vacancy([[maybe_unused]] T * node, net_queue_t & queue) noexcept {
+	static AWH_KQUEUE_INLINE size_t vacancy([[maybe_unused]] T * node, net_queue_t & queue) noexcept {
 		// Получаем количество свободного места в очереди
 		const size_t result = queue.available();
 		/**
@@ -10765,7 +10765,7 @@ namespace sctp {
 	 * @return       количество принятых к отправке октетов, без учёта головы
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t push(T * node, const void * buffer, const size_t size) noexcept {
+	static size_t push(T * node, const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10823,7 +10823,7 @@ namespace sctp {
 	 * @param size   размер данных записи очереди
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void head([[maybe_unused]] T * node, [[maybe_unused]] const void ** buffer, [[maybe_unused]] size_t & size) noexcept {
+	static void head([[maybe_unused]] T * node, [[maybe_unused]] const void ** buffer, [[maybe_unused]] size_t & size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10986,7 +10986,7 @@ namespace sctp {
 	 * @return     результат работы функции
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool partial([[maybe_unused]] T * node, [[maybe_unused]] const bool end, [[maybe_unused]] const eth_t * eth) noexcept {
+	static bool partial([[maybe_unused]] T * node, [[maybe_unused]] const bool end, [[maybe_unused]] const eth_t * eth) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -11031,7 +11031,7 @@ namespace sctp {
 	 * @param size   размер прочитанных данных
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
+	static void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -11071,7 +11071,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
+	static bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -11230,7 +11230,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -11714,7 +11714,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -12566,7 +12566,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::tun_t * tunnel, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool read(::io::tun_t * tunnel, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -13818,7 +13818,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -16082,7 +16082,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -16784,7 +16784,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::ipc_t * ipc, const eth_t * eth) noexcept {
+	static bool write(::io::ipc_t * ipc, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -17299,7 +17299,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::peer_t * peer, const eth_t * eth) noexcept {
+	static bool write(::io::peer_t * peer, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -18227,7 +18227,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::origin_t * origin, const eth_t * eth) noexcept {
+	static bool write(::io::origin_t * origin, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -18677,7 +18677,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::tun_t * tunnel, const eth_t * eth) noexcept {
+	static bool write(::io::tun_t * tunnel, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -18897,7 +18897,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::client_t * client, const eth_t * eth) noexcept {
+	static bool write(::io::client_t * client, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -20279,7 +20279,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::server_t * server, const eth_t * eth) noexcept {
+	static bool write(::io::server_t * server, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -20759,7 +20759,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::file_t * fs, const void * buffer, const size_t size, [[maybe_unused]] const eth_t * eth) noexcept {
+	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, [[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -20867,7 +20867,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -21582,7 +21582,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -23361,7 +23361,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -24164,7 +24164,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -25305,7 +25305,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -29520,7 +29520,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -29916,7 +29916,7 @@ namespace io {
 	 * @param eth   объект работы с сетевым интерфейсом
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth) noexcept {
+	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth) noexcept {
 		/**
 		 * Если узел не задан, источник на нём не установлен либо вытягивание не заведено
 		 *
@@ -30082,7 +30082,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool destroy(::io::node_t * node, const eth_t * eth) noexcept {
+	static bool destroy(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Возвращаем потребителю неотданный остаток очереди
 		 *
@@ -30810,7 +30810,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool user(::io::user_t * user, const engine::io_t * io) noexcept {
+	static bool user(::io::user_t * user, const engine::io_t * io) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -30895,7 +30895,7 @@ namespace io {
 	 * @return     признак привязанности дескриптора к адресу
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool bound(const net::socket_t sock) noexcept {
+	static bool bound(const net::socket_t sock) noexcept {
 		// Если дескриптор сокета не заведён
 		if(sock == net::invalid_socket_t)
 			// Выводим отсутствие привязки дескриптора
@@ -30934,7 +30934,7 @@ namespace io {
 	 * @return     дескриптор сокета узла события
 	 *
 	 */
-	static AWH_KQUEUE_INLINE net::socket_t descriptor(const ::io::node_t * node) noexcept {
+	static net::socket_t descriptor(const ::io::node_t * node) noexcept {
 		/**
 		 * Определяем чем является текущий узел
 		 */
@@ -30980,7 +30980,7 @@ namespace io {
 	 * @return     результат сверки устройства
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool coherence(const ::io::node_t * node, const net::socket_t sock) noexcept {
+	static bool coherence(const ::io::node_t * node, const net::socket_t sock) noexcept {
 		// Объект хранения имени сокета
 		struct sockaddr_storage name;
 		// Заполняем объект хранения имени сокета нулями
@@ -31106,7 +31106,7 @@ namespace io {
 	 * @return     осмысленна ли узлу опция
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool continuable(const ::io::node_t * node) noexcept {
+	static bool continuable(const ::io::node_t * node) noexcept {
 		// Если узла нет вовсе, опцию запоминать некому
 		if(node == nullptr)
 			// Выводим отрицательный результат
@@ -31140,7 +31140,7 @@ namespace io {
 	 * @return     результат передачи дескриптора узлу
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
+	static bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
 		/**
 		 * Отмечаем описатель принятым передачей
 		 *
@@ -31234,7 +31234,7 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool socket(::io::node_t * node, const eth_t * eth) noexcept {
+	static bool socket(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31332,7 +31332,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool error(::io::node_t * node, const int32_t code) noexcept {
+	static bool error(::io::node_t * node, const int32_t code) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31789,7 +31789,7 @@ namespace io {
 	 * @return        результат проверки согласия
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool coherent(::io::client_t * client, const awh::eth_t * network) noexcept {
+	static bool coherent(::io::client_t * client, const awh::eth_t * network) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31939,7 +31939,7 @@ namespace io {
 	 * @param delay    время отсрочки в миллисекундах
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay) noexcept {
+	static void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -32029,7 +32029,7 @@ namespace io {
 	 * @return         результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool tokens(::io::node_t * node, const event::limiting_t limiting) noexcept {
+	static bool tokens(::io::node_t * node, const event::limiting_t limiting) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -32819,7 +32819,7 @@ namespace io {
 	 * @return       результат выполнения прерывания
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool abandon(::io::client_t * client, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
+	static bool abandon(::io::client_t * client, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33014,7 +33014,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool change(::io::dir_t * dir, [[maybe_unused]] const engine::io_t * io) noexcept {
+	static bool change(::io::dir_t * dir, [[maybe_unused]] const engine::io_t * io) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33155,7 +33155,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth) noexcept {
+	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -33268,7 +33268,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -34096,7 +34096,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth) noexcept {
+	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -34216,7 +34216,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool read(::io::node_t * node, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool read(::io::node_t * node, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -34400,7 +34400,7 @@ namespace io {
 	 * @param node узел события
 	 *
 	 */
-	static AWH_KQUEUE_INLINE void spill(::io::node_t * node) noexcept {
+	static void spill(::io::node_t * node) noexcept {
 		// Если узел не задан
 		if(node == nullptr)
 			// Выходим, возвращать нечего
@@ -34582,7 +34582,7 @@ namespace io {
 	 * @return предельный размер одной дейтаграммы в октетах
 	 *
 	 */
-	static AWH_KQUEUE_INLINE size_t datagram() noexcept {
+	static size_t datagram() noexcept {
 		// Предельный размер одной дейтаграммы
 		uint32_t result = 0x2400;
 		// Размер получаемого значения
@@ -34666,7 +34666,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Значение узла для обработки изменений
 		 *
@@ -35264,7 +35264,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static AWH_KQUEUE_INLINE bool origin(::io::server_t * server, const uint8_t * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static bool origin(::io::server_t * server, const uint8_t * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
@@ -35960,7 +35960,7 @@ namespace sctp {
 		 * @param result внутренняя структура информации SCTP
 		 *
 		 */
-		static AWH_KQUEUE_INLINE void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
+		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
 			/**
 			 * Определяем тип полезной нагрузки SCTP
 			 */
@@ -36033,7 +36033,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 *
 		 */
-		static AWH_KQUEUE_INLINE size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, bool * finish) noexcept {
+		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, bool * finish) noexcept {
 			// Результат работы функции
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
