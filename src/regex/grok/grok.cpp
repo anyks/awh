@@ -928,9 +928,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		return this->expand(pattern, expression->expression, expression->fields, stack, number, 0);
 	};
 	// Выполняем разворот ссылок текста шаблона
-	unfolded = unfold();
-	// Признак выполнения разворота ссылок текста шаблона
-	bool unfolded = false;
+	const bool unfolded = unfold();
 	/**
 	 * Если разворот ссылок текста шаблона не выполнен
 	 */
