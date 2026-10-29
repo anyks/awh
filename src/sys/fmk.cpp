@@ -744,13 +744,13 @@ namespace {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -802,13 +802,13 @@ namespace {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Возвращаем результат
@@ -862,13 +862,13 @@ namespace {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -920,13 +920,13 @@ namespace {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Возвращаем результат
@@ -2161,13 +2161,13 @@ bool awh::fmk::is(const char letter, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2240,13 +2240,13 @@ bool awh::fmk::is(const wchar_t letter, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2567,13 +2567,13 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2905,13 +2905,13 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3255,13 +3255,13 @@ void awh::fmk::detail::timestamp(void * buffer, const size_t size, const chrono_
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (type), text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (type), text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3386,13 +3386,13 @@ string awh::fmk::transcode(string_view text, const codepage_t from, const codepa
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3563,13 +3563,13 @@ string & awh::fmk::transform(string & text, const transform_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3656,13 +3656,13 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3834,13 +3834,13 @@ wstring awh::fmk::convert(string_view str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -3851,13 +3851,13 @@ wstring awh::fmk::convert(string_view str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3900,13 +3900,13 @@ string awh::fmk::convert(wstring_view str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -3917,13 +3917,13 @@ string awh::fmk::convert(wstring_view str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3966,13 +3966,13 @@ wstring awh::fmk::convert(const char * str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -3983,13 +3983,13 @@ wstring awh::fmk::convert(const char * str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4032,13 +4032,13 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -4049,13 +4049,13 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4098,13 +4098,13 @@ wstring awh::fmk::convert(const string & str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -4115,13 +4115,13 @@ wstring awh::fmk::convert(const string & str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4164,13 +4164,13 @@ string awh::fmk::convert(const wstring & str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -4181,13 +4181,13 @@ string awh::fmk::convert(const wstring & str) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4280,13 +4280,13 @@ size_t awh::fmk::size(const void * value, const size_t size) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4387,13 +4387,13 @@ bool awh::fmk::isGreater(const void * value1, const void * value2, const size_t 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value1, value2, size}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value1, value2, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4604,13 +4604,13 @@ string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size, static_cast <uint16_t> (radix)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value, size, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4890,13 +4890,13 @@ void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::print("%s", log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						#endif
 					}
 				}
@@ -4912,13 +4912,13 @@ void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5196,13 +5196,13 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::print("%s", log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						#endif
 					}
 				}
@@ -5218,13 +5218,13 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5264,13 +5264,13 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {number, static_cast <uint8_t> (step)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {number, static_cast <uint16_t> (step)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5315,13 +5315,13 @@ string awh::fmk::noexp(const double number, const bool onlyNum) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {number, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {number, onlyNum}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Если запись числа выполнить не удалось
@@ -5490,13 +5490,13 @@ float awh::fmk::rate(const float a, const float b) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {a, b}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {a, b}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 		// Возвращаем пустой результат
 		return .0f;
@@ -5528,13 +5528,13 @@ double awh::fmk::floor(const double x, const uint8_t n) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {x, static_cast <uint8_t> (n)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {x, static_cast <uint16_t> (n)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем пустой результат
@@ -5774,13 +5774,13 @@ uint16_t awh::fmk::rome2arabic(string_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {word}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6021,13 +6021,13 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6075,13 +6075,13 @@ wstring awh::fmk::arabic2rome(const uint32_t number) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {number}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {number}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6117,13 +6117,13 @@ string awh::fmk::arabic2rome(string_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {word}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6159,13 +6159,13 @@ wstring awh::fmk::arabic2rome(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6230,13 +6230,13 @@ size_t awh::fmk::countLetter(string_view word, const wchar_t letter) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, letter}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {word, letter}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6280,13 +6280,13 @@ size_t awh::fmk::countLetter(wstring_view word, const wchar_t letter) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6357,13 +6357,13 @@ bool awh::fmk::isBit(const T pos, const T num) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -6440,13 +6440,13 @@ T awh::fmk::flipBit(const T pos, const T num) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -6523,13 +6523,13 @@ T awh::fmk::resetBit(const T pos, const T num) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -6606,13 +6606,13 @@ T awh::fmk::setBit(const T pos, const T num) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6709,13 +6709,13 @@ string awh::fmk::detail::formatted(const char * format, ...) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {format}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {format}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Завершаем список аргументов
@@ -6808,13 +6808,13 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Завершаем список аргументов
@@ -6968,13 +6968,13 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим формат как есть
@@ -7008,13 +7008,13 @@ wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим формат как есть
@@ -7051,13 +7051,13 @@ bool awh::fmk::exists(string_view word, string_view text) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {word, text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7095,13 +7095,13 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7146,13 +7146,13 @@ string & awh::fmk::replace(string & text, const string & word, const string & al
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, word, alt}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text, word, alt}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7197,13 +7197,13 @@ wstring & awh::fmk::replace(wstring & text, const wstring & word, const wstring 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7293,13 +7293,13 @@ unordered_multimap <string, string> awh::fmk::kv(string_view text, string_view d
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text, delim, separator, escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7339,13 +7339,13 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7384,13 +7384,13 @@ void awh::fmk::kv(const uint64_t sid, string_view text, string_view delim, funct
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {sid, text, delim, separator, escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7427,13 +7427,13 @@ void awh::fmk::kv(const uint64_t sid, wstring_view text, wstring_view delim, fun
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {sid, convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7524,13 +7524,13 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING, message.c_str());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, message.c_str());
+				log::print("%s", log::flag_t::WARNING, message.c_str());
 			#endif
 		}
 		/**
@@ -7611,13 +7611,13 @@ unordered_map <size_t, size_t> awh::fmk::urls(string_view text) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7783,13 +7783,13 @@ double awh::fmk::bytes(const string_view str) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7861,13 +7861,13 @@ string awh::fmk::bytes(const double value, const bool onlyNum) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value, onlyNum}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7972,13 +7972,13 @@ size_t awh::fmk::bpsSize(const string_view str) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -8105,13 +8105,13 @@ size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
