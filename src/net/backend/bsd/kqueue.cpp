@@ -323,7 +323,7 @@
  *
  * @details Имя у этого типа не общее для всех систем. macOS и FreeBSD выдают класс
  *          обслуживания сообщением IP_RECVTOS, а NetBSD и OpenBSD такого имени не
- *          знают вовсе - ни как опции сокета, ни как типа служебного сообщения
+ *          знают вовсе - ни как опции сокета, ни как типа служебного сообщения.
  *
  *          Разбор входящих служебных сообщений сличает тип с обоими именами, и на
  *          системах без второго имени сличение не собиралось бы. Здесь второе имя и
@@ -354,6 +354,16 @@
 	 *
 	 */
 	#define AWH_CMSG_RECVTOS IP_TOS
+#endif
+
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_KQUEUE_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_KQUEUE_INLINE inline __attribute__((always_inline))
 #endif
 
 /**
@@ -2269,6 +2279,8 @@ namespace io {
 		public:
 			// Флаги активированных событий
 			uint8_t activity;
+			// Число адресов назначения, уложенных в заявку подключения SCTP
+			uint8_t addresses;
 			// Метаданные последнего принятого RAW-пакета
 			raw_endpoint_t raw;
 			// Объект передачи данных
@@ -2373,8 +2385,7 @@ namespace io {
 			 *
 			 */
 			explicit Client() noexcept :
-			 activity(::activity::NONE),
-			 transfer(),
+			 activity(::activity::NONE), addresses(0),
 			 source(nullptr), target(nullptr) {}
 	} client_t;
 
@@ -2482,19 +2493,16 @@ namespace {
 	 *
 	 */
 	static uint8_t __awh_cmsgbuf__[0x200];
-
 	/**
 	 * @brief Нулевой MAC-адрес для сравнения
 	 *
 	 */
 	static uint8_t __awh_zero_mac__[6] = {0};
-
 	/**
 	 * @brief Нулевой IPv6-адрес для сравнения
 	 *
 	 */
 	static uint8_t __awh_zero_ipv6__[16] = {0};
-
 	/**
 	 * @brief Глобальный буфер временного хранения данных
 	 *
@@ -2511,13 +2519,12 @@ namespace {
 	 *          отмеряет затишье, по которому массив ужимается обратно.
 	 *
 	 */
-	size_t __awh_events_idle__ = 0;
-
+	static size_t __awh_events_idle__ = 0;
 	/**
 	 * @brief Текущий размер массива активных событий kqueue
 	 *
 	 */
-	size_t __awh_events_size__ = AWH_MAX_POLL_EVENTS_COUNT;
+	static size_t __awh_events_size__ = AWH_MAX_POLL_EVENTS_COUNT;
 
 	/**
 	 * @brief Глобальный массив активных событий kqueue
@@ -3256,7 +3263,7 @@ namespace fs {
 	 * @return      полная строка пути
 	 *
 	 */
-	static string fullpath(const string_view input) noexcept {
+	static AWH_KQUEUE_INLINE string fullpath(const string_view input) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3391,6 +3398,51 @@ namespace fs {
 		return AWH_FS_SEPARATOR;
 	}
 	/**
+	 * @brief Функция заполнения адреса UNIX-сокета из строки имени
+	 *
+	 * @details Ведущая собака в строке означает абстрактное имя: файла нет, имя
+	 *          живёт в пространстве ядра за нулевым первым октетом пути - ровно
+	 *          как печатает его парная функция ниже. Прочая строка остаётся
+	 *          файловым путём. Абстрактная форма несётся только ядром Linux;
+	 *          у прочих систем привязка к ней ответит отказом самой системы.
+	 *
+	 * @param addr  структура адреса для заполнения
+	 * @param input строка имени сокета
+	 * @return      фактическая длина структуры адреса либо 0 при негодной строке
+	 *
+	 */
+	static AWH_KQUEUE_INLINE socklen_t unixSocketAddress(struct sockaddr_un & addr, const string_view input) noexcept {
+		// Обнуляем всю структуру адреса
+		::memset(&addr, 0, sizeof(addr));
+		// Если строка имени пуста, выводим отказ
+		if(input.empty())
+			// Выводим отказ
+			return 0;
+		// Устанавливаем семейство UNIX-сокетов
+		addr.sun_family = AF_UNIX;
+		// Если строка несёт признак абстрактного имени
+		if(input.front() == '@'){
+			// Имя без ведущей собаки
+			const string_view name = input.substr(1);
+			// Если имя пусто либо не вмещается за нулевым октетом, выводим отказ
+			if(name.empty() || (name.length() >= sizeof(addr.sun_path)))
+				// Выводим отказ
+				return 0;
+			// Копируем имя за нулевой признак абстрактной формы
+			::memcpy(addr.sun_path + 1, name.data(), name.length());
+			// Выводим фактическую длину абстрактной формы
+			return (offsetof(struct sockaddr_un, sun_path) + 1 + static_cast <socklen_t> (name.length()));
+		}
+		// Если файловый путь не вмещается, выводим отказ
+		if(input.length() >= sizeof(addr.sun_path))
+			// Выводим отказ
+			return 0;
+		// Копируем файловый путь
+		::memcpy(addr.sun_path, input.data(), input.length());
+		// Выводим фактическую длину файловой формы
+		return (offsetof(struct sockaddr_un, sun_path) + static_cast <socklen_t> (input.length()));
+	}
+	/**
 	 * @brief Функция получения строки адреса UNIX-сокета
 	 *
 	 * @param addr структура параметров подключения инициатора запроса
@@ -3398,7 +3450,7 @@ namespace fs {
 	 * @return     строка адреса UNIX-сокета
 	 *
 	 */
-	static string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
+	static AWH_KQUEUE_INLINE string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
 		// Проверяем корректность длины структуры
 		if(size <= offsetof(struct sockaddr_un, sun_path))
 			// Возвращаем пустую строку
@@ -3746,9 +3798,9 @@ namespace {
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
 							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
+							 * Для операционной системы macOS
 							 */
-							#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+							#if defined(__APPLE__) || defined(__MACH__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							#endif
@@ -3861,16 +3913,183 @@ namespace bandwidth {
 };
 
 /**
- * @brief Предобъявление сноса узла события
- *
- * @note Нужно оно разбору отвергнутых ядром записей подписки: снос там зовётся при
- *       отказе окончательном, а само тело лежит много ниже
+ * @brief Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
  *
  */
 namespace io {
-	// Объявляем метод удаления узла события
-	static bool destroy(::io::node_t *, const awh::eth_t *) noexcept;
-}
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Прототип функции обработки события удаления узла
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool destroy(::io::node_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки пользовательского события
+	 *
+	 * @param  узел пользователя в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool user(::io::user_t *, const engine::io_t *) noexcept;
+	/**
+	 * @brief Прототип функции создания сокета события
+	 *
+	 * @param  узел для которого создаётся сокет
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат создания сокета
+	 *
+	 */
+	static bool socket(::io::node_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события ошибки
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  код ошибки
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool error(::io::node_t *, const int32_t) noexcept;
+	/**
+	 * @brief Прототип функции возврата неотданного остатка очереди потребителю
+	 *
+	 * @param  узел события
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void spill(::io::node_t *) noexcept;
+	/**
+	 * @brief Прототип функции обновления токенов ограничения пропускной способности
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  режим ограничения пропускной способности события (egress или ingress)
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool tokens(::io::node_t *, const event::limiting_t) noexcept;
+	/**
+	 * @brief Прототип функции прерывания ожидающего подключения клиента
+	 *
+	 * @param  узел клиента, подключение которого прерывается
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения прерывания
+	 *
+	 */
+	static bool abandon(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции отсрочки узла до пополнения общего ведра токенов
+	 *
+	 * @param  узел, подлежащий отсрочке
+	 * @param  режим ограничения пропускной способности (egress или ingress)
+	 * @param  время отсрочки в миллисекундах
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void postpone(::io::node_t *, const event::limiting_t, const uint32_t) noexcept;
+	/**
+	 * @brief Прототип функции обработки события изменения файла или каталога
+	 *
+	 * @param  узел каталога в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool change(::io::dir_t *, const engine::io_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события подключения
+	 *
+	 * @param  узел клиента в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события принятия подключения
+	 *
+	 * @param  узел сервера в котором произошло событие
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события записи
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool write(::io::node_t *, const engine::io_t *, const eth_t *) noexcept;
+	/**
+	 * @brief Прототип функции опроса событий
+	 *
+	 * @param  объект события kqueue
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr) noexcept;
+	/**
+	 * @brief Прототип функции обработки события чтения
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
+	 *
+	 * @param  узел сервера в котором произошло событие
+	 * @param  буфер данных подключения
+	 * @param  размер буфера данных подключения
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool origin(::io::server_t *, const uint8_t *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
+};
 
 /**
  * @brief Инкапсулируем статические объекты и переменные в локальное пространство имён
@@ -3997,7 +4216,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static event::id_t identifier() noexcept {
+	static AWH_KQUEUE_INLINE event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -4037,7 +4256,7 @@ namespace local {
 		 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
 		 *
 		 */
-		static uint64_t frequency() noexcept {
+		static AWH_KQUEUE_INLINE uint64_t frequency() noexcept {
 			// Частота счётчика системного таймера
 			uint64_t result = 0;
 			// Выполняем чтение частоты счётчика системного таймера
@@ -4055,7 +4274,7 @@ namespace local {
 		 * @return текущее показание счётчика в тактах
 		 *
 		 */
-		static inline uint64_t ticks() noexcept {
+		static AWH_KQUEUE_INLINE uint64_t ticks() noexcept {
 			// Текущее показание счётчика системного таймера
 			uint64_t result = 0;
 			// Выполняем чтение показания счётчика системного таймера
@@ -4063,7 +4282,6 @@ namespace local {
 			// Выводим текущее показание счётчика
 			return result;
 		}
-
 		/**
 		 * @brief Функция приведения показания счётчика к заданной доле секунды
 		 *
@@ -4077,7 +4295,7 @@ namespace local {
 		 * @return      время в заданных долях секунды
 		 *
 		 */
-		static inline uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
+		static AWH_KQUEUE_INLINE uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
 			// Выводим время, сложенное из целых секунд и остатка
 			return (((value / ::local::counter) * scale) + (((value % ::local::counter) * scale) / ::local::counter));
 		}
@@ -4089,7 +4307,7 @@ namespace local {
 	 * @return текущее время в наносекундах
 	 *
 	 */
-	static uint64_t nanostamp() noexcept {
+	static AWH_KQUEUE_INLINE uint64_t nanostamp() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 *
@@ -4154,11 +4372,36 @@ namespace local {
 	 * @return  минимальное значение из трёх аргументов
 	 *
 	 */
-	static A min(const A a, const B b, const C c) noexcept {
+	static constexpr A min(const A a, const B b, const C c) noexcept {
 		// Возвращаем минимальное значение из трёх аргументов
 		return (
 			((a < static_cast <A> (b)) ? ((a < static_cast <A> (c)) ? a : static_cast <A> (c)) :
 			((static_cast <A> (b) < static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
+		);
+	}
+	/**
+	 * @brief Шаблон функции получения максимального значения из трёх аргументов
+	 *
+	 * @tparam A тип данных первого аргумента
+	 * @tparam B тип данных второго аргумента
+	 * @tparam C тип данных третьего аргумента
+	 *
+	 */
+	template <typename A, typename B, typename C>
+	/**
+	 * @brief Функция получения максимального значения из трёх аргументов
+	 *
+	 * @param a первый аргумент
+	 * @param b второй аргумент
+	 * @param c третий аргумент
+	 * @return  максимальное значение из трёх аргументов
+	 *
+	 */
+	static constexpr A max(const A a, const B b, const C c) noexcept {
+		// Возвращаем максимальное значение из трёх аргументов
+		return (
+			((a > static_cast <A> (b)) ? ((a > static_cast <A> (c)) ? a : static_cast <A> (c)) :
+			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
 		);
 	}
 	/**
@@ -4204,7 +4447,7 @@ namespace local {
 	 * @return окно всплеска в долях секунды
 	 *
 	 */
-	static double window() noexcept {
+	static AWH_KQUEUE_INLINE double window() noexcept {
 		/**
 		 * @brief Функция вычисления окна всплеска по частоте тика ядра
 		 *
@@ -4271,7 +4514,7 @@ namespace local {
 	 * @return      предельный размер одной операции в октетах
 	 *
 	 */
-	static inline double burst(const uint64_t limit, const size_t mtu) noexcept {
+	static AWH_KQUEUE_INLINE double burst(const uint64_t limit, const size_t mtu) noexcept {
 		// Объём, который предел выдаёт за окно всплеска
 		const double slice = (static_cast <double> (limit) * ::local::window());
 		// Возвращаем больший из объёма окна и размера кадра
@@ -4292,7 +4535,7 @@ namespace local {
 	 * @return         время ожидания в миллисекундах, ноль - ожидание не требуется
 	 *
 	 */
-	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
+	static AWH_KQUEUE_INLINE uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
 		// Определяем, к какому направлению относится списание
 		const bool egress = (limiting == awh::event::limiting_t::EGRESS);
 		// Получаем предел выбранного направления
@@ -4344,31 +4587,6 @@ namespace local {
 		return ((delay > 1.) ? static_cast <uint32_t> (delay) : 1);
 	}
 	/**
-	 * @brief Шаблон функции получения максимального значения из трёх аргументов
-	 *
-	 * @tparam A тип данных первого аргумента
-	 * @tparam B тип данных второго аргумента
-	 * @tparam C тип данных третьего аргумента
-	 *
-	 */
-	template <typename A, typename B, typename C>
-	/**
-	 * @brief Функция получения максимального значения из трёх аргументов
-	 *
-	 * @param a первый аргумент
-	 * @param b второй аргумент
-	 * @param c третий аргумент
-	 * @return  максимальное значение из трёх аргументов
-	 *
-	 */
-	static A max(const A a, const B b, const C c) noexcept {
-		// Возвращаем максимальное значение из трёх аргументов
-		return (
-			((a > static_cast <A> (b)) ? ((a > static_cast <A> (c)) ? a : static_cast <A> (c)) :
-			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
-		);
-	}
-	/**
 	 * @brief Функция фиксации состояния событий
 	 *
 	 * @warning Довод `eth` нужен ТОЛЬКО невотладочной ветви ниже, где по неподъёмному
@@ -4383,7 +4601,7 @@ namespace local {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool commit([[maybe_unused]] const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool commit([[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -5292,7 +5510,7 @@ namespace events {
 	 *          не подкрепляет его, а отменяет
 	 *
 	 */
-	static void __drop__() noexcept {
+	static AWH_KQUEUE_INLINE void __drop__() noexcept {
 		// Снимаем признак отложенного взвода, так-как очередь сейчас будет от него очищена
 		::events::__awh_timer_deferred__ = false;
 		/**
@@ -5317,7 +5535,7 @@ namespace events {
 	 *          линеен по её длине.
 	 *
 	 */
-	static inline void drop() noexcept {
+	static AWH_KQUEUE_INLINE void drop() noexcept {
 		// Если отложенного взвода в очереди изменений нет, снимать нечего
 		if(::events::__awh_timer_deferred__)
 			// Выполняем снятие отложенного взвода из очереди изменений
@@ -5343,7 +5561,7 @@ namespace events {
 	 * @param fd закрываемый дескриптор
 	 *
 	 */
-	static void forget(const awh::net::socket_t fd) noexcept {
+	static AWH_KQUEUE_INLINE void forget(const awh::net::socket_t fd) noexcept {
 		// Если очередь изменений пуста, снимать нечего
 		if(::local::change.empty())
 			// Выходим из функции
@@ -5395,7 +5613,7 @@ namespace events {
 	 * @return       следует ли извещать потребителя
 	 *
 	 */
-	static inline bool reportable(const event::status_t status) noexcept {
+	static constexpr bool reportable(const event::status_t status) noexcept {
 		// Состояния служебные наружу не выдаются
 		return (
 			(status != event::status_t::INITIAL) &&
@@ -5421,7 +5639,7 @@ namespace events {
 	 * @param timer объект таймера
 	 *
 	 */
-	static void announce(::io::timer_t * timer) noexcept {
+	static AWH_KQUEUE_INLINE void announce(::io::timer_t * timer) noexcept {
 		// Если статусы события изменились
 		if((timer->state.status != timer->state.stash) && reportable(timer->state.status)){
 			// Если установлена функция обратного вызова
@@ -5438,7 +5656,7 @@ namespace events {
 	 * @param ev объект события для добавления
 	 *
 	 */
-	static void add(struct kevent && ev) noexcept {
+	static AWH_KQUEUE_INLINE void add(struct kevent && ev) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -5467,6 +5685,8 @@ namespace events {
 		// Если за событием стоит узел, а не внутренний таймер дедлайнов
 		if((node != nullptr) && (ev.udata != ::local::internal)){
 			/**
+			 * Если узел подлежит уничтожению
+			 *
 			 * @note Подписки по дескриптору для узла, помеченного на уничтожение,
 			 *       в список изменений не попадают. Его дескриптор к этому моменту
 			 *       уже закрыт, а освободившийся номер операционная система успевает
@@ -5476,7 +5696,6 @@ namespace events {
 			 *       дескриптору, и именно ими завершается уничтожение узла.
 			 *
 			 */
-			// Если узел подлежит уничтожению
 			if((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE)){
 				// Если подписка выполняется по дескриптору
 				if((ev.filter == EVFILT_READ) || (ev.filter == EVFILT_WRITE) || (ev.filter == EVFILT_VNODE))
@@ -5707,7 +5926,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
+	static AWH_KQUEUE_INLINE bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -5811,7 +6030,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
+	static AWH_KQUEUE_INLINE bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -5907,184 +6126,6 @@ namespace events {
 	}
 };
 
-/**
- * @brief Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
- *
- */
-namespace io {
-	/**
-	 * Используем пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Прототип функции обработки события удаления узла
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool destroy(::io::node_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки пользовательского события
-	 *
-	 * @param  узел пользователя в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool user(::io::user_t *, const engine::io_t *) noexcept;
-	/**
-	 * @brief Прототип функции создания сокета события
-	 *
-	 * @param  узел для которого создаётся сокет
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат создания сокета
-	 *
-	 */
-	static bool socket(::io::node_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события ошибки
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  код ошибки
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool error(::io::node_t *, const int32_t) noexcept;
-	/**
-	 * @brief Прототип функции возврата неотданного остатка очереди потребителю
-	 *
-	 * @param  узел события
-	 * @param  объект работы с логами
-	 *
-	 */
-	static void spill(::io::node_t *) noexcept;
-	/**
-	 * @brief Прототип функции обновления токенов ограничения пропускной способности
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  режим ограничения пропускной способности события (egress или ingress)
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool tokens(::io::node_t *, const event::limiting_t) noexcept;
-	/**
-	 * @brief Прототип функции прерывания ожидающего подключения клиента
-	 *
-	 * @param  узел клиента, подключение которого прерывается
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения прерывания
-	 *
-	 */
-	static bool abandon(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции отсрочки узла до пополнения общего ведра токенов
-	 *
-	 * @param  узел, подлежащий отсрочке
-	 * @param  режим ограничения пропускной способности (egress или ingress)
-	 * @param  время отсрочки в миллисекундах
-	 * @param  объект работы с логами
-	 *
-	 */
-	static void postpone(::io::node_t *, const event::limiting_t, const uint32_t) noexcept;
-	/**
-	 * @brief Прототип функции обработки события изменения файла или каталога
-	 *
-	 * @param  узел каталога в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool change(::io::dir_t *, const engine::io_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события подключения
-	 *
-	 * @param  узел клиента в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события принятия подключения
-	 *
-	 * @param  узел сервера в котором произошло событие
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события записи
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool write(::io::node_t *, const engine::io_t *, const eth_t *) noexcept;
-	/**
-	 * @brief Прототип функции опроса событий
-	 *
-	 * @param  объект события kqueue
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr) noexcept;
-	/**
-	 * @brief Прототип функции обработки события чтения
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
-	/**
-	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
-	 *
-	 * @param  узел сервера в котором произошло событие
-	 * @param  буфер данных подключения
-	 * @param  размер буфера данных подключения
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool origin(::io::server_t *, const uint8_t *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *) noexcept;
-};
 /**
  * @brief Инкапсулируем статические прототипы функций в пространство имён асинхронного движка
  *
@@ -6234,7 +6275,7 @@ namespace handoff {
 	 * @return выданная метка передачи
 	 *
 	 */
-	static uint64_t label() noexcept {
+	static AWH_KQUEUE_INLINE uint64_t label() noexcept {
 		// Счётчик выданных меток передачи
 		static uint64_t counter = 0;
 		// Выводим метку передачи, собранную из номера процесса и счётчика
@@ -6248,7 +6289,7 @@ namespace handoff {
 	 * @param label метка передачи
 	 *
 	 */
-	static void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
+	static AWH_KQUEUE_INLINE void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
 		/**
 		 * @warning Описатель УДВАИВАЕТСЯ, а не запоминается как есть. Отметка живёт до
 		 *          ближайшего исходящего сообщения переносчика, а настоящий `sendmsg`
@@ -6291,7 +6332,7 @@ namespace handoff {
 	 * @param id идентификатор узла-переносчика
 	 *
 	 */
-	static void forget(const event::id_t id) noexcept {
+	static AWH_KQUEUE_INLINE void forget(const event::id_t id) noexcept {
 		// Выполняем поиск отметок отложенной передачи узла
 		auto i = ::handoff::__awh_outgoing__.find(id);
 		// Если отметок у узла нет, снимать нечего
@@ -6335,7 +6376,7 @@ namespace handoff {
 	 * @return       количество отправленных октетов
 	 *
 	 */
-	static ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size) noexcept {
+	static AWH_KQUEUE_INLINE ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если узел ведёт обмен именованным каналом - пишем в него записью, а не отправкой
 		 *
@@ -6353,6 +6394,33 @@ namespace handoff {
 			// Выполняем запись данных в канал
 			return ::write(fd, reinterpret_cast <const uint8_t *> (buffer), size);
 		/**
+		 * Флаги отправки сообщения
+		 *
+		 * @details FreeBSD, DragonFly, NetBSD и OpenBSD очерчивают запись домена UNIX
+		 *          вида SEQPACKET флагом MSG_EOR - посылка без флага границы НЕ ставит,
+		 *          и очереденные посылки сливаются в одну запись. Замер щупом 27.10.2026:
+		 *          100+7 без флагов пришли одним приёмом 107, с флагом - двумя записями
+		 *          ровно. Движок шлёт одну запись одним обращением, оттого флаг ставится
+		 *          всякий раз; SCTP-узлы пути не касаются - их отправка ходит своим
+		 *          вызовом с метаданными ассоциации, подменённые дейтаграммные узлы
+		 *          семейством IP флагом не награждаются. macOS вида не несёт вовсе,
+		 *          Linux флаг принимает молча.
+		 *
+		 */
+		#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
+			// Собираем флаги отправки: запись SEQPACKET домена UNIX очерчивается флагом MSG_EOR
+			const int32_t flags = (
+				MSG_NOSIGNAL | (((node->state.family == event::family_t::UDS) &&
+				(node->state.type == event::type_t::SEQPACKET)) ? MSG_EOR : 0)
+			);
+		/**
+		 * Прочие операционные системы записи флагом не очерчивают
+		 */
+		#else
+			// Прочим системам записи флагом очерчивать не нужно
+			const int32_t flags = MSG_NOSIGNAL;
+		#endif
+		/**
 		 * Если отложенная передача не ведётся либо узел не именованного канала
 		 *
 		 * @note Обход этот стоит одного сравнения и стоит здесь намеренно: путь этот
@@ -6362,13 +6430,13 @@ namespace handoff {
 		 */
 		if((::handoff::__awh_deferred__ == 0) || (node->state.family != event::family_t::UDS))
 			// Выполняем отправку данных обычным способом
-			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, flags);
 		// Выполняем поиск отметок отложенной передачи узла
 		auto i = ::handoff::__awh_outgoing__.find(node->id);
 		// Если отметок нет, отправка идёт обычным путём
 		if((i == ::handoff::__awh_outgoing__.end()) || i->second.empty())
 			// Выполняем отправку данных обычным способом
-			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, flags);
 		// Количество описателей, уходящих этим сообщением
 		const size_t count = ((i->second.size() < ::handoff::MAX_DESCRIPTORS) ? i->second.size() : ::handoff::MAX_DESCRIPTORS);
 		// Буфер служебных данных сообщения
@@ -6414,12 +6482,9 @@ namespace handoff {
 		 */
 		errno = 0;
 		// Выполняем отправку данных вместе с описателями
-		const ssize_t bytes = ::sendmsg(fd, &message, MSG_NOSIGNAL);
+		const ssize_t bytes = ::sendmsg(fd, &message, flags);
 		// Если сообщение ушло, снимаем отметки об уехавших описателях
 		if(bytes > 0){
-			/**
-			 * Снимаем отметки об уехавших описателях
-			 */
 			/**
 			 * Закрываем уехавшие КОПИИ описателей: встречная сторона получила свои
 			 *
@@ -6447,6 +6512,37 @@ namespace handoff {
 		return bytes;
 	}
 	/**
+	 * @brief Функция разбора приехавших описателей из служебных данных сообщения
+	 *
+	 * @details Служит обоим приёмам разом - основному и дочитке хвоста записи, -
+	 *          оттого и вынесена: разъедись они, описатели куска хвоста терялись
+	 *          бы молча.
+	 *
+	 * @param message принятое сообщение с его служебными данными
+	 * @param carrier узел-переносчик, которым описатели приехали
+	 *
+	 */
+	static AWH_KQUEUE_INLINE void collect(struct msghdr & message, const event::id_t carrier) noexcept {
+		/**
+		 * Перебираем все служебные данные принятого сообщения
+		 */
+		for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+			// Если служебные данные несут описатели
+			if((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_RIGHTS)){
+				// Вычисляем количество приехавших описателей
+				const size_t count = ((cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int32_t));
+				// Получаем приехавшие описатели
+				const int32_t * source = reinterpret_cast <const int32_t *> (CMSG_DATA(cmsg));
+				/**
+				 * Складываем приехавшие описатели в порядке их прибытия
+				 */
+				for(size_t index = 0; index < count; index++)
+					// Складываем очередной приехавший описатель вместе с переносчиком
+					::handoff::__awh_incoming__.push_back(::handoff::arrived_t{carrier, static_cast <net::socket_t> (source[index])});
+			}
+		}
+	}
+	/**
 	 * @brief Шаблон функции приёма данных вместе с приехавшими описателями
 	 *
 	 * @tparam T тип узла события
@@ -6467,7 +6563,7 @@ namespace handoff {
 	 * @return       количество принятых октетов
 	 *
 	 */
-	static ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size) noexcept {
+	static AWH_KQUEUE_INLINE ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size) noexcept {
 		/**
 		 * Если узел ведёт обмен именованным каналом - читаем его чтением, а не приёмом
 		 *
@@ -6535,24 +6631,69 @@ namespace handoff {
 			if(message.msg_flags & MSG_CTRUNC)
 				// Записываем ошибку в лог
 				log::print("descriptor handover: control data was truncated by the kernel", log::flag_t::CRITICAL);
-			/**
-			 * Перебираем все служебные данные принятого сообщения
-			 */
-			for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
-				// Если служебные данные несут описатели
-				if((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_RIGHTS)){
-					// Вычисляем количество приехавших описателей
-					const size_t count = ((cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int32_t));
-					// Получаем приехавшие описатели
-					const int32_t * source = reinterpret_cast <const int32_t *> (CMSG_DATA(cmsg));
-					/**
-					 * Складываем приехавшие описатели в порядке их прибытия
-					 */
-					for(size_t index = 0; index < count; index++)
-						// Складываем очередной приехавший описатель вместе с переносчиком
-						::handoff::__awh_incoming__.push_back(::handoff::arrived_t{node->id, static_cast <net::socket_t> (source[index])});
+			// Складываем приехавшие описатели в порядке их прибытия
+			::handoff::collect(message, node->id);
+		 /**
+		 * Дочитываем запись до её границы, если она не уместилась в буфер целиком
+		 *
+		 * @details Границу записи эти системы отдают флагом MSG_EOR, и приём без
+		 *          флага значит, что запись продолжается. Хвост дочитывается и
+		 *          ОТБРАСЫВАЕТСЯ: буфер движка задаёт предельный объём сообщения,
+		 *          и запись сверх него обрезается - в точности то, что ядро Linux
+		 *          делает с такой записью само. Отдать хвост отдельным откликом
+		 *          было бы подлогом: потребитель увидел бы одну отправку многими
+		 *          сообщениями
+		 *
+		 * @note Прерваться дочитка может лишь на исчерпании данных: переполнение
+		 *       буфера сокета конечно, и бесконечной она быть не может
+		 *
+		 */
+		#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
+			// Дочитываем запись до её границы, если она не уместилась в буфер целиком
+			if((node->state.family == event::family_t::UDS) && (node->state.type == event::type_t::SEQPACKET) && !(message.msg_flags & MSG_EOR) && (bytes > 0) && (static_cast <size_t> (bytes) == size)){
+				// Буфер дочитки хвоста записи
+				uint8_t tail[4096];
+				/**
+				 * Дочитываем хвост записи кусок за куском до границы
+				 */
+				for(;;){
+					// Буфер служебных данных очередного куска
+					uint8_t control[CMSG_SPACE(sizeof(int32_t) * ::handoff::MAX_DESCRIPTORS)];
+					// Заполняем буфер служебных данных нулями
+					::memset(control, 0, sizeof(control));
+					// Объект принимаемого куска хвоста
+					struct msghdr extra;
+					// Заполняем объект принимаемого куска нулями
+					::memset(&extra, 0, sizeof(extra));
+					// Объект блока данных куска
+					struct iovec iov;
+					// Устанавливаем буфер данных куска
+					iov.iov_base = tail;
+					// Устанавливаем размер данных куска
+					iov.iov_len = sizeof(tail);
+					// Устанавливаем блок данных куска
+					extra.msg_iov = &iov;
+					// Устанавливаем количество блоков данных куска
+					extra.msg_iovlen = 1;
+					// Устанавливаем буфер служебных данных куска
+					extra.msg_control = control;
+					// Устанавливаем размер служебных данных куска
+					extra.msg_controllen = sizeof(control);
+					// Выполняем приём куска хвоста без ожидания данных
+					const ssize_t chunk = ::recvmsg(fd, &extra, MSG_DONTWAIT);
+					// Если куска нет либо приём отказал - хвост дочитывать нечего
+					if(chunk <= 0)
+						// Прекращаем дочитку
+						break;
+					// Складываем описатели, приехавшие с куском хвоста
+					::handoff::collect(extra, node->id);
+					// Если кусок принёс границу записи - хвост дочитан целиком
+					if(extra.msg_flags & MSG_EOR)
+						// Прекращаем дочитку
+						break;
 				}
 			}
+		#endif
 		}
 		// Выводим количество принятых октетов
 		return bytes;
@@ -6565,7 +6706,7 @@ namespace handoff {
 	 *          иначе они текут.
 	 *
 	 */
-	static void disband() noexcept {
+	static AWH_KQUEUE_INLINE void disband() noexcept {
 		/**
 		 * Перебираем все придержанные описатели
 		 */
@@ -6586,7 +6727,6 @@ namespace handoff {
 		for(auto & item : ::handoff::__awh_outgoing__){
 			/**
 			 * Перебираем отметки отложенной передачи узла
-			 *
 			 */
 			for(auto & pending : item.second)
 				// Закрываем копию описателя
@@ -6661,7 +6801,7 @@ namespace timer {
 		 * @return идентификатор источника монотонного времени
 		 *
 		 */
-		static clockid_t monotonic() noexcept {
+		static AWH_KQUEUE_INLINE clockid_t monotonic() noexcept {
 			// Частота системного таймера
 			int32_t hz = 0;
 			// Размер получаемого значения
@@ -6684,7 +6824,7 @@ namespace timer {
 	 * @return текущее время в миллисекундах
 	 *
 	 */
-	static uint64_t timestamp() noexcept {
+	static AWH_KQUEUE_INLINE uint64_t timestamp() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 *
@@ -6784,7 +6924,7 @@ namespace timer {
 	 *          ещё не начался. Снятое здесь значение обслуживает весь оборот целиком.
 	 *
 	 */
-	static void capture() noexcept {
+	static AWH_KQUEUE_INLINE void capture() noexcept {
 		// Снимаем слепок времени для текущего оборота цикла событий
 		snapshot = timestamp();
 	}
@@ -6798,7 +6938,7 @@ namespace timer {
 	 *          по слепку, состарившемуся на длительность разбора событий.
 	 *
 	 */
-	static void release() noexcept {
+	static AWH_KQUEUE_INLINE void release() noexcept {
 		// Сбрасываем слепок времени прошедшего оборота цикла событий
 		snapshot = 0;
 	}
@@ -6822,7 +6962,7 @@ namespace timer {
 	 * @return  текущее время в миллисекундах
 	 *
 	 */
-	static uint64_t now() noexcept {
+	static AWH_KQUEUE_INLINE uint64_t now() noexcept {
 		// Отдаём слепок оборота, а вне оборота обращаемся к часам напрямую
 		return ((snapshot != 0) ? snapshot : timestamp());
 	}
@@ -6916,7 +7056,7 @@ namespace timer {
 	 * @param deadline срок истечения снимаемого ожидания
 	 *
 	 */
-	static inline void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
+	static AWH_KQUEUE_INLINE void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
 		// Запоминаем идентификатор события, чей срок снимается
 		__awh_continued__.did = eid;
 		// Запоминаем идентификатор самого снимаемого срока
@@ -6932,7 +7072,6 @@ namespace timer {
 		 */
 		__awh_continued__.left = ((deadline > now) ? (deadline - now) : 0);
 	}
-
 	/**
 	 * @brief Функция получения остатка снятого срока ожидания
 	 *
@@ -6941,7 +7080,7 @@ namespace timer {
 	 * @return    остаток срока в миллисекундах, либо ноль, если запись чужая
 	 *
 	 */
-	static inline uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_KQUEUE_INLINE uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если запись принадлежит иному событию либо иному сроку, остатка нет
 		if((__awh_continued__.did != eid) || (__awh_continued__.dtid != tid))
 			// Выводим отсутствие остатка
@@ -6968,7 +7107,6 @@ namespace timer {
 		// Выводим запомненный остаток срока
 		return result;
 	}
-
 	/**
 	 * @brief Функция отметки о продолжении ожидания
 	 *
@@ -6976,13 +7114,12 @@ namespace timer {
 	 * @param eid идентификатор события, чьё ожидание продолжается
 	 *
 	 */
-	static inline void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_KQUEUE_INLINE void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Запоминаем идентификатор события, чьё ожидание продолжается
 		__awh_continued__.eid = eid;
 		// Запоминаем идентификатор самого продолжаемого срока
 		__awh_continued__.tid = tid;
 	}
-
 	/**
 	 * @brief Функция снятия отметки о продолжении ожидания
 	 *
@@ -6994,7 +7131,7 @@ namespace timer {
 	 * @return    была ли отметка выставлена для этого срока этого события
 	 *
 	 */
-	static inline bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_KQUEUE_INLINE bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если отметка принадлежит иному событию либо иному сроку
 		if((__awh_continued__.eid != eid) || (__awh_continued__.tid != tid))
 			// Выводим отсутствие отметки
@@ -7006,7 +7143,6 @@ namespace timer {
 		// Выводим наличие отметки
 		return true;
 	}
-
 	/**
 	 * @brief Инкапсулируем статические функции в пространство имён простого таймера
 	 *
@@ -7064,7 +7200,7 @@ namespace timer {
 		 * @brief Структура для хранения уникального ключа таймера
 		 *
 		 */
-		struct Key {
+		typedef struct Key {
 			// Упакованный 64-битный ключ, содержащий идентификатор таймера и идентификатор события
 			uint64_t packed = 0;
 			/**
@@ -7085,9 +7221,9 @@ namespace timer {
 			 * @param eid идентификатор события для которого устанавливается таймер
 			 *
 			 */
-			Key(const uint8_t id, const event::id_t eid) noexcept :
+			explicit Key(const uint8_t id, const event::id_t eid) noexcept :
 			 packed((static_cast <uint64_t> (eid) << 8) | id) {}
-		};
+		} key_t;
 
 		/**
 		 * @brief Структура для хеширования ключа таймера в unordered_map
@@ -7123,7 +7259,7 @@ namespace timer {
 		 * @brief Структура для хранения информации о таймере
 		 *
 		 */
-		struct Timer {
+		typedef struct Timer {
 			// Идентификатор таймера (для внутреннего использования)
 			uint8_t id = 0;
 			// Идентификатор события для которого установлен таймер
@@ -7149,7 +7285,7 @@ namespace timer {
 				// Проверяем третью уникальность по идентификатору таймера
 				return (this->id < timer.id);
 			}
-		};
+		} timer_t;
 
 		// ─────────────────────────────────────────────────────────────
 		// Глобальное состояние (internal linkage)
@@ -7159,13 +7295,13 @@ namespace timer {
 		 * @brief Приоритетная очередь для хранения таймеров, отсортированных по сроку истечения (наименьший срок истечения имеет наивысший приоритет)
 		 *
 		 */
-		static set <Timer> __awh_heap__;
+		static set <timer_t> __awh_heap__;
 
 		/**
 		 * @brief Список активных таймеров, ожидающих истечения
 		 *
 		 */
-		static unordered_map <Key, set <Timer>::iterator, Hash> __awh_lookup__;
+		static unordered_map <key_t, set <timer_t>::iterator, Hash> __awh_lookup__;
 
 		// ─────────────────────────────────────────────────────────────
 		// Внутренние утилиты (не экспортируются)
@@ -7177,7 +7313,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 *
 		 */
-		static void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static AWH_KQUEUE_INLINE void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7301,7 +7437,6 @@ namespace timer {
 				#endif
 			}
 		}
-
 		/**
 		 * @brief Функция перезапуска таймера ядра операционной системы, если ближайший дедлайн изменился
 		 *
@@ -7323,7 +7458,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static AWH_KQUEUE_INLINE void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -7351,38 +7486,35 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		[[maybe_unused]] static bool empty() noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
-
 		/**
 		 * @brief Функция получения количества активных таймеров (для метрик)
 		 *
 		 * @return количество активных таймеров
 		 *
 		 */
-		[[maybe_unused]] static size_t size() noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
-
 		/**
 		 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 		 *
 		 * @return UINT64_MAX если очередь пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static uint64_t deadline() noexcept {
+		static AWH_KQUEUE_INLINE uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если очередь пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__.begin()->deadline);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static void clear() noexcept {
+		static AWH_KQUEUE_INLINE void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем список активных таймеров
@@ -7390,7 +7522,6 @@ namespace timer {
 			// Снимаем запомненный срок истечения, так-как взводить теперь нечего
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция снятия отметки о взведённом таймере ядра операционной системы
 		 *
@@ -7400,11 +7531,10 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static void disarm() noexcept {
+		static AWH_KQUEUE_INLINE void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция взвода таймера ядра операционной системы на ближайший срок истечения
 		 *
@@ -7415,11 +7545,10 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static void rearm(const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция для отмены таймера
 		 *
@@ -7427,11 +7556,11 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 			// Если таймаут ожидания уже активирован для данного события
 			if(tm.status == event::status_t::PENDING){
 				// Ищем таймер в списке активных таймеров по ключу таймера
-				if(auto i = __awh_lookup__.find({tm.id, eid}); i != __awh_lookup__.end()){
+				if(auto i = __awh_lookup__.find(key_t{tm.id, eid}); i != __awh_lookup__.end()){
 					// Снимаем статус таймаута (отключаем таймер)
 					tm.status = event::status_t::NONE;
 					// Запоминаем остаток снимаемого срока, чтобы ожидание можно было продолжить
@@ -7454,7 +7583,6 @@ namespace timer {
 				} else tm.status = event::status_t::NONE;
 			}
 		}
-
 		/**
 		 * @brief Функция перевзведения уже поставленного таймера
 		 *
@@ -7471,13 +7599,13 @@ namespace timer {
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
 				return false;
 			// Ищем таймер в списке активных таймеров по ключу таймера
-			auto i = __awh_lookup__.find({tm.id, eid});
+			auto i = __awh_lookup__.find(key_t{tm.id, eid});
 			// Если таймер в списке активных не найден
 			if(i == __awh_lookup__.end())
 				// Выводим отрицательный результат
@@ -7505,7 +7633,6 @@ namespace timer {
 			// Выводим положительный результат
 			return true;
 		}
-
 		/**
 		 * @brief Функция отмены двух таймеров
 		 *
@@ -7514,13 +7641,12 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
 			cancel(tm2, eid);
 		}
-
 		/**
 		 * @brief Функция отмены трёх таймеров
 		 *
@@ -7530,7 +7656,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -7538,7 +7664,6 @@ namespace timer {
 			// Отменяем третий таймер для данного события, так-как он больше не нужен
 			cancel(tm3, eid);
 		}
-
 		/**
 		 * @brief Функция отмены четырёх таймеров
 		 *
@@ -7549,7 +7674,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -7559,7 +7684,6 @@ namespace timer {
 			// Отменяем четвёртый таймер для данного события, так-как он больше не нужен
 			cancel(tm4, eid);
 		}
-
 		/**
 		 * @brief Функция отмены пяти таймеров
 		 *
@@ -7571,7 +7695,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -7583,7 +7707,6 @@ namespace timer {
 			// Отменяем пятый таймер для данного события, так-как он больше не нужен
 			cancel(tm5, eid);
 		}
-
 		/**
 		 * @brief Функция отмены шести таймеров
 		 *
@@ -7596,7 +7719,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -7610,7 +7733,6 @@ namespace timer {
 			// Отменяем шестой таймер для данного события, так-как он больше не нужен
 			cancel(tm6, eid);
 		}
-
 		/**
 		 * @brief Функция постановки дедлайна
 		 *
@@ -7620,7 +7742,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7648,7 +7770,7 @@ namespace timer {
 									// Если таймер был успешно вставлен
 									if(inserted)
 										// Обновляем список активных таймеров
-										__awh_lookup__[{tm.id, eid}] = iter;
+										__awh_lookup__[key_t{tm.id, eid}] = iter;
 								} break;
 								// Если таймаут ожидания уже активирован для данного события
 								case static_cast <uint8_t> (event::status_t::PENDING): {
@@ -7715,7 +7837,6 @@ namespace timer {
 				#endif
 			}
 		}
-
 		/**
 		 * @brief Функция установки таймера
 		 *
@@ -7733,7 +7854,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -7741,7 +7862,6 @@ namespace timer {
 			// Выполняем постановку дедлайна
 			__set__(tm, eid, flag, rate);
 		}
-
 		/**
 		 * @brief Функция установки одного таймера
 		 *
@@ -7750,7 +7870,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -7763,7 +7883,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки двух таймеров
 		 *
@@ -7773,7 +7892,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7788,7 +7907,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки трёх таймеров
 		 *
@@ -7799,7 +7917,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7816,7 +7934,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки четырёх таймеров
 		 *
@@ -7828,7 +7945,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7847,7 +7964,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки пяти таймеров
 		 *
@@ -7860,7 +7976,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7881,7 +7997,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки шести таймеров
 		 *
@@ -7895,7 +8010,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7918,7 +8033,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция проверки истечения таймера
 		 *
@@ -7929,7 +8043,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+		static AWH_KQUEUE_INLINE bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7958,7 +8072,7 @@ namespace timer {
 					// Удаляем таймер из приоритетной очереди таймеров
 					__awh_heap__.erase(i);
 					// Удаляем таймер из списка активных таймеров
-					__awh_lookup__.erase({timer.id, timer.eid});
+					__awh_lookup__.erase(key_t{timer.id, timer.eid});
 					// Выполняем поиск узла в глобальном списке узлов событий
 					auto j = ::__awh_nodes__.find(timer.eid);
 					// Если узел найден в куче
@@ -8069,8 +8183,7 @@ namespace timer {
 										 *          глохнет навсегда. Замерено: приёмник переставал читать,
 										 *          и последний блок очереди не доходил вовсе
 										 *
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -8601,25 +8714,25 @@ namespace timer {
 		 * @brief Структура чанка для lookup: [смещение_eid][id_таймера] → индекс в куче
 		 *
 		 */
-		struct Chunk {
+		typedef struct Chunk {
 			// Сколько активных таймеров в чанке
 			uint32_t count = 0;
 			// Слоты, значение -1 = нет таймера
 			int32_t slots[AWH_CHUNK_EIDS_INTERNAL_TIMER][AWH_COUNT_IDS_INTERNAL_TIMER];
-		};
+		} chunk_t;
 
 		/**
 		 * @brief Структура для хранения информации о таймере
 		 *
 		 */
-		struct Timer {
+		typedef struct Timer {
 			// Идентификатор таймера (для внутреннего использования)
 			uint8_t id = 0;
 			// Идентификатор события для которого установлен таймер
 			event::id_t eid = 0;
 			// Срок истечения таймера в миллисекундах
 			uint64_t deadline = 0;
-		};
+		} timer_t;
 
 		// ─────────────────────────────────────────────────────────────
 		// Глобальное состояние (internal linkage)
@@ -8629,19 +8742,19 @@ namespace timer {
 		 * @brief Бинарная куча по deadline
 		 *
 		 */
-		static vector <Timer> __awh_heap__;
+		static vector <timer_t> __awh_heap__;
 
 		/**
 		 * @brief Карта чанков: индекс = (eid / AWH_CHUNK_EIDS_INTERNAL_TIMER)
 		 *
 		 */
-		static vector <unique_ptr <Chunk>> __awh_chunks__;
+		static vector <unique_ptr <chunk_t>> __awh_chunks__;
 
 		/**
 		 * @brief Пул освобождённых чанков (переиспользование)
 		 *
 		 */
-		static vector <unique_ptr <Chunk>> __awh_chunk_pool__;
+		static vector <unique_ptr <chunk_t>> __awh_chunk_pool__;
 
 		// ─────────────────────────────────────────────────────────────
 		// Внутренние утилиты (не экспортируются)
@@ -8654,7 +8767,7 @@ namespace timer {
 		 * @return    объект чанка для данного события
 		 *
 		 */
-		static Chunk * __get_chunk__(const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE chunk_t * __get_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, расширяем его
@@ -8668,7 +8781,7 @@ namespace timer {
 				// Если пул чанков пуст, создаём новый чанк
 				if(__awh_chunk_pool__.empty()){
 					// Создаём новый чанк для хранения информации о таймерах
-					chunk = make_unique <Chunk> ();
+					chunk = make_unique <chunk_t> ();
 					/**
 					 * Перебираем все слоты в чанке
 					 */
@@ -8702,14 +8815,13 @@ namespace timer {
 			// Возвращаем объект чанка для данного индекса
 			return chunk.get();
 		}
-
 		/**
 		 * @brief Функция освобождения чанка, если в нём нет активных таймеров, с возвратом в пул для переиспользования
 		 *
 		 * @param eid идентификатор события
 		 *
 		 */
-		static void __try_release_chunk__(const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void __try_release_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка меньше размера вектора чанков, проверяем его на возможность освобождения
@@ -8722,12 +8834,11 @@ namespace timer {
 					__awh_chunk_pool__.push_back(::move(ptr));
 			}
 		}
-
 		/**
 		 * @brief Функция освобождения всех пустых чанков с возвратом в пул для переиспользования
 		 *
 		 */
-		static void __release_empty_chunks__() noexcept {
+		static AWH_KQUEUE_INLINE void __release_empty_chunks__() noexcept {
 			/**
 			 * Перебираем все активные чанки
 			 */
@@ -8738,7 +8849,6 @@ namespace timer {
 					__awh_chunk_pool__.push_back(::move(ptr));
 			}
 		}
-
 		/**
 		 * @brief Функция обновления индекса таймера в слоте чанка
 		 *
@@ -8746,7 +8856,7 @@ namespace timer {
 		 * @param idx   индекс таймера в куче
 		 *
 		 */
-		static void __set_slot__(const Timer & timer, const int32_t idx) noexcept {
+		static AWH_KQUEUE_INLINE void __set_slot__(const timer_t & timer, const int32_t idx) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (timer.eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, слот обновить нельзя
@@ -8762,7 +8872,6 @@ namespace timer {
 			// Вычисляем смещение внутри чанка и сохраняем индекс таймера в куче
 			ptr->slots[(timer.eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1))][timer.id] = idx;
 		}
-
 		/**
 		 * @brief Функция обмена двух элементов кучи с синхронизацией слотов lookup
 		 *
@@ -8770,21 +8879,20 @@ namespace timer {
 		 * @param b индекс второго элемента в куче
 		 *
 		 */
-		static void __swap_heap__(const int32_t a, const int32_t b) noexcept {
+		static AWH_KQUEUE_INLINE void __swap_heap__(const int32_t a, const int32_t b) noexcept {
 			// Обмениваем два элемента в куче
 			::swap(__awh_heap__[a], __awh_heap__[b]);
 			// Синхронизируем индексы обоих таймеров в слотах чанков
 			__set_slot__(__awh_heap__[a], a);
 			__set_slot__(__awh_heap__[b], b);
 		}
-
 		/**
 		 * @brief Функция подъёма элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 		 *
 		 * @param index индекс элемента в куче
 		 *
 		 */
-		static void __sift_up__(int32_t index) noexcept {
+		static AWH_KQUEUE_INLINE void __sift_up__(const int32_t index) noexcept {
 			// Если элемент уже в корне, подниматься некуда
 			if(index <= 0)
 				// Выходим из функции
@@ -8801,7 +8909,7 @@ namespace timer {
 			 *          таблицу слотов и втрое по перемещениям элементов.
 			 *
 			 */
-			const Timer carried = __awh_heap__[index];
+			const timer_t carried = __awh_heap__[index];
 			// Индексы ямы и родительского элемента
 			int32_t hole = index, parent = 0;
 			/**
@@ -8832,14 +8940,13 @@ namespace timer {
 				__set_slot__(__awh_heap__[hole], hole);
 			}
 		}
-
 		/**
 		 * @brief Функция опускания элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера или удаления элемента
 		 *
 		 * @param index индекс элемента в куче
 		 *
 		 */
-		static void __sift_down__(int32_t index) noexcept {
+		static AWH_KQUEUE_INLINE void __sift_down__(int32_t index) noexcept {
 			// Получаем размер кучи, который будет использоваться для определения границ при опускании элемента вниз по куче
 			const int32_t size = static_cast <int32_t> (__awh_heap__.size());
 			// Если элемента с таким индексом в куче нет, опускать нечего
@@ -8853,7 +8960,7 @@ namespace timer {
 			 *          те же, что и при подъёме.
 			 *
 			 */
-			const Timer carried = __awh_heap__[index];
+			const timer_t carried = __awh_heap__[index];
 			// Индексы ямы и выбранного потомка
 			int32_t hole = index, child = 0;
 			/**
@@ -8892,14 +8999,13 @@ namespace timer {
 				__set_slot__(__awh_heap__[hole], hole);
 			}
 		}
-
 		/**
 		 * @brief Функция для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
 		 *
 		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 *
 		 */
-		static void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static AWH_KQUEUE_INLINE void __reschedule_kernel_timer__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9023,7 +9129,6 @@ namespace timer {
 				#endif
 			}
 		}
-
 		/**
 		 * @brief Функция перезапуска таймера ядра операционной системы, если ближайший дедлайн изменился
 		 *
@@ -9045,7 +9150,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
+		static AWH_KQUEUE_INLINE void __rearm__(const event::rate_t rate, const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -9073,38 +9178,35 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		[[maybe_unused]] static bool empty() noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
-
 		/**
 		 * @brief Функция получения количества активных таймеров (для метрик)
 		 *
 		 * @return количество активных таймеров
 		 *
 		 */
-		[[maybe_unused]] static size_t size() noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
-
 		/**
 		 * @brief Функция инициализации подсистему таймеров
 		 *
 		 */
-		static void init() noexcept {
+		static AWH_KQUEUE_INLINE void init() noexcept {
 			// Выделяем память под пиковую нагрузку
 			__awh_heap__.reserve(AWH_HEAP_SIZE_INTERNAL_TIMER);
 			// Выделяем память под ~256k уникальных идентификаторов событий
 			__awh_chunks__.reserve(AWH_BATCH_SIZE_INTERNAL_TIMER);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static void clear() noexcept {
+		static AWH_KQUEUE_INLINE void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем карту активных чанков
@@ -9114,7 +9216,6 @@ namespace timer {
 			// Снимаем запомненный срок истечения, так-как взводить теперь нечего
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция снятия отметки о взведённом таймере ядра операционной системы
 		 *
@@ -9124,11 +9225,10 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static void disarm() noexcept {
+		static AWH_KQUEUE_INLINE void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция взвода таймера ядра операционной системы на ближайший срок истечения
 		 *
@@ -9139,31 +9239,28 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static void rearm(const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки пула чанков (вернуть память ОС)
 		 *
 		 */
-		static void shrink() noexcept {
+		static AWH_KQUEUE_INLINE void shrink() noexcept {
 			// Очищаем пул чанков, удаляя все объекты чанков и освобождая память, возвращая её операционной системе
 			__awh_chunk_pool__.clear();
 		}
-
 		/**
 		 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 		 *
 		 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static uint64_t deadline() noexcept {
+		static AWH_KQUEUE_INLINE uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__[0].deadline);
 		}
-
 		/**
 		 * @brief Функция для отмены таймера
 		 *
@@ -9171,7 +9268,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 			// Если таймаут ожидания уже активирован для данного события
 			if(tm.status == event::status_t::PENDING){
 				// Вычисляем индекс чанка для данного идентификатора события
@@ -9249,7 +9346,6 @@ namespace timer {
 				__rearm__(event::rate_t::INSTANT);
 			}
 		}
-
 		/**
 		 * @brief Функция перевзведения уже поставленного таймера
 		 *
@@ -9267,7 +9363,7 @@ namespace timer {
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
@@ -9319,7 +9415,6 @@ namespace timer {
 			// Выводим положительный результат
 			return true;
 		}
-
 		/**
 		 * @brief Функция отмены двух таймеров
 		 *
@@ -9328,13 +9423,12 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
 			cancel(tm2, eid);
 		}
-
 		/**
 		 * @brief Функция отмены трёх таймеров
 		 *
@@ -9344,7 +9438,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9352,7 +9446,6 @@ namespace timer {
 			// Отменяем третий таймер для данного события, так-как он больше не нужен
 			cancel(tm3, eid);
 		}
-
 		/**
 		 * @brief Функция отмены четырёх таймеров
 		 *
@@ -9363,7 +9456,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9373,7 +9466,6 @@ namespace timer {
 			// Отменяем четвёртый таймер для данного события, так-как он больше не нужен
 			cancel(tm4, eid);
 		}
-
 		/**
 		 * @brief Функция отмены пяти таймеров
 		 *
@@ -9385,7 +9477,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9397,7 +9489,6 @@ namespace timer {
 			// Отменяем пятый таймер для данного события, так-как он больше не нужен
 			cancel(tm5, eid);
 		}
-
 		/**
 		 * @brief Функция отмены шести таймеров
 		 *
@@ -9410,7 +9501,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static AWH_KQUEUE_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9424,7 +9515,6 @@ namespace timer {
 			// Отменяем шестой таймер для данного события, так-как он больше не нужен
 			cancel(tm6, eid);
 		}
-
 		/**
 		 * @brief Функция постановки дедлайна
 		 *
@@ -9434,7 +9524,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9469,7 +9559,7 @@ namespace timer {
 									// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
 									const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
 									// Получаем объект чанка для данного идентификатора события
-									Chunk * chunk = __get_chunk__(eid);
+									chunk_t * chunk = __get_chunk__(eid);
 									// Вычисляем смещение внутри чанка для данного идентификатора события
 									const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 									// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
@@ -9477,7 +9567,7 @@ namespace timer {
 									// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
 									if(index != -1){
 										// Таймер уже существует: обновляем дедлайн
-										Timer & timer = __awh_heap__[index];
+										timer_t & timer = __awh_heap__[index];
 										// Сохраняем старый дедлайн для оптимизации перестройки кучи
 										const uint64_t old = timer.deadline;
 										// Обновляем дедлайн таймера на новый рассчитанный дедлайн
@@ -9523,7 +9613,7 @@ namespace timer {
 						// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
 						const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
 						// Получаем объект чанка для данного идентификатора события
-						Chunk * chunk = __get_chunk__(eid);
+						chunk_t * chunk = __get_chunk__(eid);
 						// Вычисляем смещение внутри чанка для данного идентификатора события
 						const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 						// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
@@ -9531,7 +9621,7 @@ namespace timer {
 						// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
 						if(index != -1){
 							// Таймер уже существует: обновляем дедлайн
-							Timer & timer = __awh_heap__[index];
+							timer_t & timer = __awh_heap__[index];
 							// Сохраняем старый дедлайн для оптимизации перестройки кучи
 							const uint64_t old = timer.deadline;
 							// Обновляем дедлайн таймера на новый рассчитанный дедлайн
@@ -9583,7 +9673,6 @@ namespace timer {
 				#endif
 			}
 		}
-
 		/**
 		 * @brief Функция установки таймера
 		 *
@@ -9601,7 +9690,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -9609,7 +9698,6 @@ namespace timer {
 			// Выполняем постановку дедлайна
 			__set__(tm, eid, flag, rate);
 		}
-
 		/**
 		 * @brief Функция установки одного таймера
 		 *
@@ -9618,7 +9706,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -9631,7 +9719,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки двух таймеров
 		 *
@@ -9641,7 +9728,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9656,7 +9743,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки трёх таймеров
 		 *
@@ -9667,7 +9753,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9684,7 +9770,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки четырёх таймеров
 		 *
@@ -9696,7 +9781,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9715,7 +9800,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки пяти таймеров
 		 *
@@ -9728,7 +9812,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9749,7 +9833,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки шести таймеров
 		 *
@@ -9763,7 +9846,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static AWH_KQUEUE_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9786,7 +9869,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция проверки истечения таймера
 		 *
@@ -9797,7 +9879,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+		static AWH_KQUEUE_INLINE bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9820,7 +9902,7 @@ namespace timer {
 				 */
 				while(!__awh_heap__.empty() && (__awh_heap__[0].deadline <= moment)){
 					// Извлекаем таймер с истёкшим дедлайном из кучи
-					Timer timer = ::move(__awh_heap__[0]);
+					timer_t timer = ::move(__awh_heap__[0]);
 					// Вычисляем индекс чанка для данного идентификатора события
 					index = (timer.eid >> 10);
 					// Вычисляем смещение внутри чанка для данного идентификатора события
@@ -10478,7 +10560,6 @@ namespace sctp {
 	static constexpr size_t HEAD_SIZE = 24;
 	/**
 	 * Разряд признака незавершённости сообщения во флагах головы
-	 *
 	 */
 	[[maybe_unused]] static constexpr uint16_t HEAD_PARTIAL = 0x8000;
 
@@ -10498,7 +10579,7 @@ namespace sctp {
 		 * @param end    признак завершения сообщения на этом куске
 		 *
 		 */
-		static void encode(uint8_t * buffer, const struct sctp_sndrcvinfo & info, const bool end, const size_t length) noexcept {
+		static AWH_KQUEUE_INLINE void encode(uint8_t * buffer, const struct sctp_sndrcvinfo & info, const bool end, const size_t length) noexcept {
 			// Флаги отправки сообщения
 			uint16_t flags = static_cast <uint16_t> (info.sinfo_flags);
 			// Если сообщение на этом куске не завершается
@@ -10532,7 +10613,7 @@ namespace sctp {
 		 * @param end    признак завершения сообщения на этом куске
 		 *
 		 */
-		static void decode(const uint8_t * buffer, struct sctp_sndrcvinfo & info, bool & end, size_t & length) noexcept {
+		static AWH_KQUEUE_INLINE void decode(const uint8_t * buffer, struct sctp_sndrcvinfo & info, bool & end, size_t & length) noexcept {
 			// Флаги отправки сообщения
 			uint16_t flags = 0;
 			// Читаем длину полезной нагрузки записи
@@ -10573,7 +10654,7 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool retriable([[maybe_unused]] T * node) noexcept {
+	static constexpr bool retriable([[maybe_unused]] T * node) noexcept {
 		/**
 		 * Определяем возникшую ошибку
 		 */
@@ -10619,7 +10700,7 @@ namespace sctp {
 	 * @return      свободное место очереди за вычетом головы настроек
 	 *
 	 */
-	static size_t vacancy([[maybe_unused]] T * node, net_queue_t & queue) noexcept {
+	static constexpr size_t vacancy([[maybe_unused]] T * node, net_queue_t & queue) noexcept {
 		// Получаем количество свободного места в очереди
 		const size_t result = queue.available();
 		/**
@@ -10651,7 +10732,7 @@ namespace sctp {
 	 * @param node узел события
 	 *
 	 */
-	static void forget([[maybe_unused]] T * node) noexcept {
+	static AWH_KQUEUE_INLINE void forget([[maybe_unused]] T * node) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10684,7 +10765,7 @@ namespace sctp {
 	 * @return       количество принятых к отправке октетов, без учёта головы
 	 *
 	 */
-	static size_t push(T * node, const void * buffer, const size_t size) noexcept {
+	static AWH_KQUEUE_INLINE size_t push(T * node, const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10742,7 +10823,7 @@ namespace sctp {
 	 * @param size   размер данных записи очереди
 	 *
 	 */
-	static void head([[maybe_unused]] T * node, [[maybe_unused]] const void ** buffer, [[maybe_unused]] size_t & size) noexcept {
+	static AWH_KQUEUE_INLINE void head([[maybe_unused]] T * node, [[maybe_unused]] const void ** buffer, [[maybe_unused]] size_t & size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10849,7 +10930,7 @@ namespace sctp {
 	 * @param bytes количество ушедших октетов
 	 *
 	 */
-	static void drain([[maybe_unused]] T * node, [[maybe_unused]] const size_t bytes) noexcept {
+	static AWH_KQUEUE_INLINE void drain([[maybe_unused]] T * node, [[maybe_unused]] const size_t bytes) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10905,7 +10986,7 @@ namespace sctp {
 	 * @return     результат работы функции
 	 *
 	 */
-	static bool partial([[maybe_unused]] T * node, [[maybe_unused]] const bool end, [[maybe_unused]] const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool partial([[maybe_unused]] T * node, [[maybe_unused]] const bool end, [[maybe_unused]] const eth_t * eth) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10950,7 +11031,7 @@ namespace sctp {
 	 * @param size   размер прочитанных данных
 	 *
 	 */
-	static void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
+	static AWH_KQUEUE_INLINE void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -10990,7 +11071,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -11149,7 +11230,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -11633,7 +11714,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -11878,16 +11959,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(peer, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(peer, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12028,16 +12109,16 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0){
-									// Списываем объём чтения данных из общего ведра токенов
-									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-									if(delay > 0){
-										// Откладываем узел до пополнения общего ведра токенов
-										::io::postpone(peer, event::limiting_t::INGRESS, delay);
-										// Выходим из цикла
-										break;
-									}
+								// Списываем объём чтения данных из общего ведра токенов
+								const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+								// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+								if(delay > 0){
+									// Откладываем узел до пополнения общего ведра токенов
+									::io::postpone(peer, event::limiting_t::INGRESS, delay);
+									// Выходим из цикла
+									break;
 								}
+							}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -12048,9 +12129,9 @@ namespace io {
 					}
 				} break;
 				/**
-				 * Для операционной системы FreeBSD
+				 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 				 */
-				#if defined(__FreeBSD__)
+				#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -12067,20 +12148,33 @@ namespace io {
 								 * Сбрасываем значение errno перед чтением
 								 */
 								errno = 0;
-								// Если протокол интернета установлен как SCTP
-								if(peer->state.protocol == event::protocol_t::SCTP)
-									// Выполняем чтение данных из SCTP-сокета
-									bytes = eth->sctp.receive(
-										peer->transfer.fd,
-										::__awh_buffer__,
-										AWH_EVENT_MAX_BUFFER_SIZE,
-										nullptr, nullptr,
-										peer->transfer.sctp.use().rinfo,
-										peer->transfer.sctp.use().info,
-										peer->transfer.sctp.use().flags
-									);
-								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+								/**
+								 * Чтение расходится по протоколу: SCTP идёт своим вызовом
+								 * с метаданными ассоциации, прочим сокетам хватает обычного приёма
+								 */
+								#if defined(__FreeBSD__)
+									// Если протокол интернета установлен как SCTP
+									if(peer->state.protocol == event::protocol_t::SCTP)
+										// Выполняем чтение данных из SCTP-сокета
+										bytes = eth->sctp.receive(
+											peer->transfer.fd,
+											::__awh_buffer__,
+											AWH_EVENT_MAX_BUFFER_SIZE,
+											nullptr, nullptr,
+											peer->transfer.sctp.use().rinfo,
+											peer->transfer.sctp.use().info,
+											peer->transfer.sctp.use().flags
+										);
+									// Выполняем чтение данных из TCP/IP сокета
+									else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+								/**
+								 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+								 * и обмен ведётся обычным приёмом записи целиком
+								 */
+								#else
+									// Выполняем чтение данных из сокета
+									bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+								#endif
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -12129,42 +12223,48 @@ namespace io {
 									}
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
-									// Если протокол интернета установлен как SCTP
-									if(peer->state.protocol == event::protocol_t::SCTP){
-										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
-											// Объект для хранения информационных метаданных SCTP сообщения
-											net::sctp::minfo_t minfo;
-											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(peer->transfer.sctp.use().info, minfo);
-											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
-										}
-										// Если мы получили уведомления SCTP
-										if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
-											// Признак завершения связи, выставляемый разбором известия
-											bool finish = false;
-											// Обрабатываем события SCTP
-											::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
-											/**
-											 * Если связь завершена известием
-											 *
-											 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
-											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
-											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
-											 *          вечно, а потребитель не получил бы ни отключения, ни итога
-											 *
-											 */
-											if(finish){
-												// Выполняем удаление узла
-												::io::destroy(peer, eth);
-												// Формируем результат работы функции
-												return result;
+									/**
+									 * Разбор метаданных и уведомлений SCTP возможен лишь там, где протокол
+									 * есть в ядре: у NetBSD, OpenBSD и DragonFly его нет
+									 */
+									#if defined(__FreeBSD__)
+										// Если протокол интернета установлен как SCTP
+										if(peer->state.protocol == event::protocol_t::SCTP){
+											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+											if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
+												// Объект для хранения информационных метаданных SCTP сообщения
+												net::sctp::minfo_t minfo;
+												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+												::sctp::info(peer->transfer.sctp.use().info, minfo);
+												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+												peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
 											}
-											// Пропускаем дальнейшую обработку
-											continue;
+											// Если мы получили уведомления SCTP
+											if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
+												// Признак завершения связи, выставляемый разбором известия
+												bool finish = false;
+												// Обрабатываем события SCTP
+												::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
+												/**
+												 * Если связь завершена известием
+												 *
+												 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+												 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+												 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+												 *          вечно, а потребитель не получил бы ни отключения, ни итога
+												 *
+												 */
+												if(finish){
+													// Выполняем удаление узла
+													::io::destroy(peer, eth);
+													// Формируем результат работы функции
+													return result;
+												}
+												// Пропускаем дальнейшую обработку
+												continue;
+											}
 										}
-									}
+									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(peer->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова с установленным флагом события
@@ -12204,16 +12304,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(peer, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(peer, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12231,20 +12331,33 @@ namespace io {
 							errno = 0;
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
-							// Если протокол интернета установлен как SCTP
-							if(peer->state.protocol == event::protocol_t::SCTP)
-								// Выполняем чтение данных из SCTP-сокета
-								bytes = eth->sctp.receive(
-									peer->transfer.fd,
-									::__awh_buffer__,
-									AWH_EVENT_MAX_BUFFER_SIZE,
-									nullptr, nullptr,
-									peer->transfer.sctp.use().rinfo,
-									peer->transfer.sctp.use().info,
-									peer->transfer.sctp.use().flags
-								);
-							// Выполняем чтение данных из TCP/IP сокета
-							else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+							/**
+							 * Чтение расходится по протоколу: SCTP идёт своим вызовом
+							 * с метаданными ассоциации, прочим сокетам хватает обычного приёма
+							 */
+							#if defined(__FreeBSD__)
+								// Если протокол интернета установлен как SCTP
+								if(peer->state.protocol == event::protocol_t::SCTP)
+									// Выполняем чтение данных из SCTP-сокета
+									bytes = eth->sctp.receive(
+										peer->transfer.fd,
+										::__awh_buffer__,
+										AWH_EVENT_MAX_BUFFER_SIZE,
+										nullptr, nullptr,
+										peer->transfer.sctp.use().rinfo,
+										peer->transfer.sctp.use().info,
+										peer->transfer.sctp.use().flags
+									);
+								// Выполняем чтение данных из TCP/IP сокета
+								else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+							/**
+							 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+							 * и обмен ведётся обычным приёмом записи целиком
+							 */
+							#else
+								// Выполняем чтение данных из сокета
+								bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+							#endif
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -12279,42 +12392,48 @@ namespace io {
 								return result;
 							// Если мы получили данные из сокета
 							} else if((result = (bytes > 0))) {
-								// Если протокол интернета установлен как SCTP
-								if(peer->state.protocol == event::protocol_t::SCTP){
-									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
-										// Объект для хранения информационных метаданных SCTP сообщения
-										net::sctp::minfo_t minfo;
-										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(peer->transfer.sctp.use().info, minfo);
-										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
-									}
-									// Если мы получили уведомления SCTP
-									if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
-										// Признак завершения связи, выставляемый разбором известия
-										bool finish = false;
-										// Обрабатываем события SCTP
-										::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
-										/**
-										 * Если связь завершена известием
-										 *
-										 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
-										 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
-										 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
-										 *          вечно, а потребитель не получил бы ни отключения, ни итога
-										 *
-										 */
-										if(finish){
-											// Выполняем удаление узла
-											::io::destroy(peer, eth);
-											// Формируем результат работы функции
+								/**
+								 * Разбор метаданных и уведомлений SCTP возможен лишь там, где протокол
+								 * есть в ядре: у NetBSD, OpenBSD и DragonFly его нет
+								 */
+								#if defined(__FreeBSD__)
+									// Если протокол интернета установлен как SCTP
+									if(peer->state.protocol == event::protocol_t::SCTP){
+										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
+										if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
+											// Объект для хранения информационных метаданных SCTP сообщения
+											net::sctp::minfo_t minfo;
+											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
+											::sctp::info(peer->transfer.sctp.use().info, minfo);
+											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
+											peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
+										}
+										// Если мы получили уведомления SCTP
+										if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
+											// Признак завершения связи, выставляемый разбором известия
+											bool finish = false;
+											// Обрабатываем события SCTP
+											::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
+											/**
+											 * Если связь завершена известием
+											 *
+											 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 *
+											 */
+											if(finish){
+												// Выполняем удаление узла
+												::io::destroy(peer, eth);
+												// Формируем результат работы функции
+												return result;
+											}
+											// Формируем положительный результат
 											return result;
 										}
-										// Формируем положительный результат
-										return result;
 									}
-								}
+								#endif
 								// Если функция обратного вызова для вывода события установлена
 								if(peer->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
@@ -12331,16 +12450,16 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(peer, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(peer, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12447,7 +12566,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::tun_t * tunnel, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::tun_t * tunnel, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -13699,7 +13818,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -13944,16 +14063,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -14094,16 +14213,16 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0){
-									// Списываем объём чтения данных из общего ведра токенов
-									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-									if(delay > 0){
-										// Откладываем узел до пополнения общего ведра токенов
-										::io::postpone(client, event::limiting_t::INGRESS, delay);
-										// Выходим из цикла
-										break;
-									}
+								// Списываем объём чтения данных из общего ведра токенов
+								const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+								// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+								if(delay > 0){
+									// Откладываем узел до пополнения общего ведра токенов
+									::io::postpone(client, event::limiting_t::INGRESS, delay);
+									// Выходим из цикла
+									break;
 								}
+							}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -14363,16 +14482,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -15963,7 +16082,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -15997,9 +16116,9 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
+				 * Для операционной системы macOS
 				 */
-				#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+				#if defined(__APPLE__) || defined(__MACH__)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET):
 				#endif
@@ -16590,9 +16709,9 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
+					 * Для операционной системы macOS
 					 */
-					#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Устанавливаем текст ошибки
 						const string error = "Only RAW and DATAGRAM or SEQPACKET socket types are supported for server nodes";
 					/**
@@ -16665,7 +16784,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::ipc_t * ipc, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::ipc_t * ipc, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -17180,7 +17299,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::peer_t * peer, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::peer_t * peer, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -17651,9 +17770,9 @@ namespace io {
 						}
 					} break;
 					/**
-					 * Для операционной системы FreeBSD
+					 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 					 */
-					#if defined(__FreeBSD__)
+					#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 							// Размер данных для извлечения из очереди
@@ -17699,18 +17818,31 @@ namespace io {
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
 										errno = 0;
-										// Если протокол интернета установлен как SCTP
-										if(peer->state.protocol == event::protocol_t::SCTP)
-											// Выполняем отправку данных в SCTP-сокет
-											bytes = eth->sctp.send(
-												peer->transfer.fd,
-												reinterpret_cast <const uint8_t *> (buffer),
-												size, nullptr, 0,
-												peer->transfer.sctp.use().info,
-												peer->transfer.sctp.use().complete
-											);
-										// Выполняем отправку данных в UDP-сокет
-										else bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+										/**
+										 * Отправка расходится по протоколу: SCTP идёт своим вызовом
+										 * с метаданными ассоциации, прочим сокетам хватает обычного отправки
+										 */
+										#if defined(__FreeBSD__)
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в SCTP-сокет
+												bytes = eth->sctp.send(
+													peer->transfer.fd,
+													reinterpret_cast <const uint8_t *> (buffer),
+													size, nullptr, 0,
+													peer->transfer.sctp.use().info,
+													peer->transfer.sctp.use().complete
+												);
+											// Выполняем отправку данных в UDP-сокет
+											else bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+										/**
+										 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+										 * и обмен ведётся обычным отправкой записи целиком
+										 */
+										#else
+											// Выполняем отправку данных в сокет
+											bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -18095,7 +18227,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::origin_t * origin, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::origin_t * origin, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -18131,9 +18263,9 @@ namespace io {
 					// Если событие принадлежит к типу RAW
 					case static_cast <uint8_t> (event::type_t::RAW):
 					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
+					 * Для операционной системы macOS
 					 */
-					#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET):
 					#endif
@@ -18545,7 +18677,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::tun_t * tunnel, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::tun_t * tunnel, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -18765,7 +18897,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::client_t * client, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::client_t * client, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -20147,7 +20279,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::server_t * server, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::server_t * server, const eth_t * eth) noexcept {
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -20207,9 +20339,9 @@ namespace io {
 									// Если событие принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW):
 									/**
-									 * Для операционной системы macOS, NetBSD, OpenBSD
+									 * Для операционной системы macOS
 									 */
-									#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+									#if defined(__APPLE__) || defined(__MACH__)
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET):
 									#endif
@@ -20584,7 +20716,7 @@ namespace io {
 	 * @return ссылка на счётчик глубины текущего потока
 	 *
 	 */
-	static uint16_t & depth() noexcept {
+	static AWH_KQUEUE_INLINE uint16_t & depth() noexcept {
 		// Счётчик глубины возвратного захода в отправку
 		static thread_local uint16_t result = 0;
 		// Выводим счётчик глубины
@@ -20613,7 +20745,7 @@ namespace io {
 	 * @return признак того, что писать в сокет можно прямо сейчас
 	 *
 	 */
-	static bool immediate() noexcept {
+	static AWH_KQUEUE_INLINE bool immediate() noexcept {
 		// Писать немедленно вправе заход, не подошедший к пределу глубины
 		return (::io::depth() < ::io::DEPTH_LIMIT);
 	}
@@ -20627,7 +20759,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, [[maybe_unused]] const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::file_t * fs, const void * buffer, const size_t size, [[maybe_unused]] const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -20735,7 +20867,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -21450,7 +21582,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -22352,9 +22484,9 @@ namespace io {
 					}
 				} break;
 				/**
-				 * Для операционной системы FreeBSD
+				 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 				 */
-				#if defined(__FreeBSD__)
+				#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -22382,17 +22514,30 @@ namespace io {
 										errno = 0;
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
-										// Если протокол интернета установлен как SCTP
-										if(peer->state.protocol == event::protocol_t::SCTP)
+										/**
+										 * Отправка расходится по протоколу: SCTP идёт своим вызовом
+										 * с метаданными ассоциации, прочим сокетам хватает обычного отправки
+										 */
+										#if defined(__FreeBSD__)
+											// Если протокол интернета установлен как SCTP
+											if(peer->state.protocol == event::protocol_t::SCTP)
+												// Выполняем отправку данных в TCP/IP сокет
+												bytes = eth->sctp.send(
+													peer->transfer.fd,
+													buffer, size, nullptr, 0,
+													peer->transfer.sctp.use().info,
+													peer->transfer.sctp.use().complete
+												);
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = eth->sctp.send(
-												peer->transfer.fd,
-												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info,
-												peer->transfer.sctp.use().complete
-											);
-										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+											else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+										/**
+										 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+										 * и обмен ведётся обычным отправкой записи целиком
+										 */
+										#else
+											// Выполняем отправку данных в сокет
+											bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -22734,17 +22879,30 @@ namespace io {
 											errno = 0;
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
-											// Если протокол интернета установлен как SCTP
-											if(peer->state.protocol == event::protocol_t::SCTP)
+											/**
+											 * Отправка расходится по протоколу: SCTP идёт своим вызовом
+											 * с метаданными ассоциации, прочим сокетам хватает обычного отправки
+											 */
+											#if defined(__FreeBSD__)
+												// Если протокол интернета установлен как SCTP
+												if(peer->state.protocol == event::protocol_t::SCTP)
+													// Выполняем отправку данных в TCP/IP сокет
+													bytes = eth->sctp.send(
+														peer->transfer.fd,
+														buffer, size, nullptr, 0,
+														peer->transfer.sctp.use().info,
+														peer->transfer.sctp.use().complete
+													);
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = eth->sctp.send(
-													peer->transfer.fd,
-													buffer, size, nullptr, 0,
-													peer->transfer.sctp.use().info,
-													peer->transfer.sctp.use().complete
-												);
-											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+												else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+											/**
+											 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+											 * и обмен ведётся обычным отправкой записи целиком
+											 */
+											#else
+												// Выполняем отправку данных в сокет
+												bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -23063,17 +23221,30 @@ namespace io {
 							errno = 0;
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
-							// Если протокол интернета установлен как SCTP
-							if(peer->state.protocol == event::protocol_t::SCTP)
+							/**
+							 * Отправка расходится по протоколу: SCTP идёт своим вызовом
+							 * с метаданными ассоциации, прочим сокетам хватает обычного отправки
+							 */
+							#if defined(__FreeBSD__)
+								// Если протокол интернета установлен как SCTP
+								if(peer->state.protocol == event::protocol_t::SCTP)
+									// Выполняем отправку данных в TCP/IP сокет
+									bytes = eth->sctp.send(
+										peer->transfer.fd,
+										buffer, size, nullptr, 0,
+										peer->transfer.sctp.use().info,
+										peer->transfer.sctp.use().complete
+									);
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = eth->sctp.send(
-									peer->transfer.fd,
-									buffer, size, nullptr, 0,
-									peer->transfer.sctp.use().info,
-									peer->transfer.sctp.use().complete
-								);
-							// Выполняем отправку данных в TCP/IP сокет
-							else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+								else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+							/**
+							 * У NetBSD, OpenBSD и DragonFly протокола SCTP в ядре нет
+							 * и обмен ведётся обычным отправкой записи целиком
+							 */
+							#else
+								// Выполняем отправку данных в сокет
+								bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size);
+							#endif
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -23190,7 +23361,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -23204,9 +23375,9 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
+				 * Для операционной системы macOS
 				 */
-				#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+				#if defined(__APPLE__) || defined(__MACH__)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET):
 				#endif
@@ -23928,9 +24099,9 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						origin->callbacks.status(origin->id, event::status_t::FAILURE);
 					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
+					 * Для операционной системы macOS
 					 */
-					#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Устанавливаем текст ошибки
 						const string error = "Origin cannot send packet data for socket types other than RAW, DATAGRAM and SEQPACKET";
 					/**
@@ -23993,7 +24164,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -24435,6 +24606,8 @@ namespace io {
 								error = event::error_t::INVALID_SOCKET;
 							break;
 							/**
+							 * Если пакет негоден для устройства
+							 *
 							 * Негодный пакет НЕ равен негодному устройству
 							 *
 							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -24447,7 +24620,6 @@ namespace io {
 							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 							 * с третьей машины, стало 0, а сервер жив
 							 */
-							// Если пакет негоден для устройства
 							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID;
@@ -24786,7 +24958,7 @@ namespace io {
 						 *          заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
 						 *          устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
 						 *          сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
-						 *          не бывало
+						 *          не бывало.
 						 *
 						 * @note Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 						 *       с третьей машины, стало 0, а сервер жив
@@ -25133,7 +25305,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -29348,7 +29520,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -29362,9 +29534,9 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
+				 * Для операционной системы macOS
 				 */
-				#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+				#if defined(__APPLE__) || defined(__MACH__)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET):
 				#endif
@@ -29659,11 +29831,10 @@ namespace io {
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
-					// Устанавливаем текст ошибки
 					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
+					 * Для операционной системы macOS
 					 */
-					#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Устанавливаем текст ошибки
 						const string error = "Server cannot send packet data for socket types other than RAW, DATAGRAM and SEQPACKET";
 					/**
@@ -29745,7 +29916,7 @@ namespace io {
 	 * @param eth   объект работы с сетевым интерфейсом
 	 *
 	 */
-	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth) noexcept {
 		/**
 		 * Если узел не задан, источник на нём не установлен либо вытягивание не заведено
 		 *
@@ -29911,24 +30082,24 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool destroy(::io::node_t * node, const eth_t * eth) noexcept {
-	/**
-	 * Возвращаем потребителю неотданный остаток очереди
-	 *
-	 * @details Место это выбрано ЕДИНОЙ точкой намеренно. Снос узла - общий конец всех
-	 *          путей: обрыв на записи, обрыв на чтении, ошибка сокета, снос по воле
-	 *          потребителя. Признак же, каким ядро сообщает об обрыве, у систем разный
-	 *          (замерено 08.09.2026): обрыв приходит то признаком конца связи, то
-	 *          ошибкой, и попадает он на разбор ЧТЕНИЯ, а не записи. Раскладывать возврат по
-	 *          ветвям значит забыть его в очередной, и опыт этого дня тому порукой:
-	 *          первая правка закрыла одну ветвь из трёх.
-	 *
-	 * @warning Отклик зовётся отсюда, из сноса, и вправе позвать снос повторно. Обхода
-	 *          это выдерживает: возврат ИЗЫМАЕТ записи из очереди по мере обхода, и
-	 *          повторный заход находит её уже пустой
-	 *
-	 */
-	::io::spill(node);
+	static AWH_KQUEUE_INLINE bool destroy(::io::node_t * node, const eth_t * eth) noexcept {
+		/**
+		 * Возвращаем потребителю неотданный остаток очереди
+		 *
+		 * @details Место это выбрано ЕДИНОЙ точкой намеренно. Снос узла - общий конец всех
+		 *          путей: обрыв на записи, обрыв на чтении, ошибка сокета, снос по воле
+		 *          потребителя. Признак же, каким ядро сообщает об обрыве, у систем разный
+		 *          (замерено 08.09.2026): обрыв приходит то признаком конца связи, то
+		 *          ошибкой, и попадает он на разбор ЧТЕНИЯ, а не записи. Раскладывать возврат по
+		 *          ветвям значит забыть его в очередной, и опыт этого дня тому порукой:
+		 *          первая правка закрыла одну ветвь из трёх.
+		 *
+		 * @warning Отклик зовётся отсюда, из сноса, и вправе позвать снос повторно. Обхода
+		 *          это выдерживает: возврат ИЗЫМАЕТ записи из очереди по мере обхода, и
+		 *          повторный заход находит её уже пустой
+		 *
+		 */
+		::io::spill(node);
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -30639,7 +30810,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool user(::io::user_t * user, const engine::io_t * io) noexcept {
+	static AWH_KQUEUE_INLINE bool user(::io::user_t * user, const engine::io_t * io) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -30724,7 +30895,7 @@ namespace io {
 	 * @return     признак привязанности дескриптора к адресу
 	 *
 	 */
-	static bool bound(const net::socket_t sock) noexcept {
+	static AWH_KQUEUE_INLINE bool bound(const net::socket_t sock) noexcept {
 		// Если дескриптор сокета не заведён
 		if(sock == net::invalid_socket_t)
 			// Выводим отсутствие привязки дескриптора
@@ -30763,7 +30934,7 @@ namespace io {
 	 * @return     дескриптор сокета узла события
 	 *
 	 */
-	static net::socket_t descriptor(const ::io::node_t * node) noexcept {
+	static AWH_KQUEUE_INLINE net::socket_t descriptor(const ::io::node_t * node) noexcept {
 		/**
 		 * Определяем чем является текущий узел
 		 */
@@ -30809,7 +30980,7 @@ namespace io {
 	 * @return     результат сверки устройства
 	 *
 	 */
-	static bool coherence(const ::io::node_t * node, const net::socket_t sock) noexcept {
+	static AWH_KQUEUE_INLINE bool coherence(const ::io::node_t * node, const net::socket_t sock) noexcept {
 		// Объект хранения имени сокета
 		struct sockaddr_storage name;
 		// Заполняем объект хранения имени сокета нулями
@@ -30897,7 +31068,7 @@ namespace io {
 				/**
 				 * Если устройство обмена является упорядоченными сообщениями
 				 *
-				 * @details Три системы упорядоченных сообщений в домене UNIX не держат вовсе, и
+				 * @details macOS упорядоченные сообщения в домене UNIX не держит вовсе, и
 				 *          заведение пары подменяет их там дейтаграммными - границы сообщений
 				 *          дейтаграммный сокет держит так же. Сверка обязана знать о подмене той
 				 *          же самой: описатель приезжает таким, каким его завела система, а узел
@@ -30909,7 +31080,7 @@ namespace io {
 				 *          связи работников кластера
 				 *
 				 */
-				#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+				#if defined(__APPLE__) || defined(__MACH__)
 					// Выводим совпадение устройства с подменённым дейтаграммным
 					return (type == SOCK_DGRAM);
 				/**
@@ -30935,7 +31106,7 @@ namespace io {
 	 * @return     осмысленна ли узлу опция
 	 *
 	 */
-	static bool continuable(const ::io::node_t * node) noexcept {
+	static AWH_KQUEUE_INLINE bool continuable(const ::io::node_t * node) noexcept {
 		// Если узла нет вовсе, опцию запоминать некому
 		if(node == nullptr)
 			// Выводим отрицательный результат
@@ -30956,7 +31127,6 @@ namespace io {
 		// Выводим отрицательный результат: прочим узлам опция не означает ничего
 		return false;
 	}
-
 	/**
 	 * @brief Функция передачи узлу готового дескриптора сокета
 	 *
@@ -30970,7 +31140,7 @@ namespace io {
 	 * @return     результат передачи дескриптора узлу
 	 *
 	 */
-	static bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
+	static AWH_KQUEUE_INLINE bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
 		/**
 		 * Отмечаем описатель принятым передачей
 		 *
@@ -31064,11 +31234,37 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
-	static bool socket(::io::node_t * node, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool socket(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/**
+			 * Если операционная система не принадлежит к FreeBSD
+			 */
+			#if !defined(__FreeBSD__)
+				// Если протокол события установлен как SCTP
+				if(node->state.protocol == event::protocol_t::SCTP){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug(
+							"SCTP protocol is only supported on FreeBSD, it is not available on this system",
+							__PRETTY_FUNCTION__, {node, node->id}, log::flag_t::WARNING
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("SCTP protocol is only supported on FreeBSD, it is not available on this system", log::flag_t::WARNING);
+					#endif
+					// Сообщаем об отказе: протокола в системе нет, сокет не заводится
+					return false;
+				}
+			#endif
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -31136,7 +31332,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool error(::io::node_t * node, const int32_t code) noexcept {
+	static AWH_KQUEUE_INLINE bool error(::io::node_t * node, const int32_t code) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31593,7 +31789,7 @@ namespace io {
 	 * @return        результат проверки согласия
 	 *
 	 */
-	static bool coherent(::io::client_t * client, const awh::eth_t * network) noexcept {
+	static AWH_KQUEUE_INLINE bool coherent(::io::client_t * client, const awh::eth_t * network) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31743,7 +31939,7 @@ namespace io {
 	 * @param delay    время отсрочки в миллисекундах
 	 *
 	 */
-	static void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay) noexcept {
+	static AWH_KQUEUE_INLINE void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31833,7 +32029,7 @@ namespace io {
 	 * @return         результат выполнения обработки
 	 *
 	 */
-	static bool tokens(::io::node_t * node, const event::limiting_t limiting) noexcept {
+	static AWH_KQUEUE_INLINE bool tokens(::io::node_t * node, const event::limiting_t limiting) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31993,9 +32189,9 @@ namespace io {
 							}
 						} break;
 						/**
-						 * Для операционной системы FreeBSD
+						 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 						 */
-						#if defined(__FreeBSD__)
+						#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								/**
@@ -32138,9 +32334,9 @@ namespace io {
 						// Если событие принадлежит к типу RAW
 						case static_cast <uint8_t> (event::type_t::RAW):
 						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
+						 * Для операционной системы macOS
 						 */
-						#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+						#if defined(__APPLE__) || defined(__MACH__)
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 						#endif
@@ -32491,9 +32687,9 @@ namespace io {
 					 */
 					switch(static_cast <uint8_t> (server->state.type)){
 						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
+						 * Для операционной системы macOS
 						 */
-						#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+						#if defined(__APPLE__) || defined(__MACH__)
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET):
 						#endif
@@ -32623,7 +32819,7 @@ namespace io {
 	 * @return       результат выполнения прерывания
 	 *
 	 */
-	static bool abandon(::io::client_t * client, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool abandon(::io::client_t * client, const engine::io_t * io, [[maybe_unused]] const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -32818,7 +33014,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool change(::io::dir_t * dir, [[maybe_unused]] const engine::io_t * io) noexcept {
+	static AWH_KQUEUE_INLINE bool change(::io::dir_t * dir, [[maybe_unused]] const engine::io_t * io) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -32959,7 +33155,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -33072,7 +33268,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33103,9 +33299,9 @@ namespace io {
 				 */
 				switch(static_cast <uint8_t> (server->state.type)){
 					/**
-					 * Если операционной системой является FreeBSD
+					 * Если операционной системой является FreeBSD, DragonFly, NetBSD или OpenBSD
 					 */
-					#if defined(__FreeBSD__)
+					#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET):
 					#endif
@@ -33900,7 +34096,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth) noexcept {
+	static AWH_KQUEUE_INLINE bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -34020,7 +34216,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::node_t * node, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool read(::io::node_t * node, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -34099,9 +34295,9 @@ namespace io {
 						 */
 						switch(static_cast <uint8_t> (server->state.type)){
 							/**
-							 * Для операционной системы FreeBSD
+							 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 							 */
-							#if defined(__FreeBSD__)
+							#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							#endif
@@ -34119,9 +34315,9 @@ namespace io {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								/**
-								 * Для операционной системы FreeBSD
+								 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 								 */
-								#if defined(__FreeBSD__)
+								#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 									// Устанавливаем текст ошибки
 									const string error = "Only STREAM and SEQPACKET socket types are supported for listening server nodes";
 								/**
@@ -34130,7 +34326,7 @@ namespace io {
 								#else
 									/**
 									 * Текст обязан называть ДЕЙСТВИТЕЛЬНОЕ положение: вид SEQPACKET в домене
-									 * UNIX сервером у этих систем поддерживается - он изображается ДЕЙТАГРАММНЫМ
+									 * UNIX сервером у macOS поддерживается - он изображается ДЕЙТАГРАММНЫМ
 									 * и слушания не объявляет вовсе, идя путём чтения. Прежний текст «Only STREAM»
 									 * утверждал обратное и сбивал бы разбор
 									 */
@@ -34195,8 +34391,7 @@ namespace io {
 	 *
 	 * @details Подписка возврата неотправленного - единственный способ потребителя
 	 *          узнать, что именно пропало. Обрыв связи снимает узел вместе с очередью,
-	 *          и без этого возврата остаток исчезает бесследно, хотя подписка на него
-	 *          стоит.
+	 *          и без этого возврата остаток исчезает бесследно, хотя подписка на него стоит.
 	 *
 	 * @warning Разбор конца связи на ЧТЕНИИ спрашивает pending() прежде сноса узла, а
 	 *          разбор его же на ЗАПИСИ сносил узел без единого вопроса - очередь
@@ -34205,7 +34400,7 @@ namespace io {
 	 * @param node узел события
 	 *
 	 */
-	static void spill(::io::node_t * node) noexcept {
+	static AWH_KQUEUE_INLINE void spill(::io::node_t * node) noexcept {
 		// Если узел не задан
 		if(node == nullptr)
 			// Выходим, возвращать нечего
@@ -34348,7 +34543,7 @@ namespace io {
 	 * @return     признак наличия непрочитанных данных, подлежащих извлечению
 	 *
 	 */
-	static bool pending(::io::node_t * node, const int64_t size) noexcept {
+	static constexpr bool pending(::io::node_t * node, const int64_t size) noexcept {
 		// Если буфер приёма пуст
 		if(size <= 0)
 			// Сообщаем, что извлекать нечего
@@ -34387,7 +34582,7 @@ namespace io {
 	 * @return предельный размер одной дейтаграммы в октетах
 	 *
 	 */
-	static size_t datagram() noexcept {
+	static AWH_KQUEUE_INLINE size_t datagram() noexcept {
 		// Предельный размер одной дейтаграммы
 		uint32_t result = 0x2400;
 		// Размер получаемого значения
@@ -34453,7 +34648,7 @@ namespace io {
 	 * @return     предельный размер одной записи в октетах, ноль - предела нет
 	 *
 	 */
-	static size_t portion(::io::node_t * node) noexcept {
+	static AWH_KQUEUE_INLINE size_t portion(::io::node_t * node) noexcept {
 		// Если событие принадлежит к дейтаграммному типу
 		if(node->state.type == event::type_t::DATAGRAM)
 			// Возвращаем предельный размер одной дейтаграммы
@@ -34471,7 +34666,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		/**
 		 * Значение узла для обработки изменений
 		 *
@@ -35069,7 +35264,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool origin(::io::server_t * server, const uint8_t * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
+	static AWH_KQUEUE_INLINE bool origin(::io::server_t * server, const uint8_t * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr) noexcept {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
@@ -35765,7 +35960,7 @@ namespace sctp {
 		 * @param result внутренняя структура информации SCTP
 		 *
 		 */
-		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
+		static AWH_KQUEUE_INLINE void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
 			/**
 			 * Определяем тип полезной нагрузки SCTP
 			 */
@@ -35838,7 +36033,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 *
 		 */
-		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, bool * finish) noexcept {
+		static AWH_KQUEUE_INLINE size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, bool * finish) noexcept {
 			// Результат работы функции
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
@@ -37054,6 +37249,260 @@ namespace sctp {
  */
 #if defined(__FreeBSD__)
 	/**
+	 * @brief Метод получения числа адресов, уложенных в заявку подключения
+	 *
+	 * @param id идентификатор события
+	 * @return   число адресов назначения в заявке подключения
+	 *
+	 */
+	uint8_t awh::engine::Stream_Control_Transmission_Protocol::addresses(const event::id_t id) const noexcept {
+		// Результат при отсутствии заявки подключения
+		uint8_t result = 0;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				// Если узел является клиентом
+				if(i->second->state.node == event::node_t::CLIENT){
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Забираем число адресов, уложенных в заявку подключения
+					result = client->addresses;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Метод получения параметров статуса инициализации SCTP
+	 *
+	 * @param id идентификатор события
+	 * @return   параметры статуса инициализации SCTP
+	 *
+	 */
+	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
+		// Результат работы функции
+		net::sctp::status_t result;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(peer->state.protocol == event::protocol_t::SCTP){
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (peer->state.type)){
+								// Если событие принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM):
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									// Устанавливаем идентификатор ассоциации SCTP
+									result.id = peer->transfer.sctp.use().id;
+									// Инициализируем рукопожатие SCTP для клиента
+									this->_eth.sctp.status(peer->transfer.fd, result);
+								} break;
+								// Если событие принадлежит к другому типу
+								default: {
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										peer->callbacks.status(peer->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
+									// Если установлена функция обратного вызова
+									if(peer->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Записываем ошибку в лог
+											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											log::print("%s", log::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								peer->callbacks.status(peer->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A status is only possible for SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(peer->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("%s", log::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Если протокол интернета установлен как SCTP
+						if(client->state.protocol == event::protocol_t::SCTP){
+							/**
+							 * Определяем тип сокета
+							 */
+							switch(static_cast <uint8_t> (client->state.type)){
+								// Если событие принадлежит к типу STREAM
+								case static_cast <uint8_t> (event::type_t::STREAM):
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									// Устанавливаем идентификатор ассоциации SCTP
+									result.id = client->transfer.sctp.use().id;
+									// Инициализируем рукопожатие SCTP для клиента
+									this->_eth.sctp.status(client->transfer.fd, result);
+								} break;
+								// Если событие принадлежит к другому типу
+								default: {
+									// Если установлена функция обратного вызова
+									if(client->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова об ошибке отказа
+										client->callbacks.status(client->id, event::status_t::FAILURE);
+									// Устанавливаем текст ошибки
+									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
+									// Если установлена функция обратного вызова
+									if(client->callbacks.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки события
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+									// Если функция обратного вызова для вывода события не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Записываем ошибку в лог
+											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											log::print("%s", log::flag_t::WARNING, error.c_str());
+										#endif
+									}
+								}
+							}
+						// Если протокол интернета не установлен как SCTP
+						} else {
+							// Если установлена функция обратного вызова
+							if(client->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								client->callbacks.status(client->id, event::status_t::FAILURE);
+							// Устанавливаем текст ошибки
+							const string error = "A status is only possible for SCTP protocol";
+							// Если установлена функция обратного вызова
+							if(client->callbacks.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки события
+								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+							// Если функция обратного вызова для вывода события не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("%s", log::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
 	 * @brief Метод получения информационных метаданных SCTP сообщения
 	 *
 	 * @param id идентификатор события
@@ -37396,211 +37845,6 @@ namespace sctp {
 				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
-	/**
-	 * @brief Метод получения параметров статуса инициализации SCTP
-	 *
-	 * @param id идентификатор события
-	 * @return   параметры статуса инициализации SCTP
-	 *
-	 */
-	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
-		// Результат работы функции
-		net::sctp::status_t result;
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Выполняем поиск идентификатора события
-			auto i = ::__awh_nodes__.find(id);
-			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-				// Создаём охранника узла события
-				::local::guard_t guard(i->second.get());
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (i->second->state.node)){
-					// Если узел является одноранговым узлом
-					case static_cast <uint8_t> (event::node_t::PEER): {
-						// Получаем текущее значение объекта однорангового узла
-						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-						// Если протокол интернета установлен как SCTP
-						if(peer->state.protocol == event::protocol_t::SCTP){
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (peer->state.type)){
-								// Если событие принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM):
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = peer->transfer.sctp.use().id;
-									// Инициализируем рукопожатие SCTP для клиента
-									this->_eth.sctp.status(peer->transfer.fd, result);
-								} break;
-								// Если событие принадлежит к другому типу
-								default: {
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										peer->callbacks.status(peer->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Записываем ошибку в лог
-											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											log::print("%s", log::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
-							}
-						// Если протокол интернета не установлен как SCTP
-						} else {
-							// Если установлена функция обратного вызова
-							if(peer->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова об ошибке отказа
-								peer->callbacks.status(peer->id, event::status_t::FAILURE);
-							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for SCTP protocol";
-							// Если установлена функция обратного вызова
-							if(peer->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-							// Если функция обратного вызова для вывода события не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("%s", log::flag_t::WARNING, error.c_str());
-								#endif
-							}
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						// Если протокол интернета установлен как SCTP
-						if(client->state.protocol == event::protocol_t::SCTP){
-							/**
-							 * Определяем тип сокета
-							 */
-							switch(static_cast <uint8_t> (client->state.type)){
-								// Если событие принадлежит к типу STREAM
-								case static_cast <uint8_t> (event::type_t::STREAM):
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = client->transfer.sctp.use().id;
-									// Инициализируем рукопожатие SCTP для клиента
-									this->_eth.sctp.status(client->transfer.fd, result);
-								} break;
-								// Если событие принадлежит к другому типу
-								default: {
-									// Если установлена функция обратного вызова
-									if(client->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										client->callbacks.status(client->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "A status is only possible for STREAM or SEQPACKET socket type";
-									// Если установлена функция обратного вызова
-									if(client->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Записываем ошибку в лог
-											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											log::print("%s", log::flag_t::WARNING, error.c_str());
-										#endif
-									}
-								}
-							}
-						// Если протокол интернета не установлен как SCTP
-						} else {
-							// Если установлена функция обратного вызова
-							if(client->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова об ошибке отказа
-								client->callbacks.status(client->id, event::status_t::FAILURE);
-							// Устанавливаем текст ошибки
-							const string error = "A status is only possible for SCTP protocol";
-							// Если установлена функция обратного вызова
-							if(client->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-							// Если функция обратного вызова для вывода события не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("%s", log::flag_t::WARNING, error.c_str());
-								#endif
-							}
-						}
-					} break;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("%s", log::flag_t::CRITICAL, error.what());
-			#endif
-		}
-		// Выводим результат
-		return result;
 	}
 	/**
 	 * @brief Метод установки параметров инициализации SCTP
@@ -39525,17 +39769,6 @@ namespace sctp {
 			#endif
 		}
 	}
-	/**
-	 * @brief Конструктор
-	 *
-	 */
-	awh::engine::Stream_Control_Transmission_Protocol::Stream_Control_Transmission_Protocol() noexcept :
-	 _eth() {}
-	/**
-	 * @brief Деструктор
-	 *
-	 */
-	awh::engine::Stream_Control_Transmission_Protocol::~Stream_Control_Transmission_Protocol() noexcept {}
 #endif
 
 /**
@@ -40208,7 +40441,7 @@ awh::engine::IO::Control_List::Control_List(const event::control_list_t type) no
  * @brief Деструктор
  *
  */
-awh::engine::IO::Control_List::~Control_List() noexcept {}
+awh::engine::IO::Control_List::~Control_List() noexcept = default;
 
 /**
  * @brief Метод фиксации настроек события
@@ -40387,8 +40620,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									} else {
 										// Создаём объект события для Kqueue
 										struct kevent event{};
-										// Устанавливаем событие на отслеживание изменения каталога
 										/**
+										 * Устанавливаем событие на отслеживание изменения каталога
+										 *
 										 * @note Набор отслеживаемых изменений передаётся при ЗАВЕДЕНИИ
 										 *       подписки, а не при её включении, и это не излишество:
 										 *       OpenBSD и NetBSD берут набор ТОЛЬКО при заведении, а
@@ -41499,25 +41733,21 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														switch(static_cast <uint8_t> (client->state.type)){
 															/**
-															 * Для операционной системы FreeBSD
+															 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 															 */
-															#if defined(__FreeBSD__)
+															#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															#endif
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
-																// Устанавливаем семейство IP-адресов
-																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																client->endpoint.size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server), unixsocket);
 															} break;
 															/**
-															 * Для операционной системы macOS, NetBSD, OpenBSD
+															 * Для операционной системы macOS
 															 */
-															#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+															#if defined(__APPLE__) || defined(__MACH__)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															#endif
@@ -41525,14 +41755,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
 																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_family = AF_UNIX;
-																// Устанавливаем семейство IP-адресов для сервера
-																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для клиента
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path));
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																client->endpoint.size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server), unixsocket);
 																// Получаем путь к файлу unix-сокета
 																string fullpath = "", sockname = "";
 																// Выполняем поиск последнего слеша разделителя
@@ -43693,9 +43917,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														switch(static_cast <uint8_t> (server->state.type)){
 															/**
-															 * Для операционной системы FreeBSD
+															 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 															 */
-															#if defined(__FreeBSD__)
+															#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															#endif
@@ -43710,14 +43934,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Удаляем файл сокета
 																		::unlink(unixsocket.c_str());
 																}
-																// Устанавливаем семейство IP-адресов
-																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
-																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																const socklen_t size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server), unixsocket);
 																// Выполняем бинд сокета сервера на адрес целевой машины
 																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
@@ -43759,9 +43977,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																}
 															} break;
 															/**
-															 * Для операционной системы macOS, NetBSD, OpenBSD
+															 * Для операционной системы macOS
 															 */
-															#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+															#if defined(__APPLE__) || defined(__MACH__)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															#endif
@@ -43769,12 +43987,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
 																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
-																// Устанавливаем семейство IP-адресов для сервера
-																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для клиента
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path));
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Структура статистики файла
 																struct stat info;
 																// Выполняем извлечение данных статистики
@@ -43784,10 +43996,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Удаляем файл сокета
 																		::unlink(unixsocket.c_str());
 																}
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
-																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																const socklen_t size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server), unixsocket);
 																// Выполняем бинд сокета сервера на адрес целевой машины
 																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
@@ -46444,9 +46654,9 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -46475,9 +46685,9 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -50080,9 +50290,9 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -50216,9 +50426,9 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -50545,9 +50755,9 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
+											 * Для операционной системы macOS
 											 */
-											#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+											#if defined(__APPLE__) || defined(__MACH__)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET):
 											#endif
@@ -50684,9 +50894,9 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
+											 * Для операционной системы macOS
 											 */
-											#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+											#if defined(__APPLE__) || defined(__MACH__)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET):
 											#endif
@@ -53839,9 +54049,9 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -53971,9 +54181,9 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Для операционной системы macOS
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+										#if defined(__APPLE__) || defined(__MACH__)
 											// Если событие принадлежит к типу SEQPACKET
 											case static_cast <uint8_t> (event::type_t::SEQPACKET):
 										#endif
@@ -54335,9 +54545,9 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
+											 * Для операционной системы macOS
 											 */
-											#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+											#if defined(__APPLE__) || defined(__MACH__)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET):
 											#endif
@@ -54495,9 +54705,9 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
+											 * Для операционной системы macOS
 											 */
-											#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+											#if defined(__APPLE__) || defined(__MACH__)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET):
 											#endif
@@ -60799,9 +61009,9 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								}
 							} break;
 							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
+							 * Для операционной системы macOS
 							 */
-							#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+							#if defined(__APPLE__) || defined(__MACH__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							#endif
@@ -60881,9 +61091,9 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								}
 							} break;
 							/**
-							 * Для операционной системы FreeBSD
+							 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 							 */
-							#if defined(__FreeBSD__)
+							#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Если протокол интернета установлен не как SCTP
@@ -61785,9 +61995,9 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													}
 												} break;
 												/**
-												 * Для операционной системы FreeBSD
+												 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 												 */
-												#if defined(__FreeBSD__)
+												#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 														// Устанавливаем или снимаем режим алгоритма TCP/CORK
@@ -61849,9 +62059,9 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												}
 											} break;
 											/**
-											 * Для операционной системы FreeBSD
+											 * Для операционных систем FreeBSD, DragonFly, NetBSD и OpenBSD
 											 */
-											#if defined(__FreeBSD__)
+											#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
@@ -62655,10 +62865,17 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Если событие является UNIX-сокетом
 													if(client->state.family == event::family_t::UDS){
-														// Получаем размер объекта сокета
+														/**
+														 * Определяем фактическую длину адреса цели
+														 *
+														 * @note У абстрактной формы пути нулевой первый октет, и длина
+														 *       считается по имени за ним; файловая форма считается по строке
+														 *
+														 */
 														client->endpoint.size = (
-															offsetof(struct sockaddr_un, sun_path) +
-															::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path)
+															(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path[0] == '\0')
+															? (offsetof(struct sockaddr_un, sun_path) + 1 + ::strnlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path + 1, (sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path) - 1)))
+															: (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path))
 														);
 													}
 													// Если подключение к удаленному серверу не выполнено
@@ -62821,6 +63038,10 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															}
 														}
 														// Если подключение к удаленному серверу не выполнено
+														// Число адресов заявки видно снаружи: им закрепляется слияние
+														// списка подключения в одну многодомную заявку
+														client->addresses = static_cast <uint8_t> (count);
+														// Выполняем подключение к удалённому серверу списком адресов
 														if(!(result = (::sctp_connectx(client->transfer.fd, reinterpret_cast <struct sockaddr *> (addrs.data()), static_cast <int32_t> (count), &client->transfer.sctp.use().id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения
 															if(!(result = (errno == EINPROGRESS))){
@@ -63645,8 +63866,8 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Изображение вида SEQPACKET дейтаграммным в домене UNIX
 									 *
-									 * @details У macOS, NetBSD и OpenBSD домен UNIX вида SEQPACKET система
-									 *          не несёт вовсе (socket() отвечает «Protocol not supported»),
+									 * @details У macOS домен UNIX вида SEQPACKET система не несёт
+									 *          вовсе (socket() отвечает «Protocol not supported»),
 									 *          и io::coherence изображает его ДЕЙТАГРАММНЫМ сокетом - так же,
 									 *          как изображается он и во всём остальном коде. В домене UNIX
 									 *          разницы между ними нет: границы сообщений держат оба.
@@ -63656,12 +63877,17 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									 *          согласием, а к ядру не идёт: ::listen к дейтаграммам неприменим
 									 *          и отверг бы его с EOPNOTSUPP.
 									 *
+									 * @note FreeBSD, DragonFly, NetBSD и OpenBSD несут вид родным (щуп
+									 *       на кластере 27.10.2026: прослушивание с приёмом и границы
+									 *       записей работают) и слушание объявляют в ядро — они идут
+									 *       мимо этой ветки к общему ::listen ниже
+									 *
 									 * @warning Граница обязана совпадать с границей у io::coherence и у
 									 *          Socket::ipc: разойдутся - движок объявит слушание там, где
 									 *          сокет его не несёт, либо отвергнет там, где несёт
 									 *
 									 */
-									#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+									#if defined(__APPLE__) || defined(__MACH__)
 										// Если событие является сокетом домена UNIX
 										if((result = (server->state.family == event::family_t::UDS))){
 											/**
@@ -68651,6 +68877,15 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 			::local::guard_t guard(i->second.get());
 			/**
 			 * Определяем чем является текущий узел
+			 *
+			 * @note Веток `IPC` и `FILE` здесь нет НАМЕРЕННО (решение от 08.09.2026):
+			 *       срок ставится там, где работа зависит от внешних обстоятельств,
+			 *       каких не проконтролировать, а межпроцессный обмен идёт в пределах
+			 *       одного приложения, и собственный код себе внешним обстоятельством
+			 *       не является - срок здесь маскировал бы свои же дефекты. Кому он
+			 *       понадобится, тот заведёт узел таймера и проверит им. По той же
+			 *       причине узел `IPC` не имеет и поля сроков
+			 *
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				/**
@@ -72884,9 +73119,9 @@ void awh::engine::IO::clear() noexcept {
 								 */
 								switch(static_cast <uint8_t> (client->state.type)){
 									/**
-									 * Для операционной системы macOS, NetBSD, OpenBSD
+									 * Для операционной системы macOS
 									 */
-									#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+									#if defined(__APPLE__) || defined(__MACH__)
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET):
 									#endif
@@ -73152,7 +73387,13 @@ bool awh::engine::IO::initialize() noexcept {
 				// Записываем ошибку в лог
 				log::print("%s: cannot create poll queue: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			#endif
-			// Выходим из приложения
+			/**
+			 * @note Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			 *       вызывающий получил бы объект, который выглядит живым, а обмениваться не
+			 *       умеет. Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			 *       у всех четырёх движков; решение записано в находках аудита 09.09.2026.
+			 *
+			 */
 			::_exit(EXIT_FAILURE);
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
@@ -73260,7 +73501,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 				// Записываем ошибку в лог
 				log::print("%s: cannot create poll queue: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			#endif
-			// Выходим из приложения
+			/**
+			 * @note Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			 *       вызывающий получил бы объект, который выглядит живым, а обмениваться не умеет.
+			 *       Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			 *       у всех четырёх движков; решение записано в находках аудита 09.09.2026
+			 *
+			 */
 			::_exit(EXIT_FAILURE);
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
@@ -73284,7 +73531,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 				// Записываем ошибку в лог
 				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
-			// Выходим из приложения
+			/**
+			 * @note Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			 *       вызывающий получил бы объект, который выглядит живым, а обмениваться не умеет.
+			 *       Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			 *       у всех четырёх движков; решение записано в находках аудита 09.09.2026
+			 * 
+			 */
 			::_exit(EXIT_FAILURE);
 		}
 		// Добавляем новое событие в список изменений
@@ -74089,9 +74342,9 @@ bool awh::engine::IO::deinitialize() noexcept {
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
 							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
+							 * Для операционной системы macOS
 							 */
-							#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+							#if defined(__APPLE__) || defined(__MACH__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							#endif
@@ -76962,9 +77215,9 @@ awh::engine::IO::~IO() noexcept {
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
 							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
+							 * Для операционной системы macOS
 							 */
-							#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+							#if defined(__APPLE__) || defined(__MACH__)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							#endif
