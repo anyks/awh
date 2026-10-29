@@ -3478,7 +3478,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const in
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {value, radix}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3570,7 +3570,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3599,7 +3599,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3642,7 +3642,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3670,7 +3670,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+			log::debug("TOML document failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 		/**
 		 * Если режим отладки не включён
 		 */

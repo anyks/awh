@@ -1431,7 +1431,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {kind, layout}, log::flag_t::CRITICAL, codec::yaml::message(error_t::DEPTH_EXCEEDED));
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), static_cast <uint16_t> (layout)}, log::flag_t::CRITICAL, codec::yaml::message(error_t::DEPTH_EXCEEDED));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2718,7 +2718,7 @@ bool awh::codec::yaml::Writer::written(const string_view record, const style_t s
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {record, style}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
+			log::debug("YAML writing failed: %s", __PRETTY_FUNCTION__, {record, static_cast <uint16_t> (style)}, log::flag_t::CRITICAL, codec::yaml::message(error_t::UNEXPECTED_CONTENT));
 		/**
 		 * Если режим отладки не включён
 		 */

@@ -846,7 +846,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (quoting)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_VALUE));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1046,7 +1046,7 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (quoting)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1103,7 +1103,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1149,7 +1149,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1187,7 +1187,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1232,7 +1232,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1280,7 +1280,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+					log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1316,7 +1316,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1345,7 +1345,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INVALID_DATETIME));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1400,7 +1400,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {type}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
+				log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, codec::toml::message(error_t::INTERNAL));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2244,7 +2244,7 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, quoting}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (quoting)}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2397,7 +2397,7 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value, radix}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
+			log::debug("TOML writing failed: %s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, codec::toml::message(error_t::UNEXPECTED_CONTENT));
 		/**
 		 * Если режим отладки не включён
 		 */

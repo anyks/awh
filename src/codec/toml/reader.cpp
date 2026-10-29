@@ -833,7 +833,7 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -862,7 +862,7 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -887,7 +887,7 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error), this->locate(offset).line, this->locate(offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -940,7 +940,7 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, kind, error, offset}, log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1408,7 +1408,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1463,7 +1463,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1547,7 +1547,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_VALUE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1588,7 +1588,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::UNTERMINATED_STRING), this->locate(opening).line, this->locate(opening).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1623,7 +1623,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1648,7 +1648,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1696,7 +1696,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
+				log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_CHARACTER), this->locate(this->_offset).line, this->locate(this->_offset).column);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1724,7 +1724,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1803,7 +1803,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1852,7 +1852,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1881,7 +1881,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем отказ в журнал работы
-							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1912,7 +1912,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем отказ в журнал работы
-							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+							log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1935,7 +1935,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1976,7 +1976,7 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, quoting}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
+					log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {end, static_cast <uint16_t> (quoting)}, log::flag_t::WARNING, codec::toml::message(error_t::INVALID_ESCAPE), this->locate(this->_offset).line, this->locate(this->_offset).column);
 				/**
 				 * Если режим отладки не включён
 				 */

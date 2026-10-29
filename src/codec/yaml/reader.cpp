@@ -1649,7 +1649,7 @@ bool awh::codec::yaml::Reader::scalar(const string_view text, const style_t styl
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column}, log::flag_t::WARNING, codec::yaml::message(error_t::SCALAR_TOO_LONG), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column}, log::flag_t::WARNING, codec::yaml::message(error_t::SCALAR_TOO_LONG), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1679,7 +1679,7 @@ bool awh::codec::yaml::Reader::scalar(const string_view text, const style_t styl
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_CHARACTER), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_CHARACTER), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1793,7 +1793,7 @@ bool awh::codec::yaml::Reader::matched(const nesting_t kind, const size_t column
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {kind, column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1812,7 +1812,7 @@ bool awh::codec::yaml::Reader::matched(const nesting_t kind, const size_t column
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {kind, column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1832,7 +1832,7 @@ bool awh::codec::yaml::Reader::matched(const nesting_t kind, const size_t column
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {kind, column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), column}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1868,7 +1868,7 @@ bool awh::codec::yaml::Reader::expand(const nesting_t kind, const uint32_t inden
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {kind, indent, implied, column}, log::flag_t::WARNING, codec::yaml::message(error_t::DEPTH_EXCEEDED), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (kind), indent, implied, column}, log::flag_t::WARNING, codec::yaml::message(error_t::DEPTH_EXCEEDED), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2274,7 +2274,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2360,7 +2360,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2411,7 +2411,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2462,7 +2462,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2513,7 +2513,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2544,7 +2544,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_UNICODE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_UNICODE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2579,7 +2579,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем отказ в журнал работы
-						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_UNICODE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+						log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_UNICODE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2600,7 +2600,7 @@ bool awh::codec::yaml::Reader::unquote(const string_view text, const style_t sty
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем отказ в журнал работы
-					log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
+					log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, result}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_ESCAPE), this->_line, static_cast <uint32_t> ((column + offset) + 1));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2886,7 +2886,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_BINARY), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_BINARY), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2919,7 +2919,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_STAMP), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::INVALID_STAMP), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2944,7 +2944,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+			log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2979,7 +2979,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3008,7 +3008,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3044,7 +3044,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3073,7 +3073,7 @@ bool awh::codec::yaml::Reader::typing(const string_view text, const style_t styl
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем отказ в журнал работы
-				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, style, column, type}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
+				log::debug("YAML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (style), column, static_cast <uint16_t> (type)}, log::flag_t::WARNING, codec::yaml::message(error_t::TAG_MISMATCH), this->_line, static_cast <uint32_t> (column + 1));
 			/**
 			 * Если режим отладки не включён
 			 */

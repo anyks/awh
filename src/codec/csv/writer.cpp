@@ -1126,7 +1126,7 @@ bool awh::codec::csv::Writer::rollback(const size_t size, const size_t origin, c
 	 */
 	#if defined(DEBUG_MODE)
 		// Записываем отказ в журнал работы
-		log::debug("CSV writing failed: %s", __PRETTY_FUNCTION__, {size, origin, started, marked, error}, log::flag_t::CRITICAL, message(error));
+		log::debug("CSV writing failed: %s", __PRETTY_FUNCTION__, {size, origin, started, marked, static_cast <uint16_t> (error)}, log::flag_t::CRITICAL, message(error));
 	/**
 	 * Если режим отладки не включён
 	 */
