@@ -4933,6 +4933,10 @@ namespace io {
 	 *
 	 */
 	typedef struct Client : public node_t {
+		// Поколение опроса, которому принадлежит бюджет прямой записи
+		uint64_t writeCycle;
+		// Число байтов прямой записи, учтённых в текущем поколении
+		size_t writeBytes;
 		// Флаги активированных событий
 		uint8_t activity;
 		// Метаданные последнего принятого RAW-пакета
@@ -5038,7 +5042,7 @@ namespace io {
 		 *
 		 */
 		explicit Client() noexcept :
-		 activity(::activity::NONE),
+		 writeCycle(0), writeBytes(0), activity(::activity::NONE),
 		 transfer(),
 		 source(nullptr), target(nullptr) {}
 	} client_t;
@@ -10236,6 +10240,21 @@ namespace post {
 		chunk.buf = reinterpret_cast <CHAR *> (const_cast <void *> (buffer));
 		// Выполняем подачу отправки данных
 		const bool accepted = (::WSASend(static_cast <SOCKET> (sock), &chunk, 1, nullptr, 0, &slot->overlapped, nullptr) == 0);
+		/**
+		 * Если система ответила «не сокет» - описатель есть канал изображения
+		 *
+		 * @details Канальными бывают не только узлы видов, каких у системы нет: потоковый
+		 *          узел домена UNIX с абстрактным именем тоже встаёт на канал. Подаётся
+		 *          запись каналом тем же наложением: настоящий сокет этой ветки не
+		 *          достигает вовсе - она открывается лишь отказом сокетного обращения
+		 *
+		 */
+		if(!accepted && (::WSAGetLastError() == WSAENOTSOCK)){
+			// Выполняем подачу записи в канал
+			const BOOL written = ::WriteFile(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), chunk.buf, chunk.len, nullptr, &slot->overlapped);
+			// Выводим результат подачи записи в канал
+			return ::post::submitted((written != FALSE), ::GetLastError(), result, "send");
+		}
 		// Выводим результат подачи отправки данных
 		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "send");
 	}
@@ -10368,6 +10387,7 @@ namespace drain {
 	 */
 	struct sent_t {
 		bool armed;     /**< Признак заведённой в кольце отправки */
+		bool pipe;      /**< Признак того, что дескриптор есть канал изображения */
 		bool ready;     /**< Признак пришедшего исхода, ещё не забранного потребителем */
 		int32_t res;    /**< Исход отправки: октеты при удаче, отрицательный код при отказе */
 		uint64_t token; /**< Метка завершения поданной отправки */
@@ -10386,7 +10406,7 @@ namespace drain {
 		 * @brief Конструктор
 		 *
 		 */
-		sent_t() noexcept : armed(false), ready(false), res(0), token(::inflight::INVALID), owner(nullptr) {}
+		sent_t() noexcept : armed(false), pipe(false), ready(false), res(0), token(::inflight::INVALID), owner(nullptr) {}
 	};
 
 	/**
@@ -10454,9 +10474,22 @@ namespace drain {
 			// Выводим отсутствие записи
 			return nullptr;
 		// Если места под дескриптор в таблице не хватает
-		if(static_cast <size_t> (sock) >= ::drain::sent.size())
+		if(static_cast <size_t> (sock) >= ::drain::sent.size()){
+			// Граница прежде заведённых записей
+			const size_t before = ::drain::sent.size();
 			// Выполняем расширение таблицы исходов
 			::drain::sent.resize((static_cast <size_t> (sock) + 1));
+			/**
+			 * Помечаем новые записи признаком канала изображения
+			 *
+			 * @note Родной путь отправки годится сокету, а каналу нужна обычная
+			 *       запись - признак спрашивается на каждой отправке, и вычислен
+			 *       он здесь, единожды на запись, а не у всякой отправки
+			 */
+			for(size_t k = before; k < ::drain::sent.size(); k++)
+				// Запоминаем признак того, что дескриптор есть канал
+				::drain::sent.at(k).pipe = ::__awh_pipe__(static_cast <SOCKET> (sock));
+		}
 		// Выводим запись исхода отправки
 		return &::drain::sent.at(static_cast <size_t> (sock));
 	}
@@ -10570,6 +10603,54 @@ namespace drain {
 	 */
 	static constexpr size_t INLINE_LIMIT = 0x4000;
 	/**
+	 * @brief Функция подачи отправки без получения её результата
+	 *
+	 * @details Не выполняет синхронную отправку и не забирает готовый исход:
+	 *          оба действия допустимы только там, где учитываются отправленные
+	 *          байты. При отказе вызывающий код обязан включить событие записи,
+	 *          чтобы обработчик продолжил очередь с полноценным учётом результата
+	 *
+	 * @param sock   дескриптор сокета
+	 * @param buffer буфер данных из очереди передачи
+	 * @param size   размер отправляемых данных
+	 * @return       наличие поданной отправки либо ещё не разобранного исхода
+	 *
+	 */
+	static bool __awh_submit__(const net::socket_t sock, const void * buffer, const size_t size) noexcept {
+		// Если родная отправка невозможна
+		if((::port::handle == nullptr) || !::post::owned())
+			// Передаём отправку обработчику готовности
+			return false;
+		// Получаем запись исхода отправки
+		sent_t * record = ::drain::get(sock);
+		// Если запись исхода отправки отсутствует
+		if(record == nullptr)
+			// Передаём отправку обработчику готовности
+			return false;
+		// Если отправка уже подана либо её исход ещё не разобран
+		if(record->armed || record->ready)
+			// Сохраняем операцию и её исход для потребителя
+			return true;
+		// Получаем подписку, которой принадлежит отправка
+		void * const state = ::kernel::subscription(sock);
+		// Если подписка по дескриптору отсутствует
+		if(state == nullptr)
+			// Передаём отправку обработчику готовности
+			return false;
+		// Выполняем подачу отправки ядру
+		const uint64_t token = ::post::send(sock, buffer, size, state);
+		// Если подать отправку не удалось
+		if(token == ::inflight::INVALID)
+			// Передаём отправку обработчику готовности
+			return false;
+		// Запоминаем метку завершения поданной отправки
+		record->token = token;
+		// Отмечаем отправку заведённой
+		record->armed = true;
+		// Выводим успешный результат подачи
+		return true;
+	}
+	/**
 	 * @brief Функция отправки данных в сокет силами ядра
 	 *
 	 * @details Заменяет собой обращение `send` и отвечает ровно тем же, чем ответило
@@ -10663,28 +10744,10 @@ namespace drain {
 			// Выводим признак отказа
 			return -1;
 		}
-		/**
-		 * Получаем запись учёта подписки, которой отправка принадлежит
-		 *
-		 * @note Ядру передаётся именно она, а не узел: завершение отправки выдаётся
-		 *       наружу обычным событием готовности к записи, и разбору нужно ровно то
-		 *       же, что и всякому другому событию, - и дескриптор, и узел
-		 */
-		void * const state = ::kernel::subscription(sock);
-		// Если подписки по дескриптору нет вовсе
-		if(state == nullptr)
-			// Выполняем отправку данных обычным обращением
+		// Если подать отправку ядру не удалось
+		if(!::drain::__awh_submit__(sock, buffer, size))
+			// Выполняем синхронную отправку с передачей результата потребителю
 			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
-		// Выполняем подачу отправки в кольцо
-		const uint64_t token = ::post::send(sock, buffer, size, state);
-		// Если подача отправки не удалась
-		if(token == ::inflight::INVALID)
-			// Выполняем отправку данных обычным обращением
-			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
-		// Запоминаем метку завершения поданной отправки
-		record->token = token;
-		// Отмечаем отправку заведённой
-		record->armed = true;
 		/**
 		 * Отвечаем просьбой повторить позже
 		 *
@@ -11071,6 +11134,23 @@ namespace kernel {
 	static unordered_map <uint64_t, unique_ptr <acception_t>> acceptions;
 
 	/**
+	 * @brief Адрес удалённой стороны принятого подключения с его фактической длиной
+	 *
+	 * @details Длина хранится РЯДОМ с адресом, а не выводится по семейству.
+	 *          Родные сокеты AF_UNIX отдают адрес объёмом `sockaddr_un` (110
+	 *          октет, замер стендом), и вывод длины по семейству мерил бы его
+	 *          размером IPv4. У наречий POSIX размер принятого адреса пишет
+	 *          сама система в поле рядом с адресом - здесь устроено так же
+	 *
+	 */
+	struct accepted_t {
+		// Адрес удалённой стороны принятого подключения
+		struct sockaddr_storage address{};
+		// Фактическая длина адреса, какой её отдала система
+		socklen_t size = 0;
+	};
+
+	/**
 	 * @brief Принятые подключения, ожидающие выдачи движку, по слушающим дескрипторам
 	 *
 	 * @details Наложенный приём подключение уже ПРИНЯЛ, и обращению `accept` принимать
@@ -11078,7 +11158,7 @@ namespace kernel {
 	 *          выдаёт его отсюда - тем же видом, каким выдало бы обращение системы
 	 *
 	 */
-	static unordered_map <net::socket_t, vector <pair <net::socket_t, struct sockaddr_storage>>> accepted;
+	static unordered_map <net::socket_t, vector <pair <net::socket_t, accepted_t>>> accepted;
 
 	/**
 	 * @brief Функция добычи записи учёта подписки по дескриптору
@@ -11093,6 +11173,7 @@ namespace kernel {
 		// Выводим запись учёта подписки, если она заведена
 		return ((i != ::kernel::registry.end()) ? &i->second : nullptr);
 	}
+
 	/**
 	 * @brief Функция забвения состояния учёта закрываемого дескриптора
 	 *
@@ -12850,10 +12931,10 @@ namespace kernel {
 		i->second.erase(i->second.begin());
 		// Если адрес принятого подключения запрошен
 		if((addr != nullptr) && (size != nullptr)){
-			// Получаем размер адреса принятого подключения
-			const size_t length = ((signal.second.ss_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+			// Фактическая длина адреса, хранимая рядом с адресом, а не выводимая по семейству
+			const size_t length = static_cast <size_t> (signal.second.size);
 			// Переносим адрес принятого подключения вызывающему
-			::memcpy(addr, &signal.second, ((static_cast <size_t> (* size) < length) ? static_cast <size_t> (* size) : length));
+			::memcpy(addr, &signal.second.address, ((static_cast <size_t> (* size) < length) ? static_cast <size_t> (* size) : length));
 			// Устанавливаем размер адреса принятого подключения
 			(* size) = static_cast <socklen_t> (length);
 		}
@@ -25126,10 +25207,13 @@ namespace io {
 												size_t length = 0;
 												// Указатель на данные в очереди
 												const void * chunk = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(peer->transfer.queue.front(&chunk, length))
-													// Выполняем подачу отправки ядру
-													::drain::transmit(peer->transfer.fd, chunk, length);
+												// Если очередь содержит данные, а подать отправку не удалось
+												if(peer->transfer.queue.front(&chunk, length) && !::drain::__awh_submit__(peer->transfer.fd, chunk, length)){
+													// Отмечаем активность записи для обработки остатка очереди
+													peer->activity |= ::activity::WRITE;
+													// Передаём отправку обработчику, который учитывает её результат
+													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+												}
 											}
 										// Если родная отправка неприменима - ждём готовности к записи подпиской
 										} else if(!(peer->activity & ::activity::WRITE)) {
@@ -26674,10 +26758,13 @@ namespace io {
 												size_t length = 0;
 												// Указатель на данные в очереди
 												const void * chunk = nullptr;
-												// Извлекаем данные из очереди для записи в сокет
-												if(client->transfer.queue.front(&chunk, length))
-													// Выполняем подачу отправки ядру
-													::drain::transmit(client->transfer.fd, chunk, length);
+												// Если очередь содержит данные, а подать отправку не удалось
+												if(client->transfer.queue.front(&chunk, length) && !::drain::__awh_submit__(client->transfer.fd, chunk, length)){
+													// Отмечаем активность записи для обработки остатка очереди
+													client->activity |= ::activity::WRITE;
+													// Передаём отправку обработчику, который учитывает её результат
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+												}
 											}
 										// Если родная отправка неприменима - ждём готовности к записи подпиской
 										} else if(!(client->activity & ::activity::WRITE)) {
@@ -27963,6 +28050,84 @@ namespace io {
 	static bool immediate() noexcept {
 		// Писать немедленно вправе заход, не подошедший к пределу глубины
 		return (::io::depth() < ::io::DEPTH_LIMIT);
+	}
+	/**
+	 * @brief Бюджет прямой записи клиента за оборот опроса в один мебибайт
+	 *
+	 * @note Этот порог определяет выбор пути, а не ограничивает полосу.
+	 *       Одна отправка вправе пересечь порог; следующая использует очередь.
+	 *
+	 */
+	static constexpr size_t __AWH_SEND_BUDGET__ = 0x100000;
+	// Поколение внешнего опроса текущего потока
+	static thread_local uint64_t __awh_write_cycle__ = 0;
+	// Признак выполняющегося внешнего опроса текущего потока
+	static thread_local bool __awh_write_poll__ = false;
+	/**
+	 * @brief Структура охранника поколения прямой записи
+	 *
+	 * @details Только внешний заход владеет маркером. Вложенный заход может
+	 *          уснуть в волокне и завершиться на другом обороте, поэтому его
+	 *          деструктор не меняет маркер текущего внешнего захода.
+	 *
+	 */
+	typedef struct Write_Poll_Guard {
+		// Признак владения маркером внешнего опроса
+		const bool owner;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Write_Poll_Guard() noexcept : owner(!::io::__awh_write_poll__) {
+			// Новое поколение заводит только внешний заход
+			if(this->owner){
+				// Отмечаем внешний заход до исполнения вложенных вызовов
+				::io::__awh_write_poll__ = true;
+				// Начинаем новое поколение бюджета
+				::io::__awh_write_cycle__++;
+			}
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Write_Poll_Guard() noexcept {
+			// Вложенный заход не снимает чужой маркер
+			if(this->owner)
+				// Разрешаем новое поколение следующему внешнему опросу
+				::io::__awh_write_poll__ = false;
+		}
+	} write_poll_guard_t;
+	/**
+	 * @brief Функция проверки применимости бюджета прямой записи клиента
+	 *
+	 * @param client объект клиента
+	 * @param size   размер отправляемой порции
+	 * @return       признак применения бюджета
+	 *
+	 */
+	static bool __awh_budgeted__(::io::client_t * client, const size_t size) noexcept {
+		// Короткая порция не расходует бюджет и не требует проверки потока
+		if(size <= ::drain::INLINE_LIMIT)
+			// Сохраняем прежний выбор пути
+			return false;
+		// Чужой поток не обращается к состоянию бюджета узла
+		if(!::__awh_poll_thread_known__ || (::__awh_poll_thread__ != std::this_thread::get_id()))
+			// Сохраняем прежний выбор пути
+			return false;
+		// Ограничиваем только крупные неограниченные записи TCP родным путём
+		if((client->state.protocol != event::protocol_t::TCP) || (::bandwidth::write != 0) || client->hasBandwidth() || !::drain::usable(client->transfer.fd))
+			// Сохраняем прежнюю обработку остальных режимов
+			return false;
+		// Начинаем бюджет узла лениво, без обхода списка событий
+		if(client->writeCycle != ::io::__awh_write_cycle__){
+			// Запоминаем поколение опроса
+			client->writeCycle = ::io::__awh_write_cycle__;
+			// Обнуляем использованный бюджет
+			client->writeBytes = 0;
+		}
+		// Подтверждаем применение бюджета к этой отправке
+		return true;
 	}
 	/**
 	 * @brief Функция отправки данных события для файловой системы
@@ -29278,10 +29443,13 @@ namespace io {
 									size_t length = 0;
 									// Указатель на данные в очереди
 									const void * chunk = nullptr;
-									// Извлекаем данные из очереди для записи в сокет
-									if(peer->transfer.queue.front(&chunk, length))
-										// Выполняем подачу отправки ядру
-										::drain::transmit(peer->transfer.fd, chunk, length);
+									// Если очередь содержит данные, а подать отправку не удалось
+									if(peer->transfer.queue.front(&chunk, length) && !::drain::__awh_submit__(peer->transfer.fd, chunk, length)){
+										// Отмечаем активность записи для обработки остатка очереди
+										peer->activity |= ::activity::WRITE;
+										// Передаём отправку обработчику, который учитывает её результат
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+									}
 								}
 							}
 						}
@@ -32505,6 +32673,8 @@ namespace io {
 						return result;
 					// Если событие является неблокирующим
 					if(client->state.options & event::options::NO_IO_BLOCK){
+						// Проверяем бюджет крупной прямой записи этого клиента
+						const bool budgeted = ::io::__awh_budgeted__(client, size);
 						/**
 						 * Если очередь передачи данных пустая и родной путь неприменим
 						 *
@@ -32524,7 +32694,7 @@ namespace io {
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
 						 */
-						if(client->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
+						if(client->transfer.queue.empty() && ::io::immediate() && (!budgeted || (client->writeBytes < ::io::__AWH_SEND_BUDGET__)) && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
 						   (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет
@@ -32749,6 +32919,10 @@ namespace io {
 							} else bytes = send(buffer, size);
 							// Если данные отправлены успешно
 							if(bytes > 0){
+								// Учитываем запись до возвратного захода из обратного вызова
+								if(budgeted)
+									// Насыщаем счётчик без переполнения при крупной порции
+									client->writeBytes += ::min(bytes, (::io::__AWH_SEND_BUDGET__ - client->writeBytes));
 								// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
 								result = size;
 								// Если функция обратного вызова для вывода записанных данных установлена
@@ -32946,10 +33120,13 @@ namespace io {
 									size_t length = 0;
 									// Указатель на данные в очереди
 									const void * chunk = nullptr;
-									// Извлекаем данные из очереди для записи в сокет
-									if(client->transfer.queue.front(&chunk, length))
-										// Выполняем подачу отправки ядру
-										::drain::transmit(client->transfer.fd, chunk, length);
+									// Если очередь содержит данные, а подать отправку не удалось
+									if(client->transfer.queue.front(&chunk, length) && !::drain::__awh_submit__(client->transfer.fd, chunk, length)){
+										// Отмечаем активность записи для обработки остатка очереди
+										client->activity |= ::activity::WRITE;
+										// Передаём отправку обработчику, который учитывает её результат
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+									}
 								}
 							}
 						}
@@ -37597,6 +37774,10 @@ namespace io {
 						::io::client_t * client = awh_cast <::io::client_t *> (node);
 						// Сбрасываем очередь передачи данных события
 						client->transfer.queue.clear();
+						// Сбрасываем поколение бюджета завершённого соединения
+						client->writeCycle = 0;
+						// Сбрасываем объём его прямой записи
+						client->writeBytes = 0;
 						/**
 						 * Определяем тип сокета
 						 */
@@ -38073,12 +38254,21 @@ namespace io {
 			 *       до него не доходила: приём датаграмм шёл к `WSARecvFrom`, а под ним
 			 *       лежал описатель канала. Разобрано аудитом 150, закреплено проверкой
 			 *       `IoUdsDatagramServerTest`
+			 *
+			 * @note ИЗЪЯТИЕ для потокового вида - абстрактная форма имени: путь с ведущей
+			 *       собакой (`@имя`) родных сокетов домена UNIX этой системы не несёт
+			 *       вовсе, а именованный канал несёт имя без файла ровно тем же досужеством,
+			 *       каким его несёт абстрактное пространство ядра Linux. Оттого потоковый
+			 *       узел с абстрактным именем встаёт на канал - внешняя запись адреса
+			 *       на всех системах одна
+			  *
 			 */
-			if((node->state.family == event::family_t::UDS) && (node->state.type != event::type_t::STREAM) && (node->state.type != event::type_t::NONE)){
+			if(node->state.family == event::family_t::UDS){
 				// Путь узла домена UNIX, каким выводится имя канала
 				string path;
 				/**
-				 * Определяем чем является текущий узел
+				 * Достаём путь узла ДО выбора носителя: абстрактная форма имени решает
+				 * выбор, а живёт она у клиента в цели, у сервера - в адресе привязки
 				 */
 				switch(static_cast <uint8_t> (node->state.node)){
 					// Если узел является клиентом
@@ -38089,10 +38279,33 @@ namespace io {
 						if(client->target != nullptr)
 							// Получаем путь, каким задана цель подключения
 							path = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address;
-						// Если пути подключения нет - заводить нечего
-						if(path.empty())
-							// Выводим признак незаведённого описателя
-							return false;
+					} break;
+					// Если узел является сервером
+					case static_cast <uint8_t> (event::node_t::SERVER): {
+						// Получаем объект сервера
+						::io::server_t * server = awh_cast <::io::server_t *> (node);
+						// Если адрес сервера задан
+						if(server->host != nullptr)
+							// Получаем путь, каким задан адрес сервера
+							path = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
+					} break;
+				}
+				// Признак абстрактной формы имени узла
+				const bool abstract = ((path.length() > 1) && (path.front() == '@'));
+				// Всякому виду без родного сокета и абстрактной форме имени даётся изображение каналом
+				if(((node->state.type != event::type_t::STREAM) && (node->state.type != event::type_t::NONE)) || abstract){
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (node->state.node)){
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (node);
+							// Если пути подключения нет - заводить нечего
+							if(path.empty())
+								// Выводим признак незаведённого описателя
+								return false;
 						// Выводим имя канала из пути подключения
 						const string name = ::channel::name(path);
 						// Если имя канала из пути вывести не удалось - заводить нечего
@@ -38161,10 +38374,6 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем объект сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (node);
-						// Если адрес сервера задан
-						if(server->host != nullptr)
-							// Получаем путь, каким задан адрес сервера
-							path = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
 						// Если пути привязки нет - заводить нечего
 						if(path.empty())
 							// Выводим признак незаведённого описателя
@@ -38187,7 +38396,12 @@ namespace io {
 						 * @note Настоящее имя носят экземпляры, заводимые приёмом подключения, и
 						 *       один свободный экземпляр держится под ним всегда
 						 */
-						server->fd = ::channel::instance(name + "-anchor", (node->state.type != event::type_t::STREAM), true);
+						/**
+						 * Строй сообщений несёт и потоковое изображение абстрактного имени:
+						 * подача готовности к приёму держится на нём, а получатель потока
+						 * обязан мириться с всякой разбивкой данных на части
+						 */
+						server->fd = ::channel::instance(name + "-anchor", true, true);
 						// Если слушающий конец завести не удалось
 						if(server->fd == net::invalid_socket_t){
 							// Записываем отказ заведения слушающего конца в журнал
@@ -38203,13 +38417,15 @@ namespace io {
 						 *       должно. Подробности - при `::channel::start`
 						 */
 						// Запоминаем слушающий конец вместе с именем, но без свободного экземпляра
-						::channel::listeners.emplace(server->fd, ::channel::listener_t{name, (node->state.type != event::type_t::STREAM), false, net::invalid_socket_t, net::invalid_socket_t});
+						::channel::listeners.emplace(server->fd, ::channel::listener_t{name, true, false, net::invalid_socket_t, net::invalid_socket_t});
 						// Выводим признак заведённого описателя
 						return true;
 					}
 				}
 				// Выводим признак незаведённого описателя
 				return false;
+				}
+				// Прочие узлы домена UNIX несёт родной сокет системы
 			}
 			/**
 			 * Определяем чем является текущий узел
@@ -48982,6 +49198,10 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				}
 				// Сбрасываем очередь передачи данных
 				client->transfer.queue.clear();
+				// Сбрасываем поколение бюджета завершённого соединения
+				client->writeCycle = 0;
+				// Сбрасываем объём его прямой записи
+				client->writeBytes = 0;
 				// Снимаем признак ведения вытягивания данных из источника: очередь очищена,
 				// и возобновлять отправку вправе только приложение вызовом send(id, nullptr, 0)
 				client->transfer.pulling = false;
@@ -67791,31 +68011,27 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														result = true;
 														// Отмечаем событие подключённым
 														client->state.status = event::status_t::CONNECTED;
+														/**
+														 * Обработку подключения ведём общим порядком, как у сокета
+														 *
+														 * @details Обработка подключения везёт с собой не одни извещения:
+														 *          подписка чтения, снятие таймаута подключения и отклик
+														 *          `connect` выдаются именно там. Изображённый конец прежде
+														 *          обходил её, извещая обоими родами сам, - и узел оставался
+														 *          глухим: подключён и пишет, а приём отклика не взведён, и
+														 *          потребитель не получал ничего, ровно без отказа
+														 *
+														 * @note Отсутствие состояния `PENDING` у этого пути законно - ждать
+														 *       здесь нечего, подключение совершается самим открытием.
+														 *       Действие `CONNECT` выдаётся обработкою прежде состояния -
+														 *       порядок родов отвечает API
+														 *
+														 */
 														{
-															/**
-															 * Извещаем потребителя о состоявшемся подключении ОБОИМИ родами
-															 *
-															 * @details Изображённый конец канала подключается открытием и пути
-															 *          готовности к записи не проходит вовсе - а извещение о
-															 *          действии `CONNECT` выдаётся ровно там, у `io::connected`.
-															 *          Оттого потребителю, подписанному на ДЕЙСТВИЯ, о
-															 *          подключении не сообщалось ничего: приходило одно состояние
-															 *
-															 * @warning Расхождение это молчаливое и врёт в опасную сторону: код,
-															 *          ждущий действия `CONNECT`, у четырёх наречий POSIX трогается
-															 *          с места, а здесь не трогался бы вовсе - и БЕЗ отказа
-															 *
-															 * @note Порядок родов задан API и обязан ему отвечать: действие
-															 *       `CONNECT` выдаётся ПРЕЖДЕ состояния `CONNECTED`. Отсутствие же
-															 *       состояния `PENDING` у этого пути законно - ждать здесь нечего,
-															 *       подключение совершается самим открытием
-															 */
 															// Создаём охранника узла события (защита от освобождения узла из вложенного коллбэка)
 															::local::guard_t guard(client);
-															// Если установлена функция обратного вызова
-															if(client->callbacks.event != nullptr)
-																// Вызываем функцию обратного вызова о состоявшемся подключении
-																client->callbacks.event(client->id, event::action_t::CONNECT);
+															// Выполняем обработку события подключения клиента общим порядком
+															result = (::io::connected(client, this, &this->_eth) && result);
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова о состоявшемся подключении
@@ -76559,6 +76775,10 @@ void awh::engine::IO::clear() noexcept {
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Сбрасываем очередь передачи данных события
 						client->transfer.queue.clear();
+						// Сбрасываем поколение бюджета завершённого соединения
+						client->writeCycle = 0;
+						// Сбрасываем объём его прямой записи
+						client->writeBytes = 0;
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
@@ -78422,6 +78642,8 @@ awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noe
  *
  */
 bool awh::engine::IO::poll(const int32_t timeout) noexcept {
+	// Удерживаем поколение бюджета до завершения внешнего опроса
+	::io::write_poll_guard_t writeGuard;
 	// Результат выполнения опроса
 	bool result = false;
 	// Если очередь опроса заведена
@@ -79244,7 +79466,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 								 */
 								if(::channel::listening(sockOf)){
 									// Адрес принятого подключения: у канала адрес один на обе стороны
-									struct sockaddr_storage empty{};
+									::kernel::accepted_t empty;
 									// Если приём подключения удался и операция не отменена
 									if((completion.res >= 0) && !cancelled)
 										// Складываем принятое подключение до выдачи движку
@@ -79270,8 +79492,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 									if(::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf))) != 0)
 										// Выводим в журнал сообщение о неудавшемся наследовании свойств
 										log::print("%s: accepted socket %d did not inherit the listening socket properties: %s", log::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (peer), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
-									// Адрес принятого подключения
-									struct sockaddr_storage source{};
+									// Адрес принятого подключения с его фактической длиной
+									::kernel::accepted_t source;
 									// Адреса сторон принятого подключения, добываемые из буфера
 									struct sockaddr * local = nullptr, * remote = nullptr;
 									// Размеры адресов сторон принятого подключения
@@ -79284,9 +79506,14 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 										&local, &first, &remote, &second, sockOf
 									);
 									// Если адрес удалённой стороны добыт
-									if((remote != nullptr) && (second > 0))
+									if((remote != nullptr) && (second > 0)){
+										// Длина адреса, уместившаяся в хранилище очереди
+										const socklen_t length = static_cast <socklen_t> ((static_cast <size_t> (second) < sizeof(source.address)) ? static_cast <size_t> (second) : sizeof(source.address));
 										// Запоминаем адрес удалённой стороны
-										::memcpy(&source, remote, ((static_cast <size_t> (second) < sizeof(source)) ? static_cast <size_t> (second) : sizeof(source)));
+										::memcpy(&source.address, remote, length);
+										// Запоминаем фактическую длину адреса рядом с адресом
+										source.size = length;
+									}
 									// Складываем принятое подключение до выдачи движку
 									::kernel::accepted[sockOf].emplace_back(peer, source);
 								// Если приём подключения не удался, заведённый под него сокет закрывается

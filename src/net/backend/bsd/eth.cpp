@@ -40,10 +40,10 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
-#include <net/fds.hpp>
-#include <net/eth/eth.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/fds.hpp>
+#include <net/eth/eth.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -131,6 +131,7 @@ namespace options {
 						 *          существует: замер на macOS 26.5 отвечает unknown oid. Судя
 						 *          по пояснению рядом - "значение по умолчанию 3, что очень
 						 *          мало", - имелось в виду именно это имя, усечённое при переносе
+						 *
 						 */
 						os.sysctl("net.inet.tcp.win_scale_factor", 8);
 						// Увеличиваем максимумы автонастройки macOS TCP
@@ -141,6 +142,7 @@ namespace options {
 						 *
 						 * @warning Соседнее "net.inet.tcp.slowstart_flightsize" убрано: замер
 						 *          на macOS 26.5 отвечает unknown oid
+						 *
 						 */
 						os.sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
 					/**
@@ -163,6 +165,7 @@ namespace options {
 						 * @warning Соседнее "net.inet.tcp.recvbuf_inc" убрано: замер на
 						 *          FreeBSD 14.1 отвечает unknown oid, шаг приёма отдельной
 						 *          настройкой там больше не задаётся
+						 *
 						 */
 						os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
 						/**
@@ -171,6 +174,7 @@ namespace options {
 						 * @warning Соседнее "net.inet.tcp.inflight.enable" убрано: замер на
 						 *          FreeBSD 14.1 отвечает unknown oid, ограничение объёма данных
 						 *          в пути снято из ядра вместе с настройкой
+						 *
 						 */
 						os.sysctl("net.inet.tcp.hostcache.expire", 1);
 						/**
@@ -221,6 +225,7 @@ namespace options {
 						 *          назначается вслепую, а берётся лишь тогда, когда ядро само
 						 *          выносит его в перечень доступных - отсутствие в перечне
 						 *          означает, что ядро сочло его негодным вовсе
+						 *
 						 */
 						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен
@@ -303,6 +308,7 @@ namespace options {
 						 *          назначается вслепую, а берётся лишь тогда, когда ядро само
 						 *          выносит его в перечень доступных - отсутствие в перечне
 						 *          означает, что ядро сочло его негодным вовсе
+						 *
 						 */
 						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен и счётчик тактов доступен
@@ -321,20 +327,6 @@ namespace options {
 					 */
 					#elif defined(__OpenBSD__)
 						/**
-						 * Устанавливаем максимальное количество подключений
-						 *
-						 * @warning Предел здесь 32767, и значение выше отвергается целиком:
-						 *          замер на OpenBSD 7.9 отвечает Invalid argument уже на 65535.
-						 *          Принятое у прочих систем 49152 сюда не годится
-						 */
-						os.sysctl("kern.somaxconn", 32767);
-						// Активируем контроль работы временной марки и масштабируемого окна
-						os.sysctl("net.inet.tcp.rfc1323", 1);
-						// Разрешаем выборочные подтверждения
-						os.sysctl("net.inet.tcp.sack", 1);
-						// Активируем увеличенное начальное окно по RFC 3390
-						os.sysctl("net.inet.tcp.rfc3390", 2);
-						/**
 						 * Источник времени здесь не выбирается намеренно
 						 *
 						 * @note Счётчика тактов OpenBSD в перечень доступных источников не
@@ -343,7 +335,23 @@ namespace options {
 						 *       и лучший из них - паравиртуальные часы - ядром уже и выбран.
 						 *       Выбирать нечего, а обращение к часам стоит там 711 наносекунд
 						 *       против 725 у NetBSD с TSC - то есть настройкой это не поднять
+						 *
 						 */
+						/**
+						 * Устанавливаем максимальное количество подключений
+						 *
+						 * @warning Предел здесь 32767, и значение выше отвергается целиком:
+						 *          замер на OpenBSD 7.9 отвечает Invalid argument уже на 65535.
+						 *          Принятое у прочих систем 49152 сюда не годится
+						 *
+						 */
+						os.sysctl("kern.somaxconn", 32767);
+						// Активируем контроль работы временной марки и масштабируемого окна
+						os.sysctl("net.inet.tcp.rfc1323", 1);
+						// Разрешаем выборочные подтверждения
+						os.sysctl("net.inet.tcp.sack", 1);
+						// Активируем увеличенное начальное окно по RFC 3390
+						os.sysctl("net.inet.tcp.rfc3390", 2);
 					#endif
 				}
 			#endif
@@ -376,9 +384,7 @@ namespace options {
 	 * @brief Конструктор
 	 *
 	 */
-	awh::Ethernet::Ethernet() noexcept :
-	 addr(), iface(), sctp(), socket(),
-	 gateway() {
+	awh::Ethernet::Ethernet() noexcept {
 		/**
 		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -397,9 +403,7 @@ namespace options {
 	 * @brief Конструктор
 	 *
 	 */
-	awh::Ethernet::Ethernet() noexcept :
-	 addr(), iface(), socket(),
-	 gateway() {
+	awh::Ethernet::Ethernet() noexcept {
 		/**
 		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -415,4 +419,4 @@ namespace options {
  * @brief Деструктор
  *
  */
-awh::Ethernet::~Ethernet() noexcept {}
+awh::Ethernet::~Ethernet() noexcept = default;

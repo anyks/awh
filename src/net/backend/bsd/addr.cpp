@@ -69,10 +69,10 @@
  */
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <sys/un.h>
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 /**
@@ -80,6 +80,9 @@
  * а нужные объявления раскрывает через прочие заголовки сети
  */
 #if __has_include(<net/if_var.h>)
+	/**
+	 * Подключаем системный заголовок светений об устройстве
+	 */
 	#include <net/if_var.h>
 #endif
 #include <net/if_types.h>
@@ -92,16 +95,162 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 #include <sys/locker.hpp>
 #include <net/eth/addr.hpp>
 #include <net/eth/gateway.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_ADDR_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_ADDR_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
+ * @brief Инкапсулируем статические общие функции в локальное пространство имён
+ *
+ */
+namespace local {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * Если системой является NetBSD с набором команд ARM64
+	 */
+	#if defined(__NetBSD__) && defined(__aarch64__)
+		/**
+		 * @brief Функция получения частоты счётчика системного таймера ARM
+		 *
+		 * @details У NetBSD быстрого пути к часам нет вовсе: всякий вызов
+		 *          `clock_gettime` уходит в ядро целиком, и стоит он 1647 наносекунд
+		 *          - проверено трассировкой на стенде NetBSD 11.0 aarch64, двести
+		 *          вызовов дали двести переходов. Для сличения: у macOS то же чтение
+		 *          стоит 13.0 наносекунды, у FreeBSD - 18.5, а дешёвыми часами и
+		 *          вовсе 3.4.
+		 *
+		 *          Счётчик системного таймера ARM читается из пространства
+		 *          пользователя без обращения к ядру и стоит 0.5 наносекунды, то
+		 *          есть втрое тысячекратно дешевле. Источник это тот же самый: по
+		 *          нему ядро и считает монотонное время.
+		 *
+		 * @note Частота спрашивается однажды и проверяется, а не предполагается:
+		 *       встречное устройство вправе оставить регистр незаполненным, и деление
+		 *       на ноль обошлось бы дороже отступления к обращению в ядро
+		 *
+		 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
+		 *
+		 */
+		static AWH_ADDR_INLINE uint64_t frequency() noexcept {
+			// Частота счётчика системного таймера
+			uint64_t result = 0;
+			// Выполняем чтение частоты счётчика системного таймера
+			__asm__ volatile("mrs %0, cntfrq_el0" : "=r" (result));
+			// Выводим частоту счётчика, признав негодной невозможную
+			return ((result >= 1000000ULL) ? result : 0);
+		}
+
+		// Частота счётчика системного таймера, ноль означает негодность счётчика
+		static const uint64_t counter = frequency();
+
+		/**
+		 * @brief Функция получения текущего показания счётчика системного таймера ARM
+		 *
+		 * @return текущее показание счётчика в тактах
+		 *
+		 */
+		static AWH_ADDR_INLINE uint64_t ticks() noexcept {
+			// Текущее показание счётчика системного таймера
+			uint64_t result = 0;
+			// Выполняем чтение показания счётчика системного таймера
+			__asm__ volatile("mrs %0, cntvct_el0" : "=r" (result) :: "memory");
+			// Выводим текущее показание счётчика
+			return result;
+		}
+
+		/**
+		 * @brief Функция приведения показания счётчика к заданной доле секунды
+		 *
+		 * @details Счёт ведётся раздельно по целым секундам и остатку намеренно:
+		 *          прямое умножение тактов на миллиард переполняет разрядность
+		 *          спустя всего лишь тринадцать минут работы при частоте счётчика в
+		 *          24 МГц, и время пошло бы вспять.
+		 *
+		 * @param value показание счётчика в тактах
+		 * @param scale количество долей секунды в единице вывода
+		 * @return      время в заданных долях секунды
+		 *
+		 */
+		static AWH_ADDR_INLINE uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
+			// Выводим время, сложенное из целых секунд и остатка
+			return (((value / counter) * scale) + (((value % counter) * scale) / counter));
+		}
+	#endif
+	/**
+	 * @brief Функция получения текущего штампа времени в наносекундах
+	 *
+	 * @return текущее время в наносекундах
+	 *
+	 */
+	static AWH_ADDR_INLINE uint64_t nanostamp() noexcept {
+		/**
+		 * Если операционной системой является macOS
+		 *
+		 * @note Источник времени тот же самый - CLOCK_MONOTONIC, - но берётся
+		 *       функцией, отдающей наносекунды числом. Это дешевле вдвое (12.7
+		 *       наносекунды против 21.1) и вдобавок избавляет от умножения и
+		 *       сложения, которыми наносекунды собираются из структуры
+		 *
+		 */
+		#if defined(__APPLE__)
+			// Возвращаем текущее время монотонных часов в наносекундах
+			return ::clock_gettime_nsec_np(CLOCK_MONOTONIC);
+		/**
+		 * Если системой является NetBSD с набором команд ARM64
+		 *
+		 * @note Отсчёт у счётчика свой, от запуска встречного устройства, а не от
+		 *       начала эпохи. Значения это не имеет: время здесь употребляется
+		 *       разностями да сложением со сроком, а постоянное смещение в них
+		 *       сокращается
+		 *
+		 */
+		#elif defined(__NetBSD__) && defined(__aarch64__)
+			/**
+			 * Если счётчик системного таймера годен
+			 */
+			if(counter > 0)
+				// Возвращаем текущее показание счётчика в наносекундах
+				return convert(ticks(), 1000000000ULL);
+			// Объект структуры для хранения времени
+			struct timespec ts{0};
+			// Получаем текущее время в формате CLOCK_MONOTONIC
+			::clock_gettime(CLOCK_MONOTONIC, &ts);
+			// Возвращаем текущее время в наносекундах
+			return ((static_cast <uint64_t> (ts.tv_sec) * 1000000000ULL) + static_cast <uint64_t> (ts.tv_nsec));
+		/**
+		 * Если это другая операционная система
+		 */
+		#else
+			// Объект структуры для хранения времени
+			struct timespec ts{0};
+			// Получаем текущее время в формате CLOCK_MONOTONIC
+			::clock_gettime(CLOCK_MONOTONIC, &ts);
+			// Возвращаем текущее время в наносекундах
+			return ((static_cast <uint64_t> (ts.tv_sec) * 1000000000ULL) + static_cast <uint64_t> (ts.tv_nsec));
+		#endif
+	}
+};
 
 /**
  * @brief Инкапсулируем статические типы данных в пространство имён
@@ -124,13 +273,11 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t __awh_zero_mac__[6] = {0};
-
 	/**
 	 * @brief Нулевой IPv6-адрес для сравнения
 	 *
 	 */
 	constexpr uint8_t __awh_zero_ipv6__[16] = {0};
-
 	/**
 	 * @brief Время жизни записи об адресе с выходом во внешнюю сеть
 	 *
@@ -172,6 +319,11 @@ namespace {
 	} outward_t;
 
 	/**
+	 * @brief Флаг одноразовой инициализации мьютекса записей об адресах
+	 *
+	 */
+	once_flag __awh_init_once__;
+	/**
 	 * @brief Записи об адресах с выходом во внешнюю сеть: [0] - IPv4, [1] - IPv6
 	 *
 	 * @note Записи общие для всего процесса: метод определения адреса доступен
@@ -180,18 +332,6 @@ namespace {
 	 *
 	 */
 	outward_t __awh_outward__[2];
-
-	/**
-	 * @brief Флаг одноразовой инициализации мьютекса записей об адресах
-	 *
-	 */
-	once_flag __awh_init_once__;
-
-	/**
-	 * @brief Режим безопасности работы потоков
-	 *
-	 */
-	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
 
 	/**
 	 * @brief Блокировка доступа к записям об адресах с выходом во внешнюю сеть
@@ -203,17 +343,11 @@ namespace {
 	 *
 	 */
 	static lock_state_t <std::shared_mutex> __awh_outward_mutex__;
-
 	/**
-	 * @brief Функция получения текущего значения монотонных часов
-	 *
-	 * @return текущее время в наносекундах
+	 * @brief Режим безопасности работы потоков
 	 *
 	 */
-	uint64_t nanostamp() noexcept {
-		// Выводим текущее значение монотонных часов
-		return static_cast <uint64_t> (chrono::duration_cast <chrono::nanoseconds> (chrono::steady_clock::now().time_since_epoch()).count());
-	}
+	static event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
 
 	/**
 	 * @brief Функция снятия встроенной зоны с адреса, полученного от системы
@@ -232,7 +366,7 @@ namespace {
 	 * @return     адрес без встроенной зоны
 	 *
 	 */
-	struct in6_addr unscope(const struct in6_addr & addr) noexcept {
+	static AWH_ADDR_INLINE struct in6_addr unscope(const struct in6_addr & addr) noexcept {
 		// Адрес без встроенной зоны
 		struct in6_addr result = addr;
 		// Если адрес в зоне не нуждается, оставляем его как есть
@@ -266,7 +400,7 @@ namespace {
 	 * @param source объект источника сетевых адресов
 	 *
 	 */
-	void scope(net::src_t & source) noexcept {
+	static void AWH_ADDR_INLINE scope(net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выходим из функции, так-как проставлять зону нечему
@@ -322,7 +456,6 @@ namespace {
 		// Устанавливаем зону адреса
 		ip->zone = zone;
 	}
-
 	/**
 	 * @brief Функция восстановления адреса из запомненной записи
 	 *
@@ -330,7 +463,7 @@ namespace {
 	 * @return       признак того, что запись найдена и ещё не устарела
 	 *
 	 */
-	bool restore(net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE bool restore(net::src_t & source) noexcept {
 		// Если размер адреса не соответствует ни одному из семейств
 		if((source.ip->size != 4) && (source.ip->size != 16))
 			// Сообщаем, что адрес нужно определять заново
@@ -340,7 +473,7 @@ namespace {
 		// Получаем запись, соответствующую семейству адресов
 		const outward_t & outward = __awh_outward__[source.ip->size == 16];
 		// Если запись не заполнена или уже устарела
-		if(!outward.filled || (::nanostamp() >= outward.deadline))
+		if(!outward.filled || (::local::nanostamp() >= outward.deadline))
 			// Сообщаем, что адрес нужно определять заново
 			return false;
 		// Устанавливаем название сетевого интерфейса
@@ -358,14 +491,13 @@ namespace {
 		// Сообщаем, что адрес восстановлен
 		return true;
 	}
-
 	/**
 	 * @brief Функция запоминания определённого адреса
 	 *
 	 * @param source объект сетевых адресов текущей машины
 	 *
 	 */
-	void remember(const net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE void remember(const net::src_t & source) noexcept {
 		// Если размер адреса не соответствует ни одному из семейств
 		if((source.ip->size != 4) && (source.ip->size != 16))
 			// Выходим из функции
@@ -385,24 +517,23 @@ namespace {
 		// Запоминаем MAC-адрес сетевого интерфейса
 		::memcpy(&outward.mac[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
 		// Устанавливаем время устаревания записи
-		outward.deadline = (::nanostamp() + __awh_outward_lifetime__);
+		outward.deadline = (::local::nanostamp() + __awh_outward_lifetime__);
 		// Отмечаем запись заполненной
 		outward.filled = true;
 	}
-
 	/**
 	 * @brief Функция проверки годности адреса IPv6 источником обмена
 	 *
 	 * @details Годным считается любой адрес IPv6, кроме канального и петли. Канальный
 	 *          (`FE80::/10`) источником не годится оттого, что без зоны устройства
 	 *          бессмыслен, а зоны структура адреса не хранит; петля же (`::1`) не выходит
-	 *          за пределы самой машины. Нулевой адрес негоден и подавно
+	 *          за пределы самой машины. Нулевой адрес негоден и подавно.
 	 *
 	 * @param source объект источника сетевых адресов
 	 * @return       результат проверки годности адреса
 	 *
 	 */
-	bool routable(const net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE bool routable(const net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства, годным он быть не может
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выводим результат
@@ -420,7 +551,7 @@ namespace {
 	 * @details Перебирает устройства и берёт первый годный адрес, попутно запоминая его
 	 *          устройство. Нужна там, где устройство пути по умолчанию годного адреса не
 	 *          дало: на машине без пути IPv6 наружу путём оказывается туннель, держащий
-	 *          один лишь канальный адрес
+	 *          один лишь канальный адрес.
 	 *
 	 * @note Не нашлось ни одного годного - источник остаётся нетронутым: своего адреса
 	 *       IPv6 у машины нет, и выдумывать его неоткуда
@@ -429,7 +560,7 @@ namespace {
 	 * @return       результат поиска годного адреса
 	 *
 	 */
-	bool discover(net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE bool discover(net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства, искать нечего
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выводим результат
@@ -478,7 +609,6 @@ namespace {
 		// Выводим результат
 		return result;
 	}
-
 	/**
 	 * @brief Функция проверки источника на отсутствие примет для подбора устройства
 	 *
@@ -487,10 +617,10 @@ namespace {
 	 *
 	 * @details Источник считается лишённым примет, когда нулевые разом и адрес, и
 	 *          аппаратный адрес. Запись эта означает не сбой определения, а согласие
-	 *          отдать выбор устройства ядру: INADDR_ANY либо IN6ADDR_ANY
+	 *          отдать выбор устройства ядру: INADDR_ANY либо IN6ADDR_ANY.
 	 *
 	 */
-	bool zero(const net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE bool zero(const net::src_t & source) noexcept {
 		// Если адрес либо аппаратный адрес не заданы, примет для подбора нет
 		if((source.ip == nullptr) || (source.mac == nullptr))
 			// Выводим результат проверки
@@ -511,7 +641,6 @@ namespace {
 		// Выводим результат проверки
 		return true;
 	}
-
 	/**
 	 * @brief Функция вычисления контрольной суммы
 	 *
@@ -520,11 +649,11 @@ namespace {
 	 * @return       вычисленная контрольная сумма
 	 *
 	 */
-	uint16_t checksum(const void * data, size_t length) noexcept {
-		// Получаем нужного вида буфер входящих данных
-		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
+	static AWH_ADDR_INLINE uint16_t checksum(const void * data, size_t length) noexcept {
 		// Инициализируем сумму
 		uint32_t sum = 0;
+		// Получаем нужного вида буфер входящих данных
+		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
 		/**
 		 * Пока есть данные для обработки
 		 */
@@ -643,13 +772,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
+								log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+								log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -691,32 +820,30 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
+								log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+								log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
 						}
-							/**
-							 * Канальный адрес берётся лишь за неимением иного
-							 *
-							 * @details Устройство держит по нескольку адресов IPv6 разом, и первым в
-							 *          списке идёт канальный (`FE80::/10`). Источником он не годится:
-							 *          без зоны устройства он бессмыслен, а зоны структура адреса не
-							 *          хранит. Годным считается любой иной - глобальный либо местного
-							 *          назначения
-							 *
-							 * @note Прежде брался первый попавшийся, и своим адресом объявлялся
-							 *       канальный, хотя рядом на том же устройстве лежал годный
-							 *
-							 */
-							// Канальный адрес устройства, отложенный на крайний случай
-							const struct sockaddr_in6 * linked = nullptr;
+						/**
+						 * Канальный адрес устройства, отложенный на крайний случай
+						 *
+						 * @details Устройство держит по нескольку адресов IPv6 разом, и первым в
+						 *          списке идёт канальный (`FE80::/10`). Источником он не годится:
+						 *          без зоны устройства он бессмыслен, а зоны структура адреса не
+						 *          хранит. Годным считается любой иной - глобальный либо местного назначения.
+						 *
+						 * @note Прежде брался первый попавшийся, и своим адресом объявлялся
+						 *       канальный, хотя рядом на том же устройстве лежал годный
+						 *
+						 */
+						const struct sockaddr_in6 * linked = nullptr;
 						/**
 						 * Перебираем все сетевые интерфейсы
 						 */
@@ -756,8 +883,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 						 * @note Скобки здесь обязательны. Прежде их не было, и под условие
 						 *       попадало одно лишь копирование адреса, тогда как проставление
 						 *       зоны шло всегда - в том числе поверх годного адреса, найденного
-						 *       перебором, которому зона не нужна. Отступ при этом обещал
-						 *       обратное
+						 *       перебором, которому зона не нужна. Отступ при этом обещал обратное
 						 *
 						 */
 						if((linked != nullptr) && (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)){
@@ -782,13 +908,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -818,6 +944,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		 * @note Достижимо это не одним ворошителем: движок зовёт метод с адресом,
 		 *       заданным потребителем (`fillSource(source->ip.get(), src)`), и вид
 		 *       его с семейством узла разойтись волен
+		 *
 		 */
 		if((net == nullptr) || (source.ip == nullptr) || (net->size != source.ip->size))
 			// Заполнять источник несличимой парой нечем
@@ -844,17 +971,17 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
 								{htonl(network->address), static_cast <uint16_t> (network->prefix)},
-								awh::log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
+								log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Network address %u is not aligned to prefix %u", awh::log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
+							log::print("Network address %u is not aligned to prefix %u", log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
 						#endif
 						// Выходим из функции
 						return;
@@ -871,19 +998,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
 							{
 								::inet_ntop(AF_INET, &network->address, buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
-							}, awh::log::flag_t::WARNING
+							}, log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+						log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 					#endif
 					// Выходим из функции
 					return;
@@ -920,6 +1047,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					 * @warning Установлено 23.08.2026 на стендах Solaris и OpenIndiana: там
 					 *          заведены `awh_tun0`...`awh_tun7` без адресов, и `EthSuiteTest`
 					 *          получал у нулевого адреса имя связи вместо пустого
+					 *
 					 */
 					if(ip == 0)
 						// Пропускаем связь без адреса
@@ -954,19 +1082,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET6_ADDRSTRLEN];
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
 							{
 								::inet_ntop(AF_INET6, &network->address[0], buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
-							}, awh::log::flag_t::WARNING
+							}, log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+						log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 					#endif
 					// Выходим из функции
 					return;
@@ -1038,13 +1166,13 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1067,6 +1195,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			// Если тип узла не установлен
 			case static_cast <uint8_t> (event::node_t::NONE): {
 				/**
+				 * Если адрес удалось восстановить из запомненной записи
+				 *
 				 * @note Определение адреса, с которого доступна внешняя сеть,
 				 *       стоит создания сокета, подключения к нему, запроса
 				 *       имени сокета и его закрытия, а следом ещё и обхода
@@ -1075,7 +1205,6 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				 *       поэтому результат запоминается на время жизни записи.
 				 *
 				 */
-				// Если адрес удалось восстановить из запомненной записи
 				if(::restore(source))
 					// Выходим из функции
 					return;
@@ -1099,8 +1228,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *          отвечала отказом в маршруте. Сверх того определение
 						 *          своего адреса требовало выхода в интернет и зависело
 						 *          от случая при выборе сервера
+						 *
 						 */
-						// Объект маршрута для подбора устройства
 						gateway_t::route_t route{};
 						// Выполняем инициализацию адреса шлюза маршрута
 						route.gateway = ::make_unique <net::addr_net_ipv4_t> ();
@@ -1121,11 +1250,12 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 					// Если адрес является IPv6
 					case 16: {
 						/**
+						 * Объект маршрута для подбора устройства
+						 *
 						 * Исходящий адрес IPv6 определяется тем же подбором маршрута по
 						 * умолчанию, что и адрес IPv4. Довод к отказу от подключения к
 						 * серверам имён приведён у ветви IPv4
 						 */
-						// Объект маршрута для подбора устройства
 						gateway_t::route_t route{};
 						// Выполняем инициализацию адреса шлюза маршрута
 						route.gateway = ::make_unique <net::addr_net_ipv6_t> ();
@@ -1146,7 +1276,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *          умолчанию оказывается туннель, а он держит один лишь
 						 *          канальный адрес. Канальный же источником не годится -
 						 *          без зоны устройства он бессмыслен, - и объявлять его
-						 *          своим значит обрекать собеседника на отказ
+						 *          своим значит обрекать собеседника на отказ.
 						 *
 						 * @note Разбор идёт в том же порядке, что и у самого устройства:
 						 *       годным считается любой адрес, кроме канального и петли.
@@ -1172,13 +1302,17 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				switch(source.ip->size){
 					// Если адрес является IPv4
 					case 4: {
-						// Создаём массив параметров сетевого интерфейса
+						// Имя запроса к таблице маршрутов
 						int32_t mib[6];
-						// Устанавливаем парарметры сетевого интерфейса
+						// Задаём уровень запроса: сетевые настройки ядра
 						mib[0] = CTL_NET;
+						// Указываем подсистему маршрутизации
 						mib[1] = PF_ROUTE;
+						// Адресуемся ко всему семейству без выбора протокола
 						mib[2] = 0;
+						// Ограничиваемся маршрутами IPv4
 						mib[3] = AF_INET;
+						// Просим перечень маршров, отбираемых по признакам
 						mib[4] = NET_RT_FLAGS;
 						/**
 						 * Признак записей канального уровня зовётся по-разному
@@ -1186,7 +1320,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 * @details NetBSD зовёт его `RTF_LLDATA`, а `RTF_LLINFO` у себя
 						 *          закомментировал; macOS, FreeBSD и OpenBSD держат
 						 *          `RTF_LLINFO`. Значение у обоих одно - `0x400`, - и
-						 *          разнятся лишь имена
+						 *          разнятся лишь имена.
 						 *
 						 * @note Отбор идёт по наличию самого признака, а не по системе:
 						 *       имя это в родстве систем не укладывается - OpenBSD стоит
@@ -1195,11 +1329,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *
 						 */
 						#if defined(RTF_LLDATA)
+							// Отбираем маршруты с признаком канального уровня под новым именем
 							mib[5] = RTF_LLDATA;
 						/**
 						 * Если признак записей канального уровня зовётся иначе
 						 */
 						#else
+							// Отбираем маршруты с признаком канального уровня под прежним именем
 							mib[5] = RTF_LLINFO;
 						#endif
 						// Размер буфера данных
@@ -1211,17 +1347,31 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Route sysctl estimate", awh::log::flag_t::WARNING);
+								log::print("Route sysctl estimate", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
 						}
+						/**
+						 * Пустая таблица канальных маршрутов - законное состояние
+						 *
+						 * @details Оценка отвечает нулём и успехом, пока кэш соседей
+						 *          не нагулян (замер на NetBSD 10.1: у машины без
+						 *          обмена таблица пуста), и обращение к нулевому
+						 *          элементу пустого вектора есть неопределённое
+						 *          поведение - надзиратель UBSan ловил его на каждом
+						 *          заполнении источника.
+						 *
+						 */
+						if(size < 1)
+							// Выходим из функции: перебирать нечего
+							return;
 						// Создаём буфер данных сетевого интерфейса
 						vector <char> buffer(size);
 						// Выполняем получение данных сетевого интерфейса
@@ -1231,13 +1381,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Actual retrieval of routing table", awh::log::flag_t::WARNING);
+								log::print("Actual retrieval of routing table", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1306,13 +1456,17 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 					} break;
 					// Если адрес является IPv6
 					case 16: {
-						// Создаём массив параметров сетевого интерфейса
+						// Имя запроса к таблице маршрутов
 						int32_t mib[6];
-						// Устанавливаем парарметры сетевого интерфейса
+						// Задаём уровень запроса: сетевые настройки ядра
 						mib[0] = CTL_NET;
+						// Указываем подсистему маршрутизации
 						mib[1] = PF_ROUTE;
+						// Адресуемся ко всему семейству без выбора протокола
 						mib[2] = 0;
+						// Ограничиваемся маршрутами IPv6
 						mib[3] = AF_INET6;
+						// Просим перечень маршров, отбираемых по признакам
 						mib[4] = NET_RT_FLAGS;
 						/**
 						 * Признак записей канального уровня зовётся по-разному
@@ -1320,7 +1474,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 * @details NetBSD зовёт его `RTF_LLDATA`, а `RTF_LLINFO` у себя
 						 *          закомментировал; macOS, FreeBSD и OpenBSD держат
 						 *          `RTF_LLINFO`. Значение у обоих одно - `0x400`, - и
-						 *          разнятся лишь имена
+						 *          разнятся лишь имена.
 						 *
 						 * @note Отбор идёт по наличию самого признака, а не по системе:
 						 *       имя это в родстве систем не укладывается - OpenBSD стоит
@@ -1329,11 +1483,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *
 						 */
 						#if defined(RTF_LLDATA)
+							// Отбираем маршруты с признаком канального уровня под новым именем
 							mib[5] = RTF_LLDATA;
 						/**
 						 * Если признак записей канального уровня зовётся иначе
 						 */
 						#else
+							// Отбираем маршруты с признаком канального уровня под прежним именем
 							mib[5] = RTF_LLINFO;
 						#endif
 						// Размер буфера данных
@@ -1345,17 +1501,31 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Route sysctl estimate", awh::log::flag_t::WARNING);
+								log::print("Route sysctl estimate", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
 						}
+						/**
+						 * Пустая таблица канальных маршрутов - законное состояние
+						 *
+						 * @details Оценка отвечает нулём и успехом, пока кэш соседей
+						 *          не нагулян (замер на NetBSD 10.1: у машины без
+						 *          обмена таблица пуста), и обращение к нулевому
+						 *          элементу пустого вектора есть неопределённое
+						 *          поведение - надзиратель UBSan ловил его на каждом
+						 *          заполнении источника.
+						 *
+						 */
+						if(size < 1)
+							// Выходим из функции: перебирать нечего
+							return;
 						// Создаём буфер данных сетевого интерфейса
 						vector <char> buffer(size);
 						// Выполняем получение данных сетевого интерфейса
@@ -1365,13 +1535,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Actual retrieval of routing table", awh::log::flag_t::WARNING);
+								log::print("Actual retrieval of routing table", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1454,6 +1624,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									// Сравниваем MAC-адреса
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], ptr, 6) == 0){
 										/**
+										 * Буфер имени сетевого интерфейса
+										 *
 										 * Адрес берётся не отсюда, а разбором по имени устройства
 										 *
 										 * @details Устройство держит по нескольку адресов IPv6 разом,
@@ -1461,13 +1633,12 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 										 *          Разбор по имени эти адреса уже различает, и
 										 *          повторять здесь тот же выбор значило бы завести
 										 *          второе место, которое разойдётся с первым при
-										 *          первой же правке
+										 *          первой же правке.
 										 *
 										 * @note Не удалось узнать имя устройства - берётся то, что
 										 *       дал обход, как и прежде
 										 *
 										 */
-										// Буфер имени сетевого интерфейса
 										char iface[IF_NAMESIZE];
 										// Выполняем получение имени сетевого интерфейса по его номеру
 										if(::if_indextoname(sdl->sdl_index, iface) != nullptr){
@@ -1525,13 +1696,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+								log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1613,13 +1784,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
+								log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+								log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1700,7 +1871,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									 *          источником не годится. Разбор по имени эти адреса уже
 									 *          различает, и повторять здесь тот же выбор значило бы
 									 *          завести второе место, которое разойдётся с первым при
-									 *          первой же правке
+									 *          первой же правке.
 									 *
 									 * @note Разбор по имени ничего не дал - берётся то, что выдал
 									 *       обход, как и прежде
@@ -1733,13 +1904,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1769,6 +1940,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 		 *          и надзиратель `undefined` отвечает на него прямо: «shift exponent
 		 *          -2 is negative». Довод приходит снаружи полем `uint8_t`, и запретить
 		 *          такое значение типом нечем
+		 *
 		 */
 		if(prefix >= 32)
 			// Сличаем адреса целиком: сеть из одного узла
@@ -1786,13 +1958,13 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {ip, net, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {ip, net, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1833,6 +2005,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		 *       через `const_cast` - то есть изменением ЧУЖОГО объекта, помеченного
 		 *       постоянным. Приём этот снят: вызывающий вправе не ждать, что его
 		 *       объект после запроса изменится
+		 *
 		 */
 		const uint8_t bits = ((length > 128) ? static_cast <uint8_t> (128) : length);
 		// Вычисляем количество полных байтов и оставшихся битов
@@ -1860,13 +2033,13 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {first, second, static_cast <uint16_t> (length)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {first, second, static_cast <uint16_t> (length)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1922,13 +2095,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported protocol for checksum calculation", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported protocol for checksum calculation", log::flag_t::CRITICAL);
 					#endif
 					// Выходим из функции
 					return result;
@@ -1970,6 +2143,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					}
 					// Устанавливаем IP-адреса источника и назначения
 					hdr.src = (* reinterpret_cast <const uint32_t *> (src));
+					// Укладываем адрес назначения
 					hdr.dst = (* reinterpret_cast <const uint32_t *> (dst));
 					// Устанавливаем длину транспортного уровня
 					hdr.length = htons(static_cast <uint16_t> (length));
@@ -1995,7 +2169,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 						// Зарезервировано, должно быть равно 0
 						uint8_t zero[3];
 						// Следующий заголовок
-						uint8_t next_hdr;
+						uint8_t nextHdr;
 					} hdr;
 					/**
 					 * Определяем протокол
@@ -2004,18 +2178,19 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 						// Если протокол определён как TCP
 						case static_cast <uint8_t> (event::protocol_t::TCP):
 							// Устанавливаем протокол транспортного уровня
-							hdr.next_hdr = IPPROTO_TCP;
+							hdr.nextHdr = IPPROTO_TCP;
 						break;
 						// Если протокол определён как UDP
 						case static_cast <uint8_t> (event::protocol_t::UDP):
 							// Устанавливаем протокол транспортного уровня
-							hdr.next_hdr = IPPROTO_UDP;
+							hdr.nextHdr = IPPROTO_UDP;
 						break;
 					}
 					// Устанавливаем нули в зарезервированное поле
 					hdr.zero[0] = hdr.zero[1] = hdr.zero[2] = 0;
 					// Устанавливаем IP-адреса источника и назначения
 					hdr.src = (* reinterpret_cast <const struct in6_addr *> (src));
+					// Укладываем адрес назначения
 					hdr.dst = (* reinterpret_cast <const struct in6_addr *> (dst));
 					// Устанавливаем длину транспортного уровня (да, 32-bit, но значение 16-bit)
 					hdr.length = htonl(static_cast <uint32_t> (length));
@@ -2036,13 +2211,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
+					log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Unsupported address family for checksum calculation", awh::log::flag_t::CRITICAL);
+					log::print("Unsupported address family for checksum calculation", log::flag_t::CRITICAL);
 				#endif
 				// Выходим из функции
 				return result;
@@ -2068,23 +2243,19 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Конструктор
- *
- */
 /**
  * @brief Метод установки объекта управления шлюзами
  *
@@ -2099,8 +2270,7 @@ void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
  * @brief Конструктор
  *
  */
-awh::eth::Network_Address::Network_Address() noexcept :
- _iface(), _gateway(nullptr) {
+awh::eth::Network_Address::Network_Address() noexcept : _gateway(nullptr) {
 	/**
 	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
 	 */
@@ -2113,4 +2283,4 @@ awh::eth::Network_Address::Network_Address() noexcept :
  * @brief Деструктор
  *
  */
-awh::eth::Network_Address::~Network_Address() noexcept {}
+awh::eth::Network_Address::~Network_Address() noexcept = default;

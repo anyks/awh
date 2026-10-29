@@ -78,8 +78,8 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/eth/gateway.hpp>
 #include <sys/log.hpp>
+#include <net/eth/gateway.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -87,10 +87,25 @@
 using namespace std;
 
 /**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_GW_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_GW_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Инкапсулируем статичные функции в пространство имён
  *
  */
 namespace gw {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Структура распарсенных адресов сообщения маршрута
 	 *
@@ -108,7 +123,7 @@ namespace gw {
 		 * @brief Конструктор
 		 *
 		 */
-		Addrs() noexcept :
+		explicit Addrs() noexcept :
 		 dst(nullptr), gw(nullptr),
 		 mask(nullptr), ifp(nullptr) {}
 	} addrs_t;
@@ -120,7 +135,7 @@ namespace gw {
 	 * @return       маска подсети
 	 *
 	 */
-	static in_addr_t prefix2mask(const uint8_t prefix) noexcept {
+	static AWH_GW_INLINE in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
 		if(prefix == 0)
 			// Возвращаем маску подсети
@@ -132,7 +147,7 @@ namespace gw {
 	 * @brief Функция извлечения маски подсети IPv4 из адреса маршрута
 	 *
 	 * @details Ядро выдаёт маску подсети усечённой: хвост её, состоящий из нулей,
-	 * попросту не передаётся, а семейство адреса маской не заполняется вовсе
+	 *          попросту не передаётся, а семейство адреса маской не заполняется вовсе.
 	 *
 	 * @warning Читать маску как `sockaddr_in` НЕЛЬЗЯ: у маски 255.255.255.0 длина
 	 *          выходит семь байт вместо шестнадцати, а `sa_family` содержит 255 вместо
@@ -146,7 +161,7 @@ namespace gw {
 	 * @return     маска подсети в сетевом порядке октетов
 	 *
 	 */
-	static in_addr_t netmask4(const struct sockaddr * addr) noexcept {
+	static AWH_GW_INLINE in_addr_t netmask4(const struct sockaddr * addr) noexcept {
 		// Если адрес маски подсети не передан
 		if(addr == nullptr)
 			// Выводим пустую маску подсети
@@ -160,6 +175,7 @@ namespace gw {
 		 *
 		 * @note Октеты маски лежат там же, где и у адреса IPv4, - со смещения в четыре
 		 *       байта от начала, - а недостающие до четырёх октеты равны нулю
+		 *
 		 */
 		if(length > offsetof(struct sockaddr_in, sin_addr)){
 			// Получаем количество переданных октетов маски подсети
@@ -177,13 +193,13 @@ namespace gw {
 	/**
 	 * @brief Функция извлечения маски подсети IPv6 из адреса маршрута
 	 *
-	 * @details Маска подсети IPv6 усекается ядром ровно так же, как и маска IPv4
+	 * @details Маска подсети IPv6 усекается ядром ровно так же, как и маска IPv4.
 	 *
 	 * @param addr   объект адреса маски подсети маршрута
 	 * @param result собираемая маска подсети из шестнадцати октетов
 	 *
 	 */
-	static void netmask6(const struct sockaddr * addr, uint8_t * result) noexcept {
+	static AWH_GW_INLINE void netmask6(const struct sockaddr * addr, uint8_t * result) noexcept {
 		// Выполняем сброс собираемой маски подсети
 		::memset(result, 0, 16);
 		// Если адрес маски подсети не передан
@@ -209,7 +225,7 @@ namespace gw {
 	 * @return     объект следующего адреса маршрута
 	 *
 	 */
-	static struct sockaddr * advance(struct sockaddr * addr) noexcept {
+	static AWH_GW_INLINE struct sockaddr * advance(struct sockaddr * addr) noexcept {
 		// Получаем длину структуры адреса
 		const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
 		// Извлекаем объект следующего адреса маршрута
@@ -222,7 +238,7 @@ namespace gw {
 	 * @return    структура распарсенных адресов маршрута
 	 *
 	 */
-	static addrs_t parse(const struct rt_msghdr * rtm) noexcept {
+	static AWH_GW_INLINE addrs_t parse(const struct rt_msghdr * rtm) noexcept {
 		// Результат разбора адресов маршрута
 		addrs_t result;
 		// Объект текущего адреса маршрута
@@ -278,11 +294,11 @@ namespace gw {
 	 * @return       результат выполнения запроса маршрута
 	 *
 	 */
-	static bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
+	static AWH_GW_INLINE bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
 		// Создаём сокет маршрутизации
-		const awh::net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+		const net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
 		// Если сокет не создан
-		if(sock == awh::net::invalid_socket_t)
+		if(sock == net::invalid_socket_t)
 			// Выводим результат
 			return false;
 		// Буфер запроса маршрута
@@ -377,8 +393,7 @@ namespace gw {
  *
  */
 awh::eth::Gateway::Route::Route() noexcept :
- ifname{""}, prefix(0),
- gateway(nullptr), destination(nullptr) {}
+ ifname{""}, prefix(0), gateway(nullptr), destination(nullptr) {}
 
 /**
  * @brief Метод получения маршрута для указанного адреса
@@ -403,6 +418,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -459,13 +475,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						 *       ему отвечают и более узкие маршруты, а ядро на запрос
 						 *       нулевого адреса возвращает самый точный из них, а вовсе
 						 *       не маршрут по умолчанию.
+						 *
 						 */
 						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
-							match = (((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0) &&
-							         (mask == 0) &&
-							         ((rtm->rtm_flags & RTF_HOST) == 0));
+							match = (
+								((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0) &&
+							    (mask == 0) &&
+							    ((rtm->rtm_flags & RTF_HOST) == 0)
+							);
 						// Если ищем конкретный маршрут
 						else {
 							// Если задан gateway, он должен совпадать
@@ -477,6 +496,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
 							/**
+							 * Если задан интерфейс
+							 *
 							 * @note Устройство записи берётся из поля RTA_IFP, а при его
 							 *       отсутствии - из заголовка сообщения. Снимок таблицы
 							 *       поля RTA_IFP не несёт вовсе: его отдают лишь в ответ
@@ -485,8 +506,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 *       и поиск по шлюзу вместе с устройством не находил даже
 							 *       маршрут по умолчанию - при том, что порознь оба
 							 *       условия ему отвечают
+							 *
 							 */
-							// Если задан интерфейс
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
 								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
@@ -550,12 +571,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *          сличением поля назначения. Это не подбор маршрута:
 					 *          адрес своей же сети, у которого нет отдельной записи,
 					 *          объявлялся недостижимым, а адрес, покрытый более
-					 *          широкой записью, - тоже
+					 *          широкой записью, - тоже.
 					 *
 					 * @note Запрос идёт только тогда, когда спрашивают именно маршрут:
 					 *       при заданном шлюзе либо устройстве спрашивают не «куда
 					 *       пойдёт пакет», а «есть ли такая запись», и для этого
 					 *       по-прежнему обходится вся таблица
+					 *
 					 */
 					if((awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
 						// Структура адреса назначения для запроса (ноль - маршрут по умолчанию)
@@ -597,13 +619,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем результат
 							return result;
@@ -617,13 +639,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем результат
 							return result;
@@ -724,18 +746,22 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Предполагаем совпадение и проверяем условия
 						bool match = true;
 						/**
+						 * Если ищем маршрут по умолчанию
+						 *
 						 * @note Маршрутом по умолчанию считается только маршрут с нулевой
 						 *       длиной префикса. Одного нулевого адреса назначения мало:
 						 *       ему отвечают и более узкие маршруты - например "::/96"
 						 *       через петлевой интерфейс, - а ядро на запрос нулевого
 						 *       адреса возвращает самый точный из них.
+						 *
 						 */
-						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
-							match = (((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)) &&
-							         (::memcmp(mask, zero, 16) == 0) &&
-							         ((rtm->rtm_flags & RTF_HOST) == 0));
+							match = (
+								((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)) &&
+							    (::memcmp(mask, zero, 16) == 0) &&
+							    ((rtm->rtm_flags & RTF_HOST) == 0)
+							);
 						// Если ищем конкретный маршрут
 						else {
 							// Проверка шлюза
@@ -747,6 +773,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
 							/**
+							 * Проверка интерфейса
+							 *
 							 * @note Устройство записи берётся из поля RTA_IFP, а при его
 							 *       отсутствии - из заголовка сообщения. Снимок таблицы
 							 *       поля RTA_IFP не несёт вовсе: его отдают лишь в ответ
@@ -755,8 +783,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 *       и поиск по шлюзу вместе с устройством не находил даже
 							 *       маршрут по умолчанию - при том, что порознь оба
 							 *       условия ему отвечают
+							 *
 							 */
-							// Проверка интерфейса
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
 								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
@@ -848,13 +876,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем результат
 							return result;
@@ -868,13 +896,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем результат
 							return result;
@@ -931,13 +959,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -948,13 +976,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -966,13 +994,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -998,7 +1026,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
 		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
 		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
-		 *          непроверенных длин в проекте насчитано четыре
+		 *          непроверенных длин в проекте насчитано четыре.
 		 *
 		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
 		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
@@ -1017,6 +1045,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
 		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
 		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 *
 		 */
 		if(route.destination != nullptr){
 			// Предел длины префикса, отвечающий разрядности адреса назначения
@@ -1024,7 +1053,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				log::print("Route prefix length %u exceeds the limit %u of the %s address", log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -1038,6 +1067,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -1060,13 +1090,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1183,13 +1213,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to find IPv4 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::print("Unable to find IPv4 address for interface \"%s\"", log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
@@ -1251,13 +1281,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Закрываем сокет
@@ -1274,13 +1304,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1399,13 +1429,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to find IPv6 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::print("Unable to find IPv6 address for interface \"%s\"", log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
@@ -1424,7 +1454,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							// Устанавливаем семейство адресов
 							sdl.sdl_family = AF_LINK;
 							// Устанавливаем индекс интерфейса
-							sdl.sdl_index = static_cast<uint16_t>(index);
+							sdl.sdl_index = static_cast <uint16_t> (index);
 							// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
 							rtm->rtm_addrs |= RTA_GATEWAY;
 							// Копируем в буфер адрес шлюза
@@ -1487,16 +1517,16 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
-					// Закрываем
+					// Закрываем сокет маршрутизации
 					::close(sock);
 				} break;
 				// Во всех остальных случаях
@@ -1506,13 +1536,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -1523,13 +1553,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -1541,13 +1571,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1573,7 +1603,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
 		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
 		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
-		 *          непроверенных длин в проекте насчитано четыре
+		 *          непроверенных длин в проекте насчитано четыре.
 		 *
 		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
 		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
@@ -1592,6 +1622,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
 		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
 		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 *
 		 */
 		if(route.destination != nullptr){
 			// Предел длины префикса, отвечающий разрядности адреса назначения
@@ -1599,7 +1630,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				log::print("Route prefix length %u exceeds the limit %u of the %s address", log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -1613,6 +1644,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -1644,13 +1676,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1664,13 +1696,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1684,13 +1716,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1757,6 +1789,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * хостового маршрута до 192.0.2.1 через шлюз 10.100.1.10 сводился к одному
 						 * лишь условию по шлюзу и сносил ВСЕ маршруты через этот шлюз, включая
 						 * маршрут по умолчанию. Стенд Solaris так и остался без сети (12.08.2026)
+						 *
 						 */
 						// Если маска подсети задана
 						if(netmsk > 0)
@@ -1782,6 +1815,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 *       запись, а условие это - единственное, каким сносится
 						 *       маршрут, заданный одним устройством, без шлюза. Ровно так
 						 *       заданы маршруты через устройства точка-точка: туннели и VPN
+						 *
 						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
@@ -1876,13 +1910,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -1918,13 +1952,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1938,13 +1972,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1958,13 +1992,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2038,8 +2072,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * РЕЖИМ 1:
 						 * Удалить ЛЮБОЙ default route
+						 *
+						 * Проверяем, является ли адрес назначения маршрута default route
 						 */
-						// Проверяем, является ли адрес назначения маршрута default route
 						const bool isDefault = ((dst != nullptr) && (IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)));
 						// Нулевой IPv6 адрес
 						const uint8_t zeroAddr[16] = {0};
@@ -2069,14 +2104,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
-						// Если имя сетевого интерфейса задано
 						/**
+						 * Если имя сетевого интерфейса задано
+						 *
 						 * @note Устройство записи берётся из поля RTA_IFP, а при его
 						 *       отсутствии - из заголовка сообщения: снимок таблицы поля
 						 *       RTA_IFP не несёт. Требование ifp отвергало здесь ЛЮБУЮ
 						 *       запись, а условие это - единственное, каким сносится
 						 *       маршрут, заданный одним устройством, без шлюза. Ровно так
 						 *       заданы маршруты через устройства точка-точка: туннели и VPN
+						 *
 						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
@@ -2171,13 +2208,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -2200,13 +2237,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -2217,13 +2254,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -2235,13 +2272,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2251,9 +2288,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
  * @brief Конструктор
  *
  */
-awh::eth::Gateway::Gateway() noexcept {}
+awh::eth::Gateway::Gateway() noexcept = default;
 /**
  * @brief Деструктор
  *
  */
-awh::eth::Gateway::~Gateway() noexcept {}
+awh::eth::Gateway::~Gateway() noexcept = default;

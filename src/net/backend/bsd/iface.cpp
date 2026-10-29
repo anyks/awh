@@ -62,11 +62,11 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <net/eth/iface.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/eth/iface.hpp>
 
 /**
  * Для операционной системы macOS
@@ -91,6 +91,7 @@
  * @note Заголовки туннеля и моста лежат там СВОИМИ путями, каталогом глубже:
  *       «net/tun/if_tun.h» вместо «net/if_tun.h». Оттого система и не легла в
  *       общую ветвь BSD, хотя управляющие вызовы у неё те же
+ *
  */
 #elif defined(__DragonFly__)
 	/**
@@ -106,10 +107,25 @@
 using namespace std;
 
 /**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_IF_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_IF_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Инкапсулируем статичные функции в пространство имён
  *
  */
 namespace iface {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Функция преобразования префикса в маску подсети
 	 *
@@ -117,7 +133,7 @@ namespace iface {
 	 * @return       маска подсети
 	 *
 	 */
-	static in_addr_t prefix2mask(const uint8_t prefix) noexcept {
+	static AWH_IF_INLINE in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
 		if(prefix == 0)
 			// Возвращаем маску подсети
@@ -132,7 +148,7 @@ namespace iface {
 	 * @return     префикс сети
 	 *
 	 */
-	static uint8_t mask2prefix(const struct in_addr & mask) noexcept {
+	static AWH_IF_INLINE uint8_t mask2prefix(const struct in_addr & mask) noexcept {
 		// Переменная результата
 		uint8_t result = 0;
 		// Преобразуем маску подсети в префикс
@@ -156,7 +172,7 @@ namespace iface {
 	 * @param name   имя сетевого интерфейса (может быть не нуль-терминированным string_view)
 	 *
 	 */
-	static void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
+	static AWH_IF_INLINE void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
 		// Определяем количество копируемых байт с учётом завершающего нуля
 		const size_t length = (name.size() < static_cast <size_t> (IFNAMSIZ - 1)) ? name.size() : static_cast <size_t> (IFNAMSIZ - 1);
 		// Копируем имя интерфейса ровно на длину переданного представления
@@ -171,7 +187,7 @@ namespace iface {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool isTunnelLinkType(const uint8_t type) noexcept {
+	static constexpr bool isTunnelLinkType(const uint8_t type) noexcept {
 		/**
 		 * Определяем тип интерфейса
 		 */
@@ -207,7 +223,7 @@ namespace iface {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool isVirtualLinkType(const uint8_t type) noexcept {
+	static constexpr bool isVirtualLinkType(const uint8_t type) noexcept {
 		/**
 		 * Определяем тип интерфейса
 		 */
@@ -260,7 +276,7 @@ namespace iface {
 	 * @return     имя найденного сетевого интерфейса
 	 *
 	 */
-	static string findNameByAddr(struct ifaddrs * list, const awh::net::addr_t * addr) noexcept {
+	static AWH_IF_INLINE string findNameByAddr(struct ifaddrs * list, const net::addr_t * addr) noexcept {
 		/**
 		 * Перебираем все сетевые интерфейсы
 		 */
@@ -280,7 +296,7 @@ namespace iface {
 							// Получаем указатель на MAC-адрес
 							const uint8_t * mac = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
 							// Сравниваем MAC-адреса
-							if(::memcmp(&awh_cast <const awh::net::addr_mac_t *> (addr)->address[0], mac, 6) == 0)
+							if(::memcmp(&awh_cast <const net::addr_mac_t *> (addr)->address[0], mac, 6) == 0)
 								// Возвращаем найденное имя интерфейса
 								return string(ifa->ifa_name);
 						}
@@ -295,7 +311,7 @@ namespace iface {
 					// Получаем указатель на структуру IPv4
 					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(sin->sin_addr.s_addr == awh_cast <const awh::net::addr_net_ipv4_t *> (addr)->address)
+					if(sin->sin_addr.s_addr == awh_cast <const net::addr_net_ipv4_t *> (addr)->address)
 						// Возвращаем найденное имя интерфейса
 						return string(ifa->ifa_name);
 				} break;
@@ -308,7 +324,7 @@ namespace iface {
 					// Получаем указатель на структуру IPv6
 					struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 					// Если адреса совпадают
-					if(::memcmp(&sin->sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (addr)->address[0], sizeof(in6_addr)) == 0)
+					if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(in6_addr)) == 0)
 						// Возвращаем найденное имя интерфейса
 						return string(ifa->ifa_name);
 				} break;
@@ -326,7 +342,7 @@ namespace iface {
 	 * @return     результат классификации интерфейса
 	 *
 	 */
-	static bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
+	static AWH_IF_INLINE bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
 		// Переменная результата
 		bool result = false;
 		/**
@@ -334,7 +350,7 @@ namespace iface {
 		 */
 		for(struct ifaddrs * ifa = list; ifa != nullptr; ifa = ifa->ifa_next){
 			// Если имя интерфейса не совпадает
-			if(!awh::fmk::compare(ifa->ifa_name, name))
+			if(!fmk::compare(ifa->ifa_name, name))
 				// Переходим к следующему интерфейсу
 				continue;
 			// Применяем эвристику по флагам интерфейса
@@ -363,7 +379,7 @@ namespace iface {
 	 *          длина молча приводилась к маске одного узла, и ответов на одну
 	 *          бессмыслицу выходило три разных по наречиям - отказ у прокладки пути,
 	 *          приведение у установки адреса, пропуск установки маски у IPv6. Ответ
-	 *          сведён к одному: ОТКАЗ с доводом
+	 *          сведён к одному: ОТКАЗ с доводом.
 	 *
 	 * @note Ноль длиной негодной НЕ считается: он значит «длина не задана», и обработка
 	 *       его своя. Прежде ноль и бессмыслица были слиты в одно условие - в том и был
@@ -384,13 +400,13 @@ namespace iface {
 	 * @return       признак негодной длины префикса
 	 *
 	 */
-	static bool oversized(const string_view name, const awh::net::addr_t * ip, const uint8_t prefix) noexcept {
+	static AWH_IF_INLINE bool oversized(const string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 		// Если адрес не передан либо длина префикса предела не превышает
 		if((ip == nullptr) || (prefix <= ((ip->size == 16) ? 128 : 32)))
 			// Длина префикса годная
 			return false;
 		// Выводим в журнал сообщение о негодной длине префикса
-		awh::log::print("Prefix length %u exceeds the limit %u of the %s address of interface \"%s\"", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (prefix), static_cast <uint32_t> ((ip->size == 16) ? 128 : 32), ((ip->size == 16) ? "IPv6" : "IPv4"), string(name).c_str());
+		log::print("Prefix length %u exceeds the limit %u of the %s address of interface \"%s\"", log::flag_t::CRITICAL, static_cast <uint32_t> (prefix), static_cast <uint32_t> ((ip->size == 16) ? 128 : 32), ((ip->size == 16) ? "IPv6" : "IPv4"), string(name).c_str());
 		// Длина префикса негодна
 		return true;
 	}
@@ -405,7 +421,7 @@ namespace iface {
 	 * @return       результат применения адреса
 	 *
 	 */
-	static bool applyAddress(const awh::net::socket_t sock, const string_view name, const awh::net::addr_t * ip, const awh::net::addr_t * peer, const uint8_t prefix) noexcept {
+	static AWH_IF_INLINE bool applyAddress(const net::socket_t sock, const string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если длина префикса предел разрядности адреса превышает
@@ -427,7 +443,7 @@ namespace iface {
 				// Устанавливаем длину структуры
 				ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
 				// Устанавливаем IP-адрес интерфейса
-				ifra.ifra_addr.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (ip)->address;
+				ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
 				// Устанавливаем семейство маски
 				ifra.ifra_mask.sin_family = AF_INET;
 				// Устанавливаем длину структуры маски
@@ -445,7 +461,7 @@ namespace iface {
 				// Если задан адрес удалённого пира (точка-точка)
 				if(peer != nullptr)
 					// Устанавливаем IP-адрес удалённого пира
-					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (peer)->address;
+					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer)->address;
 				// Вычисляем широковещательный адрес
 				else ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
 				/**
@@ -469,6 +485,7 @@ namespace iface {
 				 * @note Различаются они ЕДИНСТВЕННЫМ способом - вопросом к системе: за нашим
 				 *       ли устройством стоит запрошенный адрес. Догадка тут негодна, потому
 				 *       что код отказа у обоих случаев один
+				 *
 				 */
 				if(::ioctl(sock, SIOCAIFADDR, &ifra) == 0)
 					// Запоминаем успешное назначение адреса
@@ -500,13 +517,13 @@ namespace iface {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -521,7 +538,7 @@ namespace iface {
 				// Устанавливаем длину структуры
 				ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
 				// Устанавливаем IP-адрес интерфейса
-				::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (ip)->address[0], 16);
+				::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
 				// Если задан адрес удалённого пира (точка-точка)
 				if(peer != nullptr){
 					// Устанавливаем семейство адреса пира
@@ -529,7 +546,7 @@ namespace iface {
 					// Устанавливаем длину структуры адреса пира
 					ifra6.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
 					// Устанавливаем IP-адрес удалённого пира
-					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (peer)->address[0], 16);
+					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], 16);
 				}
 				// Устанавливаем семейство маски
 				ifra6.ifra_prefixmask.sin6_family = AF_INET6;
@@ -564,6 +581,7 @@ namespace iface {
 				 * Устанавливаем бесконечное время жизни адреса
 				 */
 				ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
+				// Бессрочно оставляем и предпочтительный срок адреса
 				ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
 				/**
 				 * Применяем новый IP-адрес и маску интерфейса
@@ -582,6 +600,7 @@ namespace iface {
 				 * @note Спрашивается не адрес устройства, а весь состав связей: отдельного
 				 *       запроса вида SIOCGIFADDR у IPv6 нет, а у устройства адресов IPv6
 				 *       бывает несколько - искать надо среди всех, а не сличать первый
+				 *
 				 */
 				if(::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0)
 					// Запоминаем успешное назначение адреса
@@ -616,15 +635,18 @@ namespace iface {
 							 *          адреса связи локального звена, - тогда как запрошенный адрес
 							 *          приходит без него. Сличение вышло бы неравным всегда, и
 							 *          назначенный адрес `fe80::` числился бы неназначенным
+							 *
 							 */
 							struct in6_addr left = actual->sin6_addr, right = ifra6.ifra_addr.sin6_addr;
 							// Если адрес принадлежит локальному звену
 							if(IN6_IS_ADDR_LINKLOCAL(&right)){
-								// Обнуляем опознаватель зоны у адреса связи нашего устройства
+								// Гасим первый байт опознавателя зоны нашего адреса
 								left.s6_addr[2] = 0;
+								// Гасим второй байт опознавателя зоны нашего адреса
 								left.s6_addr[3] = 0;
-								// Обнуляем опознаватель зоны у запрошенного адреса
+								// Гасим первый байт опознавателя зоны запрошенного адреса
 								right.s6_addr[2] = 0;
+								// Гасим второй байт опознавателя зоны запрошенного адреса
 								right.s6_addr[3] = 0;
 							}
 							// Успехом считаем только совпадение адреса с запрошенным
@@ -647,13 +669,13 @@ namespace iface {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -669,7 +691,7 @@ namespace iface {
 	 * @return       дескриптор созданного сетевого интерфейса
 	 *
 	 */
-	static awh::net::socket_t clonable(string_view driver, string & name) noexcept {
+	static AWH_IF_INLINE net::socket_t clonable(string_view driver, string & name) noexcept {
 		// Если название драйвера передано
 		if(!driver.empty()){
 			/**
@@ -677,24 +699,24 @@ namespace iface {
 			 */
 			try {
 				// Создаём сокет для управления интерфейсом
-				const awh::net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+				const net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
 				// Если создание сокета прошло неудачно
-				if(sock == awh::net::invalid_socket_t){
+				if(sock == net::invalid_socket_t){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 					// Возвращаем результат
-					return awh::net::invalid_socket_t;
+					return net::invalid_socket_t;
 				}
 				// Структура запроса
 				struct ifreq ifr{};
@@ -711,18 +733,18 @@ namespace iface {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(sock);
 						// Возвращаем результат
-						return awh::net::invalid_socket_t;
+						return net::invalid_socket_t;
 					}
 					// Возвращаем сокет созданного интерфейса
 					return sock;
@@ -758,18 +780,18 @@ namespace iface {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
 		// Возвращаем значение по умолчанию
-		return awh::net::invalid_socket_t;
+		return net::invalid_socket_t;
 	};
 };
 
@@ -798,13 +820,13 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -820,13 +842,13 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Закрываем сокет
@@ -840,13 +862,13 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -875,13 +897,13 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+				log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 			#endif
 			// Возвращаем пустой результат
 			return result;
@@ -903,13 +925,13 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводиим результат
@@ -940,13 +962,13 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
+					log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+					log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 				#endif
 				// Возвращаем пустой результат
 				return result;
@@ -971,13 +993,13 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводиим результат
@@ -1017,13 +1039,13 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1068,13 +1090,13 @@ bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1115,13 +1137,13 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1166,13 +1188,13 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1199,13 +1221,14 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	 * @details Нулевой адрес - это `INADDR_ANY`, «любой», а не адрес какого-то
 	 *          устройства. Искать его среди связей нельзя: система выдаёт нулевой
 	 *          адрес IPv4 всякой связи, у которой адреса ещё нет, и поиск возвращал
-	 *          имя первой попавшейся из них
+	 *          имя первой попавшейся из них.
 	 *
 	 * @warning Прежде этого разбора не было, и держалось всё лишь на том, что у машины
 	 *          не случалось связей без адреса. Установлено 23.08.2026 на стендах
 	 *          Solaris и OpenIndiana: там заведены связи `awh_tun0`...`awh_tun7` под
 	 *          туннели, и `EthSuiteTest` падал на обеих машинах, требуя от нулевого
 	 *          адреса пустого имени
+	 *
 	 */
 	switch(addr->size){
 		// Если адрес является MAC-адресом
@@ -1259,13 +1282,13 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+				log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 			#endif
 			// Возвращаем пустой результат
 			return result;
@@ -1283,13 +1306,13 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем пустой результат
@@ -1423,13 +1446,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1441,13 +1464,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(result);
@@ -1465,12 +1488,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					// Устанавливаем тип адреса управления сокетом
 					sc.ss_sysaddr = AF_SYS_CONTROL;
 					/**
+					 * Автоматический выбор номера интерфейса
+					 *
 					 * Попытайтесь найти свободный номер устройства вручную или позвольте ядру решить это.
 					 * Если мы хотим реализовать логику «tun -> tun0, tun1»:
 					 * При использовании UTUN привязка с sc_unit = 0 позволяет ядру выбрать следующий доступный «utunX».
 					 * sc_unit = X + 1 запрос utunX.
 					 */
-					// Автоматический выбор номера интерфейса
 					sc.sc_unit = 0;
 					// Выполняем подключение к UTUN интерфейсу
 					if(::connect(result, reinterpret_cast <struct sockaddr *> (&sc), sizeof(sc)) == net::invalid_socket_t){
@@ -1479,13 +1503,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(result);
@@ -1503,13 +1527,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(result);
@@ -1529,7 +1553,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *          выдаёт свободный номер само, а какой именно достался - узнаётся
 					 *          после по описателю. У NetBSD и OpenBSD клонирующего устройства
 					 *          нет вовсе, и свободный номер отыскивается перебором - открытием
-					 *          «/dev/tun0», «/dev/tun1» и далее, пока одно из них не поддастся
+					 *          «/dev/tun0», «/dev/tun1» и далее, пока одно из них не поддастся.
 					 *
 					 * @note Отыскав номер перебором, мы знаем имя устройства из самого пути, и
 					 *       спрашивать его у системы не нужно. Это кстати: разрешения имени по
@@ -1540,12 +1564,17 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					#if defined(__FreeBSD__) || defined(__DragonFly__)
 						// Создаём сокет для управления UTUN интерфейсом
 						result = ::open("/dev/tun", O_RDWR);
+					/**
+					 * Если системой не является FreeBSD либо DragonFly
+					 *
+					 */
 					#else
 						/**
 						 * @note Заказанное имя устройства соблюдается: перебор идёт лишь тогда,
 						 *       когда имя не названо вовсе. Молчаливая подмена заказа выдала бы
 						 *       потребителю не то устройство, которое он назвал, а узнал бы он
 						 *       о том лишь по чужому имени в отчёте
+						 *
 						 */
 						if(!name.empty()){
 							// Формируем путь к заказанному устройству туннеля
@@ -1568,7 +1597,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								 *          упирался в четвёртый туннель, тогда как ядро держит их сколько
 								 *          угодно. Установлено замером на стендах: NetBSD давал 3 из 8,
 								 *          OpenBSD 4 из 8, а после заведения недостающих узлов - обе
-								 *          системы 8 из 8
+								 *          системы 8 из 8.
 								 *
 								 * @note Старший номер берётся у УЖЕ СТОЯЩЕГО «tun0», а не пишется числом:
 								 *       номер этот у систем разный и меняется от выпуска к выпуску.
@@ -1580,6 +1609,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								 * @warning Отказ заведения узла НЕ прерывает перебора: заводить узлы
 								 *          вправе лишь надзорный, а перебор может идти и без прав -
 								 *          свободное устройство из уже стоящих отыщется и так
+								 *
 								 */
 								if(::access(path.c_str(), F_OK) != 0){
 									// Объект состояния образцового устройства туннеля
@@ -1606,13 +1636,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1622,18 +1652,20 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *
 					 * @note Разрешение имени по описателю нужно лишь клонирующему устройству:
 					 *       перебор имя уже знает из пути, которым устройство открывал
+					 *
 					 */
 					#if defined(__FreeBSD__) || defined(__DragonFly__)
-					// Запоминаем заказанное имя устройства до его разрешения
-					const string request(name);
-					// Выделяем буфер для имени интерфейса
-					name.resize(IFNAMSIZ, '\0');
+						// Запоминаем заказанное имя устройства до его разрешения
+						const string request(name);
+						// Выделяем буфер для имени интерфейса
+						name.resize(IFNAMSIZ, '\0');
 					/**
 					 * Получаем имя созданного интерфейса
 					 *
 					 * @warning У DragonFly `fdevname_r` отдаёт ЧИСЛО, а не указатель, и сличение
 					 *          с nullptr там не собирается вовсе. Имя берётся родным запросом
 					 *          устройства TUNGIFNAME, отдающим его сразу в структуре запроса
+					 *
 					 */
 					#if defined(__DragonFly__)
 						// Объект запроса имени устройства
@@ -1646,6 +1678,10 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						if(!failure)
 							// Запоминаем полученное имя устройства
 							name.assign(ifr.ifr_name, ::strnlen(ifr.ifr_name, IFNAMSIZ));
+					/**
+					 * Если системой не является DragonFly
+					 *
+					 */
 					#else
 						// Получаем имя созданного интерфейса
 						const bool failure = (::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr);
@@ -1657,13 +1693,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(result);
@@ -1678,10 +1714,11 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 * @details Клонирующее устройство выдаёт номер само, заказ потребителя его
 					 *          не спрашивает - подмена вскрывалась бы лишь чужим именем в отчёте.
 					 *          NetBSD и OpenBSD заказ соблюдают перебором, а у FreeBSD имя
-					 *          выправляется уже после заведения
+					 *          выправляется уже после заведения.
 					 *
 					 * @note Занятое имя означает отказ: отдавать вместо заказанного устройства
 					 *       иное нельзя, а оставлять заведённое за собой при отказе - тем более
+					 *
 					 */
 					if(!request.empty() && (request.compare(name) != 0)){
 						// Создаём объект запроса к сетевому интерфейсу
@@ -1711,13 +1748,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), request}, awh::log::flag_t::CRITICAL, ::strerror(error));
+									log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), request}, log::flag_t::CRITICAL, ::strerror(error));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(error));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(error));
 								#endif
 								// Закрываем дескриптор устройства прежде его сноса
 								::close(result);
@@ -1733,7 +1770,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 * Включаем заголовок семейства адресов в передаваемых пакетах
 					 *
 					 * @details Пакет туннеля несёт впереди четыре октета с указанием семейства
-					 *          адресов, и разбор в движке на них рассчитан
+					 *          адресов, и разбор в движке на них рассчитан.
 					 *
 					 * @note У OpenBSD настройки этой нет: заголовок там задан выбором самого
 					 *       устройства и присутствует у «/dev/tunN» всегда. Задача решается
@@ -1742,28 +1779,28 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *
 					 */
 					#if !defined(__OpenBSD__)
-					// Флаг активации заголовка
-					int32_t flag = 1;
-					// Включаем информацию о пакете TUN (заголовок)
-					if(::ioctl(result, TUNSIFHEAD, &flag) != 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Закрываем сокет
-						::close(result);
-						// Возвращаем результат
-						return net::invalid_socket_t;
-					}
+						// Флаг активации заголовка
+						int32_t flag = 1;
+						// Включаем информацию о пакете TUN (заголовок)
+						if(::ioctl(result, TUNSIFHEAD, &flag) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+							// Закрываем сокет
+							::close(result);
+							// Возвращаем результат
+							return net::invalid_socket_t;
+						}
 					#endif
 				#endif
 			} break;
@@ -1798,12 +1835,16 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *          номер само. У OpenBSD его нет, и свободный номер отыскивается
 					 *          перебором. NetBSD клонирующее устройство имеет, но разрешения
 					 *          имени по описателю у него нет, оттого перебор годится обеим:
-					 *          имя тогда известно из самого пути
+					 *          имя тогда известно из самого пути.
 					 *
 					 */
 					#if defined(__FreeBSD__)
 						// Открываем клонирующее устройство
 						result = ::open("/dev/tap", O_RDWR);
+					/**
+					 * Если системой не является FreeBSD
+					 *
+					 */
 					#else
 						// Сбрасываем описатель устройства перед перебором
 						result = net::invalid_socket_t;
@@ -1829,32 +1870,33 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 *
 						 * @note Разрешение имени по описателю нужно лишь клонирующему устройству:
 						 *       перебор имя уже знает из пути, которым устройство открывал
+						 *
 						 */
 						#if defined(__FreeBSD__)
-						// Выделяем буфер для имени интерфейса
-						name.resize(IFNAMSIZ, '\0');
-						// Получаем имя созданного интерфейса
-						if(::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
-							#endif
-							// Закрываем сокет
-							::close(result);
-							// Возвращаем результат
-							return net::invalid_socket_t;
-						}
-						// Обрезаем имя интерфейса по нулевому символу
-						name.resize(::strlen(name.c_str()));
+							// Выделяем буфер для имени интерфейса
+							name.resize(IFNAMSIZ, '\0');
+							// Получаем имя созданного интерфейса
+							if(::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+								// Закрываем сокет
+								::close(result);
+								// Возвращаем результат
+								return net::invalid_socket_t;
+							}
+							// Обрезаем имя интерфейса по нулевому символу
+							name.resize(::strlen(name.c_str()));
 						#endif
 					}
 				#endif
@@ -1896,13 +1938,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unsupported network interface type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::WARNING);
+					log::debug("Unsupported network interface type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Unsupported network interface type", awh::log::flag_t::WARNING);
+					log::print("Unsupported network interface type", log::flag_t::WARNING);
 				#endif
 			} break;
 		}
@@ -1915,13 +1957,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1950,13 +1992,13 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем значение по умолчанию
 				return 0;
@@ -1972,13 +2014,13 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Закрываем сокет
 				::close(sock);
@@ -1998,13 +2040,13 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2037,13 +2079,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2059,13 +2101,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Закрываем сокет
 				::close(sock);
@@ -2081,13 +2123,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Закрываем сокет
@@ -2101,13 +2143,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2139,13 +2181,13 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2161,13 +2203,13 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Закрываем сокет
 				::close(sock);
@@ -2225,13 +2267,13 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2265,13 +2307,13 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2287,13 +2329,13 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Закрываем сокет
 				::close(sock);
@@ -2401,13 +2443,13 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Passed network interface flag cannot be modified", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING);
+						log::debug("Passed network interface flag cannot be modified", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Passed network interface flag cannot be modified", awh::log::flag_t::WARNING);
+						log::print("Passed network interface flag cannot be modified", log::flag_t::WARNING);
 					#endif
 					// Закрываем сокет
 					::close(sock);
@@ -2422,13 +2464,13 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Закрываем сокет
@@ -2442,13 +2484,13 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2475,6 +2517,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 *          отодвинутый за заведение сокета либо за поиск устройства, молчит
 	 *          ровно тогда, когда просьба негодна дважды: отказ придёт верный, но
 	 *          с чужим доводом
+	 *
 	 */
 	if(::iface::oversized(name, ip, prefix))
 		// Работать с адресом по негодной длине префикса нечем
@@ -2492,6 +2535,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
 			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
 			 *          несуразным доводом об устройстве
+			 *
 			 */
 			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
@@ -2501,13 +2545,13 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2525,13 +2569,13 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2564,13 +2608,13 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
+					log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+					log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 				#endif
 				// Выходим из функции
 				return result;
@@ -2659,13 +2703,13 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2692,6 +2736,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 *          отодвинутый за заведение сокета либо за поиск устройства, молчит
 	 *          ровно тогда, когда просьба негодна дважды: отказ придёт верный, но
 	 *          с чужим доводом
+	 *
 	 */
 	if(::iface::oversized(name, ip, prefix))
 		// Работать с адресом по негодной длине префикса нечем
@@ -2709,6 +2754,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
 			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
 			 *          несуразным доводом об устройстве
+			 *
 			 */
 			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
@@ -2718,13 +2764,13 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2742,13 +2788,13 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2845,7 +2891,10 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 										for(size_t i = 0; i < 16; ++i){
 											// Получаем байт маски
 											uint8_t byte = msk6->sin6_addr.s6_addr[i];
-											// Считаем биты
+											/**
+											 * Считаем биты
+											 *
+											 */
 											while(byte & 0x80){
 												// Увеличиваем префикс
 												prefix++;
@@ -2883,13 +2932,13 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
+					log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
+					log::print("Unable to get list of network interfaces", log::flag_t::WARNING);
 				#endif
 			}
 		/**
@@ -2901,29 +2950,19 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param prefix префикс подсети
- * @param mtu    размер MTU интерфейса (0 - не изменять)
- * @return       результат комплексной настройки сетевого интерфейса
- *
- */
 /**
  * Метод снятия адреса заведён только для macOS
  *
@@ -2936,6 +2975,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @note Установлено щупом на рабочей машине 23.08.2026: сразу после сноса узла система
  *       по-прежнему числила адрес за «utun10», отчего второй оборот проверки жизненного
  *       цикла и падал
+ *
  */
 #if defined(__APPLE__)
 	/**
@@ -2962,12 +3002,13 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				 * @note Запрос берёт семейство у САМОГО сокета, а не у передаваемой
 				 *       структуры: сокет AF_INET отвечает на запрос с адресом IPv6
 				 *       отказом «семейство адресов не поддержано»
+				 *
 				 */
 				const net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 				// Если управляющий сокет создать не удалось
 				if(sock == net::invalid_socket_t){
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					// Возвращаем результат
 					return result;
 				}
@@ -3016,6 +3057,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				 * @note Снять несуществующий адрес нельзя, но добиваться мы того и не
 				 *       собирались: устройство остаётся без него, а это ровно то, чего
 				 *       хотел вызывающий
+				 *
 				 */
 				if(!result && ((errno == EADDRNOTAVAIL) || (errno == ENXIO)))
 					// Считаем отсутствие адреса успехом
@@ -3023,7 +3065,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				// Если снятие адреса не удалось
 				else if(!result)
 					// Записываем ошибку в лог
-					awh::log::print("address could not be removed from interface \"%s\": %s", awh::log::flag_t::CRITICAL, string(name).c_str(), ::strerror(errno));
+					log::print("address could not be removed from interface \"%s\": %s", log::flag_t::CRITICAL, string(name).c_str(), ::strerror(errno));
 				// Закрываем управляющий сокет
 				::close(sock);
 			/**
@@ -3031,14 +3073,23 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			 */
 			} catch(const exception & error) {
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			}
 		}
 		// Возвращаем результат
 		return result;
 	}
 #endif
-
+/**
+ * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
+ *
+ * @param name   имя сетевого интерфейса
+ * @param ip     адрес сетевого интерфейса для установки
+ * @param prefix префикс подсети
+ * @param mtu    размер MTU интерфейса (0 - не изменять)
+ * @return       результат комплексной настройки сетевого интерфейса
+ *
+ */
 bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
 	return this->configure(name, ip, nullptr, prefix, mtu);
@@ -3064,6 +3115,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 	 *          отодвинутый за заведение сокета либо за поиск устройства, молчит
 	 *          ровно тогда, когда просьба негодна дважды: отказ придёт верный, но
 	 *          с чужим доводом
+	 *
 	 */
 	if(::iface::oversized(name, ip, prefix))
 		// Работать с адресом по негодной длине префикса нечем
@@ -3081,6 +3133,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
 			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
 			 *          несуразным доводом об устройстве
+			 *
 			 */
 			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
@@ -3090,13 +3143,13 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -3122,13 +3175,13 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			}
@@ -3151,13 +3204,13 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				// Если получить флаги интерфейса не удалось
@@ -3167,13 +3220,13 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			}
@@ -3188,13 +3241,13 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3206,7 +3259,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  *
  * @details Общего учёта, который приходилось бы защищать, у модуля на этой системе
  *          нет: перебор связей для туннелей ведёт только Solaris, и замок заведён
- *          там же. Оттого вызов ничего не делает
+ *          там же. Оттого вызов ничего не делает.
  *
  * @note Пустота эта НАМЕРЕННА и не подлежит переоткрытию как недоделка. Настройка
  *       общая на все системы, и вычёркивать её у тех, кому защищать нечего, значило
@@ -3216,15 +3269,17 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  *
  */
 void awh::eth::Interface::threadSafety([[maybe_unused]] const bool mode) noexcept {
-	// Защищать на этой системе нечего
+	/**
+	 * Защищать на этой системе нечего
+	 */
 }
 /**
  * @brief Конструктор
  *
  */
-awh::eth::Interface::Interface() noexcept {}
+awh::eth::Interface::Interface() noexcept = default;
 /**
  * @brief Деструктор
  *
  */
-awh::eth::Interface::~Interface() noexcept {}
+awh::eth::Interface::~Interface() noexcept = default;

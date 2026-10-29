@@ -4614,8 +4614,11 @@ awh::handle_file_t awh::Filesystem::temporary(string_view filename, string & add
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выделяем каталог, сохраняя также адрес относительно текущего каталога диска
 			const size_t offset = target.find_last_of("/\\");
-			const string directory = target.substr(0, (offset != string::npos ? offset + 1 :
-				((target.size() > 1) && (target[1] == ':') ? 2 : 0)));
+			// Получаем адрес каталога для сохранения временного файла
+			const string directory = target.substr(0, (
+				offset != string::npos ? offset + 1 :
+				((target.size() > 1) && (target[1] == ':') ? 2 : 0))
+			);
 			// Счётчик разводит имена параллельных вызовов внутри процесса
 			static atomic_uint64_t sequence{0};
 			/**
@@ -4623,10 +4626,12 @@ awh::handle_file_t awh::Filesystem::temporary(string_view filename, string & add
 			 */
 			for(uint32_t attempt = 0; attempt < 128; attempt++){
 				// Формируем имя рядом с целевым файлом
-				string candidate = (directory + ".awh-tmp." + to_string(::GetCurrentProcessId()) + "." + to_string(sequence.fetch_add(1, memory_order_relaxed)));
+				string candidate = fmk::format("%s.awh-tmp.%u.%llu", directory.c_str(), ::GetCurrentProcessId(), sequence.fetch_add(1, memory_order_relaxed));
+				// Удерживаем широкий адрес до чтения кода отказа: освобождение строки может сменить его
+				const wstring converted = __awh_longpath__(fmk::convert(candidate));
 				// Открываем только новый файл с возможностью последующего переименования
 				const HANDLE handle = ::CreateFileW(
-					__awh_longpath__(fmk::convert(candidate)).c_str(),
+					converted.c_str(),
 					(GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
 					nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr
 				);
@@ -4652,9 +4657,11 @@ awh::handle_file_t awh::Filesystem::temporary(string_view filename, string & add
 		#else
 			// Выделяем каталог без повторения имени цели, которое может достигать NAME_MAX
 			const size_t offset = target.rfind('/');
+			// Получаем адрес каталога для сохранения временного файла
 			const string directory = target.substr(0, (offset != string::npos ? offset + 1 : 0));
-			// Получаем права существующей цели до создания временного файла
+			// Структура проверка статистики
 			struct stat info{};
+			// Получаем права существующей цели до создания временного файла
 			const int32_t status = ::stat(target.c_str(), &info);
 			// Если цель недоступна по причине, отличной от её отсутствия
 			if((status != 0) && (errno != ENOENT)){
@@ -4670,14 +4677,13 @@ awh::handle_file_t awh::Filesystem::temporary(string_view filename, string & add
 			 */
 			for(uint32_t attempt = 0; attempt < 128; attempt++){
 				// Формируем имя рядом с целевым файлом
-				string candidate = (directory + ".awh-tmp." + to_string(::getpid()) + "." + to_string(sequence.fetch_add(1, memory_order_relaxed)));
+				string candidate = fmk::format("%s.awh-tmp.%u.%llu", directory.c_str(), ::getpid(), sequence.fetch_add(1, memory_order_relaxed));
 				// Существующую цель сначала защищаем правами 0600, новой оставляем прежний режим
 				result->set(::open(candidate.c_str(), (O_RDWR | O_CREAT | O_EXCL), (status == 0 ? 0600 : 0644)));
 				// Если исключительное создание выполнено
 				if(result->valid()){
 					// Если необходимо перенести права существующего обычного файла
-					if((status == 0) && S_ISREG(info.st_mode) &&
-					   (::fchmod(* result, (info.st_mode & 0777)) != 0)){
+					if((status == 0) && S_ISREG(info.st_mode) && (::fchmod(* result, (info.st_mode & 0777)) != 0)){
 						// Закрываем дескриптор перед удалением созданного файла
 						result.reset();
 						// Удаляем только файл, созданный этим вызовом

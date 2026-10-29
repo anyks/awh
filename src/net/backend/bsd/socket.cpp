@@ -54,6 +54,7 @@
  *
  * @note Занятое место буферов сокета системы семейства BSD, кроме macOS, сообщают
  *       запросами FIONWRITE и FIONREAD, а объявлены те в этом заголовке
+ *
  */
 #include <sys/ioctl.h>
 #include <netinet/in.h>
@@ -75,15 +76,25 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/locker.hpp>
-#include <net/eth/socket.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/locker.hpp>
+#include <net/eth/socket.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_SOCKET_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_SOCKET_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Внутренние служебные объекты
@@ -156,7 +167,6 @@ namespace {
 		 up(false), name{""}, family(0),
 		 index(0), address4(0), address6{0} {}
 	};
-
 	/**
 	 * @brief Структура кеша списка сетевых интерфейсов
 	 *
@@ -182,7 +192,7 @@ namespace {
 	 * @return    результат обновления кеша
 	 *
 	 */
-	static bool refreshIfaceCache(const uint64_t now) noexcept {
+	static AWH_SOCKET_INLINE bool refreshIfaceCache(const uint64_t now) noexcept {
 		// Список собранных записей сетевых интерфейсов
 		vector <IfaceEntry> entries;
 		// Список сетевых интерфейсов
@@ -240,7 +250,6 @@ namespace {
 		// Все удачно
 		return true;
 	}
-
 	/**
 	 * @brief Функция получения IPv4-адреса активного сетевого интерфейса по его имени
 	 *
@@ -249,9 +258,9 @@ namespace {
 	 * @return     результат поиска IPv4-адреса
 	 *
 	 */
-	static bool resolveIfaceIPv4(uint32_t & out, string_view name) noexcept {
+	static AWH_SOCKET_INLINE bool resolveIfaceIPv4(uint32_t & out, string_view name) noexcept {
 		// Текущая метка времени в миллисекундах
-		const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		const uint64_t now = fmk::milliseconds();
 		/**
 		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
 		 */
@@ -270,7 +279,7 @@ namespace {
 					 */
 					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
 						// Если найден активный IPv4-интерфейс с искомым именем
-						if((entry.family == AF_INET) && entry.up && awh::fmk::compare(entry.name, name)){
+						if((entry.family == AF_INET) && entry.up && fmk::compare(entry.name, name)){
 							// Сохраняем найденный IPv4-адрес
 							out = entry.address4;
 							// Сообщаем об успехе
@@ -291,7 +300,6 @@ namespace {
 		// Интерфейс не найден
 		return false;
 	}
-
 	/**
 	 * @brief Функция получения индекса сетевого интерфейса по его IPv6-адресу
 	 *
@@ -299,9 +307,9 @@ namespace {
 	 * @return        индекс сетевого интерфейса (0 - интерфейс не найден)
 	 *
 	 */
-	static uint32_t resolveIfaceIndexIPv6(const uint8_t * address) noexcept {
+	static AWH_SOCKET_INLINE uint32_t resolveIfaceIndexIPv6(const uint8_t * address) noexcept {
 		// Текущая метка времени в миллисекундах
-		const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		const uint64_t now = fmk::milliseconds();
 		/**
 		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
 		 */
@@ -371,10 +379,10 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{sock},
-				awh::log::flag_t::CRITICAL,
+				log::flag_t::CRITICAL,
 				::strerror(errno)
 			);
 		/**
@@ -382,7 +390,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -414,12 +422,12 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event)
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -427,7 +435,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -440,12 +448,12 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event)
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -453,7 +461,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -495,13 +503,13 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							msec
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -509,7 +517,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -522,13 +530,13 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							msec
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -536,7 +544,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -565,6 +573,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 	 * @note Параметры SO_NWRITE и SO_NREAD отводит одна лишь macOS: прочие системы
 	 *       семейства BSD их не знают вовсе, и сборка там валилась отказом «SO_NWRITE
 	 *       was not declared». Обнаружено на стенде NetBSD 10.1 (14.08.2026)
+	 *
 	 */
 	#if defined(SO_NWRITE) && defined(SO_NREAD)
 		// Получаем размер значения количества байт
@@ -580,6 +589,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 	 *       FIONREAD - для буфера приёма. Запрос отправки есть у FreeBSD, DragonFly и
 	 *       NetBSD, а у OpenBSD его нет вовсе - там место буфера отправки остаётся
 	 *       неизвестным, и метод отвечает об этом честно, а не выдаёт наугад
+	 *
 	 */
 	#else
 		/**
@@ -592,6 +602,9 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 			#if !defined(FIONWRITE)
 				// Выводим признак того, что свободное место неизвестно
 				return -1;
+			/**
+			 * Если система отводит запрос занятого места буфера отправки
+			 */
 			#else
 				// Считываем занятое место буфера отправки
 				if(::ioctl(sock, FIONWRITE, &pending) != 0)
@@ -638,12 +651,12 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event)
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -651,7 +664,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -666,12 +679,12 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event)
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -679,7 +692,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -712,13 +725,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -726,7 +739,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -742,13 +755,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -756,7 +769,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -769,13 +782,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -783,7 +796,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -799,13 +812,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"%s", __PRETTY_FUNCTION__,
 						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						}, awh::log::flag_t::CRITICAL,
+						}, log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -813,7 +826,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -850,21 +863,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"Unable to resolve address of network interface",
 							__PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							}, awh::log::flag_t::WARNING
+							}, log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unable to resolve address of network interface", awh::log::flag_t::WARNING);
+						log::print("Unable to resolve address of network interface", log::flag_t::WARNING);
 					#endif
 					// Возвращаем пустой результат
 					return result;
@@ -880,13 +893,13 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -894,7 +907,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -911,21 +924,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"Unable to get index of network interface",
 							__PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							}, awh::log::flag_t::WARNING
+							}, log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unable to get index of network interface", awh::log::flag_t::WARNING);
+						log::print("Unable to get index of network interface", log::flag_t::WARNING);
 					#endif
 					// Возвращаем пустой результат
 					return result;
@@ -937,13 +950,13 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -951,7 +964,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -963,21 +976,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"Interface name is empty",
 				__PRETTY_FUNCTION__,
 				{
 					sock,
 					static_cast <uint16_t> (family),
 					ifname
-				}, awh::log::flag_t::WARNING
+				}, log::flag_t::WARNING
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Interface name is empty", awh::log::flag_t::WARNING);
+			log::print("Interface name is empty", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем результат
@@ -1017,12 +1030,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{
 					sock, cnt,
 					idle, intvl
-				}, awh::log::flag_t::WARNING,
+				}, log::flag_t::WARNING,
 				::strerror(errno)
 			);
 		/**
@@ -1030,7 +1043,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -1042,7 +1055,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	 *          TCP_KEEPINTVL и TCP_KEEPCNT нет вовсе: сроки задаются на всю машину
 	 *          настройками net.inet.tcp.keepidle и net.inet.tcp.keepintvl, а сокету
 	 *          достаётся лишь включение проверки целиком - оно выполнено выше и
-	 *          работает везде
+	 *          работает везде.
 	 *
 	 * @warning Трогать общесистемные настройки отсюда нельзя: они принадлежат машине,
 	 *          а не нашему сокету, и правка их задела бы всякую службу на ней
@@ -1054,31 +1067,31 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	 *
 	 */
 	#if !defined(__OpenBSD__)
-	// Максимальное количество попыток
-	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug(
-				"%s", __PRETTY_FUNCTION__,
-				{
-					sock, cnt,
-					idle, intvl
-				}, awh::log::flag_t::WARNING,
-				::strerror(errno)
-			);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
-		#endif
-		// Выходим из функции
-		return result;
-	}
+		// Максимальное количество попыток
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s", __PRETTY_FUNCTION__,
+					{
+						sock, cnt,
+						idle, intvl
+					}, log::flag_t::WARNING,
+					::strerror(errno)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
+			#endif
+			// Выходим из функции
+			return result;
+		}
 	/**
 	 * Если мы работаем в macOS
 	 */
@@ -1090,12 +1103,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{
 						sock, cnt,
 						idle, intvl
-					}, awh::log::flag_t::WARNING,
+					}, log::flag_t::WARNING,
 					::strerror(errno)
 				);
 			/**
@@ -1103,15 +1116,24 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return result;
 		}
 	/**
-	 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
+	 * Если мы работаем в FreeBSD, DragonFly, NetBSD или macOS
+	 *
+	 * @note macOS несёт имя TCP_KEEPALIVE и разобрана своей веткой выше. Прежнее
+	 *       условие знало лишь FreeBSD и NetBSD, и DragonFly выпадал из него:
+	 *       прочие сроки ему ставились общими ветками, а время простоя не
+	 *       накладывалось вовсе - ядро держало умолчание 7200. Ядро самой
+	 *       опции не отвергает: щуп 27.10.2026 на DragonFly 6.4 кладёт и
+	 *       читает обратно все три срока без отказа. Найдено проверкой
+	 *       SocketKeepaliveTest, падавшей на сличении прочитанного
+	 *
 	 */
-	#elif defined(__FreeBSD__) || defined(__NetBSD__)
+	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
 		// Время через которое происходит проверка подключения
 		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 			/**
@@ -1119,12 +1141,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"%s", __PRETTY_FUNCTION__,
 					{
 						sock, cnt,
 						idle, intvl
-					}, awh::log::flag_t::WARNING,
+					}, log::flag_t::WARNING,
 					::strerror(errno)
 				);
 			/**
@@ -1132,7 +1154,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return result;
@@ -1145,12 +1167,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{
 					sock, cnt,
 					idle, intvl
-				}, awh::log::flag_t::WARNING,
+				}, log::flag_t::WARNING,
 				::strerror(errno)
 			);
 		/**
@@ -1158,7 +1180,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	/**
@@ -1170,13 +1192,13 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if defined(DEBUG_MODE)
 			// Сообщаем, что заданные сроки взяты системой из своих умолчаний
-			awh::log::debug(
+			log::debug(
 				"Per-socket keep-alive tuning is unavailable, system defaults applied",
 				__PRETTY_FUNCTION__,
 				{
 					sock, cnt,
 					idle, intvl
-				}, awh::log::flag_t::INFO
+				}, log::flag_t::INFO
 			);
 		#endif
 	#endif
@@ -1213,12 +1235,12 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1226,7 +1248,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1239,12 +1261,12 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1252,21 +1274,23 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
 		}
-		// Маскируем значение поля Traffic Class (TC) для получения только DSCP
 		/**
-		 * Класс обслуживания занимает старшие шесть разрядов октета, а младшие два
-		 * отданы признаку перегрузки, потому прочитанный октет сдвигается на два
-		 * разряда вправо
+		 * Маскируем значение поля Traffic Class (TC) для получения только DSCP
+		 *
+		 * @details Класс обслуживания занимает старшие шесть разрядов октета, а младшие два
+		 *          отданы признаку перегрузки, потому прочитанный октет сдвигается на два
+		 *          разряда вправо.
 		 *
 		 * @warning Прежде сдвига здесь не было, а октет лишь чистился маской 0xFC. При
 		 *          такой записи кодовая точка теряла два младших разряда: замер отвечал
 		 *          44 на запрошенное EF, равное 46. Ошибка была вчетверо и у всякой
 		 *          кодовой точки, не только у этой
+		 *
 		 */
 		result = static_cast <event::dscp_t> ((tclass >> 2) & 0x3F);
 	}
@@ -1307,13 +1331,13 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1321,7 +1345,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1334,13 +1358,13 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1348,7 +1372,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1391,12 +1415,12 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1404,7 +1428,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1417,12 +1441,12 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1430,7 +1454,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1461,6 +1485,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	 *
 	 * @note Нулевое значение означает и нулевой класс обслуживания, и отсутствие метки
 	 *       перегрузки - строить ради него управляющие данные незачем
+	 *
 	 */
 	if(traffic == 0)
 		// Выполняем отправку датаграммы обычным обращением
@@ -1472,6 +1497,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	 *       отвечая ENOPROTOOPT. Прочитать её на приёме там тоже нечем: IP_RECVTOS
 	 *       отсутствует, отчего маркировка IPv4 у NetBSD отключена и на уровне выше.
 	 *       Отправляем датаграмму без метки - отказывать в отправке было бы неверно
+	 *
 	 */
 	#if defined(__NetBSD__)
 		// Если событие работает с адресами IPv4
@@ -1534,6 +1560,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 			 * @note Метка на IPv4 берётся ОКТЕТОМ: целое отвергается с EINVAL. У macOS
 			 *       ровно наоборот - октет принимается успехом, но метка теряется по дороге,
 			 *       и расхождение это отказом не проявляется. Проверено опытом на обеих
+			 *
 			 */
 			#if defined(__FreeBSD__) || defined(__DragonFly__)
 				// Значение поля Type of Service (TOS) заголовка IPv4-пакета
@@ -1596,6 +1623,8 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				/**
+				 * Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
+				 *
 				 * @par Намеренные решения
 				 *
 				 * Отметка выставляется одинаково на всех системах, в том числе там, где
@@ -1614,20 +1643,19 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 				 * нетронутым: оба поля делят один октет заголовка
 				 *
 				 */
-				// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (ecn)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1635,7 +1663,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1648,13 +1676,13 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (ecn)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1662,7 +1690,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1717,13 +1745,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1731,7 +1759,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 				// Тип сокета для определения его семейства
@@ -1745,13 +1773,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1759,7 +1787,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 				/**
@@ -1776,7 +1804,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 				 *          нечем: соседние IP_RECVTTL, IP_RECVDSTADDR и IP_RECVIF выдают
 				 *          что угодно, кроме класса обслуживания, а из самого пакета
 				 *          прочесть его дейтаграммному сокету неоткуда - заголовок IP ядро
-				 *          ему не отдаёт
+				 *          ему не отдаёт.
 				 *
 				 * @warning Подставлять сюда ноль нельзя. Ноль - это законный класс
 				 *          обслуживания CS0, и вызывающий принял бы выдуманное значение за
@@ -1791,16 +1819,19 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if defined(DEBUG_MODE)
 						// Сообщаем, что класс обслуживания принятых пакетов система не выдаёт
-						awh::log::debug(
+						log::debug(
 							"IP_RECVTOS is unavailable, service class of received packets is not reported",
 							__PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::INFO
+							}, log::flag_t::INFO
 						);
 					#endif
+				/**
+				 * Если системой не является NetBSD либо OpenBSD
+				 */
 				#else
 					// Активируем/деактивируем генерацию информации о типе сервиса (TOS) в сокете
 					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &flags, sizeof(flags))))){
@@ -1809,13 +1840,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1823,7 +1854,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -1844,13 +1875,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::CRITICAL,
+							}, log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1858,7 +1889,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 				// Если сокет не является RAW-сокетом
@@ -1872,13 +1903,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1886,7 +1917,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Активируем/деактивируем генерацию информации о типе трафика (Traffic Class) в сокете
@@ -1896,13 +1927,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1910,7 +1941,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Активируем/деактивируем генерацию информации о пакете (Packet Info) в сокете
@@ -1920,13 +1951,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1934,7 +1965,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -1998,14 +2029,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2013,7 +2044,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2024,13 +2055,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 *          IPV6_HDRINCL в её заголовках нет вовсе - замерено
 					 *          03.09.2026 на FreeBSD 14.1, NetBSD 10.1, OpenBSD 7.9,
 					 *          Sun Solaris 11.4 и OpenIndiana. Ответ успехом на пустое
-					 *          действие тут единственно возможный
+					 *          действие тут единственно возможный.
 					 *
 					 * @warning Утверждать «ни одна система не даёт» НЕЛЬЗЯ, и прежде
 					 *          здесь стояло именно это: настройку имеют Linux
 					 *          (IPV6_HDRINCL = 36) и MS Windows (значение 2), причём
 					 *          обе - лишь для сокета НЕСТРУКТУРИРОВАННОГО, ровно как
 					 *          IP_HDRINCL у IPv4
+					 *
 					 */
 					case static_cast <uint8_t> (event::family_t::IPV6):
 						// Настройки у этой системы нет, отвечаем успехом на пустое действие
@@ -2062,7 +2094,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *
 				 * @details Имя механизма у каждой породы систем своё: у BSD и macOS это
 				 *          TCP_NOPUSH, у Linux - TCP_CORK. Наружу выставлено одно имя
-				 *          опции, а backend подставляет то, что даёт система
+				 *          опции, а backend подставляет то, что даёт система.
 				 *
 				 * @note У NetBSD нет ни того, ни другого, и ближайшее, что даёт там сам
 				 *       TCP, - алгоритм Нейгла: назначение у него то же, копить мелкие
@@ -2080,6 +2112,9 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					const int32_t nodelay = (flags ? 0 : 1);
 					// Включаем/отключаем алгоритм Нейгла вместо придержки отправки
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay))))){
+				/**
+				 * Если системой не является NetBSD
+				 */
 				#else
 					// Включаем/отключаем придержку отправки
 					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &flags, sizeof(flags))))){
@@ -2089,14 +2124,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2104,7 +2139,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2137,7 +2172,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * @details Названный вызывающим протокол принимается как есть: он завёл
 					 *          этот сокет сам и знает о нём больше, чем ядро сообщит
 					 *          настройкой. Обращение к ядру ради уже известного стоило
-					 *          одного системного вызова на каждую установку опции
+					 *          одного системного вызова на каждую установку опции.
 					 *
 					 * @note Неназванный протокол разыскивается у сокета по-прежнему:
 					 *       обращений к методу много, и не всякому из них протокол известен
@@ -2188,14 +2223,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 */
 									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
-										awh::log::debug(
+										log::debug(
 											"%s", __PRETTY_FUNCTION__,
 											{
 												sock,
 												static_cast <uint16_t> (family),
 												static_cast <uint16_t> (mode),
 												option
-											}, awh::log::flag_t::WARNING,
+											}, log::flag_t::WARNING,
 											::strerror(errno)
 										);
 									/**
@@ -2203,7 +2238,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 */
 									#else
 										// Записываем ошибку в лог
-										awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+										log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
 							} break;
@@ -2216,14 +2251,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 */
 									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
-										awh::log::debug(
+										log::debug(
 											"%s", __PRETTY_FUNCTION__,
 											{
 												sock,
 												static_cast <uint16_t> (family),
 												static_cast <uint16_t> (mode),
 												option
-											}, awh::log::flag_t::WARNING,
+											}, log::flag_t::WARNING,
 											::strerror(errno)
 										);
 									/**
@@ -2231,7 +2266,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 */
 									#else
 										// Записываем ошибку в лог
-										awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+										log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
 							} break;
@@ -2243,14 +2278,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
 									option
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -2258,7 +2293,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				/**
@@ -2272,14 +2307,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
 									option
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -2287,7 +2322,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -2318,14 +2353,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2333,7 +2368,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2351,6 +2386,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *          и поля эти у большинства систем лежат в одном объединении.
 				 *          Для SIG_IGN и SIG_DFL последствий нет - ядро смотрит на само
 				 *          значение, - но признак противоречил бы тому, что задано
+				 *
 				 */
 				act.sa_flags = (SA_ONSTACK | SA_RESTART);
 				/**
@@ -2368,14 +2404,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2383,7 +2419,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2398,14 +2434,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2413,7 +2449,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2445,14 +2481,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2460,7 +2496,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2489,7 +2525,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 * @details У OpenBSD опции SO_NOSIGPIPE нет вовсе - ни в заголовках, ни в
 				 *          ядре. Замена ей там та же, что модуль применяет для систем, где
 				 *          посокетного способа не заведено: сигнал глушится обработчиком
-				 *          через sigaction, ровно как выше сделано для SIGILL
+				 *          через sigaction, ровно как выше сделано для SIGILL.
 				 *
 				 * @warning Способ этот не посокетный, а на весь процесс, и молчать сигнал
 				 *          будет для всякого сокета, а не только для этого. Иного OpenBSD
@@ -2514,37 +2550,42 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 *          и поля эти у большинства систем лежат в одном объединении.
 					 *          Для SIG_IGN и SIG_DFL последствий нет - ядро смотрит на само
 					 *          значение, - но признак противоречил бы тому, что задано
+					 *
 					 */
 					act.sa_flags = (SA_ONSTACK | SA_RESTART);
 					// Глушим сигнал при включении настройки и возвращаем его обработку при снятии
 					act.sa_handler = (flags ? SIG_IGN : SIG_DFL);
 					// Устанавливаем обработку сигнала записи в оборванное соединение
 					if(!(result = !static_cast <bool> (::sigaction(SIGPIPE, &act, nullptr)))){
+				/**
+				 * Если системой не является OpenBSD
+				 */
 				#else
-				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags))))){
+					// Глушим сигнал записи в оборванное соединение настройкой сокета
+					if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags))))){
 				#endif
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						awh::log::debug(
-							"%s", __PRETTY_FUNCTION__,
-							{
-								sock,
-								static_cast <uint16_t> (family),
-								static_cast <uint16_t> (mode),
-								option
-							}, awh::log::flag_t::WARNING,
-							::strerror(errno)
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
-					#endif
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug(
+								"%s", __PRETTY_FUNCTION__,
+								{
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode),
+									option
+								}, log::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
+						#endif
 				}
 			} break;
 			// Если необходимо перевести сокет в неблокирующий режим
@@ -2560,14 +2601,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2575,7 +2616,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
 					return result;
@@ -2595,14 +2636,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2610,7 +2651,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2626,14 +2667,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2641,7 +2682,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2674,14 +2715,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2689,7 +2730,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2707,7 +2748,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *          обращение к ядру здесь заведомо ничего не меняет и лишь тратит
 				 *          системный вызов. Ядро Linux ту же настройку отвергает отказом,
 				 *          из-за чего в движке для Linux отсечка эта обязательна - здесь
-				 *          же она стоит ради единообразия поведения и экономии вызова
+				 *          же она стоит ради единообразия поведения и экономии вызова.
 				 *
 				 * @note Договор движка один на все системы: отсечка стоит в обоих движках
 				 *       на одном и том же месте, чтобы поведение их не расходилось
@@ -2750,14 +2791,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2765,7 +2806,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2780,14 +2821,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2795,7 +2836,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					#endif
@@ -2810,14 +2851,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
 									option
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -2825,7 +2866,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -2841,14 +2882,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2856,7 +2897,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
 					return result;
@@ -2876,14 +2917,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2891,7 +2932,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2907,14 +2948,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2922,7 +2963,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2945,7 +2986,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 *            кроется ловушка переносимости, описанная ниже;
 			 *          - признак взведён, срок нулевой: очередь отбрасывается,
 			 *            соединение рвётся сегментом RST, TIME_WAIT не возникает ни
-			 *            у одной из сторон. Это и есть режим, включаемый опцией
+			 *            у одной из сторон. Это и есть режим, включаемый опцией.
 			 *
 			 * @note Ловушка переносимости: на Darwin опция SO_LINGER принимает срок
 			 *       в тиках планировщика, а не в секундах, и для срока в секундах там
@@ -2999,14 +3040,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -3014,7 +3055,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -3051,7 +3092,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 *          Прежде и тому и другому передавалось целое: macOS и
 						 *          NetBSD принимают оба размера, а OpenBSD отвечает отказом
 						 *          «недопустимый довод», и рассылка на петлю там не
-						 *          включалась вовсе
+						 *          включалась вовсе.
 						 *
 						 */
 						const uint8_t loopback = static_cast <uint8_t> (flags);
@@ -3062,14 +3103,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -3077,7 +3118,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -3090,14 +3131,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									}, awh::log::flag_t::WARNING,
+									}, log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -3105,7 +3146,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+								log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -3194,12 +3235,15 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	 * выдать невыполненное за выполненное, поэтому метод отвечает отказом и пишет
 	 * причину в журнал - потребитель узнаёт, что запрет фрагментации ему не достался,
 	 * и обходится осторожным размером датаграммы
+	 *
 	 */
 	switch(static_cast <uint8_t> (mode)){
 		/**
-		 * Активные режимы требуют запрета фрагментации
+		 * Если установлен флаг - выполнять обнаружение MTU и устанавливать оптимальный размер пакетов
+		 *
+		 * @note Активные режимы требуют запрета фрагментации
+		 *
 		 */
-		// Если установлен флаг - выполнять обнаружение MTU и устанавливать оптимальный размер пакетов
 		case static_cast <uint8_t> (event::mtu_discover_t::DO):
 		// Если установлен флаг - выполнять обнаружение MTU и отправлять пробные пакеты для определения оптимального размера
 		case static_cast <uint8_t> (event::mtu_discover_t::PROBE):
@@ -3217,9 +3261,11 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			value = 1;
 		break;
 		/**
-		 * Пассивные режимы разрешают фрагментацию
+		 * Если установлен флаг - не выполнять обнаружение MTU
+		 *
+		 * @note Пассивные режимы разрешают фрагментацию
+		 *
 		 */
-		// Если установлен флаг - не выполнять обнаружение MTU
 		case static_cast <uint8_t> (event::mtu_discover_t::DONT):
 		// Если установлен флаг - выполнять обнаружение MTU
 		case static_cast <uint8_t> (event::mtu_discover_t::WANT):
@@ -3245,13 +3291,13 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -3259,7 +3305,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			/**
@@ -3267,7 +3313,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			 */
 			#else
 				// Записываем причину отказа в журнал
-				awh::log::print("Per-socket fragmentation control is not supported by the system for IPv4", awh::log::flag_t::WARNING);
+				log::print("Per-socket fragmentation control is not supported by the system for IPv4", log::flag_t::WARNING);
 			#endif
 		} break;
 		// Для семейства IPv6
@@ -3283,13 +3329,13 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							}, awh::log::flag_t::WARNING,
+							}, log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -3297,7 +3343,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+						log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			/**
@@ -3305,7 +3351,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			 */
 			#else
 				// Записываем причину отказа в журнал
-				awh::log::print("Per-socket fragmentation control is not supported by the system for IPv6", awh::log::flag_t::WARNING);
+				log::print("Per-socket fragmentation control is not supported by the system for IPv6", log::flag_t::WARNING);
 			#endif
 		} break;
 	}
@@ -3340,7 +3386,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
 				 *          методы движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
-				 *          отказ, а не молчаливое приравнивание к одноадресной доставке
+				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
 				 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ: довод «способ неизвестен»
 				 *          превратился бы в тихую подмену его одним определённым, и
@@ -3351,6 +3397,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 *       попадал никуда, и верный ответ выходил следствием ОТСУТСТВИЯ
 				 *       ветви, а не решением. Неразъяснённое поведение аудиты открывают
 				 *       заново
+				 *
 				 */
 				case static_cast <uint8_t> (event::delivery_mode_t::NONE): break;
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
@@ -3368,13 +3415,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								}, awh::log::flag_t::CRITICAL,
+								}, log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3382,7 +3429,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3399,13 +3446,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								}, awh::log::flag_t::CRITICAL,
+								}, log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3413,7 +3460,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3431,7 +3478,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
 				 *          методы движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
-				 *          отказ, а не молчаливое приравнивание к одноадресной доставке
+				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
 				 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ: довод «способ неизвестен»
 				 *          превратился бы в тихую подмену его одним определённым, и
@@ -3442,6 +3489,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 *       попадал никуда, и верный ответ выходил следствием ОТСУТСТВИЯ
 				 *       ветви, а не решением. Неразъяснённое поведение аудиты открывают
 				 *       заново
+				 *
 				 */
 				case static_cast <uint8_t> (event::delivery_mode_t::NONE): break;
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
@@ -3459,13 +3507,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								}, awh::log::flag_t::CRITICAL,
+								}, log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3473,7 +3521,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3492,13 +3540,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								}, awh::log::flag_t::CRITICAL,
+								}, log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3506,7 +3554,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3547,7 +3595,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
 				 *          методы движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
-				 *          отказ, а не молчаливое приравнивание к одноадресной доставке
+				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
 				 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ: довод «способ неизвестен»
 				 *          превратился бы в тихую подмену его одним определённым, и
@@ -3558,6 +3606,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 *       попадал никуда, и верный ответ выходил следствием ОТСУТСТВИЯ
 				 *       ветви, а не решением. Неразъяснённое поведение аудиты открывают
 				 *       заново
+				 *
 				 */
 				case static_cast <uint8_t> (event::delivery_mode_t::NONE): break;
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
@@ -3573,12 +3622,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (hops)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3586,7 +3635,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3599,12 +3648,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (hops)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3612,7 +3661,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3630,7 +3679,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
 				 *          методы движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
-				 *          отказ, а не молчаливое приравнивание к одноадресной доставке
+				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
 				 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ: довод «способ неизвестен»
 				 *          превратился бы в тихую подмену его одним определённым, и
@@ -3641,6 +3690,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 *       попадал никуда, и верный ответ выходил следствием ОТСУТСТВИЯ
 				 *       ветви, а не решением. Неразъяснённое поведение аудиты открывают
 				 *       заново
+				 *
 				 */
 				case static_cast <uint8_t> (event::delivery_mode_t::NONE): break;
 				// Если необходимо установить максимальное количество хопов для unicast пакетов
@@ -3656,12 +3706,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (hops)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3669,7 +3719,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3684,12 +3734,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"%s", __PRETTY_FUNCTION__,
 								{
 									sock,
 									static_cast <uint16_t> (hops)
-								}, awh::log::flag_t::WARNING,
+								}, log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3697,7 +3747,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+							log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3727,20 +3777,20 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"It is impossible to work with a multicast group because the address of the group or the source is not initialized",
 				__PRETTY_FUNCTION__,
 				{
 					sock,
 					static_cast <uint16_t> (mode)
-				}, awh::log::flag_t::CRITICAL
+				}, log::flag_t::CRITICAL
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("It is impossible to work with a multicast group because the address of the group or the source is not initialized", awh::log::flag_t::CRITICAL);
+			log::print("It is impossible to work with a multicast group because the address of the group or the source is not initialized", log::flag_t::CRITICAL);
 		#endif
 		// Возвращаем пустой результат
 		return result;
@@ -3776,12 +3826,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (mode)
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3789,7 +3839,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3808,12 +3858,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (mode)
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3821,7 +3871,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3848,12 +3898,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (mode)
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3861,7 +3911,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3880,12 +3930,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											sock,
 											static_cast <uint16_t> (mode)
-										}, awh::log::flag_t::WARNING,
+										}, log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3893,7 +3943,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+									log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3907,20 +3957,20 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log::debug(
 					"It is impossible to work with a multicast group because the IP address types are different",
 					__PRETTY_FUNCTION__,
 					{
 						sock,
 						static_cast <uint16_t> (mode)
-					}, awh::log::flag_t::CRITICAL
+					}, log::flag_t::CRITICAL
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("It is impossible to work with a multicast group because the IP address types are different", awh::log::flag_t::CRITICAL);
+				log::print("It is impossible to work with a multicast group because the IP address types are different", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -3932,12 +3982,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{
 					sock,
 					static_cast <uint16_t> (mode)
-				}, awh::log::flag_t::CRITICAL,
+				}, log::flag_t::CRITICAL,
 				error.what()
 			);
 		/**
@@ -3945,21 +3995,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод выдачи нового сокета
- *
- * @param family семейство протоколов сокета
- * @param type   тип сокета
- * @param proto  протокол сокета
- * @return       созданный сокет
- *
- */
 /**
  * @brief Метод проверки готовности средств сокетов системы
  *
@@ -3976,17 +4017,27 @@ bool awh::eth::Socket::ready() const noexcept {
 	// Сообщаем, что средства сокетов системы годны
 	return true;
 }
-
+/**
+ * @brief Метод выдачи нового сокета
+ *
+ * @param family  семейство протоколов сокета
+ * @param type    тип сокета
+ * @param proto   протокол сокета
+ * @param options опции установки
+ * @return        созданный сокет
+ *
+ */
 awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, [[maybe_unused]] const uint16_t options) const noexcept {
 	/**
 	 * Признаки, которые ядро принимает прямо при создании сокета
 	 *
 	 * @details Взятые здесь опции не требуют затем отдельных обращений: без них
-	 * на каждый сокет уходило по два `fcntl` на неблокирующий режим и ещё по два
-	 * на закрытие при запуске стороннего образа - чтение флагов и запись обратно
+	 *          на каждый сокет уходило по два `fcntl` на неблокирующий режим и ещё по два
+	 *          на закрытие при запуске стороннего образа - чтение флагов и запись обратно.
 	 *
 	 * @note Не всякая система это умеет: где признаков нет, набор остаётся пустым,
-	 * и опции накладываются прежним путём
+	 *       и опции накладываются прежним путём
+	 *
 	 */
 	int32_t mode = 0;
 	/**
@@ -4032,25 +4083,38 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
+						 * Для операционной системы macOS
+						 *
+						 * @note macOS объявляет константу SOCK_SEQPACKET в заголовках, но ядро
+						 *       вида не несёт вовсе: заведение отвечает отказом по всей линии
+						 *       (проверено щупом на кластере 27.10.2026). Оттого вид изображается
+						 *       дейтаграммным сокетом - границы сообщений дейтаграмма держит так же
+						 *
 						 */
-						#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+						#if defined(__APPLE__) || defined(__MACH__)
 							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_DGRAM | mode, 0);
 						/**
-						 * Для операционных систем FreeBSD и DragonFly BSD
+						 * Для остальных операционных систем семейства BSD
 						 *
-						 * @note DragonFly пакетные сокеты семейства AF_UNIX держит наравне с
-						 *       FreeBSD - проверено пробой на стенде 12.08.2026, а не выведено
-						 *       из родословной: ответвление шло от FreeBSD 4.8, где их ещё не
-						 *       было, и по одной родословной система попала бы в запасную
-						 *       ветвь, подменяющую пакетный сокет дейтаграммным
+						 * @note FreeBSD, DragonFly, NetBSD и OpenBSD несут пакетный сокет домена
+						 *       UNIX родным - проверено щупом на стендах 12.08 и 27.10.2026: пара,
+						 *       границы записей, прослушивание с приёмом и обрезка с MSG_TRUNC
+						 *       работают у всех четверых. Прежняя подмена NetBSD и OpenBSD
+						 *       дейтаграммой была излишней: их поставили в одну группу с macOS
+						 *       по родословной, а не по способности системы
 						 *
-						 * @warning Ветви для DragonFly здесь не было вовсе, а запасного пути у
-						 *          цепочки нет: система не подпадала ни под одно условие, и
-						 *          функция завершалась БЕЗ возврата значения
+						 * @note FreeBSD несёт вид по своей трактовке границ (socket(2)):
+						 *          запись очерчивает ОТПРАВИТЕЛЬ флагом MSG_EOR - посылка без
+						 *          флага границы не ставит, и чтение коротким буфером продолжает
+						 *          ту же запись. Оттого посылки без флага сливаются в одну запись
+						 *          (щуп 27.10.2026: 100+7 без флагов пришли одним приёмом 107;
+						 *          с MSG_EOR - двумя записями ровно). Движок обязан ставить
+						 *          MSG_EOR на свои отправки и собирать записи по флагу на приёме;
+						 *          прочие системы трактовки флага не требуют
+						 *
 						 */
-						#elif defined(__FreeBSD__) || defined(__DragonFly__)
+						#else
 							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_SEQPACKET | mode, 0);
 						#endif
@@ -4062,21 +4126,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"A socket for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
 								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								}, awh::log::flag_t::WARNING
+								}, log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("A socket for a Unix event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
+							log::print("A socket for a Unix event cannot be created because it has an invalid initialization type", log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4107,11 +4171,11 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW | mode, 0);
-									// Если протокол не определён
+									// Если протокол определён как RAW
 									case static_cast <uint8_t> (event::protocol_t::RAW):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_RAW);
-									// Если протокол определён как ICMP
+									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_TCP);
@@ -4146,7 +4210,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									 *
 									 * @details Ветви этой у IPv6 не было, тогда как у IPv4 она
 									 *          есть: довод `protocol_t::RAW` падал в умолчание,
-									 *          и заведение сокета отвергалось вовсе
+									 *          и заведение сокета отвергалось вовсе.
 									 *
 									 * @warning `IPPROTO_RAW` и «протокол не задан» - НЕ одно и
 									 *          то же: с первым пакет уходит вместе с СОБСТВЕННОЙ
@@ -4158,11 +4222,12 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									 *       FreeBSD 14.1, NetBSD 10.1, OpenBSD 7.9 и Sun Solaris
 									 *       11.4. То есть отсутствие ветви было пробелом наречий,
 									 *       а не свойством систем
+									 *
 									 */
 									case static_cast <uint8_t> (event::protocol_t::RAW):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW | mode, IPPROTO_RAW);
-									// Если протокол определён как ICMP
+									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW | mode, IPPROTO_TCP);
@@ -4186,21 +4251,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									}, awh::log::flag_t::WARNING
+									}, log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
+								log::print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4225,14 +4290,22 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_TCP);
 									/**
-									 * Если протокол определён как SCTP
-									 *
-									 * @note У DragonFly BSD протокола этого нет вовсе - ни заголовка
-									 *       netinet/sctp.h, ни даже опознавателя IPPROTO_SCTP, - оттого
-									 *       случай и снимается сборкой целиком. Запрос на SCTP уходит
-									 *       к общему отказу ниже, а не заводит сокет чужого протокола
+									 * Если операционная система принадлежит к FreeBSD
 									 */
-									#if !defined(__DragonFly__)
+									#if defined(__FreeBSD__)
+										/**
+										 * Если протокол определён как SCTP
+										 *
+										 * @note SCTP заводится нативно только на FreeBSD - единственной
+										 *       системе наречия, чьё ядро его несёт (модуль sctp). На
+										 *       macOS, NetBSD, OpenBSD и DragonFly протокола в ядре нет
+										 *       (щуп 27.10.2026: errno 43 у всех четырёх), оттого случай
+										 *       собран лишь для FreeBSD, а запрос SCTP на прочих системах
+										 *       уходит к общему отказу ниже, а не заводит сокет чужого
+										 *       протокола. Прежняя подмена SCTP дейтаграммным сокетом
+										 *       UDP снята решением владельца 29.10.2026
+										 *
+										 */
 										case static_cast <uint8_t> (event::protocol_t::SCTP):
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_SCTP);
@@ -4256,14 +4329,22 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_TCP);
 									/**
-									 * Если протокол определён как SCTP
-									 *
-									 * @note У DragonFly BSD протокола этого нет вовсе - ни заголовка
-									 *       netinet/sctp.h, ни даже опознавателя IPPROTO_SCTP, - оттого
-									 *       случай и снимается сборкой целиком. Запрос на SCTP уходит
-									 *       к общему отказу ниже, а не заводит сокет чужого протокола
+									 * Если операционная система принадлежит к FreeBSD
 									 */
-									#if !defined(__DragonFly__)
+									#if defined(__FreeBSD__)
+										/**
+										 * Если протокол определён как SCTP
+										 *
+										 * @note SCTP заводится нативно только на FreeBSD - единственной
+										 *       системе наречия, чьё ядро его несёт (модуль sctp). На
+										 *       macOS, NetBSD, OpenBSD и DragonFly протокола в ядре нет
+										 *       (щуп 27.10.2026: errno 43 у всех четырёх), оттого случай
+										 *       собран лишь для FreeBSD, а запрос SCTP на прочих системах
+										 *       уходит к общему отказу ниже, а не заводит сокет чужого
+										 *       протокола. Прежняя подмена SCTP дейтаграммным сокетом
+										 *       UDP снята решением владельца 29.10.2026
+										 *
+										 */
 										case static_cast <uint8_t> (event::protocol_t::SCTP):
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_SCTP);
@@ -4280,21 +4361,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									}, awh::log::flag_t::WARNING
+									}, log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
+								log::print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4360,21 +4441,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									}, awh::log::flag_t::WARNING
+									}, log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
+								log::print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4390,22 +4471,25 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								 * Определяем протокол
 								 */
 								switch(static_cast <uint8_t> (proto)){
-									// Если протокол определён как SCTP
-									case static_cast <uint8_t> (event::protocol_t::SCTP): {
+									/**
+									 * Если операционная система принадлежит к FreeBSD
+									 */
+									#if defined(__FreeBSD__)
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
+										 * Если протокол определён как SCTP
+										 *
+										 * @note Нативный SCTP - только FreeBSD; на macOS, NetBSD,
+										 *       OpenBSD и DragonFly его в ядре нет (щуп 27.10.2026:
+										 *       errno 43 у всех четырёх). Прежняя подмена этого случая
+										 *       дейтаграммным сокетом UDP снята решением владельца
+										 *       29.10.2026: запрос SCTP на системах без протокола
+										 *       уходит к общему отказу ниже, а не заводит UDP-сокет
+										 *
 										 */
-										#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
-											// Печатаем дескриптор созданного сокета
-											return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
-										/**
-										 *Для операционной системы FreeBSD
-										 */
-										#elif defined(__FreeBSD__)
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
-										#endif
-									} break;
+									#endif
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -4417,11 +4501,20 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								 */
 								switch(static_cast <uint8_t> (proto)){
 									/**
-									 * Если протокол определён как SCTP
-									 *
-									 * @note DragonFly BSD опознавателя IPPROTO_SCTP не несёт вовсе
+									 * Если операционная система принадлежит к FreeBSD
 									 */
-									#if !defined(__DragonFly__)
+									#if defined(__FreeBSD__)
+										/**
+										 * Если протокол определён как SCTP
+										 *
+										 * @note Нативный SCTP - только FreeBSD; на macOS, NetBSD,
+										 *       OpenBSD и DragonFly его в ядре нет (щуп 27.10.2026:
+										 *       errno 43 у всех четырёх). Запрос SCTP на системах
+										 *       без протокола уходит к общему отказу ниже, а не
+										 *       заводит сокет чужого протокола - решение владельца
+										 *       29.10.2026 о снятии подмены SCTP дейтаграммой
+										 *
+										 */
 										case static_cast <uint8_t> (event::protocol_t::SCTP):
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET6, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
@@ -4438,21 +4531,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									}, awh::log::flag_t::WARNING
+									}, log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
+								log::print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4463,21 +4556,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"A socket for an IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
 								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								}, awh::log::flag_t::WARNING
+								}, log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("A socket for an IP event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
+							log::print("A socket for an IP event cannot be created because it has an invalid initialization type", log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4489,21 +4582,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug(
+					log::debug(
 						"A socket cannot be created, because family it belongs to is not defined",
 						__PRETTY_FUNCTION__,
 						{
 							static_cast <uint16_t> (family),
 							static_cast <uint16_t> (type),
 							static_cast <uint16_t> (proto)
-						}, awh::log::flag_t::WARNING
+						}, log::flag_t::WARNING
 					);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("A socket cannot be created, because family it belongs to is not defined", awh::log::flag_t::WARNING);
+					log::print("A socket cannot be created, because family it belongs to is not defined", log::flag_t::WARNING);
 				#endif
 			}
 		}
@@ -4516,26 +4609,25 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)
-				}, awh::log::flag_t::CRITICAL, error.what()
+				}, log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
 	return net::invalid_socket_t;
 }
-
 /**
  * @brief Метод получения опций, принимаемых при создании сокета
  *
@@ -4571,7 +4663,6 @@ uint16_t awh::eth::Socket::inborn([[maybe_unused]] const uint16_t options) const
 	// Выводим результат
 	return result;
 }
-
 /**
  * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
  *
@@ -4604,21 +4695,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"%s", __PRETTY_FUNCTION__,
 							{
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (type),
 								static_cast <uint16_t> (proto)
 							},
-							awh::log::flag_t::CRITICAL, ::strerror(errno)
+							log::flag_t::CRITICAL, ::strerror(errno)
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -4637,21 +4728,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
 									},
-									awh::log::flag_t::CRITICAL, ::strerror(errno)
+									log::flag_t::CRITICAL, ::strerror(errno)
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -4664,30 +4755,34 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug(
+								log::debug(
 									"%s", __PRETTY_FUNCTION__,
 									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
 									},
-									awh::log::flag_t::CRITICAL, ::strerror(errno)
+									log::flag_t::CRITICAL, ::strerror(errno)
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					} break;
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
+						 * Для операционной системы macOS
+						 *
+						 * @note Ядро вида не несёт вовсе (щуп 27.10.2026), и пара изображается
+						 *       дейтаграммной - границы сообщений дейтаграммная пара держит так же
+						 *
 						 */
-						#if defined(__APPLE__) || defined(__MACH__) || defined(__NetBSD__) || defined(__OpenBSD__)
+						#if defined(__APPLE__) || defined(__MACH__)
 							// Выполняем инициализацию файловых дескрипторов
 							if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, &result[0]) != 0){
 								/**
@@ -4695,21 +4790,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
 											static_cast <uint16_t> (proto)
 										},
-										awh::log::flag_t::CRITICAL, ::strerror(errno)
+										log::flag_t::CRITICAL, ::strerror(errno)
 									);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
 						/**
@@ -4723,21 +4818,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug(
+									log::debug(
 										"%s", __PRETTY_FUNCTION__,
 										{
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
 											static_cast <uint16_t> (proto)
 										},
-										awh::log::flag_t::CRITICAL, ::strerror(errno)
+										log::flag_t::CRITICAL, ::strerror(errno)
 									);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
 						#endif
@@ -4749,21 +4844,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug(
+							log::debug(
 								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
 								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								}, awh::log::flag_t::WARNING
+								}, log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("An event for a Unix event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
+							log::print("An event for a Unix event cannot be created because it has an invalid initialization type", log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4789,20 +4884,20 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"%s", __PRETTY_FUNCTION__,
 				{
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)
-				}, awh::log::flag_t::CRITICAL, error.what()
+				}, log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4825,4 +4920,4 @@ awh::eth::Socket::Socket() noexcept {
  * @brief Деструктор
  *
  */
-awh::eth::Socket::~Socket() noexcept {}
+awh::eth::Socket::~Socket() noexcept = default;
