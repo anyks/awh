@@ -761,10 +761,9 @@ namespace awh {
 			 *          «DUPNAMES» выводится текст той из одноимённых групп, что захват
 			 *          выполнила, как это делает эталонная реализация.
 			 *
-			 *          Захват пустого текста от невыполненного захвата отличается
-			 *          тем, что выводимый вид ссылается на текст сопоставления,
-			 *          тогда как при невыполненном захвате вид пуст и ни на что
-			 *          не ссылается.
+			 *          Невыполненный захват и захват пустого текста выводятся
+			 *          одинаково — пустым видом нулевой длины. Участвовала ли группа
+			 *          в совпадении, показывают границы, которые выводит метод match.
 			 *
 			 * @param text   текст, с которым выполнялось сопоставление
 			 * @param bounds набор границ совпадения и захваченных групп
@@ -779,9 +778,9 @@ namespace awh {
 			 *          several groups requires no repeated matching. In the
 			 *          «DUPNAMES» mode the text of the one of the same-named groups that performed the
 			 *          capture is yielded, as the reference implementation does.
-			 *          A capture of an empty text differs from an unperformed capture in
-			 *          that the yielded view refers to the matched text,
-			 *          whereas on an unperformed capture the view is empty and refers to nothing.
+			 *          An unperformed capture and a capture of an empty text are yielded
+			 *          alike — an empty view of zero length. Whether the group took part
+			 *          in the match is shown by the boundaries the match method yields.
 			 *
 			 * @param text   text the matching was performed against
 			 * @param bounds set of the boundaries of the match and of the captured groups
