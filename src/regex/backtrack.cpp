@@ -96,7 +96,7 @@ using namespace std;
 	/**
 	 * Принудительная подстановка прохода ряда средствами Clang
 	 */
-	#define AWH_REGEX_SERIES __attribute__((always_inline))
+	#define AWH_REGEX_SERIES inline __attribute__((always_inline))
 /**
  * Если подстановку прохода ряда решает собиратель
  */

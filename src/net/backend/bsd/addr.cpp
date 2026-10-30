@@ -203,7 +203,7 @@ namespace local {
 	 * @return текущее время в наносекундах
 	 *
 	 */
-	static AWH_ADDR_INLINE uint64_t nanostamp() noexcept {
+	static uint64_t nanostamp() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 *
@@ -400,7 +400,7 @@ namespace {
 	 * @param source объект источника сетевых адресов
 	 *
 	 */
-	static void AWH_ADDR_INLINE scope(net::src_t & source) noexcept {
+	static AWH_ADDR_INLINE void scope(net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выходим из функции, так-как проставлять зону нечему
@@ -719,7 +719,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не совпадающие имена интерфейсов
-					if((ifa->ifa_name == nullptr) || !awh::fmk::compare(ifa->ifa_name, source.iface))
+					if((ifa->ifa_name == nullptr) || !fmk::compare(ifa->ifa_name, source.iface))
 						// Переходим к следующему интерфейсу
 						continue;
 					// Ищем MAC-адрес интерфейса
@@ -746,7 +746,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				 *          туннелей, к примеру: `utun0` держит адрес IP, но канальной
 				 *          записи не имеет вовсе. Прежде поиск аппаратного адреса на
 				 *          таком устройстве не удавался и уводил из функции, не дав
-				 *          заполнить и адрес IP, отчего своим адресом объявлялся нуль
+				 *          заполнить и адрес IP, отчего своим адресом объявлялся нуль.
 				 *
 				 * @warning Тем самым туннель оставался без своего адреса целиком, и
 				 *          признак этого был обманчив: нуль неотличим от настоящего
@@ -796,7 +796,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 								// Пропускаем неактивные интерфейсы
 								continue;
 							// Если имя интерфейса совпадает
-							if(awh::fmk::compare(ifa->ifa_name, source.iface)){
+							if(fmk::compare(ifa->ifa_name, source.iface)){
 								// Копируем IP-адрес в результат
 								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
 								// Выходим из цикла
@@ -857,7 +857,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 								// Пропускаем неактивные интерфейсы
 								continue;
 							// Если имя интерфейса совпадает
-							if(awh::fmk::compare(ifa->ifa_name, source.iface)){
+							if(fmk::compare(ifa->ifa_name, source.iface)){
 								// Получаем адрес сетевого интерфейса
 								const struct sockaddr_in6 * addr = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 								// Если адрес является канальным, откладываем его на крайний случай
@@ -1041,8 +1041,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					 * @details Система выдаёт нулевой адрес всякой связи, у которой адреса ещё
 					 *          нет, - у систем Sun такие связи заводятся распорядителем заранее
 					 *          под туннели. Нулевой же адрес подсети принадлежит ЛЮБОЙ подсети,
-					 *          и такая связь становилась источником для запроса по нулевому
-					 *          адресу
+					 *          и такая связь становилась источником для запроса по нулевому адресу.
 					 *
 					 * @warning Установлено 23.08.2026 на стендах Solaris и OpenIndiana: там
 					 *          заведены `awh_tun0`...`awh_tun7` без адресов, и `EthSuiteTest`
