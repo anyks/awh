@@ -76,75 +76,131 @@ namespace {
 	 *
 	 */
 	namespace header {
+		// Заголовки, запрещённые в трейлерах
+		static constexpr string_view TE = "te";
+		// Заголовки, запрещённые в трейлерах (RFC 9110 §6.5.1)
+		static constexpr string_view AGE = "age";
+		// Заголовок варьирования
+		static constexpr string_view VARY = "vary";
+		// Заголовок даты
+		static constexpr string_view DATE = "date";
+		// Заголовок узла назначения
+		static constexpr string_view HOST = "host";
+		// Псевдо-заголовок пути запроса
+		static constexpr string_view PATH = ":path";
+		// Заголовок диапазона запроса
+		static constexpr string_view RANGE = "range";
+		// Заголовок директив
+		static constexpr string_view PRAGMA = "pragma";
+		// Заголовок кук
+		static constexpr string_view COOKIE = "cookie";
+		// Заголовок ожидания
+		static constexpr string_view EXPECT = "expect";
 		// Псевдо-заголовки запроса и ответа (RFC 9113 §8.3)
 		static constexpr string_view METHOD = ":method";
+		// Псевдо-заголовок схемы запроса
 		static constexpr string_view SCHEME = ":scheme";
-		static constexpr string_view PATH = ":path";
-		static constexpr string_view AUTHORITY = ":authority";
-		static constexpr string_view PROTOCOL = ":protocol";
+		// Псевдо-заголовок статуса ответа
 		static constexpr string_view STATUS = ":status";
 		// Заголовки, запрещённые в HTTP/2 (RFC 9113 §8.2.2)
 		static constexpr string_view UPGRADE = "upgrade";
-		static constexpr string_view KEEP_ALIVE = "keep-alive";
-		static constexpr string_view CONNECTION = "connection";
-		static constexpr string_view PROXY_CONNECTION = "proxy-connection";
-		static constexpr string_view TRANSFER_ENCODING = "transfer-encoding";
-		// Заголовки, запрещённые в трейлерах
-		static constexpr string_view TE = "te";
-		static constexpr string_view HOST = "host";
-		static constexpr string_view RANGE = "range";
-		static constexpr string_view EXPECT = "expect";
+		// Заголовок перечня трейлеров
 		static constexpr string_view TRAILER = "trailer";
-		static constexpr string_view CONTENT_TYPE = "content-type";
-		static constexpr string_view CACHE_CONTROL = "cache-control";
-		static constexpr string_view CONTENT_RANGE = "content-range";
-		static constexpr string_view MAX_FORWARDS = "max-forwards";
-		static constexpr string_view AUTHORIZATION = "authorization";
-		static constexpr string_view CONTENT_LENGTH = "content-length";
-		static constexpr string_view CONTENT_ENCODING = "content-encoding";
-		static constexpr string_view PROXY_AUTHORIZATION = "proxy-authorization";
-		// Заголовки, запрещённые в трейлерах (RFC 9110 §6.5.1)
-		static constexpr string_view AGE = "age";
-		static constexpr string_view AUTHENTICATION_INFO = "authentication-info";
-		static constexpr string_view COOKIE = "cookie";
-		static constexpr string_view DATE = "date";
+		// Заголовок срока годности
 		static constexpr string_view EXPIRES = "expires";
-		static constexpr string_view IF_MATCH = "if-match";
-		static constexpr string_view IF_MODIFIED_SINCE = "if-modified-since";
-		static constexpr string_view IF_NONE_MATCH = "if-none-match";
-		static constexpr string_view IF_RANGE = "if-range";
-		static constexpr string_view IF_UNMODIFIED_SINCE = "if-unmodified-since";
-		static constexpr string_view LOCATION = "location";
-		static constexpr string_view PRAGMA = "pragma";
-		static constexpr string_view PROXY_AUTHENTICATE = "proxy-authenticate";
-		static constexpr string_view PROXY_AUTHENTICATION_INFO = "proxy-authentication-info";
-		static constexpr string_view RETRY_AFTER = "retry-after";
-		static constexpr string_view SET_COOKIE = "set-cookie";
-		static constexpr string_view VARY = "vary";
+		// Заголовок предупреждения
 		static constexpr string_view WARNING = "warning";
-		static constexpr string_view WWW_AUTHENTICATE = "www-authenticate";
+		// Заголовок местоположения
+		static constexpr string_view LOCATION = "location";
+		// Заголовок условия диапазона
+		static constexpr string_view IF_RANGE = "if-range";
+		// Заголовок условия совпадения
+		static constexpr string_view IF_MATCH = "if-match";
 		// Заголовок приоритета запроса (RFC 9218 §5)
 		static constexpr string_view PRIORITY = "priority";
+		// Псевдо-заголовок протокола запроса
+		static constexpr string_view PROTOCOL = ":protocol";
+		// Псевдо-заголовок полномочий запроса
+		static constexpr string_view AUTHORITY = ":authority";
+		// Заголовок поддержания соединения
+		static constexpr string_view KEEP_ALIVE = "keep-alive";
+		// Заголовок управления соединением
+		static constexpr string_view CONNECTION = "connection";
+		// Заголовок установки кук
+		static constexpr string_view SET_COOKIE = "set-cookie";
+		// Заголовок срока повтора
+		static constexpr string_view RETRY_AFTER = "retry-after";
+		// Заголовок предела посредников
+		static constexpr string_view MAX_FORWARDS = "max-forwards";
+		// Заголовок типа содержимого
+		static constexpr string_view CONTENT_TYPE = "content-type";
+		// Заголовок управления кешированием
+		static constexpr string_view CACHE_CONTROL = "cache-control";
+		// Заголовок диапазона содержимого
+		static constexpr string_view CONTENT_RANGE = "content-range";
+		// Заголовок авторизации
+		static constexpr string_view AUTHORIZATION = "authorization";
+		// Заголовок условия несовпадения
+		static constexpr string_view IF_NONE_MATCH = "if-none-match";
+		// Заголовок длины содержимого
+		static constexpr string_view CONTENT_LENGTH = "content-length";
+		// Заголовок требования аутентификации
+		static constexpr string_view WWW_AUTHENTICATE = "www-authenticate";
+		// Заголовок кодировки содержимого
+		static constexpr string_view CONTENT_ENCODING = "content-encoding";
+		// Заголовок управления соединением через посредника
+		static constexpr string_view PROXY_CONNECTION = "proxy-connection";
+		// Заголовок способа передачи
+		static constexpr string_view TRANSFER_ENCODING = "transfer-encoding";
+		// Заголовок условия изменения с даты
+		static constexpr string_view IF_MODIFIED_SINCE = "if-modified-since";
+		// Заголовок требования аутентификации посредника
+		static constexpr string_view PROXY_AUTHENTICATE = "proxy-authenticate";
+		// Заголовок авторизации посредника
+		static constexpr string_view PROXY_AUTHORIZATION = "proxy-authorization";
+		// Заголовок сведений об аутентификации
+		static constexpr string_view AUTHENTICATION_INFO = "authentication-info";
+		// Заголовок условия неизменности с даты
+		static constexpr string_view IF_UNMODIFIED_SINCE = "if-unmodified-since";
+		// Заголовок сведений об аутентификации посредника
+		static constexpr string_view PROXY_AUTHENTICATION_INFO = "proxy-authentication-info";
 	};
 	/**
 	 * @brief Пространство имён значений заголовков, участвующих в сравнениях
 	 *
 	 */
 	namespace value {
+		// Метод HEAD
+		static constexpr string_view HEAD = "HEAD";
 		// Методы запроса, меняющие обработку тела
 		static constexpr string_view CONNECT = "CONNECT";
-		static constexpr string_view HEAD = "HEAD";
 		// Метод, которому допустима звёздочка вместо пути (RFC 9110 §7.1)
 		static constexpr string_view OPTIONS = "OPTIONS";
 		// Единственное допустимое значение поля [te] (RFC 9113 §8.2.2)
 		static constexpr string_view TRAILERS = "trailers";
+	};
+	/**
+	 * @brief Пространство кодов ответов сервера, участвующих в сравнениях
+	 *
+	 */
+	namespace value {
 		// Коды состояния, при которых тело ответа отсутствует
 		static constexpr string_view SWITCHING = "101";
+		// Код 204 - содержимого нет
 		static constexpr string_view NO_CONTENT = "204";
-		static constexpr string_view NOT_MODIFIED = "304";
+		// Код 304 - не изменилось
+		static constexpr string_view NOT_MODIFIED = "304";	
+	};
+	/**
+	 * @brief Пространство значений заголовков, участвующих в сравнениях
+	 *
+	 */
+	namespace value {
 		// Элементы структурированного поля приоритета (RFC 9218 §4)
 		static constexpr string_view INCREMENTAL = "i";
+		// Инкрементальность включена
 		static constexpr string_view INCREMENTAL_ON = "i=?1";
+		// Инкрементальность выключена
 		static constexpr string_view INCREMENTAL_OFF = "i=?0";
 	};
 
@@ -717,7 +773,7 @@ namespace {
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Заголовок [te] допускает только значение [trailers] (RFC 9113 §8.2.2)
-				if((name == header::TE) && !awh::fmk::compare(value::TRAILERS, field.value))
+				if((name == header::TE) && !fmk::compare(value::TRAILERS, field.value))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Если получен заголовок [host] - запоминаем его для сверки с [:authority]
@@ -761,7 +817,7 @@ namespace {
 		 * и тот же ресурс, иначе запрос считается малформированным (RFC 9113 §8.3.1):
 		 * расхождение - классический вектор десинхронизации на прокси
 		 */
-		if(hasHost && hasAuthority && !awh::fmk::compare(host, authority))
+		if(hasHost && hasAuthority && !fmk::compare(host, authority))
 			// Блок заголовков некорректен
 			return http::h2::error_t::PROTOCOL_ERROR;
 		// Если блок принадлежит запросу клиента
@@ -871,7 +927,7 @@ namespace {
 			 * поднимает туннель любого зарегистрированного протокола, и правила
 			 * WebSocket к нему не относятся
 			 */
-			if(websocket && hasProtocol && awh::fmk::compare("websocket", protocol) && !::isHttpScheme(scheme))
+			if(websocket && hasProtocol && fmk::compare("websocket", protocol) && !::isHttpScheme(scheme))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 		// Если блок принадлежит ответу сервера
@@ -1164,13 +1220,13 @@ void awh::http::Parser_HTTP2::flush() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 			// Прерываем передачу исходящих байтов
 			return;
@@ -1809,9 +1865,9 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 	 *       `%s` неопределена, и снисходительность к ней у систем разная
 	 *
 	 */
-	awh::log::print(
+	log::print(
 		"HTTP/2 %s parsing failed: %s [%.*s]",
-		awh::log::flag_t::WARNING,
+		log::flag_t::WARNING,
 		(this->_direct == direct_t::REQUEST ? "request" : "response"),
 		(message != nullptr ? message : "-"),
 		static_cast <int32_t> (name.size()), name.data()
@@ -1835,13 +1891,13 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (code), message}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (code), message}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3383,13 +3439,13 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint32_t> (code)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint32_t> (code)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3423,13 +3479,13 @@ bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (phase), static_cast <uint16_t> (part)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (phase), static_cast <uint16_t> (part)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Если функция обратного вызова потребовала сбросить поток
@@ -3472,13 +3528,13 @@ void awh::http::Parser_HTTP2::fireSettings() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3508,13 +3564,13 @@ void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3545,13 +3601,13 @@ bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Ошибка пользовательской функции - поток сбрасывается
@@ -3585,13 +3641,13 @@ bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promis
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, promisedSid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, promisedSid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Ошибка пользовательской функции - push отклоняется
@@ -3625,13 +3681,13 @@ void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code,
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, static_cast <uint32_t> (code)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, static_cast <uint32_t> (code)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3664,13 +3720,13 @@ bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t *
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, endStream}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, endStream}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Ошибка пользовательской функции - поток сбрасывается
@@ -3706,13 +3762,13 @@ bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, size, endStream}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, size, endStream}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Ошибка пользовательской функции - поток сбрасывается
@@ -3748,13 +3804,13 @@ bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view na
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, string(name), string(value)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, string(name), string(value)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Ошибка пользовательской функции - поток сбрасывается
@@ -4096,13 +4152,13 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Перечитываем указатель на поток (источник данных мог его закрыть либо сбросить парсер)
@@ -4245,11 +4301,15 @@ void awh::http::Parser_HTTP2::parsePriority(const string_view value, uint8_t & u
 		string_view item = value.substr(pos, end - pos);
 		// Сдвигаем позицию за разделитель элементов
 		pos = (end + 1);
-		// Снимаем начальные пробельные символы элемента
+		/**
+		 * Снимаем начальные пробельные символы элемента
+		 */
 		while(!item.empty() && ((item.front() == ' ') || (item.front() == '\t')))
 			// Сдвигаем начало элемента
 			item.remove_prefix(1);
-		// Снимаем конечные пробельные символы элемента
+		/**
+		 * Снимаем конечные пробельные символы элемента
+		 */
 		while(!item.empty() && ((item.back() == ' ') || (item.back() == '\t')))
 			// Сдвигаем конец элемента
 			item.remove_suffix(1);
@@ -4265,7 +4325,9 @@ void awh::http::Parser_HTTP2::parsePriority(const string_view value, uint8_t & u
 		if(params != string_view::npos)
 			// Отсекаем параметры члена словаря
 			item = item.substr(0, params);
-		// Снимаем пробельные символы, оставшиеся перед разделителем параметров
+		/**
+		 * Снимаем пробельные символы, оставшиеся перед разделителем параметров
+		 */
 		while(!item.empty() && ((item.back() == ' ') || (item.back() == '\t')))
 			// Сдвигаем конец элемента
 			item.remove_suffix(1);
@@ -4393,9 +4455,9 @@ void awh::http::Parser_HTTP2::checkHeaderListLimits() const noexcept {
 	 */
 	if((this->_limits.maxHeadersTotal == 0) && (this->_local.maxHeaderListSize == 0))
 		// Записываем сообщение о снятом лимите в лог
-		awh::log::print(
+		log::print(
 			"HTTP/2 decoded header list is unlimited: both maxHeadersTotal and SETTINGS_MAX_HEADER_LIST_SIZE are 0",
-			awh::log::flag_t::WARNING
+			log::flag_t::WARNING
 		);
 }
 /**
@@ -4417,9 +4479,9 @@ void awh::http::Parser_HTTP2::checkPeerHeaderList(const uint32_t sid) const noex
 	 */
 	if(this->_encoder.listSize() > this->_remote.maxHeaderListSize)
 		// Записываем сообщение о превышении лимита пира в лог
-		awh::log::print(
+		log::print(
 			"HTTP/2 header list of stream %u is %llu bytes and exceeds peer SETTINGS_MAX_HEADER_LIST_SIZE (%u)",
-			awh::log::flag_t::WARNING, sid, this->_encoder.listSize(), this->_remote.maxHeaderListSize
+			log::flag_t::WARNING, sid, this->_encoder.listSize(), this->_remote.maxHeaderListSize
 		);
 }
 /**
@@ -4499,7 +4561,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 	// Нулевой идентификатор потока не принадлежит ни одному потоку (RFC 9113 §5.1.1)
 	if(sid == 0){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 headers are not allowed for stream 0", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 headers are not allowed for stream 0", log::flag_t::WARNING);
 		// Отправка недопустима
 		return false;
 	}
@@ -4515,7 +4577,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 		 */
 		if(stream->endStreamSent){
 			// Записываем сообщение об ошибке в лог
-			awh::log::print("HTTP/2 stream %u is already half-closed (local)", awh::log::flag_t::WARNING, sid);
+			log::print("HTTP/2 stream %u is already half-closed (local)", log::flag_t::WARNING, sid);
 			// Отправка недопустима
 			return false;
 		}
@@ -4527,7 +4589,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 		 */
 		if(stream->headersSent && stream->trailerlessSend){
 			// Записываем сообщение об ошибке в лог
-			awh::log::print("HTTP/2 response on stream %u cannot carry trailers", awh::log::flag_t::WARNING, sid);
+			log::print("HTTP/2 response on stream %u cannot carry trailers", log::flag_t::WARNING, sid);
 			// Отправка недопустима
 			return false;
 		}
@@ -4539,7 +4601,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 		if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_REMOTE) &&
 		   (stream->state != h2::stream_state_t::RESERVED_LOCAL) && (stream->state != h2::stream_state_t::IDLE)){
 			// Записываем сообщение об ошибке в лог
-			awh::log::print("HTTP/2 stream %u does not accept headers in its current state", awh::log::flag_t::WARNING, sid);
+			log::print("HTTP/2 stream %u does not accept headers in its current state", log::flag_t::WARNING, sid);
 			// Отправка недопустима
 			return false;
 		}
@@ -4549,35 +4611,35 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 	// Поток, инициируемый пиром, мы открыть не можем (RFC 9113 §5.1.1)
 	if(this->peerInitiated(sid)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 stream %u is initiated by peer and cannot be opened locally", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 stream %u is initiated by peer and cannot be opened locally", log::flag_t::WARNING, sid);
 		// Отправка недопустима
 		return false;
 	}
 	// Наш идентификатор потока обязан быть выделен методом nextStreamId()
 	if(sid >= this->_transfer.nextStreamId){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 stream %u is not allocated by nextStreamId", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 stream %u is not allocated by nextStreamId", log::flag_t::WARNING, sid);
 		// Отправка недопустима
 		return false;
 	}
 	// Поток уже открывался и был закрыт - повторно открыть его нельзя (RFC 9113 §5.1)
 	if(sid <= this->_transfer.localOpened){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 stream %u is already closed", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 stream %u is already closed", log::flag_t::WARNING, sid);
 		// Отправка недопустима
 		return false;
 	}
 	// Если соединение помечено на завершение - новые потоки на нём не открываются (RFC 9113 §6.8)
 	if(this->_flags.goawayReceived || this->_flags.goawaySent){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 stream %u cannot be opened after GOAWAY", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 stream %u cannot be opened after GOAWAY", log::flag_t::WARNING, sid);
 		// Отправка недопустима
 		return false;
 	}
 	// Если исчерпан лимит одновременных потоков, разрешённый пиром (RFC 9113 §5.1.2)
 	if(this->_transfer.localStreamCount >= this->_remote.maxConcurrentStreams){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 peer concurrent streams limit (%u) reached", awh::log::flag_t::WARNING, this->_remote.maxConcurrentStreams);
+		log::print("HTTP/2 peer concurrent streams limit (%u) reached", log::flag_t::WARNING, this->_remote.maxConcurrentStreams);
 		// Отправка недопустима
 		return false;
 	}
@@ -4607,7 +4669,7 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 	// Повторная секция трейлеров недопустима
 	if(stream->trailersPending){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 trailers for stream %u are already pending", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 trailers for stream %u are already pending", log::flag_t::WARNING, sid);
 		// Отправка отложена (повторную секцию отбрасываем)
 		return true;
 	}
@@ -4624,7 +4686,7 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 		// Если трейлеры не завершают поток - это нарушение (RFC 9113 §8.1)
 		if(!endStream)
 			// Записываем сообщение об ошибке в лог
-			awh::log::print("HTTP/2 trailers for stream %u must carry END_STREAM", awh::log::flag_t::WARNING, sid);
+			log::print("HTTP/2 trailers for stream %u must carry END_STREAM", log::flag_t::WARNING, sid);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -4634,13 +4696,13 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Отправка отложена
@@ -4689,13 +4751,13 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Секция трейлеров отправлена
@@ -4825,13 +4887,13 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {fields.size(), request}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {fields.size(), request}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -5030,13 +5092,13 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -5142,13 +5204,13 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 		// Фиксируем внутреннюю ошибку разбора
 		this->fail(error_t::INTERNAL_ERROR, "unhandled exception");
@@ -5231,9 +5293,9 @@ void awh::http::Parser_HTTP2::proto(const proto_t proto) noexcept {
 		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
 		 * оно учтено
 		 */
-		default: awh::log::print(
+		default: log::print(
 			"HTTP/2 parser speaks HTTP/2 only: the protocol has not been changed",
-			awh::log::flag_t::CRITICAL
+			log::flag_t::CRITICAL
 		);
 	}
 }
@@ -5308,35 +5370,35 @@ void awh::http::Parser_HTTP2::settings(const settings_t & settings) noexcept {
 	 */
 	if((this->_local.windowSize < 0) || (this->_local.windowSize > h2::proto::MAX_WINDOW_SIZE)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 INITIAL_WINDOW_SIZE %d is out of range, reset to %d", awh::log::flag_t::WARNING, this->_local.windowSize, h2::proto::DEFAULT_WINDOW_SIZE);
+		log::print("HTTP/2 INITIAL_WINDOW_SIZE %d is out of range, reset to %d", log::flag_t::WARNING, this->_local.windowSize, h2::proto::DEFAULT_WINDOW_SIZE);
 		// Возвращаем начальное окно потока к значению по умолчанию
 		this->_local.windowSize = h2::proto::DEFAULT_WINDOW_SIZE;
 	}
 	// Если размер фрейма выходит за допустимый протоколом диапазон
 	if((this->_local.maxFrameSize < h2::proto::MIN_MAX_FRAME_SIZE) || (this->_local.maxFrameSize > h2::proto::MAX_MAX_FRAME_SIZE)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 MAX_FRAME_SIZE %u is out of range, reset to %u", awh::log::flag_t::WARNING, this->_local.maxFrameSize, h2::proto::DEFAULT_MAX_FRAME_SIZE);
+		log::print("HTTP/2 MAX_FRAME_SIZE %u is out of range, reset to %u", log::flag_t::WARNING, this->_local.maxFrameSize, h2::proto::DEFAULT_MAX_FRAME_SIZE);
 		// Возвращаем максимальный размер фрейма к значению по умолчанию
 		this->_local.maxFrameSize = h2::proto::DEFAULT_MAX_FRAME_SIZE;
 	}
 	// Если разрешение server push задано недопустимым значением
 	if(this->_local.enablePush > 1){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ENABLE_PUSH %u is invalid, reset to 1", awh::log::flag_t::WARNING, this->_local.enablePush);
+		log::print("HTTP/2 ENABLE_PUSH %u is invalid, reset to 1", log::flag_t::WARNING, this->_local.enablePush);
 		// Возвращаем разрешение server push к значению по умолчанию
 		this->_local.enablePush = 1;
 	}
 	// Если разрешение расширенного CONNECT задано недопустимым значением
 	if(this->_local.enableConnectProtocol > 1){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ENABLE_CONNECT_PROTOCOL %u is invalid, reset to 0", awh::log::flag_t::WARNING, this->_local.enableConnectProtocol);
+		log::print("HTTP/2 ENABLE_CONNECT_PROTOCOL %u is invalid, reset to 0", log::flag_t::WARNING, this->_local.enableConnectProtocol);
 		// Запрещаем расширенный метод CONNECT
 		this->_local.enableConnectProtocol = 0;
 	}
 	// Если отказ от приоритетов RFC 7540 задан недопустимым значением
 	if(this->_local.noRfc7540Priorities > 1){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 NO_RFC7540_PRIORITIES %u is invalid, reset to 1", awh::log::flag_t::WARNING, this->_local.noRfc7540Priorities);
+		log::print("HTTP/2 NO_RFC7540_PRIORITIES %u is invalid, reset to 1", log::flag_t::WARNING, this->_local.noRfc7540Priorities);
 		// Возвращаем отказ от приоритетов RFC 7540 к значению по умолчанию
 		this->_local.noRfc7540Priorities = 1;
 	}
@@ -5566,7 +5628,7 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
 	 */
 	if(this->_direct == direct_t::REQUEST){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 server is not allowed to send PRIORITY_UPDATE", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 server is not allowed to send PRIORITY_UPDATE", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5611,14 +5673,14 @@ void awh::http::Parser_HTTP2::priority(const uint32_t sid, const uint8_t urgency
 	 */
 	if(this->peerInitiated(sid)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 priority header is only allowed for own stream %u", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 priority header is only allowed for own stream %u", log::flag_t::WARNING, sid);
 		// Выходим из метода
 		return;
 	}
 	// Если идентификатор потока не выделен методом nextStreamId()
 	if(sid >= this->_transfer.nextStreamId){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 stream %u is not allocated by nextStreamId", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 stream %u is not allocated by nextStreamId", log::flag_t::WARNING, sid);
 		// Выходим из метода
 		return;
 	}
@@ -5651,7 +5713,7 @@ void awh::http::Parser_HTTP2::sendAltSvc(const uint32_t sid, const string & orig
 	 */
 	if(this->_direct == direct_t::RESPONSE){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 client is not allowed to send ALTSVC", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 client is not allowed to send ALTSVC", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5662,7 +5724,7 @@ void awh::http::Parser_HTTP2::sendAltSvc(const uint32_t sid, const string & orig
 	 */
 	if((sid == 0) == origin.empty()){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ALTSVC origin is required for the connection and forbidden for a stream", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 ALTSVC origin is required for the connection and forbidden for a stream", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5672,14 +5734,14 @@ void awh::http::Parser_HTTP2::sendAltSvc(const uint32_t sid, const string & orig
 	 */
 	if((sid != 0) && (this->findStream(sid) == nullptr)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ALTSVC for unknown stream %u", awh::log::flag_t::WARNING, sid);
+		log::print("HTTP/2 ALTSVC for unknown stream %u", log::flag_t::WARNING, sid);
 		// Выходим из метода
 		return;
 	}
 	// Если размер кадра превышает согласованный пиром лимит
 	if((origin.size() + value.size() + 2) > static_cast <size_t> (this->_remote.maxFrameSize)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ALTSVC exceeds peer SETTINGS_MAX_FRAME_SIZE", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 ALTSVC exceeds peer SETTINGS_MAX_FRAME_SIZE", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5701,7 +5763,7 @@ void awh::http::Parser_HTTP2::sendOrigin(const vector <string> & origins) noexce
 	 */
 	if(this->_direct == direct_t::RESPONSE){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 client is not allowed to send ORIGIN", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 client is not allowed to send ORIGIN", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5717,7 +5779,7 @@ void awh::http::Parser_HTTP2::sendOrigin(const vector <string> & origins) noexce
 	// Если размер кадра превышает согласованный пиром лимит
 	if(length > static_cast <size_t> (this->_remote.maxFrameSize)){
 		// Записываем сообщение об ошибке в лог
-		awh::log::print("HTTP/2 ORIGIN exceeds peer SETTINGS_MAX_FRAME_SIZE", awh::log::flag_t::WARNING);
+		log::print("HTTP/2 ORIGIN exceeds peer SETTINGS_MAX_FRAME_SIZE", log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5822,7 +5884,7 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		 */
 		if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_REMOTE)){
 			// Записываем сообщение об ошибке в лог
-			awh::log::print("HTTP/2 stream %u does not accept body in its current state", awh::log::flag_t::WARNING, sid);
+			log::print("HTTP/2 stream %u does not accept body in its current state", log::flag_t::WARNING, sid);
 			// Выводим число принятых байт
 			return result;
 		}
@@ -5882,13 +5944,13 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, buffer, size, endStream}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, buffer, size, endStream}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Передаём исходящие байты сетевому слою
@@ -5981,13 +6043,13 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 		// Push не выполнен
 		return 0;
@@ -6038,9 +6100,9 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			 * Connection-specific заголовки в HTTP/2 запрещены (RFC 9113 §8.2.2) и делают
 			 * сообщение малформированным на приёмной стороне - пропускаем их
 			 */
-			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !awh::fmk::compare(value::TRAILERS, field.value))){
+			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !fmk::compare(value::TRAILERS, field.value))){
 				// Записываем сообщение об ошибке в лог
-				awh::log::print("HTTP/2 connection-specific header [%s] is not allowed and skipped", awh::log::flag_t::WARNING, field.name.c_str());
+				log::print("HTTP/2 connection-specific header [%s] is not allowed and skipped", log::flag_t::WARNING, field.name.c_str());
 				// Переходим к следующему заголовку
 				continue;
 			}
@@ -6052,7 +6114,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			 */
 			if(!::isValidHeaderName(field.name))
 				// Записываем сообщение об ошибке в лог
-				awh::log::print("HTTP/2 header name [%s] is not a valid lowercase token", awh::log::flag_t::WARNING, field.name.c_str());
+				log::print("HTTP/2 header name [%s] is not a valid lowercase token", log::flag_t::WARNING, field.name.c_str());
 			// Кодируем очередной заголовок
 			this->_encoder.encode(field.name, field.value, block, field.sensitive, true);
 		}
@@ -6105,13 +6167,13 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Передаём исходящие байты сетевому слою
@@ -6172,7 +6234,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 					// Переходим к следующему заголовку
 					continue;
 				// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
-				if((name == header::TE) && !awh::fmk::compare(value::TRAILERS, header.value))
+				if((name == header::TE) && !fmk::compare(value::TRAILERS, header.value))
 					// Переходим к следующему заголовку
 					continue;
 				// Дописываем заголовок в список секции трейлеров
@@ -6199,9 +6261,9 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			 */
 			if(!request->protocol.empty() && (request->method == method_t::CONNECT) && (this->_remote.enableConnectProtocol == 0)){
 				// Записываем сообщение об отказе в лог
-				awh::log::print(
+				log::print(
 					"HTTP/2 peer does not support extended CONNECT (RFC 8441), request for stream %u is not sent",
-					awh::log::flag_t::WARNING, sid
+					log::flag_t::WARNING, sid
 				);
 				// Выходим из метода
 				return;
@@ -6214,11 +6276,11 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			 * приложение парсер не вправе - оно адресовало запрос осознанно
 			 */
 			if((this->_proto == proto_t::WEBSOCKET2) && (request->method == method_t::CONNECT) &&
-			   awh::fmk::compare("websocket", request->protocol) && !::isHttpScheme(scheme)){
+			   fmk::compare("websocket", request->protocol) && !::isHttpScheme(scheme)){
 				// Записываем сообщение об отказе в лог
-				awh::log::print(
+				log::print(
 					"HTTP/2 WebSocket target URI requires http or https scheme (RFC 8441), request for stream %u is not sent",
-					awh::log::flag_t::WARNING, sid
+					log::flag_t::WARNING, sid
 				);
 				// Выходим из метода
 				return;
@@ -6328,7 +6390,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			 * Значения кодирований передачи регистронезависимы (RFC 9110 §10.1.4),
 			 * поэтому строгое сравнение отбрасывало бы законное [TE: Trailers]
 			 */
-			if((name == header::TE) && !awh::fmk::compare(value::TRAILERS, header.value))
+			if((name == header::TE) && !fmk::compare(value::TRAILERS, header.value))
 				// Переходим к следующему заголовку
 				continue;
 			// Кодируем заголовок напрямую из контейнера (без копий)
@@ -6396,13 +6458,13 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, headers.size(), endStream, scheme}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, headers.size(), endStream, scheme}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Передаём исходящие байты сетевому слою

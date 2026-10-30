@@ -36,10 +36,10 @@
 #include <netinet/sctp.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <net/eth/sctp.hpp>
 #include <sys/log.hpp>
+#include <net/eth/sctp.hpp>
 
 /**
  * Признак современного набора вызовов приёма метаданных SCTP
@@ -61,12 +61,23 @@
  *
  * @note Доказано щупом на чистом API: один и тот же обмен даёт `sinfo_stream=3` без
  *       `SCTP_RECVRCVINFO` и `sinfo_stream=0` с ним, при неизменном всём остальном
+ *
  */
 #if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
-	// Современный набор вызовов приёма метаданных доступен
+	/**
+	 * @brief Определяем признак современного набора вызовов приёма метаданных
+	 *
+	 */
 	#define AWH_SCTP_RECV_MODERN 1
+/**
+ * Если современного набора вызовов приёма метаданных системе не дано
+ *
+ */
 #else
-	// Современного набора вызовов приёма метаданных нет
+	/**
+	 * @brief Определяем признак современного набора вызовов приёма метаданных
+	 *
+	 */
 	#define AWH_SCTP_RECV_MODERN 0
 #endif
 
@@ -81,12 +92,22 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Если inline атрубит не подключён
+	 */
+	#if !defined(AWH_SCTP_INLINE)
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_SCTP_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Функция опроса настройки ядра, включающей возможность протокола
 	 *
 	 * @details Возможности RFC 4895 и RFC 6525 ядро Linux несёт, но по умолчанию держит
 	 *          ВЫКЛЮЧЕННЫМИ, и включаются они настройками «net.sctp.*». Пока настройка
 	 *          в нуле, вызов отвечает отказом «Permission denied», хотя и заголовки, и
-	 *          само ядро возможность имеют
+	 *          само ядро возможность имеют.
 	 *
 	 * @warning Опрос по признакам заголовочных файлов на этот счёт СЛЕП: макрос говорит
 	 *          лишь о том, с чем собрано, а не о том, что умеет ядро сейчас. Оттого
@@ -120,7 +141,7 @@ namespace {
 	 * @return     включена ли возможность в работающем ядре
 	 *
 	 */
-	static bool enabled(const char * name) noexcept {
+	static AWH_SCTP_INLINE bool enabled(const char * name) noexcept {
 		// Собираем путь к настройке ядра
 		char path[64];
 		// Заполняем путь к настройке ядра
@@ -144,7 +165,7 @@ namespace {
 		// Включённой считаем всякую настройку, отличную от нуля
 		return (value[0] != '0');
 	}
-}
+};
 
 /**
  * @brief Метод получения статуса SCTP сокета
@@ -170,13 +191,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {sock}, log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	// Заполняем объект ответа
 	} else {
@@ -184,14 +205,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 		status.id = data.sstat_assoc_id;
 		// Извлекаем количество входящих окон SCTP сокета
 		status.ratewind = data.sstat_rwnd;
-		// Извлекаем количество отправленных SCTP пакетов
-		status.unackdata = data.sstat_unackdata;
-		// Извлекаем количество ожидающих подтверждений SCTP сокета
-		status.penddata = data.sstat_penddata;
 		// Извлекаем количество входящих стримов SCTP сокета
 		status.istreams = data.sstat_instrms;
 		// Извлекаем количество выходящих стримов SCTP сокета
 		status.ostreams = data.sstat_outstrms;
+		// Извлекаем количество ожидающих подтверждений SCTP сокета
+		status.penddata = data.sstat_penddata;
+		// Извлекаем количество отправленных SCTP пакетов
+		status.unackdata = data.sstat_unackdata;
 		// Извлекаем точку фрагментации SCTP сокета
 		status.fragpoint = data.sstat_fragmentation_point;
 		/**
@@ -204,12 +225,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 			 * @details Набор состояний у Linux свой: привязки и прослушивания среди них
 			 *          нет вовсе. Состояния эти принадлежат **сокету**, а не ассоциации,
 			 *          и Linux их отсюда не выдаёт - отчего сокет, привязанный либо
-			 *          слушающий, числится здесь без ассоциации
+			 *          слушающий, числится здесь без ассоциации.
 			 *
 			 * @note Взамен есть SCTP_EMPTY, которого нет у FreeBSD: им обозначается
 			 *       именно отсутствие ассоциации, а не её закрытие. Наружу оба выдаются
 			 *       как закрытое состояние - иного значения набор не держит, а заводить
 			 *       его ради одной системы значило бы менять API ради частности
+			 *
 			 */
 			case SCTP_EMPTY:
 			// Если состояние SCTP сокета - закрытие
@@ -272,10 +294,10 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 	struct sctp_initmsg init{};
 	// Устанавливаем количество попыток инициализации
 	init.sinit_max_attempts = initmsg.attempts;
-	// Устанавливаем таймаут инициализации
-	init.sinit_max_init_timeo = initmsg.timeout;
 	// Устанавливаем количество выходящих стримов
 	init.sinit_num_ostreams = initmsg.ostreams;
+	// Устанавливаем таймаут инициализации
+	init.sinit_max_init_timeo = initmsg.timeout;
 	// Устанавливаем количество входящих стримов
 	init.sinit_max_instreams = initmsg.istreams;
 	// Выполняем инициализацию SCTP сокета
@@ -285,13 +307,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {sock}, log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -313,13 +335,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::WARNING, "SCTP events list is empty");
+			log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::WARNING, "SCTP events list is empty");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, "SCTP events list is empty");
+			log::print("%s", log::flag_t::WARNING, "SCTP events list is empty");
 		#endif
 		// Выходим из функции
 		return false;
@@ -341,7 +363,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 	 *          сообщение опознаётся идентификатором ассоциации, и только по нему
 	 *          ассоциация отщепляется в отдельный сокет вызовом `sctp_peeloff`. Без
 	 *          идентификатора отщепление отвергается ядром с отказом о недопустимом
-	 *          доводе, и сервер SEQPACKET не принимает подключения вовсе
+	 *          доводе, и сервер SEQPACKET не принимает подключения вовсе.
 	 *
 	 * @note Расхождение здешнее, а не общее. У FreeBSD приём SCTP выполняется
 	 *       собственным системным вызовом, и сведения о сообщении ядро отдаёт вместе
@@ -382,13 +404,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Переходим к следующему событию
@@ -466,13 +488,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -501,10 +523,10 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 		if(hmac == nullptr)
 			// Выходим из функции
 			return result;
-		// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
-		hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
 		// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
 		uint32_t index = 0;
+		// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
+		hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
 		/**
 		 * Выполняем перебор всех переданных типов алгоритмов аутентификации
 		 */
@@ -532,13 +554,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, types.size()}, awh::log::flag_t::WARNING, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {sock, types.size()}, log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
 		// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
@@ -584,13 +606,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, num, key}, awh::log::flag_t::WARNING, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {sock, num, key}, log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
 		// Очищаем память под ключ аутентификации
@@ -631,13 +653,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -650,13 +672,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -775,13 +797,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, chunks.size()}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, chunks.size()}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 				// Прекращаем дальнейшую обработку чанков аутентификации
 				break;
@@ -944,13 +966,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {sock, id}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Очищаем память под объект чанков аутентификации SCTP сокета
@@ -988,13 +1010,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута инициализации (максимальное время INIT)
 			} else result = params.sinit_max_init_timeo;
@@ -1014,13 +1036,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.srto_initial;
@@ -1036,13 +1058,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				log::print("%s", log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - HEARTBEAT
@@ -1064,13 +1086,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.spp_hbinterval;
@@ -1090,13 +1112,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.sasoc_cookie_life;
@@ -1140,13 +1162,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1165,13 +1187,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1186,13 +1208,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				log::print("%s", log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - HEARTBEAT
@@ -1216,13 +1238,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1241,13 +1263,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1255,13 +1277,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 	// Возвращаем результат
 	return result;
 }
-
 /**
  * @brief Метод опроса возможности протокола SCTP у текущей системы
  *
  * @details Таблица опирается на признаки, объявленные системными заголовочными файлами,
  *          а не на перечень имён систем: возможность появляется у системы с новой её
- *          выпуском, и признак это отражает, а имя - нет
+ *          выпуском, и признак это отражает, а имя - нет.
  *
  * @warning Отказ приёма по неумению системы есть её свойство, а не изъян движка. Опрос и
  *          заведён ради того, чтобы это можно было узнать заранее, а не по отказу вызова:
@@ -1278,45 +1299,85 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 	switch(static_cast <uint8_t> (feature)){
 		// Если опрашивается проверка подлинности сообщений
 		case static_cast <uint8_t> (net::sctp::feature_t::AUTHENTICATION):
+			/**
+			 * Если системе известны имена ключа аутентификации
+			 *
+			 */
 			#if defined(SCTP_AUTH_KEY) && defined(SCTP_AUTH_ACTIVE_KEY)
 				// Возможность есть у ядра, но отвечаем по тому, включена ли она сейчас
 				return ::enabled("auth_enable");
+			/**
+			 * Если системе не известны имена ключа аутентификации
+			 *
+			 */
 			#else
 				// Выводим отрицательный результат
 				return false;
 			#endif
 		// Если опрашивается перенастройка потоков связи
 		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_RESET):
+			/**
+			 * Если система поддерживает перенастройку потоков связи
+			 *
+			 */
 			#if defined(SCTP_RESET_STREAMS)
 				// Выводим положительный результат
 				return true;
+			/**
+			 * Если система не поддерживает перенастройку потоков связи
+			 *
+			 */
 			#else
 				// Выводим отрицательный результат
 				return false;
 			#endif
 		// Если опрашивается перенастройка самой связи
 		case static_cast <uint8_t> (net::sctp::feature_t::ASSOC_RESET):
+			/**
+			 * Если система поддерживает перенастройку самой связи
+			 *
+			 */
 			#if defined(SCTP_RESET_ASSOC)
 				// Выводим положительный результат
 				return true;
+			/**
+			 * Если система не поддерживает перенастройку самой связи
+			 *
+			 */
 			#else
 				// Выводим отрицательный результат
 				return false;
 			#endif
 		// Если опрашивается смена состава потоков связи
 		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_CHANGE):
+			/**
+			 * Если система поддерживает смену состава потоков связи
+			 *
+			 */
 			#if defined(SCTP_ADD_STREAMS)
 				// Выводим положительный результат
 				return true;
+			/**
+			 * Если система не поддерживает смену состава потоков связи
+			 *
+			 */
 			#else
 				// Выводим отрицательный результат
 				return false;
 			#endif
 		// Если опрашивается оповещение об опустевшей очереди отправки
 		case static_cast <uint8_t> (net::sctp::feature_t::SENDER_DRY):
+			/**
+			 * Если система извещает об опустевшей очереди отправки
+			 *
+			 */
 			#if defined(SCTP_SENDER_DRY_EVENT)
 				// Выводим положительный результат
 				return true;
+			/**
+			 * Если система не извещает об опустевшей очереди отправки
+			 *
+			 */
 			#else
 				// Выводим отрицательный результат
 				return false;
@@ -1324,15 +1385,17 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		// Если опрашивается подключение по нескольким адресам одной заявкой
 		case static_cast <uint8_t> (net::sctp::feature_t::MULTIHOMING):
 			/**
-			 * Многодомное подключение одной заявкой здесь есть всегда
+			 * Выводим положительный результат
+			 *
+			 * @note Многодомное подключение одной заявкой здесь есть всегда
 			 *
 			 * @note Отказывает в нём лишь illumos: функции `sctp_connectx` там не
 			 *       существует, и связь заводится обычным подключением по ПЕРВОМУ
 			 *       адресу списка. Решение это живёт в диалекте систем Sun, где
 			 *       признак `__illumos__` объявлен и различает системы; здесь он не
 			 *       объявляется НИКОГДА, и ветка по нему была мертва
+			 *
 			 */
-			// Выводим положительный результат
 			return true;
 		// Если опрашивается явная граница записи при отправке по частям
 		case static_cast <uint8_t> (net::sctp::feature_t::PARTIAL_MESSAGE):
@@ -1400,6 +1463,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 	 *          receive(), оттого оба и взяты из одного признака AWH_SCTP_RECV_MODERN.
 	 *          Просить у ядра новый вид метаданных, читая их прежним вызовом, - значит
 	 *          получать их исправно и не понимать: разбор подробностей у признака
+	 *
 	 */
 	#if AWH_SCTP_RECV_MODERN
 		// Значение режима подписки на метаданные
@@ -1407,7 +1471,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 		// Выполняем установку режима подписки на метаданные
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_RECVRCVINFO, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
 			// Выводим сообщение об ошибке
-			awh::log::print("SCTP receive info: %s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("SCTP receive info: %s", log::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -1423,6 +1487,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 	 *
 	 * @note Прочие подписки читаются и возвращаются на место: набор событий у сокета
 	 *       общий, и трогать чужие поля здесь нельзя
+	 *
 	 */
 	#elif defined(SCTP_EVENTS)
 		// Объект подписки на события SCTP
@@ -1434,7 +1499,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 		// Выполняем чтение текущей подписки, чтобы не сбить чужие события
 		if(::getsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, &length) != 0){
 			// Выводим сообщение об ошибке
-			awh::log::print("SCTP receive info: %s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("SCTP receive info: %s", log::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -1443,7 +1508,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 		// Выполняем установку режима подписки на метаданные
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe)) != 0){
 			// Выводим сообщение об ошибке
-			awh::log::print("SCTP receive info: %s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("SCTP receive info: %s", log::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -1454,7 +1519,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 	 */
 	#else
 		// Выводим сообщение об ошибке
-		awh::log::print("SCTP receive info is not supported by the operating system", awh::log::flag_t::WARNING);
+		log::print("SCTP receive info is not supported by the operating system", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	#endif
@@ -1477,7 +1542,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe
 		// Выполняем установку режима явной границы записи
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
 			// Выводим сообщение об ошибке
-			awh::log::print("SCTP explicit end of record: %s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("SCTP explicit end of record: %s", log::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -1488,7 +1553,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe
 	 */
 	#else
 		// Выводим сообщение об ошибке
-		awh::log::print("SCTP explicit end of record is not supported by the operating system", awh::log::flag_t::WARNING);
+		log::print("SCTP explicit end of record is not supported by the operating system", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	#endif
@@ -1508,18 +1573,19 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe
  *
  */
 ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) const noexcept {
-	// Количество принятых октетов
-	ssize_t result = -1;
-	// Выполняем сброс флагов полученного сообщения
-	info.flags.clear();
 	/**
 	 * Выполняем сброс флагов сообщения в системном виде
 	 *
 	 * @note Довод этот у обоих способов чтения входной И выходной: не обнулив его,
 	 *       мы подали бы ядру флаги прошлого приёма как просьбу, а прежний признак
 	 *       границы записи пережил бы чтение, у которого её нет
+	 *
 	 */
 	flags = 0;
+	// Количество принятых октетов
+	ssize_t result = -1;
+	// Выполняем сброс флагов полученного сообщения
+	info.flags.clear();
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
@@ -1543,20 +1609,21 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 		 *
 		 * @note Метаданные приходят лишь при выданной подписке: без неё ядру сообщать
 		 *       нечего, вид метаданных выводится пустым, и структура остаётся прежней
+		 *
 		 */
 		if((result >= 0) && (type == SCTP_RECVV_RCVINFO)){
-			// Устанавливаем идентификатор полезной нагрузки
-			info.ppid = rcvinfo.rcv_ppid;
 			// Устанавливаем номер потока
 			info.num = rcvinfo.rcv_sid;
 			// Устанавливаем порядковый номер сообщения в потоке
 			info.ssn = rcvinfo.rcv_ssn;
 			// Устанавливаем номер передачи сообщения
 			info.tsn = rcvinfo.rcv_tsn;
-			// Устанавливаем накопленный номер передачи
-			info.cumtsn = rcvinfo.rcv_cumtsn;
+			// Устанавливаем идентификатор полезной нагрузки
+			info.ppid = rcvinfo.rcv_ppid;
 			// Устанавливаем контекст для уведомлений об ошибках
 			info.ctx = rcvinfo.rcv_context;
+			// Устанавливаем накопленный номер передачи
+			info.cumtsn = rcvinfo.rcv_cumtsn;
 			// Устанавливаем идентификатор ассоциации
 			info.id = static_cast <uint32_t> (rcvinfo.rcv_assoc_id);
 			/**
@@ -1565,20 +1632,21 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 			 * @note Заполняются они и при современном наборе вызовов: тем же набором
 			 *       пользуются места, метаданных не запрашивавшие, и расхождение
 			 *       способов чтения не должно им ничего менять
+			 *
 			 */
 			legacy.sinfo_stream = rcvinfo.rcv_sid;
 			// Устанавливаем порядковый номер сообщения в потоке
 			legacy.sinfo_ssn = rcvinfo.rcv_ssn;
-			// Устанавливаем флаги сообщения
-			legacy.sinfo_flags = rcvinfo.rcv_flags;
-			// Устанавливаем идентификатор полезной нагрузки
-			legacy.sinfo_ppid = rcvinfo.rcv_ppid;
-			// Устанавливаем контекст для уведомлений об ошибках
-			legacy.sinfo_context = rcvinfo.rcv_context;
 			// Устанавливаем номер передачи сообщения
 			legacy.sinfo_tsn = rcvinfo.rcv_tsn;
+			// Устанавливаем идентификатор полезной нагрузки
+			legacy.sinfo_ppid = rcvinfo.rcv_ppid;
+			// Устанавливаем флаги сообщения
+			legacy.sinfo_flags = rcvinfo.rcv_flags;
 			// Устанавливаем накопленный номер передачи
 			legacy.sinfo_cumtsn = rcvinfo.rcv_cumtsn;
+			// Устанавливаем контекст для уведомлений об ошибках
+			legacy.sinfo_context = rcvinfo.rcv_context;
 			// Устанавливаем идентификатор ассоциации
 			legacy.sinfo_assoc_id = rcvinfo.rcv_assoc_id;
 			/**
@@ -1603,14 +1671,15 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 		 * @note Прежний способ несёт не все метаданные: номера передачи система
 		 *       здесь не выдаёт, и поля эти остаются пустыми. Скрывать разницу
 		 *       подстановкой было бы хуже - приложение вправе о ней знать
+		 *
 		 */
 		if(result >= 0){
+			// Устанавливаем порядковый номер сообщения в потоке
+			info.ssn = legacy.sinfo_ssn;
 			// Устанавливаем идентификатор полезной нагрузки
 			info.ppid = legacy.sinfo_ppid;
 			// Устанавливаем номер потока
 			info.num = legacy.sinfo_stream;
-			// Устанавливаем порядковый номер сообщения в потоке
-			info.ssn = legacy.sinfo_ssn;
 			// Устанавливаем контекст для уведомлений об ошибках
 			info.ctx = legacy.sinfo_context;
 			// Устанавливаем идентификатор ассоциации
@@ -1692,8 +1761,10 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *          отказом EADDRINUSE - связь по этому адресу уже заведена, - и до
 		 *          получателя доходит ровно первый кусок. Опознаватель приходит
 		 *          известием о смене состояния связи и хранится в метаданных узла
+		 *
 		 */
 		spa.sendv_sndinfo.snd_assoc_id = info.sinfo_assoc_id;
+		// Устанавливаем номер потока отправки
 		spa.sendv_sndinfo.snd_sid = info.sinfo_stream;
 		// Устанавливаем идентификатор полезной нагрузки
 		spa.sendv_sndinfo.snd_ppid = info.sinfo_ppid;
@@ -1712,6 +1783,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 			 *       младшими разрядами тех же флагов отправки. Современный набор
 			 *       разнёс их порознь, и разряды эти из флагов надлежит убрать -
 			 *       иначе политика уедет дважды, вторым разом как чужой флаг
+			 *
 			 */
 			const uint16_t policy = static_cast <uint16_t> (info.sinfo_flags & SCTP_PR_SCTP_MASK);
 			// Если политика частичной надёжности установлена
@@ -1738,6 +1810,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *          дважды из трёх. Прочие пути отправки движка защищены `MSG_NOSIGNAL`
 		 *          давно; этот оставался открытым, потому что флаги здесь уходят
 		 *          библиотеке, а не ядру напрямую
+		 *
 		 */
 		#if defined(MSG_NOSIGNAL)
 			// Подавляем сигнал разорванного канала
@@ -1749,6 +1822,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 * @note Граница записи ставится в явном виде лишь тогда, когда включён режим
 		 *       явной границы: без него система закрывает запись на каждой отправке
 		 *       сама, и флаг этот ей ничего не меняет
+		 *
 		 */
 		if(complete)
 			// Устанавливаем флаг границы записи
@@ -1760,19 +1834,9 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 	 */
 	#else
 		/**
-		 * Отправка по частям здесь невозможна, но отказом это не считается
+		 * Буфер отправляемых данных
 		 *
-		 * @details Прежний способ отправки границу записи в явном виде задать не даёт:
-		 *          флагов у него нет вовсе, и сообщение придёт несколькими записями
-		 *          вместо одной. Обмен это не рвёт, и отменять отправку незачем
-		 *
-		 * @warning Предупреждать отсюда НЕЛЬЗЯ: метод зовётся на всякий кусок, и на
-		 *          четырёх мегабайтах вышло бы больше тысячи одинаковых строк в
-		 *          журнале. О понижении сообщает движок - один раз на узел, при
-		 *          заведении режима явной границы записи
-		 */
-		/**
-		 * Отправка ведётся напрямую, а не вызовом `sctp_sendmsg`
+		 * @note Отправка ведётся напрямую, а не вызовом `sctp_sendmsg`
 		 *
 		 * @warning `sctp_sendmsg` флагов не принимает ВОВСЕ и обращается к ядру с нулём,
 		 *          отчего отправка в оборванное соединение валит процесс потребителя
@@ -1782,8 +1846,8 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *          `flags = 0`. Здесь делается ровно то же, что делает библиотека, но
 		 *          с подавлением сигнала: метаданные уходят служебной записью
 		 *          `SCTP_SNDRCV`, а флаг - ядру
+		 *
 		 */
-		// Буфер отправляемых данных
 		struct iovec iov{};
 		// Устанавливаем буфер отправляемых данных
 		iov.iov_base = const_cast <void *> (buffer);
@@ -1825,6 +1889,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *
 		 * @note Расхождение здесь у систем Sun теряет опознаватель связи, см. запись
 		 *       о длине служебных данных SCTP
+		 *
 		 */
 		message.msg_controllen = cmsg->cmsg_len;
 		// Флаги отправки сообщения
@@ -1836,7 +1901,19 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 			// Подавляем сигнал разорванного канала
 			flags |= MSG_NOSIGNAL;
 		#endif
-		// Выполняем отправку сообщения прежним способом
+		/**
+		 * Отправка по частям здесь невозможна, но отказом это не считается
+		 *
+		 * @details Прежний способ отправки границу записи в явном виде задать не даёт:
+		 *          флагов у него нет вовсе, и сообщение придёт несколькими записями
+		 *          вместо одной. Обмен это не рвёт, и отменять отправку незачем.
+		 *
+		 * @warning Предупреждать отсюда НЕЛЬЗЯ: метод зовётся на всякий кусок, и на
+		 *          четырёх мегабайтах вышло бы больше тысячи одинаковых строк в
+		 *          журнале. О понижении сообщает движок - один раз на узел, при
+		 *          заведении режима явной границы записи
+		 *
+		 */
 		return ::sendmsg(sock, &message, flags);
 	#endif
 }

@@ -35,8 +35,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/backend/gnu/netlink.hpp>
 #include <sys/log.hpp>
+#include <net/backend/gnu/netlink.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -60,9 +60,6 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		// Выходим из функции
 		return result;
 	/**
-	 * Выполняем перехват ошибок
-	 */
-	/**
 	 * Сокет к ядру
 	 *
 	 * @warning Заводится он ВНЕ перехвата ошибок намеренно. Прежде объявление стояло
@@ -71,6 +68,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 	 *          молча. Найдено ворошителем движка: обращения `setIface` с негодными
 	 *          именами устройств давали на 16000 проходов прирост в семь описателей,
 	 *          а без этих обращений прирост был нулевым
+	 *
 	 */
 	int32_t fd = -1;
 	/**
@@ -86,13 +84,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {type, family}, log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return result;
@@ -128,13 +126,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {type, family}, log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+				log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Закрываем сокет к ядру
 			::close(fd);
@@ -147,6 +145,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		 * @note Размер взят с запасом: ядро складывает в один приём столько сообщений,
 		 *       сколько поместится, и на тесном буфере выборка дробилась бы на лишние
 		 *       обращения. Записи же, не поместившейся целиком, ядро не присылает вовсе
+		 *
 		 */
 		vector <uint8_t> buffer(32768, 0);
 		// Признак продолжения обхода сообщений
@@ -160,6 +159,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			 *
 			 * @note Постоянной величина эта быть не может: обход сообщений ведёт макрос
 			 *       NLMSG_NEXT, а он списывает пройденное прямо из неё
+			 *
 			 */
 			ssize_t bytes = ::recv(fd, buffer.data(), buffer.size(), 0);
 			// Если чтение выполнить не удалось
@@ -169,13 +169,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {type, family}, log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+					log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 				#endif
 				// Выходим из цикла
 				break;
@@ -205,13 +205,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(-error->error));
+						log::debug("%s", __PRETTY_FUNCTION__, {type, family}, log::flag_t::WARNING, ::strerror(-error->error));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
+						log::print("%s", log::flag_t::WARNING, ::strerror(-error->error));
 					#endif
 					// Выходим из цикла
 					break;
@@ -223,6 +223,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 				 *          непрочитанного достался бы следующему запросу по этому сокету.
 				 *          Сокет здесь свой на каждую выборку, но полагаться на это в
 				 *          обходе не следует - закрытие может отодвинуться
+				 *
 				 */
 				if(walking)
 					// Передаём сообщение обходчику
@@ -249,13 +250,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {type, family}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -281,13 +282,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -299,13 +300,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Закрываем сокет к ядру
 		::close(fd);
@@ -331,13 +332,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
+					log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(-error->error));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
+					log::print("%s", log::flag_t::WARNING, ::strerror(-error->error));
 				#endif
 			}
 		}
@@ -366,6 +367,7 @@ bool awh::gnu::Netlink::link(string_view name, string_view kind) const noexcept 
 	 * @note Признаки устройства идут за описанием переменным набором, и места под них
 	 *       отводится с запасом: имя и род устройства вместе с заголовками признаков
 	 *       занимают заметно меньше
+	 *
 	 */
 	struct {
 		// Заголовок сообщения
@@ -401,13 +403,15 @@ bool awh::gnu::Netlink::link(string_view name, string_view kind) const noexcept 
 	// Увеличиваем размер сообщения
 	message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
 	/**
-	 * Добавляем род устройства
+	 * Получаем место под признак сведений об устройстве
+	 *
+	 * @note Добавляем род устройства
 	 *
 	 * @details Род вкладывается в признак сведений об устройстве: сам он несёт лишь
 	 *          вложенный признак с названием рода, а прочие настройки рода - если бы
-	 *          они задавались - легли бы туда же
+	 *          они задавались - легли бы туда же.
+	 *
 	 */
-	// Получаем место под признак сведений об устройстве
 	struct rtattr * info = reinterpret_cast <struct rtattr *> (reinterpret_cast <uint8_t *> (&message) + NLMSG_ALIGN(message.header.nlmsg_len));
 	// Устанавливаем тип признака как вложенный
 	info->rta_type = (IFLA_LINKINFO | NLA_F_NESTED);
@@ -449,13 +453,13 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(name)}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {string(name)}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return false;
@@ -466,6 +470,7 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 	 * @note Устройство здесь указывается номером, а не именем: имя ядро приняло бы
 	 *       тоже, но номер уже получен разрешением, и повторный разбор имени ядру
 	 *       поручать незачем
+	 *
 	 */
 	struct {
 		// Заголовок сообщения
@@ -513,13 +518,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -531,13 +536,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
+			log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
+			log::print("%s", log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Закрываем сокет к ядру
 		::close(fd);
@@ -569,13 +574,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
+					log::debug("%s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(-error->error));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
+					log::print("%s", log::flag_t::WARNING, ::strerror(-error->error));
 				#endif
 				// Выходим из цикла
 				break;

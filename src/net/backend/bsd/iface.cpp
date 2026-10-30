@@ -331,7 +331,7 @@ namespace iface {
 			}
 		}
 		// Возвращаем пустое имя интерфейса
-		return string{};
+		return "";
 	}
 	/**
 	 * @brief Функция классификации интерфейса (туннельный/виртуальный) в уже полученном списке
@@ -1566,7 +1566,6 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						result = ::open("/dev/tun", O_RDWR);
 					/**
 					 * Если системой не является FreeBSD либо DragonFly
-					 *
 					 */
 					#else
 						/**
@@ -1680,7 +1679,6 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 							name.assign(ifr.ifr_name, ::strnlen(ifr.ifr_name, IFNAMSIZ));
 					/**
 					 * Если системой не является DragonFly
-					 *
 					 */
 					#else
 						// Получаем имя созданного интерфейса
@@ -1843,7 +1841,6 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						result = ::open("/dev/tap", O_RDWR);
 					/**
 					 * Если системой не является FreeBSD
-					 *
 					 */
 					#else
 						// Сбрасываем описатель устройства перед перебором
@@ -2893,7 +2890,6 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 											uint8_t byte = msk6->sin6_addr.s6_addr[i];
 											/**
 											 * Считаем биты
-											 *
 											 */
 											while(byte & 0x80){
 												// Увеличиваем префикс

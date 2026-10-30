@@ -29,8 +29,8 @@
  * Стандартные заголовочные файлы
  */
 #include <cerrno>
-#include <cstring>
 #include <vector>
+#include <cstring>
 
 /**
  * Системные заголовочные файлы
@@ -42,14 +42,24 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <net/eth/gateway.hpp>
 #include <net/backend/gnu/netlink.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_GW_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_GW_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Инкапсулируем статичные функции в пространство имён работы с маршрутами
@@ -61,21 +71,23 @@ namespace routing {
 	 *
 	 */
 	typedef struct Entry {
+		// Признак наличия шлюза у маршрута
+		bool routed;
 		// Номер сетевого интерфейса
 		uint32_t index;
 		// Длина префикса адреса назначения
 		uint8_t prefix;
-		// Признак наличия шлюза у маршрута
-		bool routed;
-		// Адрес назначения маршрута
-		uint8_t destination[16];
 		// Адрес шлюза маршрута
 		uint8_t gateway[16];
+		// Адрес назначения маршрута
+		uint8_t destination[16];
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Entry() noexcept : index(0), prefix(0), routed(false), destination{0}, gateway{0} {}
+		explicit Entry() noexcept :
+		 routed(false), index(0), prefix(0),
+		 gateway{0}, destination{0} {}
 	} entry_t;
 	/**
 	 * @brief Функция разбора записи таблицы маршрутов
@@ -86,7 +98,7 @@ namespace routing {
 	 * @return        результат разбора записи
 	 *
 	 */
-	static bool parse(const struct nlmsghdr * header, const uint8_t family, entry_t & entry) noexcept {
+	static AWH_GW_INLINE bool parse(const struct nlmsghdr * header, const uint8_t family, entry_t & entry) noexcept {
 		// Если сообщение не является записью таблицы маршрутов
 		if(header->nlmsg_type != RTM_NEWROUTE)
 			// Сообщаем, что запись не разобрана
@@ -104,6 +116,7 @@ namespace routing {
 		 *       складывает адреса самой машины, и таблицы, заводимые правилами. Ответом
 		 *       на вопрос «куда пойдёт пакет» служит главная, прочие лишь запутали бы
 		 *       обход
+		 *
 		 */
 		if(message->rtm_table != RT_TABLE_MAIN)
 			// Сообщаем, что запись не разобрана
@@ -157,7 +170,7 @@ namespace routing {
 	 * @return       результат добавления признака
 	 *
 	 */
-	static bool attribute(struct nlmsghdr * header, const size_t limit, const uint16_t type, const void * data, const size_t size) noexcept {
+	static AWH_GW_INLINE bool attribute(struct nlmsghdr * header, const size_t limit, const uint16_t type, const void * data, const size_t size) noexcept {
 		// Если признак в сообщение не помещается
 		if((NLMSG_ALIGN(header->nlmsg_len) + RTA_ALIGN(RTA_LENGTH(size))) > limit)
 			// Сообщаем, что признак не добавлен
@@ -184,7 +197,7 @@ namespace routing {
 	 * @return      результат правки таблицы маршрутов
 	 *
 	 */
-	static bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
+	static AWH_GW_INLINE bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
 		// Если адрес шлюза не инициализирован
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена
@@ -195,6 +208,7 @@ namespace routing {
 		 *       разбирала бы всякий иной адрес как IPv6 и читала бы шестнадцать
 		 *       октетов там, где их нет: адрес канального уровня, к примеру, занимает
 		 *       шесть, и чтение вышло бы за его пределы
+		 *
 		 */
 		if((route.gateway->size != 4) && (route.gateway->size != 16))
 			// Сообщаем, что правка не выполнена
@@ -217,10 +231,11 @@ namespace routing {
 		 *          истиной. Без прав отказ давало отсутствие прав, оттого проверка
 		 *          `GatewayMismatchedKindTest` беды и не показывала - она никогда не
 		 *          шла под правами
+		 *
 		 */
 		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) != size)){
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, "route destination kind does not match the kind of the route gateway");
+			log::print("%s", log::flag_t::CRITICAL, "route destination kind does not match the kind of the route gateway");
 			// Сообщаем, что правка не выполнена
 			return false;
 		}
@@ -236,23 +251,23 @@ namespace routing {
 			// Набор признаков маршрута
 			uint8_t attributes[256];
 		} message{};
-		// Устанавливаем размер сообщения
-		message.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
-		// Устанавливаем тип запроса
-		message.header.nlmsg_type = type;
-		// Устанавливаем признаки запроса с подтверждением
-		message.header.nlmsg_flags = (NLM_F_REQUEST | NLM_F_ACK | flags);
-		// Устанавливаем порядковый номер запроса
-		message.header.nlmsg_seq = 1;
 		// Устанавливаем семейство протоколов маршрута
 		message.route.rtm_family = family;
+		// Устанавливаем порядковый номер запроса
+		message.header.nlmsg_seq = 1;
+		// Устанавливаем тип запроса
+		message.header.nlmsg_type = type;
+		// Устанавливаем размер сообщения
+		message.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+		// Устанавливаем признаки запроса с подтверждением
+		message.header.nlmsg_flags = (NLM_F_REQUEST | NLM_F_ACK | flags);
 		/**
 		 * Сличаем длину префикса с разрядностью адреса назначения
 		 *
 		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
 		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
 		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
-		 *          непроверенных длин в проекте насчитано четыре
+		 *          непроверенных длин в проекте насчитано четыре.
 		 *
 		 * @note Неопределённого поведения здесь НЕТ: длина уходит ядру полем записи,
 		 *       а не счётчиком сдвига, как у наречия BSD. Беда иная - ядро отвергает
@@ -262,6 +277,7 @@ namespace routing {
 		 * @note Здесь именно ОТКАЗ, а не приведение к пределу: приведение обратило бы
 		 *       бессмысленную просьбу в осмысленную, но ДРУГУЮ - путь к одному узлу
 		 *       вместо заказанной сети, - и сделало бы это молча
+		 *
 		 */
 		if(route.destination != nullptr){
 			// Предел длины префикса, отвечающий разрядности адреса назначения
@@ -269,7 +285,7 @@ namespace routing {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				log::print("Route prefix length %u exceeds the limit %u of the %s address", log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return false;
 			}
@@ -292,9 +308,12 @@ namespace routing {
 		 *
 		 * @note RTPROT_UNSPEC при сносе означает «способ заведения любой» - именно так
 		 *       поступает и `ip route del`, не задающий способа вовсе
+		 *
 		 */
 		message.route.rtm_protocol = ((type == RTM_DELROUTE) ? RTPROT_UNSPEC : RTPROT_STATIC);
 		/**
+		 * Устанавливаем область действия маршрута
+		 *
 		 * @warning Тем же свойством обладают ЕЩЁ ДВА поля этого сообщения: при сносе ядро
 		 *          их СЛИЧАЕТ, а не принимает как описание намерения. `fib_table_delete`
 		 *          сличает оба условно - `RT_SCOPE_NOWHERE` означает «область любая»,
@@ -315,9 +334,9 @@ namespace routing {
 		 *          Последняя строка - эталон: тем же щупом и тем же путём маршрут области
 		 *          UNIVERSE сносится, то есть отказ давали поля, а не щуп. До правки снос
 		 *          не находил маршрут напрямую подключённой подсети и маршруты видов
-		 *          `blackhole`/`unreachable`/`prohibit` вовсе
+		 *          `blackhole`/`unreachable`/`prohibit` вовсе.
+		 *
 		 */
-		// Устанавливаем область действия маршрута
 		message.route.rtm_scope = ((type == RTM_DELROUTE) ? RT_SCOPE_NOWHERE : RT_SCOPE_UNIVERSE);
 		// Устанавливаем вид маршрута
 		message.route.rtm_type = ((type == RTM_DELROUTE) ? RTN_UNSPEC : RTN_UNICAST);
@@ -328,6 +347,7 @@ namespace routing {
 		 *       семейством самого шлюза: маршрут описывает один путь, и адрес
 		 *       назначения иного семейства, нежели шлюз, ядро отвергло бы, а прочтён
 		 *       он был бы размером семейства шлюза - то есть за своими пределами
+		 *
 		 */
 		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) == size)){
 			// Если адрес назначения является IPv4
@@ -384,7 +404,7 @@ awh::eth::Gateway::Route::Route() noexcept :
  * @brief Метод получения маршрута для указанного адреса
  *
  * @details Спрашивает у ядра, каким путём оно отправит пакет для заданного адреса, и
- *          дозаполняет объект маршрута ответом
+ *          дозаполняет объект маршрута ответом.
  *
  * @par Намеренные решения
  *
@@ -428,6 +448,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *          надзирателем `undefined`: «downcast of address ... which does not
 		 *          point to an object of type Address_Network_IPv4». Запись хуже
 		 *          чтения: порча памяти уходит за пределы объекта молча
+		 *
 		 */
 		if((route.destination != nullptr) && (route.gateway->size != route.destination->size))
 			// Работать с маршрутом по несличимой паре нечем
@@ -437,28 +458,30 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *       лишь размером адреса IPv4. Развилка «четыре либо всё остальное»
 		 *       разбирала бы всякий иной адрес как IPv6 и читала бы шестнадцать
 		 *       октетов там, где их нет
+		 *
 		 */
 		if((route.gateway->size != 4) && (route.gateway->size != 16))
 			// Выходим из функции
 			return result;
+		// Номер искомого сетевого интерфейса
+		uint32_t index = 0;
 		// Определяем семейство протоколов по размеру адреса
 		const uint8_t family = ((route.gateway->size == 4) ? AF_INET : AF_INET6);
 		// Получаем размер адреса семейства протоколов
 		const size_t size = ((family == AF_INET) ? 4 : 16);
-		// Номер искомого сетевого интерфейса
-		uint32_t index = 0;
 		// Если имя сетевого интерфейса задано
 		if(!route.ifname.empty())
 			// Получаем номер сетевого интерфейса по его имени
 			index = ::if_nametoindex(route.ifname.c_str());
-		// Буфер искомого адреса назначения
-		uint8_t destination[16] = {0};
 		// Признак того, что адрес назначения задан
 		bool wanted = false;
+		// Буфер искомого адреса назначения
+		uint8_t destination[16] = {0};
 		/**
 		 * @note Адрес назначения сверяется с семейством самого шлюза: маршрут описывает
 		 *       один путь, и адрес иного семейства был бы прочтён размером семейства
 		 *       шлюза - то есть за своими пределами
+		 *
 		 */
 		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) == size)){
 			// Если адрес назначения является IPv4
@@ -472,18 +495,19 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			// Запоминаем, задан ли адрес назначения
 			wanted = (::memcmp(destination, zero, size) != 0);
 		}
+		// Признак того, что запись найдена
+		bool found = false;
 		/**
 		 * Определяем, ищется ли маршрут по умолчанию
 		 *
 		 * @note Маршрут по умолчанию отбирается тем, что ни адреса назначения, ни
 		 *       устройства не задано: спрашивающему нужен путь «куда попало», а таким
 		 *       путём и служит маршрут с нулевой длиной префикса
+		 *
 		 */
 		const bool fallback = (!wanted && (index == 0));
 		// Разобранная запись таблицы маршрутов
 		::routing::entry_t entry;
-		// Признак того, что запись найдена
-		bool found = false;
 		// Выполняем инициализацию объекта опроса ядра
 		const gnu::netlink_t netlink;
 		/**
@@ -548,6 +572,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *       следует тогда, когда назван ОДИН лишь адрес назначения. При названном
 		 *       устройстве спрашивают не «куда пойдёт пакет», а «что записано в
 		 *       таблице», и подменять один вопрос другим нельзя
+		 *
 		 */
 		if(!found && wanted && (index == 0)){
 			/**
@@ -562,14 +587,14 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 				// Набор признаков маршрута
 				uint8_t attributes[64];
 			} query{};
-			// Устанавливаем размер сообщения
-			query.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+			// Устанавливаем порядковый номер запроса
+			query.header.nlmsg_seq = 1;
 			// Устанавливаем тип запроса
 			query.header.nlmsg_type = RTM_GETROUTE;
 			// Устанавливаем признаки запроса
 			query.header.nlmsg_flags = NLM_F_REQUEST;
-			// Устанавливаем порядковый номер запроса
-			query.header.nlmsg_seq = 1;
+			// Устанавливаем размер сообщения
+			query.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
 			// Устанавливаем семейство протоколов маршрута
 			query.route.rtm_family = family;
 			// Устанавливаем длину префикса адреса назначения по разрядности адреса
@@ -631,13 +656,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -673,9 +698,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
  * @brief Конструктор
  *
  */
-awh::eth::Gateway::Gateway() noexcept {}
+awh::eth::Gateway::Gateway() noexcept = default;
 /**
  * @brief Деструктор
  *
  */
-awh::eth::Gateway::~Gateway() noexcept {}
+awh::eth::Gateway::~Gateway() noexcept = default;
