@@ -74,6 +74,7 @@
  *
  * @note Заголовок пределов нужен ради подъёма предела дампа ядра. У MS Windows его нет
  *       вовсе, а дампы там заводятся иначе - средствами самой системы
+ *
  */
 #if defined(DEBUG_MODE) && !(defined(_WIN32) || defined(_WIN64))
 	/**
@@ -453,6 +454,7 @@ namespace {
 					out[count++] = static_cast <char> (0xE0 | (cp >> 12));
 					// Записываем байты продолжения
 					out[count++] = static_cast <char> (0x80 | ((cp >> 6) & 0x3F));
+					// Дописываем последний байт продолжения
 					out[count++] = static_cast <char> (0x80 | (cp & 0x3F));
 				// Последовательность из четырёх байт
 				} else if(cp <= 0x10FFFF) {
@@ -460,7 +462,9 @@ namespace {
 					out[count++] = static_cast <char> (0xF0 | (cp >> 18));
 					// Записываем байты продолжения
 					out[count++] = static_cast <char> (0x80 | ((cp >> 12) & 0x3F));
+					// Дописываем второй байт продолжения
 					out[count++] = static_cast <char> (0x80 | ((cp >> 6) & 0x3F));
+					// Дописываем третий байт продолжения
 					out[count++] = static_cast <char> (0x80 | (cp & 0x3F));
 				// Кодовая точка вне диапазона Unicode, прекращаем разбор
 				} else break;
@@ -511,7 +515,7 @@ namespace {
 	 *          возможности целиком, включая запись в общей форме, которой в libc++
 	 *          нет до сих пор, поэтому и на свежих её выпусках макрос не объявлен.
 	 *          Вдобавок в libc++ запись эта помечена доступной лишь начиная с macOS
-	 *          13.3, и сборка под ранние выпуски системы прерывается ошибкой
+	 *          13.3, и сборка под ранние выпуски системы прерывается ошибкой.
 	 *
 	 * @param number    число для записи
 	 * @param precision количество знаков после запятой, отрицательное для подбора
@@ -597,7 +601,7 @@ namespace {
 			// Выполняем поиск показателя степени в записи числа
 			const char * pos = ::strchr(probe, 'e');
 			// Получаем показатель степени записанного числа
-			const int32_t exponent = ((pos != nullptr) ? ::atoi(pos + 1) : 0);
+			const int32_t exponent = ((pos != nullptr) ? atoi(pos + 1) : 0);
 			/**
 			 * Количество знаков после запятой равно количеству значащих разрядов за
 			 * вычетом тех из них, что пришлись на целую часть числа
@@ -653,6 +657,7 @@ namespace {
 		 *       порядка сотой доли той самой snprintf, вслед за которой оно и стоит.
 		 *       Строить std::locale тут нельзя ни в коем случае: постройка её обходится
 		 *       в семнадцать микросекунд у libc++ и в шестьдесят девять у FreeBSD
+		 *
 		 */
 		const char * separator = ::localeconv()->decimal_point;
 		/**
@@ -941,12 +946,15 @@ namespace {
 	 * @brief структура Римских чисел
 	 *
 	 */
-	struct RomanNumerals {
+	static struct RomanNumerals {
 		// Шаблоны римских форматов
-		const wstring m[5]  = {L"", L"M", L"MM", L"MMM", L"MMMM"};
-		const wstring i[10] = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
-		const wstring x[10] = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
-		const wstring c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
+		static constexpr wstring_view m[5]  = {L"", L"M", L"MM", L"MMM", L"MMMM"};
+		// Таблица римских цифр единиц
+		static constexpr wstring_view i[10] = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
+		// Таблица римских цифр десятков
+		static constexpr wstring_view x[10] = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
+		// Таблица римских цифр сотен
+		static constexpr wstring_view c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
 	} romanNumerals;
 	/**
 	 * @brief Класс основных символов
@@ -978,7 +986,7 @@ namespace {
 			 */
 			bool isRome(const char num) noexcept {
 				// Выполняем проверку сущестования цифры
-				return (_romes.find(ascii::toUpper(num)) != _romes.end());
+				return (this->_romes.find(ascii::toUpper(num)) != this->_romes.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия римской цифре
@@ -989,7 +997,7 @@ namespace {
 			 */
 			bool isRome(const wchar_t num) noexcept {
 				// Выполняем проверку сущестования цифры
-				return (_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num)))) != _wideRomes.end());
+				return (this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num)))) != this->_wideRomes.end());
 			}
 		public:
 			/**
@@ -1024,7 +1032,7 @@ namespace {
 			 */
 			bool isLetter(const char letter) noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (_letters.find(ascii::toLower(letter)) != _letters.end());
+				return (this->_letters.find(ascii::toLower(letter)) != this->_letters.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия латинской букве
@@ -1035,7 +1043,7 @@ namespace {
 			 */
 			bool isLetter(const wchar_t letter) noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)))) != _wideLetters.end());
+				return (this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)))) != this->_wideLetters.end());
 			}
 		public:
 			/**
@@ -1049,9 +1057,9 @@ namespace {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = _romes.find(ascii::toUpper(num));
+				auto i = this->_romes.find(ascii::toUpper(num));
 				// Если римское число найдено
-				if(i != _romes.end())
+				if(i != this->_romes.end())
 					// Получаем римское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1068,9 +1076,9 @@ namespace {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = _wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num))));
+				auto i = this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num))));
 				// Если римское число найдено
-				if(i != _wideRomes.end())
+				if(i != this->_wideRomes.end())
 					// Получаем римское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1088,9 +1096,9 @@ namespace {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
-				auto i = _arabics.find(num);
+				auto i = this->_arabics.find(num);
 				// Если арабское число найдено
-				if(i != _arabics.end())
+				if(i != this->_arabics.end())
 					// Получаем арабское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1107,9 +1115,9 @@ namespace {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
-				auto i = _wideArabics.find(num);
+				auto i = this->_wideArabics.find(num);
 				// Если арабское число найдено
-				if(i != _wideArabics.end())
+				if(i != this->_wideArabics.end())
 					// Получаем арабское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1127,9 +1135,9 @@ namespace {
 				// Переменная результата
 				wchar_t result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = _letters.find(ascii::toLower(letter));
+				auto i = this->_letters.find(ascii::toLower(letter));
 				// Если латинская буква найдена
-				if(i != _letters.end())
+				if(i != this->_letters.end())
 					// Получаем латинскую букву в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1146,9 +1154,9 @@ namespace {
 				// Переменная результата
 				char result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = _wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter))));
+				auto i = this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter))));
 				// Если латинская буква найдена
-				if(i != _wideLetters.end())
+				if(i != this->_wideLetters.end())
 					// Получаем латинскую букву в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1159,7 +1167,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			Symbols() noexcept {
+			explicit Symbols() noexcept {
 				/**
 				 * Выполняем заполнение арабских чисел
 				 */
@@ -1258,11 +1266,13 @@ namespace {
 	 * @param callback  функция обратного вызова для каждой найденной записи
 	 *
 	 */
-	static AWH_FMK_INLINE void kvParse(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
+	static AWH_FMK_INLINE void parseKeyValue(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
 		// Тип текстового представления обрабатываемых данных
 		using view_t = basic_string_view <T>;
 		// Получаем размер обрабатываемого текста
 		const size_t length = text.size();
+		// Признак отсутствия позиции в тексте
+		constexpr size_t NOPOS = view_t::npos;
 		/**
 		 * Постоянная заводится с собственным хранением
 		 *
@@ -1270,10 +1280,9 @@ namespace {
 		 *       оснасток постоянную в таком замыкании видит и без захвата, часть - нет,
 		 *       и отвечает отказом о невозможности захватить её самой. Собственное
 		 *       хранение снимает вопрос захвата вовсе: за телом оно не числится
+		 *
 		 */
 		static constexpr T BACKSLASH = static_cast <T> ('\\');
-		// Признак отсутствия позиции в тексте
-		constexpr size_t NOPOS = view_t::npos;
 		/**
 		 * @brief Функция проверки соответствия текста в указанной позиции переданной подстроке
 		 *
@@ -1334,10 +1343,10 @@ namespace {
 				break;
 			// Запоминаем позицию начала ключа текущей записи
 			const size_t current = keyBegin;
-			// Позиция начала значения текущей записи
-			size_t valueBegin = (keyEnd + separator.size());
 			// Позиция конца значения текущей записи
 			size_t valueEnd = length;
+			// Позиция начала значения текущей записи
+			size_t valueBegin = (keyEnd + separator.size());
 			// Выполняем поиск экранирования в начале значения
 			const auto i = find_if(escaping.begin(), escaping.end(), [&startsWith, valueBegin](const basic_string <T> & esc) noexcept -> bool {
 				// Выполняем проверку начала значения на символ экранирования
@@ -2459,7 +2468,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 				 *          «1e+10» проходил, а «1.79e+308» нет: правая его половина
 				 *          «79e+308» целым не является. Записи же с точкой И показателем
 				 *          степени разом строит всякий, кто пишет число кратчайшим
-				 *          обратимым представлением
+				 *          обратимым представлением.
 				 *
 				 * @note Терпимость к запятой сохранена намеренно: прежний способ брал её
 				 *       наравне с точкой, и потребители на то вправе полагаться. Разбор
@@ -2472,6 +2481,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 				 *
 				 * @note Найдено 14.09.2026 аудитом кодека CEF: кодек писал «1.79e+308» и
 				 *       сам же отвергал его, спросив у рамки, число ли это
+				 *
 				 */
 				case static_cast <uint8_t> (check_t::DECIMAL): {
 					// Если длина слова больше 1-го символа
@@ -2498,6 +2508,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 						 * @note Ведущий знак «плюс» разбору неведом, а прежний способ его
 						 *       допускал - «+1.5» им признавалось дробным. Терпимость эта
 						 *       сохранена: запись разбирается со знака, за плюсом стоящего
+						 *
 						 */
 						const size_t begin = ((record.front() == '+') ? 1 : 0);
 						// Выполняем разбор записи числа модулем разбора чисел
@@ -2812,10 +2823,11 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 				 * @details Поверка ведётся РАЗБОРОМ через «num/lexical» тем же порядком,
 				 *          каким она ведётся у записи узкой: прежний способ делил запись
 				 *          надвое по первому из знаков «.», «,» и «e» и требовал, чтобы
-				 *          обе половины были целыми, - «1.79e+308» тем отвергался
+				 *          обе половины были целыми, - «1.79e+308» тем отвергался.
 				 *
 				 * @note Оба хода правятся вместе намеренно: разойдясь в поверке, узкая и
 				 *       широкая записи отвечали бы на один вопрос по-разному
+				 *
 				 */
 				case static_cast <uint8_t> (check_t::DECIMAL): {
 					// Если длина слова больше 1-го символа
@@ -2909,7 +2921,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3031,70 +3043,70 @@ void awh::fmk::detail::timestamp(void * buffer, const size_t size, const chrono_
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (8760)));
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (8760)));
 					} break;
 					// Если единицы измерения штампа времени требуется получить в месяцах
 					case static_cast <uint8_t> (chrono_t::MONTH): {
 						// Получаем штамп времени в часы
 						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (seconds.count() / static_cast <double> (2629746)));
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(static_cast <uint64_t> (seconds.count() / static_cast <double> (2629746)));
 					} break;
 					// Если единицы измерения штампа времени требуется получить в неделях
 					case static_cast <uint8_t> (chrono_t::WEEK): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (168)));
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (168)));
 					} break;
 					// Если единицы измерения штампа времени требуется получить в днях
 					case static_cast <uint8_t> (chrono_t::DAY): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (24)));
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (24)));
 					} break;
 					// Если единицы измерения штампа времени требуется получить в часах
 					case static_cast <uint8_t> (chrono_t::HOUR): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(hours.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(hours.count());
 					} break;
 					// Если единицы измерения штампа времени требуется получить в минутах
 					case static_cast <uint8_t> (chrono_t::MINUTES): {
 						// Получаем штамп времени в минуты
 						chrono::minutes minutes = chrono::duration_cast <chrono::minutes> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(minutes.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(minutes.count());
 					} break;
 					// Если единицы измерения штампа времени требуется получить в секундах
 					case static_cast <uint8_t> (chrono_t::SECONDS): {
 						// Получаем штамп времени в секундах
 						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(seconds.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(seconds.count());
 					} break;
 					// Если единицы измерения штампа времени требуется получить в миллисекундах
 					case static_cast <uint8_t> (chrono_t::MILLISECONDS): {
 						// Получаем штамп времени в миллисекундах
 						chrono::milliseconds milliseconds = chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(milliseconds.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(milliseconds.count());
 					} break;
 					// Если единицы измерения штампа времени требуется получить в микросекундах
 					case static_cast <uint8_t> (chrono_t::MICROSECONDS): {
 						// Получаем штамп времени в микросекунды
 						chrono::microseconds microseconds = chrono::duration_cast <chrono::microseconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(microseconds.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(microseconds.count());
 					} break;
 					// Если единицы измерения штампа времени требуется получить в наносекундах
 					case static_cast <uint8_t> (chrono_t::NANOSECONDS): {
 						// Получаем штамп времени в наносекундах
 						chrono::nanoseconds nanoseconds = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						(* reinterpret_cast <string *> (buffer)) = std::to_string(nanoseconds.count());
+						(* reinterpret_cast <string *> (buffer)) = ::to_string(nanoseconds.count());
 					} break;
 				}
 			// Если данные извлекаются в виде числа
@@ -3274,6 +3286,7 @@ void awh::fmk::detail::timestamp(void * buffer, const size_t size, const chrono_
  * @brief Функция получения дешёвого штампа времени в миллисекундах (для таймеров)
  *
  * @return сгенерированный штамп времени в миллисекундах
+ *
  */
 uint64_t awh::fmk::milliseconds() noexcept {
 	// Выводим сгенерированный штамп времени в миллисекундах
@@ -3299,6 +3312,7 @@ T awh::fmk::timestamp(const chrono_t type) noexcept {
 	 * @note Извлечение выполняется целым числом с последующим приведением, так как
 	 *       разбор по размеру буфера ниже писан для целых видов и записал бы в
 	 *       дробное двоичное представление целого, а не само число
+	 *
 	 */
 	if constexpr(is_floating_point_v <T>) {
 		// Буфер для извлечения штампа времени целым числом
@@ -3342,6 +3356,7 @@ template string awh::fmk::timestamp <string> (const chrono_t) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::timestamp <size_t> (const chrono_t) noexcept;
 	template ssize_t awh::fmk::timestamp <ssize_t> (const chrono_t) noexcept;
 #endif
@@ -3660,7 +3675,7 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3817,13 +3832,17 @@ wstring awh::fmk::convert(string_view str) noexcept {
 	try {
 		// Если строка передана
 		if(!str.empty()){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <wchar_t> (str.data(), str.data() + str.size());
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
 				result = ::utf8ToWide(str.data(), str.size());
@@ -3883,13 +3902,17 @@ string awh::fmk::convert(wstring_view str) noexcept {
 	try {
 		// Если строка передана
 		if(!str.empty()){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <char> (str.data(), str.data() + str.size());
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
 				result = ::wideToUtf8(str.data(), str.size());
@@ -3949,13 +3972,17 @@ wstring awh::fmk::convert(const char * str) noexcept {
 	try {
 		// Если строка передана
 		if((str != nullptr) && ((* str) != '\0')){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
 				result = ::utf8ToWide(str, ::strlen(str));
@@ -4015,13 +4042,17 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 	try {
 		// Если строка передана
 		if((str != nullptr) && ((* str) != L'\0')){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <char> (str, str + ::wcslen(str));
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
 				result = ::wideToUtf8(str, ::wcslen(str));
@@ -4081,13 +4112,17 @@ wstring awh::fmk::convert(const string & str) noexcept {
 	try {
 		// Если строка передана
 		if(!str.empty()){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
 				result = ::utf8ToWide(str.data(), str.size());
@@ -4147,13 +4182,17 @@ string awh::fmk::convert(const wstring & str) noexcept {
 	try {
 		// Если строка передана
 		if(!str.empty()){
-			// Если используется BOOST
+			/**
+			 * Если используется BOOST
+			 */
 			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
 				result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
-			// Если нужно использовать стандартную библиотеку
+			/**
+			 * Если нужно использовать стандартную библиотеку
+			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
 				result = ::wideToUtf8(str.data(), str.size());
@@ -4236,6 +4275,7 @@ template size_t awh::fmk::size <double> (const double) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::size <size_t> (const size_t) noexcept;
 	template size_t awh::fmk::size <ssize_t> (const ssize_t) noexcept;
 #endif
@@ -4337,6 +4377,7 @@ template bool awh::fmk::isGreater <double> (const double, const double) noexcept
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template bool awh::fmk::isGreater <size_t> (const size_t, const size_t) noexcept;
 	template bool awh::fmk::isGreater <ssize_t> (const ssize_t, const ssize_t) noexcept;
 #endif
@@ -4444,6 +4485,7 @@ template string awh::fmk::itoa <double> (const double, const uint8_t) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template string awh::fmk::itoa <size_t> (const size_t, const uint8_t) noexcept;
 	template string awh::fmk::itoa <ssize_t> (const ssize_t, const uint8_t) noexcept;
 #endif
@@ -4466,7 +4508,7 @@ string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix
 		 */
 		try {
 			// Устанавливаем числовые обозначения
-			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			const constexpr string_view digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 			// Если запись в бинарном виде
 			if(radix == 2){
 				// Результат с которым будем работать
@@ -4584,19 +4626,19 @@ string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
+							log::debug("%s", __PRETTY_FUNCTION__, {value, size, static_cast <uint16_t> (radix)}, log::flag_t::CRITICAL, "Binary data buffer cannot be cast to a number");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer cannot be cast to a number");
+							log::print("%s", log::flag_t::CRITICAL, "Binary data buffer cannot be cast to a number");
 						#endif
 					}
 				}
 			}
 			// Цифры формировались младшими разрядами вперёд, поэтому разворачиваем результат в правильный порядок
-			std::reverse(result.begin(), result.end());
+			::reverse(result.begin(), result.end());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4685,6 +4727,7 @@ template double awh::fmk::atoi <double> (string_view) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::atoi <size_t> (string_view) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (string_view) noexcept;
 #endif
@@ -4737,6 +4780,7 @@ template double awh::fmk::atoi <double> (string_view, const uint8_t) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::atoi <size_t> (string_view, const uint8_t) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (string_view, const uint8_t) noexcept;
 #endif
@@ -4761,7 +4805,7 @@ void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const
 			// Позиция в строке алфавита
 			size_t pos = string::npos;
 			// Устанавливаем числовые обозначения
-			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			const constexpr string_view digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 			// Если запись в 16-м виде
 			if(radix == 16){
 				// Если первые два значения числа являются префиксом
@@ -4991,6 +5035,7 @@ template double awh::fmk::atoi <double> (wstring_view) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::atoi <size_t> (wstring_view) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view) noexcept;
 #endif
@@ -5043,6 +5088,7 @@ template double awh::fmk::atoi <double> (wstring_view, const uint8_t) noexcept;
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template size_t awh::fmk::atoi <size_t> (wstring_view, const uint8_t) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view, const uint8_t) noexcept;
 #endif
@@ -5067,7 +5113,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 			// Позиция в строке алфавита
 			size_t pos = wstring::npos;
 			// Устанавливаем числовые обозначения
-			const wstring digits = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			const constexpr wstring_view digits = L"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 			// Если запись в 16-м виде
 			if(radix == 16){
 				// Если первые два значения числа являются префиксом
@@ -5200,7 +5246,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::debug("%s", __PRETTY_FUNCTION__, {::convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5222,7 +5268,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -5256,7 +5302,7 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 			 * Целое число записывается без дробной части вовсе, а дробное - с
 			 * количеством знаков после запятой, заданным размером шага
 			 */
-			result = ::noexpFixed(number, ((::modf(number, &intpart) != 0.) ? static_cast <int32_t> (step) : 0));
+			result = noexpFixed(number, ((::modf(number, &intpart) != 0.) ? static_cast <int32_t> (step) : 0));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -5293,13 +5339,7 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
  * @return        число в безэкспоненциальной форме
  *
  */
-string awh::fmk::noexp(const double number, const bool onlyNum) noexcept {
-	/**
-	 * Запись выполняется без обращения к локали и посторонних символов не содержит,
-	 * поэтому отбор одних лишь разрядов ничего в ней не меняет. Довод сохранён ради
-	 * совместимости вызовов
-	 */
-	(void) onlyNum;
+string awh::fmk::noexp(const double number, [[maybe_unused]] const bool onlyNum) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -5307,7 +5347,7 @@ string awh::fmk::noexp(const double number, const bool onlyNum) noexcept {
 	 */
 	try {
 		// Выполняем запись числа наименьшей точной записью
-		result = ::noexpFixed(number, -1);
+		result = noexpFixed(number, -1);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5353,6 +5393,7 @@ static string separated(const string & text, const char separator, const uint8_t
 	 * Положение начала целой части записи
 	 *
 	 * @note Знак минуса в разделение не входит: разряды считаются от самого числа
+	 *
 	 */
 	const size_t begin = ((!text.empty() && ((text.front() == '-') || (text.front() == '+'))) ? 1 : 0);
 	// Выполняем поиск разделителя дробной части записи
@@ -5373,6 +5414,7 @@ static string separated(const string & text, const char separator, const uint8_t
 	 * Количество разрядов в первой группе
 	 *
 	 * @note Группы считаются справа налево, оттого первая из них бывает неполной
+	 *
 	 */
 	const size_t first = (((length % static_cast <size_t> (size)) == 0) ? static_cast <size_t> (size) : (length % static_cast <size_t> (size)));
 	// Выполняем перенос первой группы разрядов в собираемую запись
@@ -5416,8 +5458,9 @@ string awh::fmk::grouped(const double number, const int32_t precision, const cha
 	 *       шага: та нулевой размер понимает как отсутствие значащих разрядов и
 	 *       отвечает записью «0», тогда как нулевая точность здесь означает запись
 	 *       без дробной части - «123,456,789», а не «0»
+	 *
 	 */
-	const string text = ::noexpFixed(number, precision);
+	const string text = noexpFixed(number, precision);
 	// Выводим запись числа с разделёнными разрядами
 	return ::separated(text, separator, size);
 }
@@ -5446,7 +5489,7 @@ string awh::fmk::grouped(const T number, const char separator, const uint8_t siz
 	 * Запись целого числа выполняется своим видом, а не приведением к числу с
 	 * плавающей точкой: приведение теряло бы точность за пределами мантиссы
 	 */
-	return ::separated(std::to_string(number), separator, size);
+	return ::separated(::to_string(number), separator, size);
 }
 /**
  * Объявляем прототипы записи целых чисел с разделением разрядов
@@ -5463,6 +5506,7 @@ template string awh::fmk::grouped <uint64_t> (const uint64_t, const char, const 
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if defined(__AWH_DISTINCT_SIZE_TYPES__)
+	// Явная инстанциация шаблона для size_t
 	template string awh::fmk::grouped <size_t> (const size_t, const char, const uint8_t) noexcept;
 	template string awh::fmk::grouped <ssize_t> (const ssize_t, const char, const uint8_t) noexcept;
 #endif
@@ -6025,7 +6069,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6163,7 +6207,7 @@ wstring awh::fmk::arabic2rome(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6284,7 +6328,7 @@ size_t awh::fmk::countLetter(wstring_view word, const wchar_t letter) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word), letter}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6651,6 +6695,8 @@ string awh::fmk::detail::formatted(const char * format, ...) noexcept {
 		 */
 		try {
 			/**
+			 * Размер полученной строки
+			 *
 			 * @warning Тип обязан быть знаковым: функции семейства printf отвечают об
 			 *          отказе числом -1, и при беззнаковом типе оно обращалось в SIZE_MAX.
 			 *          Проверка length >= 0 делалась при этом истинной ВСЕГДА, ветка
@@ -6659,8 +6705,8 @@ string awh::fmk::detail::formatted(const char * format, ...) noexcept {
 			 *          оставался в кругу навсегда. У широкого близнеца это не край, а
 			 *          обиход: vswprintf при нехватке буфера отдаёт -1, а НЕ потребную
 			 *          длину, поэтому удвоение буфера - единственный там путь роста
+			 *
 			 */
-			// Размер полученной строки
 			int32_t length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
@@ -6750,6 +6796,8 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 		 */
 		try {
 			/**
+			 * Размер полученной строки
+			 *
 			 * @warning Тип обязан быть знаковым: функции семейства printf отвечают об
 			 *          отказе числом -1, и при беззнаковом типе оно обращалось в SIZE_MAX.
 			 *          Проверка length >= 0 делалась при этом истинной ВСЕГДА, ветка
@@ -6758,8 +6806,8 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 			 *          оставался в кругу навсегда. У широкого близнеца это не край, а
 			 *          обиход: vswprintf при нехватке буфера отдаёт -1, а НЕ потребную
 			 *          длину, поэтому удвоение буфера - единственный там путь роста
+			 *
 			 */
-			// Размер полученной строки
 			int32_t length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
@@ -6812,7 +6860,7 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(format)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6962,7 +7010,7 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
 	 */
 	try {
 		// Выполняем подстановку записей за один проход
-		return substitute(format, items);
+		return ::substitute(format, items);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -7002,7 +7050,7 @@ wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) no
 	 */
 	try {
 		// Выполняем подстановку записей за один проход
-		return substitute(format, items);
+		return ::substitute(format, items);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -7040,7 +7088,7 @@ bool awh::fmk::exists(string_view word, string_view text) noexcept {
 		 */
 		try {
 			// Выполняем регистронезависимый поиск слова в тексте
-			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const char first, const char second) noexcept -> bool {
+			const auto i = ::search(text.begin(), text.end(), word.begin(), word.end(), [](const char first, const char second) noexcept -> bool {
 				// Выполняем сравнение символов без учёта регистра
 				return (ascii::toLower(first) == ascii::toLower(second));
 			});
@@ -7084,7 +7132,7 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 		 */
 		try {
 			// Выполняем регистронезависимый поиск слова в тексте
-			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
+			const auto i = ::search(text.begin(), text.end(), word.begin(), word.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
 				// Выполняем сравнение символов без учёта регистра
 				return (wideLower(static_cast <wint_t> (first)) == wideLower(static_cast <wint_t> (second)));
 			});
@@ -7099,7 +7147,7 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word), convert(text)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7201,7 +7249,7 @@ wstring & awh::fmk::replace(wstring & text, const wstring & word, const wstring 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), convert(word), convert(alt)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7284,7 +7332,7 @@ unordered_multimap <string, string> awh::fmk::kv(string_view text, string_view d
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			kvParse <char> (text, delim, separator, escaping, [&result](const string_view key, const string_view value) noexcept -> void {
+			::parseKeyValue <char> (text, delim, separator, escaping, [&result](const string_view key, const string_view value) noexcept -> void {
 				// Выполняем формирование записи результата
 				result.emplace(key, value);
 			});
@@ -7330,7 +7378,7 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			kvParse <wchar_t> (text, delim, separator, escaping, [&result](const wstring_view key, const wstring_view value) noexcept -> void {
+			::parseKeyValue <wchar_t> (text, delim, separator, escaping, [&result](const wstring_view key, const wstring_view value) noexcept -> void {
 				// Выполняем формирование записи результата
 				result.emplace(key, value);
 			});
@@ -7343,7 +7391,7 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7375,7 +7423,7 @@ void awh::fmk::kv(const uint64_t sid, string_view text, string_view delim, funct
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			kvParse <char> (text, delim, separator, escaping, [sid, &callback](const string_view key, const string_view value) noexcept -> void {
+			::parseKeyValue <char> (text, delim, separator, escaping, [sid, &callback](const string_view key, const string_view value) noexcept -> void {
 				// Выполняем передачу найденной записи
 				callback(sid, key, value);
 			});
@@ -7418,7 +7466,7 @@ void awh::fmk::kv(const uint64_t sid, wstring_view text, wstring_view delim, fun
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			kvParse <wchar_t> (text, delim, separator, escaping, [sid, &callback](const wstring_view key, const wstring_view value) noexcept -> void {
+			::parseKeyValue <wchar_t> (text, delim, separator, escaping, [sid, &callback](const wstring_view key, const wstring_view value) noexcept -> void {
 				// Выполняем передачу найденной записи
 				callback(sid, key, value);
 			});
@@ -7498,6 +7546,7 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 		 *
 		 * @note Разряд LC_ALL включает в себя и LC_CTYPE, и LC_COLLATE: отдельные их
 		 *       установки той же строкой ничего не меняли бы
+		 *
 		 */
 		const bool established = (::setlocale(LC_ALL, name.c_str()) != nullptr);
 		/**
@@ -7507,12 +7556,13 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 		 *          setlocale - функция языка C, и бросать ей нечего. Прежде отказ
 		 *          ловился здесь перехватом исключения, потому что локализация
 		 *          строилась объектом std::locale; объекта того не стало, а перехват
-		 *          остался и с тех пор не срабатывал ни разу
+		 *          остался и с тех пор не срабатывал ни разу.
 		 *
 		 * @warning Отказ ловится не всюду: библиотека UCRT у MS Windows принимает любое
 		 *          название, включая заведомо вздорное, и отвечает успехом. Там
 		 *          неверная локализация останется незамеченной, и поделать с этим
 		 *          нечего - сообщить об отказе системе нечем
+		 *
 		 */
 		if(!established){
 			/**
@@ -7522,7 +7572,7 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 				// Выполняем установку общепринятой локализации приложения
 				::setlocale(LC_ALL, "C");
 			// Собираемое сообщение об ошибке установки локализации
-			const string message = ("Locale \"" + name + "\" is not supported by the system, the \"C\" locale is set instead");
+			const string & message = format("Locale \"%s\" is not supported by the system, the \"C\" locale is set instead", name.c_str());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -7547,9 +7597,13 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
 			// Формируем параметры шрифта
 			fontInfo.nFont = 1;
+			// Задаём ширину символа шрифта
 			fontInfo.dwFontSize.X = 7;
+			// Задаём высоту символа шрифта
 			fontInfo.dwFontSize.Y = 12;
+			// Задаём насыщенность шрифта
 			fontInfo.FontWeight = 500;
+			// Задаём семейство шрифта
 			fontInfo.FontFamily = FF_DONTCARE;
 			// Выполняем установку шрифта Lucida Console
 			::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
@@ -7636,7 +7690,9 @@ unordered_map <size_t, size_t> awh::fmk::urls(string_view text) noexcept {
  *
  */
 string awh::fmk::icon(const bool end) noexcept {
-	// Список иконок для начала работы
+	/**
+	 * Список иконок для начала работы
+	 */
 	static const vector <string> iconBegin = {
 		"🎲","🎰","🏓","🎱","🥚","⚽️",
 		"🏀","🏈","⚾️","🥎","🏐","🪙",
@@ -7653,7 +7709,9 @@ string awh::fmk::icon(const bool end) noexcept {
 		"🚦","🇷🇺","📺","🏸","🚀","⏳",
 		"⏳","♨️","📉","💤","📊","🏳️"
 	};
-	// Список иконок для конца работы
+	/**
+	 * Список иконок для конца работы
+	 */
 	static const vector <string> iconEnd = {
 		"🍾","🎉","🎊","🎈","🎁","🥳",
 		"🤩","😍","🥰","🤝","🙌","👐",
@@ -7675,6 +7733,7 @@ string awh::fmk::icon(const bool end) noexcept {
 	 *       потоки, заведённые в один и тот же миг, получают тогда разные зёрна.
 	 *       Обращение к собственному адресу в своём же заведении оснастка MSVC не
 	 *       принимает вовсе - имени в этой точке она ещё не знает
+	 *
 	 */
 	static thread_local std::mt19937_64 engine(
 		static_cast <uint64_t> (timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^
@@ -7703,10 +7762,10 @@ double awh::fmk::bytes(const string_view str) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Начало и конец позиции значения в строке
-			size_t start = 0, stop = 0;
 			// Признак обнаружения разделителя дробной части числа
 			bool fraction = false;
+			// Начало и конец позиции значения в строке
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
@@ -7730,7 +7789,7 @@ double awh::fmk::bytes(const string_view str) noexcept {
 					 *
 					 */
 					if((str[i] == '.') && !fraction && (stop == 0) &&
-					 ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
+					  ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
 						// Запоминаем обнаружение разделителя дробной части числа
 						fraction = true;
 						// Переходим к следующему символу записи
@@ -7818,13 +7877,13 @@ string awh::fmk::bytes(const double value, const bool onlyNum) noexcept {
 		 */
 		try {
 			// Шаблон киллобайта
-			const double kb = 1024.;
+			static constexpr double kb = 1024.;
 			// Шаблон мегабайта
-			const double mb = 1048576.;
+			static constexpr double mb = 1048576.;
 			// Шаблон гигабайта
-			const double gb = 1073741824.;
+			static constexpr double gb = 1073741824.;
 			// Шаблон терабайта
-			const double tb = 1099511627776.;
+			static constexpr double tb = 1099511627776.;
 			// Если переданное значение соответствует терабайту
 			if(value >= tb){
 				// Выполняем копирование терабайта
@@ -7894,10 +7953,10 @@ size_t awh::fmk::bpsSize(const string_view str) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Начало и конец позиции значения в строке
-			size_t start = 0, stop = 0;
 			// Признак обнаружения разделителя дробной части числа
 			bool fraction = false;
+			// Начало и конец позиции значения в строке
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
@@ -7921,7 +7980,7 @@ size_t awh::fmk::bpsSize(const string_view str) noexcept {
 					 *
 					 */
 					if((str[i] == '.') && !fraction && (stop == 0) &&
-					 ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
+					  ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
 						// Запоминаем обнаружение разделителя дробной части числа
 						fraction = true;
 						// Переходим к следующему символу записи
@@ -7998,6 +8057,8 @@ size_t awh::fmk::bpsSize(const string_view str) noexcept {
  */
 size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 	/**
+	 * Переменная результата
+	 *
 	 * Readme - http://www.securitylab.ru/analytics/243414.php
 	 *
 	 * Example: 17520 Байт / .04 секунды = .44 МБ/сек = 3.5 Мб/сек
@@ -8015,9 +8076,7 @@ size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 	 *
 	 * Получение размера буфера
 	 * (13 / 8) * (1024000 * .04) = 66560
-	 *
 	 */
-	// Переменная результата
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
 	if(!str.empty() && ascii::isDigit(str[0])){
@@ -8025,10 +8084,10 @@ size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Начало и конец позиции значения в строке
-			size_t start = 0, stop = 0;
 			// Признак обнаружения разделителя дробной части числа
 			bool fraction = false;
+			// Начало и конец позиции значения в строке
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
@@ -8052,7 +8111,7 @@ size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 					 *
 					 */
 					if((str[i] == '.') && !fraction && (stop == 0) &&
-					 ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
+					  ((i + 1) < str.size()) && ascii::isDigit(str[i + 1])) {
 						// Запоминаем обнаружение разделителя дробной части числа
 						fraction = true;
 						// Переходим к следующему символу записи
