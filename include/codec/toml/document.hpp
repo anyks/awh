@@ -36,6 +36,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <deque>
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -901,10 +902,156 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					unordered_set <string> _dotted;
+					unordered_set <string_view> _dotted;
+				private:
+					/**
+					 * \~russian
+					 * Класс указателя записей открытой адресации с ключом в самом слоте
+					 *
+					 * @details Ключ до 48 знаков хранится телом слота: ключ и значение его
+					 *          лежат рядом, и сличение при поиске не ходит в чужую память.
+					 *          Ключ длиннее хранилищем переносится, а слот держит вид на него.
+					 *
+					 * @note Слоты перебираются пробой линейной: шаг пробы идёт по соседним
+					 *       слотам, и вся проба держится одной кэш-строкой
+					 *
+					 * \~english
+					 * Open-addressing record pointer class with the key stored within the slot itself
+					 *
+					 * @details A key of up to 48 characters is stored by the body of the slot: its key and
+					 *          value lie next to each other, and the comparison at the search does not
+					 *          walk into the memory of another one.
+					 *          A longer key is carried by the storage, while the slot keeps a view of it.
+					 *
+					 * @note The slots are traversed by a linear probing: the step of the probe goes over the adjacent
+					 *       slots, and the whole probe is held by a single cache line
+					 *
+					 * \~
+					 */
+					typedef class Index {
+						public:
+							// Количество слотов указателя записей
+							size_t capacity;
+							// Количество занятых слотов указателя записей
+							size_t occupied;
+						public:
+							// Слот указателя записей
+							struct Slot;
+							// Слоты указателя записей
+							struct Slot * slots;
+						public:
+							/**
+							 * \~russian
+							 * @brief Очистка указателя записей
+							 *
+							 * @details Слоты таблицы не освобождаются: пересборка указателей пишет
+							 *          ключи на место прежних, и таблица переживает правку дерева
+							 *          без нового выделения памяти.
+							 *
+							 * \~english
+							 * @brief Clearing of the record index
+							 *
+							 * @details The slots of the table are not freed: the rebuilding of the indexes writes
+							 *          the keys onto the place of the previous ones, and the table survives an editing
+							 *          of the tree without a new allocation of the memory.
+							 *
+							 * \~
+							 */
+							void clear() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод пересборки таблицы слотов
+							 *
+							 * @param wanted требуемое количество слотов
+							 *
+							 * \~english
+							 * @brief Method of the rebuilding of the table of the slots
+							 *
+							 * @param wanted the required number of the slots
+							 *
+							 * \~
+							 */
+							void rehash(const size_t wanted) noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод розыска записи по ключу
+							 *
+							 * @param key разыскиваемый ключ
+							 * @return    порядковый номер найденной записи либо обозначение отсутствующей
+							 *
+							 * \~english
+							 * @brief Method of the search of a record by the key
+							 *
+							 * @param key the key being searched
+							 * @return    ordinal number of the record found or the designation of an absent one
+							 *
+							 * \~
+							 */
+							uint32_t locate(const string_view key) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод установки записи ключом указателя
+							 *
+							 * @param key   устанавливаемый ключ
+							 * @param value порядковый номер устанавливаемой записи
+							 * @return      признак того, что ключ установлен этой установкой
+							 *
+							 * \~english
+							 * @brief Method of setting a record by the key of the index
+							 *
+							 * @param key   the key being set
+							 * @param value ordinal number of the record being set
+							 * @return      flag of the key having been set by this very setting
+							 *
+							 * \~
+							 */
+							bool emplace(const string_view key, const uint32_t value) noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Оператор перемещения
+							 *
+							 * \~english
+							 * @brief Move operator
+							 *
+							 * \~
+							 */
+							Index & operator = (Index && index) noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Index() noexcept;
+							/**
+							 * \~russian
+							 * @brief Конструктор перемещения
+							 *
+							 * \~english
+							 * @brief Move constructor
+							 *
+							 * \~
+							 */
+							explicit Index(Index && index) noexcept;
+							/**
+							 * \~russian
+							 * @brief Деструктор
+							 *
+							 * \~english
+							 * @brief Destructor
+							 *
+							 * \~
+							 */
+							~Index() noexcept;
+					} index_t;
 				private:
 					// Указатель записей по составному имени, приведённому к виду для сличения
-					unordered_map <string, uint32_t> _index;
+					index_t _index;
 					/**
 					 * \~russian
 					 * Порядок объявления дочерних имён по каждому составному имени
@@ -926,8 +1073,52 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					unordered_map <string, vector <uint32_t>> _children;
+					unordered_map <string_view, vector <uint32_t>> _children;
 				private:
+					/**
+					 * \~russian
+					 * Хранилище ключей указателей поиска
+					 *
+					 * @details Указатели поиска держат ключи видами, а строки их живут здесь:
+					 *          ключ, хранимый собственной последовательностью знаков, обходился
+					 *          выделением памяти на каждый - на файле настроек в шестнадцать
+					 *          мегабайт их набирался миллион.
+					 *
+					 * @note Хранилище взято двусторонней очередью намеренно: перечень
+					 *       блоков при дописывании нового не перемещает прежние, и виды на
+					 *       ключи их остаются годными
+					 *
+					 * \~english
+					 * Storage of the keys of the search indexes
+					 *
+					 * @details The search indexes keep the keys as views, while their strings live here:
+					 *          a key stored as a sequence of characters of its own cost an
+					 *          allocation of the memory for every one — on a settings file of
+					 *          sixteen megabytes a million of them accumulated.
+					 *
+					 * @note The storage has been taken as a deque deliberately: the list
+					 *       of the blocks does not move the previous ones at the appending of a new one, and the views of their
+					 *       keys remain valid
+					 *
+					 * \~
+					 */
+					deque <string> _blocks;
+					/**
+					 * \~russian
+					 * @brief Метод переноса ключа в хранилище ключей указателей поиска
+					 *
+					 * @param key переносимый ключ указателя записей либо объемлющего имени
+					 * @return    вид на ключ, перенесённый в хранилище
+					 *
+					 * \~english
+					 * @brief Method of transferring a key into the storage of the keys of the search indexes
+					 *
+					 * @param key the key of the record index or of the enclosing name being transferred
+					 * @return    view of the key transferred into the storage
+					 *
+					 * \~
+					 */
+					string_view intern(const string_view key) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод запоминания кода отказа работы над деревом
@@ -2730,14 +2921,24 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Разрешаем оператор копирования
+					 * @brief Оператор копирования
+					 *
+					 * @details Копия обязана пересобрать указатели поиска: ключи их суть виды
+					 *          на строки хранилища ключей, и дерево, оставшееся с видами на чужое
+					 *          хранилище, рушилось бы вслед за его владельцем. Копия потому
+					 *          строится самостоятельною и переносится на место приёмника
 					 *
 					 * \~english
-					 * @brief Enable the copy operator
+					 * @brief Copy operator
+					 *
+					 * @details The copy has to rebuild the search indexes: their keys are views
+					 *          of the strings of the key storage, and a tree left with the views
+					 *          of the storage of another one would crash after its owner. The copy
+					 *          is therefore built self-standing and is moved onto the place of the receiver
 					 *
 					 * \~
 					 */
-					Document & operator = (const Document &) = default;
+					Document & operator = (const Document & document);
 					/**
 					 * \~russian
 					 * @brief Разрешаем оператор перемещения
@@ -2751,14 +2952,24 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Разрешаем конструктор копирования
+					 * @brief Конструктор копирования
+					 *
+					 * @details Копия обязана пересобрать указатели поиска: ключи их суть виды
+					 *          на строки хранилища ключей, и побитовая копия держала бы виды на
+					 *          хранилище оригинала, гибнущее вместе с ним. Пересборка переводит
+					 *          виды на собственное хранилище копии
 					 *
 					 * \~english
-					 * @brief Enable the copy constructor
+					 * @brief Copy constructor
+					 *
+					 * @details The copy has to rebuild the search indexes: their keys are views
+					 *          of the strings of the key storage, and a bitwise copy would keep
+					 *          the views of the storage of the original, perishing together with it. The
+					 *          rebuilding moves the views onto the own storage of the copy
 					 *
 					 * \~
 					 */
-					Document(const Document &) = default;
+					Document(const Document & document);
 					/**
 					 * \~russian
 					 * @brief Разрешаем конструктор перемещения

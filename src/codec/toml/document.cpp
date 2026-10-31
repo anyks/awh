@@ -25,6 +25,7 @@
  */
 #include <cmath>
 #include <limits>
+#include <cstring>
 #include <type_traits>
 #include <unordered_set>
 
@@ -93,6 +94,25 @@ namespace {
 	using namespace awh::codec::toml;
 
 	/**
+	 * @brief Принудительная подстановка горячих обращений кодека
+	 *
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_TOML_INLINE __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_TOML_INLINE inline __attribute__((always_inline))
+	#endif
+
+	/**
 	 * @brief Знак соединения составных частей имени в ключе указателя
 	 *
 	 * @note Знак этот в имени ключа встретиться не может: разбор его отвергает
@@ -110,32 +130,6 @@ namespace {
 	 *
 	 */
 	constexpr uint32_t NO_RECORD = static_cast <uint32_t> (-1);
-
-	/**
-	 * @brief Функция проверки годности каталога, куда ложится файл
-	 *
-	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
-	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
-	 *          записи отвергают нулевой размер и файла не заводят.
-	 *
-	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
-	 *
-	 * @param path путь к заводимому файлу
-	 * @return     признак того, что каталог для записи годен
-	 *
-	 */
-	static bool directory(const string & path) noexcept {
-		// Положение последнего разделителя пути
-		const size_t slash = path.find_last_of("/\\");
-		/**
-		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
-		 */
-		if(slash == string::npos)
-			// Выводим признак годности каталога текущего
-			return true;
-		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
-	}
 
 	/**
 	 * @brief Шаблон тождественного разрядного вида той же ширины и той же знаковости
@@ -156,6 +150,89 @@ namespace {
 	using fixed_t = typename conditional <is_signed <T>::value,
 		typename conditional <sizeof(T) == 1, int8_t, typename conditional <sizeof(T) == 2, int16_t, typename conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
 		typename conditional <sizeof(T) == 1, uint8_t, typename conditional <sizeof(T) == 2, uint16_t, typename conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
+	
+	/**
+	 * @brief Функция проверки годности каталога, куда ложится файл
+	 *
+	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+	 *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+	 *          записи отвергают нулевой размер и файла не заводят.
+	 *
+	 * @note Путь без разделителя означает каталог текущий, и он годен всегда
+	 *
+	 * @param path путь к заводимому файлу
+	 * @return     признак того, что каталог для записи годен
+	 *
+	 */
+	static AWH_TOML_INLINE bool directory(const string & path) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = path.find_last_of("/\\");
+		/**
+		 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+		 */
+		if(slash == string::npos)
+			// Выводим признак годности каталога текущего
+			return true;
+		// Выводим признак того, что каталог назначения каталогом и является
+		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+	}
+	/**
+	 * @brief Функция смешивания ключа указателя записей
+	 *
+	 * @details Ключ читается кусками по восемь знаков, всякий кусок подмешивается
+	 *          со смещением своего места, а хвост — длиною всего ключа: ключи одного
+	 *          состава, но разного порядка знаков смешиваются врозь.
+	 *
+	 * @param key смешиваемый ключ
+	 * @return    смешанное значение ключа
+	 *
+	 */
+	static AWH_TOML_INLINE uint64_t mixed(const string_view key) noexcept {
+		// Смешиваемое значение ключа
+		uint64_t hash = 0x9E3779B97F4A7C15ull;
+		// Смещение очередного куска ключа
+		size_t offset = 0;
+		/**
+		 * Выполняем перебор кусков ключа по восемь знаков
+		 */
+		for(; (offset + sizeof(uint64_t)) <= key.length(); offset += sizeof(uint64_t)){
+			// Кусок ключа, значением читаемый
+			uint64_t block = 0;
+			// Выполняем чтение куска ключа целиком
+			::memcpy(&block, (key.data() + offset), sizeof(block));
+			// Выполняем подмешивание куска со смещением его места
+			hash ^= (block + offset + 0x9E3779B97F4A7C15ull);
+			// Выполняем умножение смешиваемого значения
+			hash *= 0xFF51AFD7ED558CCDull;
+			// Выполняем поворот смешиваемого значения
+			hash = ((hash << 29) | (hash >> 35));
+		}
+		/**
+		 * Если ключ хвостом короче куска остаётся
+		 */
+		if(offset < key.length()){
+			// Хвост ключа, значением читаемый
+			uint64_t block = 0;
+			// Выполняем чтение хвоста ключа
+			::memcpy(&block, (key.data() + offset), (key.length() - offset));
+			// Выполняем подмешивание хвоста с длиною всего ключа
+			hash ^= (block + key.length());
+			// Выполняем умножение смешиваемого значения
+			hash *= 0xFF51AFD7ED558CCDull;
+		}
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 30);
+		// Выполняем умножение смешиваемого значения
+		hash *= 0xBF58476D1CE4E5B9ull;
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 27);
+		// Выполняем умножение смешиваемого значения
+		hash *= 0x94D049BB133111EBull;
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 31);
+		// Выводим смешанное значение ключа
+		return hash;
+	}
 	/**
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
@@ -175,7 +252,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static bool unescape(string & token) noexcept {
+	static AWH_TOML_INLINE bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -227,9 +304,9 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static string escape(const string_view name) noexcept {
+	static AWH_TOML_INLINE string escape(const string_view name) noexcept {
 		// Собираемое звено пути
-		string result;
+		string result = "";
 		// Выполняем выделение места под звено пути
 		result.reserve(name.size());
 		/**
@@ -273,7 +350,7 @@ namespace {
 	 * @return      результат выполнения операции
 	 *
 	 */
-	static bool ordinal(const string_view part, size_t & index) noexcept {
+	static AWH_TOML_INLINE bool ordinal(const string_view part, size_t & index) noexcept {
 		/**
 		 * Если часть имени пуста либо несёт ведущий ноль
 		 */
@@ -316,7 +393,7 @@ namespace {
 	 * @return         признак совпадения заданных настроек с настройками по умолчанию
 	 *
 	 */
-	static bool untouched(const writer_t::settings_t & settings) noexcept {
+	static AWH_TOML_INLINE bool untouched(const writer_t::settings_t & settings) noexcept {
 		// Настройки записи текста настроек, установленные по умолчанию
 		const writer_t::settings_t fallback;
 		// Выполняем сверку всякого поля заданных настроек с полем настроек по умолчанию
@@ -341,6 +418,278 @@ awh::codec::toml::Document::Settings::Settings() noexcept {
 	// Задаём выдачу примечаний разбором текста настроек
 	this->reader.emitComments = true;
 }
+
+/**
+ * @brief Слот указателя записей
+ *
+ * @details Ключ до 48 знаков лежит в самом слоте, рядом со значением, и сличение
+ *          при поиске не ходит в чужую память. Ключ длиннее слотом не вмещается,
+ *          переносится хранилищем ключей, а слот держит вид на него.
+ *
+ */
+struct awh::codec::toml::Document::Index::Slot {
+	/**
+	 * @brief Наибольшая длина ключа, слотом вмещаемая
+	 *
+	 */
+	static constexpr uint16_t EMBEDDED = 48;
+	// Признак занятости слота
+	bool occupied;
+	// Порядковый номер записи дерева, слотом разыскиваемый
+	uint32_t value;
+	// Длина ключа слота
+	uint16_t length;
+	/**
+	 * Ключ слота
+	 *
+	 * @note Читается тело слота, покуда длина ключа вмещаема, и вид на перенесённый
+	 *       хранилищем ключ - свыше того
+	 *
+	 */
+	union {
+		// Тело слота, короткий ключ держащее
+		char body[EMBEDDED];
+		// Начало ключа, хранилищем перенесённого
+		const char * remote = nullptr;
+	} key;
+	/**
+	 * @brief Метод получения начала ключа слота
+	 *
+	 * @return адрес начала ключа слота
+	 *
+	 */
+	const char * data() const noexcept {
+		// Выводим начало ключа, слотом хранимого
+		return ((this->length <= EMBEDDED) ? this->key.body : this->key.remote);
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	explicit Slot() noexcept : occupied(false), value(0), length(0) {}
+};
+
+/**
+ * @brief Очистка указателя записей
+ *
+ */
+void awh::codec::toml::Document::Index::clear() noexcept {
+	/**
+	 * Если таблица слотов заведена
+	 */
+	if(this->slots != nullptr)
+		// Выполняем опустошение слотов таблицы
+		::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
+	// Выполняем сброс занятости указателя записей
+	this->occupied = 0;
+}
+/**
+ * @brief Метод пересборки таблицы слотов
+ *
+ * @param wanted требуемое количество слотов
+ *
+ */
+void awh::codec::toml::Document::Index::rehash(const size_t wanted) noexcept {
+	// Количество слотов пересобранной таблицы
+	size_t capacity = 1024;
+	/**
+	 * Выполняем подбор количества слотов степенью двойки
+	 */
+	while(capacity < wanted)
+		// Выполняем удвоение количества слотов
+		capacity <<= 1;
+	// Слоты пересобранной таблицы
+	Slot * slots = new Slot[capacity];
+	// Выполняем опустошение слотов пересобранной таблицы
+	::memset(slots, 0, (capacity * sizeof(Slot)));
+	// Количество занятых слотов пересобранной таблицы
+	size_t occupied = 0;
+	/**
+	 * Выполняем перенос занятых слотов прежней таблицы
+	 */
+	for(size_t i = 0; i < this->capacity; i++){
+		// Очередной слот прежней таблицы
+		const Slot & source = this->slots[i];
+		/**
+		 * Если очередной слот прежней таблицы пуст
+		 */
+		if(!source.occupied)
+			// Выполняем пропуск пустого слота
+			continue;
+		// Положение очередного слота пробы пересобранной таблицы
+		size_t cursor = (mixed(string_view(source.data(), source.length)) & (capacity - 1));
+		/**
+		 * Выполняем розыск свободного слота пересобранной таблицы
+		 */
+		while(slots[cursor].occupied)
+			// Выполняем переход к соседнему слоту пробы
+			cursor = ((cursor + 1) & (capacity - 1));
+		// Выполняем перенос очередного слота пересобранной таблицей
+		slots[cursor] = source;
+		// Выполняем учёт занятого слота
+		occupied++;
+	}
+	// Выполняем освобождение слотов прежней таблицы
+	delete[] this->slots;
+	// Выполняем принятие слотов пересобранной таблицы
+	this->slots = slots;
+	// Выполняем принятие количества слотов пересобранной таблицы
+	this->capacity = capacity;
+	// Выполняем принятие занятости пересобранной таблицы
+	this->occupied = occupied;
+}
+/**
+ * @brief Метод розыска записи по ключу
+ *
+ * @param key разыскиваемый ключ
+ * @return    порядковый номер найденной записи либо обозначение отсутствующей
+ *
+ */
+uint32_t awh::codec::toml::Document::Index::locate(const string_view key) const noexcept {
+	/**
+	 * Если таблица слотов не заведена
+	 */
+	if(this->capacity == 0)
+		// Выводим обозначение отсутствующей записи
+		return NO_RECORD;
+	// Положение очередного слота пробы
+	size_t cursor = (mixed(key) & (this->capacity - 1));
+	/**
+	 * Выполняем перебор слотов пробы
+	 */
+	while(this->slots[cursor].occupied){
+		// Очередной слот пробы
+		const Slot & slot = this->slots[cursor];
+		/**
+		 * Если ключ очередного слота разыскиваемому равен
+		 */
+		if((slot.length == key.length()) && (::memcmp(slot.data(), key.data(), key.length()) == 0))
+			// Выводим порядковый номер найденной записи
+			return slot.value;
+		// Выполняем переход к соседнему слоту пробы
+		cursor = ((cursor + 1) & (this->capacity - 1));
+	}
+	// Выводим обозначение отсутствующей записи
+	return NO_RECORD;
+}
+/**
+ * @brief Метод установки записи ключом указателя
+ *
+ * @param key   устанавливаемый ключ
+ * @param value порядковый номер устанавливаемой записи
+ * @return      признак того, что ключ установлен этой установкой
+ *
+ */
+bool awh::codec::toml::Document::Index::emplace(const string_view key, const uint32_t value) noexcept {
+	/**
+	 * Если занятость таблицы подошла к половине её слотов
+	 *
+	 * @note Половина - предел пробе линейной: свыше его средняя проба растёт
+	 *       лавинно, и розыск перестаёт быть розыском по соседним слотам
+	 *
+	 */
+	if((this->occupied * 2) >= this->capacity)
+		// Выполняем пересборку таблицы слотов удвоением
+		this->rehash((this->capacity > 0) ? (this->capacity * 2) : 1024);
+	// Положение очередного слота пробы
+	size_t cursor = (mixed(key) & (this->capacity - 1));
+	/**
+	 * Выполняем перебор слотов пробы
+	 */
+	while(this->slots[cursor].occupied){
+		// Очередной слот пробы
+		const Slot & slot = this->slots[cursor];
+		/**
+		 * Если ключ очередного слота устанавливаемому равен
+		 */
+		if((slot.length == key.length()) && (::memcmp(slot.data(), key.data(), key.length()) == 0))
+			// Выводим признак того, что ключ установлен не был
+			return false;
+		// Выполняем переход к соседнему слоту пробы
+		cursor = ((cursor + 1) & (this->capacity - 1));
+	}
+	// Слот, ключом занимаемый
+	Slot & slot = this->slots[cursor];
+	// Выполняем запоминание порядкового номера записи
+	slot.value = value;
+	// Выполняем занятие слота пробы
+	slot.occupied = true;
+	// Выполняем запоминание длины ключа слота
+	slot.length = static_cast <uint16_t> (key.length());
+	/**
+	 * Если ключ слотом вмещается
+	 */
+	if(key.length() <= Slot::EMBEDDED)
+		// Выполняем перенос ключа телом слота
+		::memcpy(slot.key.body, key.data(), key.length());
+	// Если ключ слотом не вмещается
+	else
+		// Выполняем запоминание начала ключа, хранилищем перенесённого
+		slot.key.remote = key.data();
+	// Выполняем учёт занятого слота
+	this->occupied++;
+	// Выводим признак того, что ключ установлен
+	return true;
+}
+/**
+ * @brief Оператор перемещения
+ *
+ * @param index перемещаемый указатель записей
+ * @return      приёмник перемещения
+ *
+ */
+awh::codec::toml::Document::Index & awh::codec::toml::Document::Index::operator = (index_t && index) noexcept {
+	/**
+	 * Если приёмник перемещения и его источник есть один указатель
+	 */
+	if(this != &index){
+		// Выполняем освобождение слотов приёмника перемещения
+		delete[] this->slots;
+		// Выполняем перенос слотов указателя записей
+		this->slots = index.slots;
+		// Выполняем перенос количества слотов указателя записей
+		this->capacity = index.capacity;
+		// Выполняем перенос занятости указателя записей
+		this->occupied = index.occupied;
+		// Выполняем сброс количества слотов перемещённого указателя
+		index.capacity = 0;
+		// Выполняем сброс занятости перемещённого указателя
+		index.occupied = 0;
+		// Выполняем опустошение перемещённого указателя записей
+		index.slots = nullptr;
+	}
+	// Выводим приёмник перемещения
+	return (* this);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Index::Index() noexcept : capacity(0), occupied(0), slots(nullptr) {}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param index перемещаемый указатель записей
+ *
+ */
+awh::codec::toml::Document::Index::Index(index_t && index) noexcept :
+ capacity(index.capacity), occupied(index.occupied), slots(index.slots) {
+	// Выполняем сброс количества слотов перемещённого указателя
+	index.capacity = 0;
+	// Выполняем сброс занятости перемещённого указателя
+	index.occupied = 0;
+	// Выполняем опустошение перемещённого указателя записей
+	index.slots = nullptr;
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::codec::toml::Document::Index::~Index() noexcept {
+	// Выполняем освобождение слотов указателя записей
+	delete[] this->slots;
+}
+
 /**
  * @brief Метод получения содержимого отрезка хранилища знаков
  *
@@ -497,19 +846,19 @@ void awh::codec::toml::Document::labelled(string & buffer, const vector <string_
  */
 uint32_t awh::codec::toml::Document::locate(const vector <string_view> & path, const kind_t kind) const noexcept {
 	// Буфер сборки ключа указателя записей
-	string buffer;
+	string buffer = "";
 	// Выполняем сборку ключа указателя записей
 	this->labelled(buffer, path);
 	// Выполняем поиск записи по составному имени
-	auto i = this->_index.find(buffer);
+	const uint32_t located = this->_index.locate(buffer);
 	/**
 	 * Если запись по составному имени не найдена
 	 */
-	if(i == this->_index.end())
+	if(located == NO_RECORD)
 		// Выводим обозначение отсутствующей записи
 		return NO_RECORD;
 	// Получаем вид найденной записи
-	const kind_t found = this->_records.at(i->second).kind;
+	const kind_t found = this->_records.at(located).kind;
 	/**
 	 * Если искомой является таблица
 	 *
@@ -519,9 +868,9 @@ uint32_t awh::codec::toml::Document::locate(const vector <string_view> & path, c
 	 */
 	if(kind == kind_t::TABLE)
 		// Выводим порядковый номер найденной записи
-		return (((found == kind_t::TABLE) || (found == kind_t::ARRAY_TABLE)) ? i->second : NO_RECORD);
+		return (((found == kind_t::TABLE) || (found == kind_t::ARRAY_TABLE)) ? located : NO_RECORD);
 	// Выводим порядковый номер найденной записи
-	return ((found == kind) ? i->second : NO_RECORD);
+	return ((found == kind) ? located : NO_RECORD);
 }
 /**
  * @brief Метод перестроения указателей поиска
@@ -550,6 +899,18 @@ void awh::codec::toml::Document::reindex() noexcept {
 	this->_children.clear();
 	// Выполняем очистку имён таблиц, заведённых составным именем ключа
 	this->_dotted.clear();
+	/**
+	 * Выполняем очистку хранилища ключей указателей поиска
+	 *
+	 * @note Блоки хранилища очищаются, а не сносятся: ёмкость их сохраняется, и
+	 *       пересборка указателей пишет ключи на место прежних, не заводя новых
+	 *       блоков на всякую правку дерева. Виды на ключи при этом гаснуть не
+	 *       могут: держатели их - указатели поиска - к моменту очистки уже пусты
+	 *
+	 */
+	for(auto & block : this->_blocks)
+		// Выполняем очистку блока хранилища ключей
+		block.clear();
 	// Выполняем сброс состояния обхода записей дерева
 	this->_traversal.reset();
 	/**
@@ -558,6 +919,41 @@ void awh::codec::toml::Document::reindex() noexcept {
 	for(uint32_t i = 0; i < static_cast <uint32_t> (this->_records.size()); i++)
 		// Выполняем внесение очередной записи дерева в указатели поиска
 		this->absorb(i);
+}
+/**
+ * @brief Метод переноса ключа в хранилище ключей указателей поиска
+ *
+ * @param key переносимый ключ указателя записей либо объемлющего имени
+ * @return     вид на ключ, перенесённый в хранилище
+ *
+ */
+string_view awh::codec::toml::Document::intern(const string_view key) noexcept {
+	/**
+	 * @brief Размер блока хранилища ключей в байтах
+	 *
+	 */
+	constexpr size_t BLOCK = 0x4000;
+	/**
+	 * Если блока хранилища не заведено либо в нём не осталось места
+	 *
+	 * @note Место в блоке отводится заранее и не наращивается: дописывание сверх
+	 *       отведённого перенесло бы содержимое блока, обесценив виды на ключи
+	 *
+	 */
+	if(this->_blocks.empty() || (key.length() > (this->_blocks.back().capacity() - this->_blocks.back().length()))){
+		// Выполняем заведение очередного блока хранилища
+		this->_blocks.push_back(string());
+		// Выполняем отведение места под содержимое блока хранилища
+		this->_blocks.back().reserve((key.length() > BLOCK) ? key.length() : BLOCK);
+	}
+	// Получаем блок хранилища ключей
+	string & block = this->_blocks.back();
+	// Запоминаем смещение начала ключа в блоке хранилища
+	const size_t offset = block.length();
+	// Выполняем перенос ключа в блок хранилища
+	block.append(key);
+	// Выводим вид на ключ, перенесённый в хранилище
+	return string_view(block.data() + offset, key.length());
 }
 /**
  * @brief Метод внесения записи дерева в указатели поиска
@@ -691,16 +1087,32 @@ void awh::codec::toml::Document::absorb(const uint32_t index) noexcept {
 		 *
 		 */
 		this->_traversal.anchors[named] = buffer;
-		// Выполняем установку записи объявления таблицы указателем
-		this->_index.emplace(buffer, index);
+		/**
+		 * Выполняем установку записи объявления таблицы указателем
+		 *
+		 * @note Занятое имя не перезаписывается: вставка перечнем указателей
+		 *       повторную тем же именем отбрасывает, и перенос ключей поведением
+		 *       этим обязан. Ключ, слотом вмещаемый, ложится в сам слот, длинный
+		 *       переносится хранилищем ключей - видом на него
+		 *
+		 */
+		this->_index.emplace(((buffer.length() <= Index::Slot::EMBEDDED) ? string_view(buffer) : this->intern(buffer)), index);
 	/**
 	 * Если записью является пара
 	 */
 	} else {
 		// Выполняем сборку ключа указателя объявляемой пары
 		this->labelled(buffer, record.path, this->_traversal.table);
-		// Выполняем установку записи пары указателем
-		this->_index.emplace(buffer, index);
+		/**
+		 * Выполняем установку записи пары указателем
+		 *
+		 * @note Занятое имя не перезаписывается: вставка перечнем указателей
+		 *       повторную тем же именем отбрасывает, и перенос ключей поведением
+		 *       этим обязан. Ключ, слотом вмещаемый, ложится в сам слот, длинный
+		 *       переносится хранилищем ключей - видом на него
+		 *
+		 */
+		this->_index.emplace(((buffer.length() <= Index::Slot::EMBEDDED) ? string_view(buffer) : this->intern(buffer)), index);
 	}
 	/**
 	 * Выполняем сборку порядка объявления дочерних имён
@@ -732,9 +1144,18 @@ void awh::codec::toml::Document::absorb(const uint32_t index) noexcept {
 		/**
 		 * Если дочернее имя объемлющему имени ещё не объявлено
 		 */
-		if(this->_traversal.declared[parent].emplace(this->get(this->_keys.at(key).name)).second)
+		if(this->_traversal.declared[parent].emplace(this->get(this->_keys.at(key).name)).second){
+			// Выполняем розыск перечня дочерних имён объемлющего имени
+			auto nested = this->_children.find(parent);
+			/**
+			 * Если объемлющее имя перечня дочерних имён ещё не имеет
+			 */
+			if(nested == this->_children.end())
+				// Выполняем заведение перечня дочерних имён объемлющему имени
+				nested = this->_children.emplace(this->intern(parent), vector <uint32_t> ()).first;
 			// Выполняем добавление дочернего имени к объемлющему имени
-			this->_children[parent].push_back(key);
+			nested->second.push_back(key);
+		}
 		// Выполняем добавление знака соединения составных частей имени
 		parent.push_back(SEPARATOR);
 		// Выполняем добавление очередной составной части к объемлющему имени
@@ -747,9 +1168,16 @@ void awh::codec::toml::Document::absorb(const uint32_t index) noexcept {
 		 *       заведённую исподволь заголовком, объявить им дозволено
 		 *
 		 */
-		if((record.kind == kind_t::PAIR) && ((j + 1) < record.path.length))
-			// Выполняем запоминание таблицы, заведённой составным именем ключа
-			this->_dotted.emplace(parent);
+		if((record.kind == kind_t::PAIR) && ((j + 1) < record.path.length)){
+			// Выполняем розыск таблицы, заведённой составным именем ключа
+			auto dotted = this->_dotted.find(parent);
+			/**
+			 * Если таблица составным именем ключа ещё не заведена
+			 */
+			if(dotted == this->_dotted.end())
+				// Выполняем запоминание таблицы, заведённой составным именем ключа
+				this->_dotted.emplace(this->intern(parent));
+		}
 	}
 }
 /**
@@ -2518,11 +2946,11 @@ size_t awh::codec::toml::Document::count(const vector <string_view> & path) cons
 		// Выполняем добавление очередного порядкового номера таблицы набора
 		buffer.append(to_string(result));
 		// Выполняем поиск записи объявления очередной таблицы набора
-		auto i = this->_index.find(buffer);
+		const uint32_t located = this->_index.locate(buffer);
 		/**
 		 * Если запись объявления очередной таблицы набора не найдена
 		 */
-		if((i == this->_index.end()) || (this->_records.at(i->second).kind != kind_t::ARRAY_TABLE))
+		if((located == NO_RECORD) || (this->_records.at(located).kind != kind_t::ARRAY_TABLE))
 			// Выполняем прекращение подсчёта таблиц набора
 			break;
 		// Выполняем увеличение количества таблиц набора
@@ -4271,6 +4699,8 @@ void awh::codec::toml::Document::clear() noexcept {
 	this->_store.clear();
 	// Выполняем очистку имён таблиц, заведённых составным именем ключа
 	this->_dotted.clear();
+	// Выполняем очистку хранилища ключей указателей поиска
+	this->_blocks.clear();
 	// Выполняем очистку перечня записей дерева
 	this->_records.clear();
 	// Выполняем очистку порядка объявления дочерних имён
@@ -5070,90 +5500,6 @@ template bool awh::codec::toml::Document::value <unsigned long long> (unsigned l
 template bool awh::codec::toml::Document::value <float> (float &, const vector <string_view> &) const noexcept;
 template bool awh::codec::toml::Document::value <double> (double &, const vector <string_view> &) const noexcept;
 /**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Document::Document() noexcept :
- _encoding(encoding_t::NONE),
- _error(error_t::NONE),
- _garbage(0), _compacted(0) {
-	/**
-	 * Выполняем установку настроек дерева, установленных по умолчанию
-	 *
-	 * @note Установка идёт тем же ходом, что и принятие настроек от вызвавшего: ход этот
-	 *       снаряжает читающего и пишущего и правит поля, кои дерево ведёт само. Без него
-	 *       предмет, заведённый без настроек, отличался бы от заведённого с настройками
-	 *       по умолчанию - пустые строки и примечания исходного текста не выдавались бы
-	 *       разбором, и дословная перезапись теряла бы их
-	 *
-	 */
-	this->settings(settings_t());
-}
-/**
- * @brief Конструктор
- *
- * @param settings настройки дерева настроек
- *
- */
-awh::codec::toml::Document::Document(const settings_t & settings) noexcept :
- _encoding(encoding_t::NONE),
- _error(error_t::NONE),
- _garbage(0), _compacted(0) {
-	// Выполняем установку настроек дерева настроек
-	this->settings(settings);
-}
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Document::Key::Key() noexcept : naming(naming_t::BARE) {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Document::Remark::Remark() noexcept : trailing(false), index(0) {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Document::Node::Node() noexcept :
- boolean(false), multiline(false), type(type_t::NONE),
- radix(radix_t::DECIMAL), quoting(string_t::BASIC),
- real(0.0), integer(0) {
-	// Отводим место под перечень дочерних узлов
-	this->items.reserve(4);
-	// Отводим место под перечень имён дочерних узлов
-	this->names.reserve(4);
-}
-
-/**
- * @brief Конструктор
- *
- */
-awh::codec::toml::Document::Record::Record() noexcept :
- trailing(false), kind(kind_t::NONE), node(0), table(0) {}
-/**
- * @brief Метод сброса состояния обхода записей
- *
- */
-void awh::codec::toml::Document::Traversal::reset() noexcept {
-	// Выполняем очистку ключа указателя таблицы
-	this->table.clear();
-	// Выполняем очистку имени таблицы без номеров
-	this->named.clear();
-	// Выполняем очистку подсказок места вставки записи
-	this->hints.clear();
-	// Выполняем очистку ключей объявленных таблиц
-	this->anchors.clear();
-	// Выполняем очистку количества таблиц наборов
-	this->ordinals.clear();
-	// Выполняем очистку объявленных дочерних имён
-	this->declared.clear();
-}
-/**
  * @brief Метод извлечения вида узла значения
  *
  * @return вид узла значения
@@ -5197,6 +5543,140 @@ awh::codec::kind_t awh::codec::toml::Document::kind(const vector <string_view> &
 			// Выводим соответствующий тип данных как не определённый тип
 			return codec::kind_t::NONE;
 	}
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Document() noexcept :
+ _encoding(encoding_t::NONE), _error(error_t::NONE), _garbage(0), _compacted(0) {
+	/**
+	 * Выполняем установку настроек дерева, установленных по умолчанию
+	 *
+	 * @note Установка идёт тем же ходом, что и принятие настроек от вызвавшего: ход этот
+	 *       снаряжает читающего и пишущего и правит поля, кои дерево ведёт само. Без него
+	 *       предмет, заведённый без настроек, отличался бы от заведённого с настройками
+	 *       по умолчанию - пустые строки и примечания исходного текста не выдавались бы
+	 *       разбором, и дословная перезапись теряла бы их
+	 *
+	 */
+	this->settings(settings_t());
+}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки дерева настроек
+ *
+ */
+awh::codec::toml::Document::Document(const settings_t & settings) noexcept :
+ _encoding(encoding_t::NONE), _error(error_t::NONE), _garbage(0), _compacted(0) {
+	// Выполняем установку настроек дерева настроек
+	this->settings(settings);
+}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param document копируемое дерево настроек
+ *
+ */
+awh::codec::toml::Document::Document(const document_t & document) :
+ _settings(document._settings),
+ _encoding(document._encoding),
+ _traversal(document._traversal),
+ _reader(document._reader),
+ _writer(document._writer),
+ _error(document._error),
+ _errorLocation(document._errorLocation),
+ _garbage(document._garbage),
+ _compacted(document._compacted),
+ _store(document._store),
+ _keys(document._keys),
+ _nodes(document._nodes),
+ _records(document._records),
+ _dotted(document._dotted),
+ _children(document._children),
+ _blocks(document._blocks) {
+	/**
+	 * Выполняем пересборку указателей поиска
+	 *
+	 * @note Скопированные указатели держат виды на хранилище ключей оригинала:
+	 *       пересборка стирает их и записывает ключи заново - в собственное
+	 *       хранилище копии, ёмкость которого копирование уже принесло
+	 *
+	 */
+	this->reindex();
+}
+/**
+ * @brief Оператор копирования
+ *
+ * @param document копируемое дерево настроек
+ * @return         приёмник присваивания
+ *
+ */
+awh::codec::toml::Document & awh::codec::toml::Document::operator = (const document_t & document) {
+	/**
+	 * Если приёмник присваивания и его источник есть одно и то же дерево
+	 */
+	if(this != &document){
+		// Дерево, самостоятельною копиею источника построенное
+		document_t staging(document);
+		// Выполняем перенос содержимого копии на место приёмника
+		(* this) = ::move(staging);
+	}
+	// Выводим приёмник присваивания
+	return (* this);
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Key::Key() noexcept : naming(naming_t::BARE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Remark::Remark() noexcept : trailing(false), index(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Node::Node() noexcept :
+ boolean(false), multiline(false), type(type_t::NONE),
+ radix(radix_t::DECIMAL), quoting(string_t::BASIC),
+ real(0.0), integer(0) {
+	// Отводим место под перечень дочерних узлов
+	this->items.reserve(4);
+	// Отводим место под перечень имён дочерних узлов
+	this->names.reserve(4);
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Record::Record() noexcept :
+ trailing(false), kind(kind_t::NONE), node(0), table(0) {}
+
+/**
+ * @brief Метод сброса состояния обхода записей
+ *
+ */
+void awh::codec::toml::Document::Traversal::reset() noexcept {
+	// Выполняем очистку ключа указателя таблицы
+	this->table.clear();
+	// Выполняем очистку имени таблицы без номеров
+	this->named.clear();
+	// Выполняем очистку подсказок места вставки записи
+	this->hints.clear();
+	// Выполняем очистку ключей объявленных таблиц
+	this->anchors.clear();
+	// Выполняем очистку количества таблиц наборов
+	this->ordinals.clear();
+	// Выполняем очистку объявленных дочерних имён
+	this->declared.clear();
 }
 
 /**
