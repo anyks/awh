@@ -34,12 +34,13 @@
  * Стандартные заголовочные файлы
  */
 #include <array>
-#include <vector>
-#include <cstring>
 #include <atomic>
 #include <mutex>
+#include <vector>
 #include <string>
+#include <cstring>
 #include <shared_mutex>
+
 /**
  * @brief Средства блокировок фреймворка
  *
@@ -101,6 +102,10 @@
  *
  */
 #include <afunix.h>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -108,6 +113,72 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Настройки задаются поимённо, как у наречий POSIX
+ *
+ * @warning Прежде здесь стояло утверждение, что число попыток «система не
+ *          принимает», и заданное значение отбрасывалось с предупреждением, а
+ *          время простоя с промежутком накладывались управляющим обращением
+ *          `SIO_KEEPALIVE_VALS`. Утверждение НЕВЕРНО: издания MS Windows начиная с
+ *          10 (1709) принимают `TCP_KEEPCNT`, а с 1703 - `TCP_KEEPIDLE` и
+ *          `TCP_KEEPINTVL`, ровно теми же именами и в тех же единицах, что у
+ *          POSIX. Проверено щупом на стенде (сборка 10.0.26200): все три ставятся
+ *          и читаются обратно точь-в-точь
+ *
+ * @note Управляющее обращение остаётся ЗАПАСНЫМ путём: издания старее названных
+ *       поимённых настроек не знают и отвечают на них отказом, а обращение это
+ *       понимают все. Числа попыток оно не принимает - его там и правда нет
+ *
+ * @note Единицы разные: поимённые настройки считают в СЕКУНДАХ, управляющее
+ *       обращение - в миллисекундах. Оттого перевод стоит лишь у запасного пути
+ *
+ */
+#if !defined(TCP_KEEPIDLE)
+	/**
+	 * Задаём время простоя в секундах
+	 */
+	#define TCP_KEEPIDLE 3
+#endif
+/**
+ * Если флаг максимального количества проверочных пакетов не установлен
+ */
+#if !defined(TCP_KEEPCNT)
+	/**
+	 * Задаём флаг максимального количества проверочных (keep-alive) пакетов
+	 */
+	#define TCP_KEEPCNT 16
+#endif
+/**
+ * Если флаг интервала между отправками пакетов не установлен
+ */
+#if !defined(TCP_KEEPINTVL)
+	/**
+	 * Задаём флаг интервала (в секундах)
+	 * между отправкой проверочных (keep-alive)
+	 * пакетов в рамках TCP-соединения
+	 */
+	#define TCP_KEEPINTVL 17
+#endif
+
+/**
+ * @brief Принудительная подстановка горячих обращений кодека
+ *
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_SOCKET_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_SOCKET_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Название бэкенда для записей в журнале
@@ -120,15 +191,24 @@ static constexpr const char * __AWH_SOCKET_BACKEND__ = "MS Windows socket backen
  *
  */
 namespace {
-	// Режим безопасности работы потоков
-	awh::event::mode_t __awh_socket_thread_safety__ = awh::event::mode_t::DISABLED;
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
 
 	/**
-	 * @brief Состояние блокировок, погашенное при заведении
+	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
+	 *
+	 * @tparam MutexType тип мьютекса для пблокировки потока
+	 *
+	 */
+	template <typename MutexType = std::mutex>
+	/**
+	 * @brief Структура состояния блокировок, погашенное при заведении
 	 *
 	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
 	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
-	 *          за захват замка на каждом обращении незачем
+	 *          за захват замка на каждом обращении незачем.
 	 *
 	 * @note Гашение стоит здесь, а не отдельной строкой рядом с объявлением: на уровне
 	 *       пространства имён оператор не пишется вовсе - там разрешены одни объявления.
@@ -138,27 +218,33 @@ namespace {
 	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
 	 *
 	 */
-	template <typename MutexType = std::mutex>
-	struct muted_state_t : public awh::lock_state_t <MutexType> {
+	struct Muted_State : public lock_state_t <MutexType> {
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		muted_state_t() noexcept {
+		Muted_State() noexcept {
 			// Гасим замок при заведении
 			this->enabled = false;
 		}
 	};
-	// Замок согласования доступа к настройкам сокетов
-	muted_state_t <std::shared_mutex> __awh_socket_mutex__;
-
+	/**
+	 * @brief Шаблон формата данных локера
+	 *
+	 * @tparam MutexType данные локера
+	 *
+	 */
+	template <typename MutexType = std::shared_mutex>
+	/**
+	 * Создаём тип данных работы с локом
+	 */
+	using muted_state_t = Muted_State <MutexType>;
 
 	/**
 	 * @brief Признак того, что средства сокетов системой уже подняты
 	 *
 	 */
-	std::once_flag __awh_winsock_once__;
-
+	once_flag __awh_winsock_once__;
 	/**
 	 * @brief Описание отказа подъёма средств сокетов, пустое при успехе
 	 *
@@ -167,7 +253,17 @@ namespace {
 	 *       кого журнал есть, - и выдают его там, где вызывающая сторона отказа и ждёт
 	 *
 	 */
-	std::string __awh_winsock_failure__;
+	static string __awh_winsock_failure__;
+	/**
+	 * @brief Замок согласования доступа к настройкам сокетов
+	 *
+	 */
+	static muted_state_t <> __awh_socket_mutex__;
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	static event::mode_t __awh_socket_thread_safety__ = event::mode_t::DISABLED;
 
 	/**
 	 * @brief Функция проверки поднятости средств сокетов системы
@@ -175,12 +271,12 @@ namespace {
 	 * @details Отдельного обращения об этом система не имеет вовсе, оттого поднятость
 	 *          и выясняется пробой - заведением сокета на выброс. Поднятость - ответ
 	 *          `10093` (`WSANOTINITIALISED`) на всякое обращение к сокетам, и проба
-	 *          получает его первой
+	 *          получает его первой.
 	 *
 	 * @return результат проверки поднятости средств сокетов системы
 	 *
 	 */
-	bool __awh_winsock_raised__() noexcept {
+	static bool AWH_SOCKET_INLINE __awh_winsock_raised__() noexcept {
 		// Выполняем заведение сокета на выброс
 		const SOCKET sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		// Если сокет завести не удалось, средства сокетов не подняты
@@ -192,25 +288,24 @@ namespace {
 		// Выводим признак поднятых средств сокетов
 		return true;
 	}
-
 	/**
 	 * @brief Функция подъёма средств сокетов системы
 	 *
 	 * @details Средства сокетов у MS Windows требуют подъёма на процесс: до вызова
 	 *          `WSAStartup` всякое обращение к ним отвечает отказом 10093
 	 *          (`WSANOTINITIALISED`). У систем POSIX подъёма этого нет вовсе, оттого
-	 *          и вся забота о нём здесь - в слое одной лишь MS Windows
+	 *          и вся забота о нём здесь - в слое одной лишь MS Windows.
 	 *
 	 * @details Поднимает средства сама библиотека, а не тот, кто ею пользуется.
 	 *          Требовать подъёма от вызывающей стороны значило бы вынести
 	 *          своенравность одной системы в общий договор: код, работающий на прочих
 	 *          системах, под MS Windows отказывал бы - и отказывал бы не в месте
 	 *          ошибки, а на первом же сокете. Установлено прогоном: без подъёма
-	 *          проверки сокетов отказывают все до единой
+	 *          проверки сокетов отказывают все до единой.
 	 *
 	 * @details Поднимает она их лишь тогда, когда НИКТО не поднял их раньше. Вызывающая
 	 *          сторона вправе поднять средства и не зная о том: за неё это делает,
-	 *          к примеру, `boost::asio` на всяком своём `io_context`
+	 *          к примеру, `boost::asio` на всяком своём `io_context`.
 	 *
 	 * @warning НАМЕРЕННОЕ РЕШЕНИЕ, принятое по опыту живых приложений:
 	 *          повторный подъём средств поверх чужого приводил к путанице, из которой
@@ -238,7 +333,7 @@ namespace {
 	 * @return результат подъёма средств сокетов системы
 	 *
 	 */
-	bool __awh_winsock__() noexcept {
+	static AWH_SOCKET_INLINE bool __awh_winsock__() noexcept {
 		// Выполняем подъём средств сокетов системы единожды на процесс
 		std::call_once(::__awh_winsock_once__, []() noexcept -> void {
 			/**
@@ -258,7 +353,7 @@ namespace {
 			// Если поднять средства сокетов не удалось
 			if(error != 0){
 				// Запоминаем описание отказа подъёма средств сокетов
-				::__awh_winsock_failure__ = ("socket subsystem startup failed with error " + std::to_string(error));
+				::__awh_winsock_failure__ = fmk::format("socket subsystem startup failed with error %d", error);
 				// Выходим из функции: заводить сокеты будет нечем
 				return;
 			}
@@ -272,9 +367,10 @@ namespace {
 			 */
 			if((LOBYTE(data.wVersion) != 2) || (HIBYTE(data.wVersion) != 2)){
 				// Запоминаем описание расхождения версий средств сокетов
-				::__awh_winsock_failure__ = (
-					"socket subsystem version " + std::to_string(static_cast <uint32_t> (LOBYTE(data.wVersion))) +
-					"." + std::to_string(static_cast <uint32_t> (HIBYTE(data.wVersion))) + " is provided instead of requested 2.2"
+				::__awh_winsock_failure__ = fmk::format(
+					"socket subsystem version %d.%d is provided instead of requested 2.2",
+					static_cast <uint32_t> (LOBYTE(data.wVersion)),
+					static_cast <uint32_t> (HIBYTE(data.wVersion))
 				);
 				// Отдаём взятую ссылку: пользоваться средствами этой версии нельзя
 				::WSACleanup();
@@ -325,12 +421,12 @@ namespace {
 	 * @details Соответствия strerror у MS Windows для ошибок сокетов нет: коды их лежат
 	 *          в отдельном пространстве WSA, а сообщения достаются FormatMessageW.
 	 *          Сообщение выводится на языке системы, оттого код приводится рядом с ним -
-	 *          по коду и следует искать, читая чужой журнал
+	 *          по коду и следует искать, читая чужой журнал.
 	 *
 	 * @return описание последней ошибки сокета вместе с её кодом
 	 *
 	 */
-	std::string __awh_socket_error__() noexcept {
+	static AWH_SOCKET_INLINE string __awh_socket_error__() noexcept {
 		// Получаем код последней ошибки сокета
 		const int32_t code = ::WSAGetLastError();
 		// Буфер сообщения, отводимый самой системой
@@ -341,17 +437,17 @@ namespace {
 			nullptr, static_cast <DWORD> (code), 0, reinterpret_cast <wchar_t *> (&buffer), 0, nullptr
 		);
 		// Собираемое описание ошибки сокета
-		std::string result = ("error " + std::to_string(code));
+		string result = fmk::format("error %d", code);
 		// Если описание ошибки получено
 		if((size > 0) && (buffer != nullptr)){
 			// Отводим место под описание ошибки в однобайтовой записи
-			std::vector <char> text(static_cast <size_t> (size) * 4 + 1, 0);
+			vector <char> text(static_cast <size_t> (size) * 4 + 1, 0);
 			// Переводим описание ошибки в однобайтовую запись
 			const int32_t length = ::WideCharToMultiByte(CP_UTF8, 0, buffer, static_cast <int32_t> (size), text.data(), static_cast <int32_t> (text.size() - 1), nullptr, nullptr);
 			// Если перевод описания ошибки выполнен
 			if(length > 0){
 				// Собираем описание ошибки
-				std::string message(text.data(), static_cast <size_t> (length));
+				string message(text.data(), static_cast <size_t> (length));
 				/**
 				 * Снимаем перевод строки, каким система оканчивает описание
 				 */
@@ -370,6 +466,449 @@ namespace {
 			::LocalFree(buffer);
 		// Возвращаем собранное описание ошибки сокета
 		return result;
+	}
+	/**
+	 * @brief Функция проверки того, что описатель является именованным каналом
+	 *
+	 * @details Спрашивается это у самих средств работы с сокетами: описатель, не являющийся
+	 *          сокетом, отвечает на запрос своего вида отказом 10038 (`WSAENOTSOCK`). Вид
+	 *          файла (`GetFileType`) здесь негоден - сокеты у MS Windows отвечают им тем же
+	 *          значением, что и каналы.
+	 *
+	 * @param sock проверяемый описатель
+	 * @return     признак именованного канала
+	 *
+	 */
+	static AWH_SOCKET_INLINE bool __awh_socket_pipe__(const awh::net::socket_t sock) noexcept {
+		// Вид описателя в понимании средств работы с сокетами
+		int32_t type = 0;
+		// Размер значения вида описателя
+		int32_t length = static_cast <int32_t> (sizeof(type));
+		// Выводим признак того, что описатель сокетом не является
+		return ((::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, reinterpret_cast <char *> (&type), &length) != 0) && (::WSAGetLastError() == WSAENOTSOCK));
+	}
+	/**
+	 * @brief Функция получения расширенного вызова отправки сообщения с управляющими данными
+	 *
+	 * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у самого
+	 *          сокета управляющим запросом - тем же порядком, каким берутся `AcceptEx`,
+	 *          `ConnectEx` и `WSARecvMsg`. Берётся он однажды и запоминается: адрес общий
+	 *          для всех сокетов библиотеки, а спрашивать его на каждую датаграмму значило
+	 *          бы платить обращением к ядру за каждую отправку.
+	 *
+	 * @param sock сокет, у которого спрашивается вызов
+	 * @return     адрес расширенного вызова, либо пустое значение
+	 *
+	 */
+	static LPFN_WSASENDMSG __awh_wsa_sendmsg__(const SOCKET sock) noexcept {
+		/**
+		 * Запомненный адрес расширенного вызова
+		 *
+		 * @note Держится он значением слаженным, а не простым указателем: спросить адрес
+		 *       вправе любой поток, а запись обычного указателя разошлась бы с чтением
+		 *
+		 */
+		static std::atomic <LPFN_WSASENDMSG> cache{nullptr};
+		// Получаем запомненный адрес расширенного вызова
+		LPFN_WSASENDMSG result = cache.load(std::memory_order_acquire);
+		// Если адрес уже взят
+		if(result != nullptr)
+			// Выводим запомненный адрес
+			return result;
+		// Размер отданного адреса
+		DWORD size = 0;
+		// Опознаватель расширенного вызова отправки сообщения
+		GUID guid = WSAID_WSASENDMSG;
+		/**
+		 * Спрашиваем адрес расширенного вызова в СВОЁ значение, а не в запомненное
+		 *
+		 * @warning Прежде адрес спрашивался прямо в запомненное значение, и на время
+		 *          обращения оно стояло заполненным наполовину: поток соседний, увидав его
+		 *          непустым, ушёл бы вызывать мусор. Отказ же обращения оставляет там
+		 *          значение неопределённое, а не пустое
+		 *
+		 */
+		if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &result, sizeof(result), &size, nullptr, nullptr) != 0)
+			// Выводим отсутствие адреса расширенного вызова
+			return nullptr;
+		// Запоминаем взятый адрес расширенного вызова
+		cache.store(result, std::memory_order_release);
+		// Выводим адрес расширенного вызова
+		return result;
+	}
+	/**
+	 * @brief Функция заведения пары связанных концов именованного канала
+	 *
+	 * @details Служит она двум запросам разом: паре типа `SEQPACKET` любого семейства и паре
+	 *          семейства `UDS` всякого вида. Домен UNIX несёт у MS Windows один лишь поток, и
+	 *          недостающие виды его изображаются каналом - устройством иным, но той же работы:
+	 *          у канала есть имя, к нему подключается чужой процесс, обмен идёт в обе стороны.
+	 *
+	 * @note Строй канала выбирается доводом: сохраняющему границы виду он сообщений, потоковому
+	 *       - октетов. Строй этот и есть та разница, ради какой виды заводятся порознь
+	 *
+	 * @param name    имя заведённого канала
+	 * @param message признак строя сообщений
+	 * @return        пара связанных концов канала
+	 *
+	 */
+	static array <net::socket_t, 2> __awh_channel_pair__(string & name, const bool message) noexcept {
+		// Переменная результата
+		array <net::socket_t, 2> result = {
+			net::invalid_socket_t,
+			net::invalid_socket_t
+		};
+		/**
+		 * Порядковый номер заводимой пары
+		 *
+		 * @note Составляем имя именованного канала
+		 *
+		 * @details Имя обязано быть неповторимым в пределах всей машины: пространство
+		 *          имён каналов у MS Windows общее, и совпадение имён свело бы вместе
+		 *          два несвязанных обмена. Неповторимость даётся парой «номер процесса
+		 *          - порядковый номер пары»: первый разводит процессы между собой,
+		 *          второй разводит пары внутри одного процесса.
+		 *
+		 */
+		static atomic_uint64_t counter{0};
+		// Показания высокоточного счётчика системы
+		LARGE_INTEGER ticks{};
+		// Выполняем снятие показаний высокоточного счётчика
+		::QueryPerformanceCounter(&ticks);
+		/**
+		 * Составляем однозначное имя именованного канала
+		 *
+		 * @details Пространство имён каналов общее на всю систему, и однозначность
+		 *          имени здесь не удобство, а условие работы. Складывается оно из
+		 *          номера процесса, порядкового номера пары внутри него и показаний
+		 *          высокоточного счётчика: первое разводит приложения, второе - пары
+		 *          внутри приложения, третье - приложения, запущенные разом.
+		 *
+		 * @note Обычных часов для последнего мало: ход их у MS Windows зернист -
+		 *       шагом в 15.6 мс, - и два приложения, запущенные в один шаг, получили
+		 *       бы совпадающее значение
+		 */
+		const wstring pipe = fmk::format(
+			L"\\\\.\\pipe\\awh-ipc-%d-%llu-%llu",
+			static_cast <uint32_t> (::GetCurrentProcessId()),
+			++counter, static_cast <uint64_t> (ticks.QuadPart)
+		);
+		/**
+		 * Заводим сторону канала, ожидающую подключения
+		 *
+		 * @note Обмен ведётся наложенным: у дескриптора без наложения система
+		 *       выстраивает операции в очередь, и запись из одного потока дожидается
+		 *       чтения из другого. Проверено опытом - обмен вставал намертво
+		 *
+		 */
+		HANDLE server = ::CreateNamedPipeW(
+			pipe.c_str(),
+			/**
+			 * Признак первого экземпляра здесь обязателен
+			 *
+			 * @note Без него заведение канала с уже занятым именем НЕ отвергается:
+			 *       система заводит ещё один экземпляр того же канала, и чужой
+			 *       работник вправе подключиться к нашему концу. С признаком
+			 *       занятость имени оборачивается честным отказом
+			 */
+			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
+			(message ? (PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE) : (PIPE_TYPE_BYTE | PIPE_READMODE_BYTE)) | PIPE_WAIT,
+			2, 65536, 65536, 0, nullptr
+		);
+		// Если сторону канала завести не удалось
+		if(server == INVALID_HANDLE_VALUE){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s: named pipe could not be created, error %lu", __PRETTY_FUNCTION__,
+					{name, message}, log::flag_t::CRITICAL,
+					::__AWH_SOCKET_BACKEND__, ::GetLastError()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s: named pipe could not be created, error %lu", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+			#endif
+			// Возвращаем пустую пару
+			return result;
+		}
+		// Открываем встречный конец канала
+		HANDLE client = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+		// Если встречный конец канала открыть не удалось
+		if(client == INVALID_HANDLE_VALUE){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s: named pipe could not be opened, error %lu", __PRETTY_FUNCTION__,
+					{name, message}, log::flag_t::CRITICAL,
+					::__AWH_SOCKET_BACKEND__, ::GetLastError()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s: named pipe could not be opened, error %lu", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+			#endif
+			// Закрываем заведённую сторону канала
+			::CloseHandle(server);
+			// Возвращаем пустую пару
+			return result;
+		}
+		// Строй чтения встречного конца канала
+		DWORD mode = (message ? PIPE_READMODE_MESSAGE : PIPE_READMODE_BYTE);
+		/**
+		 * Переводим встречный конец канала в строй сообщений
+		 *
+		 * @note Отказ здесь не смертелен, но оглашается: канал заведён строем сообщений,
+		 *       и встречный конец, оставшийся строем октетов, читал бы поток без границ
+		 *       сообщений - расхождение это всплыло бы далеко от места
+		 *
+		 * @note Довод терпимости прежде опирался на замер 04.09.2026: сообщение
+		 *       дробилось движком, и границы не сохранялись всё равно. Довод этот
+		 *       ОТМЕНЁН 08.09.2026 - дробила выдача принятого, а не система, и теперь
+		 *       узел `SEQPACKET` границы держит. Терпимость же оставлена по второму
+		 *       доводу, какой и был главным: переключение идёт на только что открытом
+		 *       описателе своего же канала, и достижимость отказа близка к нулю
+		 *
+		 * @note Достижимость отказа при этом близка к нулю: переключение идёт на
+		 *       только что открытом описателе своего же канала
+		 */
+		if(!::SetNamedPipeHandleState(client, &mode, nullptr, nullptr))
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s: named pipe could not be switched to message mode, error %lu", __PRETTY_FUNCTION__,
+					{name, message}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, ::GetLastError()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s: named pipe could not be switched to message mode, error %lu", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+			#endif
+		// Выдаём имя заведённого канала вызывающей стороне
+		name = fmk::convert(pipe);
+		// Запоминаем сторону канала, ожидающую подключения
+		result[0] = reinterpret_cast <awh::net::socket_t> (server);
+		// Запоминаем встречный конец канала
+		result[1] = reinterpret_cast <awh::net::socket_t> (client);
+		// Возвращаем заведённую пару
+		return result;
+	}
+	/**
+	 * @brief Функция добычи номера сетевого устройства по его названию
+	 *
+	 * @details Название устройства у MS Windows - GUID вида `{F49A2CB0-...}`, и
+	 *          `if_nametoindex` его НЕ понимает: тот принимает синтетические названия
+	 *          вида `ethernet_6`, какие выдаёт `if_indextoname`. Номер оттого берётся
+	 *          из перечня устройств машины, где он лежит рядом с названием.
+	 *
+	 *          Установлено прогоном: набор терял `IoMulticastMembershipAfterCommitTest`,
+	 *          а в журнале стояло «устройство не найдено» при живом устройстве.
+	 *
+	 * @note Сличение названий ведётся БЕЗ учёта регистра: система выдаёт GUID
+	 *       заглавными, а слои выше приводят названия к нижнему регистру - у систем
+	 *       POSIX названия устройств в нижнем регистре и живут
+	 *
+	 * @note Отступление к `if_nametoindex` оставлено: названия синтетического вида оно
+	 *       разбирает, а перечень устройств такого названия не содержит
+	 *
+	 * @param ifname название сетевого устройства
+	 * @param v6     признак семейства адресов IPv6
+	 * @return       номер сетевого устройства либо ноль, если устройство не найдено
+	 *
+	 */
+	static uint32_t __awh_iface_index__(const std::string_view ifname, const bool v6) noexcept {
+		// Если название сетевого устройства не передано
+		if(ifname.empty())
+			// Выводим отсутствие номера устройства
+			return 0;
+		// Состав запрашиваемых сведений
+		const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
+		// Объём буфера под перечень устройств
+		ULONG size = 16384;
+		// Буфер под перечень сетевых устройств
+		std::vector <uint8_t> buffer(static_cast <size_t> (size));
+		// Итог опроса перечня устройств
+		ULONG code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
+		if(code == ERROR_BUFFER_OVERFLOW){
+			// Выполняем расширение буфера под перечень устройств
+			buffer.resize(static_cast <size_t> (size));
+			// Выполняем повторный опрос перечня устройств
+			code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		}
+		// Если перечень устройств получить не удалось
+		if(code != NO_ERROR)
+			// Отступаем к переводу названия средствами сокетов
+			return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
+		/**
+		 * Выполняем перебор всех сетевых устройств машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
+			// Если название устройства не задано
+			if(adapter->AdapterName == nullptr)
+				// Переходим к устройству следующему
+				continue;
+			// Признак совпадения названий
+			bool same = true;
+			// Порядковый номер сличаемого символа
+			size_t i = 0;
+			/**
+			 * Выполняем сличение названий посимвольно, свёртывая регистр
+			 *
+			 * @note Свёртка своя, ASCII, а не средствами языка: `tolower` зависит от
+			 *       местности, а GUID - данные протокольные
+			 */
+			for(; (i < ifname.size()) && (adapter->AdapterName[i] != '\0'); i++){
+				// Получаем очередной символ искомого названия
+				char first = ifname.at(i);
+				// Получаем очередной символ названия, выданного системой
+				char second = adapter->AdapterName[i];
+				// Свёртываем регистр символа искомого названия
+				if((first >= 'A') && (first <= 'Z'))
+					// Приводим символ к нижнему регистру
+					first = static_cast <char> (first + ('a' - 'A'));
+				// Свёртываем регистр символа названия, выданного системой
+				if((second >= 'A') && (second <= 'Z'))
+					// Приводим символ к нижнему регистру
+					second = static_cast <char> (second + ('a' - 'A'));
+				// Если символы разошлись
+				if(first != second){
+					// Отмечаем названия разошедшимися
+					same = false;
+					// Завершаем сличение
+					break;
+				}
+			}
+			// Если названия совпали целиком
+			if(same && (i == ifname.size()) && (adapter->AdapterName[i] == '\0'))
+				// Выводим номер устройства того семейства, какое запрошено
+				return static_cast <uint32_t> (v6 ? adapter->Ipv6IfIndex : adapter->IfIndex);
+		}
+		// Отступаем к переводу названия средствами сокетов
+		return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
+	}
+	/**
+	 * @brief Функция добычи номера сетевого устройства по его адресу IPv6
+	 *
+	 * @details Эталонные слои называют устройство входа в группу рассылки его АДРЕСОМ и
+	 *          сами переводят адрес в номер, перебирая устройства машины. MS Windows
+	 *          адреса на этом месте не принимает вовсе - структура `ipv6_mreq` несёт
+	 *          номер, - и перевод потому ведётся здесь.
+	 *
+	 * @warning Прежде номер брался из одного лишь поля зоны переданного адреса, а сам
+	 *          адрес отбрасывался. Поле это заполнено у адресов связи-местных
+	 *          (`FE80::/10`), где зона записана в самом адресе, и пусто у всех прочих -
+	 *          у глобальных и у местных однозначных (`FC00::/7`). Вход по такому адресу
+	 *          уходил оттого на устройство, выбранное системой, а не на названное, и
+	 *          расхождение было молчаливым: обращение отвечало успехом
+	 *
+	 * @note Зона, если она задана, имеет преимущество: она и есть номер устройства,
+	 *       названный вызывающей стороной прямо, и перебирать ради него устройства
+	 *       машины незачем
+	 *
+	 * @param address адрес устройства, каким выполняется вход в группу рассылки
+	 * @param zone    зона переданного адреса, ноль - зона не задана
+	 * @return        номер сетевого устройства либо ноль, если устройство не найдено
+	 *
+	 */
+	static uint32_t __awh_iface_index6__(const uint8_t * address, const uint32_t zone) noexcept {
+		// Если зона адреса задана - она и есть номер устройства
+		if(zone > 0)
+			// Выводим номер устройства, названный зоной адреса
+			return zone;
+		// Если адрес не передан
+		if(address == nullptr)
+			// Выводим отсутствие номера устройства
+			return 0;
+		// Признак того, что адрес пуст целиком
+		bool empty = true;
+		/**
+		 * Выполняем перебор всех октетов переданного адреса
+		 */
+		for(size_t i = 0; i < 16; i++){
+			// Если очередной октет адреса не пуст
+			if(address[i] != 0){
+				// Отмечаем адрес непустым
+				empty = false;
+				// Завершаем перебор октетов адреса
+				break;
+			}
+		}
+		/**
+		 * Если адрес пуст - устройство выбирает система
+		 *
+		 * @note Пустой адрес (`::`) и означает у эталонных слоёв выбор устройства самой
+		 *       системой, и перебирать устройства машины ради него незачем
+		 */
+		if(empty)
+			// Выводим отсутствие номера устройства
+			return 0;
+		// Состав запрашиваемых сведений
+		const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
+		// Объём буфера под перечень устройств
+		ULONG size = 16384;
+		// Буфер под перечень сетевых устройств
+		std::vector <uint8_t> buffer(static_cast <size_t> (size));
+		// Итог опроса перечня устройств
+		ULONG code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
+		if(code == ERROR_BUFFER_OVERFLOW){
+			// Выполняем расширение буфера под перечень устройств
+			buffer.resize(static_cast <size_t> (size));
+			// Выполняем повторный опрос перечня устройств
+			code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		}
+		// Если перечень устройств получить не удалось
+		if(code != NO_ERROR)
+			// Выводим отсутствие номера устройства
+			return 0;
+		/**
+		 * Выполняем перебор всех сетевых устройств машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
+			/**
+			 * Устройства, не поднятые в работу, пропускаем
+			 *
+			 * @note Тем же порядком поступает и эталонный слой: он держит в своём складе
+			 *       признак поднятости и сличает адреса лишь у поднятых устройств
+			 */
+			if(adapter->OperStatus != IfOperStatusUp)
+				// Переходим к устройству следующему
+				continue;
+			/**
+			 * Выполняем перебор всех однозначных адресов устройства
+			 */
+			for(PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress; unicast != nullptr; unicast = unicast->Next){
+				// Если адрес устройства не задан либо не относится к IPv6
+				if((unicast->Address.lpSockaddr == nullptr) || (unicast->Address.lpSockaddr->sa_family != AF_INET6))
+					// Переходим к адресу следующему
+					continue;
+				// Получаем адрес устройства видом IPv6
+				const struct sockaddr_in6 * value = reinterpret_cast <const struct sockaddr_in6 *> (unicast->Address.lpSockaddr);
+				// Если адрес устройства совпал с искомым
+				if(::memcmp(&value->sin6_addr, address, 16) == 0)
+					// Выводим номер устройства, несущего искомый адрес
+					return static_cast <uint32_t> (adapter->Ipv6IfIndex);
+			}
+		}
+		// Выводим отсутствие номера устройства
+		return 0;
 	}
 };
 
@@ -395,7 +934,6 @@ void awh::eth::Socket::threadSafety(const bool mode) noexcept {
 	// Приводим замки подсистемы качества обслуживания к установленному режиму
 	win::qos::threadSafety(mode);
 }
-
 /**
  * @brief Метод получения кода ошибки сокета
  *
@@ -410,12 +948,26 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	int32_t size = static_cast <int32_t> (sizeof(result));
 	// Если код ошибки сокета получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size) != 0)
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{sock}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 	// Возвращаем результат
 	return result;
 }
-
 /**
  * @brief Метод получения срока ожидания сокета
  *
@@ -437,15 +989,32 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 	const int32_t option = ((event == net::socket_event_t::READ) ? SO_RCVTIMEO : SO_SNDTIMEO);
 	// Если срок ожидания получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <char *> (&msec), &size) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (event)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем пустой срок ожидания
 		return 0;
 	}
 	// Возвращаем снятый срок ожидания
 	return static_cast <uint32_t> (msec);
 }
-
 /**
  * @brief Метод установки срока ожидания сокета
  *
@@ -483,20 +1052,38 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	const int32_t option = ((event == net::socket_event_t::READ) ? SO_RCVTIMEO : SO_SNDTIMEO);
 	// Если срок ожидания установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <const char *> (&timeout), static_cast <int32_t> (sizeof(timeout))) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (event),
+					msec
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
 	// Возвращаем положительный результат установки
 	return true;
 }
-
 /**
  * @brief Метод получения свободного места в буфере сокета
  *
  * @details Свободное место считается так же, как у наречий POSIX: вместимость буфера
- *          за вычетом занятого в нём места
+ *          за вычетом занятого в нём места.
  *
  * @warning Метод отвечал прежде «неизвестно» ОБЕИМ сторонам, а доводом тому стояло, что
  *          «MS Windows занятое место буферов не сообщает». Про буфер ОТПРАВКИ это верно -
@@ -528,7 +1115,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 		 *          найдена у этого самого обращения прежде: довод «средства нет» верен
 		 *          наполовину. `FIONREAD` отвечает гнезду, а описателю канала - отказом,
 		 *          и ответ терялся молча. Между тем у канала средство своё:
-		 *          `PeekNamedPipe` называет, сколько октет в нём лежит
+		 *          `PeekNamedPipe` называет, сколько октет в нём лежит.
 		 *
 		 * @note Порядок тот же, что и у размера накопителя: сокетное обращение
 		 *       спрашивается ПЕРВЫМ, и гнездо до канального пути не доходит вовсе
@@ -580,7 +1167,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 	 *          отказом 10038 (`WSAENOTSOCK`), и прежде отказ этот уходил в журнал
 	 *          потребителя записью уровня отказа - 38 записей за один прогон набора при
 	 *          вполне исправной работе. Между тем ответ у канала ЕСТЬ, и размеры эти
-	 *          задаются нами при заведении описателя
+	 *          задаются нами при заведении описателя.
 	 *
 	 * @warning Порядок здесь ЗНАЧИМ, и обратный я уже поставил: спрос канала ПЕРВЫМ дал
 	 *          восемь отказов набора, среди них `SocketBufferSizeTest` и
@@ -604,22 +1191,39 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 		// Выводим пустой размер накопителя
 		return 0;
 	}
-	// Записываем ошибку в лог
-	awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем ошибку в лог
+		log::debug(
+			"%s: %s", __PRETTY_FUNCTION__,
+			{
+				sock,
+				static_cast <uint16_t> (event)
+			}, log::flag_t::CRITICAL,
+			::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+		);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	#endif
 	// Возвращаем пустой размер накопителя
 	return 0;
 }
-
 /**
  * @brief Метод установки размера накопителя сокета
+ *
+ * @note Ответ снимается у системы повторным опросом, а не берётся из просьбы: система
+ *       вправе отвести накопитель иного размера, и знать надлежит отведённый
  *
  * @param sock  сокет для установки размера накопителя
  * @param event событие сокета
  * @param size  размер накопителя сокета
  * @return      установленный размер накопителя сокета
- *
- * @note Ответ снимается у системы повторным опросом, а не берётся из просьбы: система
- *       вправе отвести накопитель иного размера, и знать надлежит отведённый
  *
  */
 int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
@@ -633,7 +1237,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 		 * @details Размер накопителя канала задаётся при заведении описателя и сокетными
 		 *          настройками не меняется - менять там нечего, и просьба потребителя
 		 *          исполнена настолько, насколько исполнима. Отвечаем оттого размером
-		 *          действительным, снятым тем же порядком, что и у опроса
+		 *          действительным, снятым тем же порядком, что и у опроса.
 		 *
 		 * @note Порядок здесь тот же, что и у опроса, и по тому же доводу: сокетное
 		 *       обращение спрашивается ПЕРВЫМ, и гнездо до канального пути не доходит
@@ -645,15 +1249,33 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 		if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE)
 			// Выводим действительный размер накопителя канала
 			return this->getBufferSize(sock, event);
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (event),
+					size
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем пустой размер накопителя
 		return 0;
 	}
 	// Возвращаем размер накопителя, отведённый системой
 	return this->getBufferSize(sock, event);
 }
-
 /**
  * @brief Метод установки числа переходов пакета
  *
@@ -670,7 +1292,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	 *
 	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами методы
 	 *          движка возвращают его там, где способ установить не удалось. Выбирать
-	 *          имя настройки нечему, и ответ здесь - отказ
+	 *          имя настройки нечему, и ответ здесь - отказ.
 	 *
 	 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ, и прежде здесь принималось
 	 *          именно так: выбор имени настройки шёл вопросом «многоадресная ли
@@ -713,15 +1335,34 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	DWORD value = static_cast <DWORD> (hops);
 	// Если число переходов установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (delivery),
+					static_cast <uint16_t> (hops)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
 	// Возвращаем положительный результат установки
 	return true;
 }
-
 /**
  * @brief Метод получения числа переходов пакета
  *
@@ -737,7 +1378,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	 *
 	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами методы
 	 *          движка возвращают его там, где способ установить не удалось. Выбирать
-	 *          имя настройки нечему, и ответ здесь - отказ
+	 *          имя настройки нечему, и ответ здесь - отказ.
 	 *
 	 * @warning Принимать `NONE` за `UNICAST` НЕЛЬЗЯ, и прежде здесь принималось
 	 *          именно так: выбор имени настройки шёл вопросом «многоадресная ли
@@ -782,17 +1423,40 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	int32_t size = static_cast <int32_t> (sizeof(value));
 	// Если число переходов получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <char *> (&value), &size) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (delivery)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем пустое число переходов
 		return 0;
 	}
 	// Возвращаем снятое число переходов
 	return static_cast <uint8_t> (value);
 }
-
 /**
  * @brief Метод установки поддержания подключения в живых
+ *
+ * @note Число попыток у MS Windows задать нельзя вовсе: SIO_KEEPALIVE_VALS принимает
+ *       лишь время простоя и промежуток между попытками, а число их система держит
+ *       своё. Довод cnt потому не отбрасывается молча - о нём заносится
+ *       предупреждение, когда он задан
  *
  * @param sock  сокет для установки поддержания подключения
  * @param cnt   максимальное количество попыток
@@ -800,51 +1464,37 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
  * @param intvl интервал времени в секундах между попытками
  * @return      результат выполнения установки
  *
- * @note Число попыток у MS Windows задать нельзя вовсе: SIO_KEEPALIVE_VALS принимает
- *       лишь время простоя и промежуток между попытками, а число их система держит
- *       своё. Довод cnt потому не отбрасывается молча - о нём заносится
- *       предупреждение, когда он задан
- *
  */
 bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept {
 	// Признак поддержания подключения в живых
 	DWORD mode = 1;
 	// Если признак поддержания подключения установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <const char *> (&mode), static_cast <int32_t> (sizeof(mode))) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					cnt,
+					idle,
+					intvl
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
-	/**
-	 * Настройки задаются поимённо, как у наречий POSIX
-	 *
-	 * @warning Прежде здесь стояло утверждение, что число попыток «система не
-	 *          принимает», и заданное значение отбрасывалось с предупреждением, а
-	 *          время простоя с промежутком накладывались управляющим обращением
-	 *          `SIO_KEEPALIVE_VALS`. Утверждение НЕВЕРНО: издания MS Windows начиная с
-	 *          10 (1709) принимают `TCP_KEEPCNT`, а с 1703 - `TCP_KEEPIDLE` и
-	 *          `TCP_KEEPINTVL`, ровно теми же именами и в тех же единицах, что у
-	 *          POSIX. Проверено щупом на стенде (сборка 10.0.26200): все три ставятся
-	 *          и читаются обратно точь-в-точь
-	 *
-	 * @note Управляющее обращение остаётся ЗАПАСНЫМ путём: издания старее названных
-	 *       поимённых настроек не знают и отвечают на них отказом, а обращение это
-	 *       понимают все. Числа попыток оно не принимает - его там и правда нет
-	 *
-	 * @note Единицы разные: поимённые настройки считают в СЕКУНДАХ, управляющее
-	 *       обращение - в миллисекундах. Оттого перевод стоит лишь у запасного пути
-	 *
-	 */
-	#if !defined(TCP_KEEPIDLE)
-		#define TCP_KEEPIDLE 3
-	#endif
-	#if !defined(TCP_KEEPCNT)
-		#define TCP_KEEPCNT 16
-	#endif
-	#if !defined(TCP_KEEPINTVL)
-		#define TCP_KEEPINTVL 17
-	#endif
 	// Признак того, что поимённые настройки система приняла
 	bool named = true;
 	// Если время простоя подключения задано
@@ -867,8 +1517,28 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		const DWORD value = static_cast <DWORD> (cnt);
 		// Если число попыток наложить не удалось
 		if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_TCP, TCP_KEEPCNT, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-			// Заносим в журнал предупреждение о неприменимости числа попыток
-			awh::log::print("%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение о неприменимости числа попыток
+				log::debug(
+					"%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", __PRETTY_FUNCTION__,
+					{
+						sock,
+						cnt,
+						idle,
+						intvl
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, cnt
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение о неприменимости числа попыток
+				log::print("%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
+			#endif
 			// Отмечаем неприменимость поимённых настроек
 			named = false;
 		}
@@ -893,122 +1563,45 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	DWORD returned = 0;
 	// Если настройки поддержания подключения применить не удалось
 	if(::WSAIoctl(static_cast <SOCKET> (sock), SIO_KEEPALIVE_VALS, &settings, static_cast <DWORD> (sizeof(settings)), nullptr, 0, &returned, nullptr, nullptr) == SOCKET_ERROR){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					cnt,
+					idle,
+					intvl
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
 	// Возвращаем положительный результат установки
 	return true;
 }
-
-/**
- * @brief Функция добычи номера сетевого устройства по его названию
- *
- * @details Название устройства у MS Windows - GUID вида `{F49A2CB0-...}`, и
- *          `if_nametoindex` его НЕ понимает: тот принимает синтетические названия
- *          вида `ethernet_6`, какие выдаёт `if_indextoname`. Номер оттого берётся
- *          из перечня устройств машины, где он лежит рядом с названием.
- *
- *          Установлено прогоном: набор терял `IoMulticastMembershipAfterCommitTest`,
- *          а в журнале стояло «устройство не найдено» при живом устройстве
- *
- * @note Сличение названий ведётся БЕЗ учёта регистра: система выдаёт GUID
- *       заглавными, а слои выше приводят названия к нижнему регистру - у систем
- *       POSIX названия устройств в нижнем регистре и живут
- *
- * @note Отступление к `if_nametoindex` оставлено: названия синтетического вида оно
- *       разбирает, а перечень устройств такого названия не содержит
- *
- * @param ifname название сетевого устройства
- * @param v6     признак семейства адресов IPv6
- * @return       номер сетевого устройства либо ноль, если устройство не найдено
- *
- */
-static uint32_t __awh_iface_index__(const std::string_view ifname, const bool v6) noexcept {
-	// Если название сетевого устройства не передано
-	if(ifname.empty())
-		// Выводим отсутствие номера устройства
-		return 0;
-	// Состав запрашиваемых сведений
-	const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
-	// Объём буфера под перечень устройств
-	ULONG size = 16384;
-	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer(static_cast <size_t> (size));
-	// Итог опроса перечня устройств
-	ULONG code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
-	// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
-	if(code == ERROR_BUFFER_OVERFLOW){
-		// Выполняем расширение буфера под перечень устройств
-		buffer.resize(static_cast <size_t> (size));
-		// Выполняем повторный опрос перечня устройств
-		code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
-	}
-	// Если перечень устройств получить не удалось
-	if(code != NO_ERROR)
-		// Отступаем к переводу названия средствами сокетов
-		return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
-	/**
-	 * Выполняем перебор всех сетевых устройств машины
-	 */
-	for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
-		// Если название устройства не задано
-		if(adapter->AdapterName == nullptr)
-			// Переходим к устройству следующему
-			continue;
-		// Признак совпадения названий
-		bool same = true;
-		// Порядковый номер сличаемого символа
-		size_t i = 0;
-		/**
-		 * Выполняем сличение названий посимвольно, свёртывая регистр
-		 *
-		 * @note Свёртка своя, ASCII, а не средствами языка: `tolower` зависит от
-		 *       местности, а GUID - данные протокольные
-		 */
-		for(; (i < ifname.size()) && (adapter->AdapterName[i] != '\0'); i++){
-			// Получаем очередной символ искомого названия
-			char first = ifname.at(i);
-			// Получаем очередной символ названия, выданного системой
-			char second = adapter->AdapterName[i];
-			// Свёртываем регистр символа искомого названия
-			if((first >= 'A') && (first <= 'Z'))
-				// Приводим символ к нижнему регистру
-				first = static_cast <char> (first + ('a' - 'A'));
-			// Свёртываем регистр символа названия, выданного системой
-			if((second >= 'A') && (second <= 'Z'))
-				// Приводим символ к нижнему регистру
-				second = static_cast <char> (second + ('a' - 'A'));
-			// Если символы разошлись
-			if(first != second){
-				// Отмечаем названия разошедшимися
-				same = false;
-				// Завершаем сличение
-				break;
-			}
-		}
-		// Если названия совпали целиком
-		if(same && (i == ifname.size()) && (adapter->AdapterName[i] == '\0'))
-			// Выводим номер устройства того семейства, какое запрошено
-			return static_cast <uint32_t> (v6 ? adapter->Ipv6IfIndex : adapter->IfIndex);
-	}
-	// Отступаем к переводу названия средствами сокетов
-	return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
-}
-
-
 /**
  * @brief Метод установки сетевого устройства групповой рассылки
+ *
+ * @note Устройство задаётся номером, а не названием: у MS Windows опции с названием
+ *       устройства нет вовсе, и перевод названия в номер ведётся здесь -
+ *       if_nametoindex объявлен там же, где и прочие средства Winsock
  *
  * @param sock   сокет для установки сетевого устройства
  * @param family семейство адресов
  * @param ifname название сетевого устройства
  * @return       результат выполнения установки
- *
- * @note Устройство задаётся номером, а не названием: у MS Windows опции с названием
- *       устройства нет вовсе, и перевод названия в номер ведётся здесь -
- *       if_nametoindex объявлен там же, где и прочие средства Winsock
  *
  */
 bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
@@ -1020,8 +1613,27 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 	const uint32_t index = ::__awh_iface_index__(ifname, (family == event::family_t::IPV6));
 	// Если номер сетевого устройства получить не удалось
 	if(index == 0){
-		// Заносим в журнал предупреждение об отсутствии сетевого устройства
-		awh::log::print("%s: network interface \"%s\" could not be found", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, string(ifname).c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим в журнал предупреждение об отсутствии сетевого устройства
+			log::debug(
+				"%s: network interface \"%s\" could not be found", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					ifname
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, string(ifname).c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим в журнал предупреждение об отсутствии сетевого устройства
+			log::print("%s: network interface \"%s\" could not be found", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, string(ifname).c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -1037,15 +1649,33 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 			 * @details Опция IP_MULTICAST_IF у IPv4 принимает адрес устройства, а не его
 			 *          номер. MS Windows принимает взамен номер, записанный в порядке
 			 *          сети на месте адреса, - приём этот описан самой системой и иного
-			 *          способа назвать устройство у IPv4 там нет
+			 *          способа назвать устройство у IPv4 там нет.
 			 *
 			 */
-			// Номер устройства в порядке октетов сети
 			const DWORD value = ::htonl(index);
 			// Если сетевое устройство установить не удалось
 			if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-				// Записываем ошибку в лог
-				awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							ifname
+						}, log::flag_t::CRITICAL,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Возвращаем отрицательный результат установки
 				return false;
 			}
@@ -1056,8 +1686,27 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 			const DWORD value = static_cast <DWORD> (index);
 			// Если сетевое устройство установить не удалось
 			if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_IPV6, IPV6_MULTICAST_IF, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-				// Записываем ошибку в лог
-				awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							ifname
+						}, log::flag_t::CRITICAL,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Возвращаем отрицательный результат установки
 				return false;
 			}
@@ -1068,17 +1717,16 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 	// Возвращаем положительный результат установки
 	return true;
 }
-
 /**
  * @brief Метод получения способа обнаружения MTU
- *
- * @param sock   сокет для получения способа обнаружения MTU
- * @param family семейство адресов
- * @return       способ обнаружения MTU
  *
  * @note Способов у MS Windows четыре против десяти у самой библиотеки, и приводятся
  *       они к общему виду здесь: IP_PMTUDISC_DONT отвечает DONT, IP_PMTUDISC_DO - DO,
  *       IP_PMTUDISC_PROBE - PROBE. Остальным ответа у системы нет вовсе
+ *
+ * @param sock   сокет для получения способа обнаружения MTU
+ * @param family семейство адресов
+ * @return       способ обнаружения MTU
  *
  */
 awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept {
@@ -1111,8 +1759,26 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	int32_t size = static_cast <int32_t> (sizeof(value));
 	// Если способ обнаружения MTU получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <char *> (&value), &size) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем неопределённый способ обнаружения MTU
 		return event::mtu_discover_t::NONE;
 	}
@@ -1120,27 +1786,32 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	 * Определяем снятый способ обнаружения MTU
 	 */
 	switch(value){
-		// Если обнаружение MTU выполнять не следует
-		case IP_PMTUDISC_DONT: return event::mtu_discover_t::DONT;
 		// Если обнаружение MTU выполнять следует
-		case IP_PMTUDISC_DO: return event::mtu_discover_t::DO;
+		case IP_PMTUDISC_DO:
+			// Возвращаем способ обнаружения MTU
+			return event::mtu_discover_t::DO;
+		// Если обнаружение MTU выполнять не следует
+		case IP_PMTUDISC_DONT:
+			// Возвращаем способ обнаружения MTU
+			return event::mtu_discover_t::DONT;
 		// Если следует отправлять пробные пакеты
-		case IP_PMTUDISC_PROBE: return event::mtu_discover_t::PROBE;
+		case IP_PMTUDISC_PROBE:
+			// Возвращаем способ обнаружения MTU
+			return event::mtu_discover_t::PROBE;
 	}
 	// Возвращаем неопределённый способ обнаружения MTU
 	return event::mtu_discover_t::NONE;
 }
-
 /**
  * @brief Метод установки способа обнаружения MTU
+ *
+ * @note Способы, ответа у системы не имеющие, отказом не отвечают молча: о них
+ *       заносится предупреждение, а сама установка не ведётся
  *
  * @param sock   сокет для установки способа обнаружения MTU
  * @param family семейство адресов
  * @param mode   способ обнаружения MTU
  * @return       результат выполнения установки
- *
- * @note Способы, ответа у системы не имеющие, отказом не отвечают молча: о них
- *       заносится предупреждение, а сама установка не ведётся
  *
  */
 bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
@@ -1167,16 +1838,44 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если обнаружение MTU выполнять не следует
-		case static_cast <uint8_t> (event::mtu_discover_t::DONT): value = IP_PMTUDISC_DONT; break;
+		case static_cast <uint8_t> (event::mtu_discover_t::DONT):
+			// Устанавливаем ззначение обнаружения MTU
+			value = IP_PMTUDISC_DONT;
+		break;
 		// Если обнаружение MTU выполнять следует
+		case static_cast <uint8_t> (event::mtu_discover_t::DO):
 		case static_cast <uint8_t> (event::mtu_discover_t::WANT):
-		case static_cast <uint8_t> (event::mtu_discover_t::DO): value = IP_PMTUDISC_DO; break;
+			// Устанавливаем ззначение обнаружения MTU
+			value = IP_PMTUDISC_DO;
+		break;
 		// Если следует отправлять пробные пакеты
-		case static_cast <uint8_t> (event::mtu_discover_t::PROBE): value = IP_PMTUDISC_PROBE; break;
+		case static_cast <uint8_t> (event::mtu_discover_t::PROBE):
+			// Устанавливаем ззначение обнаружения MTU
+			value = IP_PMTUDISC_PROBE;
+		break;
 		// Если способ обнаружения MTU ответа у системы не имеет
 		default: {
-			// Заносим в журнал предупреждение об отсутствии ответа у системы
-			awh::log::print("%s: MTU discover mode %u has no counterpart on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (mode));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение об отсутствии ответа у системы
+				log::debug(
+					"%s: MTU discover mode %u has no counterpart on MS Windows", __PRETTY_FUNCTION__,
+					{
+						sock,
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (mode)
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (mode)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение об отсутствии ответа у системы
+				log::print("%s: MTU discover mode %u has no counterpart on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (mode));
+			#endif
 			// Возвращаем отрицательный результат установки
 			return false;
 		}
@@ -1187,21 +1886,39 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	const int32_t option = ((family == event::family_t::IPV6) ? IPV6_MTU_DISCOVER : IP_MTU_DISCOVER);
 	// Если способ обнаружения MTU установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
 	// Возвращаем положительный результат установки
 	return true;
 }
-
 /**
  * @brief Метод проверки готовности средств сокетов системы
  *
  * @details Подъём ведётся здесь же, а не одной лишь проверкой уже поднятого: спросить
  *          систему, годна ли она заводить сокеты, иначе как подняв средства, нельзя -
- *          отдельного обращения об этом у неё нет вовсе
+ *          отдельного обращения об этом у неё нет вовсе.
  *
  * @note Обращение это зовёт заведение движка, и отказ его движок выдаёт наружу отказом
  *       заведения: сеть там просят явно, и молчать об её негодности нельзя
@@ -1212,23 +1929,31 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 bool awh::eth::Socket::ready() const noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
-		// Заносим отказ подъёма средств сокетов в журнал
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		#endif
 		// Выводим результат с ошибкой
 		return false;
 	}
 	// Сообщаем, что средства сокетов системы годны
 	return true;
 }
-
 /**
  * @brief Метод заведения сокета
- *
- * @param family  семейство адресов
- * @param type    тип сокета
- * @param proto   протокол передачи данных
- * @param options набор опций события
- * @return        заведённый сокет
  *
  * @note Из опций заведение принимает одну - закрытие сокета при запуске стороннего
  *       образа: ей отвечает признак `WSA_FLAG_NO_HANDLE_INHERIT`. Прочие накладываются
@@ -1240,12 +1965,38 @@ bool awh::eth::Socket::ready() const noexcept {
  *       канале - обмен вставал намертво. Наложение же есть то самое устройство, на
  *       каком стоит порт завершения ввода-вывода
  *
+ * @param family  семейство адресов
+ * @param type    тип сокета
+ * @param proto   протокол передачи данных
+ * @param options набор опций события
+ * @return        заведённый сокет
+ *
  */
 awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
-		// Заносим отказ подъёма средств сокетов в журнал
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto),
+					options
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		#endif
 		// Возвращаем признак отсутствия заведённого сокета
 		return static_cast <net::socket_t> (INVALID_SOCKET);
 	}
@@ -1275,16 +2026,22 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 */
 	switch(static_cast <uint8_t> (family)){
 		// Если семейство адресов является IPv4
-		case static_cast <uint8_t> (event::family_t::IPV4): domain = AF_INET; break;
+		case static_cast <uint8_t> (event::family_t::IPV4):
+			// Устанавливаем семейство адресов сокета
+			domain = AF_INET;
+		break;
 		// Если семейство адресов является IPv6
-		case static_cast <uint8_t> (event::family_t::IPV6): domain = AF_INET6; break;
+		case static_cast <uint8_t> (event::family_t::IPV6):
+			// Устанавливаем семейство адресов сокета
+			domain = AF_INET6;
+		break;
 		/**
 		 * Если семейство адресов является UNIX-доменным
 		 *
 		 * @details Средства эти у MS Windows появились в 2018 году и с тех пор
 		 *          доступны наравне с прочими: сокет заводится AF_UNIX, путь его
 		 *          задаётся `struct sockaddr_un`, а объявлено всё это отдельным
-		 *          заголовком `afunix.h`
+		 *          заголовком `afunix.h`.
 		 *
 		 * @warning Потоковыми они у MS Windows и остаются: дейтаграммного
 		 *          UNIX-доменного сокета система не несёт вовсе, и отказ по нему -
@@ -1292,11 +2049,34 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 *          вида сокета
 		 *
 		 */
-		case static_cast <uint8_t> (event::family_t::UDS): domain = AF_UNIX; break;
+		case static_cast <uint8_t> (event::family_t::UDS):
+			// Устанавливаем семейство адресов сокета
+			domain = AF_UNIX;
+		break;
 		// Если семейство адресов неизвестно
 		default: {
-			// Заносим в журнал предупреждение о неподдерживаемом семействе адресов
-			awh::log::print("%s: address family %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (family));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение о неподдерживаемом семействе адресов
+				log::debug(
+					"%s: address family %u is not supported", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (family)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение о неподдерживаемом семействе адресов
+				log::print("%s: address family %u is not supported", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (family));
+			#endif
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1307,18 +2087,27 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 * Определяем тип сокета
 	 */
 	switch(static_cast <uint8_t> (type)){
-		// Если сокет является потоковым
-		case static_cast <uint8_t> (event::type_t::STREAM): kind = SOCK_STREAM; break;
-		// Если сокет является дейтаграммным
-		case static_cast <uint8_t> (event::type_t::DATAGRAM): kind = SOCK_DGRAM; break;
 		// Если сокет является сырым
-		case static_cast <uint8_t> (event::type_t::RAW): kind = SOCK_RAW; break;
+		case static_cast <uint8_t> (event::type_t::RAW):
+			// Устанавливаем тип сокета
+			kind = SOCK_RAW;
+		break;
+		// Если сокет является потоковым
+		case static_cast <uint8_t> (event::type_t::STREAM):
+			// Устанавливаем тип сокета
+			kind = SOCK_STREAM;
+		break;
+		// Если сокет является дейтаграммным
+		case static_cast <uint8_t> (event::type_t::DATAGRAM):
+			// Устанавливаем тип сокета
+			kind = SOCK_DGRAM;
+		break;
 		/**
 		 * СОКЕТА последовательных пакетов у MS Windows нет вовсе
 		 *
 		 * @details Держится он на SCTP, какого система не несёт ни в каком виде: ни
 		 *          заголовков, ни поддержки в ядре. Отказ здесь потому не временный, и
-		 *          заглушкой он не является
+		 *          заглушкой он не является.
 		 *
 		 * @note Отказ этот про СОКЕТ, а не про вид узла. Узел вида `SEQPACKET` движок
 		 *       изображает именованным каналом строя сообщений - границы там держит сама
@@ -1328,15 +2117,55 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 *
 		 */
 		case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-			// Заносим в журнал предупреждение об отсутствии типа сокета у системы
-			awh::log::print("%s: sequenced packet sockets are not available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение об отсутствии типа сокета у системы
+				log::debug(
+					"%s: sequenced packet sockets are not available on MS Windows", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение об отсутствии типа сокета у системы
+				log::print("%s: sequenced packet sockets are not available on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			#endif
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
 		// Если тип сокета неизвестен
 		default: {
-			// Заносим в журнал предупреждение о неподдерживаемом типе сокета
-			awh::log::print("%s: socket type %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение о неподдерживаемом типе сокета
+				log::debug(
+					"%s: socket type %u is not supported", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение о неподдерживаемом типе сокета
+				log::print("%s: socket type %u is not supported", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			#endif
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1345,7 +2174,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 * Если сокет UNIX-доменный - разбираем его особо
 	 *
 	 * @details Протокол ему не задаётся вовсе: у семейства AF_UNIX его нет, и
-	 *          передача сюда IPPROTO_TCP оканчивается отказом заведения
+	 *          передача сюда IPPROTO_TCP оканчивается отказом заведения.
 	 *
 	 * @warning Дейтаграммного UNIX-доменного СОКЕТА у MS Windows нет: система несёт
 	 *          лишь потоковый. Отказ этот не временный и заглушкой не является -
@@ -1363,8 +2192,28 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	if(domain == AF_UNIX){
 		// Если сокет не потоковый
 		if(kind != SOCK_STREAM){
-			// Заносим в журнал предупреждение об отсутствии такого сокета у системы
-			awh::log::print("%s: only stream UNIX-domain sockets are available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение об отсутствии такого сокета у системы
+				log::debug(
+					"%s: only stream UNIX-domain sockets are available on MS Windows", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение об отсутствии такого сокета у системы
+				log::print("%s: only stream UNIX-domain sockets are available on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			#endif
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1372,8 +2221,28 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		const SOCKET single = ::WSASocketW(domain, kind, 0, nullptr, 0, flags);
 		// Если сокет завести не удалось
 		if(single == INVALID_SOCKET)
-			// Записываем ошибку в лог
-			awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s: %s", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::CRITICAL,
+					::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			#endif
 		// Выводим заведённый сокет
 		return static_cast <net::socket_t> (single);
 	}
@@ -1384,15 +2253,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 */
 	switch(static_cast <uint8_t> (proto)){
 		// Если протоколом передачи данных является TCP
-		case static_cast <uint8_t> (event::protocol_t::TCP): protocol = IPPROTO_TCP; break;
+		case static_cast <uint8_t> (event::protocol_t::TCP):
+			// Устанавливаем протокол передачи данных
+			protocol = IPPROTO_TCP;
+		break;
 		// Если протоколом передачи данных является UDP
-		case static_cast <uint8_t> (event::protocol_t::UDP): protocol = IPPROTO_UDP; break;
+		case static_cast <uint8_t> (event::protocol_t::UDP):
+			// Устанавливаем протокол передачи данных
+			protocol = IPPROTO_UDP;
+		break;
 		/**
 		 * Если протоколом передачи данных является ICMP
 		 *
 		 * @details Протокол этот выбирается по семейству адресов: у IPv4 он свой, у
 		 *          IPv6 - отдельный, и подменять один другим нельзя. Прочие платформы
-		 *          заводят его так же (`bsd`, `gnu`, `sun`)
+		 *          заводят его так же (`bsd`, `gnu`, `sun`).
 		 *
 		 * @warning Прежде ICMP попадал в ветвь по умолчанию и сокет заводился с
 		 *          протоколом 0. Система такой сокет создаёт, отправку принимает и
@@ -1412,7 +2287,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 * @details Значение это - не то же самое, что «протокол не задан»: сокет с
 		 *          `IPPROTO_RAW` отдаёт пакет вместе с СОБСТВЕННОЙ головой, тогда как
 		 *          сокет с протоколом 0 голову собирает сам. Эталонные слои различают
-		 *          их прямо (`bsd/socket.cpp:4037`, `gnu:3796`, `sun:4062`)
+		 *          их прямо (`bsd/socket.cpp:4037`, `gnu:3796`, `sun:4062`).
 		 *
 		 * @warning Ветви этой не было НИ ОДНОЙ, и довод `RAW` падал в ветвь по
 		 *          умолчанию с протоколом 0. Потребитель, просивший собрать голову
@@ -1425,7 +2300,10 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 *       семейства равноправны
 		 *
 		 */
-		case static_cast <uint8_t> (event::protocol_t::RAW): protocol = IPPROTO_RAW; break;
+		case static_cast <uint8_t> (event::protocol_t::RAW):
+			// Устанавливаем протокол передачи данных
+			protocol = IPPROTO_RAW;
+		break;
 		/**
 		 * Если протоколом передачи данных является IGMP
 		 *
@@ -1433,7 +2311,10 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 *       имеют, система заведение принимает - замерено тем же щупом
 		 *
 		 */
-		case static_cast <uint8_t> (event::protocol_t::IGMP): protocol = IPPROTO_IGMP; break;
+		case static_cast <uint8_t> (event::protocol_t::IGMP):
+			// Устанавливаем протокол передачи данных
+			protocol = IPPROTO_IGMP;
+		break;
 		// Если протокол передачи данных не задан - система выбирает его сама по типу
 		default: protocol = 0;
 	}
@@ -1441,8 +2322,28 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	const SOCKET result = ::WSASocketW(domain, kind, protocol, nullptr, 0, flags);
 	// Если сокет завести не удалось
 	if(result == INVALID_SOCKET)
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto),
+					options
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 	/**
 	 * Если сокет заведён дейтаграммным - отключаем отчёт о недоступности получателя
 	 *
@@ -1451,7 +2352,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 *          СВОЮ прежнюю отправку, дейтаграммный сокет отвечает отказом
 	 *          `WSAECONNRESET` на следующий ПРИЁМ - тем самым выдавая чужую беду за
 	 *          свою. Дейтаграммный обмен от этого рвётся на ровном месте: сервер,
-	 *          ответивший ушедшему клиенту, перестаёт принимать от прочих
+	 *          ответивший ушедшему клиенту, перестаёт принимать от прочих.
 	 *
 	 * @details Замерено щупом на стенде: без отключения `recvfrom` отвечает отказом
 	 *          10054 сразу после отправки на закрытый порт, с отключением - ждёт
@@ -1462,20 +2363,39 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	 *       обмена, и оставлять его включённым незачем ни в одном случае
 	 *
 	 */
-	else if(kind == SOCK_DGRAM){
-		// Признак отчёта о недоступности получателя
-		BOOL report = FALSE;
+	else if(kind == SOCK_DGRAM) {
 		// Размер ответа обращения, обращению обязательный
 		DWORD bytes = 0;
+		// Признак отчёта о недоступности получателя
+		BOOL report = FALSE;
 		// Выполняем отключение отчёта о недоступности получателя
 		if(::WSAIoctl(result, SIO_UDP_CONNRESET, &report, sizeof(report), nullptr, 0, &bytes, nullptr, nullptr) != 0)
-			// Записываем ошибку в лог
-			awh::log::print("%s: cannot disable datagram connection reset reporting: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug(
+					"%s: cannot disable datagram connection reset reporting: %s", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						options
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s: cannot disable datagram connection reset reporting: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			#endif
 	}
 	// Возвращаем заведённый сокет
 	return static_cast <net::socket_t> (result);
 }
-
 /**
  * @brief Метод получения опций, принимаемых при создании сокета
  *
@@ -1508,20 +2428,13 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
 	// Выводим результат
 	return result;
 }
-
-
 /**
  * @brief Метод заведения пары сокетов для обмена сообщениями между процессами
- *
- * @param family семейство адресов сокета
- * @param type   тип сокета
- * @param proto  протокол сокета
- * @return       пара заведённых сокетов
  *
  * @details Соответствия socketpair у MS Windows нет вовсе, и пара строится в обход:
  *          заводится слушатель на петлевом устройстве с нулевым портом, к нему
  *          выполняется подключение, а принятое подключение и даёт вторую сторону
- *          пары. Слушатель затем закрывается - он был нужен лишь для сведения сторон
+ *          пары. Слушатель затем закрывается - он был нужен лишь для сведения сторон.
  *
  * @note Порт слушателю не задаётся: система выбирает свободный сама, и узнаётся он
  *       затем через getsockname. Оттого пара заводится без всякой оглядки на то,
@@ -1554,6 +2467,11 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
  *          чтения из другого. Проверено опытом на именованном канале - обмен вставал
  *          намертво
  *
+ * @param family семейство адресов сокета
+ * @param type   тип сокета
+ * @param proto  протокол сокета
+ * @return       пара заведённых сокетов
+ *
  */
 array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
 	// Имя заведённого канала, вызывающей стороне не нужное
@@ -1566,7 +2484,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
  *
  * @details Обращение это выходит на канал, заведённый встречной стороной, а не
  *          заводит своего: имя канала приходит извне - порождённый работник кластера
- *          получает его от мастера, - и остаётся лишь открыть свой конец
+ *          получает его от мастера, - и остаётся лишь открыть свой конец.
  *
  * @note Открытие ведётся заходами: назвавшая сторона освобождает свой экземпляр не
  *       мгновенно, а дойдя до подписки на приём, тогда как встречная сторона стучится
@@ -1574,7 +2492,10 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
  *
  * @warning Конец открывается наложенным и переводится в строй сообщений: обмен ведётся
  *          портом завершений, а подача готовности к приёму держится на строе сообщений -
- *          чтение нулевой длины ждёт прихода сообщения лишь у канала этого строя
+ *          чтение нулевой длины ждёт прихода сообщения лишь у канала этого строя.
+ *          Строй сообщений несёт и потоковое изображение абстрактного имени домена UNIX:
+ *          получатель потока обязан мириться с всякой разбивкой данных на части, и
+ *          разбивка по записям ему ничуть не вредит
  *
  * @param name имя именованного канала
  * @return     описатель открытого конца канала
@@ -1583,13 +2504,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept {
 	// Если имя канала не передано
 	if(name.empty()){
-		// Заносим отсутствие имени канала в журнал
-		awh::log::print("%s: named pipe cannot be opened without a name", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим исчерпание заходов на открытие канала в журнал
+			log::debug(
+				"%s: named pipe cannot be opened without a name", __PRETTY_FUNCTION__,
+				{name}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отсутствие имени канала в журнал
+			log::print("%s: named pipe cannot be opened without a name", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		#endif
 		// Выводим незаведённый описатель
 		return net::invalid_socket_t;
 	}
 	// Получаем имя канала в понимании системы
-	const std::wstring pipe = awh::fmk::convert(name);
+	const std::wstring pipe = fmk::convert(name);
 	/**
 	 * Срок ожидания освобождения экземпляра канала в миллисекундах
 	 *
@@ -1597,7 +2533,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *          назвавшая сторона освобождает свой экземпляр не мгновенно, а дойдя до
 	 *          подписки на приём, тогда как порождённый процесс стучится сразу, едва
 	 *          запустившись. Отказ в такой миг означает не занятость чужим, а лишь
-	 *          то, что встречная сторона ещё не готова
+	 *          то, что встречная сторона ещё не готова.
 	 */
 	static constexpr uint32_t TIMEOUT = 5000;
 	/**
@@ -1609,10 +2545,10 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *       встречной стороне - в юните кластера
 	 */
 	static constexpr uint32_t ROUNDS = 200;
-	// Число сделанных заходов на открытие экземпляра канала
-	uint32_t rounds = 0;
 	// Описатель открытого конца канала
 	HANDLE result = INVALID_HANDLE_VALUE;
+	// Число сделанных заходов на открытие экземпляра канала
+	uint32_t rounds = 0;
 	/**
 	 * Открываем свой конец канала наложенным
 	 *
@@ -1631,7 +2567,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 		 *          (`ERROR_FILE_NOT_FOUND`). Второй приходит у изображённого домена UNIX:
 		 *          сервер держит свободным ровно один экземпляр - тот, на котором подано
 		 *          ожидание, - и между принятым подключением и подачей следующего
-		 *          ожидания свободного нет ни одного
+		 *          ожидания свободного нет ни одного.
 		 *
 		 * @note Прочие отказы заходов не повторяют: имя, какого нет вовсе, не появится
 		 */
@@ -1642,8 +2578,23 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 		if(reason == ERROR_FILE_NOT_FOUND){
 			// Если заходы на открытие экземпляра канала исчерпаны
 			if(++rounds > ROUNDS){
-				// Заносим исчерпание заходов на открытие канала в журнал
-				awh::log::print("%s: named pipe [%s] did not appear after %u rounds", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Заносим исчерпание заходов на открытие канала в журнал
+					log::debug(
+						"%s: named pipe [%s] did not appear after %u rounds", __PRETTY_FUNCTION__,
+						{name}, log::flag_t::CRITICAL,
+						::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Заносим исчерпание заходов на открытие канала в журнал
+					log::print("%s: named pipe [%s] did not appear after %u rounds", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+				#endif
 				// Выводим незаведённый описатель
 				return net::invalid_socket_t;
 			}
@@ -1654,23 +2605,68 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 		}
 		// Если заходы на открытие экземпляра канала исчерпаны
 		if(++rounds > ROUNDS){
-			// Заносим исчерпание заходов на открытие канала в журнал
-			awh::log::print("%s: named pipe [%s] remained busy after %u rounds", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим исчерпание заходов на открытие канала в журнал
+				log::debug(
+					"%s: named pipe [%s] remained busy after %u rounds", __PRETTY_FUNCTION__,
+					{name}, log::flag_t::CRITICAL,
+					::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим исчерпание заходов на открытие канала в журнал
+				log::print("%s: named pipe [%s] remained busy after %u rounds", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+			#endif
 			// Выводим незаведённый описатель
 			return net::invalid_socket_t;
 		}
 		// Если экземпляр канала за отведённый срок не освободился
 		if(!::WaitNamedPipeW(pipe.c_str(), static_cast <DWORD> (TIMEOUT))){
-			// Заносим истечение срока ожидания в журнал
-			awh::log::print("%s: named pipe [%s] is busy, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим истечение срока ожидания в журнал
+				log::debug(
+					"%s: named pipe [%s] is busy, error %lu", __PRETTY_FUNCTION__,
+					{name}, log::flag_t::CRITICAL,
+					::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим истечение срока ожидания в журнал
+				log::print("%s: named pipe [%s] is busy, error %lu", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+			#endif
 			// Выводим незаведённый описатель
 			return net::invalid_socket_t;
 		}
 	}
 	// Если открыть свой конец канала не удалось
 	if(result == INVALID_HANDLE_VALUE){
-		// Заносим отказ открытия канала в журнал
-		awh::log::print("%s: named pipe [%s] could not be opened, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим отказ открытия канала в журнал
+			log::debug(
+				"%s: named pipe [%s] could not be opened, error %lu", __PRETTY_FUNCTION__,
+				{name}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отказ открытия канала в журнал
+			log::print("%s: named pipe [%s] could not be opened, error %lu", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		#endif
 		// Выводим незаведённый описатель
 		return net::invalid_socket_t;
 	}
@@ -1685,8 +2681,23 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *       потоком октетов, оно отвечает сразу и обращается в холостой оборот
 	 */
 	if(!::SetNamedPipeHandleState(result, &mode, nullptr, nullptr))
-		// Заносим отказ перевода канала в строй сообщений в журнал
-		awh::log::print("%s: named pipe [%s] could not be switched to the message mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим отказ перевода канала в строй сообщений в журнал
+			log::debug(
+				"%s: named pipe [%s] could not be switched to the message mode, error %lu", __PRETTY_FUNCTION__,
+				{name}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отказ перевода канала в строй сообщений в журнал
+			log::print("%s: named pipe [%s] could not be switched to the message mode, error %lu", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		#endif
 	// Выводим описатель открытого конца канала
 	return reinterpret_cast <net::socket_t> (result);
 }
@@ -1700,136 +2711,6 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
  * @return       пара связанных концов обмена
  *
  */
-/**
- * @brief Функция заведения пары связанных концов именованного канала
- *
- * @details Служит она двум запросам разом: паре типа `SEQPACKET` любого семейства и паре
- *          семейства `UDS` всякого вида. Домен UNIX несёт у MS Windows один лишь поток, и
- *          недостающие виды его изображаются каналом - устройством иным, но той же работы:
- *          у канала есть имя, к нему подключается чужой процесс, обмен идёт в обе стороны
- *
- * @note Строй канала выбирается доводом: сохраняющему границы виду он сообщений, потоковому
- *       - октетов. Строй этот и есть та разница, ради какой виды заводятся порознь
- *
- * @param name    имя заведённого канала
- * @param message признак строя сообщений
- * @return        пара связанных концов канала
- *
- */
-static array <awh::net::socket_t, 2> __awh_channel_pair__(string & name, const bool message) noexcept {
-	// Переменная результата
-	array <awh::net::socket_t, 2> result = {
-		awh::net::invalid_socket_t,
-		awh::net::invalid_socket_t
-	};
-
-	/**
-	 * Составляем имя именованного канала
-	 *
-	 * @details Имя обязано быть неповторимым в пределах всей машины: пространство
-	 *          имён каналов у MS Windows общее, и совпадение имён свело бы вместе
-	 *          два несвязанных обмена. Неповторимость даётся парой «номер процесса
-	 *          - порядковый номер пары»: первый разводит процессы между собой,
-	 *          второй разводит пары внутри одного процесса
-	 *
-	 */
-	// Порядковый номер заводимой пары
-	static std::atomic_uint64_t counter{0};
-	// Показания высокоточного счётчика системы
-	LARGE_INTEGER ticks{};
-	// Выполняем снятие показаний высокоточного счётчика
-	::QueryPerformanceCounter(&ticks);
-	/**
-	 * Составляем однозначное имя именованного канала
-	 *
-	 * @details Пространство имён каналов общее на всю систему, и однозначность
-	 *          имени здесь не удобство, а условие работы. Складывается оно из
-	 *          номера процесса, порядкового номера пары внутри него и показаний
-	 *          высокоточного счётчика: первое разводит приложения, второе - пары
-	 *          внутри приложения, третье - приложения, запущенные разом
-	 *
-	 * @note Обычных часов для последнего мало: ход их у MS Windows зернист -
-	 *       шагом в 15.6 мс, - и два приложения, запущенные в один шаг, получили
-	 *       бы совпадающее значение
-	 */
-	const std::wstring pipe = (
-		L"\\\\.\\pipe\\awh-ipc-" +
-		std::to_wstring(static_cast <uint32_t> (::GetCurrentProcessId())) + L"-" +
-		std::to_wstring(++counter) + L"-" +
-		std::to_wstring(static_cast <uint64_t> (ticks.QuadPart))
-	);
-	/**
-	 * Заводим сторону канала, ожидающую подключения
-	 *
-	 * @note Обмен ведётся наложенным: у дескриптора без наложения система
-	 *       выстраивает операции в очередь, и запись из одного потока дожидается
-	 *       чтения из другого. Проверено опытом - обмен вставал намертво
-	 *
-	 */
-	HANDLE server = ::CreateNamedPipeW(
-		pipe.c_str(),
-		/**
-		 * Признак первого экземпляра здесь обязателен
-		 *
-		 * @note Без него заведение канала с уже занятым именем НЕ отвергается:
-		 *       система заводит ещё один экземпляр того же канала, и чужой
-		 *       работник вправе подключиться к нашему концу. С признаком
-		 *       занятость имени оборачивается честным отказом
-		 */
-		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-		(message ? (PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE) : (PIPE_TYPE_BYTE | PIPE_READMODE_BYTE)) | PIPE_WAIT,
-		2, 65536, 65536, 0, nullptr
-	);
-	// Если сторону канала завести не удалось
-	if(server == INVALID_HANDLE_VALUE){
-		// Записываем ошибку в лог
-		awh::log::print("%s: named pipe could not be created, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
-		// Возвращаем пустую пару
-		return result;
-	}
-	// Открываем встречный конец канала
-	HANDLE client = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
-	// Если встречный конец канала открыть не удалось
-	if(client == INVALID_HANDLE_VALUE){
-		// Записываем ошибку в лог
-		awh::log::print("%s: named pipe could not be opened, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
-		// Закрываем заведённую сторону канала
-		::CloseHandle(server);
-		// Возвращаем пустую пару
-		return result;
-	}
-	// Строй чтения встречного конца канала
-	DWORD mode = (message ? PIPE_READMODE_MESSAGE : PIPE_READMODE_BYTE);
-	/**
-	 * Переводим встречный конец канала в строй сообщений
-	 *
-	 * @note Отказ здесь не смертелен, но оглашается: канал заведён строем сообщений,
-	 *       и встречный конец, оставшийся строем октетов, читал бы поток без границ
-	 *       сообщений - расхождение это всплыло бы далеко от места
-	 *
-	 * @note Довод терпимости прежде опирался на замер 04.09.2026: сообщение
-	 *       дробилось движком, и границы не сохранялись всё равно. Довод этот
-	 *       ОТМЕНЁН 08.09.2026 - дробила выдача принятого, а не система, и теперь
-	 *       узел `SEQPACKET` границы держит. Терпимость же оставлена по второму
-	 *       доводу, какой и был главным: переключение идёт на только что открытом
-	 *       описателе своего же канала, и достижимость отказа близка к нулю
-	 *
-	 * @note Достижимость отказа при этом близка к нулю: переключение идёт на
-	 *       только что открытом описателе своего же канала
-	 */
-	if(!::SetNamedPipeHandleState(client, &mode, nullptr, nullptr))
-		// Записываем ошибку в лог
-		awh::log::print("%s: named pipe could not be switched to message mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
-	// Выдаём имя заведённого канала вызывающей стороне
-	name = awh::fmk::convert(pipe);
-	// Запоминаем сторону канала, ожидающую подключения
-	result[0] = reinterpret_cast <awh::net::socket_t> (server);
-	// Запоминаем встречный конец канала
-	result[1] = reinterpret_cast <awh::net::socket_t> (client);
-	// Возвращаем заведённую пару
-	return result;
-		}
-
 array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) const noexcept {
 	// Выполняем сброс имени заведённого канала
 	name.clear();
@@ -1840,8 +2721,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	};
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
-		// Заносим отказ подъёма средств сокетов в журнал
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto),
+					name
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Заносим отказ подъёма средств сокетов в журнал
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		#endif
 		// Возвращаем пару незаведённых сокетов
 		return result;
 	}
@@ -1853,7 +2754,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 *          из них дальше распоряжается своим сокетом сам: сервер привязывает его к
 	 *          своему адресу и слушает, клиент подключается к цели. Отдай мы им пару
 	 *          связанную - сокеты пришли бы уже привязанными и подключёнными, и
-	 *          привязка сервера отвергалась бы системой
+	 *          привязка сервера отвергалась бы системой.
 	 *
 	 * @note Установлено прогоном: сокет приходил привязанным к порту, выбранному
 	 *       построением пары, и `bind` отвечал отказом 10022 (`WSAEINVAL`). Отказ этот
@@ -1882,7 +2783,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 *          имеющийся оставлять родным значило бы развести виды одного семейства: у
 	 *          одного есть имя, у других нет, и встреча процессов у них разная. Оттого
 	 *          каналом строится всё семейство разом - тогда API сходится и здесь, и у
-	 *          систем POSIX
+	 *          систем POSIX.
 	 *
 	 * @note Пути в файловой системе у такой пары не появляется: имя её - имя канала.
 	 *       Разницы это не создаёт, покуда обе стороны обращаются к нему одинаково, а
@@ -1925,7 +2826,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 *          именованный канал в строе сообщений, и пара этого вида стоит на нём.
 		 *          Подставлять взамен дейтаграммную пару, как то делает эталонный
 		 *          бэкенд на macOS и OpenBSD, здесь не потребовалось: там подстановка
-		 *          вынужденная, а тут есть устройство с той же семантикой
+		 *          вынужденная, а тут есть устройство с той же семантикой.
 		 *
 		 */
 		case static_cast <uint8_t> (event::type_t::SEQPACKET):
@@ -1933,8 +2834,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			return ::__awh_channel_pair__(name, true);
 		// Если пара запрошена типом, какого у системы нет вовсе
 		default: {
-			// Заносим в журнал предупреждение об отсутствии типа пары у системы
-			awh::log::print("%s: socket pair of type %u is not available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Заносим в журнал предупреждение об отсутствии типа пары у системы
+				log::debug(
+					"%s: socket pair of type %u is not available on MS Windows", __PRETTY_FUNCTION__,
+					{
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (type),
+						static_cast <uint16_t> (proto),
+						name
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Заносим в журнал предупреждение об отсутствии типа пары у системы
+				log::print("%s: socket pair of type %u is not available on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			#endif
 			// Возвращаем пустую пару сокетов
 			return result;
 		}
@@ -1946,7 +2867,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 *          петлевому устройству с нулевым портом, узнают выбранные системой порты
 	 *          друг друга и подключаются встречно. Подключение дейтаграммного сокета
 	 *          обмена не заводит, а лишь закрепляет за ним собеседника - тем и
-	 *          выходит пара
+	 *          выходит пара.
 	 *
 	 * @note Границы сообщений такая пара сохраняет, а вот доставку обещает лишь в той
 	 *       мере, в какой её обещает петлевое устройство: потерь там не бывает, но
@@ -1974,13 +2895,15 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 				// Выходим из цикла заведения пары
 				break;
 			/**
-			 * Отчёт о недоступности получателя у сторон пары НЕ отключается
+			 * Выполняем обнуление адреса первой стороны пары
+			 *
+			 * @note Отчёт о недоступности получателя у сторон пары НЕ отключается
 			 *
 			 * @details Отключается он у сокетов, заведённых обращением issue, и там
 			 *          отключение обязательно: сокет там несвязанный, а MS Windows
 			 *          сообщает ему о чужой беде - об ICMP, пришедшем в ответ на
 			 *          прежнюю отправку кому-то одному, - обрывая приём от всех прочих.
-			 *          Системы POSIX несвязанному сокету об этом не сообщают вовсе
+			 *          Системы POSIX несвязанному сокету об этом не сообщают вовсе.
 			 *
 			 * @note Стороны же пары СВЯЗАНЫ встречно, и вопрос у них другой: связанному
 			 *       сокету об уходе своего единственного собеседника сообщают и системы
@@ -1993,7 +2916,6 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			 *          отвечают, у них разный
 			 *
 			 */
-			// Выполняем обнуление адреса первой стороны пары
 			::memset(&first, 0, sizeof(first));
 			// Устанавливаем семейство адресов первой стороны пары
 			first.sin_family = AF_INET;
@@ -2018,13 +2940,14 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 				// Выходим из цикла заведения пары
 				break;
 			/**
-			 * Восполняем поля, каких система не заполняет
+			 * Устанавливаем семейство адресов первой стороны пары
+			 *
+			 * @note Восполняем поля, каких система не заполняет
 			 *
 			 * @details Getsockname у MS Windows вправе выставить один лишь номер порта,
-			 *          оставив семейство адресов и сам адрес нетронутыми
+			 *          оставив семейство адресов и сам адрес нетронутыми.
 			 *
 			 */
-			// Устанавливаем семейство адресов первой стороны пары
 			first.sin_family = AF_INET;
 			// Устанавливаем петлевое сетевое устройство первой стороне пары
 			first.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
@@ -2047,8 +2970,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			// Возвращаем заведённую пару сокетов
 			return result;
 		} while(false);
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto),
+					name
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Если первая сторона пары заведена - закрываем её
 		if(one != INVALID_SOCKET)
 			// Закрываем первую сторону пары
@@ -2060,7 +3003,6 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		// Возвращаем пустую пару сокетов
 		return result;
 	}
-
 	/**
 	 * Объединение видов адреса слушателя
 	 *
@@ -2079,8 +3021,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	const SOCKET listener = ::socket(AF_INET, kind, protocol);
 	// Если сокет слушателя завести не удалось
 	if(listener == INVALID_SOCKET){
-		// Записываем ошибку в лог
-		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (type),
+					static_cast <uint16_t> (proto),
+					name
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Возвращаем пустую пару сокетов
 		return result;
 	}
@@ -2103,13 +3065,15 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 */
 	do {
 		/**
-		 * Признак повторного использования адреса слушателю НЕ ставится
+		 * Если привязать слушателя к адресу не удалось
+		 *
+		 * @note Признак повторного использования адреса слушателю НЕ ставится
 		 *
 		 * @details У систем POSIX признак этот безобиден: он позволяет занять адрес,
 		 *          оставшийся в состоянии TIME_WAIT, но занять адрес ЖИВОГО слушателя
 		 *          не даёт. MS Windows понимает его иначе - как право перехвата: сокет
 		 *          с этим признаком встаёт на адрес, уже занятый чужим слушателем, и
-		 *          подключения достаются перехватчику
+		 *          подключения достаются перехватчику.
 		 *
 		 * @warning Здесь это прямая брешь: слушатель поднимается на петлевом устройстве
 		 *          ради сведения двух сторон пары, и всякий местный процесс, поставивший
@@ -2121,7 +3085,6 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 *       адреса ему не достаётся никогда
 		 *
 		 */
-		// Если привязать слушателя к адресу не удалось
 		if(::bind(listener, &address.addr, static_cast <int32_t> (sizeof(address.inaddr))) == SOCKET_ERROR)
 			// Выходим из цикла заведения пары
 			break;
@@ -2132,14 +3095,15 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			// Выходим из цикла заведения пары
 			break;
 		/**
-		 * Восполняем поля, каких система не заполняет
+		 * Устанавливаем семейство адресов слушателя
+		 *
+		 * @note Восполняем поля, каких система не заполняет
 		 *
 		 * @details Getsockname у MS Windows вправе выставить один лишь номер порта,
 		 *          оставив семейство адресов и сам адрес нетронутыми. Описано это самой
-		 *          системой; полагаться на заполнение их нельзя
+		 *          системой; полагаться на заполнение их нельзя.
 		 *
 		 */
-		// Устанавливаем семейство адресов слушателя
 		address.inaddr.sin_family = AF_INET;
 		// Устанавливаем петлевое сетевое устройство
 		address.inaddr.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
@@ -2164,7 +3128,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 *          местному процессу: подключиться к нему меж `listen` и нашим `accept`
 		 *          вправе кто угодно. Сличение отвечает на вопрос, наша ли сторона
 		 *          принята: у настоящей пары местное имя нашей стороны и имя собеседника
-		 *          у принятой - одно и то же
+		 *          у принятой - одно и то же.
 		 *
 		 * @warning Пояснение выше, о непоставленном признаке повторного использования
 		 *          адреса, прикрывает ОДИН лишь перехват адреса и о постороннем
@@ -2210,8 +3174,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			if((second != INVALID_SOCKET) && !((peer.inaddr.sin_family == mine.inaddr.sin_family) &&
 			   (peer.inaddr.sin_port == mine.inaddr.sin_port) &&
 			   (peer.inaddr.sin_addr.s_addr == mine.inaddr.sin_addr.s_addr))){
-				// Записываем предупреждение о постороннем подключении
-				awh::log::print("%s: a foreign local connection has been accepted on the socket pair listener, the pair is not created", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем предупреждение о постороннем подключении
+					log::debug(
+						"%s: a foreign local connection has been accepted on the socket pair listener, the pair is not created", __PRETTY_FUNCTION__,
+						{
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (type),
+							static_cast <uint16_t> (proto),
+							name
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем предупреждение о постороннем подключении
+					log::print("%s: a foreign local connection has been accepted on the socket pair listener, the pair is not created", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				#endif
 				// Закрываем постороннее подключение
 				::closesocket(second);
 				// Отмечаем вторую сторону пары незаведённой
@@ -2231,8 +3215,28 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		// Возвращаем заведённую пару сокетов
 		return result;
 	} while(false);
-	// Записываем ошибку в лог
-	awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем ошибку в лог
+		log::debug(
+			"%s: %s", __PRETTY_FUNCTION__,
+			{
+				static_cast <uint16_t> (family),
+				static_cast <uint16_t> (type),
+				static_cast <uint16_t> (proto),
+				name
+			}, log::flag_t::CRITICAL,
+			::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+		);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	#endif
 	// Закрываем сокет слушателя
 	::closesocket(listener);
 	// Если первая сторона пары заведена - закрываем её
@@ -2246,19 +3250,18 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	// Возвращаем пустую пару сокетов
 	return result;
 }
-
 /**
  * @brief Метод получения класса обслуживания в заголовке IP-пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @return       класс обслуживания
  *
  * @warning Отдаётся здесь запрошенное, а не показание системы. Настройка IP_TOS у MS
  *          Windows существует, но с версии Windows XP SP2 не исполняется: запись
  *          отвечает согласием, а в заголовок пакета не попадает ничего. Отметка
  *          ставится подсистемой качества обслуживания qWAVE, а обратного чтения она
  *          не даёт вовсе - оттого выдаётся то, что запрашивали
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @return       класс обслуживания
  *
  */
 awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
@@ -2268,11 +3271,6 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 /**
  * @brief Метод установки класса обслуживания в заголовке IP-пакета
  *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @param dscp   устанавливаемый класс обслуживания
- * @return       результат выполнения установки
- *
  * @note Отметка ставится сразу, если сокет уже соединён - подсистема берёт назначение
  *       у него самого. Иначе она запоминается и будет применена, едва назначение
  *       станет известно: назначения требует сама подсистема, а порядок вызовов ей не
@@ -2280,24 +3278,28 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
  *
  * @warning Заведённый подсистемой поток обязан быть снят прежде закрытия сокета
  *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param dscp   устанавливаемый класс обслуживания
+ * @return       результат выполнения установки
+ *
  */
 bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family, const event::dscp_t dscp) const noexcept {
 	// Выводим результат установки класса обслуживания сокету
 	return win::qos::mark(sock, dscp);
 }
-
 /**
  * @brief Метод получения признака перегрузки в заголовке IP-пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @return       признак перегрузки
  *
  * @note У систем POSIX признак этот занимает два младших разряда того же октета, где
  *       стоит класс обслуживания, и читается вместе с ним настройкой IP_TOS. MS
  *       Windows развела их порознь: признак перегрузки читается своей настройкой
  *       IP_ECN и класса обслуживания при себе не несёт - оттого прикрывать чтение
  *       разрядной маской здесь не приходится
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @return       признак перегрузки
  *
  */
 awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept {
@@ -2336,8 +3338,26 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	}
 	// Если считать признак перегрузки не удалось
 	if(::getsockopt(sock, level, option, reinterpret_cast <char *> (&value), &length) != 0){
-		// Выводим в журнал сообщение о невозможности чтения признака перегрузки
-		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности чтения признака перегрузки
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности чтения признака перегрузки
+			log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Выводим отсутствие признака перегрузки
 		return event::ecn_t::NOT_ECT;
 	}
@@ -2345,60 +3365,11 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	return static_cast <event::ecn_t> (value & 0x03);
 }
 /**
- * @brief Функция получения расширенного вызова отправки сообщения с управляющими данными
- *
- * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у самого
- *          сокета управляющим запросом - тем же порядком, каким берутся `AcceptEx`,
- *          `ConnectEx` и `WSARecvMsg`. Берётся он однажды и запоминается: адрес общий
- *          для всех сокетов библиотеки, а спрашивать его на каждую датаграмму значило
- *          бы платить обращением к ядру за каждую отправку
- *
- * @param sock сокет, у которого спрашивается вызов
- * @return     адрес расширенного вызова, либо пустое значение
- *
- */
-static LPFN_WSASENDMSG __awh_wsa_sendmsg__(const SOCKET sock) noexcept {
-	/**
-	 * Запомненный адрес расширенного вызова
-	 *
-	 * @note Держится он значением слаженным, а не простым указателем: спросить адрес
-	 *       вправе любой поток, а запись обычного указателя разошлась бы с чтением
-	 *
-	 */
-	static std::atomic <LPFN_WSASENDMSG> cache{nullptr};
-	// Получаем запомненный адрес расширенного вызова
-	LPFN_WSASENDMSG result = cache.load(std::memory_order_acquire);
-	// Если адрес уже взят
-	if(result != nullptr)
-		// Выводим запомненный адрес
-		return result;
-	// Опознаватель расширенного вызова отправки сообщения
-	GUID guid = WSAID_WSASENDMSG;
-	// Размер отданного адреса
-	DWORD size = 0;
-	/**
-	 * Спрашиваем адрес расширенного вызова в СВОЁ значение, а не в запомненное
-	 *
-	 * @warning Прежде адрес спрашивался прямо в запомненное значение, и на время
-	 *          обращения оно стояло заполненным наполовину: поток соседний, увидав его
-	 *          непустым, ушёл бы вызывать мусор. Отказ же обращения оставляет там
-	 *          значение неопределённое, а не пустое
-	 *
-	 */
-	if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &result, sizeof(result), &size, nullptr, nullptr) != 0)
-		// Выводим отсутствие адреса расширенного вызова
-		return nullptr;
-	// Запоминаем взятый адрес расширенного вызова
-	cache.store(result, std::memory_order_release);
-	// Выводим адрес расширенного вызова
-	return result;
-}
-/**
  * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
  *
  * @details Метка едет вместе со своей датаграммой, а не ставится настройкой сокета: у
  *          датаграммных серверов сокет один на все соединения, и датаграмма, полежавшая
- *          в очереди отправки, ушла бы под меткой, выставленной уже другим соединением
+ *          в очереди отправки, ушла бы под меткой, выставленной уже другим соединением.
  *
  * @note У MS Windows метка кладётся настройкой `IP_ECN` / `IPV6_ECN`, а не `IP_TOS` /
  *       `IPV6_TCLASS`, как то заведено у систем POSIX. Настройки эти несут ТОЛЬКО два
@@ -2455,14 +3426,13 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	switch(static_cast <uint8_t> (family)){
 		// Для семейства IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): {
-			// Устанавливаем уровень управляющих данных
-			level = IPPROTO_IPV6;
 			// Устанавливаем название управляющих данных
 			option = IPV6_ECN;
+			// Устанавливаем уровень управляющих данных
+			level = IPPROTO_IPV6;
 		} break;
 		// Для семейства IPv4 остаются взятые по умолчанию значения
-		case static_cast <uint8_t> (event::family_t::IPV4):
-		break;
+		case static_cast <uint8_t> (event::family_t::IPV4): break;
 		// Для остальных семейств метить датаграмму нечем
 		default:
 			// Выполняем отправку датаграммы обычным обращением
@@ -2522,7 +3492,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	// Количество отправленных октетов
 	DWORD bytes = 0;
 	// Если отправить датаграмму с меткой перегрузки не удалось
-	if(send(sock, &message, static_cast <DWORD> (flags), &bytes, nullptr, nullptr) != 0)
+	if(::send(sock, &message, static_cast <DWORD> (flags), &bytes, nullptr, nullptr) != 0)
 		// Выводим признак отказа отправки
 		return -1;
 	// Выводим количество отправленных октетов
@@ -2530,11 +3500,6 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 }
 /**
  * @brief Метод установки признака перегрузки в заголовке IP-пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @param ecn    устанавливаемый признак перегрузки
- * @return       результат выполнения установки
  *
  * @note Читать прежнее значение перед записью, как то делают эталонные бэкенды, здесь
  *       не нужно: класс обслуживания настройкой этой не задевается вовсе
@@ -2558,8 +3523,6 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  *          и непомеченные датаграммы. Возврат метода здесь не изменён намеренно -
  *          отказ развёл бы договор метода по системам
  *
- */
-/**
  * @par Намеренные решения
  *
  * **Настройка эта у MS Windows ПРИНИМАЕТСЯ, но исходящие датаграммы НЕ МЕТИТ.**
@@ -2586,6 +3549,11 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  * @warning Вскрыто проверкой `SocketEcnDeliveryTest`, какая до 03.09.2026 под MS Windows
  *          ПРОПУСКАЛАСЬ: посредника `msghdr` проверке не хватало, и путь этот не
  *          проверялся вовсе. Снятие пропуска и вскрыло расхождение
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param ecn    устанавливаемый признак перегрузки
+ * @return       результат выполнения установки
  *
  */
 bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept {
@@ -2622,8 +3590,27 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 	}
 	// Если установить признак перегрузки не удалось
 	if(::setsockopt(sock, level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-		// Выводим в журнал сообщение о невозможности установки признака перегрузки
-		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности установки признака перегрузки
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <int32_t> (ecn)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности установки признака перегрузки
+			log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -2633,14 +3620,9 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 /**
  * @brief Метод включения либо выключения выдачи сведений о принятых пакетах
  *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @param mode   режим включения либо выключения
- * @return       результат выполнения переключения
- *
  * @details Выдача эта прикладывает к каждому принятому пакету его сопутствующие
  *          сведения - число переходов, какое пакет ещё вправе сделать, устройство,
- *          каким он принят, и класс обслуживания, с каким он пришёл
+ *          каким он принят, и класс обслуживания, с каким он пришёл.
  *
  * @note Настройки числа переходов и сведений об устройстве выставляются заодно, и
  *       успехом считается лишь общий их успех: выдача сведений наполовину для разбора
@@ -2659,6 +3641,11 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
  *          Найдено 25.08.2026 прогоном набора `eth` под MS Windows: проверка
  *          `SocketEcnDeliveryTest` отступала по доводу, который к тому дню устарел
  *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param mode   режим включения либо выключения
+ * @return       результат выполнения переключения
+ *
  */
 bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
 	// Если сокет не передан
@@ -2671,12 +3658,12 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	int32_t level = IPPROTO_IP, hops = IP_RECVTTL, info = IP_PKTINFO, service = IP_RECVTOS;
 	// Если сокет работает по протоколу IPv6
 	if(family == event::family_t::IPV6){
+		// Устанавливаем название настройки выдачи сведений об устройстве
+		info = IPV6_PKTINFO;
 		// Устанавливаем уровень настроек
 		level = IPPROTO_IPV6;
 		// Устанавливаем название настройки выдачи числа переходов
 		hops = IPV6_HOPLIMIT;
-		// Устанавливаем название настройки выдачи сведений об устройстве
-		info = IPV6_PKTINFO;
 		// Устанавливаем название настройки выдачи класса обслуживания
 		service = IPV6_RECVTCLASS;
 	}
@@ -2684,14 +3671,52 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	const bool first = (::setsockopt(sock, level, hops, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
 	// Если выставить настройку выдачи числа переходов не удалось
 	if(!first)
-		// Выводим в журнал сообщение о невозможности выставления настройки
-		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 	// Результат выставления настройки выдачи сведений об устройстве
 	const bool second = (::setsockopt(sock, level, info, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
 	// Если выставить настройку выдачи сведений об устройстве не удалось
 	if(!second)
-		// Выводим в журнал сообщение о невозможности выставления настройки
-		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 	/**
 	 * Выставляем настройку выдачи класса обслуживания
 	 *
@@ -2699,20 +3724,32 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	 *       перегрузки, тогда как число переходов и устройство приёма приходят исправно
 	 */
 	if(::setsockopt(sock, level, service, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0)
-		// Выводим в журнал сообщение о невозможности выставления настройки
-		awh::log::print("%s: traffic class of received packets is not reported: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::debug(
+				"%s: traffic class of received packets is not reported: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::print("%s: traffic class of received packets is not reported: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 	// Выводим общий результат переключения
 	return (first && second);
 }
 /**
  * @brief Метод переключения настройки сокета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов
- * @param mode   режим включения либо выключения
- * @param option переключаемая настройка
- * @param proto  протокол сокета, NONE - протокол не назван
- * @return       результат выполнения переключения
  *
  * @details Часть настроек у MS Windows зовётся иначе, чем у систем POSIX, часть
  *          достигается вовсе не настройкой сокета, а часть недостижима
@@ -2737,28 +3774,14 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  *       чего добивались и что уже есть, было бы неверно, оттого настройки эти
  *       отвечают согласием, не трогая сокета
  *
- */
-/**
- * @brief Функция проверки того, что описатель является именованным каналом
- *
- * @details Спрашивается это у самих средств работы с сокетами: описатель, не являющийся
- *          сокетом, отвечает на запрос своего вида отказом 10038 (`WSAENOTSOCK`). Вид
- *          файла (`GetFileType`) здесь негоден - сокеты у MS Windows отвечают им тем же
- *          значением, что и каналы
- *
- * @param sock проверяемый описатель
- * @return     признак именованного канала
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param mode   режим включения либо выключения
+ * @param option переключаемая настройка
+ * @param proto  протокол сокета, NONE - протокол не назван
+ * @return       результат выполнения переключения
  *
  */
-static bool __awh_socket_pipe__(const awh::net::socket_t sock) noexcept {
-	// Вид описателя в понимании средств работы с сокетами
-	int32_t type = 0;
-	// Размер значения вида описателя
-	int32_t length = static_cast <int32_t> (sizeof(type));
-	// Выводим признак того, что описатель сокетом не является
-	return ((::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, reinterpret_cast <char *> (&type), &length) != 0) && (::WSAGetLastError() == WSAENOTSOCK));
-}
-
 bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
@@ -2772,7 +3795,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	 *          задаются при заведении описателя и позже не меняются: наложенный обмен
 	 *          ставится признаком FILE_FLAG_OVERLAPPED, а наследование - оснасткой
 	 *          прав описателя. Отвечать отказом на достигнутое было бы неверно, а
-	 *          выполнять сокетное обращение - вредно
+	 *          выполнять сокетное обращение - вредно.
 	 *
 	 * @note Изъян обнаружен щупом живого запуска кластера: пара каналов заводилась,
 	 *       а настройка узла валилась отказом 10038 на неблокирующем обмене
@@ -2786,16 +3809,16 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		 * Определяем переключаемую настройку
 		 */
 		switch(option){
+			// Если переключается заглушение сигнала неверного действия
+			case event::options::NO_SIGILL:
+			// Если переключается заглушение сигнала обрыва канала
+			case event::options::NO_SIGPIPE:
 			// Если переключается неблокирующий обмен
 			case event::options::NO_IO_BLOCK:
 			// Если переключается блокирующий обмен
 			case event::options::SM_IO_BLOCK:
 			// Если переключается закрытие описателя при замещении образа
 			case event::options::CLOSE_ON_EXEC:
-			// Если переключается заглушение сигнала неверного действия
-			case event::options::NO_SIGILL:
-			// Если переключается заглушение сигнала обрыва канала
-			case event::options::NO_SIGPIPE:
 				/**
 				 * Выводим положительный результат: состояние это стоит с заведения
 				 *
@@ -2816,7 +3839,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 *          всякого своего события, и канал обязан принимать его целиком.
 			 *          Отвечать отказом значило бы валить заведение узла из-за настройки,
 			 *          которая каналу и не нужна, а писать о том в журнал - шуметь на
-			 *          каждом узле обо всяком расхождении устройств
+			 *          каждом узле обо всяком расхождении устройств.
 			 *
 			 * @note Умолчание это касается лишь канала: сокету всякая неподдерживаемая
 			 *       настройка по-прежнему отвечает отказом с записью в журнал
@@ -2837,12 +3860,12 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		// Если переключается настройка самостоятельной сборки заголовков пакета
 		case event::options::HDRINCL: {
 			/**
-			 * Если сокет работает по протоколу IPv6
+			 * Устанавливаем уровень настройки по семейству адресов сокета
 			 *
 			 * @details Настройка ставится ПО-НАСТОЯЩЕМУ: `IPV6_HDRINCL` у MS Windows
 			 *          объявлен (`ws2ipdef.h:72`) и работает, и ответ движка есть ответ
 			 *          самой системы. Применима она лишь к сокету НЕСТРУКТУРИРОВАННОМУ -
-			 *          ровно как `IP_HDRINCL` у IPv4
+			 *          ровно как `IP_HDRINCL` у IPv4.
 			 *
 			 * @warning Прежде здесь стоял УСПЕХ на пустое действие, обоснованный
 			 *          утверждением «своей головы у IPv6 не даёт ни одна система».
@@ -2868,7 +3891,6 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 *       оттуда она убрана, а договор закреплён `SocketHeaderInclusionIPv6Test`
 			 *       на сокете неструктурированном
 			 */
-			// Устанавливаем уровень настройки по семейству адресов сокета
 			level = ((family == event::family_t::IPV6) ? IPPROTO_IPV6 : IPPROTO_IP);
 			// Устанавливаем название настройки по семейству адресов сокета
 			name = ((family == event::family_t::IPV6) ? IPV6_HDRINCL : IP_HDRINCL);
@@ -2914,13 +3936,35 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		case event::options::REUSE_ADDR: {
 			// Если сокет является UNIX-доменным
 			if(family == event::family_t::UDS){
-				// Выводим в журнал сообщение об оставленной без внимания настройке
-				awh::log::print("%s: address reuse is not applicable to UNIX-domain sockets on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение об оставленной без внимания настройке
+					log::debug(
+						"%s: address reuse is not applicable to UNIX-domain sockets on MS Windows", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option,
+							static_cast <uint16_t> (proto)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение об оставленной без внимания настройке
+					log::print("%s: address reuse is not applicable to UNIX-domain sockets on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				#endif
 				/**
 				 * Выводим положительный результат переключения
 				 *
 				 * @note Отказ здесь был бы неверен: настройка не нужна, а не
 				 *       недоступна, - и обрывать из-за неё заведение узла незачем
+				 *
 				 */
 				return true;
 			}
@@ -2953,8 +3997,29 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			value.l_linger = 0;
 			// Если выставить выдержку закрытия не удалось
 			if(::setsockopt(sock, SOL_SOCKET, SO_LINGER, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-				// Выводим в журнал сообщение о невозможности выставления настройки
-				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option,
+							static_cast <uint16_t> (proto)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -2976,8 +4041,29 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			u_long value = static_cast <u_long> (option == event::options::NO_IO_BLOCK ? (mode == net::socket_mode_t::ENABLED ? 1 : 0) : (mode == net::socket_mode_t::ENABLED ? 0 : 1));
 			// Если выставить настройку не удалось
 			if(::ioctlsocket(sock, FIONBIO, &value) != 0){
-				// Выводим в журнал сообщение о невозможности выставления настройки
-				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option,
+							static_cast <uint16_t> (proto)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3005,8 +4091,29 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		case event::options::CLOSE_ON_EXEC: {
 			// Если снять либо поставить пометку наследования не удалось
 			if(!::SetHandleInformation(reinterpret_cast <HANDLE> (sock), HANDLE_FLAG_INHERIT, (mode == net::socket_mode_t::ENABLED ? 0 : HANDLE_FLAG_INHERIT))){
-				// Выводим в журнал сообщение о невозможности выставления настройки
-				awh::log::print("%s: handle inheritance could not be changed, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::debug(
+						"%s: handle inheritance could not be changed, error %lu", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option,
+							static_cast <uint16_t> (proto)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::GetLastError()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение о невозможности выставления настройки
+					log::print("%s: handle inheritance could not be changed, error %lu", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+				#endif
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3028,12 +4135,12 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		// Если переключается настройка придержки отправки
 		case event::options::TCP_CORKING: {
 			/**
-			 * Придержка отправки изображается алгоритмом Нейгла
+			 * Придержке отправки соответствует включённый алгоритм Нейгла, снятию - выключенный
 			 *
 			 * @details Ни TCP_CORK, ни TCP_NOPUSH у MS Windows нет, и ближайшее, что
 			 *          даёт там сам TCP, - алгоритм Нейгла: назначение у него то же,
 			 *          копить мелкие отправки до заполнения сегмента. Придержка
-			 *          включается снятием TCP_NODELAY, снимается - его возвратом
+			 *          включается снятием TCP_NODELAY, снимается - его возвратом.
 			 *
 			 * @details Ровно так же поступает движок kqueue у NetBSD, где нет ни того,
 			 *          ни другого: наружу выставлено одно имя опции, а движок
@@ -3047,13 +4154,34 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 * @warning Прежде здесь стоял отказ, и он расходился с движками POSIX:
 			 *          проверка SocketSwitchOptionTcpTest падала на всякой машине
 			 *          Windows, а изобразить придержку было чем
+			 *
 			 */
-			// Придержке отправки соответствует включённый алгоритм Нейгла, снятию - выключенный
 			const int32_t nodelay = (mode == net::socket_mode_t::ENABLED ? 0 : 1);
 			// Включаем либо отключаем алгоритм Нейгла вместо придержки отправки
 			if(::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&nodelay), static_cast <int32_t> (sizeof(nodelay))) != 0){
-				// Выводим в журнал сообщение об ошибке
-				awh::log::print("%s: TCP output corking could not be emulated by the Nagle algorithm, %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение об ошибке
+					log::debug(
+						"%s: TCP output corking could not be emulated by the Nagle algorithm, %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (family),
+							static_cast <uint16_t> (mode),
+							option,
+							static_cast <uint16_t> (proto)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение об ошибке
+					log::print("%s: TCP output corking could not be emulated by the Nagle algorithm, %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3066,7 +4194,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		 * @details Соответствия ей у MS Windows нет: SO_REUSEADDR здесь позволяет занять
 		 *          уже занятый порт и без неё, отчего подменять одно другим означало бы
 		 *          выдать иное поведение за запрошенное - разведения нагрузки по сокетам,
-		 *          какое даёт SO_REUSEPORT у Linux и FreeBSD, эта система не даёт ничем
+		 *          какое даёт SO_REUSEPORT у Linux и FreeBSD, эта система не даёт ничем.
 		 *
 		 * @note Настройка неприложима к системе ПО УСТРОЙСТВУ, а не по недостатку
 		 *       поддержки, и оттого отвечает успехом, не обращаясь к ядру: тем же
@@ -3084,23 +4212,86 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		 *
 		 */
 		case event::options::REUSE_PORT: {
-			// Выводим в журнал сообщение об отсутствии соответствия
-			awh::log::print("%s: port reuse has no counterpart on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в журнал сообщение об отсутствии соответствия
+				log::debug(
+					"%s: port reuse has no counterpart on MS Windows", __PRETTY_FUNCTION__,
+					{
+						sock,
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (mode),
+						option,
+						static_cast <uint16_t> (proto)
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим в журнал сообщение об отсутствии соответствия
+				log::print("%s: port reuse has no counterpart on MS Windows", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			#endif
 			// Выводим успешный результат, не обращаясь к ядру
 			return true;
 		}
 		// Если настройка модулю неизвестна
 		default: {
-			// Выводим в журнал сообщение о неизвестной настройке
-			awh::log::print("%s: socket option %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в журнал сообщение о неизвестной настройке
+				log::debug(
+					"%s: socket option %u is not supported", __PRETTY_FUNCTION__,
+					{
+						sock,
+						static_cast <uint16_t> (family),
+						static_cast <uint16_t> (mode),
+						option,
+						static_cast <uint16_t> (proto)
+					}, log::flag_t::WARNING,
+					::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим в журнал сообщение о неизвестной настройке
+				log::print("%s: socket option %u is not supported", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option));
+			#endif
 			// Выводим отрицательный результат переключения
 			return false;
 		}
 	}
 	// Если выставить настройку сокета не удалось
 	if(::setsockopt(sock, level, name, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
-		// Выводим в журнал сообщение о невозможности выставления настройки
-		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::debug(
+				"%s: %s", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (family),
+					static_cast <uint16_t> (mode),
+					option,
+					static_cast <uint16_t> (proto)
+				}, log::flag_t::WARNING,
+				::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о невозможности выставления настройки
+			log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		#endif
 		// Выводим отрицательный результат переключения
 		return false;
 	}
@@ -3108,115 +4299,12 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	return true;
 }
 /**
- * @brief Функция добычи номера сетевого устройства по его адресу IPv6
- *
- * @details Эталонные слои называют устройство входа в группу рассылки его АДРЕСОМ и
- *          сами переводят адрес в номер, перебирая устройства машины. MS Windows
- *          адреса на этом месте не принимает вовсе - структура `ipv6_mreq` несёт
- *          номер, - и перевод потому ведётся здесь
- *
- * @warning Прежде номер брался из одного лишь поля зоны переданного адреса, а сам
- *          адрес отбрасывался. Поле это заполнено у адресов связи-местных
- *          (`FE80::/10`), где зона записана в самом адресе, и пусто у всех прочих -
- *          у глобальных и у местных однозначных (`FC00::/7`). Вход по такому адресу
- *          уходил оттого на устройство, выбранное системой, а не на названное, и
- *          расхождение было молчаливым: обращение отвечало успехом
- *
- * @note Зона, если она задана, имеет преимущество: она и есть номер устройства,
- *       названный вызывающей стороной прямо, и перебирать ради него устройства
- *       машины незачем
- *
- * @param address адрес устройства, каким выполняется вход в группу рассылки
- * @param zone    зона переданного адреса, ноль - зона не задана
- * @return        номер сетевого устройства либо ноль, если устройство не найдено
- *
- */
-static uint32_t __awh_iface_index6__(const uint8_t * address, const uint32_t zone) noexcept {
-	// Если зона адреса задана - она и есть номер устройства
-	if(zone > 0)
-		// Выводим номер устройства, названный зоной адреса
-		return zone;
-	// Если адрес не передан
-	if(address == nullptr)
-		// Выводим отсутствие номера устройства
-		return 0;
-	// Признак того, что адрес пуст целиком
-	bool empty = true;
-	/**
-	 * Выполняем перебор всех октетов переданного адреса
-	 */
-	for(size_t i = 0; i < 16; i++){
-		// Если очередной октет адреса не пуст
-		if(address[i] != 0){
-			// Отмечаем адрес непустым
-			empty = false;
-			// Завершаем перебор октетов адреса
-			break;
-		}
-	}
-	/**
-	 * Если адрес пуст - устройство выбирает система
-	 *
-	 * @note Пустой адрес (`::`) и означает у эталонных слоёв выбор устройства самой
-	 *       системой, и перебирать устройства машины ради него незачем
-	 */
-	if(empty)
-		// Выводим отсутствие номера устройства
-		return 0;
-	// Состав запрашиваемых сведений
-	const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
-	// Объём буфера под перечень устройств
-	ULONG size = 16384;
-	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer(static_cast <size_t> (size));
-	// Итог опроса перечня устройств
-	ULONG code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
-	// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
-	if(code == ERROR_BUFFER_OVERFLOW){
-		// Выполняем расширение буфера под перечень устройств
-		buffer.resize(static_cast <size_t> (size));
-		// Выполняем повторный опрос перечня устройств
-		code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
-	}
-	// Если перечень устройств получить не удалось
-	if(code != NO_ERROR)
-		// Выводим отсутствие номера устройства
-		return 0;
-	/**
-	 * Выполняем перебор всех сетевых устройств машины
-	 */
-	for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
-		/**
-		 * Устройства, не поднятые в работу, пропускаем
-		 *
-		 * @note Тем же порядком поступает и эталонный слой: он держит в своём складе
-		 *       признак поднятости и сличает адреса лишь у поднятых устройств
-		 */
-		if(adapter->OperStatus != IfOperStatusUp)
-			// Переходим к устройству следующему
-			continue;
-		/**
-		 * Выполняем перебор всех однозначных адресов устройства
-		 */
-		for(PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress; unicast != nullptr; unicast = unicast->Next){
-			// Если адрес устройства не задан либо не относится к IPv6
-			if((unicast->Address.lpSockaddr == nullptr) || (unicast->Address.lpSockaddr->sa_family != AF_INET6))
-				// Переходим к адресу следующему
-				continue;
-			// Получаем адрес устройства видом IPv6
-			const struct sockaddr_in6 * value = reinterpret_cast <const struct sockaddr_in6 *> (unicast->Address.lpSockaddr);
-			// Если адрес устройства совпал с искомым
-			if(::memcmp(&value->sin6_addr, address, 16) == 0)
-				// Выводим номер устройства, несущего искомый адрес
-				return static_cast <uint32_t> (adapter->Ipv6IfIndex);
-		}
-	}
-	// Выводим отсутствие номера устройства
-	return 0;
-}
-
-/**
  * @brief Метод входа в группу рассылки либо выхода из неё
+ *
+ * @note Устройство у IPv6 задаётся системе не адресом, а номером, и перевод адреса в
+ *       номер ведётся здесь - тем же порядком, каким его ведут эталонные слои.
+ *       Заданная зона адреса имеет преимущество: она номером и является. Пустой адрес
+ *       (`::`) означает выбор устройства самой системой
  *
  * @param sock   сетевой сокет
  * @param mode   режим входа либо выхода
@@ -3224,24 +4312,55 @@ static uint32_t __awh_iface_index6__(const uint8_t * address, const uint32_t zon
  * @param source адрес устройства, каким выполняется вход
  * @return       результат выполнения
  *
- * @note Устройство у IPv6 задаётся системе не адресом, а номером, и перевод адреса в
- *       номер ведётся здесь - тем же порядком, каким его ведут эталонные слои.
- *       Заданная зона адреса имеет преимущество: она номером и является. Пустой адрес
- *       (`::`) означает выбор устройства самой системой
- *
  */
 bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
 	// Если сокет либо адреса не переданы
 	if((sock == net::invalid_socket_t) || (group == nullptr) || (source == nullptr)){
-		// Выводим в журнал сообщение о непереданных адресах
-		awh::log::print("%s: multicast group or source address is not initialized", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о непереданных адресах
+			log::debug(
+				"%s: multicast group or source address is not initialized", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о непереданных адресах
+			log::print("%s: multicast group or source address is not initialized", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		#endif
 		// Выводим отрицательный результат выполнения
 		return false;
 	}
 	// Если виды переданных адресов не совпали
 	if(group->size != source->size){
-		// Выводим в журнал сообщение о несовпадении видов адресов
-		awh::log::print("%s: multicast group and source addresses belong to different families", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в журнал сообщение о несовпадении видов адресов
+			log::debug(
+				"%s: multicast group and source addresses belong to different families", __PRETTY_FUNCTION__,
+				{
+					sock,
+					static_cast <uint16_t> (mode)
+				}, log::flag_t::CRITICAL,
+				::__AWH_SOCKET_BACKEND__
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в журнал сообщение о несовпадении видов адресов
+			log::print("%s: multicast group and source addresses belong to different families", log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		#endif
 		// Выводим отрицательный результат выполнения
 		return false;
 	}
@@ -3261,8 +4380,26 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			request.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 			// Если выполнить вход в группу рассылки либо выход из неё не удалось
 			if(::setsockopt(sock, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
-				// Выводим в журнал сообщение о невозможности выполнения
-				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение о невозможности выполнения
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (mode)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение о невозможности выполнения
+					log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Выводим отрицательный результат выполнения
 				return false;
 			}
@@ -3281,8 +4418,26 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			request.ipv6mr_interface = static_cast <ULONG> (::__awh_iface_index6__(&device->address[0], device->zone));
 			// Если выполнить вход в группу рассылки либо выход из неё не удалось
 			if(::setsockopt(sock, IPPROTO_IPV6, (join ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
-				// Выводим в журнал сообщение о невозможности выполнения
-				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в журнал сообщение о невозможности выполнения
+					log::debug(
+						"%s: %s", __PRETTY_FUNCTION__,
+						{
+							sock,
+							static_cast <uint16_t> (mode)
+						}, log::flag_t::WARNING,
+						::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в журнал сообщение о невозможности выполнения
+					log::print("%s: %s", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				#endif
 				// Выводим отрицательный результат выполнения
 				return false;
 			}
@@ -3290,8 +4445,26 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			return true;
 		}
 	}
-	// Выводим в журнал сообщение о неподдерживаемом виде адресов
-	awh::log::print("%s: only IPv4 and IPv6 multicast groups are supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Выводим в журнал сообщение о неподдерживаемом виде адресов
+		log::debug(
+			"%s: only IPv4 and IPv6 multicast groups are supported", __PRETTY_FUNCTION__,
+			{
+				sock,
+				static_cast <uint16_t> (mode)
+			}, log::flag_t::WARNING,
+			::__AWH_SOCKET_BACKEND__
+		);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Выводим в журнал сообщение о неподдерживаемом виде адресов
+		log::print("%s: only IPv4 and IPv6 multicast groups are supported", log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	#endif
 	// Выводим отрицательный результат выполнения
 	return false;
 }

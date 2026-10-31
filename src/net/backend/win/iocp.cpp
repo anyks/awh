@@ -216,7 +216,7 @@
 	 *       миллисекунд - тот же запас, что ведро приёма держало и прежде
 	 *
 	 */
-	#define AWH_BANDWIDTH_BURST_WINDOW 0.01
+	#define AWH_BANDWIDTH_BURST_WINDOW .01
 #endif
 
 /**
@@ -3997,7 +3997,7 @@ namespace io {
 		 *
 		 */
 		explicit Ratewidth(const uint8_t tid) noexcept :
-		 tokens(0.), time(0), limit(0), timeout(tid) {}
+		 tokens(.0), time(0), limit(0), timeout(tid) {}
 	} wrate_t;
 
 	/**
@@ -6810,7 +6810,7 @@ namespace bandwidth {
 	 *          не подлежит
 	 *
 	 */
-	static double tokensRead = 0., tokensWrite = 0.;
+	static double tokensRead = .0, tokensWrite = .0;
 	/**
 	 * @brief Время последнего пополнения общего ведра в наносекундах
 	 *
@@ -14264,7 +14264,7 @@ namespace local {
 			 *       тогда, когда сроки движка станут дробнее миллисекунды: у кольца для
 			 *       этого всё есть, ограничение лежит выше
 			 */
-			const double threshold = 0.002;
+			const double threshold = .002;
 			// Выводим большее из порога пробуждения и заданного окна
 			if(threshold > AWH_BANDWIDTH_BURST_WINDOW)
 				// Выводим порог пробуждения как окно всплеска
@@ -14314,7 +14314,7 @@ namespace local {
 	 * @return         время ожидания в миллисекундах, ноль - ожидание не требуется
 	 *
 	 */
-	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
+	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = .0) noexcept {
 		// Определяем, к какому направлению относится списание
 		const bool egress = (limiting == awh::event::limiting_t::EGRESS);
 		// Получаем предел выбранного направления
@@ -19811,7 +19811,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->limitedRead()){
 										// Достаточное количество токенов для получения данных
-										double tokens = 0.;
+										double tokens = .0;
 										/**
 										 * Определяем семейство адресов
 										 */
@@ -21837,7 +21837,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Достаточное количество токенов для получения данных
-										double tokens = 0.;
+										double tokens = .0;
 										/**
 										 * Определяем семейство адресов
 										 */
@@ -24993,7 +24993,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -26544,7 +26544,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -29162,7 +29162,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -29574,7 +29574,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -32835,7 +32835,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -33251,7 +33251,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -71183,7 +71183,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 				 * @note Обнулением времени ведро заводится заново при первом же обращении:
 				 *       нулевое время означает «ведро ещё не заводилось»
 				 */
-				::bandwidth::tokensWrite = 0.;
+				::bandwidth::tokensWrite = .0;
 				// Сбрасываем время последнего пополнения ведра токенов
 				::bandwidth::timeWrite = 0;
 			} break;
@@ -71209,7 +71209,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 				 * @note Обнулением времени ведро заводится заново при первом же обращении:
 				 *       нулевое время означает «ведро ещё не заводилось»
 				 */
-				::bandwidth::tokensRead = 0.;
+				::bandwidth::tokensRead = .0;
 				// Сбрасываем время последнего пополнения ведра токенов
 				::bandwidth::timeRead = 0;
 			} break;
