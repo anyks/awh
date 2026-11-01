@@ -2461,14 +2461,13 @@ namespace {
 	 * @brief Идентификатор текущего процесса
 	 *
 	 */
-	const pid_t __awh_pid__ = ::getpid();
+	static const pid_t __awh_pid__ = ::getpid();
 
 	/**
 	 * @brief Признак того, что поток опроса очереди событий известен
 	 *
 	 */
-	bool __awh_poll_thread_known__ = false;
-
+	static bool __awh_poll_thread_known__ = false;
 	/**
 	 * @brief Поток, ведущий опрос очереди событий
 	 *
@@ -2480,13 +2479,12 @@ namespace {
 	 *          им останавливают цикл событий, и потерять его нельзя.
 	 *
 	 */
-	pthread_t __awh_poll_thread__ = pthread_t();
-
+	static pthread_t __awh_poll_thread__ = pthread_t();
 	/**
 	 * @brief Сокет связи с ядром операционной системы
 	 *
 	 */
-	net::socket_t __awh_kq__ = net::invalid_socket_t;
+	static net::socket_t __awh_kq__ = net::invalid_socket_t;
 
 	/**
 	 * @brief Глобальный буфер метаданных control message
@@ -2547,7 +2545,7 @@ namespace {
 	 *       нового массива и освобождению прежнего
 	 *
 	 */
-	unique_ptr <struct kevent []> __awh_events__(new struct kevent [AWH_MAX_POLL_EVENTS_COUNT]);
+	static unique_ptr <struct kevent []> __awh_events__(new struct kevent [AWH_MAX_POLL_EVENTS_COUNT]);
 
 	/**
 	 * @brief Тип внутреннего таймера для управления таймаутами событий
@@ -2580,7 +2578,7 @@ namespace {
 	 * @note Сложная структура сохранена и включается методом `setInternalTimer`
 	 *
 	 */
-	event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
+	static event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
 
 	/**
 	 * @brief Хранилище узлов событий с доступом по идентификатору
@@ -2826,13 +2824,12 @@ namespace {
 	 * @brief Глобальная переменная списка узлов событий
 	 *
 	 */
-	Storage_Transport_Layer_Nodes __awh_nodes__;
-
+	static Storage_Transport_Layer_Nodes __awh_nodes__;
 	/**
 	 * @brief Глобальная переменная списка сессий инициаторов запросов
 	 *
 	 */
-	unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
+	static unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
 };
 
 /**

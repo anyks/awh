@@ -838,9 +838,9 @@ namespace std {
 							this->combine(result, hash <uint64_t> {}(word));
 						}
 						// Добавляем остаток, если нужно (но 108 % 8 == 4) (Для Linux первые 4 байта зарезервированы под служебные нужды)
-						// const uint32_t tail = (* reinterpret_cast <const uint32_t *> (id.un.path + 104));
+						const uint32_t tail = (* reinterpret_cast <const uint32_t *> (id.un.path + 104));
 						// Комбинируем хеш-код остатка пути сокета
-						// this->combine(result, hash <uint32_t> {}(tail));
+						this->combine(result, hash <uint32_t> {}(tail));
 					} break;
 				}
 				// Возвращаем хеш-код
@@ -2593,13 +2593,13 @@ namespace {
 	 * @brief Идентификатор текущего процесса
 	 *
 	 */
-	const pid_t __awh_pid__ = ::getpid();
+	static const pid_t __awh_pid__ = ::getpid();
 
 	/**
 	 * @brief Признак того, что поток опроса очереди событий известен
 	 *
 	 */
-	bool __awh_poll_thread_known__ = false;
+	static bool __awh_poll_thread_known__ = false;
 	/**
 	 * @brief Поток, ведущий опрос очереди событий
 	 *
@@ -2611,12 +2611,12 @@ namespace {
 	 *          им останавливают цикл событий, и потерять его нельзя.
 	 *
 	 */
-	pthread_t __awh_poll_thread__ = pthread_t();
+	static pthread_t __awh_poll_thread__ = pthread_t();
 	/**
 	 * @brief Дескриптор очереди опроса epoll
 	 *
 	 */
-	net::socket_t __awh_ep__ = net::invalid_socket_t;
+	static net::socket_t __awh_ep__ = net::invalid_socket_t;
 
 	/**
 	 * @brief Глобальный буфер метаданных control message

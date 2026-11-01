@@ -216,7 +216,7 @@
 	 *       миллисекунд - тот же запас, что ведро приёма держало и прежде
 	 *
 	 */
-	#define AWH_BANDWIDTH_BURST_WINDOW 0.01
+	#define AWH_BANDWIDTH_BURST_WINDOW .01
 #endif
 
 /**
@@ -256,16 +256,16 @@
  */
 #include <set>
 #include <ctime>
+#include <deque>
+#include <mutex>
 #include <cerrno>
 #include <atomic>
-#include <mutex>
 #include <memory>
-#include <deque>
 #include <vector>
-#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
 #include <unordered_map>
 
 /**
@@ -274,8 +274,6 @@
 #include <pwd.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/locker.hpp>
-#include <sys/dirent.hpp>
 #include <limits.h>
 #include <sys/un.h>
 #include <sys/uio.h>
@@ -285,6 +283,8 @@
 #include <sys/eventfd.h>
 #include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/locker.hpp>
+#include <sys/dirent.hpp>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -295,8 +295,12 @@
  *
  * @note Заголовок этот поставляется отдельным пакетом (lksctp-tools), а не самой
  *       стандартной библиотекой, оттого подключение и обставлено проверкой
+ *
  */
 #if __has_include(<netinet/sctp.h>)
+	/**
+	 * Заголовочный файл для работы с протоколом SCTP
+	 */
 	#include <netinet/sctp.h>
 #endif
 
@@ -305,6 +309,7 @@
  *
  * @note Подключается последним из системных: он замещает имена вызовов на свои и
  *       обязан видеть исходные объявления уже подключёнными
+ *
  */
 #include <net/backend/gnu/socket.hpp>
 
@@ -325,15 +330,27 @@
 /**
  * @note Заголовок средств системы подключается ради разделителя пути
  *       `AWH_FS_SEPARATOR`, а не ради самого класса: обращений к нему в движке нет
+ *
  */
 #include <sys/os.hpp>
+
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
-#include <net/queue.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/io.hpp>
+#include <net/queue.hpp>
+
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_IO_URING_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_IO_URING_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * Используем стандартное пространство имён
@@ -465,9 +482,6 @@ namespace {
 	 */
 	typedef class Origin_Identifier {
 		public:
-			// Семейство адресов инициатора запроса
-			event::family_t family;
-		public:
 			/**
 			 * Признак опакового ключа сессии. Протоколы с собственной адресацией
 			 * сессий внутри датаграммы маршрутизируются не по четвёрке сокета, а по
@@ -475,6 +489,7 @@ namespace {
 			 * отдельное пространство и с адресными никогда не совпадают
 			 */
 			bool keyed;
+		public:
 			/**
 			 * Идентификатор события, которому принадлежит ключ. Сессии сервера
 			 * образуют пространство ключей своего события, поэтому один и тот же
@@ -485,6 +500,9 @@ namespace {
 			event::id_t event;
 			// Опаковый ключ сессии, заданный приложением
 			net::origin_key_t key;
+		public:
+			// Семейство адресов инициатора запроса
+			event::family_t family;
 		public:
 			/**
 			 * @brief Универсальная структура для хранения различных типов адресов
@@ -528,6 +546,7 @@ namespace {
 					 *       на Debian: дейтаграммный узел домена UNIX принимал сообщение от
 					 *       НЕПРИВЯЗАННОЙ встречной стороны, адрес её приходил пустым, и пустой
 					 *       адрес разбирался как безымянный сокет
+					 *
 					 */
 					char path[sizeof(((struct sockaddr_un *) nullptr)->sun_path)] = {0};
 				} un;
@@ -617,6 +636,7 @@ namespace {
 				 *          системы: обе стороны сходятся сегодня, но сходство это держится на
 				 *          устройстве двух разных заголовков, и заслон здесь - плата за то,
 				 *          чтобы расхождение их не обратилось выходом за границу снова
+				 *
 				 */
 				const size_t length = std::min(sizeof(this->un.path), (
 					// Безымянный адрес: у Linux это абстрактный сокет, у прочих систем - непривязанная сторона
@@ -689,7 +709,7 @@ namespace {
 			 *
 			 */
 			explicit Origin_Identifier() noexcept :
-			 family(event::family_t::NONE), keyed(false), event(0) {};
+			 keyed(false), event(0), family(event::family_t::NONE) {}
 	} origin_id_t;
 	/**
 	 * @brief Шаблон функции выполнения приведения типа B к типу A
@@ -792,6 +812,7 @@ namespace std {
 						 *
 						 * @note Копирование тут ничего не стоит: собиратель обращает его в
 						 *       ту же самую пару чтений, когда выравнивание известно
+						 *
 						 */
 						uint64_t hi = 0, lo = 0;
 						// Читаем старшую половину адреса
@@ -823,9 +844,9 @@ namespace std {
 							this->combine(result, hash <uint64_t> {}(word));
 						}
 						// Добавляем остаток, если нужно (но 108 % 8 == 4) (Для Linux первые 4 байта зарезервированы под служебные нужды)
-						// const uint32_t tail = (* reinterpret_cast <const uint32_t *> (id.un.path + 104));
+						const uint32_t tail = (* reinterpret_cast <const uint32_t *> (id.un.path + 104));
 						// Комбинируем хеш-код остатка пути сокета
-						// this->combine(result, hash <uint32_t> {}(tail));
+						this->combine(result, hash <uint32_t> {}(tail));
 					} break;
 				}
 				// Возвращаем хеш-код
@@ -855,14 +876,23 @@ namespace io {
 	 *
 	 */
 	typedef struct SCTP_Callback {
-		// Функция обратного вызова для получения информационных сообщений SCTP-протокола
+		/**
+		 * @brief Функция обратного вызова для получения информационных сообщений SCTP-протокола
+		 *
+		 */
 		engine::callback::sctp::minfo_t info;
-		// Функция обратного вызова для получения событий SCTP-протокола
-		engine::callback::sctp::events_t events;
-		// Функция обратного вызова для чтения данных SCTP вместе с метаданными
-		//
-		// @note Отклик необязателен и заменяет собой общий отклик чтения: пока он не
-		//       установлен, подписка на метаданные ядру не выдаётся вовсе
+		/**
+		 * @brief Функция обратного вызова для получения событий SCTP-протокола
+		 *
+		 */
+		engine::callback::sctp::events_t events; 
+		/**
+		 * @brief Функция обратного вызова для чтения данных SCTP вместе с метаданными
+		 * 
+		 * @note Отклик необязателен и заменяет собой общий отклик чтения: пока он не
+		 *       установлен, подписка на метаданные ядру не выдаётся вовсе
+		 *
+		 */
 		engine::callback::sctp::message_t message;
 		/**
 		 * @brief Конструктор
@@ -927,10 +957,13 @@ namespace io {
 		 *
 		 */
 		explicit SCTP_Endpoint() noexcept :
-		 partial(false), complete(true), id(0), flags(0), remaining(0), info{} {}
+		 partial(false), complete(true), id(0),
+		 flags(0), remaining(0), info{} {}
 	} sctp_endpoint_t;
 
-	// Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
+	/**
+	 * Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
+	 */
 	static const sctp_endpoint_t __awh_sctp_none__;
 
 	/**
@@ -1015,6 +1048,7 @@ namespace io {
 		 *          выданную память безвозвратно и оставляет хранилище в
 		 *          негодном виде, а всякое последующее обращение к нему, как и
 		 *          его же разрушение, становится действием неопределённым
+		 *
 		 */
 		(* this->_sctp) = sctp_endpoint_t();
 		// Восстанавливаем объект функций обратного вызова SCTP
@@ -1114,6 +1148,7 @@ namespace io {
 		 *       вызовом send(id, nullptr, 0), а снимают: сам источник, ответив ложью;
 		 *       уничтожение узла; очистка очереди при его пересоздании. Нулевая запись
 		 *       источника признак НЕ снимает - движок вернётся к нему на сливе очереди
+		 *
 		 */
 		bool pulling;
 		// Файловый дескриптор сервиса
@@ -1166,16 +1201,20 @@ namespace io {
 	 *
 	 */
 	typedef struct State {
-		uint16_t options;                // Флаги опций события
-		event::node_t node;              // Флаг узла события
-		event::hops_t hops;              // Флаг хопов события
-		event::type_t type;              // Флаг типа события
-		event::status_t stash;           // Флаг статуса сохранённого события
-		event::status_t status;          // Флаг статуса события
-		event::family_t family;          // Флаг семейства события
-		event::address_t address;        // Флаг адреса события
-		event::protocol_t protocol;      // Флаг протокола события
-		event::delivery_mode_t delivery; // Флаг режима доставки события
+		/**
+		 * Признак описателя, принятого передачей от чужого процесса
+		 *
+		 * @details Такой описатель приезжает УЖЕ заведённым: привязанным, а у сервера и
+		 *          слушающим. Фиксация обязана провести событие остальным путём - настройки,
+		 *          подписка на очередь опроса, состояние - но заводить и привязывать ему
+		 *          нечего, и адреса привязки у него нет вовсе: он принадлежит отправителю.
+		 *
+		 * @warning Без этого признака фиксация отвергала поднятое событие молча: привязка
+		 *          идёт под условием наличия адреса, условие не выполнялось, и наружу
+		 *          уходил отказ без причины
+		 *
+		 */
+		bool adopted;
 		/**
 		 * Класс обслуживания вместе с меткой перегрузки (ECN) исходящих датаграмм
 		 *
@@ -1183,27 +1222,36 @@ namespace io {
 		 *          один на все соединения, и датаграмма, полежавшая в очереди, ушла бы
 		 *          под меткой, выставленной уже другим соединением. Отсюда же и нулевое
 		 *          значение как признак «не метить»: нулевой класс обслуживания вместе
-		 *          с отсутствием метки ровно это и означают
+		 *          с отсутствием метки ровно это и означают.
+		 *
 		 */
 		uint8_t traffic;
-		/**
-		 * Признак описателя, принятого передачей от чужого процесса
-		 *
-		 * @details Такой описатель приезжает УЖЕ заведённым: привязанным, а у сервера и
-		 *          слушающим. Фиксация обязана провести событие остальным путём - настройки,
-		 *          подписка на очередь опроса, состояние - но заводить и привязывать ему
-		 *          нечего, и адреса привязки у него нет вовсе: он принадлежит отправителю
-		 *
-		 * @warning Без этого признака фиксация отвергала поднятое событие молча: привязка
-		 *          идёт под условием наличия адреса, условие не выполнялось, и наружу
-		 *          уходил отказ без причины
-		 */
-		bool adopted;
+		// Флаги опций события
+		uint16_t options;
+		// Флаг узла события
+		event::node_t node;
+		// Флаг хопов события
+		event::hops_t hops;
+		// Флаг типа события
+		event::type_t type;
+		// Флаг статуса сохранённого события
+		event::status_t stash;
+		// Флаг статуса события
+		event::status_t status;
+		// Флаг семейства события
+		event::family_t family;
+		// Флаг адреса события
+		event::address_t address;
+		// Флаг протокола события
+		event::protocol_t protocol;
+		// Флаг режима доставки события
+		event::delivery_mode_t delivery;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit State() noexcept :
+		 adopted(false), traffic(0),
 		 options(event::options::NONE),
 		 node(event::node_t::NONE),
 		 hops(event::hops_t::WORLD),
@@ -1213,7 +1261,7 @@ namespace io {
 		 family(event::family_t::NONE),
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
-		 delivery(event::delivery_mode_t::UNICAST), traffic(0), adopted(false) {}
+		 delivery(event::delivery_mode_t::UNICAST) {}
 	} state_t;
 
 	/**
@@ -1277,7 +1325,6 @@ namespace io {
 		 connect(3), reconnect(4) {}
 	} timeouts_client_t;
 
-
 	/**
 	 * @brief Структура ограничения пропускной способности
 	 *
@@ -1295,6 +1342,7 @@ namespace io {
 		 *       выше 34 гигабит в секунду молчаливо заворачивался. Поле не
 		 *       увеличивает набор: восемь октетов ложатся в хвостовое
 		 *       выравнивание, набор как занимал тридцать два октета, так и занимает
+		 *
 		 */
 		uint64_t limit;
 		// Таймаут пропускной способности
@@ -1306,7 +1354,7 @@ namespace io {
 		 *
 		 */
 		explicit Ratewidth(const uint8_t tid) noexcept :
-		 tokens(0.), time(0), limit(0), timeout(tid) {}
+		 tokens(.0), time(0), limit(0), timeout(tid) {}
 	} wrate_t;
 
 	/**
@@ -1335,7 +1383,6 @@ namespace io {
 	 */
 	static const bandwidth_t __awh_bandwidth_none__;
 
-
 	/**
 	 * @brief Структура обратных вызовов события
 	 *
@@ -1347,17 +1394,6 @@ namespace io {
 		engine::callback::error_t error;
 		// Функция обратного вызова при изменении статуса события
 		engine::callback::status_t status;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Callbacks() noexcept :
-		 spool(nullptr), error(nullptr), status(nullptr) {}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		virtual ~Callbacks() = default;
 		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
@@ -1373,6 +1409,17 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->status = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Callbacks() noexcept :
+		 spool(nullptr), error(nullptr), status(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Callbacks() = default;
 	} callbacks_t;
 
 	/**
@@ -1389,13 +1436,6 @@ namespace io {
 		// Функция обратного вызова при изменении события
 		engine::callback::vnode_t vnode;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Filesystem_Callbacks() noexcept :
-		 read(nullptr), write(nullptr),
-		 event(nullptr), vnode(nullptr) {}
-		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
 		 */
@@ -1411,6 +1451,13 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->vnode = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Filesystem_Callbacks() noexcept :
+		 read(nullptr), write(nullptr),
+		 event(nullptr), vnode(nullptr) {}
 	} fs_callbacks_t;
 
 	/**
@@ -1425,12 +1472,6 @@ namespace io {
 		// Функция обратного вызова инъекции объединённых данных (splice)
 		engine::callback::inject_t inject;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Mediator_Callbacks() noexcept :
-		 read(nullptr), event(nullptr), inject(nullptr) {}
-		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
 		 */
@@ -1444,6 +1485,12 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->inject = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Mediator_Callbacks() noexcept :
+		 read(nullptr), event(nullptr), inject(nullptr) {}
 	} mediator_callbacks_t;
 
 	/**
@@ -1462,14 +1509,6 @@ namespace io {
 		// Функция обратного вызова при получении информационных метаданных о дейтаграммном пакете
 		engine::callback::traffic_t traffic;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Server_Callbacks() noexcept :
-		 write(nullptr), event(nullptr),
-		 accept(nullptr), origin(nullptr),
-		 traffic(nullptr) {}
-		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
 		 */
@@ -1487,6 +1526,14 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->traffic = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Server_Callbacks() noexcept :
+		 write(nullptr), event(nullptr),
+		 accept(nullptr), origin(nullptr),
+		 traffic(nullptr) {}
 	} server_callbacks_t;
 
 	/**
@@ -1504,14 +1551,9 @@ namespace io {
 		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
 		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
 		 *       слушающих серверов, которым вытягивание не положено вовсе
-		 */
-		engine::callback::source_t source;
-		/**
-		 * @brief Конструктор
 		 *
 		 */
-		explicit Tunnel_Callbacks() noexcept :
-		 tuninfo(nullptr), available(nullptr), source(nullptr) {}
+		engine::callback::source_t source;
 		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
@@ -1526,6 +1568,12 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->source = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Tunnel_Callbacks() noexcept :
+		 tuninfo(nullptr), available(nullptr), source(nullptr) {}
 	} tunnel_callbacks_t;
 
 	/**
@@ -1555,17 +1603,9 @@ namespace io {
 		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
 		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
 		 *       слушающих серверов, которым вытягивание не положено вовсе
-		 */
-		engine::callback::source_t source;
-		/**
-		 * @brief Конструктор
 		 *
 		 */
-		explicit Client_Callbacks() noexcept :
-		 read(nullptr), write(nullptr),
-		 event(nullptr), inject(nullptr),
-		 connect(nullptr), timeout(nullptr),
-		 traffic(nullptr), available(nullptr), source(nullptr) {}
+		engine::callback::source_t source;
 		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
@@ -1588,10 +1628,20 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->traffic = nullptr;
 			// Снимаем функцию обратного вызова
-			this->available = nullptr;
-			// Снимаем функцию обратного вызова
 			this->source = nullptr;
+			// Снимаем функцию обратного вызова
+			this->available = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Client_Callbacks() noexcept :
+		 read(nullptr), write(nullptr),
+		 event(nullptr), inject(nullptr),
+		 connect(nullptr), timeout(nullptr),
+		 traffic(nullptr), available(nullptr),
+		 source(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -1617,16 +1667,9 @@ namespace io {
 		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
 		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
 		 *       слушающих серверов, которым вытягивание не положено вовсе
-		 */
-		engine::callback::source_t source;
-		/**
-		 * @brief Конструктор
 		 *
 		 */
-		explicit Peer_Callbacks() noexcept :
-		 read(nullptr), write(nullptr),
-		 event(nullptr), inject(nullptr),
-		 timeout(nullptr), available(nullptr), source(nullptr) {}
+		engine::callback::source_t source;
 		/**
 		 * @brief Метод снятия всех функций обратного вызова
 		 *
@@ -1643,25 +1686,34 @@ namespace io {
 			// Снимаем функцию обратного вызова
 			this->inject = nullptr;
 			// Снимаем функцию обратного вызова
+			this->source = nullptr;
+			// Снимаем функцию обратного вызова
 			this->timeout = nullptr;
 			// Снимаем функцию обратного вызова
 			this->available = nullptr;
-			// Снимаем функцию обратного вызова
-			this->source = nullptr;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Peer_Callbacks() noexcept :
+		 read(nullptr), write(nullptr),
+		 event(nullptr), inject(nullptr),
+		 timeout(nullptr), available(nullptr),
+		 source(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
 	 * @brief Структура отложенного вступления в группу рассылки
 	 *
 	 * @details Вступление привязывает дескриптор к порту группы, чего фиксация
-	 * настроек не делает, оттого звать его следует ДО неё. Но сокет заводится
-	 * самой фиксацией, и до неё вступать попросту не по чему: доводы копятся
-	 * здесь, а применяются сразу после того, как сокет заведён
+	 *          настроек не делает, оттого звать его следует ДО неё. Но сокет заводится
+	 *          самой фиксацией, и до неё вступать попросту не по чему: доводы копятся
+	 *          здесь, а применяются сразу после того, как сокет заведён.
 	 *
 	 * @note Порядок «привязка - вступление» соблюдает теперь движок, а не
-	 * вызывающая сторона: прежде его нарушение ничем не наказывалось и просто
-	 * тихо не срабатывало
+	 *       вызывающая сторона: прежде его нарушение ничем не наказывалось и просто
+	 *       тихо не срабатывало
 	 *
 	 */
 	typedef struct Deferred_Membership {
@@ -1675,21 +1727,18 @@ namespace io {
 		 *
 		 */
 		explicit Deferred_Membership() noexcept :
-		 active(false), port(0), mode(event::mode_t::DISABLED),
+		 active(false), port(0),
+		 mode(event::mode_t::DISABLED),
 		 group{""}, source{""} {}
 	} deferred_membership_t;
 
-	/**
-	 * @brief Структура узла события
-	 *
-	 */
 	/**
 	 * @brief Учёт живых узлов
 	 *
 	 * @details Кольцо держит в записи поданной операции АДРЕС узла, а тот волен быть
 	 *          снесён прежде, чем завершение по записи придёт. Адрес в записи живости
 	 *          узла не доказывает, и обнулять его в записях некому: снос идёт не одним
-	 *          путём, и перечислять их все - тот же учёт, только неверный
+	 *          путём, и перечислять их все - тот же учёт, только неверный.
 	 *
 	 * @warning Заслон этот обязателен, и он найден ВОРОШИТЕЛЕМ: `reconcile` читала
 	 *          `node->state.node` по адресу снесённого узла `io::Client`, и надзиратель
@@ -1703,6 +1752,10 @@ namespace io {
 	 */
 	static unordered_set <const void *> living;
 
+	/**
+	 * @brief Структура узла события
+	 *
+	 */
 	typedef struct Node {
 		// Состояние события
 		state_t state;
@@ -1714,6 +1767,19 @@ namespace io {
 		deferred_membership_t membership;
 		// Отложенное устройство групповой рассылки
 		string iface;
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @note Отклики у каждой разновидности узла свои, а снимать их приходится
+		 *       разом при сворачивании движка - отсюда общий доступ к их основе
+		 *
+		 * @return функции обратного вызова узла либо nullptr, если их у узла нет
+		 *
+		 */
+		virtual callbacks_t * hooks() noexcept {
+			// Выводим отсутствие функций обратного вызова
+			return nullptr;
+		}
 		/**
 		 * @brief Конструктор
 		 *
@@ -1729,19 +1795,6 @@ namespace io {
 		virtual ~Node() noexcept {
 			// Снимаем узел с учёта живых
 			::io::living.erase(this);
-		}
-		/**
-		 * @brief Метод доступа к функциям обратного вызова узла
-		 *
-		 * @note Отклики у каждой разновидности узла свои, а снимать их приходится
-		 *       разом при сворачивании движка - отсюда общий доступ к их основе
-		 *
-		 * @return функции обратного вызова узла либо nullptr, если их у узла нет
-		 *
-		 */
-		virtual callbacks_t * hooks() noexcept {
-			// Выводим отсутствие функций обратного вызова
-			return nullptr;
 		}
 	} node_t;
 
@@ -1774,6 +1827,16 @@ namespace io {
 		// Обратные вызовы события
 		callbacks_t callbacks;
 		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
+		/**
 		 * @brief Конструктор
 		 *
 		 */
@@ -1783,16 +1846,6 @@ namespace io {
 		 *
 		 */
 		virtual ~Timer() = default;
-		/**
-		 * @brief Метод доступа к функциям обратного вызова узла
-		 *
-		 * @return функции обратного вызова узла
-		 *
-		 */
-		callbacks_t * hooks() noexcept override {
-			// Выводим функции обратного вызова узла
-			return &this->callbacks;
-		}
 	} timer_t;
 
 	/**
@@ -1802,23 +1855,20 @@ namespace io {
 	typedef struct User : public node_t {
 		// Идентификатор события принимающей стороны
 		event::id_t dest;
-		// Очередь пользовательских событий
 		/**
+		 * @brief Очередь пользовательских событий
+		 *
 		 * @note Единственная очередь движка, которую наполняет один поток, а
 		 *       разбирает другой: ради этого пользовательское событие и заведено.
 		 *       Соседние поля узла при этом трогает поток опроса, поэтому очередь
 		 *       уводится на отдельную строку кэша - иначе два потока писали бы в
 		 *       одну строку, деля её впустую
-		 */
-		__AWH_NETWORK_QUEUE_CACHELINE_ALIGN__ net_queue_t events;
-		// Обратные вызовы события
-		peer_callbacks_t callbacks;
-		/**
-		 * @brief Конструктор
 		 *
 		 */
-		explicit User() noexcept :
-		 dest(0), events() {}
+		__AWH_NETWORK_QUEUE_CACHELINE_ALIGN__
+		net_queue_t events;
+		// Обратные вызовы события
+		peer_callbacks_t callbacks;
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
@@ -1829,6 +1879,11 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit User() noexcept : dest(0), events() {}
 	} user_t;
 
 	/**
@@ -1841,16 +1896,6 @@ namespace io {
 		// Путь к файлу, каталогу или сокету
 		unique_ptr <net::addr_t> path;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Filesystem() noexcept : path(nullptr) {}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		virtual ~Filesystem() = default;
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -1860,6 +1905,16 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Filesystem() noexcept : path(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Filesystem() = default;
 	} fs_t;
 
 	/**
@@ -1928,12 +1983,6 @@ namespace io {
 		// Обратные вызовы события
 		peer_callbacks_t callbacks;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Inter_Process_Communication() noexcept :
-		 partner(0), transfer() {}
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -1943,6 +1992,12 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Inter_Process_Communication() noexcept :
+		 partner(0), transfer() {}
 	} ipc_t;
 
 	/**
@@ -1950,10 +2005,6 @@ namespace io {
 	 *
 	 */
 	typedef struct Tunnel : public node_t {
-		// Файловый дескриптор сервиса
-		net::socket_t fd;
-		// Флаги активированных событий файла
-		uint16_t actions;
 		/**
 		 * Признак того, что вытягивание данных из источника ведётся
 		 *
@@ -1962,8 +2013,13 @@ namespace io {
 		 *       вызовом send(id, nullptr, 0), а снимают: сам источник, ответив ложью;
 		 *       уничтожение узла; очистка очереди при его пересоздании. Нулевая запись
 		 *       источника признак НЕ снимает - движок вернётся к нему на сливе очереди
+		 *
 		 */
 		bool pulling;
+		// Файловый дескриптор сервиса
+		net::socket_t fd;
+		// Флаги активированных событий файла
+		uint16_t actions;
 		// Название сетевого интерфейса
 		string iface;
 		// Очередь отправки данных
@@ -1977,15 +2033,6 @@ namespace io {
 		// Адрес точки назначения
 		unique_ptr <net::addr_t> target;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Tunnel() noexcept :
-		 fd(net::invalid_socket_t),
-		 actions(::action::NONE), pulling(false),
-		 iface{""}, queue(),
-		 source(nullptr), target(nullptr) {}
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -1995,6 +2042,15 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Tunnel() noexcept :
+		 pulling(false),
+		 fd(net::invalid_socket_t),
+		 actions(::action::NONE), iface{""},
+		 source(nullptr), target(nullptr) {}
 	} tun_t;
 
 	/**
@@ -2009,11 +2065,6 @@ namespace io {
 		// Адрес хоста посредника
 		unique_ptr <net::addr_t> host;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Mediator() noexcept : dest(0), host(nullptr) {}
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -2023,6 +2074,11 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Mediator() noexcept : dest(0), host(nullptr) {}
 	} mediator_t;
 
 	/**
@@ -2037,16 +2093,6 @@ namespace io {
 		// Хост подключения события
 		unique_ptr <net::attr_t> remote;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Remote() noexcept : remote(nullptr) {}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		virtual ~Remote() = default;
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -2056,120 +2102,134 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
-	} remote_t;
-
-	/**
-	 * @brief Структура однорангового узла
-	 *
-	 */
-	typedef struct Peer : public remote_t {
-		// Флаги активированных событий
-		uint8_t activity;
-		// Объект передачи данных
-		transfer_t transfer;
-	private:
-		// Параметры пропускной способности, заводятся при установке предела
-		unique_ptr <bandwidth_t> _bandwidth;
-	public:
-		/**
-		 * @brief Метод чтения параметров пропускной способности
-		 *
-		 * @details Событию без установленного предела отдаётся общий пустой набор:
-		 *          собственный ему не нужен, а ограничение полосы задают единицам
-		 *          событий из тысяч. Ссылка константная намеренно - изменение идёт
-		 *          другим методом, который набор и заводит.
-		 *
-		 * @return параметры пропускной способности
-		 *
-		 */
-		const bandwidth_t & bandwidth() const noexcept {
-			// Возвращаем собственный набор, а при его отсутствии - общий пустой
-			return ((this->_bandwidth != nullptr) ? (* this->_bandwidth) : __awh_bandwidth_none__);
-		}
-		/**
-		 * @brief Метод проверки того, что чтению задано ограничение полосы
-		 *
-		 * @details Отдельный предикат нужен ради горячего пути: проверка сводится к
-		 *          тесту указателя, тогда как та же проверка через чтение параметров
-		 *          заставляла выбирать между собственным набором и общим пустым,
-		 *          то есть материализовать ссылку там, где нужен один флаг.
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool limitedRead() const noexcept {
-			// Ограничение задано, если набор заведён и предел чтения положителен
-			return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
-		}
-		/**
-		 * @brief Метод проверки того, что событию заводился набор параметров полосы
-		 *
-		 * @details Нужен там, где к набору обращаются не ради чтения предела, а
-		 *          ради таймаутов внутри него - например при снятии всех таймаутов
-		 *          освобождаемого узла. Без этой проверки обращение шло бы через
-		 *          изменяющий доступ, и набор заводился бы событию, которое предела
-		 *          никогда не имело, - за мгновение до уничтожения самого узла.
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool hasBandwidth() const noexcept {
-			// Набор заводился, если указатель на него не пуст
-			return (this->_bandwidth != nullptr);
-		}
-		/**
-		 * @brief Метод проверки того, что записи задано ограничение полосы
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool limitedWrite() const noexcept {
-			// Ограничение задано, если набор заведён и предел записи положителен
-			return ((this->_bandwidth != nullptr) && (this->_bandwidth->write.limit > 0));
-		}
-		/**
-		 * @brief Метод изменения параметров пропускной способности
-		 *
-		 * @return параметры пропускной способности
-		 *
-		 */
-		bandwidth_t & bandwidthUse() noexcept {
-			// Если собственный набор ещё не заведён
-			if(this->_bandwidth == nullptr)
-				// Заводим набор параметров пропускной способности
-				this->_bandwidth = unique_ptr <bandwidth_t> (new bandwidth_t);
-			// Возвращаем собственный набор
-			return (* this->_bandwidth);
-		}
-	public:
-		/**
-		 * @brief Опознаватель узла сервера, принявшего это подключение
-		 *
-		 * @warning Здесь ОПОЗНАВАТЕЛЬ, а не ссылка на счётчик сервера. Прежде поле было
-		 *          объявлено `uint32_t & peers` и связывалось со счётчиком ВНУТРИ узла
-		 *          сервера (`server->backlog.count`). Договор при этом был негласный:
-		 *          сервер обязан пережить все свои принятые узлы, - и сборщик мусора
-		 *          движка его нарушал, освобождая сервер раньше. Снос принятого узла
-		 *          уменьшал тогда счётчик в УЖЕ ОСВОБОЖДЁННОЙ памяти
-		 *
-		 * @details Найдено надзирателем памяти 09.09.2026: `heap-use-after-free` при
-		 *          чтении счётчика в `io::destroy`, воспроизводится проверкой
-		 *          `IoFixture.IoTimerDifficultNetworkNodeTest`. Обычные прогоны молчали
-		 *          на всех пяти сочетаниях системы и движка
-		 *
-		 * @note Опознаватель разрешается по месту употребления и лишь при живом сервере:
-		 *       адрес в поле живости не доказывает, а опознаватель её и не обещает -
-		 *       он требует спросить хранилище
-		 */
-		event::id_t owner;
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param owner опознаватель узла сервера, принявшего подключение
+		 */
+		explicit Remote() noexcept : remote(nullptr) {}
+		/**
+		 * @brief Деструктор
 		 *
 		 */
-		explicit Peer(const event::id_t owner) noexcept :
-		 activity(::activity::NONE), transfer(), owner(owner) {}
+		virtual ~Remote() = default;
+	} remote_t;
+
+	/**
+	 * @brief Класс однорангового узла
+	 *
+	 */
+	typedef class Peer : public remote_t {
+		public:
+			/**
+			 * @brief Опознаватель узла сервера, принявшего это подключение
+			 *
+			 * @warning Здесь ОПОЗНАВАТЕЛЬ, а не ссылка на счётчик сервера. Прежде поле было
+			 *          объявлено `uint32_t & peers` и связывалось со счётчиком ВНУТРИ узла
+			 *          сервера (`server->backlog.count`). Договор при этом был негласный:
+			 *          сервер обязан пережить все свои принятые узлы, - и сборщик мусора
+			 *          движка его нарушал, освобождая сервер раньше. Снос принятого узла
+			 *          уменьшал тогда счётчик в УЖЕ ОСВОБОЖДЁННОЙ памяти
+			 *
+			 * @details Найдено надзирателем памяти 09.09.2026: `heap-use-after-free` при
+			 *          чтении счётчика в `io::destroy`, воспроизводится проверкой
+			 *          `IoFixture.IoTimerDifficultNetworkNodeTest`. Обычные прогоны молчали
+			 *          на всех пяти сочетаниях системы и движка
+			 *
+			 * @note Опознаватель разрешается по месту употребления и лишь при живом сервере:
+			 *       адрес в поле живости не доказывает, а опознаватель её и не обещает -
+			 *       он требует спросить хранилище
+			 *
+			 */
+			event::id_t owner;
+		public:
+			// Флаги активированных событий
+			uint8_t activity;
+			// Объект передачи данных
+			transfer_t transfer;
+		private:
+			// Параметры пропускной способности, заводятся при установке предела
+			unique_ptr <bandwidth_t> _bandwidth;
+		public:
+			/**
+			 * @brief Метод изменения параметров пропускной способности
+			 *
+			 * @return параметры пропускной способности
+			 *
+			 */
+			bandwidth_t & bandwidthInitialize() noexcept {
+				// Если собственный набор ещё не заведён
+				if(this->_bandwidth == nullptr)
+					// Заводим набор параметров пропускной способности
+					this->_bandwidth = unique_ptr <bandwidth_t> (new bandwidth_t);
+				// Возвращаем собственный набор
+				return (* this->_bandwidth);
+			}
+			/**
+			 * @brief Метод чтения параметров пропускной способности
+			 *
+			 * @details Событию без установленного предела отдаётся общий пустой набор:
+			 *          собственный ему не нужен, а ограничение полосы задают единицам
+			 *          событий из тысяч. Ссылка константная намеренно - изменение идёт
+			 *          другим методом, который набор и заводит.
+			 *
+			 * @return параметры пропускной способности
+			 *
+			 */
+			const bandwidth_t & bandwidth() const noexcept {
+				// Возвращаем собственный набор, а при его отсутствии - общий пустой
+				return ((this->_bandwidth != nullptr) ? (* this->_bandwidth) : __awh_bandwidth_none__);
+			}
+		public:
+			/**
+			 * @brief Метод проверки того, что чтению задано ограничение полосы
+			 *
+			 * @details Отдельный предикат нужен ради горячего пути: проверка сводится к
+			 *          тесту указателя, тогда как та же проверка через чтение параметров
+			 *          заставляла выбирать между собственным набором и общим пустым,
+			 *          то есть материализовать ссылку там, где нужен один флаг.
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool limitedRead() const noexcept {
+				// Ограничение задано, если набор заведён и предел чтения положителен
+				return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
+			}
+			/**
+			 * @brief Метод проверки того, что событию заводился набор параметров полосы
+			 *
+			 * @details Нужен там, где к набору обращаются не ради чтения предела, а
+			 *          ради таймаутов внутри него - например при снятии всех таймаутов
+			 *          освобождаемого узла. Без этой проверки обращение шло бы через
+			 *          изменяющий доступ, и набор заводился бы событию, которое предела
+			 *          никогда не имело, - за мгновение до уничтожения самого узла.
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool hasBandwidth() const noexcept {
+				// Набор заводился, если указатель на него не пуст
+				return (this->_bandwidth != nullptr);
+			}
+			/**
+			 * @brief Метод проверки того, что записи задано ограничение полосы
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool limitedWrite() const noexcept {
+				// Ограничение задано, если набор заведён и предел записи положителен
+				return ((this->_bandwidth != nullptr) && (this->_bandwidth->write.limit > 0));
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param owner опознаватель узла сервера, принявшего подключение
+			 *
+			 */
+			explicit Peer(const event::id_t owner) noexcept :
+			 owner(owner), activity(::activity::NONE), _bandwidth(nullptr) {}
 	} peer_t;
 
 	/**
@@ -2201,118 +2261,124 @@ namespace io {
 	} origin_t;
 
 	/**
-	 * @brief Структура клиента
+	 * @brief Класс клиента
 	 *
 	 */
-	typedef struct Client : public node_t {
-		// Флаги активированных событий
-		uint8_t activity;
-		// Метаданные последнего принятого RAW-пакета
-		raw_endpoint_t raw;
-		// Объект передачи данных
-		transfer_t transfer;
-		// Объект параметров конечной точки
-		endpoint_t endpoint;
-	private:
-		// Параметры пропускной способности, заводятся при установке предела
-		unique_ptr <bandwidth_t> _bandwidth;
-	public:
-		/**
-		 * @brief Метод чтения параметров пропускной способности
-		 *
-		 * @details Событию без установленного предела отдаётся общий пустой набор:
-		 *          собственный ему не нужен, а ограничение полосы задают единицам
-		 *          событий из тысяч. Ссылка константная намеренно - изменение идёт
-		 *          другим методом, который набор и заводит.
-		 *
-		 * @return параметры пропускной способности
-		 *
-		 */
-		const bandwidth_t & bandwidth() const noexcept {
-			// Возвращаем собственный набор, а при его отсутствии - общий пустой
-			return ((this->_bandwidth != nullptr) ? (* this->_bandwidth) : __awh_bandwidth_none__);
-		}
-		/**
-		 * @brief Метод проверки того, что чтению задано ограничение полосы
-		 *
-		 * @details Отдельный предикат нужен ради горячего пути: проверка сводится к
-		 *          тесту указателя, тогда как та же проверка через чтение параметров
-		 *          заставляла выбирать между собственным набором и общим пустым,
-		 *          то есть материализовать ссылку там, где нужен один флаг.
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool limitedRead() const noexcept {
-			// Ограничение задано, если набор заведён и предел чтения положителен
-			return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
-		}
-		/**
-		 * @brief Метод проверки того, что событию заводился набор параметров полосы
-		 *
-		 * @details Нужен там, где к набору обращаются не ради чтения предела, а
-		 *          ради таймаутов внутри него - например при снятии всех таймаутов
-		 *          освобождаемого узла. Без этой проверки обращение шло бы через
-		 *          изменяющий доступ, и набор заводился бы событию, которое предела
-		 *          никогда не имело, - за мгновение до уничтожения самого узла.
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool hasBandwidth() const noexcept {
-			// Набор заводился, если указатель на него не пуст
-			return (this->_bandwidth != nullptr);
-		}
-		/**
-		 * @brief Метод проверки того, что записи задано ограничение полосы
-		 *
-		 * @return результат проверки
-		 *
-		 */
-		bool limitedWrite() const noexcept {
-			// Ограничение задано, если набор заведён и предел записи положителен
-			return ((this->_bandwidth != nullptr) && (this->_bandwidth->write.limit > 0));
-		}
-		/**
-		 * @brief Метод изменения параметров пропускной способности
-		 *
-		 * @return параметры пропускной способности
-		 *
-		 */
-		bandwidth_t & bandwidthUse() noexcept {
-			// Если собственный набор ещё не заведён
-			if(this->_bandwidth == nullptr)
-				// Заводим набор параметров пропускной способности
-				this->_bandwidth = unique_ptr <bandwidth_t> (new bandwidth_t);
-			// Возвращаем собственный набор
-			return (* this->_bandwidth);
-		}
-		// Активные таймауты события
-		timeouts_client_t timeouts;
-		// Обратные вызовы события
-		client_callbacks_t callbacks;
-		// Источник сетевых адресов
-		unique_ptr <net::attr_t> source;
-		// Целевые параметры подключения
-		unique_ptr <net::attr_t> target;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Client() noexcept :
-		 activity(::activity::NONE),
-		 transfer(),
-		 source(nullptr), target(nullptr) {}
-		/**
-		 * @brief Метод доступа к функциям обратного вызова узла
-		 *
-		 * @return функции обратного вызова узла
-		 *
-		 */
-		callbacks_t * hooks() noexcept override {
-			// Выводим функции обратного вызова узла
-			return &this->callbacks;
-		}
+	typedef class Client : public node_t {
+		public:
+			// Флаги активированных событий
+			uint8_t activity;
+			// Метаданные последнего принятого RAW-пакета
+			raw_endpoint_t raw;
+			// Объект передачи данных
+			transfer_t transfer;
+			// Объект параметров конечной точки
+			endpoint_t endpoint;
+		public:
+			// Активные таймауты события
+			timeouts_client_t timeouts;
+			// Обратные вызовы события
+			client_callbacks_t callbacks;
+			// Источник сетевых адресов
+			unique_ptr <net::attr_t> source;
+			// Целевые параметры подключения
+			unique_ptr <net::attr_t> target;
+			// Число адресов назначения, уложенных в заявку подключения SCTP
+			uint8_t addresses = 0;
+		private:
+			// Параметры пропускной способности, заводятся при установке предела
+			unique_ptr <bandwidth_t> _bandwidth;
+		public:
+			/**
+			 * @brief Метод изменения параметров пропускной способности
+			 *
+			 * @return параметры пропускной способности
+			 *
+			 */
+			bandwidth_t & bandwidthInitialize() noexcept {
+				// Если собственный набор ещё не заведён
+				if(this->_bandwidth == nullptr)
+					// Заводим набор параметров пропускной способности
+					this->_bandwidth = unique_ptr <bandwidth_t> (new bandwidth_t);
+				// Возвращаем собственный набор
+				return (* this->_bandwidth);
+			}
+			/**
+			 * @brief Метод чтения параметров пропускной способности
+			 *
+			 * @details Событию без установленного предела отдаётся общий пустой набор:
+			 *          собственный ему не нужен, а ограничение полосы задают единицам
+			 *          событий из тысяч. Ссылка константная намеренно - изменение идёт
+			 *          другим методом, который набор и заводит.
+			 *
+			 * @return параметры пропускной способности
+			 *
+			 */
+			const bandwidth_t & bandwidth() const noexcept {
+				// Возвращаем собственный набор, а при его отсутствии - общий пустой
+				return ((this->_bandwidth != nullptr) ? (* this->_bandwidth) : __awh_bandwidth_none__);
+			}
+		public:
+			/**
+			 * @brief Метод проверки того, что чтению задано ограничение полосы
+			 *
+			 * @details Отдельный предикат нужен ради горячего пути: проверка сводится к
+			 *          тесту указателя, тогда как та же проверка через чтение параметров
+			 *          заставляла выбирать между собственным набором и общим пустым,
+			 *          то есть материализовать ссылку там, где нужен один флаг.
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool limitedRead() const noexcept {
+				// Ограничение задано, если набор заведён и предел чтения положителен
+				return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
+			}
+			/**
+			 * @brief Метод проверки того, что событию заводился набор параметров полосы
+			 *
+			 * @details Нужен там, где к набору обращаются не ради чтения предела, а
+			 *          ради таймаутов внутри него - например при снятии всех таймаутов
+			 *          освобождаемого узла. Без этой проверки обращение шло бы через
+			 *          изменяющий доступ, и набор заводился бы событию, которое предела
+			 *          никогда не имело, - за мгновение до уничтожения самого узла.
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool hasBandwidth() const noexcept {
+				// Набор заводился, если указатель на него не пуст
+				return (this->_bandwidth != nullptr);
+			}
+			/**
+			 * @brief Метод проверки того, что записи задано ограничение полосы
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool limitedWrite() const noexcept {
+				// Ограничение задано, если набор заведён и предел записи положителен
+				return ((this->_bandwidth != nullptr) && (this->_bandwidth->write.limit > 0));
+			}
+		public:
+			/**
+			 * @brief Метод доступа к функциям обратного вызова узла
+			 *
+			 * @return функции обратного вызова узла
+			 *
+			 */
+			callbacks_t * hooks() noexcept override {
+				// Выводим функции обратного вызова узла
+				return &this->callbacks;
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Client() noexcept :
+			 activity(::activity::NONE),
+			 source(nullptr), target(nullptr) {}
 	} client_t;
 
 	/**
@@ -2347,15 +2413,6 @@ namespace io {
 		// Белый список пиров которым разрешён доступ
 		unordered_map <string, event::address_t> whitelist;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Server() noexcept :
-		 fd(net::invalid_socket_t),
-		 actions(::action::NONE),
-		 activity(::activity::NONE),
-		 wrate(5) {}
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -2365,6 +2422,15 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Server() noexcept :
+		 fd(net::invalid_socket_t),
+		 actions(::action::NONE),
+		 activity(::activity::NONE),
+		 wrate(5) {}
 	} server_t;
 };
 
@@ -2380,7 +2446,7 @@ namespace io {
  *          записями на один дескриптор, а ядро держит на дескриптор одну
  *          общую маску. Прямой перевод записи в подписку поэтому невозможен -
  *          вторая подписка стирала бы первую, - и сведение признаков в общую
- *          маску выполняет доставка
+ *          маску выполняет доставка.
  *
  * @note Набор признаков заведён по существу надобностей движка: он ими
  *       пользуется прямо: подписка заводится отключённой при настройке события
@@ -2408,6 +2474,8 @@ namespace change {
 
 	// Завести подписку
 	static constexpr uint16_t ADD = 0x0001;
+	// Сообщать о переходе, а не об уровне
+	static constexpr uint16_t CLEAR = 0x0020;
 	// Снять подписку
 	static constexpr uint16_t DELETE = 0x0002;
 	// Включить заведённую подписку
@@ -2416,22 +2484,21 @@ namespace change {
 	static constexpr uint16_t DISABLE = 0x0008;
 	// Сработать один раз и отключиться
 	static constexpr uint16_t ONESHOT = 0x0010;
-	// Сообщать о переходе, а не об уровне
-	static constexpr uint16_t CLEAR = 0x0020;
 	// Взвести пользовательское событие
 	static constexpr uint16_t TRIGGER = 0x0040;
+
 	/**
-	 * @brief Признаки, приходящие от ядра
+	 * На дескрипторе произошла ошибка
 	 *
 	 * @details Той же структурой описывается и запись, уходящая в ядро, и событие,
 	 *          от ядра пришедшее: набор полей у них совпадает, и один тип на оба случая
-	 *          держится оттого, что весь разбор пришедших событий на него опирается
+	 *          держится оттого, что весь разбор пришедших событий на него опирается.
 	 *
 	 */
+	static constexpr uint16_t ERROR = 0x0100;
 	// Дальняя сторона закрыла соединение
 	static constexpr uint16_t HANGUP = 0x0080;
-	// На дескрипторе произошла ошибка
-	static constexpr uint16_t ERROR = 0x0100;
+	
 	/**
 	 * @brief Готовность выдана завершением родной отправки
 	 *
@@ -2444,7 +2511,7 @@ namespace change {
 	 *          **уже пробовали, и вышло скверно**: набор терял четыре проверки, и
 	 *          терял их только в полном прогоне. Состояние переживает и узел, и номер
 	 *          дескриптора, а признак, положенный в событие, живёт ровно столько,
-	 *          сколько само событие, и достаться чужому не может никак
+	 *          сколько само событие, и достаться чужому не может никак.
 	 *
 	 */
 	static constexpr uint16_t COMPLETED = 0x0200;
@@ -2457,7 +2524,7 @@ namespace change {
 	 *          удаление, - а inotify раскладывает те же понятия иначе: правка
 	 *          приходит двумя разными оповещениями, переименование - парой «ушло» и
 	 *          «пришло», а отзыв доступа не приходит вовсе и выводится из снятия
-	 *          наблюдения самим ядром. Сведение это выполняет доставка
+	 *          наблюдения самим ядром. Сведение это выполняет доставка.
 	 *
 	 * @note Значения общие на оба механизма ядра (кольцо и `inotify`) не случайно:
 	 *       разбор пришедших изменений один на оба, и расхождение значений
@@ -2465,14 +2532,14 @@ namespace change {
 	 *
 	 */
 	namespace note {
+		// Счётчик жёстких ссылок изменён
+		static constexpr uint32_t LINK = 0x0010;
 		// Содержимое файла либо каталога изменено
 		static constexpr uint32_t WRITE = 0x0002;
 		// Размер файла увеличен
 		static constexpr uint32_t EXTEND = 0x0004;
 		// Признаки файла изменены
 		static constexpr uint32_t ATTRIB = 0x0008;
-		// Счётчик жёстких ссылок изменён
-		static constexpr uint32_t LINK = 0x0010;
 		// Файл либо каталог переименован
 		static constexpr uint32_t RENAME = 0x0020;
 		// Файл либо каталог удалён
@@ -2480,6 +2547,8 @@ namespace change {
 		// Доступ к файлу отозван
 		static constexpr uint32_t REVOKE = 0x0040;
 		/**
+		 * @brief Изменение касается названной записи каталога
+		 *
 		 * @note Признаки ниже задаются ТОЛЬКО механизмом `inotify` и означают, что
 		 *       изменение названо поимённо: ядро сообщило, какая именно запись
 		 *       наблюдаемого каталога затронута. Название лежит в списке имён оборота,
@@ -2488,8 +2557,8 @@ namespace change {
 		 *       Поимённость эта и определяет цену разбора: без неё состав каталога
 		 *       пришлось бы перечитывать целиком на всякое изменение, а с нею хватает
 		 *       одного обращения за видом появившейся записи
+		 *
 		 */
-		// Изменение касается названной записи каталога
 		static constexpr uint32_t ENTRY = 0x0080;
 		// Названная запись каталога появилась
 		static constexpr uint32_t ENTRY_ADD = 0x0100;
@@ -2504,10 +2573,10 @@ namespace change {
 	 *
 	 */
 	typedef struct Record {
-		// Дескриптор либо идентификатор события, к которому запись относится
-		uintptr_t ident;
 		// Разновидность подписки
 		filter_t filter;
+		// Дескриптор либо идентификатор события, к которому запись относится
+		uintptr_t ident;
 		// Признаки записи
 		uint16_t flags;
 		// Уточнение подписки, для наблюдения за файлами - набор отслеживаемых изменений
@@ -2520,15 +2589,17 @@ namespace change {
 		 * @brief Конструктор
 		 *
 		 */
-		Record() noexcept :
-		 ident(0), filter(filter_t::NONE), flags(0), fflags(0), data(0), udata(nullptr) {}
+		explicit Record() noexcept :
+		 filter(filter_t::NONE),
+		 ident(0), flags(0), fflags(0),
+		 data(0), udata(nullptr) {}
 	} record_t;
 
 	/**
 	 * @brief Функция сборки записи списка изменений
 	 *
 	 * @details Собирает запись списка изменений одним вызовом: поля её заполняются
-	 *          в одном месте, и обращения к списку не расходятся в порядке доводов
+	 *          в одном месте, и обращения к списку не расходятся в порядке доводов.
 	 *
 	 * @param ident  дескриптор либо идентификатор события
 	 * @param filter разновидность подписки
@@ -2539,21 +2610,21 @@ namespace change {
 	 * @return       собранная запись
 	 *
 	 */
-	static inline record_t make(const uintptr_t ident, const filter_t filter, const uint16_t flags, const uint32_t fflags, const int64_t data, void * udata) noexcept {
+	static AWH_IO_URING_INLINE record_t make(const uintptr_t ident, const filter_t filter, const uint16_t flags, const uint32_t fflags, const int64_t data, void * udata) noexcept {
 		// Создаём запись списка изменений
 		record_t result;
-		// Устанавливаем дескриптор либо идентификатор события
-		result.ident = ident;
-		// Устанавливаем разновидность подписки
-		result.filter = filter;
-		// Устанавливаем признаки записи
-		result.flags = flags;
-		// Устанавливаем уточнение подписки
-		result.fflags = fflags;
 		// Устанавливаем числовую нагрузку записи
 		result.data = data;
 		// Устанавливаем узел, которому запись принадлежит
 		result.udata = udata;
+		// Устанавливаем дескриптор либо идентификатор события
+		result.ident = ident;
+		// Устанавливаем признаки записи
+		result.flags = flags;
+		// Устанавливаем разновидность подписки
+		result.filter = filter;
+		// Устанавливаем уточнение подписки
+		result.fflags = fflags;
 		// Выводим собранную запись
 		return result;
 	}
@@ -2573,14 +2644,13 @@ namespace {
 	 * @brief Идентификатор текущего процесса
 	 *
 	 */
-	const pid_t __awh_pid__ = ::getpid();
+	static const pid_t __awh_pid__ = ::getpid();
 
 	/**
 	 * @brief Признак того, что поток опроса очереди событий известен
 	 *
 	 */
-	bool __awh_poll_thread_known__ = false;
-
+	static bool __awh_poll_thread_known__ = false;
 	/**
 	 * @brief Поток, ведущий опрос очереди событий
 	 *
@@ -2592,8 +2662,7 @@ namespace {
 	 *          им останавливают цикл событий, и потерять его нельзя.
 	 *
 	 */
-	pthread_t __awh_poll_thread__ = pthread_t();
-
+	static pthread_t __awh_poll_thread__ = pthread_t();
 	/**
 	 * @brief Дескриптор колец io_uring
 	 *
@@ -2605,26 +2674,23 @@ namespace {
 	 * @note Закрывается он разрушением колец, а не отсюда: владеет им слой колец
 	 *
 	 */
-	net::socket_t __awh_ep__ = net::invalid_socket_t;
+	static net::socket_t __awh_ep__ = net::invalid_socket_t;
 
 	/**
 	 * @brief Глобальный буфер метаданных control message
 	 *
 	 */
 	static uint8_t __awh_cmsgbuf__[0x200];
-
 	/**
 	 * @brief Нулевой MAC-адрес для сравнения
 	 *
 	 */
 	static uint8_t __awh_zero_mac__[6] = {0};
-
 	/**
 	 * @brief Нулевой IPv6-адрес для сравнения
 	 *
 	 */
 	static uint8_t __awh_zero_ipv6__[16] = {0};
-
 	/**
 	 * @brief Глобальный буфер временного хранения данных
 	 *
@@ -2660,13 +2726,13 @@ namespace {
 	 *          отмеряет затишье, по которому массив ужимается обратно.
 	 *
 	 */
-	size_t __awh_events_idle__ = 0;
+	static size_t __awh_events_idle__ = 0;
 
 	/**
 	 * @brief Текущий размер массива активных событий
 	 *
 	 */
-	size_t __awh_events_size__ = AWH_MAX_POLL_EVENTS_COUNT;
+	static size_t __awh_events_size__ = AWH_MAX_POLL_EVENTS_COUNT;
 
 	/**
 	 * @brief Глобальный массив записей разбора событий
@@ -2689,7 +2755,7 @@ namespace {
 	 *       нового массива и освобождению прежнего
 	 *
 	 */
-	unique_ptr <::change::record_t []> __awh_events__(new ::change::record_t [AWH_MAX_POLL_EVENTS_COUNT * 2]);
+	static unique_ptr <::change::record_t []> __awh_events__(new ::change::record_t [AWH_MAX_POLL_EVENTS_COUNT * 2]);
 
 	/**
 	 * @brief Тип внутреннего таймера для управления таймаутами событий
@@ -2722,7 +2788,7 @@ namespace {
 	 * @note Сложная структура сохранена и включается методом `setInternalTimer`
 	 *
 	 */
-	event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
+	static event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
 
 	/**
 	 * @brief Хранилище узлов событий с доступом по идентификатору
@@ -2968,13 +3034,12 @@ namespace {
 	 * @brief Глобальная переменная списка узлов событий
 	 *
 	 */
-	Storage_Transport_Layer_Nodes __awh_nodes__;
-
+	static Storage_Transport_Layer_Nodes __awh_nodes__;
 	/**
 	 * @brief Глобальная переменная списка сессий инициаторов запросов
 	 *
 	 */
-	unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
+	static unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
 };
 
 /**
@@ -3500,6 +3565,51 @@ namespace fs {
 		return AWH_FS_SEPARATOR;
 	}
 	/**
+	 * @brief Функция заполнения адреса UNIX-сокета из строки имени
+	 *
+	 * @details Ведущая собака в строке означает абстрактное имя: файла нет, имя
+	 *          живёт в пространстве ядра за нулевым первым октетом пути - ровно
+	 *          как печатает его парная функция ниже. Прочая строка остаётся
+	 *          файловым путём. Абстрактная форма несётся только ядром Linux;
+	 *          у прочих систем привязка к ней ответит отказом самой системы.
+	 *
+	 * @param addr  структура адреса для заполнения
+	 * @param input строка имени сокета
+	 * @return      фактическая длина структуры адреса либо 0 при негодной строке
+	 *
+	 */
+	static socklen_t unixSocketAddress(struct sockaddr_un & addr, const string_view input) noexcept {
+		// Обнуляем всю структуру адреса
+		::memset(&addr, 0, sizeof(addr));
+		// Если строка имени пуста, выводим отказ
+		if(input.empty())
+			// Выводим отказ
+			return 0;
+		// Устанавливаем семейство UNIX-сокетов
+		addr.sun_family = AF_UNIX;
+		// Если строка несёт признак абстрактного имени
+		if(input.front() == '@'){
+			// Имя без ведущей собаки
+			const string_view name = input.substr(1);
+			// Если имя пусто либо не вмещается за нулевым октетом, выводим отказ
+			if(name.empty() || (name.length() >= sizeof(addr.sun_path)))
+				// Выводим отказ
+				return 0;
+			// Копируем имя за нулевой признак абстрактной формы
+			::memcpy(addr.sun_path + 1, name.data(), name.length());
+			// Выводим фактическую длину абстрактной формы
+			return (offsetof(struct sockaddr_un, sun_path) + 1 + static_cast <socklen_t> (name.length()));
+		}
+		// Если файловый путь не вмещается, выводим отказ
+		if(input.length() >= sizeof(addr.sun_path))
+			// Выводим отказ
+			return 0;
+		// Копируем файловый путь
+		::memcpy(addr.sun_path, input.data(), input.length());
+		// Выводим фактическую длину файловой формы
+		return (offsetof(struct sockaddr_un, sun_path) + static_cast <socklen_t> (input.length()));
+	}
+	/**
 	 * @brief Функция получения строки адреса UNIX-сокета
 	 *
 	 * @param addr структура параметров подключения инициатора запроса
@@ -3549,22 +3659,6 @@ namespace kernel {
 	using namespace awh;
 
 	/**
-	 * @brief Функция забвения состояния учёта закрываемого дескриптора
-	 *
-	 * @param sock дескриптор, состояние которого забывается
-	 * @return     признак того, что отмена поданного ожидания подана
-	 *
-	 */
-	static bool forget(const net::socket_t sock) noexcept;
-	/**
-	 * @brief Функция закрытия дескриптора с забвением его состояния учёта
-	 *
-	 * @param sock закрываемый дескриптор
-	 * @return     результат закрытия
-	 *
-	 */
-	static inline int32_t close(const net::socket_t sock) noexcept;
-	/**
 	 * @brief Функция пробуждения цикла событий
 	 *
 	 * @details Объявлена здесь оттого, что зовётся слоем подачи: чужой поток,
@@ -3575,6 +3669,14 @@ namespace kernel {
 	 *
 	 */
 	static bool kick() noexcept;
+	/**
+	 * @brief Функция забвения состояния учёта закрываемого дескриптора
+	 *
+	 * @param sock дескриптор, состояние которого забывается
+	 * @return     признак того, что отмена поданного ожидания подана
+	 *
+	 */
+	static bool forget(const net::socket_t sock) noexcept;
 	/**
 	 * @brief Функция добычи записи учёта подписки по дескриптору
 	 *
@@ -3588,6 +3690,14 @@ namespace kernel {
 	 *
 	 */
 	static void * subscription(const net::socket_t sock) noexcept;
+	/**
+	 * @brief Функция закрытия дескриптора с забвением его состояния учёта
+	 *
+	 * @param sock закрываемый дескриптор
+	 * @return     результат закрытия
+	 *
+	 */
+	static AWH_IO_URING_INLINE int32_t close(const net::socket_t sock) noexcept;
 };
 
 /**
@@ -3608,6 +3718,10 @@ namespace fileio {
 	static void reset(const net::socket_t fd) noexcept;
 };
 
+/**
+ * @brief Инкапсулируем статические типы данных в пространство имён
+ *
+ */
 namespace {
 	/**
 	 * Используем пространство имён AWH
@@ -3991,6 +4105,11 @@ namespace bandwidth {
 	 */
 	static uint64_t write = 0;
 	/**
+	 * @brief Время последнего пополнения общего ведра в наносекундах
+	 *
+	 */
+	static uint64_t timeRead = 0, timeWrite = 0;
+	/**
 	 * @brief Токены общего ведра на получение и передачу данных
 	 *
 	 * @details Общий предел раздаётся тем же ведром токенов, что и поузловой, но
@@ -4003,7 +4122,7 @@ namespace bandwidth {
 	 *          новых соединений. Один постоянный потребитель тем самым не давал
 	 *          работать всем остальным: замер показывал, что два узла из трёх
 	 *          выбирали весь бюджет, а третий за целую секунду не получал ни
-	 *          одного октета
+	 *          одного октета.
 	 *
 	 * @note Ведро уходит в отрицательные значения намеренно: узел, передавший
 	 *       больше, чем было в ведре, отдаёт долг ожиданием, а не отказом в
@@ -4021,12 +4140,7 @@ namespace bandwidth {
 	 *          не подлежит
 	 *
 	 */
-	static double tokensRead = 0., tokensWrite = 0.;
-	/**
-	 * @brief Время последнего пополнения общего ведра в наносекундах
-	 *
-	 */
-	static uint64_t timeRead = 0, timeWrite = 0;
+	static double tokensRead = .0, tokensWrite = .0;
 };
 
 /**
@@ -4050,6 +4164,64 @@ namespace ring {
 	using namespace awh;
 
 	/**
+	 * @brief Действия закрепления ресурсов
+	 *
+	 */
+	enum class reg_t : uint32_t {
+		// Проба возможностей ядра
+		PROBE = 8,
+		// Закрепление кольца буферов приёма
+		PBUF_RING = 22,
+		// Снятие кольца буферов приёма
+		UNREG_PBUF_RING = 23
+	};
+	/**
+	 * @brief Признаки обращения подачи и ожидания
+	 *
+	 */
+	enum class enter_t : uint32_t {
+		// Ожидать завершений
+		GETEVENTS = (1 << 0),
+		// Разбудить поток подачи ядра
+		SQ_WAKEUP = (1 << 1),
+		// Довод обращения расширенного вида
+		EXT_ARG = (1 << 3)
+	};
+	/**
+	 * @brief Признаки записи завершения
+	 *
+	 */
+	enum class cqe_t : uint32_t {
+		// В старших разрядах признаков лежит номер буфера
+		BUFFER = (1 << 0),
+		// Операция многократная, придут ещё завершения
+		MORE = (1 << 1),
+		// В сокете остались данные
+		SOCK_NONEMPTY = (1 << 2),
+		// Уведомление об освобождении буфера отправки
+		NOTIF = (1 << 3)
+	};
+	/**
+	 * @brief Признаки записи подачи
+	 *
+	 */
+	enum class sqe_t : uint8_t {
+		// Дескриптор взят из закреплённых
+		FIXED_FILE = (1 << 0),
+		// Дождаться завершения всего поданного ранее
+		IO_DRAIN = (1 << 1),
+		// Связать со следующей записью
+		IO_LINK = (1 << 2),
+		// Связать жёстко, невзирая на исход
+		IO_HARDLINK = (1 << 3),
+		// Выполнять в рабочем потоке ядра
+		ASYNC = (1 << 4),
+		// Буфер выбирает ядро из переданной группы
+		BUFFER_SELECT = (1 << 5),
+		// Не сообщать об успешном завершении
+		CQE_SKIP_SUCCESS = (1 << 6)
+	};
+	/**
 	 * @brief Коды операций io_uring
 	 *
 	 * @details Объявлены своими числами намеренно, а не взяты из заголовка ядра.
@@ -4057,7 +4229,7 @@ namespace ring {
 	 *          знает операций, которые ядро поддерживает и проба подтверждает.
 	 *          Опираться на него значило бы молча терять возможности на одних
 	 *          дистрибутивах и обретать на других, отчего движок вёл бы себя
-	 *          по-разному при одном и том же ядре
+	 *          по-разному при одном и том же ядре.
 	 *
 	 * @note Числа эти - часть двоичного соглашения ядра и меняться не могут:
 	 *       код операции лежит в записи подачи, и переназначение сломало бы всякое
@@ -4065,83 +4237,66 @@ namespace ring {
 	 *
 	 */
 	enum class op_t : uint8_t {
-		NOP             = 0,  /**< Пустая операция, служит проверке колец */
-		READ            = 22, /**< Чтение по смещению */
-		READV           = 1,  /**< Чтение вектором */
-		WRITEV          = 2,  /**< Запись вектором */
-		POLL_ADD        = 6,  /**< Ожидание готовности дескриптора */
-		POLL_REMOVE     = 7,  /**< Снятие ожидания готовности */
-		SENDMSG         = 9,  /**< Отправка сообщения */
-		RECVMSG         = 10, /**< Приём сообщения */
-		TIMEOUT         = 11, /**< Срок ожидания */
-		TIMEOUT_REMOVE  = 12, /**< Снятие срока ожидания */
-		ACCEPT          = 13, /**< Приём подключения */
-		ASYNC_CANCEL    = 14, /**< Отмена поданной операции */
-		LINK_TIMEOUT    = 15, /**< Срок, связанный с предыдущей операцией */
-		CONNECT         = 16, /**< Подключение к удалённой стороне */
-		CLOSE           = 19, /**< Закрытие дескриптора */
-		PROVIDE_BUFFERS = 31, /**< Передача ядру буферов приёма */
-		SEND            = 26, /**< Отправка данных */
-		RECV            = 27, /**< Приём данных */
-		SPLICE          = 30, /**< Объединение дескрипторов средствами ядра */
-		SHUTDOWN        = 34, /**< Полузакрытие сокета */
-		TEE             = 33, /**< Раздвоение потока данных */
-		MSG_RING        = 40, /**< Передача завершения в чужие кольца */
-		SEND_ZC         = 48, /**< Отправка без копирования */
-		SENDMSG_ZC      = 49  /**< Отправка сообщения без копирования */
+		// Пустая операция, служит проверке колец
+		NOP = 0,
+		// Чтение по смещению
+		READ = 22,
+		// Чтение вектором
+		READV = 1,
+		// Запись вектором
+		WRITEV = 2,
+		// Ожидание готовности дескриптора
+		POLL_ADD = 6,
+		// Снятие ожидания готовности
+		POLL_REMOVE = 7,
+		// Отправка сообщения
+		SENDMSG = 9,
+		// Приём сообщения
+		RECVMSG = 10,
+		// Срок ожидания
+		TIMEOUT = 11,
+		// Снятие срока ожидания
+		TIMEOUT_REMOVE = 12,
+		// Приём подключения
+		ACCEPT = 13,
+		// Отмена поданной операции
+		ASYNC_CANCEL = 14,
+		// Срок, связанный с предыдущей операцией
+		LINK_TIMEOUT = 15,
+		// Подключение к удалённой стороне
+		CONNECT = 16,
+		// Закрытие дескриптора
+		CLOSE = 19,
+		// Передача ядру буферов приёма
+		PROVIDE_BUFFERS = 31,
+		// Отправка данных
+		SEND = 26,
+		// Приём данных
+		RECV = 27,
+		// Объединение дескрипторов средствами ядра
+		SPLICE = 30,
+		// Полузакрытие сокета
+		SHUTDOWN = 34,
+		// Раздвоение потока данных
+		TEE = 33,
+		// Передача завершения в чужие кольца
+		MSG_RING = 40,
+		// Отправка без копирования
+		SEND_ZC = 48,
+		// Отправка сообщения без копирования
+		SENDMSG_ZC = 49
 	};
 
 	/**
-	 * @brief Признаки записи подачи
+	 * @brief Дескриптор колец, отрицательное значение - кольца не заведены
 	 *
 	 */
-	enum class sqe_t : uint8_t {
-		FIXED_FILE   = (1 << 0), /**< Дескриптор взят из закреплённых */
-		IO_DRAIN     = (1 << 1), /**< Дождаться завершения всего поданного ранее */
-		IO_LINK      = (1 << 2), /**< Связать со следующей записью */
-		IO_HARDLINK  = (1 << 3), /**< Связать жёстко, невзирая на исход */
-		ASYNC        = (1 << 4), /**< Выполнять в рабочем потоке ядра */
-		BUFFER_SELECT = (1 << 5), /**< Буфер выбирает ядро из переданной группы */
-		CQE_SKIP_SUCCESS = (1 << 6) /**< Не сообщать об успешном завершении */
-	};
-
+	static int32_t fd = -1;
 	/**
-	 * @brief Признаки обращения подачи и ожидания
+	 * @brief Возможности ядра, полученные при устройстве колец
 	 *
 	 */
-	enum class enter_t : uint32_t {
-		GETEVENTS = (1 << 0), /**< Ожидать завершений */
-		SQ_WAKEUP = (1 << 1), /**< Разбудить поток подачи ядра */
-		EXT_ARG   = (1 << 3)  /**< Довод обращения расширенного вида */
-	};
-
-	/**
-	 * @brief Признаки записи завершения
-	 *
-	 */
-	enum class cqe_t : uint32_t {
-		BUFFER  = (1 << 0), /**< В старших разрядах признаков лежит номер буфера */
-		MORE    = (1 << 1), /**< Операция многократная, придут ещё завершения */
-		SOCK_NONEMPTY = (1 << 2), /**< В сокете остались данные */
-		NOTIF   = (1 << 3)  /**< Уведомление об освобождении буфера отправки */
-	};
-
-	/**
-	 * @brief Действия закрепления ресурсов
-	 *
-	 */
-	enum class reg_t : uint32_t {
-		PROBE     = 8,  /**< Проба возможностей ядра */
-		PBUF_RING = 22, /**< Закрепление кольца буферов приёма */
-		UNREG_PBUF_RING = 23 /**< Снятие кольца буферов приёма */
-	};
-
-	/**
-	 * @brief Признак поддержки операции в ответе пробы
-	 *
-	 */
-	static constexpr uint16_t OP_SUPPORTED = (1 << 0);
-
+	static uint32_t features = 0;
 	/**
 	 * @brief Количество записей кольца подачи
 	 *
@@ -4152,7 +4307,11 @@ namespace ring {
 	 *
 	 */
 	static constexpr uint32_t ENTRIES = 0x1000;
-
+	/**
+	 * @brief Признак поддержки операции в ответе пробы
+	 *
+	 */
+	static constexpr uint16_t OP_SUPPORTED = (1 << 0);
 	/**
 	 * @brief Признак единственного подателя записей
 	 *
@@ -4162,7 +4321,6 @@ namespace ring {
 	 *
 	 */
 	static constexpr uint32_t SETUP_SINGLE_ISSUER = (1U << 12);
-
 	/**
 	 * @brief Признак отложенной работы задачи
 	 *
@@ -4172,27 +4330,19 @@ namespace ring {
 	static constexpr uint32_t SETUP_DEFER_TASKRUN = (1U << 13);
 
 	/**
-	 * @brief Дескриптор колец, отрицательное значение - кольца не заведены
-	 *
-	 */
-	static int32_t fd = -1;
-
-	/**
-	 * @brief Возможности ядра, полученные при устройстве колец
-	 *
-	 */
-	static uint32_t features = 0;
-
-	/**
 	 * @brief Отображённая память колец и её размер
 	 *
 	 * @details При наличии возможности `SINGLE_MMAP` оба кольца лежат в одном
 	 *          отображении, и второе не заводится вовсе. Отход на два отображения
 	 *          оставлен: возможность эта есть у ядер с 5.4, но движок обязан
-	 *          собираться и работать там, где её нет
+	 *          собираться и работать там, где её нет.
 	 *
 	 */
 	static void * area = nullptr;
+	/**
+	 * @brief Размер отведённой области колец
+	 *
+	 */
 	static size_t areaSize = 0;
 
 	/**
@@ -4200,6 +4350,10 @@ namespace ring {
 	 *
 	 */
 	static void * areaCq = nullptr;
+	/**
+	 * @brief Размер кольца завершений в области
+	 *
+	 */
 	static size_t areaCqSize = 0;
 
 	/**
@@ -4207,25 +4361,38 @@ namespace ring {
 	 *
 	 */
 	static void * areaSqe = nullptr;
+	/**
+	 * @brief Размер кольца подачи в области
+	 *
+	 */
 	static size_t areaSqeSize = 0;
 
 	/**
 	 * @brief Кольцо подачи
 	 *
 	 * @details Указатели ведут в отображённую память ядра, а не во владение движка.
-	 *          Голова кольца двигает ядро, хвост - приложение
+	 *          Голова кольца двигает ядро, хвост - приложение.
 	 *
 	 */
 	static struct {
-		uint32_t * head;    /**< Голова кольца, двигается ядром */
-		uint32_t * tail;    /**< Хвост кольца, двигается приложением */
-		uint32_t * mask;    /**< Маска для приведения указателя к номеру записи */
-		uint32_t * entries; /**< Количество записей кольца */
-		uint32_t * flags;   /**< Признаки состояния кольца со стороны ядра */
-		uint32_t * dropped; /**< Количество отброшенных записей подачи */
-		uint32_t * array;   /**< Таблица номеров записей подачи */
-		struct io_uring_sqe * sqes; /**< Сами записи подачи */
-		uint32_t local;     /**< Хвост, ведомый приложением между подачами */
+		// Голова кольца, двигается ядром
+		uint32_t * head;
+		// Хвост кольца, двигается приложением
+		uint32_t * tail;
+		// Маска для приведения указателя к номеру записи
+		uint32_t * mask;
+		// Количество записей кольца
+		uint32_t * entries;
+		// Признаки состояния кольца со стороны ядра
+		uint32_t * flags;
+		// Количество отброшенных записей подачи
+		uint32_t * dropped;
+		// Таблица номеров записей подачи
+		uint32_t * array;
+		// Сами записи подачи
+		struct io_uring_sqe * sqes;
+		// Хвост, ведомый приложением между подачами
+		uint32_t local;
 	} sq = {};
 
 	/**
@@ -4233,24 +4400,21 @@ namespace ring {
 	 *
 	 */
 	static struct {
-		uint32_t * head;     /**< Голова кольца, двигается приложением */
-		uint32_t * tail;     /**< Хвост кольца, двигается ядром */
-		uint32_t * mask;     /**< Маска для приведения указателя к номеру записи */
-		uint32_t * entries;  /**< Количество записей кольца */
-		uint32_t * overflow; /**< Количество завершений, не поместившихся в кольцо */
-		uint32_t * flags;    /**< Признаки состояния кольца со стороны ядра */
-		struct io_uring_cqe * cqes; /**< Сами записи завершений */
+		// Голова кольца, двигается приложением
+		uint32_t * head;
+		// Хвост кольца, двигается ядром
+		uint32_t * tail;
+		// Маска для приведения указателя к номеру записи
+		uint32_t * mask;
+		// Количество записей кольца
+		uint32_t * entries;
+		// Количество завершений, не поместившихся в кольцо
+		uint32_t * overflow;
+		// Признаки состояния кольца со стороны ядра
+		uint32_t * flags;
+		// Сами записи завершений
+		struct io_uring_cqe * cqes;
 	} cq = {};
-
-	/**
-	 * @brief Наличие операций у ядра, выясняется пробой при устройстве колец
-	 *
-	 * @details Судить о наличии операции по версии ядра нельзя: на стендах
-	 *          обнаружилось, что операция, появившаяся по описанию в ядре 6.0,
-	 *          есть у 6.19 и отсутствует у 6.11. Достоверен только ответ пробы
-	 *
-	 */
-	static uint64_t supported[4] = {0};
 
 	/**
 	 * @brief Количество завершений, не поместившихся в кольцо, на прошлом обороте
@@ -4262,40 +4426,49 @@ namespace ring {
 	 *
 	 */
 	static uint32_t overflowed = 0;
+	/**
+	 * @brief Наличие операций у ядра, выясняется пробой при устройстве колец
+	 *
+	 * @details Судить о наличии операции по версии ядра нельзя: на стендах
+	 *          обнаружилось, что операция, появившаяся по описанию в ядре 6.0,
+	 *          есть у 6.19 и отсутствует у 6.11. Достоверен только ответ пробы
+	 *
+	 */
+	static uint64_t supported[4] = {0};
 
 	/**
-	 * @brief Метод проверки наличия операции у ядра
+	 * @brief Функция проверки наличия операции у ядра
 	 *
 	 * @param op код операции
 	 * @return   результат проверки
 	 *
 	 */
-	static inline bool has(const op_t op) noexcept {
+	static AWH_IO_URING_INLINE bool has(const op_t op) noexcept {
 		// Получаем код операции
 		const uint8_t code = static_cast <uint8_t> (op);
 		// Выводим признак наличия операции у ядра
 		return static_cast <bool> (::ring::supported[code >> 6] & (static_cast <uint64_t> (1) << (code & 0x3F)));
 	}
 	/**
-	 * @brief Метод проверки наличия возможности у колец
+	 * @brief Функция проверки наличия возможности у колец
 	 *
 	 * @param feature признак возможности
 	 * @return        результат проверки
 	 *
 	 */
-	static inline bool feature(const uint32_t feature) noexcept {
+	static AWH_IO_URING_INLINE bool feature(const uint32_t feature) noexcept {
 		// Выводим признак наличия возможности у колец
 		return static_cast <bool> (::ring::features & feature);
 	}
 	/**
-	 * @brief Метод пробы возможностей ядра
+	 * @brief Функция пробы возможностей ядра
 	 *
 	 * @details Заполняет таблицу наличия операций. Неудача пробы не считается
 	 *          отказом: она означает лишь, что ядро пробы не поддерживает, и тогда
 	 *          наличными считаются операции первого набора, бывшие у io_uring с
-	 *          самого начала
+	 *          самого начала.
 	 *
-	 * @return    результат выполнения пробы
+	 * @return результат выполнения пробы
 	 *
 	 */
 	static bool probe() noexcept {
@@ -4332,7 +4505,7 @@ namespace ring {
 		return true;
 	}
 	/**
-	 * @brief Метод отображения колец в память
+	 * @brief Функция отображения колец в память
 	 *
 	 * @param params устройство колец, полученное от ядра
 	 * @return       результат выполнения отображения
@@ -4441,7 +4614,7 @@ namespace ring {
 	static void destroy() noexcept;
 
 	/**
-	 * @brief Метод устройства колец
+	 * @brief Функция устройства колец
 	 *
 	 * @details Кольца заводятся **без** признаков устройства, и это решение
 	 *          вынужденное, а не упущение.
@@ -4455,13 +4628,13 @@ namespace ring {
 	 *
 	 *          Замером подтверждено: с этими признаками весь набор проверок фасада
 	 *          QUIC отказывал по превышению времени - 15 000 мс вместо 15 мс, - и
-	 *          отказывал молча, не оставляя в журнале ни одной ошибки ядра
+	 *          отказывал молча, не оставляя в журнале ни одной ошибки ядра.
 	 *
 	 * @note Признак `SQPOLL` не берётся намеренно и по другому доводу: он выигрывает
 	 *       лишь при постоянной нагрузке и жжёт ядро процессора вхолостую, а движок
 	 *       общего назначения обязан вести себя прилично и в простое
 	 *
-	 * @return    результат устройства колец
+	 * @return результат устройства колец
 	 *
 	 */
 	static bool create() noexcept {
@@ -4471,27 +4644,6 @@ namespace ring {
 			return true;
 		// Устройство колец
 		struct io_uring_params params{};
-		/**
-		 * Признаки устройства не задаются вовсе
-		 *
-		 * @note Довод приведён в описании функции: движок ведут из разных потоков, а
-		 *       `SINGLE_ISSUER` этого не допускает. Строка оставлена явной, чтобы
-		 *       отсутствие признаков читалось решением, а не недосмотром
-		 */
-		/**
-		 * Признаки устройства колец
-		 *
-		 * @note Признаки `SINGLE_ISSUER` и `DEFER_TASKRUN` НЕ ставятся, и это не
-		 *       недосмотр. Замер сулит многое - поток 1 574 -> 2 470 МБ/с, обмен на пятистах соединениях 44 342 -> 49 281, - но `SINGLE_ISSUER`
-		 *       привязывает кольца к ОДНОМУ потоку, а фасад QUIC ведёт цикл сервера
-		 *       фоновым потоком и цикл клиента главным. Два цикла на одни кольца
-		 *       несовместимы с этим признаком в принципе: очередь подачи снимает
-		 *       вопрос о потоке ПОДАЧИ, но не о потоке, ОБРАЩАЮЩЕМСЯ ЗА ЗАВЕРШЕНИЯМИ.
-		 *
-		 *       Проверено прогоном: с признаками набор `net` проходит 597/595, а `proto`
-		 *       отказывает на пяти тестах `QuicFacadeTest` по превышению времени.
-		 *       Чтобы признаки взять, кольца придётся заводить по одному на цикл
-		 */
 		/**
 		 * Заводим кольца одним подателем с отложенной работой задачи
 		 *
@@ -4507,6 +4659,7 @@ namespace ring {
 		 *
 		 * @note `DEFER_TASKRUN` без `SINGLE_ISSUER` ядро не принимает - он им и
 		 *       обусловлен
+		 *
 		 */
 		params.flags = (::ring::SETUP_SINGLE_ISSUER | ::ring::SETUP_DEFER_TASKRUN);
 		// Выполняем устройство колец
@@ -4530,6 +4683,7 @@ namespace ring {
 		 *          следующая попытка заведения переписывала их новыми - прежние утекали
 		 *          НАВСЕГДА, вместе с памятью колец. Разрушение снимает всё сделанное и
 		 *          закрывает дескриптор само
+		 *
 		 */
 		if(!::ring::mapping(params)){
 			// Выполняем разрушение колец, снимая сделанное отображение
@@ -4591,8 +4745,7 @@ namespace ring {
 	 *
 	 * @details Возвращает `nullptr`, если кольцо подачи заполнено. Заполнение это
 	 *          не отказ: накопленное следует подать обращением к ядру, после чего
-	 *          записи освободятся. Разбирается это слоем выше, оттого здесь лишь
-	 *          признак
+	 *          записи освободятся. Разбирается это слоем выше, оттого здесь лишь признак.
 	 *
 	 * @return запись подачи либо `nullptr`, если кольцо заполнено
 	 *
@@ -4619,7 +4772,7 @@ namespace ring {
 	 * @return количество накопленных записей подачи
 	 *
 	 */
-	static inline uint32_t accumulated() noexcept {
+	static AWH_IO_URING_INLINE uint32_t accumulated() noexcept {
 		// Выводим количество накопленных записей подачи
 		return (::ring::sq.local - __atomic_load_n(::ring::sq.tail, __ATOMIC_RELAXED));
 	}
@@ -4660,7 +4813,7 @@ namespace ring {
 		 *          сколько бы работы ни было выполнено.
 		 *
 		 *          Замером подтверждено: без этого признака опрос с нулевым ожиданием
-		 *          не получал завершений никогда и цикл событий вставал намертво
+		 *          не получал завершений никогда и цикл событий вставал намертво.
 		 *
 		 * @note Количество ожидаемых завершений при этом остаётся нулевым, и обращение
 		 *       возвращает управление сразу: признак велит забрать готовое, а не ждать
@@ -4712,7 +4865,7 @@ namespace ring {
 	 * @return количество готовых завершений
 	 *
 	 */
-	static inline uint32_t ready() noexcept {
+	static AWH_IO_URING_INLINE uint32_t ready() noexcept {
 		// Выводим количество готовых завершений
 		return (__atomic_load_n(::ring::cq.tail, __ATOMIC_ACQUIRE) - __atomic_load_n(::ring::cq.head, __ATOMIC_RELAXED));
 	}
@@ -4723,7 +4876,7 @@ namespace ring {
 	 * @return       запись завершения
 	 *
 	 */
-	static inline const struct io_uring_cqe & completion(const uint32_t offset) noexcept {
+	static AWH_IO_URING_INLINE const struct io_uring_cqe & completion(const uint32_t offset) noexcept {
 		// Выводим запись завершения
 		return ::ring::cq.cqes[(__atomic_load_n(::ring::cq.head, __ATOMIC_RELAXED) + offset) & (* ::ring::cq.mask)];
 	}
@@ -4736,7 +4889,7 @@ namespace ring {
 	 * @param count количество разобранных завершений
 	 *
 	 */
-	static inline void release(const uint32_t count) noexcept {
+	static AWH_IO_URING_INLINE void release(const uint32_t count) noexcept {
 		// Если разобранные завершения имеются
 		if(count > 0)
 			// Выполняем перевод головы кольца завершений
@@ -4748,7 +4901,7 @@ namespace ring {
 	 * @details При возможности `NODROP` ядро сохраняет не поместившиеся завершения
 	 *          у себя и отдаёт их позже - потери данных нет. Но подача при этом
 	 *          дорожает, а само переполнение означает, что кольцо мало для нагрузки,
-	 *          и молчать о нём нельзя
+	 *          и молчать о нём нельзя.
 	 *
 	 */
 	static void overflow() noexcept {
@@ -4785,7 +4938,7 @@ namespace ring {
  *          всех запас, а ядро берёт оттуда буфер **в тот миг, когда данные
  *          пришли**, и сообщает его номер в завершении. Память тогда стоит не по
  *          числу подключений, а по числу подключений, у которых данные есть
- *          прямо сейчас
+ *          прямо сейчас.
  *
  * @note Кольцо заводится **лениво**, при первой же подписке потокового узла:
  *       приложению, не ведущему потокового обмена, оно не стоит ничего
@@ -4825,14 +4978,18 @@ namespace pool {
 	 * @brief Действия учёта наборов буферов
 	 *
 	 */
-	static constexpr uint32_t REGISTER   = 22;
+	static constexpr uint32_t REGISTER = 22;
+	/**
+	 * @brief Номер обращения снятия закрепления
+	 *
+	 */
 	static constexpr uint32_t UNREGISTER = 23;
 
 	/**
 	 * @brief Признак завершения, означающий выданный ядром буфер
 	 *
 	 * @details При наличии признака старшие шестнадцать разрядов признаков
-	 *          завершения содержат номер выданного буфера
+	 *          завершения содержат номер выданного буфера.
 	 *
 	 */
 	static constexpr uint32_t CQE_BUFFER = (1U << 0);
@@ -4844,19 +5001,49 @@ namespace pool {
 	 *          сперва этот заголовок, за ним адрес отправителя, за ним служебные
 	 *          данные и только потом полезную нагрузку. Длины адреса и служебных
 	 *          данных в буфере берутся из ШАБЛОНА подачи, а не из заголовка: заголовок
-	 *          сообщает, сколько ядро заполнило, а место отведено по шаблону всегда
+	 *          сообщает, сколько ядро заполнило, а место отведено по шаблону всегда.
 	 *
 	 * @note Устройство подтверждено щупом на ядрах 6.1 и 6.18: обе выдают в точности
 	 *       такую раскладку
 	 *
 	 */
-	struct message_t {
-		uint32_t namelen;    /**< Заполненная длина адреса отправителя */
-		uint32_t controllen; /**< Заполненная длина служебных данных */
-		uint32_t payloadlen; /**< Длина полезной нагрузки */
-		uint32_t flags;      /**< Признаки принятого сообщения */
-	};
+	typedef struct Message {
+		// Заполненная длина адреса отправителя
+		uint32_t namelen;
+		// Заполненная длина служебных данных
+		uint32_t controllen;
+		// Длина полезной нагрузки
+		uint32_t payloadlen;
+		// Признаки принятого сообщения
+		uint32_t flags;
+	} message_t;
 
+	/**
+	 * @brief Шаблон описания принимаемого сообщения
+	 *
+	 * @details Ядро берёт из него ТОЛЬКО длины и признаки: буфера в нём нет вовсе,
+	 *          потому что буфер ядро выбирает из кольца само. Шаблон один на все
+	 *          подачи и на все дескрипторы - он не заполняется ядром и не меняется
+	 *          от подачи к подаче.
+	 *
+	 * @warning Жить он обязан столько же, сколько кольцо: ядро читает его ПОСЛЕ
+	 *          возврата из обращения, у многократной подачи - на каждое сообщение
+	 *
+	 */
+	static struct msghdr sample = {};
+	/**
+	 * @brief Место, отводимое в буфере под служебные данные
+	 *
+	 * @details Хватает на сведения о принятой датаграмме - целевой адрес с
+	 *          устройством, класс обслуживания и предел числа переходов - по обоим
+	 *          семействам сразу.
+	 *
+	 * @warning Отводится ВСЕГДА, даже когда сведения не запрошены. Иначе раскладка
+	 *          буфера зависела бы от настроек узла, и один разбор не годился бы для
+	 *          всех: смещение нагрузки пришлось бы вычислять по узлу, а не по подаче
+	 *
+	 */
+	static constexpr uint32_t CTLLEN = 128;
 	/**
 	 * @brief Место, отводимое в буфере под адрес отправителя
 	 *
@@ -4865,21 +5052,6 @@ namespace pool {
 	 *
 	 */
 	static constexpr uint32_t NAMELEN = sizeof(struct sockaddr_storage);
-
-	/**
-	 * @brief Место, отводимое в буфере под служебные данные
-	 *
-	 * @details Хватает на сведения о принятой датаграмме - целевой адрес с
-	 *          устройством, класс обслуживания и предел числа переходов - по обоим
-	 *          семействам сразу
-	 *
-	 * @warning Отводится ВСЕГДА, даже когда сведения не запрошены. Иначе раскладка
-	 *          буфера зависела бы от настроек узла, и один разбор не годился бы для
-	 *          всех: смещение нагрузки пришлось бы вычислять по узлу, а не по подаче
-	 *
-	 */
-	static constexpr uint32_t CTLLEN = 128;
-
 	/**
 	 * @brief Смещение полезной нагрузки от начала буфера
 	 *
@@ -4887,66 +5059,46 @@ namespace pool {
 	static constexpr uint32_t PAYLOAD = (sizeof(message_t) + ::pool::NAMELEN + ::pool::CTLLEN);
 
 	/**
-	 * @brief Шаблон описания принимаемого сообщения
-	 *
-	 * @details Ядро берёт из него ТОЛЬКО длины и признаки: буфера в нём нет вовсе,
-	 *          потому что буфер ядро выбирает из кольца само. Шаблон один на все
-	 *          подачи и на все дескрипторы - он не заполняется ядром и не меняется
-	 *          от подачи к подаче
-	 *
-	 * @warning Жить он обязан столько же, сколько кольцо: ядро читает его ПОСЛЕ
-	 *          возврата из обращения, у многократной подачи - на каждое сообщение
-	 *
-	 */
-	static struct msghdr sample = {};
-
-	/**
 	 * @brief Запись кольца буферов
 	 *
 	 */
-	struct entry_t {
-		uint64_t addr; /**< Адрес буфера */
-		uint32_t len;  /**< Размер буфера в октетах */
-		uint16_t bid;  /**< Номер буфера */
-		uint16_t resv; /**< Место, занятое хвостом кольца у первой записи */
-	};
-
+	typedef struct Entry {
+		// Адрес буфера
+		uint64_t addr;
+		// Размер буфера в октетах
+		uint32_t len;
+		// Номер буфера
+		uint16_t bid;
+		// Место, занятое хвостом кольца у первой записи
+		uint16_t resv;
+	} entry_t;
 	/**
 	 * @brief Устройство заведения набора буферов
 	 *
 	 */
-	struct reg_t {
-		uint64_t addr;    /**< Адрес кольца буферов */
-		uint32_t entries; /**< Количество записей кольца */
-		uint16_t group;   /**< Номер набора буферов */
-		uint16_t flags;   /**< Признаки заведения набора */
-		uint64_t resv[3]; /**< Место, оставленное ядром про запас */
-	};
-
-	/**
-	 * @brief Кольцо буферов, отданное ядру
-	 *
-	 */
-	static entry_t * ring = nullptr;
-
-	/**
-	 * @brief Память самих буферов, общая на всё кольцо
-	 *
-	 */
-	static uint8_t * area = nullptr;
+	typedef struct Reg {
+		// Адрес кольца буферов
+		uint64_t addr;
+		// Количество записей кольца
+		uint32_t entries;
+		// Номер набора буферов
+		uint16_t group;
+		// Признаки заведения набора
+		uint16_t flags;
+		// Место, оставленное ядром про запас
+		uint64_t resv[3];
+	} reg_t;
 
 	/**
 	 * @brief Хвост кольца, ведомый приложением
 	 *
 	 */
 	static uint16_t tail = 0;
-
 	/**
 	 * @brief Признак наличия заведённого кольца буферов
 	 *
 	 */
 	static bool ready = false;
-
 	/**
 	 * @brief Признак невозможности завести кольцо буферов на этом ядре
 	 *
@@ -4957,11 +5109,22 @@ namespace pool {
 	static bool refused = false;
 
 	/**
+	 * @brief Кольцо буферов, отданное ядру
+	 *
+	 */
+	static entry_t * ring = nullptr;
+	/**
+	 * @brief Память самих буферов, общая на всё кольцо
+	 *
+	 */
+	static uint8_t * area = nullptr;
+
+	/**
 	 * @brief Функция возврата буфера в кольцо
 	 *
 	 * @details Зовётся сразу после того, как принятое из буфера израсходовано.
 	 *          Возврат - это запись в кольцо и сдвиг хвоста; обращения к ядру он
-	 *          не требует вовсе, и в этом весь смысл устройства
+	 *          не требует вовсе, и в этом весь смысл устройства.
 	 *
 	 * @param bid номер возвращаемого буфера
 	 *
@@ -4987,6 +5150,7 @@ namespace pool {
 		 * @note Запись выполняется с освобождающей семантикой: ядро вправе прочесть
 		 *       хвост в тот же миг, и оно обязано увидеть запись буфера **прежде**
 		 *       сдвинутого хвоста, иначе возьмёт запись, ещё не заполненную
+		 *
 		 */
 		__atomic_store_n(
 			reinterpret_cast <uint16_t *> (reinterpret_cast <uint8_t *> (::pool::ring) + offsetof(entry_t, resv)),
@@ -5004,41 +5168,48 @@ namespace pool {
 		// Выводим адрес выданного ядром буфера
 		return ((::pool::ready && (bid < ::pool::COUNT)) ? (::pool::area + (static_cast <size_t> (bid) * ::pool::SIZE)) : nullptr);
 	}
+
 	/**
 	 * @brief Принятое ядром, но ещё не забранное потребителем
 	 *
 	 * @details Ядро приняло данные само и выдало под них буфер из кольца. Потребитель
 	 *          же устроен по модели готовности: он ждёт оповещения и зовёт приём сам.
 	 *          Запись эта их и связывает - оповещение потребителю выдаётся, а его
-	 *          приём обслуживается уже принятым, без обращения к ядру
+	 *          приём обслуживается уже принятым, без обращения к ядру.
 	 *
 	 */
-	struct segment_t {
-		uint16_t bid;    /**< Номер выданного ядром буфера */
-		uint32_t offset; /**< Смещение неизрасходованного остатка */
-		uint32_t length; /**< Размер принятого в октетах */
+	typedef struct Segment {
 		/**
 		 * @brief Признак принятого сообщения, а не потока
 		 *
 		 * @details Сообщение отдаётся потребителю ЦЕЛИКОМ и ровно однажды: границы
 		 *          датаграмм обязаны дойти до него теми же, какими отправлены. Потоку
 		 *          же граница не положена вовсе, и он дробится по размеру буфера
-		 *          потребителя
+		 *          потребителя.
 		 *
 		 */
 		bool datagram;
-		uint32_t namelen;    /**< Заполненная ядром длина адреса отправителя */
-		uint32_t controllen; /**< Заполненная ядром длина служебных данных */
-		uint32_t flags;      /**< Признаки принятого сообщения */
+		// Номер выданного ядром буфера
+		uint16_t bid;
+		// Признаки принятого сообщения
+		uint32_t flags;
+		// Смещение неизрасходованного остатка
+		uint32_t offset;
+		// Размер принятого в октетах
+		uint32_t length;
+		// Заполненная ядром длина адреса отправителя
+		uint32_t namelen;
+		// Заполненная ядром длина служебных данных
+		uint32_t controllen;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		segment_t() noexcept :
-		 bid(0), offset(0), length(0),
-		 datagram(false), namelen(0), controllen(0), flags(0) {}
-	};
-
+		explicit Segment() noexcept :
+		 datagram(false), bid(0),
+		 flags(0), offset(0), length(0),
+		 namelen(0), controllen(0) {}
+	} segment_t;
 	/**
 	 * @brief Принятое по одному дескриптору
 	 *
@@ -5046,22 +5217,26 @@ namespace pool {
 	 *          приход данных, и ядро вправе завершить его дважды прежде, чем
 	 *          потребитель заберёт первую порцию. Выбрасывать вторую нельзя - это
 	 *          потеря данных, - и менять их местами нельзя тоже: поток обязан дойти в
-	 *          том порядке, в каком отправлен
+	 *          том порядке, в каком отправлен.
 	 *
 	 * @note Очередь заводится хранилищем, а не списком: порции добавляются в конец и
 	 *       забираются с начала, а память под неё переиспользуется от оборота к обороту
 	 *
 	 */
-	struct fetched_t {
-		bool armed;                 /**< Признак заведённого в кольце приёма */
-		size_t first;               /**< Номер первой неизрасходованной порции */
-		vector <segment_t> queue;   /**< Очередь принятых порций */
+	typedef struct Fetched {
+		// Признак заведённого в кольце приёма
+		bool armed;
+		// Номер первой неизрасходованной порции
+		size_t first;
+		// Очередь принятых порций
+		vector <segment_t> queue;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		fetched_t() noexcept : armed(false), first(0) {}
-	};
+		explicit Fetched() noexcept :
+		 armed(false), first(0) {}
+	} fetched_t;
 
 	/**
 	 * @brief Таблица принятого по дескрипторам
@@ -5072,7 +5247,6 @@ namespace pool {
 	 *
 	 */
 	static vector <fetched_t> fetched;
-
 	/**
 	 * @brief Отложенный возврат буфера в кольцо
 	 *
@@ -5090,7 +5264,7 @@ namespace pool {
 	 * @return     наличие принятого, ещё не забранного потребителем
 	 *
 	 */
-	static bool pending(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE bool pending(const net::socket_t sock) noexcept {
 		// Выводим наличие принятого по дескриптору
 		return (
 			(sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) &&
@@ -5108,7 +5282,7 @@ namespace pool {
 	 * @return     признак заведённого в кольце приёма
 	 *
 	 */
-	static bool armed(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE bool armed(const net::socket_t sock) noexcept {
 		// Выводим признак заведённого в кольце приёма
 		return (
 			(sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) &&
@@ -5122,7 +5296,7 @@ namespace pool {
 	 * @param value признак заведённого в кольце приёма
 	 *
 	 */
-	static void arm(const net::socket_t sock, const bool value) noexcept {
+	static AWH_IO_URING_INLINE void arm(const net::socket_t sock, const bool value) noexcept {
 		// Если дескриптор сокета неверен
 		if(sock < 0)
 			// Выходим из функции
@@ -5144,7 +5318,7 @@ namespace pool {
 	 * @param sock дескриптор, чья запись сбрасывается
 	 *
 	 */
-	static void release(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE void release(const net::socket_t sock) noexcept {
 		// Если дескриптор за пределами пула, сбрасывать нечего
 		if((sock < 0) || (static_cast <size_t> (sock) >= ::pool::fetched.size()))
 			// Выходим, так как записи по дескриптору нет
@@ -5162,9 +5336,9 @@ namespace pool {
 	 * @brief Функция заведения кольца буферов
 	 *
 	 * @details Зовётся лениво, при первой надобности. Неудача заведения не есть
-	 *          отказ движка: приём тогда идёт прежним путём, через `recv`
+	 *          отказ движка: приём тогда идёт прежним путём, через `recv`.
 	 *
-	 * @return    результат заведения кольца буферов
+	 * @return результат заведения кольца буферов
 	 *
 	 */
 	static bool create() noexcept {
@@ -5237,6 +5411,7 @@ namespace pool {
 		 *       вне зависимости от настроек узла: раскладка буфера обязана быть одной
 		 *       и той же для всякого принятого сообщения, иначе разбор не знал бы, где
 		 *       у него начинается нагрузка
+		 *
 		 */
 		::pool::sample.msg_namelen = ::pool::NAMELEN;
 		// Устанавливаем место, отводимое под служебные сведения
@@ -5279,6 +5454,7 @@ namespace pool {
 		 *
 		 * @note Хранилище при этом сохраняется: память под очередь переиспользуется, и
 		 *       выделений на горячем пути не происходит
+		 *
 		 */
 		if(record.first >= record.queue.size()){
 			// Выполняем очистку очереди принятых порций
@@ -5294,10 +5470,11 @@ namespace pool {
 		 *          буферов, сколько нужно, а исход несёт общий объём и номер первого из
 		 *          них. Заведена связка ради потоковой передачи: без неё завершение
 		 *          приходит на каждый приход данных по буферу за раз, и массовая
-		 *          передача дробится
+		 *          передача дробится.
 		 *
 		 * @note Разложение это верно и без связки: там буфер один, и оборот выполняется
 		 *       единожды
+		 *
 		 */
 		for(uint32_t left = length, i = 0; left > 0; i++){
 			// Вычисляем размер порции, лежащей в очередном буфере
@@ -5319,7 +5496,7 @@ namespace pool {
 	 *
 	 * @details В отличие от потока, сообщение занимает ровно ОДИН буфер и отдаётся
 	 *          потребителю целиком: делить его нельзя, иначе граница датаграммы,
-	 *          заданная отправителем, до потребителя не дойдёт
+	 *          заданная отправителем, до потребителя не дойдёт.
 	 *
 	 * @param sock дескриптор сокета, по которому пришло сообщение
 	 * @param bid  номер выданного ядром буфера
@@ -5365,6 +5542,7 @@ namespace pool {
 		 * @note Длина берётся из заголовка, а не из общего объёма завершения: объём
 		 *       несёт в себе и заголовок, и отведённые места, а нагрузка занимает
 		 *       лишь хвост буфера
+		 *
 		 */
 		segment.length = message->payloadlen;
 		// Устанавливаем заполненную ядром длину адреса отправителя
@@ -5380,6 +5558,7 @@ namespace pool {
 		 *       стоит в заголовке. Длина же в заголовке сообщает, сколько датаграмма
 		 *       занимала БЫ целиком, - брать её на веру значило бы читать за концом
 		 *       буфера
+		 *
 		 */
 		if(segment.length > (::pool::SIZE - ::pool::PAYLOAD))
 			// Ограничиваем длину нагрузки отведённым ей местом
@@ -5394,7 +5573,7 @@ namespace pool {
 	 *          ЦЕЛИКОМ и ровно однажды: порция помечается израсходованной независимо
 	 *          от того, вместилась ли она в буфер потребителя. Так же поступил бы и
 	 *          сам сокет - остаток датаграммы, не влезшей в буфер, ядро отбрасывает,
-	 *          а не оставляет до следующего приёма
+	 *          а не оставляет до следующего приёма.
 	 *
 	 * @param record  запись принятого по дескриптору
 	 * @param segment выдаваемое сообщение
@@ -5402,7 +5581,7 @@ namespace pool {
 	 * @return        количество отданных октетов
 	 *
 	 */
-	static ssize_t deliver(fetched_t & record, segment_t & segment, const size_t size) noexcept {
+	static AWH_IO_URING_INLINE ssize_t deliver(fetched_t & record, segment_t & segment, const size_t size) noexcept {
 		// Получаем адрес выданного ядром буфера
 		const uint8_t * data = ::pool::data(segment.bid);
 		// Отмечаем порцию израсходованной
@@ -5429,7 +5608,7 @@ namespace pool {
 	 * @details Посредник между потребителем и двумя путями приёма. Если ядро уже
 	 *          приняло данные само - они забираются из выданного им буфера, и
 	 *          обращения к ядру не происходит вовсе. Если нет - приём идёт обычным
-	 *          путём, через `recv`
+	 *          путём, через `recv`.
 	 *
 	 * @param sock   дескриптор сокета
 	 * @param buffer буфер для приёма данных
@@ -5447,6 +5626,7 @@ namespace pool {
 			 *       один сокет, и данные пришли бы потребителю вперемешку. Отсутствие
 			 *       принятого при заведённом приёме означает исчерпание, и отвечаем мы
 			 *       тем же, чем ответил бы сокет, - отсутствием данных
+			 *
 			 */
 			if(::pool::armed(sock)){
 				// Устанавливаем признак отсутствия данных
@@ -5470,12 +5650,13 @@ namespace pool {
 		 *          в том числе по датаграммным узлам - шифрованный обмен читает сокет
 		 *          именно так, адрес ему не нужен. Раскладка же буфера у сообщения
 		 *          своя: нагрузка лежит за заголовком и отведёнными местами, а не с
-		 *          начала буфера
+		 *          начала буфера.
 		 *
 		 * @warning Без этой развилки потребителю уходил ЗАГОЛОВОК вместо данных, и
 		 *          обмен вставал намертво. Установлено щупом на `IoDTLSTest`: приём
 		 *          доносил 1683 октета, потребитель забирал их с нулевого смещения и
 		 *          не узнавал в них ничего
+		 *
 		 */
 		if(segment.datagram)
 			// Выводим потребителю принятое сообщение
@@ -5502,6 +5683,7 @@ namespace pool {
 		 * @note Копирования здесь нет намеренно, и в этом весь смысл. Копирование
 		 *       съедало треть скорости потоковой передачи и обращало выгоду родного
 		 *       приёма в убыток - замер приведён при объявлении указателя
+		 *
 		 */
 		::__awh_input__ = const_cast <uint8_t *> (data + segment.offset);
 		// Сдвигаем смещение неизрасходованного остатка
@@ -5516,6 +5698,7 @@ namespace pool {
 			 * @note Вернуть его прямо здесь нельзя: потребитель ещё не прочёл принятое,
 			 *       а возвращённый буфер ядро вправе выдать под новые данные. Возврат
 			 *       выполняется оборотом позже, когда чтение заведомо закончено
+			 *
 			 */
 			::pool::deferred.push_back(segment.bid);
 		}
@@ -5528,7 +5711,7 @@ namespace pool {
 	 * @details Посредник между потребителем и двумя путями приёма, отвечающий за
 	 *          `recvfrom`. Если ядро уже приняло датаграмму само - она забирается из
 	 *          выданного им буфера вместе с адресом отправителя, и обращения к ядру не
-	 *          происходит вовсе
+	 *          происходит вовсе.
 	 *
 	 * @param sock    дескриптор сокета
 	 * @param buffer  буфер для приёма данных
@@ -5565,6 +5748,7 @@ namespace pool {
 		 * @note Переносится не отведённое место, а заполненная ядром длина: отведено
 		 *       под наибольшее семейство всегда, а заполнено ровно столько, сколько
 		 *       занимает адрес пришедшей датаграммы
+		 *
 		 */
 		if((address != nullptr) && (length != nullptr) && (data != nullptr) && (segment.namelen > 0)){
 			// Вычисляем переносимую длину адреса отправителя
@@ -5582,7 +5766,7 @@ namespace pool {
 	 *
 	 * @details Посредник между потребителем и двумя путями приёма, отвечающий за
 	 *          `recvmsg`. Переносит потребителю всё, что ядро сложило в буфер: адрес
-	 *          отправителя, служебные сведения о датаграмме и признаки приёма
+	 *          отправителя, служебные сведения о датаграмме и признаки приёма.
 	 *
 	 * @warning Подача родного приёма ОБЯЗАНА отводить место под служебные сведения
 	 *          всегда. Иначе разбор их молча не находил бы - беда эта у движка уже
@@ -5648,6 +5832,7 @@ namespace pool {
 			 *
 			 * @note Место под них отведено в буфере ВСЕГДА, сразу за адресом
 			 *       отправителя, и лежат они по отведённой длине, а не по заполненной
+			 *
 			 */
 			if((message->msg_control != nullptr) && (segment.controllen > 0)){
 				// Вычисляем переносимую длину служебных сведений
@@ -5728,7 +5913,7 @@ namespace pool {
  *          адрес удалённой стороны, устройство сообщения и сами буферы **позже**,
  *          в своё время. Приложение обязано хранить всё это до прихода завершения,
  *          и хранить именно здесь: узел, которому операция принадлежит, вправе быть
- *          уничтожен раньше
+ *          уничтожен раньше.
  *
  * @note Отмена операции **не отменяет** завершения: возможно, ядро успело её
  *       выполнить. Оттого запись учёта снимается по приходу завершения, и только
@@ -5753,35 +5938,51 @@ namespace inflight {
 	 *
 	 * @details Завершение сообщает лишь исход числом, а чем этот исход был - приёмом
 	 *          подключения, чтением или сроком, - ядро не сообщает и сообщать не
-	 *          обязано. Разновидность запоминается здесь при подаче
+	 *          обязано. Разновидность запоминается здесь при подаче.
 	 *
 	 */
 	enum class kind_t : uint8_t {
-		NONE     = 0x00, /**< Разновидность не задана */
-		POLL     = 0x01, /**< Ожидание готовности дескриптора */
-		ACCEPT   = 0x02, /**< Приём подключения */
-		CONNECT  = 0x03, /**< Подключение к удалённой стороне */
-		RECV     = 0x04, /**< Приём данных */
-		SEND     = 0x05, /**< Отправка данных */
-		RECVMSG  = 0x06, /**< Приём сообщения */
-		SENDMSG  = 0x07, /**< Отправка сообщения */
-		TIMEOUT  = 0x08, /**< Срок ожидания */
-		CLOSE    = 0x09, /**< Закрытие дескриптора */
-		SHUTDOWN = 0x0A, /**< Полузакрытие сокета */
-		SPLICE   = 0x0B, /**< Объединение дескрипторов средствами ядра */
-		CANCEL   = 0x0C, /**< Отмена поданной операции */
-		WAKEUP   = 0x0D, /**< Пробуждение цикла событий */
-		SPLICE_WAIT = 0x0E, /**< Ожидание готовности приёмника ядерного объединения */
-		FILE        = 0x0F, /**< Чтение файла по смещению */
-		READY       = 0x10  /**< Выдача готовности по непрочитанному в буфере пула */
+		// Разновидность не задана
+		NONE = 0x00,
+		// Ожидание готовности дескриптора
+		POLL = 0x01,
+		// Приём подключения
+		ACCEPT = 0x02,
+		// Подключение к удалённой стороне
+		CONNECT = 0x03,
+		// Приём данных
+		RECV = 0x04,
+		// Отправка данных
+		SEND = 0x05,
+		// Приём сообщения
+		RECVMSG = 0x06,
+		// Отправка сообщения
+		SENDMSG = 0x07,
+		// Срок ожидания
+		TIMEOUT = 0x08,
+		// Закрытие дескриптора
+		CLOSE = 0x09,
+		// Полузакрытие сокета
+		SHUTDOWN = 0x0A,
+		// Объединение дескрипторов средствами ядра
+		SPLICE = 0x0B,
+		// Отмена поданной операции
+		CANCEL = 0x0C,
+		// Пробуждение цикла событий
+		WAKEUP = 0x0D,
+		// Ожидание готовности приёмника ядерного объединения
+		SPLICE_WAIT = 0x0E,
+		// Чтение файла по смещению
+		FILE = 0x0F,
+		// Выдача готовности по непрочитанному в буфере пула
+		READY = 0x10
 	};
 
 	/**
 	 * @brief Запись учёта поданной операции
 	 *
 	 * @details Владеет всем, что ядро читает после возврата из обращения. Освобождение
-	 *          происходит по приходу завершения, а не по отмене и не по уничтожению
-	 *          узла
+	 *          происходит по приходу завершения, а не по отмене и не по уничтожению узла.
 	 *
 	 */
 	typedef struct Slot {
@@ -5813,10 +6014,11 @@ namespace inflight {
 		 * @brief Конструктор
 		 *
 		 */
-		Slot() noexcept :
-		 kind(kind_t::NONE), busy(false), multishot(false), cancelled(false),
-		 generation(0), sock(net::invalid_socket_t), udata(nullptr),
-		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, vector{}, deadline{} {}
+		explicit Slot() noexcept :
+		 kind(kind_t::NONE), busy(false),
+		 multishot(false), cancelled(false),
+		 generation(0), sock(net::invalid_socket_t),
+		 udata(nullptr), length(sizeof(struct sockaddr_storage)) {}
 	} slot_t;
 
 	/**
@@ -5841,6 +6043,7 @@ namespace inflight {
 	 *          того сличали 0.0.0.0 и не отказывали никому, а запись ядра уходила в
 	 *          чужую память. Двусторонняя очередь адреса своих записей при росте
 	 *          не меняет
+	 *
 	 */
 	static deque <slot_t> slots;
 
@@ -5869,7 +6072,7 @@ namespace inflight {
 	 * @return           метка завершения
 	 *
 	 */
-	static inline uint64_t token(const uint32_t index, const uint32_t generation) noexcept {
+	static AWH_IO_URING_INLINE uint64_t token(const uint32_t index, const uint32_t generation) noexcept {
 		// Выводим метку завершения
 		return ((static_cast <uint64_t> (generation) << 32) | static_cast <uint64_t> (index));
 	}
@@ -5928,14 +6131,14 @@ namespace inflight {
 		slot_t & slot = ::inflight::slots.at(index);
 		// Увеличиваем поколение записи
 		slot.generation++;
-		// Отмечаем запись как занятую
-		slot.busy = true;
 		// Устанавливаем разновидность поданной операции
 		slot.kind = kind;
 		// Устанавливаем дескриптор, к которому операция относится
 		slot.sock = sock;
 		// Устанавливаем узел, которому операция принадлежит
 		slot.udata = udata;
+		// Отмечаем запись как занятую
+		slot.busy = true;
 		// Сбрасываем признак многократности операции
 		slot.multishot = false;
 		// Сбрасываем признак отмены операции
@@ -5947,7 +6150,7 @@ namespace inflight {
 		 *          подключению и составным сообщениям. Прочим - ожиданию, приёму,
 		 *          отправке, отмене - они не нужны вовсе, а зануление их обходилось в
 		 *          двести октет на каждую операцию горячего пути. Заведено по профилю,
-		 *          где зануление это и встало вдвое дороже прочего в цикле
+		 *          где зануление это и встало вдвое дороже прочего в цикле.
 		 *
 		 */
 		switch(static_cast <uint8_t> (kind)){
@@ -5972,7 +6175,7 @@ namespace inflight {
 	 *
 	 * @details Вызывается **только** по приходу завершения. Отмена операции записи
 	 *          не освобождает: ядро вправе завершить операцию, отменённую мгновение
-	 *          назад, и освобождённая запись оставила бы завершение без владельца
+	 *          назад, и освобождённая запись оставила бы завершение без владельца.
 	 *
 	 * @param token метка завершения
 	 *
@@ -5992,10 +6195,10 @@ namespace inflight {
 			return;
 		// Отмечаем запись как свободную
 		slot.busy = false;
-		// Сбрасываем разновидность поданной операции
-		slot.kind = kind_t::NONE;
 		// Сбрасываем узел, которому операция принадлежит
 		slot.udata = nullptr;
+		// Сбрасываем разновидность поданной операции
+		slot.kind = kind_t::NONE;
 		// Сбрасываем дескриптор, к которому операция относится
 		slot.sock = net::invalid_socket_t;
 		// Ставим ячейку в очередь свободных
@@ -6005,7 +6208,7 @@ namespace inflight {
 	 * @brief Функция очистки учёта поданных операций
 	 *
 	 */
-	static void clear() noexcept {
+	static AWH_IO_URING_INLINE void clear() noexcept {
 		// Выполняем очистку таблицы записей учёта
 		::inflight::slots.clear();
 		// Выполняем очистку очереди свободных ячеек
@@ -6022,7 +6225,7 @@ namespace inflight {
  *
  *          Все подачи здесь **накопительные**: запись кладётся в кольцо, но к ядру
  *          не уходит. Уходит всё накопленное разом, ближайшим обращением опроса.
- *          Оттого правка подписки своего обращения к ядру не стоит вовсе
+ *          Оттого правка подписки своего обращения к ядру не стоит вовсе.
  *
  * @note Возвращаемое `INVALID` означает, что подать операцию не удалось. Отказ
  *       этот настоящий: кольцо подачи опорожняется здесь же, и заполненным оно
@@ -6041,7 +6244,7 @@ namespace post {
 	 * @details Подача случается и до того, как кольца заведены: ожидание дескриптора
 	 *          пробуждения подаётся при подготовке движка, а кольца заводятся первым
 	 *          оборотом цикла. Записи эти ждут здесь и уходят к ядру, как только
-	 *          кольца появятся
+	 *          кольца появятся.
 	 *
 	 */
 	static vector <struct io_uring_sqe> postponed;
@@ -6053,7 +6256,7 @@ namespace post {
 	 *          потоков. Кольцо подачи ими не правится вовсе, и в этом весь смысл
 	 *          устройства: `SINGLE_ISSUER` отвергает обращения из потока, который
 	 *          кольца не заводил, а движок настраивают из одного потока, а цикл ведут
-	 *          из другого - так делает фасад QUIC, и так поступают обыкновенно
+	 *          из другого - так делает фасад QUIC, и так поступают обыкновенно.
 	 *
 	 * @note Замок берётся свой, а не стандартный. Стандартный мьютекс, захваченный в
 	 *       миг ветвления процесса, остаётся в потомке замкнутым навсегда, а AWH
@@ -6068,7 +6271,7 @@ namespace post {
 	 * @details Запись заполняется вызывающим по частям, и класть её в очередь сразу
 	 *          нельзя: цикл вправе забрать очередь в тот самый миг и перенести в
 	 *          кольцо недописанную запись. Оттого чужой поток заполняет черновик, а в
-	 *          очередь тот попадает целиком, последним действием подачи
+	 *          очередь тот попадает целиком, последним действием подачи.
 	 *
 	 * @note Черновик у каждого потока свой - иначе два чужих потока затирали бы записи
 	 *       друг друга
@@ -6080,7 +6283,7 @@ namespace post {
 	 * @brief Функция помещения заполненной записи в очередь отложенных
 	 *
 	 * @details Зовётся последним действием подачи, когда запись заполнена целиком.
-	 *          Записи потока цикла проходят мимо: они уже лежат в самом кольце
+	 *          Записи потока цикла проходят мимо: они уже лежат в самом кольце.
 	 *
 	 * @param entry заполненная запись подачи
 	 *
@@ -6113,7 +6316,7 @@ namespace post {
 	 *
 	 * @details Кольцо подачи правит только поток, ведущий цикл: он же их и завёл, а
 	 *          `SINGLE_ISSUER` обращения прочих потоков отвергает. Прочие потоки кладут
-	 *          записи в очередь отложенных, и оттуда их переносит цикл
+	 *          записи в очередь отложенных, и оттуда их переносит цикл.
 	 *
 	 * @note Пока поток цикла неизвестен - цикл ни разу не начинался, - своим не
 	 *       считается никто, и всякая подача откладывается
@@ -6121,7 +6324,7 @@ namespace post {
 	 * @return принадлежность текущего потока циклу событий
 	 *
 	 */
-	static inline bool owned() noexcept {
+	static AWH_IO_URING_INLINE bool owned() noexcept {
 		// Выводим принадлежность текущего потока циклу событий
 		return (::__awh_poll_thread_known__ && static_cast <bool> (::pthread_equal(::pthread_self(), ::__awh_poll_thread__)));
 	}
@@ -6131,7 +6334,7 @@ namespace post {
 	 *
 	 * @details Если кольцо подачи заполнено - опорожняет его обращением к ядру и
 	 *          пробует ещё раз. Заполнение кольца не отказ: накопленное уходит,
-	 *          записи освобождаются
+	 *          записи освобождаются.
 	 *
 	 * @return запись подачи либо `nullptr`, если ядро накопленного не приняло
 	 *
@@ -6149,11 +6352,12 @@ namespace post {
 		 *          Замка очереди не нужно: договор движка (`include/net/io.hpp`) прямо
 		 *          запрещает обращаться к событиям из чужих потоков, и единственная
 		 *          законная дорога снаружи - взвод пользовательского события - идёт
-		 *          своим путём и кольца не касается
+		 *          своим путём и кольца не касается.
 		 *
 		 * @note Указатель отдаётся в глубину хранилища, и вызывающий заполняет запись
 		 *       тут же, до следующей добычи. Иначе перераспределение хранилища сделало
 		 *       бы указатель недействительным
+		 *
 		 */
 		if((::ring::fd < 0) || !::post::owned()){
 			// Выполняем зануление черновой записи подачи
@@ -6177,7 +6381,7 @@ namespace post {
 	 *
 	 * @details Зовётся сразу после заведения колец, из потока цикла. Отложенные записи
 	 *          переносятся в том же порядке, в каком подавались: порядок подачи
-	 *          значим - отмена обязана идти после операции, которую отменяет
+	 *          значим - отмена обязана идти после операции, которую отменяет.
 	 *
 	 */
 	static void flush() noexcept {
@@ -6195,6 +6399,7 @@ namespace post {
 			 *
 			 * @note Перенос идёт в кольцо, а к нему чужие потоки не обращаются вовсе -
 			 *       держать замок на всё это время незачем
+			 *
 			 */
 			taken.swap(::post::postponed);
 		}
@@ -6214,7 +6419,7 @@ namespace post {
 			// Если запись подачи добыть так и не удалось
 			if(result == nullptr){
 				// Выводим сообщение об отброшенной записи подачи
-				awh::log::print("%s: postponed submission dropped, ring is full", awh::log::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+				log::print("%s: postponed submission dropped, ring is full", log::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 				// Прекращаем перенос
 				break;
 			}
@@ -6227,7 +6432,7 @@ namespace post {
 	 *
 	 * @details Операция эта - не отступление к модели готовности, а родное средство
 	 *          io_uring для того, чему своей операции нет: наблюдения за файлами
-	 *          через inotify, туннельного устройства и отделённых сокетов SCTP
+	 *          через inotify, туннельного устройства и отделённых сокетов SCTP.
 	 *
 	 * @param sock      дескриптор, готовность которого ожидается
 	 * @param mask      набор ожидаемых событий готовности
@@ -6276,7 +6481,7 @@ namespace post {
 	 * @details Приём подаётся многократным при наличии такой возможности у ядра:
 	 *          одна поданная операция отдаёт подключения по мере их поступления, и
 	 *          подавать её заново на каждое подключение не приходится. Это и есть
-	 *          главная выгода io_uring на приёме
+	 *          главная выгода io_uring на приёме.
 	 *
 	 * @note ЗАГОТОВКА: ниоткуда пока НЕ ЗОВЁТСЯ. Приём идёт прежним путём - через
 	 *       готовность слушающего дескриптора и обычный `accept`. Оставлена
@@ -6359,7 +6564,7 @@ namespace post {
 	 *
 	 *          Подача **однократная**, как и ожидание готовности, и по той же
 	 *          причине: движок вычерпывает сокет не до конца намеренно, а
-	 *          многократный приём уровня не повторяет
+	 *          многократный приём уровня не повторяет.
 	 *
 	 * @param sock  дескриптор, с которого читаются данные
 	 * @param udata запись подписки, которой операция принадлежит
@@ -6385,7 +6590,7 @@ namespace post {
 		 * Размер принимаемого НЕ задаётся
 		 *
 		 * @details Буфер ядро берёт из кольца само, и размер оно берёт оттуда же -
-		 *          поле это при выборе буфера ядром не значит ничего
+		 *          поле это при выборе буфера ядром не значит ничего.
 		 *
 		 * @warning Ненулевое значение здесь ЛОМАЕТ приём на ядрах до 6.2: подача
 		 *          многократного приёма отвергается с `EINVAL`, событий готовности по
@@ -6394,6 +6599,7 @@ namespace post {
 		 *          `len = SIZE` отвечает `-EINVAL`, с `len = 0` работает; ядро 6.18
 		 *          принимает оба. Оттого беда эта видна не всюду, и набор проверок
 		 *          вставал только на старых ядрах
+		 *
 		 */
 		entry->len = 0;
 		// Устанавливаем признак приёма без порождения сигнала обрыва
@@ -6405,16 +6611,19 @@ namespace post {
 		 *          Однократный приём означал бы подачу записи на каждое чтение, то есть
 		 *          ту же работу, что и у модели готовности, только иначе названную.
 		 *          Многократный приём взводится ядром самим и завершается на каждый
-		 *          приход данных, пока не будет снят
+		 *          приход данных, пока не будет снят.
 		 *
 		 * @note Прежнее возражение против многократности относилось к многократному
 		 *       **ожиданию**: оно уровня не повторяет и сообщает один раз на переход.
 		 *       Приём же от уровня не зависит вовсе - он завершается на приход данных,
 		 *       и возражение это к нему не относится
+		 *
 		 */
 		entry->ioprio |= (1U << 1);
 		/**
-		 * Связка приёма (`IORING_RECVSEND_BUNDLE`, `ioprio |= 1<<4`) НЕ ставится
+		 * Указываем ядру брать буфер из кольца
+		 *
+		 * @note Связка приёма (`IORING_RECVSEND_BUNDLE`, `ioprio |= 1<<4`) НЕ ставится
 		 *
 		 * @details Со связкой одно завершение забирает из набора несколько буферов
 		 *          подряд. Ставилась она ради потоковой передачи, в расчёте, что провал
@@ -6426,9 +6635,9 @@ namespace post {
 		 *
 		 *          Строка оставлена явной отметкой, чтобы связку не заводили заново по
 		 *          тем же соображениям: они выглядят убедительно и опровергаются только
-		 *          замером
+		 *          замером.
+		 *
 		 */
-		// Указываем ядру брать буфер из кольца
 		entry->flags |= static_cast <uint8_t> (IOSQE_BUFFER_SELECT);
 		// Устанавливаем номер набора буферов, из которого берётся буфер
 		entry->buf_group = ::pool::GROUP;
@@ -6445,10 +6654,10 @@ namespace post {
 	 * @details То же, чем является приём для потока, но для сокетов, сохраняющих
 	 *          границы. Приём (`RECV`) датаграммам не годится вовсе: он не отдаёт
 	 *          адреса отправителя, а без него принятая датаграмма потребителю
-	 *          бесполезна - отвечать ему некуда
+	 *          бесполезна - отвечать ему некуда.
 	 *
 	 *          Ядро складывает в буфер заголовок, адрес отправителя, служебные
-	 *          сведения и нагрузку - одним куском и на одну датаграмму
+	 *          сведения и нагрузку - одним куском и на одну датаграмму.
 	 *
 	 * @note Подача многократная, как и у потока: однократная означала бы запись на
 	 *       каждую датаграмму, то есть ту же работу, что у модели готовности
@@ -6482,6 +6691,7 @@ namespace post {
 		 *
 		 * @note Шаблон общий на все подачи и ядром не изменяется: из него берутся
 		 *       только отводимые длины
+		 *
 		 */
 		entry->addr = reinterpret_cast <uint64_t> (&::pool::sample);
 		// Устанавливаем количество описаний принимаемого сообщения
@@ -6507,7 +6717,7 @@ namespace post {
 	 * @details Отличается от приёма из сокета доводом смещения: файл читается с
 	 *          заданного места, а не с текущего положения дескриптора. Ядро пишет
 	 *          в буфер ПОСЛЕ возврата из обращения, оттого буфером обязана владеть
-	 *          сторона, живущая до прихода завершения
+	 *          сторона, живущая до прихода завершения.
 	 *
 	 * @param fd     дескриптор файла
 	 * @param buffer буфер, в который ядро пишет прочитанное
@@ -6588,22 +6798,22 @@ namespace post {
 			return ::inflight::INVALID;
 		// Занимаем запись учёта под операцию
 		const uint64_t result = ::inflight::acquire(::inflight::kind_t::SEND, sock, udata);
-		// Устанавливаем код операции
-		entry->opcode = static_cast <uint8_t> (::ring::op_t::SEND);
-		// Устанавливаем дескриптор, в который пишутся данные
-		entry->fd = static_cast <int32_t> (sock);
-		// Устанавливаем буфер отправляемых данных
-		entry->addr = reinterpret_cast <uint64_t> (buffer);
-		// Устанавливаем размер отправляемых данных
-		entry->len = static_cast <uint32_t> (size);
+		// Устанавливаем метку завершения
+		entry->user_data = result;
 		/**
 		 * Указываем признак отсутствия сигнала при разрыве соединения.
 		 *
 		 * Признак этот передаётся самой операцией и отдельного обращения не стоит
 		 */
 		entry->msg_flags = MSG_NOSIGNAL;
-		// Устанавливаем метку завершения
-		entry->user_data = result;
+		// Устанавливаем дескриптор, в который пишутся данные
+		entry->fd = static_cast <int32_t> (sock);
+		// Устанавливаем размер отправляемых данных
+		entry->len = static_cast <uint32_t> (size);
+		// Устанавливаем буфер отправляемых данных
+		entry->addr = reinterpret_cast <uint64_t> (buffer);
+		// Устанавливаем код операции
+		entry->opcode = static_cast <uint8_t> (::ring::op_t::SEND);
 		// Откладываем запись, если она заполнялась не потоком цикла
 		::post::publish(entry);
 		// Выводим метку завершения
@@ -6615,15 +6825,12 @@ namespace post {
 	 * @details Данные переходят из одного дескриптора в другой, не поднимаясь в
 	 *          пользовательскую память вовсе. Ради этого io_uring и берётся под
 	 *          посреднические задачи: без него то же самое обходится двумя
-	 *          копированиями на каждый пакет
+	 *          копированиями на каждый пакет.
 	 *
 	 * @note Один из концов обязан быть каналом - таково устройство ядерного
 	 *       объединения. Оттого объединение сокета с сокетом выполняется парой
 	 *       связанных операций через канал, а не одной
 	 *
-	 * @param from   дескриптор-источник
-	 * @param offset смещение в источнике, отрицательное значение - смещения нет
-	 * @param to     дескриптор-приёмник
 	 * @note Связь **жёсткая**, а не обычная. Обычная связь рвётся, когда операция
 	 *       вернула меньше запрошенного, а короткий перенос у объединения - обычное
 	 *       дело, а не сбой: в сокете лежит столько, сколько пришло. Замером на
@@ -6631,6 +6838,9 @@ namespace post {
 	 *       `ECANCELED` всякий раз, когда первая перенесла меньше предела, то есть
 	 *       почти всегда
 	 *
+	 * @param from   дескриптор-источник
+	 * @param offset смещение в источнике, отрицательное значение - смещения нет
+	 * @param to     дескриптор-приёмник
 	 * @param size   предельный размер переносимых данных
 	 * @param link   признак жёсткой связи со следующей записью подачи
 	 * @param udata  узел, которому операция принадлежит
@@ -6718,7 +6928,7 @@ namespace post {
 	 *          буфер пула. Сокет после того пуст: заново поданный приём ждёт того,
 	 *          что уже пришло, и событие немеет навсегда. Пустая операция даёт
 	 *          готовность СВОИМ завершением, тем же путём, что и всякая другая, -
-	 *          разбор о разнице не знает вовсе
+	 *          разбор о разнице не знает вовсе.
 	 *
 	 * @param sock  дескриптор, по которому непрочитанное лежит
 	 * @param udata запись учёта подписки, которой готовность принадлежит
@@ -6759,7 +6969,7 @@ namespace post {
  *
  *          io_uring даёт настоящее ядерное объединение, при котором байты не
  *          выходят из ядра вовсе. Для посредника это разница между двумя
- *          копированиями на пакет и нулём
+ *          копированиями на пакет и нулём.
  *
  * @note Путь этот берётся **не всегда**, а лишь когда байты никому не нужны:
  *       ограничитель полосы не задан, шифрующей инъекции нет и на данные никто
@@ -6790,10 +7000,6 @@ namespace splicing {
 	typedef struct State {
 		// Канал, через который идёт перенос: чтение и запись
 		int32_t pipe[2];
-		// Дескриптор приёмника
-		net::socket_t dest;
-		// Количество операций переноса в полёте
-		uint32_t inflight;
 		/**
 		 * @brief Количество октет, лежащих в канале и ещё не отданных приёмнику
 		 *
@@ -6808,12 +7014,17 @@ namespace splicing {
 		 *
 		 */
 		size_t buffered;
+		// Количество операций переноса в полёте
+		uint32_t inflight;
+		// Дескриптор приёмника
+		net::socket_t dest;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		State() noexcept :
-		 pipe{-1, -1}, dest(net::invalid_socket_t), inflight(0), buffered(0) {}
+		explicit State() noexcept :
+		 pipe{-1, -1}, buffered(0),
+		 inflight(0), dest(net::invalid_socket_t) {}
 	} state_t;
 
 	/**
@@ -6844,6 +7055,7 @@ namespace splicing {
 		if(!::splicing::spare.empty()){
 			// Получаем канал из запаса
 			pipe[0] = ::splicing::spare.back().first;
+			// Получаем вторую половину канала из запаса
 			pipe[1] = ::splicing::spare.back().second;
 			// Убираем канал из запаса
 			::splicing::spare.pop_back();
@@ -6869,6 +7081,7 @@ namespace splicing {
 		 *
 		 * @note Предел взят с запасом на всплеск нагрузки, но не безграничный:
 		 *       каждый канал держит два дескриптора и буфер ядра
+		 *
 		 */
 		if(::splicing::spare.size() >= 0x100){
 			// Выполняем закрытие канала переноса
@@ -6939,7 +7152,7 @@ namespace splicing {
 	 * @details Годен он ровно тогда, когда байты никому не нужны в пользовательской
 	 *          памяти. Проверка выполняется при каждой готовности заново, а не
 	 *          запоминается: ограничитель полосы вправе появиться на живом
-	 *          соединении, и переход на прежний путь обязан произойти без разрыва
+	 *          соединении, и переход на прежний путь обязан произойти без разрыва.
 	 *
 	 * @param node узел-источник
 	 * @param dest дескриптор приёмника, заполняется функцией
@@ -7031,7 +7244,7 @@ namespace splicing {
 		 *            там нет и терять нечего.
 		 *
 		 *          Сохранность границ обеспечивается не запретом, а порядком «одно
-		 *          вошло - одно вышло», за чем следит остаток в канале
+		 *          вошло - одно вышло», за чем следит остаток в канале.
 		 *
 		 * @note Размеры сообщений сходятся оттого, что объединяются сокеты **своих**
 		 *       узлов, а предел размера пакета у них общий: сообщение, прошедшее
@@ -7042,8 +7255,11 @@ namespace splicing {
 		 *       приёмник получил бы куски произвольной длины вместо осмысленных
 		 *       записей. Обратное - сообщение в поток - безопасно: границы там лишь
 		 *       теряются, а не выдумываются
+		 *
 		 */
 		{
+			// Признак допустимости сочетания
+			bool allowed = false;
 			// Получаем вид источника
 			const event::type_t from = node->state.type;
 			// Получаем вид приёмника
@@ -7052,8 +7268,6 @@ namespace splicing {
 			const bool fileFrom = (node->state.node == event::node_t::FILE);
 			// Признак того, что приёмником является файл
 			const bool fileTo = (i->second->state.node == event::node_t::FILE);
-			// Признак допустимости сочетания
-			bool allowed = false;
 			// Если оба конца файловые, объединять их движок не берётся
 			if(fileFrom && fileTo)
 				// Выводим отрицательный результат
@@ -7075,9 +7289,11 @@ namespace splicing {
 					// Если приёмник потоковый - границ у него нет, годится любой источник
 					case static_cast <uint8_t> (event::type_t::STREAM):
 						// Разрешаем перенос из потока, дейтаграмм и последовательных пакетов
-						allowed = ((from == event::type_t::STREAM) ||
-						           (from == event::type_t::DATAGRAM) ||
-						           (from == event::type_t::SEQPACKET));
+						allowed = (
+							(from == event::type_t::STREAM) ||
+							(from == event::type_t::DATAGRAM) ||
+							(from == event::type_t::SEQPACKET)
+						);
 					break;
 					// Если приёмник дейтаграммный либо с последовательными пакетами
 					case static_cast <uint8_t> (event::type_t::DATAGRAM):
@@ -7089,6 +7305,7 @@ namespace splicing {
 						 *       порядком «одно вошло - одно вышло» при подаче переноса.
 						 *       Порядок этот соблюдается для всех видов разом: потоку он
 						 *       не нужен, но и не вредит, а одна ветвь надёжнее двух
+						 *
 						 */
 						allowed = ((from == event::type_t::DATAGRAM) || (from == event::type_t::SEQPACKET));
 					} break;
@@ -7143,7 +7360,7 @@ namespace splicing {
 	 * @brief Функция подачи ядерного переноса данных
 	 *
 	 * @details Подаются две жёстко связанные операции: сокет-источник в канал и
-	 *          канал в сокет-приёмник. Байты при этом из ядра не выходят
+	 *          канал в сокет-приёмник. Байты при этом из ядра не выходят.
 	 *
 	 * @note Жёсткая связь обязательна: обычная рвётся при переносе меньше
 	 *       запрошенного, а короткий перенос у объединения - обычное дело
@@ -7164,6 +7381,7 @@ namespace splicing {
 		 *       взводится заново сразу, а данные из сокета уйдут лишь переносом. Без
 		 *       этой отсечки на каждую готовность копился бы новый перенос тех же
 		 *       самых данных
+		 *
 		 */
 		if(state.inflight > 0)
 			// Выводим признак того, что перенос уже идёт
@@ -7181,11 +7399,12 @@ namespace splicing {
 		 * @details У приёмника с сообщениями это условие сохранности границ: заведи мы
 		 *          в канал второе сообщение поверх первого, выдача склеила бы их в
 		 *          одно. Замером подтверждено на дейтаграммах 4 и 12 октет - вышло одно
-		 *          сообщение в 16
+		 *          сообщение в 16.
 		 *
 		 * @note Остаток берётся ровно тот, что лежит в канале, а не предельная порция:
 		 *       выдать больше, чем в нём есть, всё равно нельзя, а назвать больше
 		 *       значило бы захватить и следующее сообщение, когда оно там появится
+		 *
 		 */
 		if(state.buffered > 0){
 			// Выполняем подачу выдачи остатка приёмнику
@@ -7268,6 +7487,7 @@ namespace splicing {
 		 * @note Различаются они дескриптором источника операции: у забора это сам
 		 *       сокет узла, у выдачи - читающий конец канала. Своего поля под это
 		 *       заводить незачем, признак и так есть в учёте поданного
+		 *
 		 */
 		const bool outbound = (sock == i->second.pipe[0]);
 		// Если перенос завершился отказом
@@ -7281,11 +7501,12 @@ namespace splicing {
 			 *          сокета-источника, и прежний путь через пользовательскую память
 			 *          до них не дотянется - они пропали бы вовсе. Оттого взводится
 			 *          ожидание готовности приёмника к записи, по которому выдача
-			 *          повторится
+			 *          повторится.
 			 *
 			 * @note Ожидание однократное и ложится в учёт своей разновидностью: разбор
 			 *       обязан отличить его от обычной подписки узла, за которой стоит
 			 *       запись учёта, а не узел
+			 *
 			 */
 			if(outbound && (i->second.buffered > 0) && (i->second.inflight == 0))
 				// Выполняем подачу ожидания готовности приёмника к записи
@@ -7346,14 +7567,40 @@ namespace drain {
 	using namespace awh;
 
 	/**
+	 * @brief Наибольший размер порции, которую выгодно отправлять родным путём
+	 *
+	 * @details Родная отправка меняет системный вызов на перенос памяти в очередь
+	 *          передачи, и обмен этот выгоден не всегда. На мелкой порции он выгоден
+	 *          несомненно: вызов стоит доли микросекунды, а перенос десятков октетов -
+	 *          единиц наносекунд. На крупной же порции они сравниваются, а затем
+	 *          перенос и берёт верх.
+	 *
+	 *          Замер на стенде очертил границу так: обмен мелкими сообщениями на
+	 *          пятистах соединениях прибавил в полтора раза (43 029 -> 64 612 обменов/с
+	 *          при 0.04 обращения на обмен вместо 2.04), тогда как потоковая передача
+	 *          порциями по 64 КБ **потеряла** без малого треть (1 795 -> 1 276 МБ/с).
+	 *          Порог и отделяет одно от другого.
+	 *
+	 * @note Величина взята из отношения скорости переноса памяти к цене обращения:
+	 *       перенос идёт порядка десятка гигабайт в секунду, обращение стоит около
+	 *       микросекунды - равновесие приходится на десяток килооктетов
+	 *
+	 */
+	static constexpr size_t INLINE_LIMIT = 0x4000;
+
+	/**
 	 * @brief Исход отправки по одному дескриптору
 	 *
 	 */
-	struct sent_t {
-		bool armed;     /**< Признак заведённой в кольце отправки */
-		bool ready;     /**< Признак пришедшего исхода, ещё не забранного потребителем */
-		int32_t res;    /**< Исход отправки: октеты при удаче, отрицательный код при отказе */
-		uint64_t token; /**< Метка завершения поданной отправки */
+	typedef struct Sent {
+		// Признак заведённой в кольце отправки
+		bool armed;
+		// Признак пришедшего исхода, ещё не забранного потребителем
+		bool ready;
+		// Исход отправки: октеты при удаче, отрицательный код при отказе
+		int32_t res;
+		// Метка завершения поданной отправки
+		uint64_t token;
 		/**
 		 * @brief Узел, которому отправка принадлежала
 		 *
@@ -7361,7 +7608,7 @@ namespace drain {
 		 *          выдать его новому владельцу она вправе прежде, чем прежний исход
 		 *          заберут. Исход тогда достался бы чужому узлу, а по нему - и решение
 		 *          о том, состоялось ли подключение. Установлено прогоном: набор терял
-		 *          `IoRebuildRevivesClientTest` и `IoDestroyOverridesAutoReconnectTest`
+		 *          `IoRebuildRevivesClientTest` и `IoDestroyOverridesAutoReconnectTest`.
 		 *
 		 */
 		void * owner;
@@ -7369,8 +7616,10 @@ namespace drain {
 		 * @brief Конструктор
 		 *
 		 */
-		sent_t() noexcept : armed(false), ready(false), res(0), token(::inflight::INVALID), owner(nullptr) {}
-	};
+		explicit Sent() noexcept :
+		 armed(false), ready(false), res(0),
+		 token(::inflight::INVALID), owner(nullptr) {}
+	} sent_t;
 
 	/**
 	 * @brief Таблица исходов отправки по дескрипторам
@@ -7388,7 +7637,7 @@ namespace drain {
 	 * @return     признак заведённой в кольце отправки
 	 *
 	 */
-	static void clear() noexcept {
+	static AWH_IO_URING_INLINE void clear() noexcept {
 		// Выполняем очистку таблицы исходов отправки
 		::drain::sent.clear();
 	}
@@ -7399,7 +7648,7 @@ namespace drain {
 	 * @return     признак заведённой в кольце отправки
 	 *
 	 */
-	static bool armed(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE bool armed(const net::socket_t sock) noexcept {
 		// Выводим признак заведённой в кольце отправки
 		return (
 			(sock >= 0) && (static_cast <size_t> (sock) < ::drain::sent.size()) &&
@@ -7413,7 +7662,7 @@ namespace drain {
 	 * @return     запись исхода отправки либо ничего, если дескриптор неверен
 	 *
 	 */
-	static sent_t * get(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE sent_t * get(const net::socket_t sock) noexcept {
 		// Если дескриптор сокета неверен
 		if(sock < 0)
 			// Выводим отсутствие записи
@@ -7435,7 +7684,7 @@ namespace drain {
 	 * @param sock дескриптор сокета
 	 *
 	 */
-	static void reset(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE void reset(const net::socket_t sock) noexcept {
 		// Если состояния отправки по дескриптору нет вовсе
 		if((sock < 0) || (static_cast <size_t> (sock) >= ::drain::sent.size()))
 			// Выходим из функции
@@ -7449,6 +7698,7 @@ namespace drain {
 		 *       ядро читает очередь передачи узла, а узел этот сейчас удаляется.
 		 *       Отмена завершения не отменяет, оттого операция ещё и помечается
 		 *       отменённой - разбор пришедшее по ней завершение отбросит
+		 *
 		 */
 		if(record.token != ::inflight::INVALID){
 			// Получаем запись учёта поданной отправки
@@ -7460,16 +7710,16 @@ namespace drain {
 			// Выполняем подачу отмены поданной отправки
 			::post::cancel(record.token);
 		}
-		// Забываем метку завершения поданной отправки
-		record.token = ::inflight::INVALID;
+		// Сбрасываем исход отправки
+		record.res = 0;
 		// Снимаем признак заведённой в кольце отправки
 		record.armed = false;
 		// Снимаем признак пришедшего исхода
 		record.ready = false;
-		// Сбрасываем исход отправки
-		record.res = 0;
 		// Забываем узел, которому отправка принадлежала
 		record.owner = nullptr;
+		// Забываем метку завершения поданной отправки
+		record.token = ::inflight::INVALID;
 	}
 	/**
 	 * @brief Функция отметки пришедшего исхода отправки
@@ -7479,21 +7729,21 @@ namespace drain {
 	 * @param owner узел, которому отправка принадлежала
 	 *
 	 */
-	static void keep(const net::socket_t sock, const int32_t res, void * owner) noexcept {
+	static AWH_IO_URING_INLINE void keep(const net::socket_t sock, const int32_t res, void * owner) noexcept {
 		// Получаем запись исхода отправки
 		sent_t * record = ::drain::get(sock);
 		// Если запись исхода отправки получена
 		if(record != nullptr){
-			// Забываем метку завершения поданной отправки
-			record->token = ::inflight::INVALID;
-			// Снимаем признак заведённой в кольце отправки
-			record->armed = false;
-			// Отмечаем приход исхода отправки
-			record->ready = true;
 			// Запоминаем исход отправки
 			record->res = res;
 			// Запоминаем узел, которому отправка принадлежала
 			record->owner = owner;
+			// Отмечаем приход исхода отправки
+			record->ready = true;
+			// Снимаем признак заведённой в кольце отправки
+			record->armed = false;
+			// Забываем метку завершения поданной отправки
+			record->token = ::inflight::INVALID;
 		}
 	}
 	/**
@@ -7509,38 +7759,17 @@ namespace drain {
 	 * @return     годность дескриптора для родной отправки
 	 *
 	 */
-	static bool usable(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE bool usable(const net::socket_t sock) noexcept {
 		// Выводим годность дескриптора для родной отправки
 		return ((::ring::fd >= 0) && ::post::owned() && (::kernel::subscription(sock) != nullptr));
 	}
-	/**
-	 * @brief Наибольший размер порции, которую выгодно отправлять родным путём
-	 *
-	 * @details Родная отправка меняет системный вызов на перенос памяти в очередь
-	 *          передачи, и обмен этот выгоден не всегда. На мелкой порции он выгоден
-	 *          несомненно: вызов стоит доли микросекунды, а перенос десятков октетов -
-	 *          единиц наносекунд. На крупной же порции они сравниваются, а затем
-	 *          перенос и берёт верх.
-	 *
-	 *          Замер на стенде очертил границу так: обмен мелкими сообщениями на
-	 *          пятистах соединениях прибавил в полтора раза (43 029 -> 64 612 обменов/с
-	 *          при 0.04 обращения на обмен вместо 2.04), тогда как потоковая передача
-	 *          порциями по 64 КБ **потеряла** без малого треть (1 795 -> 1 276 МБ/с).
-	 *          Порог и отделяет одно от другого
-	 *
-	 * @note Величина взята из отношения скорости переноса памяти к цене обращения:
-	 *       перенос идёт порядка десятка гигабайт в секунду, обращение стоит около
-	 *       микросекунды - равновесие приходится на десяток килооктетов
-	 *
-	 */
-	static constexpr size_t INLINE_LIMIT = 0x4000;
 	/**
 	 * @brief Функция отправки данных в сокет силами ядра
 	 *
 	 * @details Заменяет собой обращение `send` и отвечает ровно тем же, чем ответило
 	 *          бы оно, - оттого разбор у потребителя и остаётся прежним. Отличие в
 	 *          одном: удача приходит не тем заходом, который отправку затеял, а
-	 *          следующим, по готовности к записи
+	 *          следующим, по готовности к записи.
 	 *
 	 * @note Буфер здесь не перенимается и не копируется: держит его очередь передачи
 	 *       узла, и снимет она порцию лишь тогда, когда потребитель заберёт исход
@@ -7559,10 +7788,11 @@ namespace drain {
 		 *          тем же доводом, что и у приёма. Колец вправе не быть вовсе - ядро
 		 *          старое либо заведение их не удалось, - и поток вправе оказаться
 		 *          чужим: состояние отправки правится в памяти приложения, и править
-		 *          его двум потакам разом нельзя
+		 *          его двум потакам разом нельзя.
 		 *
 		 * @note Пока по дескриптору заведена родная отправка, ход этот не берётся
 		 *       никогда: проверка стоит **до** него и отвечает раньше
+		 *
 		 */
 		if((::ring::fd < 0) || !::post::owned())
 			// Выполняем отправку данных обычным обращением
@@ -7587,6 +7817,7 @@ namespace drain {
 			 * @note Отправка вправе оказаться частичной ровно так же, как и обычная, и
 			 *       разбор у потребителя к этому готов: остаток порции останется в
 			 *       очереди и уйдёт заходом следующим
+			 *
 			 */
 			if(res >= 0)
 				// Выводим количество отправленных октетов
@@ -7604,6 +7835,7 @@ namespace drain {
 			 * @note Заход этот случается лишь тогда, когда потребитель зовёт отправку
 			 *       вне готовности к записи - например, положив в очередь новую порцию.
 			 *       Готовность придёт своим порядком с завершением заведённой отправки
+			 *
 			 */
 			errno = EAGAIN;
 			// Выводим признак отказа
@@ -7615,6 +7847,7 @@ namespace drain {
 		 * @note Ядру передаётся именно она, а не узел: завершение отправки выдаётся
 		 *       наружу обычным событием готовности к записи, и разбору нужно ровно то
 		 *       же, что и всякому другому событию, - и дескриптор, и узел
+		 *
 		 */
 		void * const state = ::kernel::subscription(sock);
 		// Если подписки по дескриптору нет вовсе
@@ -7627,16 +7860,17 @@ namespace drain {
 		if(token == ::inflight::INVALID)
 			// Выполняем отправку данных обычным обращением
 			return ::send(sock, buffer, size, MSG_NOSIGNAL);
-		// Запоминаем метку завершения поданной отправки
-		record->token = token;
 		// Отмечаем отправку заведённой
 		record->armed = true;
+		// Запоминаем метку завершения поданной отправки
+		record->token = token;
 		/**
 		 * Отвечаем просьбой повторить позже
 		 *
 		 * @note Ответ этот и есть весь перевод асинхронной отправки в модель
 		 *       готовности: потребитель отложит порцию, а исход заберёт заходом по
 		 *       готовности к записи, которую выдаст завершение
+		 *
 		 */
 		errno = EAGAIN;
 		// Выводим признак отказа
@@ -7651,7 +7885,7 @@ namespace drain {
  *          отображением в память (`mmap`), а страничные отказы синхронны - поток
  *          цикла встаёт на дисковом чтении целиком, и один медленный файл
  *          задерживает все соединения разом. Кольцо позволяет подать чтение и
- *          вернуться в цикл: исход придёт завершением
+ *          вернуться в цикл: исход придёт завершением.
  *
  * @note Буфер держится в записи, а не на стеке: ядро пишет в него ПОСЛЕ возврата
  *       из обращения, и памятью обязана владеть сторона, живущая до завершения
@@ -7671,19 +7905,25 @@ namespace fileio {
 	 * @brief Запись чтения файла
 	 *
 	 */
-	struct reading_t {
-		bool armed;           /**< Признак поданного в кольцо чтения */
-		int64_t offset;       /**< Смещение, с которого подано чтение */
-		uint64_t token;       /**< Метка завершения поданного чтения */
-		void * owner;         /**< Узел, которому чтение принадлежит */
-		vector <char> buffer; /**< Буфер, в который пишет ядро */
+	typedef struct Reading {
+		// Признак поданного в кольцо чтения
+		bool armed;
+		// Смещение, с которого подано чтение
+		int64_t offset;
+		// Метка завершения поданного чтения
+		uint64_t token;
+		// Буфер, в который пишет ядро
+		vector <char> buffer;
+		// Узел, которому чтение принадлежит
+		void * owner;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		reading_t() noexcept :
-		 armed(false), offset(0), token(::inflight::INVALID), owner(nullptr) {}
-	};
+		explicit Reading() noexcept :
+		 armed(false), offset(0),
+		 token(::inflight::INVALID), owner(nullptr) {}
+	} reading_t;
 
 	/**
 	 * Записи чтения файлов по дескрипторам
@@ -7694,11 +7934,10 @@ namespace fileio {
 	 * @brief Функция освобождения записей чтения файлов
 	 *
 	 */
-	static void clear() noexcept {
+	static AWH_IO_URING_INLINE void clear() noexcept {
 		// Освобождаем записи чтения файлов
 		::fileio::records.clear();
 	}
-
 	/**
 	 * @brief Функция получения записи чтения файла
 	 *
@@ -7706,7 +7945,7 @@ namespace fileio {
 	 * @return   запись чтения файла либо пустое значение
 	 *
 	 */
-	static reading_t * get(const net::socket_t fd) noexcept {
+	static AWH_IO_URING_INLINE reading_t * get(const net::socket_t fd) noexcept {
 		// Если дескриптор файла недействителен
 		if(fd < 0)
 			// Выводим пустое значение
@@ -7718,7 +7957,6 @@ namespace fileio {
 		// Выводим запись чтения файла
 		return &::fileio::records[static_cast <size_t> (fd)];
 	}
-
 	/**
 	 * @brief Функция проверки заведённого чтения файла
 	 *
@@ -7726,7 +7964,7 @@ namespace fileio {
 	 * @return   признак заведённого чтения
 	 *
 	 */
-	static bool armed(const net::socket_t fd) noexcept {
+	static AWH_IO_URING_INLINE bool armed(const net::socket_t fd) noexcept {
 		// Если дескриптор файла недействителен
 		if((fd < 0) || (static_cast <size_t> (fd) >= ::fileio::records.size()))
 			// Выводим признак отсутствия чтения
@@ -7734,14 +7972,13 @@ namespace fileio {
 		// Выводим признак заведённого чтения
 		return ::fileio::records[static_cast <size_t> (fd)].armed;
 	}
-
 	/**
 	 * @brief Функция снятия записи чтения файла
 	 *
 	 * @param fd дескриптор файла
 	 *
 	 */
-	static void reset(const net::socket_t fd) noexcept {
+	static AWH_IO_URING_INLINE void reset(const net::socket_t fd) noexcept {
 		// Если дескриптор файла недействителен
 		if((fd < 0) || (static_cast <size_t> (fd) >= ::fileio::records.size()))
 			// Выходим из функции
@@ -7759,7 +7996,6 @@ namespace fileio {
 		// Снимаем принадлежность записи
 		record.owner = nullptr;
 	}
-
 	/**
 	 * @brief Функция годности асинхронного чтения файла
 	 *
@@ -7767,12 +8003,11 @@ namespace fileio {
 	 * @return   признак годности асинхронного чтения
 	 *
 	 */
-	static bool usable(const net::socket_t fd) noexcept {
+	static AWH_IO_URING_INLINE bool usable(const net::socket_t fd) noexcept {
 		// Выводим признак годности асинхронного чтения файла
 		return ((::ring::fd >= 0) && (fd >= 0) && ::post::owned());
 	}
-}
-
+};
 
 /**
  * @brief Инкапсулируем доставку записей списка изменений в ядро
@@ -7780,7 +8015,7 @@ namespace fileio {
  * @details Записи приходят сюда в едином виде, а расходятся по ТРЁМ разным
  *          средствам ядра: подписки по дескриптору - в кольцо, наблюдение за
  *          файлами - в `inotify`, пробуждение цикла - в дескриптор события.
- *          Слой этот и сводит три средства к одному списку изменений
+ *          Слой этот и сводит три средства к одному списку изменений.
  *
  * @note Раскладка по трём средствам наружу не выходит: и заводятся, и снимаются
  *       подписки одними и теми же записями, а какое средство их обслужит - забота
@@ -7794,6 +8029,20 @@ namespace kernel {
 	using namespace awh;
 
 	/**
+	 * @brief Метка завершения поданного ожидания дескриптора пробуждения цикла
+	 *
+	 * @details Ожидание здесь - поданная операция, а не подписка, и опознаётся
+	 *          оно меткой завершения
+	 *
+	 */
+	static uint64_t waking = ::inflight::INVALID;
+	/**
+	 * @brief Метка завершения поданного ожидания дескриптора наблюдения за файлами
+	 *
+	 */
+	static uint64_t watching = ::inflight::INVALID;
+
+	/**
 	 * @brief Дескриптор наблюдения за файловой системой
 	 *
 	 * @details Заводится по первой же подписке на файл либо каталог и не заводится
@@ -7801,7 +8050,6 @@ namespace kernel {
 	 *
 	 */
 	static int32_t inotify = net::invalid_socket_t;
-
 	/**
 	 * @brief Дескриптор пробуждения цикла событий
 	 *
@@ -7812,30 +8060,15 @@ namespace kernel {
 	static int32_t wakeup = net::invalid_socket_t;
 
 	/**
-	 * @brief Метка завершения поданного ожидания дескриптора пробуждения цикла
-	 *
-	 * @details Ожидание здесь - поданная операция, а не подписка, и опознаётся
-	 *          оно меткой завершения
-	 *
-	 */
-	static uint64_t waking = ::inflight::INVALID;
-
-	/**
-	 * @brief Метка завершения поданного ожидания дескриптора наблюдения за файлами
-	 *
-	 */
-	static uint64_t watching = ::inflight::INVALID;
-
-	/**
 	 * @brief Срок, до которого опрос сейчас спит, - `UINT64_MAX` при бесконечном ожидании, ноль если опрос не спит
 	 *
 	 * @details Срок принимается доводом ожидания и вычисляется ПЕРЕД входом в
 	 *          него, а взвод таймера из другого потока к ядру не обращается вовсе -
-	 *          будить спящий цикл оттого нечем
+	 *          будить спящий цикл оттого нечем.
 	 *
 	 *          Отметка эта и восполняет пробел: взвод сличает свой срок с нею и
 	 *          будит опрос, если новый срок наступает раньше того, до которого
-	 *          опрос спать собрался. Ожидание тогда пересчитывается заново
+	 *          опрос спать собрался. Ожидание тогда пересчитывается заново.
 	 *
 	 * @note Ноль означает, что опрос не спит: взводу будить некого, и обращения к
 	 *       дескриптору пробуждения не происходит. Ради этого отметка и заведена -
@@ -7852,14 +8085,51 @@ namespace kernel {
 	 *
 	 */
 	typedef struct Registry {
-		// Дескриптор, которому подписка принадлежит
-		net::socket_t sock;
-		// Заведённые подписки, набор разрядов признаков ожидания
-		uint32_t declared;
-		// Включённые подписки, набор разрядов признаков ожидания
-		uint32_t enabled;
 		// Признак того, что подписка сообщает о переходе, а не об уровне
 		bool edge;
+		/**
+		 * @brief Признак выданной готовности по непрочитанному в пуле
+		 *
+		 * @details Родной приём кольца забирает данные из сокета САМ и складывает их
+		 *          в буфер пула. Сокет после того пуст, и заново поданный приём ждёт
+		 *          того, что уже пришло. Готовность по такому непрочитанному выдаётся
+		 *          своим завершением, а признак этот бережёт от повторной выдачи,
+		 *          покуда прежняя не разобрана.
+		 *
+		 */
+		bool raised;
+		/**
+		 * @brief Признак расхождения учёта с очередью опроса
+		 *
+		 * @details Правки подписок ложатся сперва в учёт, а к ядру уходят одним
+		 *          обращением на дескриптор - непосредственно перед ожиданием. Правок
+		 *          между двумя ожиданиями по одному дескриптору набирается несколько:
+		 *          снятие сработавшей однократной подписки на запись и следующая за
+		 *          ним подписка на чтение прежде стоили двух обращений, а сходятся в
+		 *          одно, потому что итог у них общий.
+		 *
+		 * @note Задержка эта ничего не меняет по существу: согласование выполняется
+		 *       прежде, чем ядро спросят о событиях, а до того ядру о правках знать
+		 *       незачем - оно всё равно не опрашивается
+		 *
+		 */
+		bool pending;
+		// Признак того, что подписка заведена в очереди опроса
+		bool registered;
+		/**
+		 * @brief Метка завершения поданного ожидания готовности
+		 *
+		 * @details Подписки у io_uring нет вовсе, а есть ПОДАННАЯ ОПЕРАЦИЯ, и
+		 *          опознаётся она меткой завершения.
+		 *          
+		 *          Отсюда и особенность снятия: отмена операции лишь ПРОСИТ ядро её
+		 *          бросить - оно вправе успеть её выполнить. Оттого метка держится до прихода
+		 *          завершения, а не до подачи отмены.
+		 *
+		 */
+		uint64_t token;
+		// Включённые подписки, набор разрядов признаков ожидания
+		uint32_t enabled;
 		/**
 		 * @brief Подписки, срабатывающие единожды, набор разрядов признаков ожидания
 		 *
@@ -7870,71 +8140,40 @@ namespace kernel {
 		 *          не является и отключаться не должна.
 		 *
 		 *          Оттого сработавшая однократная подписка снимается разбором
-		 *          события - ровно та, что сработала, и только она
+		 *          события - ровно та, что сработала, и только она.
 		 *
 		 */
 		uint32_t oneshot;
-		// Признак того, что подписка заведена в очереди опроса
-		bool registered;
-		/**
-		 * @brief Признак расхождения учёта с очередью опроса
-		 *
-		 * @details Правки подписок ложатся сперва в учёт, а к ядру уходят одним
-		 *          обращением на дескриптор - непосредственно перед ожиданием. Правок
-		 *          между двумя ожиданиями по одному дескриптору набирается несколько:
-		 *          снятие сработавшей однократной подписки на запись и следующая за
-		 *          ним подписка на чтение прежде стоили двух обращений, а сходятся в
-		 *          одно, потому что итог у них общий
-		 *
-		 * @note Задержка эта ничего не меняет по существу: согласование выполняется
-		 *       прежде, чем ядро спросят о событиях, а до того ядру о правках знать
-		 *       незачем - оно всё равно не опрашивается
-		 *
-		 */
-		bool pending;
 		// Набор признаков ожидания, поданный ядру последним
 		uint32_t applied;
-		/**
-		 * @brief Метка завершения поданного ожидания готовности
-		 *
-		 * @details Подписки у io_uring нет вовсе, а есть ПОДАННАЯ ОПЕРАЦИЯ, и
-		 *          опознаётся она меткой завершения.
-		 *          
-		 *          Отсюда и особенность снятия: отмена операции лишь ПРОСИТ ядро её
-		 *          бросить - оно вправе успеть её выполнить. Оттого метка держится до прихода
-		 *          завершения, а не до подачи отмены
-		 *
-		 */
-		uint64_t token;
-		/**
-		 * @brief Признак выданной готовности по непрочитанному в пуле
-		 *
-		 * @details Родной приём кольца забирает данные из сокета САМ и складывает их
-		 *          в буфер пула. Сокет после того пуст, и заново поданный приём ждёт
-		 *          того, что уже пришло. Готовность по такому непрочитанному выдаётся
-		 *          своим завершением, а признак этот бережёт от повторной выдачи,
-		 *          покуда прежняя не разобрана
-		 */
-		bool raised;
+		// Заведённые подписки, набор разрядов признаков ожидания
+		uint32_t declared;
+		// Дескриптор, которому подписка принадлежит
+		net::socket_t sock;
 		// Узел, которому подписка принадлежит
 		void * udata;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Registry() noexcept :
-		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0),
-		 registered(false), pending(false), applied(0),
-		 token(::inflight::INVALID), raised(false), udata(nullptr) {}
+		explicit Registry() noexcept :
+		 edge(false), raised(false), pending(false),
+		 registered(false), token(::inflight::INVALID),
+		 enabled(0), oneshot(0), applied(0), declared(0),
+		 sock(net::invalid_socket_t), udata(nullptr) {}
 	} registry_t;
 
+	/**
+	 * @brief Метка пробуждения цикла событий в поле пользовательских данных события
+	 *
+	 */
+	static void * const waker = reinterpret_cast <void *> (3);
 	/**
 	 * @brief Метка наблюдения за файловой системой в поле пользовательских данных события
 	 *
 	 * @details Дескриптор наблюдения подписан на чтение наравне с сокетами, и цикл
 	 *          обязан отличать его от прочих подписок прежде обращения к узлу: узла
-	 *          за ним нет, а разыменование метки есть обращение по недопустимому
-	 *          адресу
+	 *          за ним нет, а разыменование метки есть обращение по недопустимому адресу.
 	 *
 	 * @note Значение выбрано отличным и от пустого, и от метки внутреннего таймера
 	 *       дедлайнов: обе они уже заняты и означают другое
@@ -7943,23 +8182,18 @@ namespace kernel {
 	static void * const watcher = reinterpret_cast <void *> (2);
 
 	/**
-	 * @brief Метка пробуждения цикла событий в поле пользовательских данных события
+	 * @brief Дескрипторы, чей учёт разошёлся с очередью опроса и ждёт согласования
+	 *
+	 * @details Правки подписок накапливаются здесь между двумя ожиданиями и уходят к
+	 *          ядру одним обращением на дескриптор. Прежде каждая правка обращалась к
+	 *          ядру сама, и на одно короткоживущее подключение выходило четыре
+	 *          обращения там, где довольно трёх
+	 *
+	 * @note Дескриптор попадает сюда не чаще одного раза: повторную запись отсекает
+	 *       признак расхождения в самом учёте
 	 *
 	 */
-	static void * const waker = reinterpret_cast <void *> (3);
-
-	/**
-	 * @brief Заведённые подписки по дескрипторам
-	 *
-	 * @details Держать их приходится здесь оттого, что ПОДПИСКИ В ЯДРЕ НЕТ ВОВСЕ -
-	 *          есть поданная операция, и спросить у ядра о ней нечего.
-	 *
-	 *          Движок при этом заводит чтение и запись порознь, и чтобы включение
-	 *          записи не стёрло заведённое чтение, прежнее состояние надо помнить
-	 *
-	 */
-	static unordered_map <net::socket_t, registry_t> registry;
-
+	static vector <net::socket_t> pending;
 	/**
 	 * @brief Дескрипторы, чьи записи учёта ожидают снятия
 	 *
@@ -7975,27 +8209,24 @@ namespace kernel {
 	 *          же запись оставила бы в пачке ссылку на освобождённую память.
 	 *
 	 *          Снимаются записи в начале следующего оборота: пачка прошлого оборота
-	 *          к тому времени разобрана целиком, а новую ядро ещё не отдавало
+	 *          к тому времени разобрана целиком, а новую ядро ещё не отдавало.
 	 *
 	 * @note Тот же порядок и по той же причине соблюдает движок для самих узлов,
 	 *       откладывая их уничтожение списком `::local::graveyard`
 	 *
 	 */
 	static vector <net::socket_t> retired;
-
 	/**
-	 * @brief Дескрипторы, чей учёт разошёлся с очередью опроса и ждёт согласования
+	 * @brief Заведённые подписки по дескрипторам
 	 *
-	 * @details Правки подписок накапливаются здесь между двумя ожиданиями и уходят к
-	 *          ядру одним обращением на дескриптор. Прежде каждая правка обращалась к
-	 *          ядру сама, и на одно короткоживущее подключение выходило четыре
-	 *          обращения там, где довольно трёх
+	 * @details Держать их приходится здесь оттого, что ПОДПИСКИ В ЯДРЕ НЕТ ВОВСЕ -
+	 *          есть поданная операция, и спросить у ядра о ней нечего.
 	 *
-	 * @note Дескриптор попадает сюда не чаще одного раза: повторную запись отсекает
-	 *       признак расхождения в самом учёте
+	 *          Движок при этом заводит чтение и запись порознь, и чтобы включение
+	 *          записи не стёрло заведённое чтение, прежнее состояние надо помнить.
 	 *
 	 */
-	static vector <net::socket_t> pending;
+	static unordered_map <net::socket_t, registry_t> registry;
 
 	/**
 	 * @brief Функция добычи записи учёта подписки по дескриптору
@@ -8004,37 +8235,13 @@ namespace kernel {
 	 * @return     запись учёта подписки либо ничего, если подписки по дескриптору нет
 	 *
 	 */
-	static void * subscription(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE void * subscription(const net::socket_t sock) noexcept {
 		// Выполняем поиск записи учёта по дескриптору
 		auto i = ::kernel::registry.find(sock);
 		// Выводим запись учёта подписки, если она заведена
 		return ((i != ::kernel::registry.end()) ? &i->second : nullptr);
 	}
-	/**
-	 * @brief Функция забвения состояния учёта закрываемого дескриптора
-	 *
-	 * @details Закрытие дескриптора снимает все его подписки в ядре само, без всякого
-	 *          обращения к очереди опроса. Учёт об этом узнать неоткуда, и признак
-	 *          заведения подписки у него остаётся поднятым
-	 *
-	 *          Пока номер свободен, ложь эта безобидна. Но система выдаёт номер заново,
-	 *          и достаться он вправе другому узлу тем же самым оборотом: движок шлёт
-	 *          тогда правку незаведённой подписки, ядро отвечает отказом, и обращение
-	 *          повторяется противоположным действием. Замер показал по два таких отказа
-	 *          на каждое короткоживущее подключение
-	 *
-	 *          Отличить нового владельца по узлу нельзя - опробовано и отвергнуто:
-	 *          распределитель памяти выдаёт новому узлу тот же адрес, что был у прежнего,
-	 *          и сличение узлов расхождения не видит. Единственный достоверный признак -
-	 *          само закрытие, и знает о нём движок, а не учёт
-	 *
-	 * @note Сама запись здесь не снимается: её адрес мог уйти ядру и лежать в уже
-	 *       полученной, но ещё не разобранной пачке событий. Снятие откладывается на
-	 *       оборот наравне с прочими, а сбрасывается лишь состояние
-	 *
-	 * @param sock дескриптор, состояние которого забывается
-	 *
-	 */
+
 	/**
 	 * @brief Упреждающее объявление снятия записей изменений по дескриптору
 	 *
@@ -8045,6 +8252,31 @@ namespace kernel {
 	 *
 	 */
 	static void __purge__(const net::socket_t sock) noexcept;
+	/**
+	 * @brief Функция забвения состояния учёта закрываемого дескриптора
+	 *
+	 * @details Закрытие дескриптора снимает все его подписки в ядре само, без всякого
+	 *          обращения к очереди опроса. Учёт об этом узнать неоткуда, и признак
+	 *          заведения подписки у него остаётся поднятым.
+	 *
+	 *          Пока номер свободен, ложь эта безобидна. Но система выдаёт номер заново,
+	 *          и достаться он вправе другому узлу тем же самым оборотом: движок шлёт
+	 *          тогда правку незаведённой подписки, ядро отвечает отказом, и обращение
+	 *          повторяется противоположным действием. Замер показал по два таких отказа
+	 *          на каждое короткоживущее подключение.
+	 *
+	 *          Отличить нового владельца по узлу нельзя - опробовано и отвергнуто:
+	 *          распределитель памяти выдаёт новому узлу тот же адрес, что был у прежнего,
+	 *          и сличение узлов расхождения не видит. Единственный достоверный признак -
+	 *          само закрытие, и знает о нём движок, а не учёт.
+	 *
+	 * @note Сама запись здесь не снимается: её адрес мог уйти ядру и лежать в уже
+	 *       полученной, но ещё не разобранной пачке событий. Снятие откладывается на
+	 *       оборот наравне с прочими, а сбрасывается лишь состояние
+	 *
+	 * @param sock дескриптор, состояние которого забывается
+	 *
+	 */
 	static bool forget(const net::socket_t sock) noexcept {
 		// Если дескриптор не заведён вовсе, забывать нечего
 		if(sock == net::invalid_socket_t)
@@ -8057,6 +8289,7 @@ namespace kernel {
 		 *       нет: учёт заводится применением записи, а сама она кладётся в список
 		 *       раньше. Снимай мы записи ниже, они проскакивали бы чистку у всякого
 		 *       дескриптора, закрытого до первого применения
+		 *
 		 */
 		::kernel::__purge__(sock);
 		/**
@@ -8082,18 +8315,18 @@ namespace kernel {
 			return false;
 		// Признак того, что отмена поданного ожидания подана
 		bool result = false;
-		// Забываем заведение подписки в очереди опроса: ядро сняло её при закрытии
-		i->second.registered = false;
 		// Забываем включённые подписки
 		i->second.enabled = 0;
-		// Забываем объявленные подписки
-		i->second.declared = 0;
 		// Забываем однократные подписки
 		i->second.oneshot = 0;
-		// Забываем разновидность оповещения
-		i->second.edge = false;
 		// Забываем набор признаков, поданный ядру
 		i->second.applied = 0;
+		// Забываем объявленные подписки
+		i->second.declared = 0;
+		// Забываем разновидность оповещения
+		i->second.edge = false;
+		// Забываем заведение подписки в очереди опроса: ядро сняло её при закрытии
+		i->second.registered = false;
 		/**
 		 * Снимаем поданное ожидание отменой, а не одним лишь закрытием
 		 *
@@ -8106,7 +8339,7 @@ namespace kernel {
 		 *
 		 *          Замером подтверждено: на двух дескрипторах набиралось десять
 		 *          незавершённых операций, а цикл событий вставал в ожидании
-		 *          завершения, которого никто уже не подаст
+		 *          завершения, которого никто уже не подаст.
 		 *
 		 * @note Отметка отмены нужна вдобавок к самой отмене, а не взамен: отмена не
 		 *       мгновенна, и ядро вправе сообщить о готовности прежде, чем до неё
@@ -8135,6 +8368,7 @@ namespace kernel {
 		 *       читает очередь передачи узла, а узел этот сейчас исчезает. Довод здесь
 		 *       тот же, что и у ожидания, но беда тяжелее - не зря растущий учёт, а
 		 *       чтение освобождённой памяти
+		 *
 		 */
 		::drain::reset(sock);
 		// Забываем расхождение учёта: согласовывать у закрытого дескриптора нечего
@@ -8146,13 +8380,12 @@ namespace kernel {
 		// Выводим признак поданной отмены
 		return result;
 	}
-
 	/**
 	 * @brief Функция закрытия дескриптора с забвением его состояния учёта
 	 *
 	 * @details Ставится всюду, где движок закрывает дескриптор события. Закрытие и
 	 *          забвение обязаны идти вместе: разойдясь, они оставляют учёт уверенным
-	 *          в подписке, которой у ядра уже нет
+	 *          в подписке, которой у ядра уже нет.
 	 *
 	 * @note Дескрипторы самой очереди опроса, пробуждения и наблюдения за файлами
 	 *       закрываются напрямую: подписок в очереди у них нет, забывать нечего
@@ -8161,7 +8394,7 @@ namespace kernel {
 	 * @return     результат закрытия
 	 *
 	 */
-	static inline int32_t close(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE int32_t close(const net::socket_t sock) noexcept {
 		/**
 		 * Забываем состояние учёта закрываемого дескриптора и доводим отмену до ядра
 		 *
@@ -8189,7 +8422,7 @@ namespace kernel {
 	 *
 	 * @details Зовётся в начале оборота опроса, до обращения к ядру за новой пачкой
 	 *          событий: пачка прошлого оборота к этому времени разобрана целиком, и
-	 *          ссылок на снимаемые записи больше нигде нет
+	 *          ссылок на снимаемые записи больше нигде нет.
 	 *
 	 */
 	static void sweep() noexcept {
@@ -8207,6 +8440,7 @@ namespace kernel {
 			 * @note Запись снимается только если подписок по ней так и не появилось.
 			 *       Появиться они могли: дескриптор перезаводится перестройкой события,
 			 *       и номер его операционная система выдаёт заново
+			 *
 			 */
 			if((i != ::kernel::registry.end()) && (i->second.declared == 0))
 				// Выполняем снятие записи учёта
@@ -8217,76 +8451,6 @@ namespace kernel {
 	}
 
 	/**
-	 * @brief Метки наблюдения за файлами по дескрипторам
-	 *
-	 */
-	static unordered_map <uintptr_t, int32_t> watches;
-
-	/**
-	 * @brief Узлы наблюдения за файлами по меткам
-	 *
-	 * @details Вместе с узлом держится и дескриптор наблюдаемого файла: разбору
-	 *          события нужен и тот, и другой, а метка наблюдения даёт лишь себя
-	 *
-	 */
-	static unordered_map <int32_t, pair <uintptr_t, void *>> watchers;
-	/**
-	 * Названия записей каталога, пришедшие оповещениями текущего оборота
-	 *
-	 * @details Запись разбора несёт место названия в этом списке, а не само название:
-	 *          запись раскладывается в пачку постоянного размера, а названия длины
-	 *          переменной. Список опустошается в начале оборота, до сбора событий, и
-	 *          живёт ровно столько, сколько живут ссылающиеся на него записи
-	 *
-	 */
-	static vector <string> names;
-
-
-	/**
-	 * @brief Включённые пользовательские события
-	 *
-	 */
-	static unordered_map <uintptr_t, void *> notifiers;
-
-	/**
-	 * @brief Заведённые пользовательские события, включённые и отключённые
-	 *
-	 * @details Учёт этот отвечает на единственный вопрос: известно ли событие движку
-	 *          вообще. Отключённое событие из списка включённых вычёркивается, и по
-	 *          нему одному «отключено» неотличимо от «ещё не заведено», - а разница
-	 *          между ними решает судьбу взвода, пришедшего вперёд заведения
-	 *
-	 */
-	static unordered_set <uintptr_t> declared;
-
-	/**
-	 * @brief Взведения, пришедшие прежде заведения события
-	 *
-	 * @details Заведение события уходит в общий список изменений и применяется
-	 *          разбором этого списка, тогда как взвод применяется вызовом напрямую.
-	 *          Оттого взвод способен обогнать заведение, и прежде такой взвод
-	 *          пропадал молча: включённого события ещё нет, взводить нечего.
-	 *          Здесь он придерживается до применения заведения, и тем порядок
-	 *          перестаёт решать исход
-	 *
-	 * @note Придерживается ТОЛЬКО взвод по событию, движку неизвестному вовсе.
-	 *       Взвод по событию заведённому, но отключённому, отбрасывается как и
-	 *       прежде: отключённое событие сработать не должно
-	 *
-	 */
-	static unordered_map <uintptr_t, void *> postponed;
-
-	/**
-	 * @brief Взведённые пользовательские события, ожидающие выдачи циклу
-	 *
-	 * @details Взведённые события копятся здесь, а ядру достаётся лишь
-	 *          пробуждение: заводить на каждое событие свой дескриптор значило бы
-	 *          тратить дескриптор на каждое соединение сверх самого соединения
-	 *
-	 */
-	static vector <pair <uintptr_t, void *>> triggered;
-
-	/**
 	 * @brief Замок списка взведённых пользовательских событий
 	 *
 	 * @details Список этот - единственное состояние движка, правимое из чужих
@@ -8294,7 +8458,7 @@ namespace kernel {
 	 *          разбирает их поток опроса.
 	 *
 	 *          Ядро о списке этом не знает вовсе, и согласование потоков движку
-	 *          приходится вести своими силами
+	 *          приходится вести своими силами.
 	 *
 	 * @note Прочее состояние движка - учёт подписок, метки наблюдения, список
 	 *       изменений - правится только потоком опроса и замка не требует. Заводить
@@ -8309,6 +8473,70 @@ namespace kernel {
 	 *
 	 */
 	static lock_state_t <std::mutex> locker;
+
+	/**
+	 * Названия записей каталога, пришедшие оповещениями текущего оборота
+	 *
+	 * @details Запись разбора несёт место названия в этом списке, а не само название:
+	 *          запись раскладывается в пачку постоянного размера, а названия длины
+	 *          переменной. Список опустошается в начале оборота, до сбора событий, и
+	 *          живёт ровно столько, сколько живут ссылающиеся на него записи.
+	 *
+	 */
+	static vector <string> names;
+	/**
+	 * @brief Заведённые пользовательские события, включённые и отключённые
+	 *
+	 * @details Учёт этот отвечает на единственный вопрос: известно ли событие движку
+	 *          вообще. Отключённое событие из списка включённых вычёркивается, и по
+	 *          нему одному «отключено» неотличимо от «ещё не заведено», - а разница
+	 *          между ними решает судьбу взвода, пришедшего вперёд заведения.
+	 *
+	 */
+	static unordered_set <uintptr_t> declared;
+	/**
+	 * @brief Метки наблюдения за файлами по дескрипторам
+	 *
+	 */
+	static unordered_map <uintptr_t, int32_t> watches;
+	/**
+	 * @brief Включённые пользовательские события
+	 *
+	 */
+	static unordered_map <uintptr_t, void *> notifiers;
+	/**
+	 * @brief Взведённые пользовательские события, ожидающие выдачи циклу
+	 *
+	 * @details Взведённые события копятся здесь, а ядру достаётся лишь
+	 *          пробуждение: заводить на каждое событие свой дескриптор значило бы
+	 *          тратить дескриптор на каждое соединение сверх самого соединения.
+	 *
+	 */
+	static vector <pair <uintptr_t, void *>> triggered;
+	/**
+	 * @brief Взведения, пришедшие прежде заведения события
+	 *
+	 * @details Заведение события уходит в общий список изменений и применяется
+	 *          разбором этого списка, тогда как взвод применяется вызовом напрямую.
+	 *          Оттого взвод способен обогнать заведение, и прежде такой взвод
+	 *          пропадал молча: включённого события ещё нет, взводить нечего.
+	 *          Здесь он придерживается до применения заведения, и тем порядок
+	 *          перестаёт решать исход.
+	 *
+	 * @note Придерживается ТОЛЬКО взвод по событию, движку неизвестному вовсе.
+	 *       Взвод по событию заведённому, но отключённому, отбрасывается как и
+	 *       прежде: отключённое событие сработать не должно
+	 *
+	 */
+	static unordered_map <uintptr_t, void *> postponed;
+	/**
+	 * @brief Узлы наблюдения за файлами по меткам
+	 *
+	 * @details Вместе с узлом держится и дескриптор наблюдаемого файла: разбору
+	 *          события нужен и тот, и другой, а метка наблюдения даёт лишь себя.
+	 *
+	 */
+	static unordered_map <int32_t, pair <uintptr_t, void *>> watchers;
 
 	/**
 	 * @brief Функция пробуждения цикла событий
@@ -8356,6 +8584,7 @@ namespace kernel {
 		 *       приходит правкой признаков, и отдельного оповещения под неё нет.
 		 *       Поэтому наблюдение за ссылками сводится к наблюдению за признаками,
 		 *       а разделяет их уже разбор пришедшего оповещения
+		 *
 		 */
 		if(fflags & ::change::note::LINK)
 			// Отслеживаем правку признаков
@@ -8447,7 +8676,6 @@ namespace kernel {
 			::kernel::pending.push_back(sock);
 		}
 		// Выводим успешный результат: согласование выполнит само обращение к ядру
-		// Выводим результат применения записи
 		return true;
 	}
 	/**
@@ -8455,7 +8683,7 @@ namespace kernel {
 	 *
 	 * @details Приводит подписку в очереди опроса к тому виду, который сложился в
 	 *          учёте: заводит её, правит либо снимает - одним обращением, каким бы
-	 *          числом правок этот вид ни сложился
+	 *          числом правок этот вид ни сложился.
 	 *
 	 * @param state состояние подписки по дескриптору
 	 * @return      результат согласования
@@ -8475,6 +8703,7 @@ namespace kernel {
 				 *       сообщить о готовности прежде, чем дойдёт до отмены. Оттого
 				 *       операция помечается отменённой, а разбор пришедшее по ней
 				 *       завершение отбросит
+				 *
 				 */
 				::inflight::slot_t * slot = ::inflight::get(state.token);
 				// Если запись учёта поданного ожидания жива
@@ -8494,6 +8723,7 @@ namespace kernel {
 			 * @note Запись учёта снимается не здесь, а оборотом позже: ссылка на неё
 			 *       передана ядру и может лежать в уже полученной, но ещё не
 			 *       разобранной пачке событий
+			 *
 			 */
 			if(state.declared == 0){
 				/**
@@ -8502,6 +8732,7 @@ namespace kernel {
 				 * @note Ядру передана ссылка на эту самую запись учёта, а её сейчас
 				 *       снимают. Забирать исход отправки к тому же стало некому -
 				 *       подписок по дескриптору не осталось вовсе
+				 *
 				 */
 				::drain::reset(state.sock);
 				// Откладываем снятие записи учёта до следующего оборота
@@ -8516,6 +8747,7 @@ namespace kernel {
 		 * @note Закрытие дальней стороной и ошибка приходят независимо от
 		 *       затребованных признаков, и запрашивать их незачем. Затребовано здесь
 		 *       лишь закрытие дальней стороной на запись
+		 *
 		 */
 		events |= EPOLLRDHUP;
 		/**
@@ -8526,23 +8758,16 @@ namespace kernel {
 		 *          подана, - и поданное ожидание сработало бы тут же. Потребитель по
 		 *          нему позвал бы отправку, та ответила бы просьбой повторить позже,
 		 *          потребитель взвёл бы ожидание заново - и так до самого прихода
-		 *          завершения, впустую занимая ядро и цикл
+		 *          завершения, впустую занимая ядро и цикл.
 		 *
 		 * @note Пробуждать цикл после снятия заслона незачем: завершение отправки само
 		 *       выдаёт наружу готовность к записи, а согласование по дескриптору ставит
 		 *       разбор этого завершения
+		 *
 		 */
 		if(::drain::armed(state.sock))
 			// Готовности к записи по дескриптору не ожидаем
 			events &= ~static_cast <uint32_t> (EPOLLOUT);
-		/**
-		 * Если набор признаков ядру уже подан и с тех пор не изменился, обращаться незачем
-		 *
-		 * @note Отсечка эта берёт на себя правки, ничего не меняющие по существу:
-		 *       подписка включается там, где уже включена, либо снимается однократность,
-		 *       ядру неизвестная вовсе
-		 *
-		 */
 		/**
 		 * Если по дескриптору лежит непрочитанное в буфере пула - выдаём готовность
 		 *
@@ -8558,6 +8783,7 @@ namespace kernel {
 		 *
 		 * @note Признак `raised` бережёт от повторной выдачи, покуда прежняя не
 		 *       разобрана: разбор снимает его сам
+		 *
 		 */
 		if((state.enabled & static_cast <uint32_t> (EPOLLIN)) && ::pool::pending(state.sock)){
 			// Если готовность по непрочитанному ещё не выдавалась
@@ -8566,6 +8792,14 @@ namespace kernel {
 				state.raised = (::post::ready(state.sock, &state) != ::inflight::INVALID);
 		// Если непрочитанного не осталось, признак выдачи снимаем
 		} else state.raised = false;
+		/**
+		 * Если набор признаков ядру уже подан и с тех пор не изменился, обращаться незачем
+		 *
+		 * @note Отсечка эта берёт на себя правки, ничего не меняющие по существу:
+		 *       подписка включается там, где уже включена, либо снимается однократность,
+		 *       ядру неизвестная вовсе
+		 *
+		 */
 		if(state.registered && (state.applied == events) && (state.token != ::inflight::INVALID))
 			// Выводим успешный результат: ядро и без того ожидает того же самого
 			return true;
@@ -8574,6 +8808,7 @@ namespace kernel {
 		 *
 		 * @note Правки набора событий у io_uring нет: операция подаётся заново. Обращений это не добавляет -
 		 *       отмена и новая подача уходят к ядру тем же пакетом, что и всё прочее
+		 *
 		 */
 		if(state.token != ::inflight::INVALID){
 			// Получаем запись учёта поданного ожидания
@@ -8588,48 +8823,6 @@ namespace kernel {
 			state.token = ::inflight::INVALID;
 		}
 		/**
-		 * Выполняем подачу однократного ожидания готовности
-		 *
-		 * @note Ядру передаётся не сам узел, а запись его учёта: разбору события нужен
-		 *       и узел, и дескриптор, а поле пользовательских данных одно
-		 *
-		 * @note Ожидание **однократное**, и это обязательное условие, а не выбор из
-		 *       удобства. Многократное ожидание io_uring уровня не повторяет: оно
-		 *       сообщает один раз на переход и ждёт следующего. Движок же вычерпывает
-		 *       сокет не до конца намеренно - иначе один нагруженный узел заморил бы
-		 *       все прочие, - и остаток данных при многократном ожидании не разбудил
-		 *       бы цикл никогда. Однократное ожидание, поданное заново на готовом
-		 *       сокете, срабатывает тут же, чем и восстанавливается уровневое
-		 *       поведение, на которое опирается весь разбор
-		 *
-		 * @note Обращений к ядру это не добавляет: повторная подача копится наравне со
-		 *       всем прочим и уходит тем же обращением, которым опрос засыпает
-		 *
-		 * @note Замер на стенде: с многократным ожиданием проверка ограничителя полосы
-		 *       не завершалась за две минуты, с однократным укладывается в 1072 мс
-		 */
-		/**
-		 * Если подписка годна для родного приёма - подаём приём вместо ожидания
-		 *
-		 * @details Ожидание лишь сообщает о готовности, и потребитель следом зовёт
-		 *          `recv` сам - два обращения к ядру там, где родной приём обходится
-		 *          одним. Замер показал, что без этой подмены кольцо обращается к ядру
-		 *          не реже механизма готовности, и смысла в нём нет никакого.
-		 *
-		 *          Годность проверяется при каждом согласовании заново, а не
-		 *          запоминается: набор ожидаемых событий у подписки меняется на ходу
-		 *
-		 * @note Условий три, и все обязательны:
-		 *       - **кольцо буферов заведено**. Без него приём требовал бы буфера на
-		 *         каждое подключение, а это четверть гигабайта на четырёх тысячах;
-		 *       - **ожидается одно лишь чтение**. Запись родной приём не покрывает, а
-		 *         подписка у io_uring одна на дескриптор: пришлось бы подавать две
-		 *         операции и сводить два завершения в одно событие;
-		 *       - **сокет потоковый**. У сокетов с сохранением границ приём обязан
-		 *         отдавать адрес отправителя, а этого `RECV` не делает вовсе -
-		 *         дейтаграммам нужен `RECVMSG`, и это работа отдельная
-		 */
-		/**
 		 * Узел, какому принадлежит запись согласования
 		 *
 		 * @warning Живость узла спрашивается у учёта, а не у самого адреса: запись
@@ -8637,6 +8830,7 @@ namespace kernel {
 		 *          освобождённую память. Найдено ворошителем движка, подтверждено
 		 *          надзирателем: «heap-use-after-free ... in reconcile», освобождено
 		 *          деструктором `io::Client`
+		 *
 		 */
 		::io::node_t * const node = ((::io::living.count(state.udata) > 0) ? reinterpret_cast <::io::node_t *> (state.udata) : nullptr);
 		/**
@@ -8647,6 +8841,7 @@ namespace kernel {
 		 *       ему приём не завершится никогда - приёма подключений тогда не
 		 *       происходит вовсе. Установлено прогоном: набор вставал в самом начале,
 		 *       процесс спал с семью дескрипторами
+		 *
 		 */
 		const bool exchanging = ((node != nullptr) && ((node->state.node == event::node_t::PEER) || (node->state.node == event::node_t::CLIENT)));
 		/**
@@ -8656,6 +8851,7 @@ namespace kernel {
 		 *       разрешённый объём не восполнился. Заведённый же приём читает ядром и до
 		 *       движка: данные приходят вопреки ограничителю, и учёт его встаёт.
 		 *       Установлено прогоном: набор вставал на `IoBandwidthGlobalIngressTest`
+		 *
 		 */
 		const bool limited = (
 			(::bandwidth::read > 0) || (exchanging && ((node->state.node == event::node_t::PEER) ?
@@ -8664,43 +8860,6 @@ namespace kernel {
 		);
 		// Дескриптор приёмника объединения, если узел годен в источники
 		net::socket_t joined = net::invalid_socket_t;
-		/**
-		 * Годность подписки для родного приёма
-		 *
-		 * @note Протокол SCTP исключён: тип у него потоковый, но приём идёт через
-		 *       `eth->sctp.receive`, а не через посредника движка - потребителю нужны
-		 *       сведения о сообщении. Заведённый приём забирал бы данные в кольцо, а
-		 *       читающий их не видел бы. Установлено прогоном: набор вставал на
-		 *       `IoSCTPStreamTest`
-		 *
-		 * @warning Довод здесь ИМЕННО В РАЗДЕЛЕ СЛОЁВ, а не в невозможности приёма.
-		 *          Прежде тут стояло, что сведений о сообщении не отдаёт `RECV`, - это
-		 *          верно, но с появлением приёма сообщений (`RECVMSG`) само по себе
-		 *          препятствием быть перестало: служебные сведения он отдаёт, и у Linux
-		 *          `sctp_recvmsg` есть обёртка над `recvmsg`, выбирающая их оттуда же.
-		 *
-		 *          Мешает другое: приём SCTP выполняет ОБЩИЙ модуль `eth.sctp`, один на
-		 *          все движки, а кольцо буферов - внутренность io_uring. Свести их
-		 *          можно лишь двумя путями, и оба дурны: либо протащить внутренность
-		 *          движка в общий слой, либо повторить разбор сведений SCTP внутри
-		 *          движка вторым списком. Выгода же мала: SCTP редок, а цена ошибки
-		 *          велика - смена самого способа приёма уже ломала здесь приём
-		 *          SEQPACKET однажды.
-		 *
-		 *          Решение принято намеренно и не подлежит переоткрытию как пробел
-		 *          охвата: сперва общий способ добычи принятого для всех движков,
-		 *          и только потом SCTP через кольцо
-		 *
-		 * @note Сокеты с сохранением границ исключены условием потокового типа: им
-		 *       приём обязан отдавать адрес отправителя, а этого `RECV` не делает -
-		 *       нужен `RECVMSG`, и это работа отдельная
-		 *
-		 * @note Узлы, годные в источники объединения, исключены: оба пути ядерные и
-		 *       забирают одни и те же данные, но объединение переносит их **мимо
-		 *       памяти приложения**, а приём поднимает в кольцо. Объединение выгоднее,
-		 *       и уступает ему приём. Установлено прогоном: набор вставал на
-		 *       `IoTCPSplicePairTest`
-		 */
 		/**
 		 * @brief Пригодность узла к упреждающему приёму кольцом
 		 *
@@ -8715,29 +8874,19 @@ namespace kernel {
 		 *
 		 */
 		const bool nonBlocking = ((node != nullptr) && ((node->state.options & event::options::NO_IO_BLOCK) || (node->state.options & event::options::SM_IO_BLOCK)));
+		/**
+		 * Годность подписки потокового узла к упреждающему приёму
+		 *
+		 * @note Условие это ОБЯЗАНО совпадать с условием, по которому выбирается
+		 *       способ чтения: разойдись они, приём завёлся бы по сокету, читаемому
+		 *       мимо кольца, и данные пропали бы молча
+		 *
+		 */
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
 			exchanging && !limited && nonBlocking && (node->state.type == event::type_t::STREAM) &&
 			(node->state.protocol != event::protocol_t::SCTP) && !::splicing::eligible(node, &joined)
 		);
-		/**
-		 * Годность подписки для родного приёма сообщений
-		 *
-		 * @details Всё то же, что и у потока, но для сокетов, сохраняющих границы.
-		 *          Отличий от потокового условия ровно два, и оба идут от устройства
-		 *          приёма сообщений, а не от осторожности:
-		 *          - **тип обязан быть DATAGRAM**. Приём (`RECV`) адреса отправителя
-		 *            не отдаёт, и датаграммам нужен `RECVMSG`, у которого своя подача
-		 *            и своя раскладка буфера;
-		 *          - **объединение не проверяется**. Ядерное объединение заведено для
-		 *            потоковых узлов, и датаграммный источник ему не годится вовсе
-		 *
-		 * @warning Условие это ОБЯЗАНО совпадать с условием, по которому выбирается
-		 *          способ чтения. Разойдись они - приём завёлся бы по сокету, читаемому
-		 *          мимо кольца, и данные пропали бы молча. Оттого все точки чтения
-		 *          датаграмм переведены на посредников, и посредники сами решают, откуда
-		 *          брать принятое, а не место вызова
-		 */
 		/**
 		 * Признак узла, читающего датаграммы
 		 *
@@ -8746,7 +8895,7 @@ namespace kernel {
 		 *          означает подключение, а не данные, и поданный ему приём не
 		 *          завершился бы никогда. Датаграммный сервер не слушает вовсе - он
 		 *          читает сокет сам, теми же обращениями, что и клиент, - и довод этот
-		 *          к нему не относится
+		 *          к нему не относится.
 		 *
 		 * @note Узел `ORIGIN` сюда НЕ входит: он не читает вовсе, у него есть лишь
 		 *       запись и отправка. Завести ему приём значило бы забирать данные в
@@ -8766,17 +8915,38 @@ namespace kernel {
 		 *       родного приёма 92 вызова, с приёмом у одного клиента 72, с приёмом у
 		 *       клиента и сервера 51. Обращения `recvfrom` исчезают полностью, а
 		 *       `io_uring_enter` прибавляет одно
+		 *
 		 */
 		const bool receiving = ((node != nullptr) && (
 			(node->state.node == event::node_t::PEER) ||
 			(node->state.node == event::node_t::CLIENT) ||
 			(node->state.node == event::node_t::SERVER)
 		));
+		/**
+		 * Годность подписки для родного приёма сообщений
+		 *
+		 * @details Всё то же, что и у потока, но для сокетов, сохраняющих границы.
+		 *          Отличий от потокового условия ровно два, и оба идут от устройства
+		 *          приёма сообщений, а не от осторожности:
+		 *          - **тип обязан быть DATAGRAM**. Приём (`RECV`) адреса отправителя
+		 *            не отдаёт, и датаграммам нужен `RECVMSG`, у которого своя подача
+		 *            и своя раскладка буфера;
+		 *          - **объединение не проверяется**. Ядерное объединение заведено для
+		 *            потоковых узлов, и датаграммный источник ему не годится вовсе.
+		 *
+		 * @warning Условие это ОБЯЗАНО совпадать с условием, по которому выбирается
+		 *          способ чтения. Разойдись они - приём завёлся бы по сокету, читаемому
+		 *          мимо кольца, и данные пропали бы молча. Оттого все точки чтения
+		 *          датаграмм переведены на посредников, и посредники сами решают, откуда
+		 *          брать принятое, а не место вызова
+		 *
+		 */
 		const bool receivable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
 			receiving && !limited && nonBlocking && (node->state.type == event::type_t::DATAGRAM) &&
 			(node->state.protocol != event::protocol_t::SCTP)
 		);
+		// Заводим буферы пула, если узел к приёму годен
 		const bool fetching = ((suitable || receivable) && ::pool::create());
 		// Признак подачи родного приёма сообщений, а не потока
 		const bool messaging = (fetching && receivable);
@@ -8787,7 +8957,7 @@ namespace kernel {
 		 *          подаётся сам приём, и подключение приходит завершением уже
 		 *          принятым. Обращение `accept` на каждое подключение пропадает,
 		 *          а подача приёма уходит в ядро тем же обращением, что и прочие
-		 *          записи оборота
+		 *          записи оборота.
 		 *
 		 * @note Многократность берётся ТОЛЬКО для UNIX-доменных сокетов, и это не
 		 *       осторожность. Многократный приём адреса удалённой стороны НЕ отдаёт
@@ -8804,6 +8974,7 @@ namespace kernel {
 		 *
 		 * @note Протокол SCTP исключён: у сокетов с сохранением границ подключение
 		 *       добывается `sctp_recvmsg` с последующим `sctp_peeloff`, а не `accept`
+		 *
 		 */
 		const bool accepting = (
 			(node != nullptr) && (node->state.node == event::node_t::SERVER) &&
@@ -8817,19 +8988,21 @@ namespace kernel {
 		 *
 		 * @note Довод приведён в описании годности: адрес удалённой стороны у
 		 *       UNIX-доменных сокетов не нужен, а прочим он нужен обязательно
+		 *
 		 */
 		const bool repeatable = (accepting && (node->state.family == event::family_t::UDS));
 		// Выполняем подачу приёма подключения, родного приёма данных либо ожидания готовности
-		state.token = (accepting ? ::post::accept(state.sock, repeatable, &state) :
-		 (messaging ? ::post::fetchMessage(state.sock, &state) :
-		 (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state))));
+		state.token = (
+			accepting ? ::post::accept(state.sock, repeatable, &state) :
+			(messaging ? ::post::fetchMessage(state.sock, &state) :
+			(fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state)))
+		);
 		// Отмечаем заведение родного приёма по дескриптору
 		::pool::arm(state.sock, (fetching && (state.token != ::inflight::INVALID)));
 		// Если подать ожидание готовности не удалось
 		if(state.token == ::inflight::INVALID){
 			// Записываем ошибку в лог
-			log::print("Event poll submission rejected: ident=%llu, events=0x%x", log::flag_t::WARNING,
-			 static_cast <uint64_t> (state.sock), events);
+			log::print("Event poll submission rejected: ident=%llu, events=0x%x", log::flag_t::WARNING, static_cast <uint64_t> (state.sock), events);
 			/**
 			 * Возвращаем признак расхождения, чтобы согласование повторилось
 			 *
@@ -8838,12 +9011,13 @@ namespace kernel {
 			 *          Опустеет она сама - поданное уйдёт ядру ближайшим оборотом.
 			 *          Отказов окончательных на этом шаге не бывает вовсе: сам
 			 *          дескриптор ядро разбирает позже, и отказ по нему приходит
-			 *          завершением операции, а не отсюда
+			 *          завершением операции, а не отсюда.
 			 *
 			 * @warning Прежде отказ лишь писался в лог, а признак расхождения снимался
 			 *          в начале согласования и обратно не ставился. Дескриптор выпадал
 			 *          из очереди согласования насовсем: ожидания готовности у ядра
 			 *          нет, а движок уверен в обратном, и событие замолкало навсегда
+			 *
 			 */
 			state.pending = true;
 			// Выводим результат с ошибкой
@@ -8860,9 +9034,9 @@ namespace kernel {
 	 * @brief Функция согласования всех расхождений учёта с очередью опроса
 	 *
 	 * @details Зовётся прямо перед ожиданием: до него ядру о правках знать незачем,
-	 *          а к его началу очередь опроса обязана отвечать учёту в точности
+	 *          а к его началу очередь опроса обязана отвечать учёту в точности.
 	 *
-	 * @return    результат согласования
+	 * @return результат согласования
 	 *
 	 */
 	static bool flush() noexcept {
@@ -8870,19 +9044,20 @@ namespace kernel {
 		if(::kernel::pending.empty())
 			// Выводим успешный результат
 			return true;
-		// Результат работы функции
-		bool result = true;
-		/**
-		 * Выполняем перебор всех дескрипторов, ждущих согласования
-		 */
 		/**
 		 * Количество дескрипторов, удержанных в очереди согласования
 		 *
 		 * @details Непринятое ядром уплотняется В САМОЙ очереди: читаем её по порядку,
 		 *          а удержанное складываем с начала. Запись всегда идёт позади чтения,
-		 *          оттого перебор и уплотнение уживаются в одном проходе
+		 *          оттого перебор и уплотнение уживаются в одном проходе.
+		 *
 		 */
 		size_t kept = 0;
+		// Результат работы функции
+		bool result = true;
+		/**
+		 * Выполняем перебор всех дескрипторов, ждущих согласования
+		 */
 		for(size_t index = 0; index < ::kernel::pending.size(); index++){
 			// Получаем очередной дескриптор, ждущий согласования
 			const net::socket_t sock = ::kernel::pending.at(index);
@@ -8911,6 +9086,7 @@ namespace kernel {
 		 *          ЧУЖУЮ ёмкость - пустую. Всякий оборот начинался с нулевой ёмкости,
 		 *          и подписки набивали её заново с перевыделениями. Замерено на приёме
 		 *          подключений: три выдачи памяти на подключение из пяти лишних
+		 *
 		 */
 		::kernel::pending.resize(kept);
 		// Выводим результат согласования
@@ -8921,7 +9097,7 @@ namespace kernel {
 	 *
 	 * @details Снимает ровно ту подписку, которая сработала. Средством ядра этого
 	 *          не добиться: `EPOLLONESHOT` отключает дескриптор целиком вместе со
-	 *          всеми прочими его подписками
+	 *          всеми прочими его подписками.
 	 *
 	 * @param state состояние подписки по дескриптору
 	 * @param bit   разряд признака ожидания сработавшей подписки
@@ -8932,12 +9108,12 @@ namespace kernel {
 		if(!(state.oneshot & bit))
 			// Выходим из функции, снимать нечего
 			return;
-		// Отмечаем разновидность подписки снятой
-		state.declared &= ~bit;
 		// Отмечаем разновидность подписки отключённой
 		state.enabled &= ~bit;
 		// Отмечаем разновидность подписки многократной
 		state.oneshot &= ~bit;
+		// Отмечаем разновидность подписки снятой
+		state.declared &= ~bit;
 		/**
 		 * Отмечаем расхождение учёта с очередью опроса
 		 *
@@ -9001,6 +9177,7 @@ namespace kernel {
 			 * @note Однократное по той же причине, что и прочие: разбор оповещений
 			 *       вправе прерваться на переполнении пачки, а многократное ожидание
 			 *       об остатке уже не сообщит
+			 *
 			 */
 			::kernel::watching = ::post::poll(::kernel::inotify, EPOLLIN, false, ::kernel::watcher);
 			/**
@@ -9012,6 +9189,7 @@ namespace kernel {
 			 *          ветвь заведения пропускал, ожидания не было НИКОГДА, а наблюдения
 			 *          заводились исправно и не сообщали НИ О ЧЁМ. Молчание это к тому же
 			 *          выдавалось за успех: наружу шёл истинный результат
+			 *
 			 */
 			if(::kernel::watching == ::inflight::INVALID){
 				// Записываем ошибку в лог
@@ -9029,6 +9207,7 @@ namespace kernel {
 		 *       принимает. Путь берётся у самого ядра через каталог дескрипторов
 		 *       процесса, и оттого слой этот не зависит от устройства узлов -
 		 *       дескриптор наблюдаемого узла ему уже передан записью
+		 *
 		 */
 		char path[64];
 		// Собираем путь к наблюдаемому узлу через каталог дескрипторов процесса
@@ -9056,7 +9235,7 @@ namespace kernel {
 	 *          здесь в записи общего для обоих механизмов вида. Сведение это
 	 *          неизбежно: inotify раскладывает изменения иначе, чем движок их
 	 *          описывает, - правка содержимого приходит отдельно от появления и
-	 *          исчезновения записей каталога, а переименование парой оповещений
+	 *          исчезновения записей каталога, а переименование парой оповещений.
 	 *
 	 * @note Оповещение о снятии наблюдения самим ядром переводится в отзыв доступа:
 	 *       ядро снимает наблюдение, когда наблюдаемый узел исчез - удалён либо
@@ -9069,16 +9248,17 @@ namespace kernel {
 	 *
 	 */
 	static size_t harvest(::change::record_t * records, const size_t size, const size_t offset) noexcept {
+		// Количество полученных октетов
+		ssize_t bytes = 0;
 		// Количество добавленных записей
 		size_t result = 0;
 		/**
 		 * @note Выравнивание буфера обязательно: оповещения укладываются в него
 		 *       структурами, а обращение к невыровненной структуре на части
 		 *       вычислителей отвергается
+		 *
 		 */
 		alignas(struct inotify_event) uint8_t buffer[0x1000];
-		// Количество полученных октетов
-		ssize_t bytes = 0;
 		/**
 		 * Вычитываем оповещения, пока они есть
 		 */
@@ -9104,6 +9284,7 @@ namespace kernel {
 				 *       заставляет перечитать состав каталога целиком и наверстать
 				 *       упущенное. Метка наблюдения у такого оповещения недействительна,
 				 *       узла по ней не найти
+				 *
 				 */
 				if(signal->mask & IN_Q_OVERFLOW){
 					/**
@@ -9136,8 +9317,12 @@ namespace kernel {
 				if(signal->mask & IN_ATTRIB){
 					// Отмечаем правку признаков
 					fflags |= ::change::note::ATTRIB;
+					// Сведения о наблюдаемом узле
+					struct stat info{};
 					/**
-					 * Различаем правку признаков от УДАЛЕНИЯ наблюдаемого узла
+					 * Если сведения добыты и последнее имя узла снято
+					 *
+					 * @note Различаем правку признаков от УДАЛЕНИЯ наблюдаемого узла
 					 *
 					 * @note Оповещения об удалении (`IN_DELETE_SELF`) ядро НЕ ДАЁТ, пока
 					 *       дескриптор наблюдаемого узла открыт, - а движок держит его
@@ -9151,10 +9336,8 @@ namespace kernel {
 					 *       обнуляется ровно тогда, когда последнее имя узла снято, а
 					 *       живёт узел лишь открытым дескриптором. Обращение это идёт
 					 *       только на правку признаков, то есть редко
+					 *
 					 */
-					// Сведения о наблюдаемом узле
-					struct stat info{};
-					// Если сведения добыты и последнее имя узла снято
 					if((::fstat(static_cast <int32_t> (i->second.first), &info) == 0) && (info.st_nlink == 0))
 						// Отмечаем удаление наблюдаемого узла
 						fflags |= ::change::note::DELETE;
@@ -9168,6 +9351,7 @@ namespace kernel {
 				 *       понимает переименование как «наблюдаемый узел уехал» и УНИЧТОЖАЕТ
 				 *       узел события. Всякий перенос файла внутри отслеживаемого каталога
 				 *       обрывал наблюдение целиком, и дальше не приходило уже ничего
+				 *
 				 */
 				if(signal->mask & IN_MOVE_SELF)
 					// Отмечаем переименование
@@ -9190,6 +9374,7 @@ namespace kernel {
 				 * @note Название приходит лишь у наблюдения за КАТАЛОГОМ и лишь тогда,
 				 *       когда затронута его запись. У наблюдения за файлом названия нет
 				 *       вовсе, и разбор идёт прежним путём
+				 *
 				 */
 				int64_t place = -1;
 				// Если оповещение называет запись каталога поимённо
@@ -9236,12 +9421,12 @@ namespace kernel {
 	 *
 	 * @details Взвод пришёл прежде, чем применилась запись заведения, и был придержан.
 	 *          Событие включено - самое время выдать придержанное циклу тем же
-	 *          порядком, каким выдаётся взвод обыкновенный
+	 *          порядком, каким выдаётся взвод обыкновенный.
 	 *
 	 * @param ident идентификатор пользовательского события
 	 *
 	 */
-	static void release(const uintptr_t ident) noexcept {
+	static AWH_IO_URING_INLINE void release(const uintptr_t ident) noexcept {
 		// Если придержанных взводов нет вовсе, делать нечего
 		if(::kernel::postponed.empty())
 			// Выходим из функции
@@ -9295,6 +9480,7 @@ namespace kernel {
 			 *          Прежде взвод отбрасывался здесь, и правка порядка не работала
 			 *          вовсе: событие заводилось отключённым, придержанное терялось, а
 			 *          включение приходило уже к пустоте
+			 *
 			 */
 			if(rec.flags & ::change::DISABLE)
 				// Заводить его пока незачем
@@ -9342,6 +9528,7 @@ namespace kernel {
 		 *       одно: событие, отключённое между взводом и разбором, взвода не получит -
 		 *       прежде оно его получало. Это отвечает правилу «отключённое событие
 		 *       сработать не должно», а окно между взводом и разбором - один оборот опроса
+		 *
 		 */
 		if(rec.flags & ::change::TRIGGER){
 			{
@@ -9360,6 +9547,7 @@ namespace kernel {
 			 * @note Пробуждение из потока, ведущего опрос, отсекается им самим: он в
 			 *       ожидании не находится, раз исполняет взвод, а накопленное разберёт
 			 *       ближайшим входом в опрос
+			 *
 			 */
 			::kernel::kick();
 		}
@@ -9373,7 +9561,7 @@ namespace kernel {
 	 * @return    результат применения записи
 	 *
 	 */
-	static bool apply(const ::change::record_t & rec) noexcept {
+	static AWH_IO_URING_INLINE bool apply(const ::change::record_t & rec) noexcept {
 		/**
 		 * Определяем разновидность подписки
 		 */
@@ -9401,10 +9589,10 @@ namespace kernel {
 	 * @details Ожидание однократное и подаётся заново разбором каждого события - по
 	 *          той же причине, что и у подписок по дескрипторам: многократное
 	 *          ожидание io_uring уровня не повторяет, а вычерпать дескриптор до конца
-	 *          движок обещать не может
+	 *          движок обещать не может.
 	 *
 	 */
-	static void awaken() noexcept {
+	static AWH_IO_URING_INLINE void awaken() noexcept {
 		// Выполняем подачу однократного ожидания готовности дескриптора пробуждения
 		::kernel::waking = ::post::poll(::kernel::wakeup, EPOLLIN, false, ::kernel::waker);
 	}
@@ -9412,13 +9600,13 @@ namespace kernel {
 	 * @brief Функция заведения механизма ожидания
 	 *
 	 * @details Заводятся кольца io_uring и дескриптор пробуждения цикла: своего
-	 *          средства разбудить спящий цикл у кольца нет
+	 *          средства разбудить спящий цикл у кольца нет.
 	 *
 	 * @note Дескриптор наблюдения за файловой системой здесь не заводится намеренно:
 	 *       наблюдение за файлами ведут не все приложения, и занимать под него
 	 *       дескриптор наперёд незачем. Заводится он первой же подпиской
 	 *
-	 * @return    результат заведения механизма ожидания
+	 * @return результат заведения механизма ожидания
 	 *
 	 */
 	static bool create() noexcept {
@@ -9426,7 +9614,12 @@ namespace kernel {
 		if((::kernel::wakeup = ::eventfd(0, (EFD_NONBLOCK | EFD_CLOEXEC))) == net::invalid_socket_t){
 			// Записываем ошибку в лог
 			log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
-			// Выходим из приложения
+			/**
+			 * Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			 * вызывающий получил бы объект, который выглядит живым, а обмениваться не
+			 * умеет. Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			 * у всех четырёх движков; решение записано в находках аудита 09.09.2026
+			 */
 			::_exit(EXIT_FAILURE);
 		}
 		/**
@@ -9435,6 +9628,7 @@ namespace kernel {
 		 * @note Признаком служил дескриптор колец, но кольца заводятся теперь не здесь,
 		 *       а в потоке цикла. Роль признака от этого не меняется: он отвечает лишь
 		 *       на вопрос, заведён ли механизм ожидания вообще
+		 *
 		 */
 		::__awh_ep__ = ::kernel::wakeup;
 		/**
@@ -9443,6 +9637,7 @@ namespace kernel {
 		 * @note Колец на этот миг ещё нет, и запись подачи ложится в очередь
 		 *       отложенных. К ядру она уйдёт первым же оборотом цикла, вместе с
 		 *       заведением колец
+		 *
 		 */
 		::kernel::awaken();
 		// Если подать ожидание дескриптора пробуждения не удалось
@@ -9450,7 +9645,7 @@ namespace kernel {
 			// Записываем ошибку в лог
 			log::print("%s: cannot submit wakeup poll", log::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 			/**
-			 * Откатываем заведённое здесь же, где оно и заводилось
+			 * Выполняем закрытие дескриптора пробуждения цикла
 			 *
 			 * @note Без отката движок заклинивает НАВСЕГДА: признаком заведённого
 			 *       механизма ожидания служит дескриптор пробуждения, а он к этому
@@ -9458,8 +9653,8 @@ namespace kernel {
 			 *       недействительном признаке - и всякая следующая попытка отсекалась
 			 *       бы на входе, отдавая отказ, при том что ожидание пробуждения так
 			 *       и не подано. Заодно тёк бы дескриптор на каждую попытку
+			 *
 			 */
-			// Выполняем закрытие дескриптора пробуждения цикла
 			::close(::kernel::wakeup);
 			// Сбрасываем значение дескриптора пробуждения цикла
 			::kernel::wakeup = net::invalid_socket_t;
@@ -9481,19 +9676,24 @@ namespace kernel {
 	 *          один поток, а цикл вести другой - договор это прямо разрешает.
 	 *
 	 *          Ради признаков этих всё и затевалось: замер дал потоковую передачу
-	 *          2 470 против 1 574 МБ/с без них
+	 *          2 470 против 1 574 МБ/с без них.
 	 *
-	 * @return    результат заведения колец
+	 * @return результат заведения колец
 	 *
 	 */
-	static bool attach() noexcept {
+	static AWH_IO_URING_INLINE bool attach() noexcept {
 		// Если кольца уже заведены
 		if(::ring::fd >= 0)
 			// Выводим успешный результат
 			return true;
 		// Выполняем заведение колец
 		if(!::ring::create())
-			// Выходим из приложения
+			/**
+			 * Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			 * вызывающий получил бы объект, который выглядит живым, а обмениваться не
+			 * умеет. Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			 * у всех четырёх движков; решение записано в находках аудита 09.09.2026
+			 */
 			::_exit(EXIT_FAILURE);
 		// Выполняем перенос отложенных записей в кольцо подачи
 		::post::flush();
@@ -9533,11 +9733,14 @@ namespace kernel {
 	 *
 	 */
 	static bool rebind() noexcept {
+		// Выполняем очистку состояний родной отправки
+		::drain::clear();
 		/**
 		 * Снимаем кольцо буферов прежде колец
 		 *
 		 * @note Снятие набора буферов идёт обращением по дескриптору колец, а
 		 *       разрушение колец дескриптор этот закрывает
+		 *
 		 */
 		::pool::destroy();
 		// Выполняем разрушение колец, заведённых ушедшим потоком
@@ -9546,8 +9749,6 @@ namespace kernel {
 		::inflight::clear();
 		// Выполняем очистку состояний ядерного объединения
 		::splicing::clear();
-		// Выполняем очистку состояний родной отправки
-		::drain::clear();
 		// Забываем метку завершения поданного ожидания пробуждения
 		::kernel::waking = ::inflight::INVALID;
 		// Забываем метку завершения поданного ожидания наблюдения за файлами
@@ -9557,6 +9758,7 @@ namespace kernel {
 		 *
 		 * @note Дескрипторы живы и подписки на них нужны, а вот поданные ожидания
 		 *       ушли вместе с кольцами. Согласование подаст их заново
+		 *
 		 */
 		for(auto & item : ::kernel::registry){
 			// Забываем метку завершения поданного ожидания
@@ -9597,7 +9799,7 @@ namespace kernel {
 	 * @details Снимается вся тройка дескрипторов разом - очередь опроса, пробуждение
 	 *          цикла и наблюдение за файловой системой, - а вместе с ними и весь
 	 *          учёт подписок: он описывает состояние ядра, а ядро этих подписок
-	 *          больше не держит
+	 *          больше не держит.
 	 *
 	 */
 	static void destroy() noexcept {
@@ -9606,6 +9808,7 @@ namespace kernel {
 		 *
 		 * @note Снимается оно прежде колец: снятие набора буферов идёт обращением по
 		 *       дескриптору колец, а разрушение колец дескриптор этот закрывает
+		 *
 		 */
 		::pool::destroy();
 		// Выполняем разрушение колец
@@ -9621,6 +9824,7 @@ namespace kernel {
 		 *       и годны лишь тем кольцам, для которых готовились. Оставь мы их -
 		 *       перенос отложенного, идущий сразу за заведением новых колец, подал бы
 		 *       ядру операции с недействительными метками
+		 *
 		 */
 		{
 			// Выполняем блокировку очереди отложенных записей подачи
@@ -9674,6 +9878,7 @@ namespace kernel {
 		 *       постановка таймера считала бы опрос спящим и будила бы его лишним
 		 *       обращением к ядру. Вреда от этого нет, но переменная процесса,
 		 *       пережившая движок, - изъян сам по себе
+		 *
 		 */
 		::kernel::sleeping.store(0, memory_order_release);
 		// Очищаем список названий записей каталога прошлого оборота
@@ -9725,7 +9930,7 @@ namespace kernel {
 	 * @details Зовётся забвением, то есть перед всяким закрытием дескриптора события.
 	 *          Учёт забыть мало: записи, поставленные ДО закрытия, лежат в списке и
 	 *          применяются лишь началом оборота опроса. Применение такой записи заводит
-	 *          подписку заново - с прежним владельцем в «udata»
+	 *          подписку заново - с прежним владельцем в «udata».
 	 *
 	 * @warning Беда не в отказе, а в ТИХОМ УСПЕХЕ: номер дескриптора система выдаёт
 	 *          заново, и отложенная подписка ляжет на чужой ЖИВОЙ сокет. Ядро ответит
@@ -9735,7 +9940,7 @@ namespace kernel {
 	 * @param sock закрываемый дескриптор
 	 *
 	 */
-	static void __purge__(const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE void __purge__(const net::socket_t sock) noexcept {
 		// Если список изменений пуст, снимать нечего
 		if(::local::change.empty())
 			// Выходим из функции
@@ -9752,7 +9957,7 @@ namespace kernel {
 			else ++i;
 		}
 	}
-}
+};
 
 /**
  * @brief Продолжение пространства имён местных объектов
@@ -9837,7 +10042,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static event::id_t identifier() noexcept {
+	static AWH_IO_URING_INLINE event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -9857,7 +10062,7 @@ namespace local {
 	 * @return текущее время в наносекундах
 	 *
 	 */
-	static uint64_t nanostamp() noexcept {
+	static AWH_IO_URING_INLINE uint64_t nanostamp() noexcept {
 		// Объект структуры для хранения времени
 		struct timespec ts{};
 		// Получаем текущее время в формате CLOCK_MONOTONIC
@@ -9883,11 +10088,36 @@ namespace local {
 	 * @return  минимальное значение из трёх аргументов
 	 *
 	 */
-	static A min(const A a, const B b, const C c) noexcept {
+	static constexpr A min(const A a, const B b, const C c) noexcept {
 		// Возвращаем минимальное значение из трёх аргументов
 		return (
 			((a < static_cast <A> (b)) ? ((a < static_cast <A> (c)) ? a : static_cast <A> (c)) :
 			((static_cast <A> (b) < static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
+		);
+	}
+	/**
+	 * @brief Прототип функции получения максимального значения из трёх аргументов
+	 *
+	 * @tparam A тип данных первого аргумента
+	 * @tparam B тип данных второго аргумента
+	 * @tparam C тип данных третьего аргумента
+	 *
+	 */
+	template <typename A, typename B, typename C>
+	/**
+	 * @brief Функция получения максимального значения из трёх аргументов
+	 *
+	 * @param a первый аргумент
+	 * @param b второй аргумент
+	 * @param c третий аргумент
+	 * @return  максимальное значение из трёх аргументов
+	 *
+	 */
+	static constexpr A max(const A a, const B b, const C c) noexcept {
+		// Возвращаем максимальное значение из трёх аргументов
+		return (
+			((a > static_cast <A> (b)) ? ((a > static_cast <A> (c)) ? a : static_cast <A> (c)) :
+			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
 		);
 	}
 	/**
@@ -9937,6 +10167,7 @@ namespace local {
 			 *       берётся заданное, и опускать порог сейчас незачем. Смысл он обретёт
 			 *       тогда, когда сроки движка станут дробнее миллисекунды: у кольца для
 			 *       этого всё есть, ограничение лежит выше
+			 *
 			 */
 			const double threshold = 0.002;
 			// Выводим большее из порога пробуждения и заданного окна
@@ -9967,7 +10198,7 @@ namespace local {
 	 * @return      предельный размер одной операции в октетах
 	 *
 	 */
-	static inline double burst(const uint64_t limit, const size_t mtu) noexcept {
+	static AWH_IO_URING_INLINE double burst(const uint64_t limit, const size_t mtu) noexcept {
 		// Объём, который предел выдаёт за окно всплеска
 		const double slice = (static_cast <double> (limit) * ::local::window());
 		// Возвращаем больший из объёма окна и размера кадра
@@ -9988,7 +10219,7 @@ namespace local {
 	 * @return         время ожидания в миллисекундах, ноль - ожидание не требуется
 	 *
 	 */
-	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
+	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = .0) noexcept {
 		// Определяем, к какому направлению относится списание
 		const bool egress = (limiting == awh::event::limiting_t::EGRESS);
 		// Получаем предел выбранного направления
@@ -10038,31 +10269,6 @@ namespace local {
 		const double delay = (((reserve - tokens) / static_cast <double> (limit)) * 1000.);
 		// Возвращаем время ожидания, не короче одной миллисекунды
 		return ((delay > 1.) ? static_cast <uint32_t> (delay) : 1);
-	}
-	/**
-	 * @brief Прототип функции получения максимального значения из трёх аргументов
-	 *
-	 * @tparam A тип данных первого аргумента
-	 * @tparam B тип данных второго аргумента
-	 * @tparam C тип данных третьего аргумента
-	 *
-	 */
-	template <typename A, typename B, typename C>
-	/**
-	 * @brief Функция получения максимального значения из трёх аргументов
-	 *
-	 * @param a первый аргумент
-	 * @param b второй аргумент
-	 * @param c третий аргумент
-	 * @return  максимальное значение из трёх аргументов
-	 *
-	 */
-	static A max(const A a, const B b, const C c) noexcept {
-		// Возвращаем максимальное значение из трёх аргументов
-		return (
-			((a > static_cast <A> (b)) ? ((a > static_cast <A> (c)) ? a : static_cast <A> (c)) :
-			((static_cast <A> (b) > static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
-		);
 	}
 	/**
 	 * @brief Функция фиксации состояния событий
@@ -10247,10 +10453,10 @@ namespace local {
 		 *          не знающий об оставшемся, узнавал бы об исчерпании буфера отдельным
 		 *          приёмом, отвечающим отказом. На коротком обмене вызов этот есть
 		 *          половина всех обращений к ядру за чтение - замер показал восемь
-		 *          обращений на обмен вместо шести, и вся разница была в нём
+		 *          обращений на обмен вместо шести, и вся разница была в нём.
 		 *
 		 *          Получено меньше запрошенного - буфер сокета исчерпан: ядро отдаёт
-		 *          столько, сколько в нём есть, а больше запрошенного не отдаёт никогда
+		 *          столько, сколько в нём есть, а больше запрошенного не отдаёт никогда.
 		 *
 		 * @note Безопасно это ровно по той же причине, что и учёт по объёму: подписка на
 		 *       чтение уровневая. Даже если к мигу остановки в буфер успело поступить ещё,
@@ -10343,7 +10549,7 @@ namespace events {
 	 * @return       следует ли извещать потребителя
 	 *
 	 */
-	static inline bool reportable(const event::status_t status) noexcept {
+	static constexpr bool reportable(const event::status_t status) noexcept {
 		// Состояния служебные наружу не выдаются
 		return (
 			(status != event::status_t::INITIAL) &&
@@ -10369,7 +10575,7 @@ namespace events {
 	 * @param timer объект таймера
 	 *
 	 */
-	static void announce(::io::timer_t * timer) noexcept {
+	static AWH_IO_URING_INLINE void announce(::io::timer_t * timer) noexcept {
 		// Если статусы события изменились
 		if((timer->state.status != timer->state.stash) && reportable(timer->state.status)){
 			// Если установлена функция обратного вызова
@@ -10388,9 +10594,6 @@ namespace events {
 	 */
 	static void add(::change::record_t && ev) noexcept {
 		/**
-		 * Если включён режим отладки
-		 */
-		/**
 		 * Линейный поиск (для пакетов < 100 событий — быстрее хэш-таблицы!)
 		 */
 		for(auto & item : ::local::change){
@@ -10407,6 +10610,8 @@ namespace events {
 		// Если за событием стоит узел, а не внутренний таймер дедлайнов
 		if((node != nullptr) && (ev.udata != ::local::internal)){
 			/**
+			 * Если узел подлежит уничтожению
+			 *
 			 * @note Подписки по дескриптору для узла, помеченного на уничтожение,
 			 *       в список изменений не попадают. Его дескриптор к этому моменту
 			 *       уже закрыт, а освободившийся номер операционная система успевает
@@ -10416,7 +10621,6 @@ namespace events {
 			 *       дескриптору, и именно ими завершается уничтожение узла.
 			 *
 			 */
-			// Если узел подлежит уничтожению
 			if((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE)){
 				// Если подписка выполняется по дескриптору
 				if((ev.filter == ::change::filter_t::READ) || (ev.filter == ::change::filter_t::WRITE) || (ev.filter == ::change::filter_t::VNODE))
@@ -10861,6 +11065,7 @@ namespace io {
 	 * @brief Шаблон функции вытягивания данных из источника и отправки их в событие
 	 *
 	 * @tparam T тип узла, для которого вытягиваются данные
+	 *
 	 */
 	template <typename T>
 	/**
@@ -11139,7 +11344,7 @@ namespace handoff {
 	 *          данные метки не несут - в них ходят одни описатели, - и связать снимок
 	 *          с описателем иначе нечем. Ядро блюдёт порядок сообщений у каждого
 	 *          сокета, потому по одному переносчику соответствие строгое: n-й
-	 *          приехавший отвечает n-му снятому снимку
+	 *          приехавший отвечает n-му снятому снимку.
 	 *
 	 * @warning Между РАЗНЫМИ переносчиками порядок ничем не задан, и очередь эта общая
 	 *          на процесс. Ведя два переноса по двум переносчикам вперемешку,
@@ -11174,7 +11379,7 @@ namespace handoff {
 	 * @return выданная метка передачи
 	 *
 	 */
-	static uint64_t label() noexcept {
+	static AWH_IO_URING_INLINE uint64_t label() noexcept {
 		// Счётчик выданных меток передачи
 		static uint64_t counter = 0;
 		// Выводим метку передачи, собранную из номера процесса и счётчика
@@ -11201,6 +11406,7 @@ namespace handoff {
 		 * @note Копия закрывается в ТРЁХ местах, и все три обязательны: по отъезду
 		 *       (`::handoff::send`), при снятии отметок узла (`::handoff::forget`) и
 		 *       при общей очистке движка. Пропуск любого из них - утечка описателей
+		 *
 		 */
 		const net::socket_t copy = static_cast <net::socket_t> (::fcntl(fd, F_DUPFD_CLOEXEC, 0));
 		// Если удвоить описатель не удалось
@@ -11249,12 +11455,19 @@ namespace handoff {
 		::handoff::__awh_outgoing__.erase(i);
 	}
 	/**
+	 * @brief Шаблон функции отправки данных с прицепленными описателями
+	 *
+	 * @tparam T тип идентификатора узла
+	 *
+	 */
+	template <class T>
+	/**
 	 * @brief Функция отправки данных с прицепленными описателями
 	 *
 	 * @details Замещает собой обычную отправку у узлов домена UNIX. Отметок нет - шлёт
 	 *          ровно то же, что и ::send, и стоит ровно столько же. Отметки есть -
 	 *          уходит sendmsg со служебными данными, и описатели уезжают вместе с этим
-	 *          сообщением
+	 *          сообщением.
 	 *
 	 * @warning Предел числа описателей в одном сообщении есть у всякой системы, и
 	 *          сообщение сверх него отвергается целиком. Оттого за раз уходит не более
@@ -11267,15 +11480,7 @@ namespace handoff {
 	 * @return       количество отправленных октетов
 	 *
 	 */
-	template <class T>
 	static ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size) noexcept {
-		/**
-		 * Если отложенных передач нет вовсе либо узел не ведёт обмен в домене UNIX
-		 *
-		 * @note Обход этот стоит одного сравнения и стоит здесь намеренно: путь этот
-		 *       общий для всякой отправки, а служебные данные живут лишь в домене UNIX.
-		 *       Счётчик отсекает поиск по таблице там, где переносить нечего вовсе
-		 */
 		/**
 		 * Если узел ведёт обмен именованным каналом - пишем в него записью, а не отправкой
 		 *
@@ -11287,10 +11492,19 @@ namespace handoff {
 		 *
 		 * @note Место здесь выбрано ЕДИНСТВЕННОЕ намеренно: путь этот общий для всякой
 		 *       отправки узла, и разбор в нём нельзя забыть у нового места вызова
+		 *
 		 */
 		if(node->state.family == event::family_t::PIPE)
 			// Выполняем запись данных в канал
 			return ::write(fd, reinterpret_cast <const uint8_t *> (buffer), size);
+		/**
+		 * Если отложенных передач нет вовсе либо узел не ведёт обмен в домене UNIX
+		 *
+		 * @note Обход этот стоит одного сравнения и стоит здесь намеренно: путь этот
+		 *       общий для всякой отправки, а служебные данные живут лишь в домене UNIX.
+		 *       Счётчик отсекает поиск по таблице там, где переносить нечего вовсе
+		 *
+		 */
 		if((::handoff::__awh_deferred__ == 0) || (node->state.family != event::family_t::UDS))
 			// Выполняем отправку данных обычным способом
 			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -11349,18 +11563,19 @@ namespace handoff {
 		// Если сообщение ушло, снимаем отметки об уехавших описателях
 		if(bytes > 0){
 			/**
-			 * Снимаем отметки об уехавших описателях
-			 */
-			/**
 			 * Закрываем уехавшие КОПИИ описателей: встречная сторона получила свои
 			 *
 			 * @note Копии заведены `::handoff::defer` и принадлежат переносчику. Ядро
 			 *       при передаче заводит у получателя СВОЙ описатель, наша копия после
 			 *       отъезда не нужна никому
+			 *
 			 */
 			for(size_t index = 0; index < count; index++)
 				// Закрываем уехавшую копию описателя
 				::close(static_cast <int32_t> (i->second.at(index).fd));
+			/**
+			 * Снимаем отметки об уехавших описателях
+			 */
 			i->second.erase(i->second.begin(), i->second.begin() + static_cast <ssize_t> (count));
 			// Уменьшаем счётчик отложенных передач на уехавшие описатели
 			::handoff::__awh_deferred__ -= count;
@@ -11376,12 +11591,19 @@ namespace handoff {
 		return bytes;
 	}
 	/**
+	 * @brief Шаблон функции приёма данных вместе с приехавшими описателями
+	 *
+	 * @tparam T тип идентификатора узла
+	 *
+	 */
+	template <class T>
+	/**
 	 * @brief Функция приёма данных вместе с приехавшими описателями
 	 *
 	 * @details Замещает собой обычный приём у узлов домена UNIX. Место под служебные
 	 *          данные отводится ВСЕГДА, а не только когда описателя ждут: не отвести
 	 *          его - значит потерять приехавший описатель молча, и вскроется потеря
-	 *          много позже места, где случилась
+	 *          много позже места, где случилась.
 	 *
 	 * @param fd     дескриптор сокета узла-переносчика
 	 * @param buffer буфер для принимаемых данных
@@ -11389,14 +11611,7 @@ namespace handoff {
 	 * @return       количество принятых октетов
 	 *
 	 */
-	template <class T>
 	static ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size) noexcept {
-		/**
-		 * Если узел не ведёт обмен в домене UNIX, разбирать нечего
-		 *
-		 * @note Служебные данные ходят лишь в домене UNIX, а приём с их разбором стоит
-		 *       дороже обычного. Прочим узлам он не нужен вовсе
-		 */
 		/**
 		 * Если узел ведёт обмен именованным каналом - читаем его чтением, а не приёмом
 		 *
@@ -11408,10 +11623,18 @@ namespace handoff {
 		 *
 		 * @note Место здесь выбрано ЕДИНСТВЕННОЕ намеренно: путь этот общий для всякого
 		 *       приёма узла, и разбор в нём нельзя забыть у новой разновидности
+		 *
 		 */
 		if(node->state.family == event::family_t::PIPE)
 			// Выполняем чтение данных из канала
 			return ::read(fd, reinterpret_cast <uint8_t *> (buffer), size);
+		/**
+		 * Если узел не ведёт обмен в домене UNIX, разбирать нечего
+		 *
+		 * @note Служебные данные ходят лишь в домене UNIX, а приём с их разбором стоит
+		 *       дороже обычного. Прочим узлам он не нужен вовсе
+		 *
+		 */
 		if(node->state.family != event::family_t::UDS)
 			// Выполняем приём данных обычным способом
 			return ::recv(fd, reinterpret_cast <uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -11451,6 +11674,7 @@ namespace handoff {
 			 * @warning Потеря эта молчалива: сообщение приходит целым, а описатель
 			 *          пропадает. Без записи в журнал вскрылась бы она подъёмом,
 			 *          отказавшим без видимой причины
+			 *
 			 */
 			if(message.msg_flags & MSG_CTRUNC)
 				// Записываем ошибку в лог
@@ -11501,9 +11725,12 @@ namespace handoff {
 		 *       отъезду их закрывает `::handoff::send`, при сносе узла - `forget`, а
 		 *       здесь снимается всё, что пережило и то, и другое. Без него копии
 		 *       доставались бы следующему движку того же процесса уже осиротевшими
+		 *
 		 */
 		for(auto & item : ::handoff::__awh_outgoing__){
-			// Перебираем отметки отложенной передачи узла
+			/**
+			 * Перебираем отметки отложенной передачи узла
+			 */
 			for(auto & pending : item.second)
 				// Закрываем копию описателя
 				::close(static_cast <int32_t> (pending.fd));
@@ -11563,7 +11790,7 @@ namespace timer {
 	 *          не плата вовсе, потому что функция и без того отдаёт миллисекунды и
 	 *          отбрасывает всё, что мельче. Но при пониженной частоте системного
 	 *          таймера шаг вырастает до десятков миллисекунд и обесценил бы таймеры
-	 *          целиком, поэтому частота проверяется, а не предполагается
+	 *          целиком, поэтому частота проверяется, а не предполагается.
 	 *
 	 * @note Частота эта настройкой ядра не читается: имени вроде «kern.hz»
 	 *       у Linux нет, а `sysconf(_SC_CLK_TCK)` отдаёт не частоту
@@ -11574,7 +11801,7 @@ namespace timer {
 	 * @return идентификатор источника монотонного времени
 	 *
 	 */
-	static clockid_t monotonic() noexcept {
+	static AWH_IO_URING_INLINE clockid_t monotonic() noexcept {
 		// Шаг дешёвых монотонных часов
 		struct timespec resolution{};
 		// Если шаг дешёвых часов получен и он не превышает миллисекунды
@@ -11597,11 +11824,13 @@ namespace timer {
 	 */
 	static uint64_t timestamp() noexcept {
 		/**
+		 * Объект структуры для хранения времени
+		 *
 		 * @note Источник времени выбирается один раз при запуске: там, где
 		 *       зернистость дешёвых часов не превышает отдаваемой функцией
 		 *       миллисекунды, берутся они
+		 *
 		 */
-		// Объект структуры для хранения времени
 		struct timespec ts{};
 		// Получаем текущее время монотонных часов
 		::clock_gettime(::timer::clockSource, &ts);
@@ -11619,11 +11848,10 @@ namespace timer {
 	 *          ещё не начался. Снятое здесь значение обслуживает весь оборот целиком.
 	 *
 	 */
-	static void capture() noexcept {
+	static AWH_IO_URING_INLINE void capture() noexcept {
 		// Снимаем слепок времени для текущего оборота цикла событий
 		snapshot = timestamp();
 	}
-
 	/**
 	 * @brief Функция сброса слепка времени по завершении оборота цикла событий
 	 *
@@ -11633,11 +11861,10 @@ namespace timer {
 	 *          по слепку, состарившемуся на длительность разбора событий.
 	 *
 	 */
-	static void release() noexcept {
+	static AWH_IO_URING_INLINE void release() noexcept {
 		// Сбрасываем слепок времени прошедшего оборота цикла событий
 		snapshot = 0;
 	}
-
 	/**
 	 * @brief Функция получения текущего штампа времени в миллисекундах
 	 *
@@ -11657,7 +11884,7 @@ namespace timer {
 	 * @return  текущее время в миллисекундах
 	 *
 	 */
-	static uint64_t now() noexcept {
+	static AWH_IO_URING_INLINE uint64_t now() noexcept {
 		// Отдаём слепок оборота, а вне оборота обращаемся к часам напрямую
 		return ((snapshot != 0) ? snapshot : timestamp());
 	}
@@ -11693,7 +11920,7 @@ namespace timer {
 	 *
 	 * @details Приход данных ожидание чтения завершает: одноразовый срок движок затем
 	 *          снимает, а возобновляемый взводит заново. Решает это движок сам, и для
-	 *          обмена, где всякий приход данных и есть ответ, решение верное
+	 *          обмена, где всякий приход данных и есть ответ, решение верное.
 	 *
 	 *          На дейтаграммном обмене оно верно не всегда: прийти вправе что угодно и
 	 *          от кого угодно, и пришедшее бывает не ответом на заданный вопрос, а
@@ -11701,11 +11928,11 @@ namespace timer {
 	 *          способен лишь сам договор, и лишь он вправе сказать, что ожидание не
 	 *          кончилось. Сказанное им и отмечается здесь, а движок, дойдя до своей
 	 *          обработки, отметку видит и срок не трогает - ожидание идёт дальше тем
-	 *          же чередом, с тем же сроком истечения
+	 *          же чередом, с тем же сроком истечения.
 	 *
 	 *          Именно «не трогает», а не «взводит заново»: взведи он заново, и всякий
 	 *          чужой ответ дарил бы вопросу полный лишний срок, а поток таких ответов
-	 *          не дал бы отказу наступить вовсе
+	 *          не дал бы отказу наступить вовсе.
 	 *
 	 * @note Ячейка одна на весь движок, и большего не нужно: работа ведётся циклом
 	 *       событий в одной нити, а отклик и обработка срока идут подряд, без
@@ -11744,14 +11971,14 @@ namespace timer {
 	 *          данных: движок к этому мигу знает лишь, что данные пришли, а чем они
 	 *          окажутся - выяснится в отклике договора. Окажись они не ответом, срока
 	 *          уже не будет, а сколько его оставалось - не будет знать никто. Здесь
-	 *          остаток и запоминается, чтобы ожидание можно было продолжить
+	 *          остаток и запоминается, чтобы ожидание можно было продолжить.
 	 *
 	 * @param tid      идентификатор снимаемого срока
 	 * @param eid      идентификатор события, чей срок снимается
 	 * @param deadline срок истечения снимаемого ожидания
 	 *
 	 */
-	static inline void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
+	static AWH_IO_URING_INLINE void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
 		// Запоминаем идентификатор события, чей срок снимается
 		__awh_continued__.did = eid;
 		// Запоминаем идентификатор самого снимаемого срока
@@ -11763,10 +11990,10 @@ namespace timer {
 		 *
 		 * @note Уже истёкший срок остатка не имеет: продолжать его незачем, и остаток
 		 *       такому выставляется нулевым, чтобы продолжение ответило отказом
+		 *
 		 */
 		__awh_continued__.left = ((deadline > now) ? (deadline - now) : 0);
 	}
-
 	/**
 	 * @brief Функция получения остатка снятого срока ожидания
 	 *
@@ -11775,7 +12002,7 @@ namespace timer {
 	 * @return    остаток срока в миллисекундах, либо ноль, если запись чужая
 	 *
 	 */
-	static inline uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_IO_URING_INLINE uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если запись принадлежит иному событию либо иному сроку, остатка нет
 		if((__awh_continued__.did != eid) || (__awh_continued__.dtid != tid))
 			// Выводим отсутствие остатка
@@ -11792,6 +12019,7 @@ namespace timer {
 		 *          отклика; а вызов после того, как срок уже истёк, взводит срок
 		 *          призрачный - тот, который никто не прерывал. Сличение события и
 		 *          срока от этого не спасает: запись-то своя, она лишь устарела
+		 *
 		 */
 		__awh_continued__.did = 0;
 		// Сбрасываем идентификатор снятого срока
@@ -11801,7 +12029,6 @@ namespace timer {
 		// Выводим запомненный остаток срока
 		return result;
 	}
-
 	/**
 	 * @brief Функция отметки о продолжении ожидания
 	 *
@@ -11809,13 +12036,12 @@ namespace timer {
 	 * @param eid идентификатор события, чьё ожидание продолжается
 	 *
 	 */
-	static inline void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_IO_URING_INLINE void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Запоминаем идентификатор события, чьё ожидание продолжается
 		__awh_continued__.eid = eid;
 		// Запоминаем идентификатор самого продолжаемого срока
 		__awh_continued__.tid = tid;
 	}
-
 	/**
 	 * @brief Функция снятия отметки о продолжении ожидания
 	 *
@@ -11827,7 +12053,7 @@ namespace timer {
 	 * @return    была ли отметка выставлена для этого срока этого события
 	 *
 	 */
-	static inline bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
+	static AWH_IO_URING_INLINE bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если отметка принадлежит иному событию либо иному сроку
 		if((__awh_continued__.eid != eid) || (__awh_continued__.tid != tid))
 			// Выводим отсутствие отметки
@@ -11839,7 +12065,6 @@ namespace timer {
 		// Выводим наличие отметки
 		return true;
 	}
-
 	/**
 	 * @brief Инкапсулируем статические функции в пространство имён простого таймера
 	 *
@@ -11853,23 +12078,24 @@ namespace timer {
 	 *
 	 *          Ближайший срок истечения берётся началом множества, то есть за
 	 *          постоянное время. Постановка, снятие и перевзведение стоят
-	 *          логарифма от количества таймеров
+	 *          логарифма от количества таймеров.
 	 *
-	 * @note    Слабость структуры не в сложности, а в памяти: каждая постановка
-	 *          заводит узел множества и узел хэш-таблицы - два выделения, - а
-	 *          перевзведение переносит запись и стоит ещё одного. Выделения эти
-	 *          мелкие и разрозненные, отчего записи расползаются по памяти, и
-	 *          обход структуры упирается в промахи кэша, а не в вычисления
+	 * @note Слабость структуры не в сложности, а в памяти: каждая постановка
+	 *       заводит узел множества и узел хэш-таблицы - два выделения, - а
+	 *       перевзведение переносит запись и стоит ещё одного. Выделения эти
+	 *       мелкие и разрозненные, отчего записи расползаются по памяти, и
+	 *       обход структуры упирается в промахи кэша, а не в вычисления
 	 *
-	 * @note    Замер это подтверждает: на пятидесяти тысячах таймеров постановка
-	 *          обходится в 0.073 микросекунды против 0.013 у сложной структуры,
-	 *          перевзведение - в 0.092 против 0.030. Отношение стоимости при
-	 *          десятикратном росте количества таймеров - 1.73 против 1.10, то есть
-	 *          с ростом нагрузки разрыв только расширяется
+	 * @note Замер это подтверждает: на пятидесяти тысячах таймеров постановка
+	 *       обходится в 0.073 микросекунды против 0.013 у сложной структуры,
+	 *       перевзведение - в 0.092 против 0.030. Отношение стоимости при
+	 *       десятикратном росте количества таймеров - 1.73 против 1.10, то есть
+	 *       с ростом нагрузки разрыв только расширяется
 	 *
-	 * @note    Держать эту структуру стоит там, где таймеров немного и важнее
-	 *          предсказуемость стандартных контейнеров, чем скорость. Для
-	 *          нагруженного сервера предназначена сложная структура
+	 * @note Держать эту структуру стоит там, где таймеров немного и важнее
+	 *       предсказуемость стандартных контейнеров, чем скорость. Для
+	 *       нагруженного сервера предназначена сложная структура
+	 *
 	 */
 	namespace simple {
 		/**
@@ -11887,6 +12113,7 @@ namespace timer {
 		 *       сборки и допишет её обратно
 		 *
 		 */
+
 		// ─────────────────────────────────────────────────────────────
 		// Структуры данных
 		// ─────────────────────────────────────────────────────────────
@@ -11895,7 +12122,7 @@ namespace timer {
 		 * @brief Структура для хранения уникального ключа таймера
 		 *
 		 */
-		struct Key {
+		typedef struct Key {
 			// Упакованный 64-битный ключ, содержащий идентификатор таймера и идентификатор события
 			uint64_t packed = 0;
 			/**
@@ -11916,15 +12143,14 @@ namespace timer {
 			 * @param eid идентификатор события для которого устанавливается таймер
 			 *
 			 */
-			Key(const uint8_t id, const event::id_t eid) noexcept :
+			explicit Key(const uint8_t id, const event::id_t eid) noexcept :
 			 packed((static_cast <uint64_t> (eid) << 8) | id) {}
-		};
-
+		} key_t;
 		/**
 		 * @brief Структура для хеширования ключа таймера в unordered_map
 		 *
 		 */
-		struct Hash {
+		typedef struct Hash {
 			/**
 			 * @brief Оператор хеширования для использования в unordered_map при поиске таймера по ключу
 			 *
@@ -11948,13 +12174,13 @@ namespace timer {
 				// Возвращаем хешированное значение ключа таймера
 				return static_cast <size_t> (result);
 			}
-		};
+		} hash_t;
 
 		/**
 		 * @brief Структура для хранения информации о таймере
 		 *
 		 */
-		struct Timer {
+		typedef struct Timer {
 			// Идентификатор таймера (для внутреннего использования)
 			uint8_t id = 0;
 			// Идентификатор события для которого установлен таймер
@@ -11980,7 +12206,7 @@ namespace timer {
 				// Проверяем третью уникальность по идентификатору таймера
 				return (this->id < timer.id);
 			}
-		};
+		} timer_t;
 
 		// ─────────────────────────────────────────────────────────────
 		// Глобальное состояние (internal linkage)
@@ -11990,13 +12216,12 @@ namespace timer {
 		 * @brief Приоритетная очередь для хранения таймеров, отсортированных по сроку истечения (наименьший срок истечения имеет наивысший приоритет)
 		 *
 		 */
-		static set <Timer> __awh_heap__;
-
+		static set <timer_t> __awh_heap__;
 		/**
 		 * @brief Список активных таймеров, ожидающих истечения
 		 *
 		 */
-		static unordered_map <Key, set <Timer>::iterator, Hash> __awh_lookup__;
+		static unordered_map <key_t, set <Timer>::iterator, hash_t> __awh_lookup__;
 
 		// ─────────────────────────────────────────────────────────────
 		// Внутренние утилиты (не экспортируются)
@@ -12025,6 +12250,7 @@ namespace timer {
 			 * @note Отметка о взведённом сроке (`__awh_armed__`) при этом сохранена и
 			 *       обслуживается: на ней держится отсечение повторных взводов, а
 			 *       снимается она наравне с прочим при снятии очереди
+			 *
 			 */
 			(void) rate;
 			// Если структура дедлайнов пуста, запоминать нечего
@@ -12038,7 +12264,7 @@ namespace timer {
 			 *
 			 * @details Взвод к ядру не обращается вовсе, и цикл, вычисливший время
 			 *          ожидания до этого взвода, о новом сроке не знает - при бесконечном
-			 *          ожидании он не проснулся бы никогда
+			 *          ожидании он не проснулся бы никогда.
 			 *
 			 * @note Отметка нулевая означает, что опрос не спит: будить некого, и
 			 *       обращения к дескриптору пробуждения не происходит. Взвод зовётся
@@ -12077,7 +12303,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void __rearm__(const event::rate_t rate) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -12105,38 +12331,35 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		static AWH_IO_URING_INLINE bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
-
 		/**
 		 * @brief Функция получения количества активных таймеров (для метрик)
 		 *
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		static AWH_IO_URING_INLINE size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
-
 		/**
 		 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 		 *
 		 * @return UINT64_MAX если очередь пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static uint64_t deadline() noexcept {
+		static AWH_IO_URING_INLINE uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если очередь пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__.begin()->deadline);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static void clear() noexcept {
+		static AWH_IO_URING_INLINE void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем список активных таймеров
@@ -12144,7 +12367,6 @@ namespace timer {
 			// Снимаем запомненный срок истечения, так-как взводить теперь нечего
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция снятия отметки о взведённом таймере ядра операционной системы
 		 *
@@ -12154,11 +12376,10 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static void disarm() noexcept {
+		static AWH_IO_URING_INLINE void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция взвода таймера ядра операционной системы на ближайший срок истечения
 		 *
@@ -12169,7 +12390,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static void rearm(const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
@@ -12208,7 +12429,6 @@ namespace timer {
 				} else tm.status = event::status_t::NONE;
 			}
 		}
-
 		/**
 		 * @brief Функция перевзведения уже поставленного таймера
 		 *
@@ -12231,7 +12451,7 @@ namespace timer {
 				// Выводим отрицательный результат
 				return false;
 			// Ищем таймер в списке активных таймеров по ключу таймера
-			auto i = __awh_lookup__.find({tm.id, eid});
+			auto i = __awh_lookup__.find(key_t{tm.id, eid});
 			// Если таймер в списке активных не найден
 			if(i == __awh_lookup__.end())
 				// Выводим отрицательный результат
@@ -12266,13 +12486,12 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
 			cancel(tm2, eid);
 		}
-
 		/**
 		 * @brief Функция отмены трёх таймеров
 		 *
@@ -12282,7 +12501,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -12290,7 +12509,6 @@ namespace timer {
 			// Отменяем третий таймер для данного события, так-как он больше не нужен
 			cancel(tm3, eid);
 		}
-
 		/**
 		 * @brief Функция отмены четырёх таймеров
 		 *
@@ -12301,7 +12519,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -12311,7 +12529,6 @@ namespace timer {
 			// Отменяем четвёртый таймер для данного события, так-как он больше не нужен
 			cancel(tm4, eid);
 		}
-
 		/**
 		 * @brief Функция отмены пяти таймеров
 		 *
@@ -12323,7 +12540,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -12335,7 +12552,6 @@ namespace timer {
 			// Отменяем пятый таймер для данного события, так-как он больше не нужен
 			cancel(tm5, eid);
 		}
-
 		/**
 		 * @brief Функция отмены шести таймеров
 		 *
@@ -12348,7 +12564,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -12405,7 +12621,7 @@ namespace timer {
 								// Если таймаут ожидания уже активирован для данного события
 								case static_cast <uint8_t> (event::status_t::PENDING): {
 									// Формируем ключ таймера для поиска в списке активных таймеров
-									Key key{tm.id, eid};
+									key_t key{tm.id, eid};
 									// Ищем таймер в списке активных таймеров по ключу таймера
 									if(auto i = __awh_lookup__.find(key); i != __awh_lookup__.end()){
 										// Удаляем таймер из приоритетной очереди таймеров
@@ -12432,7 +12648,7 @@ namespace timer {
 						// Устанавливаем статус таймаута в ожидание
 						tm.status = event::status_t::PENDING;
 						// Формируем ключ таймера для поиска в списке активных таймеров
-						Key key{tm.id, eid};
+						key_t key{tm.id, eid};
 						// Ищем таймер в списке активных таймеров по ключу таймера
 						if(auto i = __awh_lookup__.find(key); i != __awh_lookup__.end()){
 							// Удаляем таймер из приоритетной очереди таймеров
@@ -12485,7 +12701,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -12493,7 +12709,6 @@ namespace timer {
 			// Выполняем постановку дедлайна
 			__set__(tm, eid, flag, rate);
 		}
-
 		/**
 		 * @brief Функция установки одного таймера
 		 *
@@ -12502,7 +12717,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -12515,7 +12730,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки двух таймеров
 		 *
@@ -12525,7 +12739,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -12540,7 +12754,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки трёх таймеров
 		 *
@@ -12568,7 +12781,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки четырёх таймеров
 		 *
@@ -12599,7 +12811,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки пяти таймеров
 		 *
@@ -12633,7 +12844,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки шести таймеров
 		 *
@@ -12696,6 +12906,7 @@ namespace timer {
 				 *       чей дедлайн уже наступил, не перестанет быть истёкшим от того,
 				 *       что время замерено чуть раньше. Те, чей дедлайн наступит за
 				 *       время прохода, разберёт следующий вызов
+				 *
 				 */
 				const uint64_t moment = ::timer::now();
 				/**
@@ -12705,11 +12916,11 @@ namespace timer {
 					// Получаем таймер с наивысшим приоритетом (наименьшим сроком истечения)
 					auto i = __awh_heap__.begin();
 					// Извлекаем таймер из приоритетной очереди таймеров
-					Timer timer = (* i);
+					timer_t timer = (* i);
 					// Удаляем таймер из приоритетной очереди таймеров
 					__awh_heap__.erase(i);
 					// Удаляем таймер из списка активных таймеров
-					__awh_lookup__.erase({timer.id, timer.eid});
+					__awh_lookup__.erase(key_t{timer.id, timer.eid});
 					// Выполняем поиск узла в глобальном списке узлов событий
 					auto j = ::__awh_nodes__.find(timer.eid);
 					// Если узел найден в куче
@@ -12728,6 +12939,7 @@ namespace timer {
 							 *          занимает. Поведение при этом остаётся прежним: одноразовый
 							 *          таймаут после срабатывания освобождается, интервал
 							 *          перезаряжается на следующий период.
+							 *
 							 */
 							case static_cast <uint8_t> (event::node_t::TIMEOUT):
 							// Если узел является интервалом
@@ -12800,7 +13012,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на чтение данных активный
 									if(peer->bandwidth().read.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на чтение данных
-										peer->bandwidthUse().read.timeout.status = event::status_t::NONE;
+										peer->bandwidthInitialize().read.timeout.status = event::status_t::NONE;
 										// Если активность на чтения данных установлена
 										if(peer->activity & ::activity::READ){
 											// Снимаем статус активности на чтение данных
@@ -12817,8 +13029,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -12826,6 +13037,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE) &&
 										   (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) &&
@@ -12844,7 +13056,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на запись данных активный
 									if(peer->bandwidth().write.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
-										peer->bandwidthUse().write.timeout.status = event::status_t::NONE;
+										peer->bandwidthInitialize().write.timeout.status = event::status_t::NONE;
 										// Если активность на запись данных установлена
 										if(peer->activity & ::activity::WRITE){
 											// Снимаем статус активности на запись данных
@@ -12861,8 +13073,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -12870,6 +13081,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE) &&
 										   (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) &&
@@ -12939,7 +13151,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на чтение данных активный
 									if(client->bandwidth().read.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на чтение данных
-										client->bandwidthUse().read.timeout.status = event::status_t::NONE;
+										client->bandwidthInitialize().read.timeout.status = event::status_t::NONE;
 										// Если активность на чтения данных установлена
 										if(client->activity & ::activity::READ){
 											// Снимаем статус активности на чтение данных
@@ -12956,8 +13168,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -12965,6 +13176,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE) &&
 										   (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) &&
@@ -12983,7 +13195,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на запись данных активный
 									if(client->bandwidth().write.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
-										client->bandwidthUse().write.timeout.status = event::status_t::NONE;
+										client->bandwidthInitialize().write.timeout.status = event::status_t::NONE;
 										// Если активность на запись данных установлена
 										if(client->activity & ::activity::WRITE){
 											// Снимаем статус активности на запись данных
@@ -13000,8 +13212,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -13009,6 +13220,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE) &&
 										   (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) &&
@@ -13111,6 +13323,7 @@ namespace timer {
 											 *          заведений назвал место дословно. Перестройка узла
 											 *          (`rebuild`) прежний дескриптор закрывает - здесь
 											 *          того не делалось
+											 *
 											 */
 											if(client->transfer.fd != net::invalid_socket_t){
 												// Закрываем прежний дескриптор события
@@ -13152,7 +13365,7 @@ namespace timer {
 														 *          вредит: исчерпав его, событие умирает как раз
 														 *          тогда, когда связь вот-вот вернулась бы. Кому счёт
 														 *          попыток нужен, тот ведёт его над движком и сам
-														 *          удаляет событие
+														 *          удаляет событие.
 														 *
 														 * @note Подключение отвечает отказом сразу, а не ожиданием,
 														 *       когда ядро уже держит неудачную запись соседа: к
@@ -13209,8 +13422,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА, и
 										 *          тогда СЛУШАЮЩИЙ сокет глохнет навсегда: сервер перестаёт
 										 *          принимать подключения вовсе
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -13218,6 +13430,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((server->state.status != event::status_t::DESTROYED) && (server->state.status != event::status_t::GARBAGE) &&
 										   (server->state.status != event::status_t::PAUSED) && (server->state.status != event::status_t::CANCELLED) &&
@@ -13293,30 +13506,31 @@ namespace timer {
 	 *          идентификатора, внутри чанка лежит двумерный массив постоянного
 	 *          размера, где по смещению события и номеру таймера записан индекс в
 	 *          куче, а значение −1 означает отсутствие таймера. Хэширования нет:
-	 *          разрешение адреса - это два сдвига и обращение по индексу
+	 *          разрешение адреса - это два сдвига и обращение по индексу.
 	 *
-	 * @note    Чанки заводятся по мере обращения к ним и при опустошении
-	 *          возвращаются в пул, откуда берутся повторно. Пул подрезается раз в
-	 *          пять минут, чтобы всплеск нагрузки не удерживал память навсегда.
-	 *          Из-за этого установившийся режим работы не выполняет ни одного
-	 *          выделения памяти на операцию и почти не обращается к ядру - 0.02
-	 *          обращения на операцию против одного до появления запомненного срока
-	 *          взвода
+	 * @note Чанки заводятся по мере обращения к ним и при опустошении
+	 *       возвращаются в пул, откуда берутся повторно. Пул подрезается раз в
+	 *       пять минут, чтобы всплеск нагрузки не удерживал память навсегда.
+	 *       Из-за этого установившийся режим работы не выполняет ни одного
+	 *       выделения памяти на операцию и почти не обращается к ядру - 0.02
+	 *       обращения на операцию против одного до появления запомненного срока
+	 *       взвода
 	 *
-	 * @note    Перевзведение - самая частая операция сервера, потому что таймаут
-	 *          чтения сдвигается на каждой принятой порции данных, - выполняется
-	 *          правкой срока истечения прямо на месте. Запись из кучи не
-	 *          вынимается и не вставляется заново, а просеивание выполняется
-	 *          только в ту сторону, в которую срок действительно сдвинулся, и
-	 *          только если он сдвинулся вообще
+	 * @note Перевзведение - самая частая операция сервера, потому что таймаут
+	 *       чтения сдвигается на каждой принятой порции данных, - выполняется
+	 *       правкой срока истечения прямо на месте. Запись из кучи не
+	 *       вынимается и не вставляется заново, а просеивание выполняется
+	 *       только в ту сторону, в которую срок действительно сдвинулся, и
+	 *       только если он сдвинулся вообще
 	 *
-	 * @note    Замер на пятидесяти тысячах таймеров: постановка 0.013
-	 *          микросекунды, снятие 0.027, перевзведение 0.030. Против libevent
-	 *          структура быстрее вдвое на постановке и в полтора раза на
-	 *          перевзведении, против libuv - быстрее по всем трём операциям,
-	 *          против libev - медленнее вдвое. Отношение стоимости при
-	 *          десятикратном росте количества таймеров - 1.10, то есть структура
-	 *          держит нагрузку без ухудшения
+	 * @note Замер на пятидесяти тысячах таймеров: постановка 0.013
+	 *       микросекунды, снятие 0.027, перевзведение 0.030. Против libevent
+	 *       структура быстрее вдвое на постановке и в полтора раза на
+	 *       перевзведении, против libuv - быстрее по всем трём операциям,
+	 *       против libev - медленнее вдвое. Отношение стоимости при
+	 *       десятикратном росте количества таймеров - 1.10, то есть структура
+	 *       держит нагрузку без ухудшения
+	 *
 	 */
 	namespace difficult {
 		/**
@@ -13334,6 +13548,7 @@ namespace timer {
 		 *       сборки и допишет её обратно
 		 *
 		 */
+
 		// ─────────────────────────────────────────────────────────────
 		// Структуры данных
 		// ─────────────────────────────────────────────────────────────
@@ -13342,25 +13557,24 @@ namespace timer {
 		 * @brief Структура чанка для lookup: [смещение_eid][id_таймера] → индекс в куче
 		 *
 		 */
-		struct Chunk {
+		typedef struct Chunk {
 			// Сколько активных таймеров в чанке
 			uint32_t count = 0;
 			// Слоты, значение -1 = нет таймера
 			int32_t slots[AWH_CHUNK_EIDS_INTERNAL_TIMER][AWH_COUNT_IDS_INTERNAL_TIMER];
-		};
-
+		} chunk_t;
 		/**
 		 * @brief Структура для хранения информации о таймере
 		 *
 		 */
-		struct Timer {
+		typedef struct Timer {
 			// Идентификатор таймера (для внутреннего использования)
 			uint8_t id = 0;
 			// Идентификатор события для которого установлен таймер
 			event::id_t eid = 0;
 			// Срок истечения таймера в миллисекундах
 			uint64_t deadline = 0;
-		};
+		} timer_t;
 
 		// ─────────────────────────────────────────────────────────────
 		// Глобальное состояние (internal linkage)
@@ -13371,13 +13585,11 @@ namespace timer {
 		 *
 		 */
 		static vector <Timer> __awh_heap__;
-
 		/**
 		 * @brief Карта чанков: индекс = (eid / AWH_CHUNK_EIDS_INTERNAL_TIMER)
 		 *
 		 */
 		static vector <unique_ptr <Chunk>> __awh_chunks__;
-
 		/**
 		 * @brief Пул освобождённых чанков (переиспользование)
 		 *
@@ -13395,7 +13607,7 @@ namespace timer {
 		 * @return    объект чанка для данного события
 		 *
 		 */
-		static Chunk * __get_chunk__(const event::id_t eid) noexcept {
+		static chunk_t * __get_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, расширяем его
@@ -13409,7 +13621,7 @@ namespace timer {
 				// Если пул чанков пуст, создаём новый чанк
 				if(__awh_chunk_pool__.empty()){
 					// Создаём новый чанк для хранения информации о таймерах
-					chunk = make_unique <Chunk> ();
+					chunk = make_unique <chunk_t> ();
 					/**
 					 * Перебираем все слоты в чанке
 					 */
@@ -13450,7 +13662,7 @@ namespace timer {
 		 * @param eid идентификатор события
 		 *
 		 */
-		static void __try_release_chunk__(const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void __try_release_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка меньше размера вектора чанков, проверяем его на возможность освобождения
@@ -13463,12 +13675,11 @@ namespace timer {
 					__awh_chunk_pool__.push_back(::move(ptr));
 			}
 		}
-
 		/**
 		 * @brief Функция освобождения всех пустых чанков с возвратом в пул для переиспользования
 		 *
 		 */
-		static void __release_empty_chunks__() noexcept {
+		static AWH_IO_URING_INLINE void __release_empty_chunks__() noexcept {
 			/**
 			 * Перебираем все активные чанки
 			 */
@@ -13479,7 +13690,6 @@ namespace timer {
 					__awh_chunk_pool__.push_back(::move(ptr));
 			}
 		}
-
 		/**
 		 * @brief Функция обновления индекса таймера в слоте чанка
 		 *
@@ -13487,7 +13697,7 @@ namespace timer {
 		 * @param idx   индекс таймера в куче
 		 *
 		 */
-		static void __set_slot__(const Timer & timer, const int32_t idx) noexcept {
+		static AWH_IO_URING_INLINE void __set_slot__(const Timer & timer, const int32_t idx) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (timer.eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, слот обновить нельзя
@@ -13503,7 +13713,6 @@ namespace timer {
 			// Вычисляем смещение внутри чанка и сохраняем индекс таймера в куче
 			ptr->slots[(timer.eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1))][timer.id] = idx;
 		}
-
 		/**
 		 * @brief Функция обмена двух элементов кучи с синхронизацией слотов lookup
 		 *
@@ -13511,7 +13720,7 @@ namespace timer {
 		 * @param b индекс второго элемента в куче
 		 *
 		 */
-		static void __swap_heap__(const int32_t a, const int32_t b) noexcept {
+		static AWH_IO_URING_INLINE void __swap_heap__(const int32_t a, const int32_t b) noexcept {
 			// Обмениваем два элемента в куче
 			::swap(__awh_heap__[a], __awh_heap__[b]);
 			// Синхронизируем индексы обоих таймеров в слотах чанков
@@ -13540,8 +13749,9 @@ namespace timer {
 			 *          На куче в пятьдесят тысяч таймеров глубина просеивания около
 			 *          шестнадцати уровней, и разница выходит в два раза по записям в
 			 *          таблицу слотов и втрое по перемещениям элементов.
+			 *
 			 */
-			const Timer carried = __awh_heap__[index];
+			const timer_t carried = __awh_heap__[index];
 			// Индексы ямы и родительского элемента
 			int32_t hole = index, parent = 0;
 			/**
@@ -13572,7 +13782,6 @@ namespace timer {
 				__set_slot__(__awh_heap__[hole], hole);
 			}
 		}
-
 		/**
 		 * @brief Функция опускания элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера или удаления элемента
 		 *
@@ -13591,8 +13800,9 @@ namespace timer {
 			 *
 			 * @details Просеивание идёт ямой, а не чередой обменов - устройство и выигрыш
 			 *          те же, что и при подъёме.
+			 *
 			 */
-			const Timer carried = __awh_heap__[index];
+			const timer_t carried = __awh_heap__[index];
 			// Индексы ямы и выбранного потомка
 			int32_t hole = index, child = 0;
 			/**
@@ -13631,7 +13841,6 @@ namespace timer {
 				__set_slot__(__awh_heap__[hole], hole);
 			}
 		}
-
 		/**
 		 * @brief Функция для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
 		 *
@@ -13655,6 +13864,7 @@ namespace timer {
 			 * @note Отметка о взведённом сроке (`__awh_armed__`) при этом сохранена и
 			 *       обслуживается: на ней держится отсечение повторных взводов, а
 			 *       снимается она наравне с прочим при снятии очереди
+			 *
 			 */
 			(void) rate;
 			// Если структура дедлайнов пуста, запоминать нечего
@@ -13668,7 +13878,7 @@ namespace timer {
 			 *
 			 * @details Взвод к ядру не обращается вовсе, и цикл, вычисливший время
 			 *          ожидания до этого взвода, о новом сроке не знает - при бесконечном
-			 *          ожидании он не проснулся бы никогда
+			 *          ожидании он не проснулся бы никогда.
 			 *
 			 * @note Отметка нулевая означает, что опрос не спит: будить некого, и
 			 *       обращения к дескриптору пробуждения не происходит. Взвод зовётся
@@ -13685,7 +13895,6 @@ namespace timer {
 					::kernel::kick();
 			}
 		}
-
 		/**
 		 * @brief Функция перезапуска таймера ядра операционной системы, если ближайший дедлайн изменился
 		 *
@@ -13707,7 +13916,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void __rearm__(const event::rate_t rate) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -13735,38 +13944,35 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		static AWH_IO_URING_INLINE bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
-
 		/**
 		 * @brief Функция получения количества активных таймеров (для метрик)
 		 *
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		static AWH_IO_URING_INLINE size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
-
 		/**
 		 * @brief Функция инициализации подсистему таймеров
 		 *
 		 */
-		static void init() noexcept {
+		static AWH_IO_URING_INLINE void init() noexcept {
 			// Выделяем память под пиковую нагрузку
 			__awh_heap__.reserve(AWH_HEAP_SIZE_INTERNAL_TIMER);
 			// Выделяем память под ~256k уникальных идентификаторов событий
 			__awh_chunks__.reserve(AWH_BATCH_SIZE_INTERNAL_TIMER);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static void clear() noexcept {
+		static AWH_IO_URING_INLINE void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем карту активных чанков
@@ -13776,7 +13982,6 @@ namespace timer {
 			// Снимаем запомненный срок истечения, так-как взводить теперь нечего
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция снятия отметки о взведённом таймере ядра операционной системы
 		 *
@@ -13786,11 +13991,10 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static void disarm() noexcept {
+		static AWH_IO_URING_INLINE void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
-
 		/**
 		 * @brief Функция взвода таймера ядра операционной системы на ближайший срок истечения
 		 *
@@ -13801,27 +14005,25 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static void rearm(const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция принудительной очистки пула чанков (вернуть память ОС)
 		 *
 		 */
-		static void shrink() noexcept {
+		static AWH_IO_URING_INLINE void shrink() noexcept {
 			// Очищаем пул чанков, удаляя все объекты чанков и освобождая память, возвращая её операционной системе
 			__awh_chunk_pool__.clear();
 		}
-
 		/**
 		 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 		 *
 		 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static uint64_t deadline() noexcept {
+		static AWH_IO_URING_INLINE uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__[0].deadline);
 		}
@@ -13911,7 +14113,6 @@ namespace timer {
 				__rearm__(event::rate_t::INSTANT);
 			}
 		}
-
 		/**
 		 * @brief Функция перевзведения уже поставленного таймера
 		 *
@@ -13987,13 +14188,12 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
 			cancel(tm2, eid);
 		}
-
 		/**
 		 * @brief Функция отмены трёх таймеров
 		 *
@@ -14003,7 +14203,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -14011,7 +14211,6 @@ namespace timer {
 			// Отменяем третий таймер для данного события, так-как он больше не нужен
 			cancel(tm3, eid);
 		}
-
 		/**
 		 * @brief Функция отмены четырёх таймеров
 		 *
@@ -14022,7 +14221,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -14032,7 +14231,6 @@ namespace timer {
 			// Отменяем четвёртый таймер для данного события, так-как он больше не нужен
 			cancel(tm4, eid);
 		}
-
 		/**
 		 * @brief Функция отмены пяти таймеров
 		 *
@@ -14044,7 +14242,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -14056,7 +14254,6 @@ namespace timer {
 			// Отменяем пятый таймер для данного события, так-как он больше не нужен
 			cancel(tm5, eid);
 		}
-
 		/**
 		 * @brief Функция отмены шести таймеров
 		 *
@@ -14069,7 +14266,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static AWH_IO_URING_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -14128,7 +14325,7 @@ namespace timer {
 									// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
 									const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
 									// Получаем объект чанка для данного идентификатора события
-									Chunk * chunk = __get_chunk__(eid);
+									chunk_t * chunk = __get_chunk__(eid);
 									// Вычисляем смещение внутри чанка для данного идентификатора события
 									const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 									// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
@@ -14136,17 +14333,18 @@ namespace timer {
 									// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
 									if(index != -1){
 										// Таймер уже существует: обновляем дедлайн
-										Timer & timer = __awh_heap__[index];
+										timer_t & timer = __awh_heap__[index];
 										// Сохраняем старый дедлайн для оптимизации перестройки кучи
 										const uint64_t old = timer.deadline;
 										// Обновляем дедлайн таймера на новый рассчитанный дедлайн
 										timer.deadline = deadline;
 										/**
+										 * Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
+										 *
 										 * Оптимизация:
 										 * - Пропускаем перестройку кучи при незначительном сдвиге (погрешность планировщика + syscall всё равно съест разницу ≤2 мс)
 										 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 										 */
-										// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
 										if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 											// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 											__sift_up__(index);
@@ -14181,7 +14379,7 @@ namespace timer {
 						// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
 						const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
 						// Получаем объект чанка для данного идентификатора события
-						Chunk * chunk = __get_chunk__(eid);
+						chunk_t * chunk = __get_chunk__(eid);
 						// Вычисляем смещение внутри чанка для данного идентификатора события
 						const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
 						// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
@@ -14189,17 +14387,18 @@ namespace timer {
 						// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
 						if(index != -1){
 							// Таймер уже существует: обновляем дедлайн
-							Timer & timer = __awh_heap__[index];
+							timer_t & timer = __awh_heap__[index];
 							// Сохраняем старый дедлайн для оптимизации перестройки кучи
 							const uint64_t old = timer.deadline;
 							// Обновляем дедлайн таймера на новый рассчитанный дедлайн
 							timer.deadline = deadline;
 							/**
+							 * Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
+							 *
 							 * Оптимизация:
 							 * - Пропускаем перестройку кучи при незначительном сдвиге (погрешность планировщика + syscall всё равно съест разницу ≤2 мс)
 							 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
 							 */
-							// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
 							if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
 								// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 								__sift_up__(index);
@@ -14258,7 +14457,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -14266,7 +14465,6 @@ namespace timer {
 			// Выполняем постановку дедлайна
 			__set__(tm, eid, flag, rate);
 		}
-
 		/**
 		 * @brief Функция установки одного таймера
 		 *
@@ -14275,7 +14473,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -14288,7 +14486,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки двух таймеров
 		 *
@@ -14298,7 +14495,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static AWH_IO_URING_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14313,7 +14510,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки трёх таймеров
 		 *
@@ -14341,7 +14537,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки четырёх таймеров
 		 *
@@ -14372,7 +14567,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки пяти таймеров
 		 *
@@ -14406,7 +14600,6 @@ namespace timer {
 			 */
 			__rearm__(rate);
 		}
-
 		/**
 		 * @brief Функция установки шести таймеров
 		 *
@@ -14469,6 +14662,7 @@ namespace timer {
 				 *       чей дедлайн уже наступил, не перестанет быть истёкшим от того,
 				 *       что время замерено чуть раньше. Те, чей дедлайн наступит за
 				 *       время прохода, разберёт следующий вызов
+				 *
 				 */
 				const uint64_t moment = ::timer::now();
 				/**
@@ -14476,7 +14670,7 @@ namespace timer {
 				 */
 				while(!__awh_heap__.empty() && (__awh_heap__[0].deadline <= moment)){
 					// Извлекаем таймер с истёкшим дедлайном из кучи
-					Timer timer = ::move(__awh_heap__[0]);
+					timer_t timer = ::move(__awh_heap__[0]);
 					// Вычисляем индекс чанка для данного идентификатора события
 					index = (timer.eid >> 10);
 					// Вычисляем смещение внутри чанка для данного идентификатора события
@@ -14507,6 +14701,7 @@ namespace timer {
 					 *       границей вместо того, чтобы добавить свой: интервал срабатывал
 					 *       ровно один раз и больше не перезаряжался. Проявлялось только
 					 *       при двух и более таймерах - обмена при единственном не бывает
+					 *
 					 */
 					if((index < __awh_chunks__.size()) && (__awh_chunks__[index] != nullptr)){
 						// Устанавливаем значение слота в чанке для данного идентификатора таймера и смещения внутри чанка в -1, что означает отсутствие таймера
@@ -14532,6 +14727,7 @@ namespace timer {
 							 *          занимает. Поведение при этом остаётся прежним: одноразовый
 							 *          таймаут после срабатывания освобождается, интервал
 							 *          перезаряжается на следующий период.
+							 *
 							 */
 							case static_cast <uint8_t> (event::node_t::TIMEOUT):
 							// Если узел является интервалом
@@ -14604,7 +14800,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на чтение данных активный
 									if(peer->bandwidth().read.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на чтение данных
-										peer->bandwidthUse().read.timeout.status = event::status_t::NONE;
+										peer->bandwidthInitialize().read.timeout.status = event::status_t::NONE;
 										// Если активность на чтения данных установлена
 										if(peer->activity & ::activity::READ){
 											// Снимаем статус активности на чтение данных
@@ -14621,8 +14817,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -14630,6 +14825,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE) &&
 										   (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) &&
@@ -14648,7 +14844,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на запись данных активный
 									if(peer->bandwidth().write.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
-										peer->bandwidthUse().write.timeout.status = event::status_t::NONE;
+										peer->bandwidthInitialize().write.timeout.status = event::status_t::NONE;
 										// Если активность на запись данных установлена
 										if(peer->activity & ::activity::WRITE){
 											// Снимаем статус активности на запись данных
@@ -14665,8 +14861,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -14674,6 +14869,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE) &&
 										   (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) &&
@@ -14743,7 +14939,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на чтение данных активный
 									if(client->bandwidth().read.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на чтение данных
-										client->bandwidthUse().read.timeout.status = event::status_t::NONE;
+										client->bandwidthInitialize().read.timeout.status = event::status_t::NONE;
 										// Если активность на чтения данных установлена
 										if(client->activity & ::activity::READ){
 											// Снимаем статус активности на чтение данных
@@ -14760,8 +14956,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -14769,6 +14964,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE) &&
 										   (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) &&
@@ -14787,7 +14983,7 @@ namespace timer {
 									// Если статус таймаута на ограничение пропускной способности на запись данных активный
 									if(client->bandwidth().write.timeout.status == event::status_t::PENDING){
 										// Снимаем статус таймаута с состояния ограничения пропускной способности на запись данных
-										client->bandwidthUse().write.timeout.status = event::status_t::NONE;
+										client->bandwidthInitialize().write.timeout.status = event::status_t::NONE;
 										// Если активность на запись данных установлена
 										if(client->activity & ::activity::WRITE){
 											// Снимаем статус активности на запись данных
@@ -14804,8 +15000,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
 										 *          остаётся без подписки и без взведённого таймера, то есть
 										 *          глохнет навсегда
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -14813,6 +15008,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE) &&
 										   (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) &&
@@ -14915,6 +15111,7 @@ namespace timer {
 											 *          заведений назвал место дословно. Перестройка узла
 											 *          (`rebuild`) прежний дескриптор закрывает - здесь
 											 *          того не делалось
+											 *
 											 */
 											if(client->transfer.fd != net::invalid_socket_t){
 												// Закрываем прежний дескриптор события
@@ -14943,6 +15140,8 @@ namespace timer {
 															// Вызываем функцию обратного вызова для подключения
 															client->callbacks.connect(client->id, false);
 														/**
+														 * Возвращаем событие в состояние переподключения
+														 *
 														 * Попытка сорвалась - заводим следующую, и так без конца,
 														 * пока подключение не встанет либо вызывающий сам не удалит
 														 * событие
@@ -14956,7 +15155,7 @@ namespace timer {
 														 *          вредит: исчерпав его, событие умирает как раз
 														 *          тогда, когда связь вот-вот вернулась бы. Кому счёт
 														 *          попыток нужен, тот ведёт его над движком и сам
-														 *          удаляет событие
+														 *          удаляет событие.
 														 *
 														 * @note Подключение отвечает отказом сразу, а не ожиданием,
 														 *       когда ядро уже держит неудачную запись соседа: к
@@ -14972,7 +15171,6 @@ namespace timer {
 														 *          поэтому напрямую
 														 *
 														 */
-														// Возвращаем событие в состояние переподключения
 														client->state.status = event::status_t::RECONNECTED;
 														// Если задержка переподключения не установлена, берём пять секунд
 														if(client->timeouts.reconnect.delay == 0)
@@ -15013,8 +15211,7 @@ namespace timer {
 										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА, и
 										 *          тогда СЛУШАЮЩИЙ сокет глохнет навсегда: сервер перестаёт
 										 *          принимать подключения вовсе
-										 */
-										/**
+										 *
 										 * @warning Живость узла не отвечает на вопрос, ЖДЁТ ЛИ он события. Узел, придержанный
 										 *          ограничителем полосы, взводит таймер заново прямо в обработке: вернуть ему
 										 *          подписку значит снять придержку и пустить поток быстрее положенного предела.
@@ -15022,6 +15219,7 @@ namespace timer {
 										 *          подписку НАМЕРЕННО, по воле потребителя, и будить его нельзя тем более.
 										 *          Замерено щупом: из 1565 срабатываний 1336 приходились на узел
 										 *          с заново взведённым таймером, то есть ограничитель обходился молча
+										 *
 										 */
 										if((server->state.status != event::status_t::DESTROYED) && (server->state.status != event::status_t::GARBAGE) &&
 										   (server->state.status != event::status_t::PAUSED) && (server->state.status != event::status_t::CANCELLED) &&
@@ -15111,17 +15309,18 @@ namespace sctp {
 	 *
 	 */
 	static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, bool * finish = nullptr) noexcept;
+
 	/**
 	 * Размер головы настроек отправки, кладущейся перед данными записи очереди
 	 *
 	 * @note Настройки едут внутри записи, а не рядом с очередью: в ту же очередь
 	 *       пишет и вытягивающая модель, минуя отправку, и всякая череда настроек
 	 *       рядом с ней разъехалась бы молча
+	 *
 	 */
 	static constexpr size_t HEAD_SIZE = 24;
 	/**
 	 * Разряд признака незавершённости сообщения во флагах головы
-	 *
 	 */
 	static constexpr uint16_t HEAD_PARTIAL = 0x8000;
 
@@ -15145,6 +15344,7 @@ namespace sctp {
 		 *
 		 * @note Длину несёт сама голова, а не очередь: у потоковой очереди границ записей
 		 *       нет вовсе, и отличить голову от полезной нагрузки без длины нечем
+		 *
 		 */
 		::memcpy(buffer, &length, sizeof(length));
 		// Записываем номер потока
@@ -15190,6 +15390,7 @@ namespace sctp {
 	 * @brief Шаблон функции проверки, стоит ли повторить отправку позже
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15199,7 +15400,7 @@ namespace sctp {
 	 *          обращение столько не берёт. Отказом это не является: остаток надлежит
 	 *          положить в очередь и досылать по мере освобождения места. Считать
 	 *          такой ответ поломкой сокета значило бы рвать подключение на всяком
-	 *          крупном обмене - установлено опытом на отправке четырёх мегабайт
+	 *          крупном обмене - установлено опытом на отправке четырёх мегабайт.
 	 *
 	 * @param node узел события
 	 * @return     результат проверки
@@ -15227,20 +15428,26 @@ namespace sctp {
 		return false;
 	}
 	/**
+	 * @brief Шаблон функции получения свободного места очереди с поправкой на голову настроек
+	 *
+	 * @tparam T тип узла события
+	 *
+	 */
+	template <class T>
+	/**
 	 * @brief Функция получения свободного места очереди с поправкой на голову настроек
 	 *
 	 * @details Запись события SCTP несёт голову настроек отправки, и место под неё
 	 *          принадлежит очереди, а не отправителю. Вытягивающей модели поправка эта
 	 *          необходима: отданное источником назад не вернуть - копии у него нет, и
-	 *          обещав ёмкость без поправки, движок потерял бы хвост молча
+	 *          обещав ёмкость без поправки, движок потерял бы хвост молча.
 	 *
 	 * @param node  узел события
 	 * @param queue очередь отправки узла
 	 * @return      свободное место очереди за вычетом головы настроек
 	 *
 	 */
-	template <class T>
-	static size_t vacancy(T * node, net_queue_t & queue) noexcept {
+	static AWH_IO_URING_INLINE size_t vacancy(T * node, net_queue_t & queue) noexcept {
 		// Получаем количество свободного места в очереди
 		const size_t result = queue.available();
 		// Если событие работает по протоколу SCTP
@@ -15251,17 +15458,23 @@ namespace sctp {
 		return result;
 	}
 	/**
+	 * @brief Шаблон функции сброса обрамления записи очереди
+	 *
+	 * @tparam T тип узла события
+	 *
+	 */
+	template <class T>
+	/**
 	 * @brief Функция сброса обрамления записи очереди
 	 *
 	 * @details Зовётся там, где очередь опустошается насильно: остаток записи и признак
 	 *          завершения описывают содержимое очереди, и пережив её очистку, они заставили
-	 *          бы слив принять голову следующей записи за полезную нагрузку
+	 *          бы слив принять голову следующей записи за полезную нагрузку.
 	 *
 	 * @param node узел события
 	 *
 	 */
-	template <class T>
-	static void forget(T * node) noexcept {
+	static AWH_IO_URING_INLINE void forget(T * node) noexcept {
 		// Если набор параметров SCTP у узла заводился
 		if(node->transfer.sctp.has()){
 			// Сбрасываем остаток полезной нагрузки записи
@@ -15274,6 +15487,7 @@ namespace sctp {
 	 * @brief Шаблон функции постановки данных в очередь узла
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15300,6 +15514,7 @@ namespace sctp {
 			 *          вместе со своим куском целиком и непрерывно - иначе слив не
 			 *          отличит её от полезной нагрузки. Поэтому размер куска считается
 			 *          заранее: свободное непрерывное место за вычетом головы
+			 *
 			 */
 			if(node->state.type == event::type_t::STREAM){
 				// Получаем наибольший непрерывный свободный участок очереди
@@ -15325,6 +15540,7 @@ namespace sctp {
 	 * @brief Шаблон функции снятия головы настроек отправки с записи очереди
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15332,7 +15548,7 @@ namespace sctp {
 	 *
 	 * @details У события SCTP настройки уходят из головы в набор параметров узла,
 	 *          откуда их и возьмёт отправка, а буфер со размером сдвигаются на
-	 *          длину головы. У прочих событий не делается ничего
+	 *          длину головы. У прочих событий не делается ничего.
 	 *
 	 * @param node   узел события
 	 * @param buffer буфер данных записи очереди
@@ -15349,6 +15565,7 @@ namespace sctp {
 		 *
 		 * @note Там запись неделима и снимается целиком, поэтому голова лишь
 		 *       пропускается сдвигом указателя: счёт остатка ей не нужен
+		 *
 		 */
 		if(node->state.type != event::type_t::STREAM){
 			// Если голова в записи не умещается
@@ -15375,6 +15592,7 @@ namespace sctp {
 		 *
 		 * @note Пока остаток не исчерпан, всё выданное очередью - полезная нагрузка
 		 *       текущей записи. Исчерпан - следующие октеты суть новая голова
+		 *
 		 */
 		if(node->transfer.sctp.use().remaining > 0){
 			// Ограничиваем выдачу остатком текущей записи
@@ -15389,6 +15607,7 @@ namespace sctp {
 		 *       целиком и никогда не переносится через край буфера. Отдать же
 		 *       голову сокету как данные значило бы испортить обмен молча,
 		 *       поэтому здесь ничего не выдаётся вовсе
+		 *
 		 */
 		if(size < HEAD_SIZE){
 			// Обнуляем размер выдаваемых данных
@@ -15424,6 +15643,7 @@ namespace sctp {
 	 * @brief Шаблон функции учёта ушедших октетов записи очереди
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15431,13 +15651,13 @@ namespace sctp {
 	 *
 	 * @details Остаток записи ведётся счётчиком, а не выводится из размера очереди:
 	 *          в ту же очередь пишет и отправка, и вытягивание, отчего размер её
-	 *          растёт между сливами, и разность размеров о ходе слива не говорит
+	 *          растёт между сливами, и разность размеров о ходе слива не говорит.
 	 *
 	 * @param node  узел события
 	 * @param bytes количество ушедших октетов
 	 *
 	 */
-	static void drain(T * node, const size_t bytes) noexcept {
+	static AWH_IO_URING_INLINE void drain(T * node, const size_t bytes) noexcept {
 		// Если событие работает по протоколу SCTP
 		if(node->state.protocol == event::protocol_t::SCTP)
 			// Уменьшаем остаток полезной нагрузки записи на ушедшие октеты
@@ -15447,6 +15667,7 @@ namespace sctp {
 	 * @brief Шаблон функции включения режима явной границы записи
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15468,7 +15689,7 @@ namespace sctp {
 	 *            управляющих данных и sendmsg без них. Итог всюду один
 	 *
 	 *          Отсюда и правило: включать режим для целого сообщения НЕЛЬЗЯ - оно
-	 *          повисло бы неотправленным. Пробовал, набор проверок это и показал
+	 *          повисло бы неотправленным. Пробовал, набор проверок это и показал.
 	 *
 	 * @note Режим включается один раз на узел и остаётся включённым. Границу записи
 	 *       при этом безопасно передавать на каждом куске: ядро ставит её лишь по
@@ -15494,6 +15715,7 @@ namespace sctp {
 		 * @note Признак ставится независимо от исхода: он означает не «режим включён»,
 		 *       а «решение принято». Повторно тревожить ядро незачем ни при успехе,
 		 *       ни при отказе, да и предупреждение тогда выйдет одно, а не на каждый кусок
+		 *
 		 */
 		if(!end && !node->transfer.sctp.use().partial){
 			// Если включить режим явной границы записи не удалось
@@ -15510,6 +15732,7 @@ namespace sctp {
 	 * @brief Шаблон функции выдачи полученных данных потребителю
 	 *
 	 * @tparam T тип узла события
+	 *
 	 */
 	template <class T>
 	/**
@@ -15518,7 +15741,7 @@ namespace sctp {
 	 * @details Установлен отклик чтения с метаданными - данные и метаданные уходят
 	 *          одним вызовом; не установлен - всё идёт прежним общим откликом.
 	 *          Ветвление стоит на выдаче намеренно: путь чтения обязан быть один,
-	 *          иначе два разбора приёма начнут расходиться с первой же правки
+	 *          иначе два разбора приёма начнут расходиться с первой же правки.
 	 *
 	 * @param node   узел события
 	 * @param buffer буфер прочитанных данных
@@ -15555,7 +15778,7 @@ namespace io {
 	 *
 	 * @details Зовётся приходом завершения поданного чтения. Отдаёт порцию
 	 *          потребителю и подаёт следующую - в этом и состоит потоковый режим:
-	 *          цикл между порциями не удерживается
+	 *          цикл между порциями не удерживается.
 	 *
 	 * @param fs  узел файла, которому чтение принадлежит
 	 * @param res исход чтения: октеты при удаче, отрицательный код при отказе
@@ -15698,13 +15921,14 @@ namespace io {
 				 * Если кольцо годно, читаем файл асинхронно
 				 *
 				 * @details Отображение в память ниже удерживает поток цикла на
-				 * страничных отказах: они синхронны, и один медленный файл
-				 * задерживает все соединения разом. Кольцо позволяет подать чтение
-				 * и вернуться в цикл - исход придёт завершением, а следующая порция
-				 * подастся по его приходу, чем и выходит потоковый режим
+				 *          страничных отказах: они синхронны, и один медленный файл
+				 *          задерживает все соединения разом. Кольцо позволяет подать чтение
+				 *          и вернуться в цикл - исход придёт завершением, а следующая порция
+				 *          подастся по его приходу, чем и выходит потоковый режим.
 				 *
 				 * @note Отображение в память оставлено отходом: оно нужно, когда
-				 * кольцо не заведено либо чтение ведёт не поток цикла
+				 *       кольцо не заведено либо чтение ведёт не поток цикла
+				 *
 				 */
 				if(::fileio::usable(fs->fd)){
 					// Если чтение по файлу уже подано, ждём его исхода
@@ -15719,10 +15943,11 @@ namespace io {
 					 * Различаем дописывание от перезаписи по времени изменения
 					 *
 					 * @details Тот же порядок, что и у отображения в память: файл,
-					 * выросший в размере, дочитывается с сохранённого места, а файл
-					 * переписанный либо усечённый читается заново. Не различай мы
-					 * этих случаев, слежение за усечённым файлом замерло бы: чтение
-					 * с прежнего смещения давало бы ноль октетов бесконечно
+					 *          выросший в размере, дочитывается с сохранённого места, а файл
+					 *          переписанный либо усечённый читается заново. Не различай мы
+					 *          этих случаев, слежение за усечённым файлом замерло бы: чтение
+					 *          с прежнего смещения давало бы ноль октетов бесконечно.
+					 *
 					 */
 					if(fs->info.st_size > fs->offset)
 						// Запоминаем время последнего изменения файла
@@ -16103,7 +16328,6 @@ namespace io {
 							 * Сбрасываем значение errno перед чтением
 							 */
 							errno = 0;
-							// Выполняем чтение данных из IPC-сокета
 							/**
 							 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
 							 *
@@ -16111,6 +16335,7 @@ namespace io {
 							 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
 							 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
 							 *       описатель через него пропал бы молча
+							 *
 							 */
 							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Наводим указатель принятого на буфер приёма
@@ -16182,18 +16407,17 @@ namespace io {
 						}
 					// Если событие является блокирующим
 					} else {
-						// Выполняем чтение данных из IPC-сокета
-						const ssize_t /**
-							 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
-							 *
-							 * @note Приём через кольцо узлам межпроцессного обмена не заводится
-							 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
-							 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
-							 *       описатель через него пропал бы молча
-							 */
-							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
-							// Наводим указатель принятого на буфер приёма
-							::__awh_input__ = ::__awh_buffer__;
+						/**
+						 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
+						 *
+						 * @note Приём через кольцо узлам межпроцессного обмена не заводится
+						 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
+						 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
+						 *       описатель через него пропал бы молча
+						 */
+						const ssize_t bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+						// Наводим указатель принятого на буфер приёма
+						::__awh_input__ = ::__awh_buffer__;
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -16259,7 +16483,6 @@ namespace io {
 							 * Сбрасываем значение errno перед чтением
 							 */
 							errno = 0;
-							// Выполняем чтение данных из IPC-сокета
 							/**
 							 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
 							 *
@@ -16267,6 +16490,7 @@ namespace io {
 							 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
 							 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
 							 *       описатель через него пропал бы молча
+							 *
 							 */
 							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Наводим указатель принятого на буфер приёма
@@ -16338,18 +16562,18 @@ namespace io {
 						}
 					// Если событие является блокирующим
 					} else {
-						// Выполняем чтение данных из IPC-сокета
-						const ssize_t /**
-							 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
-							 *
-							 * @note Приём через кольцо узлам межпроцессного обмена не заводится
-							 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
-							 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
-							 *       описатель через него пропал бы молча
-							 */
-							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
-							// Наводим указатель принятого на буфер приёма
-							::__awh_input__ = ::__awh_buffer__;
+						/**
+						 * Выполняем чтение данных из IPC-сокета вместе с приехавшими описателями
+						 *
+						 * @note Приём через кольцо узлам межпроцессного обмена не заводится
+						 *       вовсе - он годен лишь узлам, ведущим обмен данными, - потому
+						 *       обращение идёт прямое. Служебных данных кольцо не отдаёт, и
+						 *       описатель через него пропал бы молча
+						 *
+						 */
+						const ssize_t bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+						// Наводим указатель принятого на буфер приёма
+						::__awh_input__ = ::__awh_buffer__;
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -16436,7 +16660,8 @@ namespace io {
 		 * @details Запрет ставится до получения данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::read > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -16604,7 +16829,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->limitedRead()){
 										// Достаточное количество токенов для получения данных
-										double tokens = 0.;
+										double tokens = .0;
 										/**
 										 * Определяем семейство адресов
 										 */
@@ -16621,7 +16846,7 @@ namespace io {
 											break;
 										}
 										// Уменьшаем количество используемых токенов
-										peer->bandwidthUse().read.tokens -= static_cast <double> (bytes);
+										peer->bandwidthInitialize().read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
 										if(peer->bandwidth().read.tokens > tokens){
 											// Если чтение данных не активно в данный момент
@@ -16634,7 +16859,7 @@ namespace io {
 										// Если таймаут на получение данных не активирован
 										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthUse().read.limit)) * 1000.);
+											peer->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthInitialize().read.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -16642,12 +16867,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на получение данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -16657,16 +16882,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(peer, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(peer, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -16679,7 +16904,7 @@ namespace io {
 						// Если нет лимита для чтения данных из сокета
 						} else {
 							// Устанавливаем минимальное значение времени в 10 миллисекунду
-							peer->bandwidthUse().read.timeout.delay = 10;
+							peer->bandwidthInitialize().read.timeout.delay = 10;
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
@@ -16687,12 +16912,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+									::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+									::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 								break;
 							}
 						}
@@ -16791,16 +17016,16 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0){
-									// Списываем объём чтения данных из общего ведра токенов
-									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-									if(delay > 0){
-										// Откладываем узел до пополнения общего ведра токенов
-										::io::postpone(peer, event::limiting_t::INGRESS, delay);
-										// Выходим из цикла
-										break;
-									}
+								// Списываем объём чтения данных из общего ведра токенов
+								const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+								// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+								if(delay > 0){
+									// Откладываем узел до пополнения общего ведра токенов
+									::io::postpone(peer, event::limiting_t::INGRESS, delay);
+									// Выходим из цикла
+									break;
 								}
+							}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -16912,6 +17137,7 @@ namespace io {
 										 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 										 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 										 *          вечно, а потребитель не получил бы ни отключения, ни итога
+										 *
 										 */
 										if(finish){
 											// Выполняем удаление узла
@@ -16940,7 +17166,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных из сокета
 								if(peer->limitedRead()){
 									// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-									peer->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().read.limit)) * 1000.);
+									peer->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().read.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -16948,12 +17174,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Обновляем таймаут на получение данных
-											::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+											::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Обновляем таймаут на получение данных
-											::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED);
+											::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().read.timeout}, peer->id, event::rate_t::DEFERRED);
 										break;
 									}
 									// Выходим из цикла
@@ -16962,16 +17188,16 @@ namespace io {
 								} else {
 									// Если установлено ограничение пропускной способности на чтение данных
 									if(::bandwidth::read > 0){
-											// Списываем объём чтения данных из общего ведра токенов
-											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-											if(delay > 0){
-												// Откладываем узел до пополнения общего ведра токенов
-												::io::postpone(peer, event::limiting_t::INGRESS, delay);
-												// Выходим из цикла
-												break;
-											}
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(peer, event::limiting_t::INGRESS, delay);
+											// Выходим из цикла
+											break;
 										}
+									}
 								}
 							// Если произошёл дисконнект
 							} else {
@@ -17061,6 +17287,7 @@ namespace io {
 									 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 									 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 									 *          вечно, а потребитель не получил бы ни отключения, ни итога
+									 *
 									 */
 									if(finish){
 										// Выполняем удаление узла
@@ -17088,16 +17315,16 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0){
-									// Списываем объём чтения данных из общего ведра токенов
-									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-									if(delay > 0){
-										// Откладываем узел до пополнения общего ведра токенов
-										::io::postpone(peer, event::limiting_t::INGRESS, delay);
-										// Выходим из цикла
-										break;
-									}
+								// Списываем объём чтения данных из общего ведра токенов
+								const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+								// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+								if(delay > 0){
+									// Откладываем узел до пополнения общего ведра токенов
+									::io::postpone(peer, event::limiting_t::INGRESS, delay);
+									// Выходим из цикла
+									break;
 								}
+							}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -17120,6 +17347,7 @@ namespace io {
 					 *       его, ни взвести заново нельзя - первое оставило бы вопрос без
 					 *       ожидания навсегда, второе подарило бы ему лишний срок за счёт
 					 *       чужого ответа
+					 *
 					 */
 					if(::timer::__continued__(peer->timeouts.read.id, peer->id))
 						// Оставляем срок ожидания нетронутым
@@ -17221,6 +17449,7 @@ namespace io {
 			 *          октета заголовка IP, после чего пакета не узнавал вовсе:
 			 *          «packet from the tunnel did not match the expected IP address
 			 *          format». Чтение из туннеля не работало ни разу
+			 *
 			 */
 			uint32_t family = 0;
 			// Буфер ввода-вывода пакета туннеля
@@ -17457,10 +17686,13 @@ namespace io {
 								 * @details Система шлёт в устройство своё: подняв его, ядро само заводит
 								 *          адрес канальной связи IPv6 и рассылает извещения соседям. Узлу,
 								 *          настроенному на IPv4, они не адресованы - их надлежит молча
-								 *          отбросить, а не валить узел отказом
+								 *          отбросить, а не валить узел отказом.
+								 *
 								 */
 								} else if(tunnel->state.family != event::family_t::IPV4) {
-									// Пакет чужого семейства отбрасываем молча
+									/**
+									 * Пакет чужого семейства отбрасываем молча
+									 */
 								// Если данные не соответствуют IPv4-пакету
 								} else {
 									// Если установлена функция обратного вызова
@@ -17650,11 +17882,14 @@ namespace io {
 									 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
 									 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
 									 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+									 *
 									 */
 									} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
 									          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
 									          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
-										// Пакет служебного обмена узла разбору не подлежит
+										/**
+										 * Пакет служебного обмена узла разбору не подлежит
+										 */
 									// Если адрес сервера не совпадает с настройками туннеля
 									} else {
 										// Если установлена функция обратного вызова
@@ -17690,10 +17925,13 @@ namespace io {
 								 * Пакет иного семейства нарушением не считается
 								 *
 								 * @details Узлу, настроенному на IPv6, пакеты IPv4 не адресованы - их
-								 *          надлежит молча отбросить, а не валить узел отказом
+								 *          надлежит молча отбросить, а не валить узел отказом.
+								 *
 								 */
 								} else if(tunnel->state.family != event::family_t::IPV6) {
-									// Пакет чужого семейства отбрасываем молча
+									/**
+									 * Пакет чужого семейства отбрасываем молча
+									 */
 								// Если данные не соответствуют IPv6-пакету
 								} else {
 									// Если установлена функция обратного вызова
@@ -17772,6 +18010,8 @@ namespace io {
 								error = event::error_t::INVALID_SOCKET;
 							break;
 							/**
+							 * Если пакет негоден для устройства
+							 *
 							 * Негодный пакет НЕ равен негодному устройству
 							 *
 							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -17784,7 +18024,6 @@ namespace io {
 							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 							 * с третьей машины, стало 0, а сервер жив
 							 */
-							// Если пакет негоден для устройства
 							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID;
@@ -18035,10 +18274,13 @@ namespace io {
 							 * @details Система шлёт в устройство своё: подняв его, ядро само заводит
 							 *          адрес канальной связи IPv6 и рассылает извещения соседям. Узлу,
 							 *          настроенному на IPv4, они не адресованы - их надлежит молча
-							 *          отбросить, а не валить узел отказом
+							 *          отбросить, а не валить узел отказом.
+							 *
 							 */
 							} else if(tunnel->state.family != event::family_t::IPV4) {
-								// Пакет чужого семейства отбрасываем молча
+								/**
+								 * Пакет чужого семейства отбрасываем молча
+								 */
 							// Если данные не соответствуют IPv4-пакету
 							} else {
 								// Если установлена функция обратного вызова
@@ -18228,11 +18470,14 @@ namespace io {
 								 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
 								 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
 								 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+								 *
 								 */
 								} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
 								          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
 								          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
-									// Пакет служебного обмена узла разбору не подлежит
+									/**
+									 * Пакет служебного обмена узла разбору не подлежит
+									 */
 								// Если адрес сервера не совпадает с настройками туннеля
 								} else {
 									// Если установлена функция обратного вызова
@@ -18268,10 +18513,13 @@ namespace io {
 							 * Пакет иного семейства нарушением не считается
 							 *
 							 * @details Узлу, настроенному на IPv6, пакеты IPv4 не адресованы - их
-							 *          надлежит молча отбросить, а не валить узел отказом
+							 *          надлежит молча отбросить, а не валить узел отказом.
+							 *
 							 */
 							} else if(tunnel->state.family != event::family_t::IPV6) {
-								// Пакет чужого семейства отбрасываем молча
+								/**
+								 * Пакет чужого семейства отбрасываем молча
+								 */
 							// Если данные не соответствуют IPv6-пакету
 							} else {
 								// Если установлена функция обратного вызова
@@ -18350,6 +18598,8 @@ namespace io {
 							error = event::error_t::INVALID_SOCKET;
 						break;
 						/**
+						 * Если пакет негоден для устройства
+						 *
 						 * Негодный пакет НЕ равен негодному устройству
 						 *
 						 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -18362,7 +18612,6 @@ namespace io {
 						 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 						 * с третьей машины, стало 0, а сервер жив
 						 */
-						// Если пакет негоден для устройства
 						case EINVAL:
 							// Устанавливаем идентификатор полученной ошибки
 							error = event::error_t::INVALID;
@@ -18443,7 +18692,8 @@ namespace io {
 		 * @details Запрет ставится до получения данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::read > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -18611,7 +18861,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Достаточное количество токенов для получения данных
-										double tokens = 0.;
+										double tokens = .0;
 										/**
 										 * Определяем семейство адресов
 										 */
@@ -18628,7 +18878,7 @@ namespace io {
 											break;
 										}
 										// Уменьшаем количество используемых токенов
-										client->bandwidthUse().read.tokens -= static_cast <double> (bytes);
+										client->bandwidthInitialize().read.tokens -= static_cast <double> (bytes);
 										// Если токены для получения данных ещё доступны
 										if(client->bandwidth().read.tokens >= tokens){
 											// Если чтение данных не активно в данный момент
@@ -18641,7 +18891,7 @@ namespace io {
 										// Если таймаут на получение данных не активирован
 										} else {
 											// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-											client->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().read.limit)) * 1000.);
+											client->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().read.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -18649,12 +18899,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на получение данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -18664,16 +18914,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -18686,7 +18936,7 @@ namespace io {
 						// Если нет лимита для чтения данных из сокета
 						} else {
 							// Устанавливаем минимальное значение времени в 10 миллисекунд
-							client->bandwidthUse().read.timeout.delay = 10;
+							client->bandwidthInitialize().read.timeout.delay = 10;
 							/**
 							 * Определяем тип таймера для событий сетевого движка
 							 */
@@ -18694,12 +18944,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+									::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+									::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 								break;
 							}
 						}
@@ -18798,16 +19048,16 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0){
-									// Списываем объём чтения данных из общего ведра токенов
-									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-									if(delay > 0){
-										// Откладываем узел до пополнения общего ведра токенов
-										::io::postpone(client, event::limiting_t::INGRESS, delay);
-										// Выходим из цикла
-										break;
-									}
+								// Списываем объём чтения данных из общего ведра токенов
+								const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+								// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+								if(delay > 0){
+									// Откладываем узел до пополнения общего ведра токенов
+									::io::postpone(client, event::limiting_t::INGRESS, delay);
+									// Выходим из цикла
+									break;
 								}
+							}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -19045,7 +19295,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-										client->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().read.limit)) * 1000.);
+										client->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().read.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -19053,12 +19303,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 										}
 										// Выходим из цикла
@@ -19067,16 +19317,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -19293,16 +19543,16 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(client, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(client, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -19548,7 +19798,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-										client->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().read.limit)) * 1000.);
+										client->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().read.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -19556,12 +19806,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 										}
 										// Выходим из цикла
@@ -19570,16 +19820,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -19809,16 +20059,16 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(client, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(client, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -19919,6 +20169,7 @@ namespace io {
 										 *          «связи нет». Безусловная запись стирала опознаватель,
 										 *          оповещением о заведении связи полученный, и запросы
 										 *          свойств связи отвечали отказом «Invalid argument»
+										 *
 										 */
 										if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
 											// Запоминаем идентификатор ассоциации SCTP
@@ -19934,9 +20185,9 @@ namespace io {
 										}
 										// Если мы получили уведомления SCTP
 										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
+											// Обрабатываем события SCTP
 											::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
@@ -19945,6 +20196,7 @@ namespace io {
 											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 *
 											 */
 											if(finish){
 												// Выполняем удаление узла
@@ -19973,7 +20225,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-										client->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().read.limit)) * 1000.);
+										client->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().read.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -19981,12 +20233,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 										}
 										// Выходим из цикла
@@ -19995,16 +20247,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -20080,6 +20332,7 @@ namespace io {
 									 *          «связи нет». Безусловная запись стирала опознаватель,
 									 *          оповещением о заведении связи полученный, и запросы
 									 *          свойств связи отвечали отказом «Invalid argument»
+									 *
 									 */
 									if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
 										// Запоминаем идентификатор ассоциации SCTP
@@ -20106,6 +20359,7 @@ namespace io {
 										 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 										 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 										 *          вечно, а потребитель не получил бы ни отключения, ни итога
+										 *
 										 */
 										if(finish){
 											// Выполняем удаление узла
@@ -20133,16 +20387,16 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(client, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(client, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -20246,6 +20500,7 @@ namespace io {
 										 *          «связи нет». Безусловная запись стирала опознаватель,
 										 *          оповещением о заведении связи полученный, и запросы
 										 *          свойств связи отвечали отказом «Invalid argument»
+										 *
 										 */
 										if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
 											// Запоминаем идентификатор ассоциации SCTP
@@ -20272,6 +20527,7 @@ namespace io {
 											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 *
 											 */
 											if(finish){
 												// Выполняем удаление узла
@@ -20300,7 +20556,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(client->limitedRead()){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-										client->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().read.limit)) * 1000.);
+										client->bandwidthInitialize().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().read.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -20308,12 +20564,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().read.timeout}, client->id, event::rate_t::DEFERRED);
 											break;
 										}
 										// Выходим из цикла
@@ -20322,16 +20578,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(client, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(client, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -20414,6 +20670,7 @@ namespace io {
 									 *          «связи нет». Безусловная запись стирала опознаватель,
 									 *          оповещением о заведении связи полученный, и запросы
 									 *          свойств связи отвечали отказом «Invalid argument»
+									 *
 									 */
 									if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
 										// Запоминаем идентификатор ассоциации SCTP
@@ -20429,9 +20686,9 @@ namespace io {
 									}
 									// Если мы получили уведомления SCTP
 									if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-										// Обрабатываем события SCTP
 										// Признак завершения связи, выставляемый разбором известия
 										bool finish = false;
+										// Обрабатываем события SCTP
 										::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 										/**
 										 * Если связь завершена известием
@@ -20440,6 +20697,7 @@ namespace io {
 										 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
 										 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
 										 *          вечно, а потребитель не получил бы ни отключения, ни итога
+										 *
 										 */
 										if(finish){
 											// Выполняем удаление узла
@@ -20467,16 +20725,16 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(client, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(client, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -20500,6 +20758,7 @@ namespace io {
 					 *       его, ни взвести заново нельзя - первое оставило бы вопрос без
 					 *       ожидания навсегда, второе подарило бы ему лишний срок за счёт
 					 *       чужого ответа
+					 *
 					 */
 					if(::timer::__continued__(client->timeouts.read.id, client->id))
 						// Оставляем срок ожидания нетронутым
@@ -20589,7 +20848,8 @@ namespace io {
 		 * @details Запрет ставится до получения данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::read > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -20859,16 +21119,16 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0){
-												// Списываем объём чтения данных из общего ведра токенов
-												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-												if(delay > 0){
-													// Откладываем узел до пополнения общего ведра токенов
-													::io::postpone(server, event::limiting_t::INGRESS, delay);
-													// Выходим из цикла
-													break;
-												}
+											// Списываем объём чтения данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(server, event::limiting_t::INGRESS, delay);
+												// Выходим из цикла
+												break;
 											}
+										}
 									}
 									/**
 									 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
@@ -21124,16 +21384,16 @@ namespace io {
 								result = ::io::origin(server, ::__awh_input__, bytes, io, eth, addr);
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0){
-										// Списываем объём чтения данных из общего ведра токенов
-										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
-										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
-										if(delay > 0){
-											// Откладываем узел до пополнения общего ведра токенов
-											::io::postpone(server, event::limiting_t::INGRESS, delay);
-											// Выходим из цикла
-											break;
-										}
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(server, event::limiting_t::INGRESS, delay);
+										// Выходим из цикла
+										break;
 									}
+								}
 							// Если произошёл дисконнект
 							} else {
 								// Идентификатор полученной ошибки
@@ -21316,6 +21576,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(ipc->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -21483,6 +21744,7 @@ namespace io {
 									 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 									 *       движок держит взведённым. Спросить источник раньше значило бы копить
 									 *       данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
 									 */
 									if(ipc->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -21621,6 +21883,7 @@ namespace io {
 									 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 									 *       движок держит взведённым. Спросить источник раньше значило бы копить
 									 *       данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
 									 */
 									if(ipc->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -21670,6 +21933,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(ipc->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -21782,7 +22046,8 @@ namespace io {
 		 * @details Запрет ставится до передачи данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::write > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -21821,11 +22086,12 @@ namespace io {
 							 * Если после снятия головы отправлять нечего
 							 *
 							 * @details Запись очереди вправе нести одну голову настроек: полезная нагрузка
-							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом
+							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом.
 							 *
 							 * @warning Отправку нулевой длины заводить НЕЛЬЗЯ: система вправе ответить на неё
 							 *          нулём, а нуль движок трактует давно закрытым сокетом - и сносит живую
 							 *          связь. Поймано опытом
+							 *
 							 */
 							if(size == 0)
 								// Выходим, отложив отправку до следующего оборота
@@ -21862,6 +22128,18 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									/**
+									 * Узлу с ограничителем полосы отправляем обычным обращением
+									 *
+									 * @note Ограничитель списывает токены там, где отправка и происходит, а
+									 *       родная отправка отвечает исходом оборотом позже - учёт его тогда
+									 *       отстаёт, и полоса недобирается до заданной. Установлено прогоном:
+									 *       набор терял `IoBandwidthDuplexTest`
+									 *
+									 */
+									else if((::bandwidth::write > 0) || peer->hasBandwidth())
+										// Выполняем отправку данных в TCP/IP сокет
+										bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+									/**
 									 * Выполняем отправку данных в TCP/IP сокет силами ядра
 									 *
 									 * @note Отправка эта подаётся в кольцо и уходит к ядру тем
@@ -21869,19 +22147,8 @@ namespace io {
 									 *       своего обращения у неё не остаётся вовсе. Отвечает
 									 *       она ровно тем же, чем ответило бы обычное
 									 *       обращение, оттого разбор ниже и остался прежним
-									 */
-									/**
-									 * Узлу с ограничителем полосы отправляем обычным обращением
 									 *
-									 * @note Ограничитель списывает токены там, где отправка и происходит, а
-									 *       родная отправка отвечает исходом оборотом позже - учёт его тогда
-									 *       отстаёт, и полоса недобирается до заданной. Установлено прогоном:
-									 *       набор терял `IoBandwidthDuplexTest`
 									 */
-									else if((::bandwidth::write > 0) || peer->hasBandwidth())
-										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем отправку данных в TCP/IP сокет силами ядра
 									else bytes = ::drain::transmit(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -21990,6 +22257,7 @@ namespace io {
 														 * @warning Обход очереди здесь идёт до её опустошения, а снятие записи ведётся по
 														 *          размеру: нулевой размер не двигает очередь ни на октет, и обход
 														 *          становится вечным. Выходим, оставляя остаток следующему обороту
+														 *
 														 */
 														if(size == 0)
 															// Прекращаем обход очереди
@@ -22033,7 +22301,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -22091,6 +22359,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(peer->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22106,13 +22375,13 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										peer->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth().write.tokens < tokens){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+												peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -22120,12 +22389,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -22155,7 +22424,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								} else if(!peer->transfer.queue.empty()) {
 									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthUse().write.tokens) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+									peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthInitialize().write.tokens) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -22164,7 +22433,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::simple::set(
-												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
 												peer->id, event::rate_t::DEFERRED
 											);
@@ -22173,7 +22442,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::difficult::set(
-												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
 												peer->id, event::rate_t::DEFERRED
 											);
@@ -22205,6 +22474,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(peer->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22265,11 +22535,12 @@ namespace io {
 							 * Если после снятия головы отправлять нечего
 							 *
 							 * @details Запись очереди вправе нести одну голову настроек: полезная нагрузка
-							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом
+							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом.
 							 *
 							 * @warning Отправку нулевой длины заводить НЕЛЬЗЯ: система вправе ответить на неё
 							 *          нулём, а нуль движок трактует давно закрытым сокетом - и сносит живую
 							 *          связь. Поймано опытом
+							 *
 							 */
 							if(size == 0)
 								// Выходим, отложив отправку до следующего оборота
@@ -22358,6 +22629,7 @@ namespace io {
 													 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 													 *       движок держит взведённым. Спросить источник раньше значило бы копить
 													 *       данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
 													 */
 													if(peer->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22432,6 +22704,7 @@ namespace io {
 														 * @warning Обход очереди здесь идёт до её опустошения, а снятие записи ведётся по
 														 *          размеру: нулевой размер не двигает очередь ни на октет, и обход
 														 *          становится вечным. Выходим, оставляя остаток следующему обороту
+														 *
 														 */
 														if(size == 0)
 															// Прекращаем обход очереди
@@ -22497,6 +22770,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(peer->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22512,13 +22786,13 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										peer->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth().write.tokens < static_cast <double> (size)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+												peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -22526,12 +22800,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -22561,7 +22835,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								} else if(!peer->transfer.queue.empty()) {
 									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+									peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -22570,7 +22844,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::simple::set(
-												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
 												peer->id, event::rate_t::DEFERRED
 											);
@@ -22579,7 +22853,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::difficult::set(
-												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
 												peer->id, event::rate_t::DEFERRED
 											);
@@ -22609,6 +22883,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(peer->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22691,7 +22966,8 @@ namespace io {
 		 * @details Запрет ставится до передачи данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::write > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -22810,6 +23086,7 @@ namespace io {
 													 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 													 *       движок держит взведённым. Спросить источник раньше значило бы копить
 													 *       данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
 													 */
 													if(origin->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -22943,6 +23220,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(origin->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23050,6 +23328,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(origin->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23139,6 +23418,7 @@ namespace io {
 				 *          него, признаком `IFF_NO_PI`. Прежде запись предваряла пакет
 				 *          четырёхоктетным словом семейства, и в устройство уходил пакет
 				 *          с четырьмя лишними октетами впереди
+				 *
 				 */
 				struct iovec iov[1];
 				// Размер данных для извлечения из очереди
@@ -23176,6 +23456,7 @@ namespace io {
 							 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 							 *       движок держит взведённым. Спросить источник раньше значило бы копить
 							 *       данные впрок, а весь смысл вытягивания в обратном направлении
+							 *
 							 */
 							if(tunnel->callbacks.source != nullptr)
 								// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23216,6 +23497,7 @@ namespace io {
 									 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 									 *       движок держит взведённым. Спросить источник раньше значило бы копить
 									 *       данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
 									 */
 									if(tunnel->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23240,6 +23522,8 @@ namespace io {
 								error = event::error_t::INVALID_SOCKET;
 							break;
 							/**
+							 * Если пакет негоден для устройства
+							 *
 							 * Негодный пакет НЕ равен негодному устройству
 							 *
 							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -23252,7 +23536,6 @@ namespace io {
 							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 							 * с третьей машины, стало 0, а сервер жив
 							 */
-							// Если пакет негоден для устройства
 							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID;
@@ -23332,7 +23615,8 @@ namespace io {
 		 * @details Запрет ставится до передачи данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::write > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -23371,11 +23655,12 @@ namespace io {
 							 * Если после снятия головы отправлять нечего
 							 *
 							 * @details Запись очереди вправе нести одну голову настроек: полезная нагрузка
-							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом
+							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом.
 							 *
 							 * @warning Отправку нулевой длины заводить НЕЛЬЗЯ: система вправе ответить на неё
 							 *          нулём, а нуль движок трактует давно закрытым сокетом - и сносит живую
 							 *          связь. Поймано опытом
+							 *
 							 */
 							if(size == 0)
 								// Выходим, отложив отправку до следующего оборота
@@ -23412,6 +23697,18 @@ namespace io {
 											client->transfer.sctp.use().complete
 										);
 									/**
+									 * Узлу с ограничителем полосы отправляем обычным обращением
+									 *
+									 * @note Ограничитель списывает токены там, где отправка и происходит, а
+									 *       родная отправка отвечает исходом оборотом позже - учёт его тогда
+									 *       отстаёт, и полоса недобирается до заданной. Установлено прогоном:
+									 *       набор терял `IoBandwidthDuplexTest`
+									 *
+									 */
+									else if((::bandwidth::write > 0) || client->hasBandwidth())
+										// Выполняем отправку данных в TCP/IP сокет
+										bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+									/**
 									 * Выполняем отправку данных в TCP/IP сокет силами ядра
 									 *
 									 * @note Отправка эта подаётся в кольцо и уходит к ядру тем
@@ -23419,19 +23716,8 @@ namespace io {
 									 *       своего обращения у неё не остаётся вовсе. Отвечает
 									 *       она ровно тем же, чем ответило бы обычное
 									 *       обращение, оттого разбор ниже и остался прежним
-									 */
-									/**
-									 * Узлу с ограничителем полосы отправляем обычным обращением
 									 *
-									 * @note Ограничитель списывает токены там, где отправка и происходит, а
-									 *       родная отправка отвечает исходом оборотом позже - учёт его тогда
-									 *       отстаёт, и полоса недобирается до заданной. Установлено прогоном:
-									 *       набор терял `IoBandwidthDuplexTest`
 									 */
-									else if((::bandwidth::write > 0) || client->hasBandwidth())
-										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
-									// Выполняем отправку данных в TCP/IP сокет силами ядра
 									else bytes = ::drain::transmit(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -23540,6 +23826,7 @@ namespace io {
 														 * @warning Обход очереди здесь идёт до её опустошения, а снятие записи ведётся по
 														 *          размеру: нулевой размер не двигает очередь ни на октет, и обход
 														 *          становится вечным. Выходим, оставляя остаток следующему обороту
+														 *
 														 */
 														if(size == 0)
 															// Прекращаем обход очереди
@@ -23583,7 +23870,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -23641,6 +23928,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23656,13 +23944,13 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										client->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										client->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth().write.tokens < tokens){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -23670,12 +23958,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -23705,7 +23993,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
 									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+									client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((tokens - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -23714,7 +24002,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::simple::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -23723,7 +24011,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::difficult::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -23755,6 +24043,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23817,11 +24106,12 @@ namespace io {
 							 * Если после снятия головы отправлять нечего
 							 *
 							 * @details Запись очереди вправе нести одну голову настроек: полезная нагрузка
-							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом
+							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом.
 							 *
 							 * @warning Отправку нулевой длины заводить НЕЛЬЗЯ: система вправе ответить на неё
 							 *          нулём, а нуль движок трактует давно закрытым сокетом - и сносит живую
 							 *          связь. Поймано опытом
+							 *
 							 */
 							if(size == 0)
 								// Выходим, отложив отправку до следующего оборота
@@ -23914,6 +24204,7 @@ namespace io {
 													 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 													 *       движок держит взведённым. Спросить источник раньше значило бы копить
 													 *       данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
 													 */
 													if(client->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -23988,6 +24279,7 @@ namespace io {
 														 * @warning Обход очереди здесь идёт до её опустошения, а снятие записи ведётся по
 														 *          размеру: нулевой размер не двигает очередь ни на октет, и обход
 														 *          становится вечным. Выходим, оставляя остаток следующему обороту
+														 *
 														 */
 														if(size == 0)
 															// Прекращаем обход очереди
@@ -24053,6 +24345,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24068,13 +24361,13 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										client->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										client->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth().write.tokens < static_cast <double> (size)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -24082,12 +24375,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -24117,7 +24410,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
 									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+									client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -24126,7 +24419,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::simple::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -24135,7 +24428,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::difficult::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -24165,6 +24458,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24225,11 +24519,12 @@ namespace io {
 							 * Если после снятия головы отправлять нечего
 							 *
 							 * @details Запись очереди вправе нести одну голову настроек: полезная нагрузка
-							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом
+							 *          ложится следующим куском, и до неё дело дойдёт ближайшим оборотом.
 							 *
 							 * @warning Отправку нулевой длины заводить НЕЛЬЗЯ: система вправе ответить на неё
 							 *          нулём, а нуль движок трактует давно закрытым сокетом - и сносит живую
 							 *          связь. Поймано опытом
+							 *
 							 */
 							if(size == 0)
 								// Выходим, отложив отправку до следующего оборота
@@ -24345,6 +24640,7 @@ namespace io {
 													 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 													 *       движок держит взведённым. Спросить источник раньше значило бы копить
 													 *       данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
 													 */
 													if(client->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24419,6 +24715,7 @@ namespace io {
 														 * @warning Обход очереди здесь идёт до её опустошения, а снятие записи ведётся по
 														 *          размеру: нулевой размер не двигает очередь ни на октет, и обход
 														 *          становится вечным. Выходим, оставляя остаток следующему обороту
+														 *
 														 */
 														if(size == 0)
 															// Прекращаем обход очереди
@@ -24484,6 +24781,7 @@ namespace io {
 											 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 											 *       движок держит взведённым. Спросить источник раньше значило бы копить
 											 *       данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24499,13 +24797,13 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										client->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										client->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth().write.tokens < static_cast <double> (size)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -24513,12 +24811,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -24548,7 +24846,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								} else if(!client->transfer.queue.empty()) {
 									// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+									client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -24557,7 +24855,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::simple::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -24566,7 +24864,7 @@ namespace io {
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем и обновляем таймаут на ожидание записи данных
 											::timer::difficult::set(
-												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
+												{::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
 												client->id, event::rate_t::DEFERRED
 											);
@@ -24596,6 +24894,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24678,7 +24977,8 @@ namespace io {
 		 * @details Запрет ставится до передачи данных, а не после: списание
 		 *          постфактум долг лишь учитывает, а следующий оборот цикла
 		 *          передавал бы снова, не глядя на него. Цикл событий при этом
-		 *          продолжает работу и обслуживает все прочие узлы
+		 *          продолжает работу и обслуживает все прочие узлы.
+		 *
 		 */
 		if(::bandwidth::write > 0){
 			// Получаем время отдачи долга общего ведра токенов
@@ -24813,6 +25113,7 @@ namespace io {
 										 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 										 *       движок держит взведённым. Спросить источник раньше значило бы копить
 										 *       данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
 										 */
 										if(origin->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -24908,6 +25209,7 @@ namespace io {
 												 *       есть, отправлять и так есть чего, а событие готовности сокета к записи
 												 *       движок держит взведённым. Спросить источник раньше значило бы копить
 												 *       данные впрок, а весь смысл вытягивания в обратном направлении
+												 *
 												 */
 												if(origin->callbacks.source != nullptr)
 													// Вытягиваем следующую порцию данных из источника и отправляем её
@@ -25046,7 +25348,7 @@ namespace io {
 	 *
 	 * @details До этой глубины возвратный заход идёт быстрым путём - пишет в сокет
 	 *          немедленно. Дойдя до предела, отправка ОТКЛАДЫВАЕТСЯ: данные ложатся
-	 *          в очередь, и запись по ним пойдёт ближайшим оборотом цикла
+	 *          в очередь, и запись по ним пойдёт ближайшим оборотом цикла.
 	 *
 	 * @warning Число замером НЕ подтверждено и подтверждено быть не может: настоящая
 	 *          глубина срыва зависит от размера кадра и от того, кто ещё лежит на
@@ -25060,14 +25362,14 @@ namespace io {
 	 *
 	 * @details Отправка зовёт отклик записи СИНХРОННО, а отклик вправе долить очередь
 	 *          новой отправкой. Счёт ведётся в одном месте - у самой отправки, - потому
-	 *          что мест, где отклик записи зовётся, полторы сотни
+	 *          что мест, где отклик записи зовётся, полторы сотни.
 	 *
 	 * @note Счётчик поточно-местный: отправку вправе звать не только поток цикла
 	 *
 	 * @return ссылка на счётчик глубины текущего потока
 	 *
 	 */
-	static uint16_t & depth() noexcept {
+	static AWH_IO_URING_INLINE uint16_t & depth() noexcept {
 		// Счётчик глубины возвратного захода в отправку
 		static thread_local uint16_t result = 0;
 		// Выводим счётчик глубины
@@ -25080,7 +25382,7 @@ namespace io {
 	 *          записи. Когда отклик доливает очередь новой отправкой, а очередь к тому
 	 *          мигу снова пуста, всё повторяется - и цепочка уходит вглубь стека ровно
 	 *          настолько, сколько успевает проглотить буфер сокета, прежде чем ответить
-	 *          отказом занятости
+	 *          отказом занятости.
 	 *
 	 * @note Долив из отклика записи - схема законная, ею пользуются все сторонние
 	 *       библиотеки. Поэтому подошедший к пределу заход не отвергается, а
@@ -25096,7 +25398,7 @@ namespace io {
 	 * @return признак того, что писать в сокет можно прямо сейчас
 	 *
 	 */
-	static bool immediate() noexcept {
+	static AWH_IO_URING_INLINE bool immediate() noexcept {
 		// Писать немедленно вправе заход, не подошедший к пределу глубины
 		return (::io::depth() < ::io::DEPTH_LIMIT);
 	}
@@ -25304,9 +25606,9 @@ namespace io {
 										case 0: break;
 										// Если нам нужно попытаться отправить позже
 										case EINTR:
-										case ENOBUFS:
 										case ENOMEM:
-										case EAGAIN: {
+										case EAGAIN:
+										case ENOBUFS: {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25604,9 +25906,9 @@ namespace io {
 									break;
 									// Если нам нужно попытаться отправить позже
 									case EINTR:
-									case ENOBUFS:
 									case ENOMEM:
-									case EAGAIN: {
+									case EAGAIN:
+									case ENOBUFS: {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -25725,9 +26027,9 @@ namespace io {
 										break;
 										// Если нам нужно попытаться отправить позже
 										case EINTR:
-										case ENOBUFS:
 										case ENOMEM:
-										case EAGAIN: {
+										case EAGAIN:
+										case ENOBUFS: {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25847,9 +26149,9 @@ namespace io {
 								break;
 								// Если нам нужно попытаться отправить позже
 								case EINTR:
-								case ENOBUFS:
 								case ENOMEM:
 								case EAGAIN:
+								case ENOBUFS:
 									// Устанавливаем идентификатор полученной ошибки
 									error = event::error_t::EVENT_FAIL;
 								break;
@@ -25965,14 +26267,15 @@ namespace io {
 						 *          ветки - прямо в очередь передачи, которая порцию и
 						 *          удержит. Подаст её ядру заход по готовности к записи, а
 						 *          обращение к ядру не стоит уже ничего: отправка уходит тем
-						 *          же обращением, каким цикл забирает завершения
+						 *          же обращением, каким цикл забирает завершения.
 						 *
 						 * @note Крупная порция родному пути не отдаётся: перенос её дороже
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
+						 *
 						 */
 						if(peer->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (peer->state.protocol != event::protocol_t::SCTP) &&
-						   (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd))){
+						  (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -26045,14 +26348,15 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												/**
 												 * Если потоковое событие SCTP за одно обращение столько не берёт
 												 *
 												 * @note Отказом это не является: остаток ложится в очередь и
 												 *       досылается по мере освобождения места
+												 *
 												 */
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -26135,7 +26439,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -26179,7 +26483,7 @@ namespace io {
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthUse().write.tokens) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+											peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthInitialize().write.tokens) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -26187,12 +26491,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -26249,7 +26553,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(peer->limitedWrite())
 									// Уменьшаем количество используемых токенов
-									peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+									peer->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 								// Если очередь передачи данных не пуста
 								if(!peer->transfer.queue.empty()){
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -26257,7 +26561,7 @@ namespace io {
 										// Если токенов для отправки данных больше нет
 										if(peer->bandwidth().write.tokens < static_cast <double> (size - bytes)){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+											peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -26265,12 +26569,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 											}
 										// Если токены для отправки данных ещё есть
@@ -26381,14 +26685,15 @@ namespace io {
 							 *          отправкой сюда приходит и узел с пустой очередью -
 							 *          прямая запись в сокет ему не годится, ядру нужен буфер,
 							 *          переживающий возврат из обращения, - и взвести событие
-							 *          некому, кроме как здесь
+							 *          некому, кроме как здесь.
 							 *
 							 * @note Без этого данные ложатся в очередь навсегда: цикл о них не
 							 *       узнаёт, отправка не случается никогда. Установлено
 							 *       прогоном - набор вставал на `IoTCPTest`
+							 *
 							 */
 							if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE) &&
-							   (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd)){
+							  (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd)){
 								// Отмечаем активность записи данных
 								peer->activity |= ::activity::WRITE;
 								// Активируем событие на запись данных в сокет
@@ -26405,12 +26710,13 @@ namespace io {
 								 *
 								 *          Ждать готовности здесь и незачем: сокет к записи
 								 *          готов - ничего в очередь не клали бы иначе, - а
-								 *          отказ ядро сообщит завершением наравне с удачей
+								 *          отказ ядро сообщит завершением наравне с удачей.
 								 *
 								 * @note Взведённое выше событие на запись при этом не лишнее:
 								 *       ожидание готовности по нему согласование не подаёт, пока
 								 *       отправка заведена, а исход приходит завершением. Нужно
 								 *       оно для остатка очереди, если отправка уйдёт неполной
+								 *
 								 */
 								if(!::drain::armed(peer->transfer.fd)){
 									// Размер данных для извлечения из очереди
@@ -26554,7 +26860,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(peer->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -26606,13 +26912,13 @@ namespace io {
 											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
-										peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										peer->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!peer->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(peer->bandwidth().write.tokens < static_cast <double> (size - bytes)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+												peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -26620,12 +26926,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -26709,7 +27015,7 @@ namespace io {
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthUse().write.tokens) / static_cast <double> (peer->bandwidthUse().write.limit)) * 1000.);
+											peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - peer->bandwidthInitialize().write.tokens) / static_cast <double> (peer->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -26717,12 +27023,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -26942,9 +27248,9 @@ namespace io {
 											case 0:
 											// Если нам нужно попытаться отправить позже
 											case EINTR:
-											case ENOBUFS:
 											case ENOMEM:
-											case EAGAIN: break;
+											case EAGAIN:
+											case ENOBUFS: break;
 											// Если мы получили ошибку отправки слишком большого пакета
 											case EMSGSIZE:
 												// Если отправку стоит повторить позже
@@ -27045,7 +27351,7 @@ namespace io {
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
-										peer->bandwidthUse().write.tokens -= static_cast <double> (result);
+										peer->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -27104,7 +27410,7 @@ namespace io {
 										// Если таймаут на запись данных не активирован
 										if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+											peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -27112,12 +27418,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -27293,9 +27599,9 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
 												case EAGAIN:
+												case ENOBUFS:
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::EVENT_FAIL;
 												break;
@@ -27394,7 +27700,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											peer->bandwidthUse().write.tokens -= static_cast <double> (result);
+											peer->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -27453,7 +27759,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+												peer->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -27461,12 +27767,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthInitialize().write.timeout}, peer->id, event::rate_t::DEFERRED);
 													break;
 												}
 											}
@@ -27612,9 +27918,9 @@ namespace io {
 								break;
 								// Если нам нужно попытаться отправить позже
 								case EINTR:
-								case ENOBUFS:
 								case ENOMEM:
 								case EAGAIN:
+								case ENOBUFS:
 									// Устанавливаем идентификатор полученной ошибки
 									error = event::error_t::EVENT_FAIL;
 								break;
@@ -27724,6 +28030,7 @@ namespace io {
 							 *       отработать отклики и заведение таймаута, а оно ходит в ядро и оставляет
 							 *       там уже свой код. Поэтому код снимается сразу после вызова ядра и
 							 *       хранится отдельно
+							 *
 							 */
 							int32_t code = 0;
 							/**
@@ -27788,9 +28095,9 @@ namespace io {
 											break;
 											// Если нам нужно попытаться отправить позже
 											case EINTR:
-											case ENOBUFS:
 											case ENOMEM:
-											case EAGAIN: {
+											case EAGAIN:
+											case ENOBUFS: {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = origin->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -28090,9 +28397,9 @@ namespace io {
 												break;
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: {
+												case EAGAIN:
+												case ENOBUFS: {
 													// Сохраняем оставшиеся данные для последующей отправки
 													if((result = origin->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
@@ -28493,7 +28800,6 @@ namespace io {
 			if(size == 0)
 				// Завершаем выполнение функции, так как отправлять нечего
 				return result;
-			// Семейство адресов туннеля
 			/**
 			 * Буфер ввода-вывода пакета туннеля
 			 *
@@ -28501,6 +28807,7 @@ namespace io {
 			 *          признаком `IFF_NO_PI`. Прежде отправка предваряла пакет
 			 *          четырёхоктетным словом семейства, и в устройство уходил пакет с
 			 *          лишними октетами
+			 *
 			 */
 			struct iovec iov[1];
 			// Если событие является неблокирующим
@@ -28532,9 +28839,9 @@ namespace io {
 							break;
 							// Если нам нужно попытаться отправить позже
 							case EINTR:
-							case ENOBUFS:
 							case ENOMEM:
-							case EAGAIN: {
+							case EAGAIN:
+							case ENOBUFS: {
 								// Сохраняем оставшиеся данные для последующей отправки
 								if((result = tunnel->queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
@@ -28559,6 +28866,8 @@ namespace io {
 								error = event::error_t::INVALID_SOCKET;
 							break;
 							/**
+							 * Если пакет негоден для устройства
+							 *
 							 * Негодный пакет НЕ равен негодному устройству
 							 *
 							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -28571,7 +28880,6 @@ namespace io {
 							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 							 * с третьей машины, стало 0, а сервер жив
 							 */
-							// Если пакет негоден для устройства
 							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID;
@@ -28911,6 +29219,8 @@ namespace io {
 								error = event::error_t::INVALID_SOCKET;
 							break;
 							/**
+							 * Если пакет негоден для устройства
+							 *
 							 * Негодный пакет НЕ равен негодному устройству
 							 *
 							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -28923,7 +29233,6 @@ namespace io {
 							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 							 * с третьей машины, стало 0, а сервер жив
 							 */
-							// Если пакет негоден для устройства
 							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID;
@@ -29253,6 +29562,8 @@ namespace io {
 							error = event::error_t::INVALID_SOCKET;
 						break;
 						/**
+						 * Если пакет негоден для устройства
+						 *
 						 * Негодный пакет НЕ равен негодному устройству
 						 *
 						 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
@@ -29265,7 +29576,6 @@ namespace io {
 						 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
 						 * с третьей машины, стало 0, а сервер жив
 						 */
-						// Если пакет негоден для устройства
 						case EINVAL:
 							// Устанавливаем идентификатор полученной ошибки
 							error = event::error_t::INVALID;
@@ -29639,14 +29949,15 @@ namespace io {
 						 *          ветки - прямо в очередь передачи, которая порцию и
 						 *          удержит. Подаст её ядру заход по готовности к записи, а
 						 *          обращение к ядру не стоит уже ничего: отправка уходит тем
-						 *          же обращением, каким цикл забирает завершения
+						 *          же обращением, каким цикл забирает завершения.
 						 *
 						 * @note Крупная порция родному пути не отдаётся: перенос её дороже
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
+						 *
 						 */
 						if(client->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
-						   (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd))){
+						  (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -29719,14 +30030,15 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												/**
 												 * Если потоковое событие SCTP за одно обращение столько не берёт
 												 *
 												 * @note Отказом это не является: остаток ложится в очередь и
 												 *       досылается по мере освобождения места
+												 *
 												 */
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -29809,7 +30121,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -29853,7 +30165,7 @@ namespace io {
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+											client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -29861,12 +30173,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -29923,7 +30235,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных в сокет
 								if(client->limitedWrite())
 									// Уменьшаем количество используемых токенов
-									client->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+									client->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 								// Если очередь передачи данных не пуста
 								if(!client->transfer.queue.empty()){
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -29931,7 +30243,7 @@ namespace io {
 										// Если токенов для отправки данных больше нет
 										if(client->bandwidth().write.tokens < static_cast <double> (size - bytes)){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+											client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -29939,12 +30251,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 											}
 										// Если токены для отправки данных ещё есть
@@ -30055,11 +30367,12 @@ namespace io {
 							 *          отправкой сюда приходит и узел с пустой очередью -
 							 *          прямая запись в сокет ему не годится, ядру нужен буфер,
 							 *          переживающий возврат из обращения, - и взвести событие
-							 *          некому, кроме как здесь
+							 *          некому, кроме как здесь.
 							 *
 							 * @note Без этого данные ложатся в очередь навсегда: цикл о них не
 							 *       узнаёт, отправка не случается никогда. Установлено
 							 *       прогоном - набор вставал на `IoTCPTest`
+							 *
 							 */
 							if(!client->transfer.queue.empty() && !(client->activity & ::activity::WRITE) &&
 							   (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd)){
@@ -30079,12 +30392,13 @@ namespace io {
 								 *
 								 *          Ждать готовности здесь и незачем: сокет к записи
 								 *          готов - ничего в очередь не клали бы иначе, - а
-								 *          отказ ядро сообщит завершением наравне с удачей
+								 *          отказ ядро сообщит завершением наравне с удачей.
 								 *
 								 * @note Взведённое выше событие на запись при этом не лишнее:
 								 *       ожидание готовности по нему согласование не подаёт, пока
 								 *       отправка заведена, а исход приходит завершением. Нужно
 								 *       оно для остатка очереди, если отправка уйдёт неполной
+								 *
 								 */
 								if(!::drain::armed(client->transfer.fd)){
 									// Размер данных для извлечения из очереди
@@ -30228,7 +30542,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных в сокет
 							if(client->limitedWrite()){
 								// Достаточное количество токенов для отправки данных
-								double tokens = 0.;
+								double tokens = .0;
 								/**
 								 * Определяем семейство адресов
 								 */
@@ -30280,13 +30594,13 @@ namespace io {
 											result += bytes;
 										}
 										// Уменьшаем количество используемых токенов
-										client->bandwidthUse().write.tokens -= static_cast <double> (bytes);
+										client->bandwidthInitialize().write.tokens -= static_cast <double> (bytes);
 										// Если очередь передачи данных не пуста
 										if(!client->transfer.queue.empty()){
 											// Если токенов для отправки данных больше нет
 											if(client->bandwidth().write.tokens < static_cast <double> (size - bytes)){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -30294,12 +30608,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -30383,7 +30697,7 @@ namespace io {
 										// Если таймаут на запись данных не активирован
 										if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 											// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+											client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (tokens - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -30391,12 +30705,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 												break;
 											}
 										}
@@ -30609,9 +30923,9 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -30712,7 +31026,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											client->bandwidthUse().write.tokens -= static_cast <double> (result);
+											client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -30771,7 +31085,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -30779,12 +31093,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											}
@@ -30949,9 +31263,9 @@ namespace io {
 													break;
 													// Если нам нужно попытаться отправить позже
 													case EINTR:
-													case ENOBUFS:
 													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -31050,7 +31364,7 @@ namespace io {
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
-												client->bandwidthUse().write.tokens -= static_cast <double> (result);
+												client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
@@ -31109,7 +31423,7 @@ namespace io {
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+													client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -31117,12 +31431,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 													}
 												}
@@ -31257,9 +31571,9 @@ namespace io {
 									break;
 									// Если нам нужно попытаться отправить позже
 									case EINTR:
-									case ENOBUFS:
 									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -31371,9 +31685,9 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -31474,7 +31788,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											client->bandwidthUse().write.tokens -= static_cast <double> (result);
+											client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -31533,7 +31847,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -31541,12 +31855,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											}
@@ -31711,9 +32025,9 @@ namespace io {
 													break;
 													// Если нам нужно попытаться отправить позже
 													case EINTR:
-													case ENOBUFS:
 													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -31812,7 +32126,7 @@ namespace io {
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
-												client->bandwidthUse().write.tokens -= static_cast <double> (result);
+												client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
@@ -31871,7 +32185,7 @@ namespace io {
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+													client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -31879,12 +32193,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 													}
 												}
@@ -32019,9 +32333,9 @@ namespace io {
 									break;
 									// Если нам нужно попытаться отправить позже
 									case EINTR:
-									case ENOBUFS:
 									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -32178,9 +32492,9 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -32281,7 +32595,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											client->bandwidthUse().write.tokens -= static_cast <double> (result);
+											client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -32340,7 +32654,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -32348,12 +32662,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											}
@@ -32531,9 +32845,9 @@ namespace io {
 													break;
 													// Если нам нужно попытаться отправить позже
 													case EINTR:
-													case ENOBUFS:
 													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -32632,7 +32946,7 @@ namespace io {
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
-												client->bandwidthUse().write.tokens -= static_cast <double> (result);
+												client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
@@ -32691,7 +33005,7 @@ namespace io {
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+													client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -32699,12 +33013,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 													}
 												}
@@ -32852,9 +33166,9 @@ namespace io {
 									break;
 									// Если нам нужно попытаться отправить позже
 									case EINTR:
-									case ENOBUFS:
 									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -32979,9 +33293,9 @@ namespace io {
 												case 0:
 												// Если нам нужно попытаться отправить позже
 												case EINTR:
-												case ENOBUFS:
 												case ENOMEM:
-												case EAGAIN: break;
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
@@ -33082,7 +33396,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											client->bandwidthUse().write.tokens -= static_cast <double> (result);
+											client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -33141,7 +33455,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+												client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -33149,12 +33463,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 													break;
 												}
 											}
@@ -33332,9 +33646,9 @@ namespace io {
 													break;
 													// Если нам нужно попытаться отправить позже
 													case EINTR:
-													case ENOBUFS:
 													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -33433,7 +33747,7 @@ namespace io {
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
-												client->bandwidthUse().write.tokens -= static_cast <double> (result);
+												client->bandwidthInitialize().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
@@ -33492,7 +33806,7 @@ namespace io {
 												// Если таймаут на запись данных не активирован
 												if(client->bandwidth().write.timeout.status == event::status_t::NONE){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													client->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthUse().write.tokens) / static_cast <double> (client->bandwidthUse().write.limit)) * 1000.);
+													client->bandwidthInitialize().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - client->bandwidthInitialize().write.tokens) / static_cast <double> (client->bandwidthInitialize().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -33500,12 +33814,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthInitialize().write.timeout}, client->id, event::rate_t::DEFERRED);
 														break;
 													}
 												}
@@ -33653,9 +33967,9 @@ namespace io {
 									break;
 									// Если нам нужно попытаться отправить позже
 									case EINTR:
-									case ENOBUFS:
 									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -34133,6 +34447,7 @@ namespace io {
 	 * @brief Шаблонная функция вытягивания данных из источника и отправки их в событие
 	 *
 	 * @tparam T тип узла события, для которого вытягиваются данные
+	 *
 	 */
 	template <typename T>
 	/**
@@ -34152,6 +34467,7 @@ namespace io {
 		 * @note Источник живёт на узле постоянно, поэтому одного его наличия мало: спрашивать
 		 *       позволено лишь пока стоит признак вытягивания. Иначе исчерпанный источник
 		 *       спрашивался бы снова на каждой готовности сокета к записи
+		 *
 		 */
 		if((node == nullptr) || (node->callbacks.source == nullptr) || !pulling)
 			// Выходим из функции, вытягивать нечем
@@ -34171,12 +34487,12 @@ namespace io {
 			 *
 			 * @note Величина эта служит ТОЛЬКО потолком одной дейтаграммы: сообщение крупнее
 			 *       буфера не уйдёт никогда. Для потока она не нужна вовсе
-			 */
-			/**
+			 *
 			 * @warning Канал исключён здесь намеренно. Очередь его заведена как у дейтаграмм,
-			 * потому что пара просилась разновидностью SEQPACKET, но сам он - ::pipe(), поток
-			 * октетов без сокетных опций: getsockopt на нём отвечает ENOTSOCK, а потолка одной
-			 * дейтаграммы у него не существует. Отсюда и нуль - тот же ответ, что у потока
+			 *          потому что пара просилась разновидностью SEQPACKET, но сам он - ::pipe(), поток
+			 *          октетов без сокетных опций: getsockopt на нём отвечает ENOTSOCK, а потолка одной
+			 *          дейтаграммы у него не существует. Отсюда и нуль - тот же ответ, что у потока
+			 *
 			 */
 			const int32_t bufferSize = (((queue.type() == net_queue_t::type_t::UDP) && (node->state.family != event::family_t::PIPE)) ? eth->socket.getBufferSize(fd, net::socket_event_t::WRITE) : 0);
 			/**
@@ -34196,6 +34512,7 @@ namespace io {
 				 *          сокета тоже не годится: сообщают его не все системы, а где сообщают -
 				 *          у доменных сокетов оно и при забитом буфере остаётся нулевым (проверено). Обещание сверх очереди ничем не
 				 *          обеспечено, а отданное сверх него пропадает молча: копии у источника нет
+				 *
 				 */
 				size_t capacity = ::min(available, static_cast <size_t> (AWH_EVENT_MAX_BUFFER_SIZE));
 				/**
@@ -34203,6 +34520,7 @@ namespace io {
 				 *
 				 * @note Дейтаграмма неделима, поэтому ёмкость ограничивается ещё и вместимостью
 				 *       буфера сокета: сообщение крупнее него отвергалось бы целиком
+				 *
 				 */
 				if((queue.type() == net_queue_t::type_t::UDP) && (bufferSize > 0))
 					// Ограничиваем ёмкость запроса вместимостью буфера отправки сокета
@@ -34235,6 +34553,7 @@ namespace io {
 					 *       Память при этом остаётся годной, освобождение отложено, но отправлять
 					 *       из такого узла уже нельзя, а значит и спрашивать источник незачем:
 					 *       отданное им пропало бы молча, ведь копии у источника нет
+					 *
 					 */
 					if(!(pulling = ((node->state.status != event::status_t::DESTROYED) && (node->state.status != event::status_t::GARBAGE))))
 						// Выходим из цикла вытягивания
@@ -34246,6 +34565,7 @@ namespace io {
 				 * @note Признак вытягивания ведёт ТОЛЬКО возврат источника: ложь означает
 				 *       «всё отдано», и завести вытягивание снова сможет лишь приложение
 				 *       вызовом send(id, nullptr, 0)
+				 *
 				 */
 				if(!(pulling = proceed))
 					// Выходим из цикла вытягивания
@@ -34258,6 +34578,7 @@ namespace io {
 				 *       движок вернётся к источнику на ближайшем сливе очереди, когда места станет
 				 *       больше. Гасить признак здесь значило бы замолчать навсегда, оставив данные
 				 *       источника неотправленными
+				 *
 				 */
 				if(capacity == 0)
 					// Выходим из цикла вытягивания
@@ -34303,11 +34624,12 @@ namespace io {
 	 *          (замерено 08.09.2026): обрыв приходит то признаком конца связи, то
 	 *          ошибкой, и попадает он на разбор ЧТЕНИЯ, а не записи. Раскладывать возврат по
 	 *          ветвям значит забыть его в очередной, и опыт этого дня тому порукой:
-	 *          первая правка закрыла одну ветвь из трёх
+	 *          первая правка закрыла одну ветвь из трёх.
 	 *
 	 * @warning Отклик зовётся отсюда, из сноса, и вправе позвать снос повторно. Обхода
 	 *          это выдерживает: возврат ИЗЫМАЕТ записи из очереди по мере обхода, и
 	 *          повторный заход находит её уже пустой
+	 *
 	 */
 	::io::spill(node);
 		/**
@@ -34325,6 +34647,7 @@ namespace io {
 				 * @note Описатели здесь ЧУЖИЕ - они принадлежат событиям, снимок с
 				 *       которых снимали, - и закрывать их нельзя. Уходит одна отметка:
 				 *       переносчика не стало, и уносить описатель больше нечему
+				 *
 				 */
 				::handoff::forget(node->id);
 				/**
@@ -34339,6 +34662,7 @@ namespace io {
 				 *
 				 * @note Снятие безвредно для узлов, объединения не занимавших: своего
 				 *       состояния у них нет, и обращение выходит сразу
+				 *
 				 */
 				::splicing::forget(node->id);
 				// Создаём охранника узла события
@@ -34488,8 +34812,8 @@ namespace io {
 									::timer::simple::cancel(
 										peer->timeouts.read,
 										peer->timeouts.write,
-										peer->bandwidthUse().read.timeout,
-										peer->bandwidthUse().write.timeout,
+										peer->bandwidthInitialize().read.timeout,
+										peer->bandwidthInitialize().write.timeout,
 										peer->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -34507,8 +34831,8 @@ namespace io {
 									::timer::difficult::cancel(
 										peer->timeouts.read,
 										peer->timeouts.write,
-										peer->bandwidthUse().read.timeout,
-										peer->bandwidthUse().write.timeout,
+										peer->bandwidthInitialize().read.timeout,
+										peer->bandwidthInitialize().write.timeout,
 										peer->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -34521,7 +34845,9 @@ namespace io {
 							break;
 						}
 						/**
-						 * Подписки по дескриптору снимать не требуется
+						 * Уменьшаем общее количество подключений сервера
+						 *
+						 * @note Подписки по дескриптору снимать не требуется
 						 *
 						 * @details Ядро снимает наблюдение за дескриптором само, как только
 						 *          дескриптор закрывается, а закрывается он охранником узла
@@ -34534,13 +34860,11 @@ namespace io {
 						 *          того, запись на снятие переживала закрытие дескриптора, а
 						 *          освободившийся номер операционная система успевает выдать
 						 *          заново - и снятие приходилось уже по новому владельцу.
-						 */
-						/**
-						 * Уменьшаем общее количество подключений сервера
 						 *
 						 * @note Сервер разыскивается по опознавателю, а не держится ссылкой:
 						 *       сборщик мусора вправе освободить его раньше принятого узла,
 						 *       и ссылка повисала бы. Нет сервера - уменьшать нечего
+						 *
 						 */
 						auto owner = ::__awh_nodes__.find(peer->owner);
 						// Если узел сервера ещё жив
@@ -34595,6 +34919,7 @@ namespace io {
 						 * @note Сервер разыскивается по опознавателю, а не держится ссылкой:
 						 *       сборщик мусора вправе освободить его раньше сессии источника,
 						 *       и ссылка повисала бы. Нет сервера - уменьшать нечего
+						 *
 						 */
 						auto owner = ::__awh_nodes__.find(origin->sid);
 						// Если узел сервера ещё жив
@@ -34630,7 +34955,7 @@ namespace io {
 						 *          мёртвому устройству признак ошибки, разбор спрашивал код
 						 *          настройкой сокета, получал отказ (туннель сокетом не
 						 *          является), отступал к ошибке ввода-вывода и объявлял
-						 *          потребителю ОТКАЗ ПОДКЛЮЧЕНИЯ на узле, которого уже нет
+						 *          потребителю ОТКАЗ ПОДКЛЮЧЕНИЯ на узле, которого уже нет.
 						 *
 						 * @warning Годность дескриптора настройкой сокета здесь НЕ спрашивается:
 						 *          туннель сокетом не является, и обращение это отвечает отказом
@@ -34643,6 +34968,7 @@ namespace io {
 						 *       опрос отдавал признак ошибки по записи узла первого оборота, а
 						 *       закрытие его дескриптора приходило строкой ниже. Правка снимает
 						 *       два ложных отказа за два оборота
+						 *
 						 */
 						if(tunnel->fd != net::invalid_socket_t){
 							// Закрываем дескриптор устройства туннеля с забвением его учёта
@@ -34742,8 +35068,8 @@ namespace io {
 															client->timeouts.write,
 															client->timeouts.connect,
 															client->timeouts.reconnect,
-															client->bandwidthUse().read.timeout,
-															client->bandwidthUse().write.timeout,
+															client->bandwidthInitialize().read.timeout,
+															client->bandwidthInitialize().write.timeout,
 															client->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -34765,8 +35091,8 @@ namespace io {
 															client->timeouts.write,
 															client->timeouts.connect,
 															client->timeouts.reconnect,
-															client->bandwidthUse().read.timeout,
-															client->bandwidthUse().write.timeout,
+															client->bandwidthInitialize().read.timeout,
+															client->bandwidthInitialize().write.timeout,
 															client->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -34831,8 +35157,8 @@ namespace io {
 												client->timeouts.write,
 												client->timeouts.connect,
 												client->timeouts.reconnect,
-												client->bandwidthUse().read.timeout,
-												client->bandwidthUse().write.timeout,
+												client->bandwidthInitialize().read.timeout,
+												client->bandwidthInitialize().write.timeout,
 												client->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -34854,8 +35180,8 @@ namespace io {
 												client->timeouts.write,
 												client->timeouts.connect,
 												client->timeouts.reconnect,
-												client->bandwidthUse().read.timeout,
-												client->bandwidthUse().write.timeout,
+												client->bandwidthInitialize().read.timeout,
+												client->bandwidthInitialize().write.timeout,
 												client->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -34937,8 +35263,7 @@ namespace io {
 									}
 								}
 							}
-						}
-						{
+						}{
 							// Сохраняем объект функции обратного вызова SCTP
 							auto callbacks = ::move(server->sctp.callbacks);
 							/**
@@ -34947,6 +35272,7 @@ namespace io {
 							 * @warning Заносить сюда `memset` НЕЛЬЗЯ: набор несёт список типов
 							 *          событий подписки - хранилище `unordered_set`, держащее
 							 *          память в куче
+							 *
 							 */
 							server->sctp = ::io::sctp_endpoint_t();
 							// Восстанавливаем объект функции обратного вызова SCTP
@@ -35081,7 +35407,7 @@ namespace io {
 	 *          привязывает дескриптор дважды и отвечает `EINVAL`, - и отказ этот
 	 *          гасил живое событие. Проверка эта позволяет вступить в группу и
 	 *          после `commit`: привязка тогда просто пропускается, а сама подписка
-	 *          выполняется
+	 *          выполняется.
 	 *
 	 * @param sock дескриптор сокета
 	 * @return     признак привязанности дескриптора к адресу
@@ -35122,7 +35448,7 @@ namespace io {
 	 * @details Семейство, вид и протокол события задаются при его заведении, и
 	 *          расхождение с тем, чем оказался поднятый дескриптор, означает, что
 	 *          снимок пришёл не от того события. Приняв такой снимок, движок отдал бы
-	 *          потребителю событие, работающее не тем, чем он его заводил
+	 *          потребителю событие, работающее не тем, чем он его заводил.
 	 *
 	 * @note Устройство спрашивается у самого дескриптора: снимок у систем POSIX несёт
 	 *       одну лишь метку получения, и сверять с ним нечего. Семейство даёт своё имя
@@ -35152,11 +35478,26 @@ namespace io {
 		 */
 		switch(static_cast <uint8_t> (node->state.family)){
 			// Если семейство адресов является IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4): if(name.ss_family != AF_INET) return false; break;
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Если семейство IP адресов не принадлежит к IPv4
+				if(name.ss_family != AF_INET)
+					// Выводим результат отказа
+					return false;
+			} break;
 			// Если семейство адресов является IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6): if(name.ss_family != AF_INET6) return false; break;
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Если семейство IP адресов не принадлежит к IPv6
+				if(name.ss_family != AF_INET6)
+					// Выводим результат отказа
+					return false;
+			} break;
 			// Если семейство адресов является UNIX-доменным
-			case static_cast <uint8_t> (event::family_t::UDS): if(name.ss_family != AF_UNIX) return false; break;
+			case static_cast <uint8_t> (event::family_t::UDS): {
+				// Если семейство IP адресов не принадлежит к UNIX-сокетам
+				if(name.ss_family != AF_UNIX)
+					// Выводим результат отказа
+					return false;
+			} break;
 			// Для прочих семейств адресов сверять нечего: дескриптора они не держат
 			default: return false;
 		}
@@ -35189,7 +35530,9 @@ namespace io {
 				return (type == SOCK_DGRAM);
 			// Если устройство обмена является упорядоченными сообщениями
 			case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-				// Если устройство обмена является упорядоченными сообщениями
+				/**
+				 * Если устройство обмена является упорядоченными сообщениями
+				 */
 				#if defined(SOCK_SEQPACKET)
 					// Выводим совпадение устройства с родным
 					return (type == SOCK_SEQPACKET);
@@ -35210,13 +35553,13 @@ namespace io {
 	 *
 	 * @details Бит у опции общий: у клиента он означает переподключение, у файла и
 	 *          каталога - дочитывание с сохранённого места. Прочим видам узлов он не
-	 *          означает ничего, и запоминать его им незачем
+	 *          означает ничего, и запоминать его им незачем.
 	 *
 	 * @param node узел события
 	 * @return     осмысленна ли узлу опция
 	 *
 	 */
-	static bool continuable(const ::io::node_t * node) noexcept {
+	static AWH_IO_URING_INLINE bool continuable(const ::io::node_t * node) noexcept {
 		// Если узла нет вовсе, опцию запоминать некому
 		if(node == nullptr)
 			// Выводим отрицательный результат
@@ -35225,38 +35568,38 @@ namespace io {
 		 * Определяем чем является текущий узел
 		 */
 		switch(static_cast <uint8_t> (node->state.node)){
-			// Если узел является клиентом: продолжение это новое подключение
-			case static_cast <uint8_t> (event::node_t::CLIENT):
-			// Если узел является файлом: продолжение это дочитывание с сохранённого места
-			case static_cast <uint8_t> (event::node_t::FILE):
 			// Если узел является каталогом: продолжение это дочитывание состава
 			case static_cast <uint8_t> (event::node_t::DIR):
+			// Если узел является файлом: продолжение это дочитывание с сохранённого места
+			case static_cast <uint8_t> (event::node_t::FILE):
+			// Если узел является клиентом: продолжение это новое подключение
+			case static_cast <uint8_t> (event::node_t::CLIENT):
 				// Выводим положительный результат
 				return true;
 		}
 		// Выводим отрицательный результат: прочим узлам опция не означает ничего
 		return false;
 	}
-
 	/**
 	 * @brief Функция передачи узлу готового дескриптора сокета
 	 *
 	 * @details Обратна функции заведения сокета: та заводит дескриптор сама, а эта
 	 *          принимает готовый - приехавший от чужого процесса служебными данными.
 	 *          Дальше узел идёт тем же путём, что и узел с заведённым сокетом:
-	 *          различие кончается здесь
+	 *          различие кончается здесь.
 	 *
 	 * @param node узел события
 	 * @param sock передаваемый узлу дескриптор сокета
 	 * @return     результат передачи дескриптора узлу
 	 *
 	 */
-	static bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
+	static AWH_IO_URING_INLINE bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
 		/**
 		 * Отмечаем описатель принятым передачей
 		 *
 		 * @note Отметка ставится ДО раздачи описателя узлу: фиксация, которой событие
 		 *       проводится следом, по ней и узнаёт, что заводить и привязывать нечего
+		 *
 		 */
 		node->state.adopted = true;
 		/**
@@ -35283,6 +35626,7 @@ namespace io {
 			 * @note Принятое подключение переезжает наравне с прочими: поле описателя у
 			 *       него то же самое. Отказывать ему значило бы держать перекос - везти
 			 *       описатель оно годилось, а переехать само не могло
+			 *
 			 */
 			case static_cast <uint8_t> (event::node_t::PEER): {
 				// Передаём узлу принятого подключения готовый дескриптор сокета
@@ -35339,13 +35683,13 @@ namespace io {
 	 * @brief Функция получения дескриптора сокета узла события
 	 *
 	 * @details Отвечает дескриптором для тех узлов, у которых сокет заводится
-	 * фиксацией настроек; для прочих отвечает недействительным значением
+	 *          фиксацией настроек; для прочих отвечает недействительным значением.
 	 *
 	 * @param node узел события
 	 * @return     дескриптор сокета узла события
 	 *
 	 */
-	static net::socket_t descriptor(const ::io::node_t * node) noexcept {
+	static AWH_IO_URING_INLINE net::socket_t descriptor(const ::io::node_t * node) noexcept {
 		/**
 		 * Определяем чем является текущий узел
 		 */
@@ -35382,7 +35726,7 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
-	static bool socket(::io::node_t * node, const eth_t * eth) noexcept {
+	static AWH_IO_URING_INLINE bool socket(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -35780,7 +36124,7 @@ namespace io {
 					 *          удаче. Прежде отказ ожидающего подключения уходил лишь
 					 *          откликом ошибки, а тот вызывающему не обязателен: событию,
 					 *          заведённому с одним откликом подключения, попытка обрывалась
-					 *          молча - узел сносился, и ни одного отклика не звучало
+					 *          молча - узел сносился, и ни одного отклика не звучало.
 					 *
 					 * @note Отклик этот тот же самый, каким объявляется отказ по истечении
 					 *       срока ожидания подключения, и порядок у них общий: сперва
@@ -35789,6 +36133,7 @@ namespace io {
 					 * @warning Разбирается именно ОЖИДАЮЩЕЕ подключение: у события,
 					 *          подключение уже установившего, беда обмена подключением не
 					 *          является, и объявлять её отказом подключения нельзя
+					 *
 					 */
 					if((client->state.status == event::status_t::PENDING) && (client->transfer.actions & ::action::CONNECT)){
 						// Если функция обратного вызова для вывода подключения установлена
@@ -35883,11 +36228,11 @@ namespace io {
 	 *          существуют - технически верно, а по сути бессмысленно: привязавшись к
 	 *          адресу туннеля, к соседу по своей сети не подключиться. Ядро отвечает
 	 *          на такую привязку отказом в маршруте уже при отправке, и разбираться
-	 *          в нём приходится по одному лишь `EHOSTUNREACH`
+	 *          в нём приходится по одному лишь `EHOSTUNREACH`.
 	 *
 	 *          Согласие проверяется устройством: спрашивается маршрут до получателя,
 	 *          и адрес источника обязан принадлежать тому устройству, которым этот
-	 *          маршрут идёт. При расхождении подключение отклоняется
+	 *          маршрут идёт. При расхождении подключение отклоняется.
 	 *
 	 * @note Отклонение, а не молчаливая подмена адреса, - решение намеренное. Ненулевой
 	 *       источник у клиента заводится только явным вызовом: по имени устройства, по
@@ -36053,7 +36398,7 @@ namespace io {
 	 * @details Узел, списавший из общего ведра больше, чем в нём было, откладывается
 	 *          своим таймером на время отдачи долга. Цикл событий при этом продолжает
 	 *          работу и обслуживает все прочие узлы: в этом и состоит отличие от
-	 *          прежнего сна, останавливавшего движок целиком
+	 *          прежнего сна, останавливавшего движок целиком.
 	 *
 	 * @param node     узел, подлежащий отсрочке
 	 * @param limiting режим ограничения пропускной способности (egress или ingress)
@@ -36082,14 +36427,14 @@ namespace io {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Получаем таймаут выбранного направления
-					timeout = &(egress ? peer->bandwidthUse().write.timeout : peer->bandwidthUse().read.timeout);
+					timeout = &(egress ? peer->bandwidthInitialize().write.timeout : peer->bandwidthInitialize().read.timeout);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Получаем таймаут выбранного направления
-					timeout = &(egress ? client->bandwidthUse().write.timeout : client->bandwidthUse().read.timeout);
+					timeout = &(egress ? client->bandwidthInitialize().write.timeout : client->bandwidthInitialize().read.timeout);
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
@@ -36186,9 +36531,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36197,15 +36542,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidthUse().write.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().write.tokens += static_cast <double> (peer->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().write.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().write.tokens = burst;
+													peer->bandwidthInitialize().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36215,9 +36560,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36226,15 +36571,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidthUse().read.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().read.tokens += static_cast <double> (peer->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().read.tokens = burst;
+													peer->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36252,9 +36597,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36263,15 +36608,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidthUse().write.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().write.tokens += static_cast <double> (peer->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().write.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().write.tokens = burst;
+													peer->bandwidthInitialize().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36281,9 +36626,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36292,15 +36637,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidthUse().read.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().read.tokens += static_cast <double> (peer->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().read.tokens = burst;
+													peer->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36326,9 +36671,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36337,9 +36682,9 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36349,9 +36694,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36360,15 +36705,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().read.tokens = burst;
+													peer->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36386,9 +36731,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36397,9 +36742,9 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().write.time = date;
+												peer->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36409,9 +36754,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(peer->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												peer->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36420,15 +36765,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
+												peer->bandwidthInitialize().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													peer->bandwidthUse().read.tokens = burst;
+													peer->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												peer->bandwidthUse().read.time = date;
+												peer->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36530,9 +36875,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												client->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36541,15 +36886,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().write.tokens += static_cast <double> (client->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().write.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().write.tokens = burst;
+													client->bandwidthInitialize().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36559,9 +36904,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												client->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36570,15 +36915,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().read.tokens += static_cast <double> (client->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().read.tokens = burst;
+													client->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36596,9 +36941,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												client->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36607,15 +36952,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().write.tokens += static_cast <double> (client->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().write.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().write.tokens = burst;
+													client->bandwidthInitialize().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36625,9 +36970,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												client->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36636,15 +36981,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().read.tokens += static_cast <double> (client->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().read.tokens = burst;
+													client->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36674,9 +37019,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												client->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36685,9 +37030,9 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().write.tokens += static_cast <double> (client->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36697,9 +37042,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+												client->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36708,15 +37053,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().read.tokens += static_cast <double> (client->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().read.tokens = burst;
+													client->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36734,9 +37079,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().write.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												client->bandwidthInitialize().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36745,9 +37090,9 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().write.tokens += static_cast <double> (client->bandwidthInitialize().write.limit * (elapsed / 1e9));
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().write.time = date;
+												client->bandwidthInitialize().write.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36757,9 +37102,9 @@ namespace io {
 											// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 											if(client->bandwidth().read.time == 0){
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 												// Устанавливаем количество токенов для ограничения пропускной способности
-												client->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+												client->bandwidthInitialize().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Формируем положительный результат
 												return true;
 											}
@@ -36768,15 +37113,15 @@ namespace io {
 											// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
+												client->bandwidthInitialize().read.tokens += static_cast <double> (client->bandwidthInitialize().read.limit * (elapsed / 1e9));
 												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
-													client->bandwidthUse().read.tokens = burst;
+													client->bandwidthInitialize().read.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-												client->bandwidthUse().read.time = date;
+												client->bandwidthInitialize().read.time = date;
 											}
 											// Формируем положительный результат
 											return true;
@@ -36893,7 +37238,7 @@ namespace io {
 	 * @details Срок ожидания подключения истёк - значит, подключение за отведённое
 	 *          время не состоялось, и продолжать его незачем: исход уже объявлен
 	 *          вызывающему. Ожидающее подключение прерывается закрытием дескриптора,
-	 *          и вместе с дескриптором ядро снимает и все его события
+	 *          и вместе с дескриптором ядро снимает и все его события.
 	 *
 	 * @note Узел при этом остаётся жив, и в том весь смысл. Уничтожать событие ради
 	 *       одной несостоявшейся попытки расточительно: заново его пришлось бы
@@ -36973,6 +37318,7 @@ namespace io {
 			 *       отказа
 			 *
 			 *       Возврат такого события в работу описан у самой функции
+			 *
 			 */
 			// Снимаем активность чтения данных
 			client->activity &= ~::activity::READ;
@@ -36996,7 +37342,7 @@ namespace io {
 			 * @details Тем самым потоковое событие после обрыва оказывается в том же
 			 *          положении, что и датаграммное: годно к работе, следующее
 			 *          подключение начинает вызывающий. Разницы между разновидностями
-			 *          сокета вызывающий не выбирал, и знать её ему незачем
+			 *          сокета вызывающий не выбирал, и знать её ему незачем.
 			 *
 			 * @note Подключение и запуск идут следом за перестройкой: вызывающий,
 			 *       отказавшийся уничтожать событие, тем самым просит продолжать, и
@@ -37042,7 +37388,7 @@ namespace io {
 						 *          вредит: исчерпав его, событие умирает как раз
 						 *          тогда, когда связь вот-вот вернулась бы. Кому счёт
 						 *          попыток нужен, тот ведёт его над движком и сам
-						 *          удаляет событие
+						 *          удаляет событие.
 						 *
 						 * @note Подключение отвечает отказом сразу, а не ожиданием,
 						 *       когда ядро уже держит неудачную запись соседа: к
@@ -37112,7 +37458,7 @@ namespace io {
 	 *          пришедшее от самого ядра: `inotify` сообщает, какая именно запись
 	 *          появилась либо исчезла. Обход каталога тогда не нужен вовсе - учёт
 	 *          правится по одной записи, а вид её у появившейся добывается одним
-	 *          обращением за сведениями о ней
+	 *          обращением за сведениями о ней.
 	 *
 	 * @note Перечитывание состава осталось лишь запасным путём - на случай переполнения очереди
 	 *       оповещений ядра, когда часть их теряется и учёт нужно наверстать целиком
@@ -37148,6 +37494,7 @@ namespace io {
 				 * @note Сведения берутся БЕЗ разыменования символической ссылки: иначе
 				 *       ссылка выдавалась бы видом того, на что указывает, а битая
 				 *       ссылка не выдавалась бы вовсе
+				 *
 				 */
 				if(::lstat(address.c_str(), &dir->info) != 0)
 					/**
@@ -37156,6 +37503,7 @@ namespace io {
 					 * @note Обычный ход при спешной работе с каталогом: появление и
 					 *       исчезновение приходят двумя оповещениями, а к разбору первого
 					 *       записи уже нет. Исчезновение придёт следом и всё поправит
+					 *
 					 */
 					return true;
 				// Если запись является каталогом
@@ -37270,6 +37618,7 @@ namespace io {
 					 *       изменением каталога, а последняя не доходила никогда.
 					 *       Установлено щупом: свежее открытие того же каталога в тот же
 					 *       миг показывало запись, которой поток ещё не видел
+					 *
 					 */
 					awh::dir::rewinddir(dir->handle);
 					/**
@@ -37289,6 +37638,7 @@ namespace io {
 						 *       недостижимой: тип узла LINK не выставлялся никогда,
 						 *       ссылка выдавалась за то, на что указывает, а битая
 						 *       ссылка не попадала в состав каталога вовсе
+						 *
 						 */
 						if(::lstat(address.c_str(), &dir->info) == 0){
 							// Если это каталог
@@ -37511,6 +37861,7 @@ namespace io {
 					 * @note Приём через кольцо подключение уже принял: закрывать надлежит
 					 *       его, а не звать `accept` заново - иначе принятое ядром
 					 *       подключение осталось бы висеть, а закрыли бы следующее
+					 *
 					 */
 					const net::socket_t sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, nullptr, nullptr));
 					// Если сокет создан успешно
@@ -37534,6 +37885,7 @@ namespace io {
 				 *          не звался - и списки доступа сличали адрес 0.0.0.0 вместо
 				 *          настоящего. Чёрный список от того не отказывал в подключении ВОВСЕ,
 				 *          а белый отвергал бы всех подряд
+				 *
 				 */
 				if(ready == net::invalid_socket_t)
 					// Заполняем структуру клиента нулями
@@ -37558,6 +37910,7 @@ namespace io {
 								 *
 								 * @warning Очистка и здесь стояла безусловной и стирала
 								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 *
 								 */
 								if(ready == net::invalid_socket_t){
 									// Запоминаем размер структуры
@@ -37576,6 +37929,7 @@ namespace io {
 								 *
 								 * @warning Очистка и здесь стояла безусловной и стирала
 								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 *
 								 */
 								if(ready == net::invalid_socket_t){
 									// Запоминаем размер структуры
@@ -37594,6 +37948,7 @@ namespace io {
 								 *
 								 * @warning Очистка и здесь стояла безусловной и стирала
 								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 *
 								 */
 								if(ready == net::invalid_socket_t){
 									// Запоминаем размер структуры
@@ -37786,6 +38141,7 @@ namespace io {
 									 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
 									 *       нигде не читается, поэтому на общем пути приёма подключений
 									 *       этой работы быть не должно.
+									 *
 									 */
 									// Выполняем извлечение сетевых параметров
 									eth->addr.fillSource(event::node_t::PEER, src);
@@ -37951,6 +38307,7 @@ namespace io {
 									 * @note Подписка нужна не только новому отклику: у современного набора
 									 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
 									 *       прежний отклик сведений получал бы вчерашнее содержимое
+									 *
 									 */
 									if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 										// Выполняем подписку на метаданные принимаемых сообщений
@@ -37978,14 +38335,16 @@ namespace io {
 									// Устанавливаем полученный IP-адрес во временный объект
 									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 									/**
+									 * Выполняем извлечение сетевых параметров
+									 *
 									 * @note Извлечение MAC-адреса выполняется только при заданных списках
 									 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
 									 *       sysctl, выделение буфера размером со всю таблицу и линейный
 									 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
 									 *       нигде не читается, поэтому на общем пути приёма подключений
 									 *       этой работы быть не должно.
+									 *
 									 */
-									// Выполняем извлечение сетевых параметров
 									eth->addr.fillSource(event::node_t::PEER, src);
 									// Если MAC-адрес успешно получен
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
@@ -38149,6 +38508,7 @@ namespace io {
 									 * @note Подписка нужна не только новому отклику: у современного набора
 									 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
 									 *       прежний отклик сведений получал бы вчерашнее содержимое
+									 *
 									 */
 									if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 										// Выполняем подписку на метаданные принимаемых сообщений
@@ -38213,6 +38573,7 @@ namespace io {
 							 *       подключения: без него не добыть опознавателя связи, а без
 							 *       опознавателя не отделить её в свой сокет. Оттого и выдаётся
 							 *       оно отсюда, а не общим путём чтения
+							 *
 							 */
 							if(bytes > 0){
 								/**
@@ -38223,6 +38584,7 @@ namespace io {
 								 *          первое сообщение с пустыми метаданными: ни границы
 								 *          записи, ни номера потока. Наружу это выходило тем, что
 								 *          записей насчитывалось ровно на одну меньше отправленных
+								 *
 								 */
 								peer->transfer.sctp.use().rinfo = server->sctp.rinfo;
 								// Переносим сведения о первом сообщении на принятый узел
@@ -38538,9 +38900,6 @@ namespace io {
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
 								const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
-							/**
-							 * Для остальных операционных систем
-							 */
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -38600,8 +38959,7 @@ namespace io {
 	 *
 	 * @details Подписка возврата неотправленного - единственный способ потребителя
 	 *          узнать, что именно пропало. Обрыв связи снимает узел вместе с очередью,
-	 *          и без этого возврата остаток исчезает бесследно, хотя подписка на него
-	 *          стоит.
+	 *          и без этого возврата остаток исчезает бесследно, хотя подписка на него стоит.
 	 *
 	 * @warning Разбор конца связи на ЧТЕНИИ спрашивает pending() прежде сноса узла, а
 	 *          разбор его же на ЗАПИСИ сносил узел без единого вопроса - очередь
@@ -38753,7 +39111,7 @@ namespace io {
 	 * @return     признак наличия непрочитанных данных, подлежащих извлечению
 	 *
 	 */
-	static bool pending(::io::node_t * node, const int64_t size) noexcept {
+	static AWH_IO_URING_INLINE bool pending(::io::node_t * node, const int64_t size) noexcept {
 		// Если буфер приёма пуст
 		if(size <= 0)
 			// Сообщаем, что извлекать нечего
@@ -38787,7 +39145,7 @@ namespace io {
 	 *
 	 *          Настраиваемого предела у Linux нет вовсе: дейтаграмма ограничена
 	 *          полем длины в заголовке UDP, то есть шестнадцатью разрядами, и
-	 *          предел выводится из самого протокола
+	 *          предел выводится из самого протокола.
 	 *
 	 * @note Из шестидесяти пяти килобайт вычтены заголовки: восемь октетов UDP и
 	 *       двадцать октетов IPv4. Предел этот действителен и для IPv6, чей
@@ -38802,7 +39160,7 @@ namespace io {
 	 * @return предельный размер одной дейтаграммы в октетах
 	 *
 	 */
-	static size_t datagram() noexcept {
+	static constexpr size_t datagram() noexcept {
 		// Выводим предельный размер одной дейтаграммы, заданный самим протоколом
 		return static_cast <size_t> (0xFFFF - 8 - 20);
 	}
@@ -38830,7 +39188,7 @@ namespace io {
 	 * @return     предельный размер одной записи в октетах, ноль - предела нет
 	 *
 	 */
-	static size_t portion(::io::node_t * node) noexcept {
+	static AWH_IO_URING_INLINE size_t portion(::io::node_t * node) noexcept {
 		// Если событие принадлежит к дейтаграммному типу
 		if(node->state.type == event::type_t::DATAGRAM)
 			// Возвращаем предельный размер одной дейтаграммы
@@ -38862,6 +39220,7 @@ namespace io {
 		 *       заслоняются именно здесь, и держать кольцо особняком значило бы потерять
 		 *       заслон, появись у разбора второй вызывающий. Приведено к одному устройству
 		 *       31.08.2026 - до того кольцо полагалось на заслон вызывающего одно
+		 *
 		 */
 		::io::node_t * node = ((::io::living.count(ev.udata) > 0) ? reinterpret_cast <::io::node_t *> (ev.udata) : nullptr);
 		// Если узел снесён, разбирать нечего
@@ -38912,6 +39271,7 @@ namespace io {
 								 *       запись учёта. Перечитывание остаётся запасным путём
 								 *       - на случай переполнения очереди оповещений ядра,
 								 *       когда часть их теряется и состав нужно наверстать
+								 *
 								 */
 								if(ev.fflags & ::change::note::ENTRY){
 									// Если название записи в списке имён оборота отсутствует
@@ -39163,7 +39523,7 @@ namespace io {
 				 *
 				 * @details Ради этого пути io_uring и берётся под посреднические задачи.
 				 *          Прежний путь читал данные в память движка и оттуда писал их
-				 *          приёмнику - два копирования на каждый пакет. Здесь их ноль
+				 *          приёмнику - два копирования на каждый пакет. Здесь их ноль.
 				 *
 				 * @note Годность проверяется при каждой готовности заново, а не
 				 *       запоминается: ограничитель полосы вправе появиться на живом
@@ -39173,6 +39533,7 @@ namespace io {
 				 *
 				 * @note Закрытие дальней стороной сюда не попадает: оно разобрано выше и
 				 *       узел к этому мигу уже уничтожен, если непрочитанного не осталось
+				 *
 				 */
 				{
 					// Дескриптор приёмника ядерного объединения
@@ -39207,6 +39568,7 @@ namespace io {
 						 * @note Отказ подачи не считается отказом события: ниже отработает
 						 *       прежний путь через пользовательскую память, и данные
 						 *       дойдут в любом случае
+						 *
 						 */
 						if((source != net::invalid_socket_t) && ::splicing::pump(node, source, target))
 							// Выводим успешный результат: данные переносит ядро
@@ -39308,6 +39670,16 @@ namespace io {
 					return !::io::destroy(node, eth);
 				}
 				/**
+				 * Причина отказа спрашивается у сокета ОДНАЖДЫ
+				 *
+				 * @details `SO_ERROR` - настройка ОДНОРАЗОВАЯ: чтение её ядром же и снимает,
+				 *          и второй вопрос отдаёт уже нуль. Спроси её прямо в условии - и
+				 *          всякий последующий разбор получит нуль вместо кода, то есть отказ
+				 *          будет виден условию и НЕВИДИМ тому, кто его разбирает.
+				 *
+				 */
+				const int32_t reason = ((node->state.family == event::family_t::PIPE) ? 0 : eth->socket.getError(ev.ident));
+				/**
 				 * Если в сокете нет ошибок
 				 *
 				 * @details Опрос этот стоит **одного обращения к ядру на каждое событие
@@ -39315,23 +39687,15 @@ namespace io {
 				 *          что у движка от обращений на обмен оставалось. Спрашивать ядро
 				 *          о том, что оно только что сообщило завершением, незачем: код
 				 *          ошибки родной отправки лежит в самом завершении, и разбор его
-				 *          получает признаком события
+				 *          получает признаком события.
 				 *
 				 * @note Опробовать это по состоянию движка - отложенному исходу по
 				 *       дескриптору - **уже пробовали, и вышло скверно**: набор терял
 				 *       четыре проверки, и терял их только в полном прогоне. Состояние
 				 *       переживает и узел, и номер дескриптора, а признак, положенный в
 				 *       событие, живёт ровно столько, сколько само событие
-				 */
-				/**
-				 * Причина отказа спрашивается у сокета ОДНАЖДЫ
 				 *
-				 * @details `SO_ERROR` - настройка ОДНОРАЗОВАЯ: чтение её ядром же и снимает,
-				 *          и второй вопрос отдаёт уже нуль. Спроси её прямо в условии - и
-				 *          всякий последующий разбор получит нуль вместо кода, то есть отказ
-				 *          будет виден условию и НЕВИДИМ тому, кто его разбирает
 				 */
-				const int32_t reason = ((node->state.family == event::family_t::PIPE) ? 0 : eth->socket.getError(ev.ident));
 				if((ev.flags & ::change::COMPLETED) || (node->state.family == event::family_t::PIPE) || (reason == 0)){
 					/**
 					 * Определяем чем является текущий узел
@@ -39397,10 +39761,11 @@ namespace io {
 				 * @details Разбор выше идёт лишь при нулевом SO_ERROR. Назови сокет причину -
 				 *          и узел сносился бы МОЛЧА: ни отклика подключения, ни отклика ошибки,
 				 *          ни состояния FAILURE. Для ожидающего подключения это и есть отказ
-				 *          подключения, и разбор его написан в `io::error`
+				 *          подключения, и разбор его написан в `io::error`.
 				 *
 				 * @warning Разбирается именно ОЖИДАЮЩЕЕ подключение: у события, подключение уже
 				 *          установившего, беда обмена отказом подключения не является
+				 *
 				 */
 				if((node->state.node == event::node_t::CLIENT) && (node->state.status == event::status_t::PENDING) && (reason != 0))
 					// Выполняем разбор отказа подключения
@@ -39690,14 +40055,16 @@ namespace io {
 							// Устанавливаем полученный IP-адрес во временный объект
 							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 							/**
+							 * Выполняем извлечение сетевых параметров
+							 *
 							 * @note Извлечение MAC-адреса выполняется только при заданных списках
 							 *       доступа. Оно обходит ARP-таблицу ядра целиком: два вызова
 							 *       sysctl, выделение буфера размером со всю таблицу и линейный
 							 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
 							 *       нигде не читается, поэтому на общем пути приёма дейтаграмм
 							 *       этой работы быть не должно.
+							 *
 							 */
-							// Выполняем извлечение сетевых параметров
 							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
@@ -39857,14 +40224,16 @@ namespace io {
 							// Устанавливаем полученный IP-адрес во временный объект
 							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 							/**
+							 * Выполняем извлечение сетевых параметров
+							 *
 							 * @note Извлечение MAC-адреса выполняется только при заданных списках
 							 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
 							 *       sysctl, выделение буфера размером со всю таблицу и линейный
 							 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
 							 *       нигде не читается, поэтому на общем пути приёма дейтаграмм
 							 *       этой работы быть не должно.
+							 *
 							 */
-							// Выполняем извлечение сетевых параметров
 							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
@@ -40028,8 +40397,7 @@ namespace io {
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					// Выходим из функции, так как создать сессию источника не удалось
 					return false;
-				}
-				{
+				}{
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
 					// Устанавливаем идентификатор события сервера, породившего сессию
@@ -40125,7 +40493,7 @@ namespace sctp {
 	 * @param result внутренняя структура информации SCTP
 	 *
 	 */
-	static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
+	static AWH_IO_URING_INLINE void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
 		/**
 		 * Определяем тип полезной нагрузки SCTP
 		 */
@@ -40222,11 +40590,12 @@ namespace sctp {
 					 *
 					 * @details У сокета упорядоченных сообщений связей много, и запрос свойств
 					 *          связи обязан называть, по какой именно идти. Опознаватель этот
-					 *          ядро сообщает единственно здесь - оповещением о заведении связи
+					 *          ядро сообщает единственно здесь - оповещением о заведении связи.
 					 *
 					 * @warning Без него запрос чанков проверки подлинности отвечает у Linux
 					 *          отказом «Invalid argument»: нулевой опознаватель годен лишь
 					 *          сокету одной связи, а у сокета упорядоченных сообщений его нет
+					 *
 					 */
 					switch(static_cast <uint8_t> (node->state.node)){
 						// Если узел является одноранговым узлом
@@ -40251,9 +40620,6 @@ namespace sctp {
 					// Устанавливаем количество входящих потоков SCTP
 					association->istreams = sac->sac_inbound_streams;
 					/**
-					 * Обрабатываем состояние ассоциации SCTP
-					 */
-					/**
 					 * Признак завершения связи по состоянию ассоциации
 					 *
 					 * @warning Состояния завершения для сокета упорядоченных сообщений и ЕСТЬ конец
@@ -40261,8 +40627,12 @@ namespace sctp {
 					 *          после её завершения чтение отвечает лишь EAGAIN - ни нуля, ни отказа.
 					 *          Не сообщив о них вызывающему, узел оставили бы висеть навсегда:
 					 *          потребитель не получил бы ни отключения, ни итога
+					 *
 					 */
 					bool finished = false;
+					/**
+					 * Обрабатываем состояние ассоциации SCTP
+					 */
 					switch(sac->sac_state){
 						// Если связь установлена
 						case SCTP_COMM_UP:
@@ -40297,6 +40667,8 @@ namespace sctp {
 						break;
 					}
 					/**
+					 * Определяем чем является текущий узел
+					 *
 					 * @note Перечень возможностей связи здесь не разбирается, и это
 					 *       намеренно. Стандарт RFC 6458 отводит поле `sac_info` под
 					 *       коды поддерживаемых возможностей при установлении связи.
@@ -40313,9 +40685,7 @@ namespace sctp {
 					 * @warning Приложение, полагающееся на непустой перечень, под Linux
 					 *          работать не будет - и узнать об этом ему следует по
 					 *          пустому перечню, а не по выдуманному содержимому
-					 */
-					/**
-					 * Определяем чем является текущий узел
+					 *
 					 */
 					switch(static_cast <uint8_t> (node->state.node)){
 						// Если узел является одноранговым узлом
@@ -41073,6 +41443,8 @@ namespace sctp {
 					result = static_cast <size_t> (dry->sender_dry_length);
 				} break;
 				/**
+				 * Если событие является сбросом ассоциации SCTP
+				 *
 				 * @note Уведомления об остановке выдачи уведомлений здесь не
 				 *       разбираются: имени такого у Linux нет вовсе, а стандартом
 				 *       RFC 6458 оно не заведено
@@ -41082,8 +41454,8 @@ namespace sctp {
 				 *          расхождение это вышло бы тихим. Тем же доводом заведено
 				 *          и собственное имя типа служебного сообщения класса
 				 *          обслуживания выше
+				 *
 				 */
-				// Если событие является сбросом ассоциации SCTP
 				case SCTP_ASSOC_RESET_EVENT: {
 					// Получаем структуру сброса ассоциации SCTP
 					const struct sctp_assoc_reset_event * sare = reinterpret_cast <const struct sctp_assoc_reset_event *> (buffer);
@@ -41250,8 +41622,9 @@ namespace sctp {
 							association->status = net::sctp::send_failed_t::UNSENT;
 						break;
 					}
-					// Вычисляем смещение данных ошибки
 					/**
+					 * Вычисляем смещение данных ошибки
+					 *
 					 * @note Поля этой структуры Linux именует не по стандарту. RFC 6458
 					 *       отводит ей приставку `ssfe_`, отличая её тем самым от
 					 *       устаревшей `sctp_send_failed` с приставкой `ssf_`. Ядро
@@ -41260,6 +41633,7 @@ namespace sctp {
 					 *       всё же `ssfe_info`.
 					 *
 					 *       Расхождение это здешнее, а не стандартное
+					 *
 					 */
 					const size_t offset = offsetof(struct sctp_send_failed_event, ssf_data);
 					// Проверяем целостность уведомления
@@ -41376,6 +41750,260 @@ namespace sctp {
 	}
 };
 
+/**
+ * @brief Метод получения числа адресов, уложенных в заявку подключения
+ *
+ * @param id идентификатор события
+ * @return   число адресов назначения в заявке подключения
+ *
+ */
+uint8_t awh::engine::Stream_Control_Transmission_Protocol::addresses(const event::id_t id) const noexcept {
+	// Результат при отсутствии заявки подключения
+	uint8_t result = 0;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			// Если узел является клиентом
+			if(i->second->state.node == event::node_t::CLIENT){
+				// Получаем текущее значение объекта клиента
+				::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+				// Забираем число адресов, уложенных в заявку подключения
+				result = client->addresses;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения параметров статуса инициализации SCTP
+ *
+ * @param id идентификатор события
+ * @return   параметры статуса инициализации SCTP
+ *
+ */
+awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
+	// Результат работы функции
+	net::sctp::status_t result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если протокол интернета установлен как SCTP
+					if(peer->state.protocol == event::protocol_t::SCTP){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (peer->state.type)){
+							// Если событие принадлежит к типу STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Если событие принадлежит к типу SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Устанавливаем идентификатор ассоциации SCTP
+								result.id = peer->transfer.sctp.use().id;
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctp.status(peer->transfer.fd, result);
+							} break;
+							// Если событие принадлежит к другому типу
+							default: {
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A status is only possible for STREAM or SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Записываем ошибку в лог
+										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log::print("%s", log::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						}
+					// Если протокол интернета не установлен как SCTP
+					} else {
+						// Если установлена функция обратного вызова
+						if(peer->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							peer->callbacks.status(peer->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "A status is only possible for SCTP protocol";
+						// Если установлена функция обратного вызова
+						if(peer->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("%s", log::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Если протокол интернета установлен как SCTP
+					if(client->state.protocol == event::protocol_t::SCTP){
+						/**
+						 * Определяем тип сокета
+						 */
+						switch(static_cast <uint8_t> (client->state.type)){
+							// Если событие принадлежит к типу STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
+							// Если событие принадлежит к типу SEQPACKET
+							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Устанавливаем идентификатор ассоциации SCTP
+								result.id = client->transfer.sctp.use().id;
+								// Инициализируем рукопожатие SCTP для клиента
+								this->_eth.sctp.status(client->transfer.fd, result);
+							} break;
+							// Если событие принадлежит к другому типу
+							default: {
+								// Если установлена функция обратного вызова
+								if(client->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "A status is only possible for STREAM or SEQPACKET socket type";
+								// Если установлена функция обратного вызова
+								if(client->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Записываем ошибку в лог
+										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log::print("%s", log::flag_t::WARNING, error.c_str());
+									#endif
+								}
+							}
+						}
+					// Если протокол интернета не установлен как SCTP
+					} else {
+						// Если установлена функция обратного вызова
+						if(client->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова об ошибке отказа
+							client->callbacks.status(client->id, event::status_t::FAILURE);
+						// Устанавливаем текст ошибки
+						const string error = "A status is only possible for SCTP protocol";
+						// Если установлена функция обратного вызова
+						if(client->callbacks.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки события
+							client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+						// Если функция обратного вызова для вывода события не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("%s", log::flag_t::WARNING, error.c_str());
+							#endif
+						}
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
 /**
  * @brief Метод получения информационных метаданных SCTP сообщения
  *
@@ -41719,211 +42347,6 @@ void awh::engine::Stream_Control_Transmission_Protocol::messageInfo(const event:
 			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
-}
-/**
- * @brief Метод получения параметров статуса инициализации SCTP
- *
- * @param id идентификатор события
- * @return   параметры статуса инициализации SCTP
- *
- */
-awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
-	// Результат работы функции
-	net::sctp::status_t result;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER): {
-					// Получаем текущее значение объекта однорангового узла
-					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
-					// Если протокол интернета установлен как SCTP
-					if(peer->state.protocol == event::protocol_t::SCTP){
-						/**
-						 * Определяем тип сокета
-						 */
-						switch(static_cast <uint8_t> (peer->state.type)){
-							// Если событие принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM):
-							// Если событие принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Устанавливаем идентификатор ассоциации SCTP
-								result.id = peer->transfer.sctp.use().id;
-								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctp.status(peer->transfer.fd, result);
-							} break;
-							// Если событие принадлежит к другому типу
-							default: {
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									peer->callbacks.status(peer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "A status is only possible for STREAM or SEQPACKET socket type";
-								// Если установлена функция обратного вызова
-								if(peer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("%s", log::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						}
-					// Если протокол интернета не установлен как SCTP
-					} else {
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							peer->callbacks.status(peer->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "A status is only possible for SCTP protocol";
-						// Если установлена функция обратного вызова
-						if(peer->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("%s", log::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					}
-				} break;
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Получаем текущее значение объекта клиента
-					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если протокол интернета установлен как SCTP
-					if(client->state.protocol == event::protocol_t::SCTP){
-						/**
-						 * Определяем тип сокета
-						 */
-						switch(static_cast <uint8_t> (client->state.type)){
-							// Если событие принадлежит к типу STREAM
-							case static_cast <uint8_t> (event::type_t::STREAM):
-							// Если событие принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Устанавливаем идентификатор ассоциации SCTP
-								result.id = client->transfer.sctp.use().id;
-								// Инициализируем рукопожатие SCTP для клиента
-								this->_eth.sctp.status(client->transfer.fd, result);
-							} break;
-							// Если событие принадлежит к другому типу
-							default: {
-								// Если установлена функция обратного вызова
-								if(client->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									client->callbacks.status(client->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "A status is only possible for STREAM or SEQPACKET socket type";
-								// Если установлена функция обратного вызова
-								if(client->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("%s", log::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						}
-					// Если протокол интернета не установлен как SCTP
-					} else {
-						// Если установлена функция обратного вызова
-						if(client->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							client->callbacks.status(client->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "A status is only possible for SCTP protocol";
-						// Если установлена функция обратного вызова
-						if(client->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("%s", log::flag_t::WARNING, error.c_str());
-							#endif
-						}
-					}
-				} break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("%s", log::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * @brief Метод установки параметров инициализации SCTP
@@ -42422,11 +42845,11 @@ uint32_t awh::engine::Stream_Control_Transmission_Protocol::getTimeout(const eve
 						 *          параметры относятся. У слушающего узла ассоциаций нет
 						 *          вовсе, а собственный его адрес удалённой стороной не
 						 *          является: подстановка своего адреса называла бы путём
-						 *          то, что путём не является
+						 *          то, что путём не является.
 						 *
 						 *          Пустой адрес означает по стандарту параметры самой
 						 *          конечной точки - то, что слушающему узлу и требуется, и
-						 *          то, чем они у него и устанавливаются
+						 *          то, чем они у него и устанавливаются.
 						 *
 						 * @note Расхождение это стоило отказа: Linux ищет по подставленному
 						 *       адресу путь ассоциации, не находит и отвечает отказом
@@ -43403,7 +43826,7 @@ bool awh::engine::Stream_Control_Transmission_Protocol::authenticateSupportAlgor
  *
  * @details Отправка сообщения по частям требует от системы явного режима
  *          границы записи, и Linux его не имеет вовсе. Проверять поддержку следует до отправки,
- *          а не по отказу
+ *          а не по отказу.
  *
  * @param id идентификатор события
  * @return   результат проверки поддержки
@@ -43449,7 +43872,7 @@ bool awh::engine::Stream_Control_Transmission_Protocol::partialSupported(const e
  *
  * @details Отправка идёт той же очередью события, что и общая, и потому
  *          порядок сообщений сохраняется, даже если приложение мешает
- *          оба способа отправки
+ *          оба способа отправки.
  *
  * @warning Сообщение, отправляемое по частям, обязано уйти подряд: пока
  *          признак завершения не выставлен, отправка иных сообщений тем
@@ -43493,15 +43916,17 @@ size_t awh::engine::Stream_Control_Transmission_Protocol::send(const event::id_t
 				return result;
 			}
 			/**
-			 * Отсутствие режима явной границы записи отправку НЕ отменяет
+			 * Выполняем установку информационных метаданных отправляемого сообщения
+			 *
+			 * @note Отсутствие режима явной границы записи отправку НЕ отменяет
 			 *
 			 * @details Прежде здесь стоял отказ, и это было неверно: без режима отправка
 			 *          кусками возможна, она лишь придёт несколькими записями вместо
 			 *          одной. Рвать из-за этого обмен незачем - тем более что у Linux режима
 			 *          нет вовсе. Предупреждение о понижении выдаётся при заведении режима,
 			 *          одно на узел, а спросить о нём заранее можно partialSupported()
+			 *
 			 */
-			// Выполняем установку информационных метаданных отправляемого сообщения
 			this->messageInfo(id, info);
 			/**
 			 * Определяем чем является текущий узел
@@ -43605,6 +44030,7 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 					 *
 					 * @note У современного набора вызовов метаданные приходят ТОЛЬКО по подписке,
 					 *       и без неё отклик получал бы вчерашнее содержимое
+					 *
 					 */
 					if(node->transfer.fd != net::invalid_socket_t)
 						// Выполняем подписку на метаданные принимаемых сообщений
@@ -43621,6 +44047,7 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 					 *
 					 * @note У современного набора вызовов метаданные приходят ТОЛЬКО по подписке,
 					 *       и без неё отклик получал бы вчерашнее содержимое
+					 *
 					 */
 					if(node->transfer.fd != net::invalid_socket_t)
 						// Выполняем подписку на метаданные принимаемых сообщений
@@ -43766,6 +44193,7 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 					 * @note Отклик ставят и до заведения сокета: у клиента это обычный
 					 *       порядок. Подписка тогда выдаётся при заведении сокета, где
 					 *       установленность отклика и проверяется
+					 *
 					 */
 					if(node->transfer.fd != net::invalid_socket_t)
 						// Выполняем подписку на метаданные принимаемых сообщений
@@ -43783,6 +44211,7 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 					 * @note Отклик ставят и до заведения сокета: у клиента это обычный
 					 *       порядок. Подписка тогда выдаётся при заведении сокета, где
 					 *       установленность отклика и проверяется
+					 *
 					 */
 					if(node->transfer.fd != net::invalid_socket_t)
 						// Выполняем подписку на метаданные принимаемых сообщений
@@ -43825,18 +44254,6 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 		#endif
 	}
 }
-/**
- * @brief Конструктор
- *
- */
-awh::engine::Stream_Control_Transmission_Protocol::Stream_Control_Transmission_Protocol() noexcept :
- _eth() {}
-/**
- * @brief Деструктор
- *
- */
-awh::engine::Stream_Control_Transmission_Protocol::~Stream_Control_Transmission_Protocol() noexcept {}
-
 /**
  * @brief Метод очистки контрольного списка события
  *
@@ -44501,8 +44918,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
  * @param type тип контрольного списка
  *
  */
-awh::engine::IO::Control_List::Control_List(const event::control_list_t type) noexcept :
- _addr(), _type(type) {}
+awh::engine::IO::Control_List::Control_List(const event::control_list_t type) noexcept : _addr(), _type(type) {}
 /**
  * @brief Деструктор
  *
@@ -44584,11 +45000,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
 						 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
 						 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
-						 *          потребителю говорит `FAILURE`
+						 *          потребителю говорит `FAILURE`.
 						 *
 						 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 						 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 						 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+						 *
 						 */
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -44603,6 +45020,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 					 *       реализация занимала здесь отдельный фильтр таймера ядра
 					 *       на каждый таймер и выдавала запись в список изменений,
 					 *       которая всё равно ждала запуска в выключенном состоянии
+					 *
 					 */
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
@@ -44621,11 +45039,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
 						 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
 						 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
-						 *          потребителю говорит `FAILURE`
+						 *          потребителю говорит `FAILURE`.
 						 *
 						 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 						 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 						 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+						 *
 						 */
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -44697,11 +45116,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
 										 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
 										 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
-										 *          потребителю говорит `FAILURE`
+										 *          потребителю говорит `FAILURE`.
 										 *
 										 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 										 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 										 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+										 *
 										 */
 										if(dir->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова статуса события
@@ -44838,11 +45258,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
 									 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
 									 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
-									 *          потребителю говорит `FAILURE`
+									 *          потребителю говорит `FAILURE`.
 									 *
 									 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 									 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 									 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+									 *
 									 */
 									if(fs->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова статуса события
@@ -44982,11 +45403,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 									 *          а не общим сторожем смены состояния: сторож привязан к правке
 									 *          подписок, и состав извещений зависел бы от мгновения подписки,
-									 *          а не от того, что произошло с узлом
+									 *          а не от того, что произошло с узлом.
 									 *
 									 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 									 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 									 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+									 *
 									 */
 									if(ipc->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова статуса события
@@ -45070,7 +45492,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 *          Этой системе это сходило с рук - устройство она заводит сама и имя ему
 						 *          выдаёт. Но есть системы, где связь канального уровня заводится
 						 *          административно, и открыть готовую движок обязан ПО ИМЕНИ, а имени к
-						 *          тому мигу ещё не было
+						 *          тому мигу ещё не было.
 						 *
 						 * @note Место выбрано по укладу, заданному переносом создания сокета из
 						 *       event() в commit(): к мигу фиксации набор настроек известен целиком.
@@ -45080,6 +45502,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * @warning Пересоздание (rebuild) заводит устройство САМО и раньше: ему нужен
 						 *          дескриптор для переприменения опций. Сверка с недействительным
 						 *          значением оставляет заведённое там устройство нетронутым
+						 *
 						 */
 						if(tunnel->fd == net::invalid_socket_t){
 							// Заводим устройство туннеля по заданному ему имени
@@ -45093,10 +45516,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 *          на узле. Установка пропускает те, что уже записаны в состоянии,
 								 *          потому состояние прежде сбрасывается: иначе переприменение
 								 *          проходит мимо целиком - опции остаются записанными, но не
-								 *          выставленными
+								 *          выставленными.
 								 *
 								 * @warning Дороже всего обходится потеря неблокирующего режима: она
 								 *          обнаруживается не отказом, а зависанием
+								 *
 								 */
 								const uint16_t reapply = tunnel->state.options;
 								// Сбрасываем запомненные опции, чтобы установка не сочла их выставленными
@@ -45232,11 +45656,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 								 *          а не общим сторожем смены состояния: сторож привязан к правке
 								 *          подписок, и состав извещений зависел бы от мгновения подписки,
-								 *          а не от того, что произошло с узлом
+								 *          а не от того, что произошло с узлом.
 								 *
 								 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 								 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 								 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+								 *
 								 */
 								if(tunnel->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова статуса события
@@ -45330,7 +45755,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 *          МОЛЧА: ни отклика состояния, ни отклика ошибки, ни строки
 								 *          в журнале, - тогда как соседняя ветвь того же места
 								 *          докладывает всеми тремя способами. Состояние при этом
-								 *          оставалось стоять в INITIAL, хотя фиксация не удалась
+								 *          оставалось стоять в INITIAL, хотя фиксация не удалась.
+								 *
 								 */
 								if(mediator->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -45367,11 +45793,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
 								 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
 								 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
-								 *          потребителю говорит `FAILURE`
+								 *          потребителю говорит `FAILURE`.
 								 *
 								 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 								 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 								 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+								 *
 								 */
 								if(mediator->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова статуса события
@@ -45417,8 +45844,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * Заводим сокет, если он ещё не заведён
 						 *
 						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
-						 * опций события известен целиком, и часть из них ядро принимает прямо
-						 * при создании сокета, не требуя отдельных обращений
+						 *          опций события известен целиком, и часть из них ядро принимает прямо
+						 *          при создании сокета, не требуя отдельных обращений.
+						 *
 						 */
 						if(client->transfer.fd == net::invalid_socket_t){
 							// Если завести сокет не удалось, фиксировать больше нечего
@@ -45429,10 +45857,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Применяем к заведённому сокету накопленные настройки события
 							 *
 							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
-							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
-							 * стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
-							 * не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
-							 * а зависание на чтении
+							 *       опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 *       стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
+							 *       не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
+							 *       а зависание на чтении
+							 *
 							 */
 							const uint16_t options = client->state.options;
 							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
@@ -45443,13 +45872,14 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если вступление в группу рассылки было отложено, исполняем его
 							 *
 							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
-							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
-							 * остальной работы по фиксации настроек
+							 *       порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 *       остальной работы по фиксации настроек
 							 *
 							 * @note Запись НЕ гасится намеренно: она держит не «отложенное действие»,
-							 * а желаемое состояние узла. Пересоздание сокета (`rebuild`) заводит его
-							 * заново и зовёт фиксацию повторно - и членство восстанавливается само.
-							 * Гасили бы - узел молча выпадал бы из рассылки после пересоздания
+							 *       а желаемое состояние узла. Пересоздание сокета (`rebuild`) заводит его
+							 *       заново и зовёт фиксацию повторно - и членство восстанавливается само.
+							 *       Гасили бы - узел молча выпадал бы из рассылки после пересоздания
+							 *
 							 */
 							if(client->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
@@ -45458,11 +45888,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
 							 * @details Устройство групповой рассылки и сроки ожидания задаются до
-							 * фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
-							 * -1 и терялись молча: отказ виден лишь строкой в журнале
+							 *          фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
+							 *          -1 и терялись молча: отказ виден лишь строкой в журнале.
 							 *
 							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
-							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 *       ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 *
 							 */
 							if(!client->iface.empty())
 								// Устанавливаем отложенное устройство групповой рассылки
@@ -45548,11 +45979,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 												 *          а не общим сторожем смены состояния: сторож привязан к правке
 												 *          подписок, и состав извещений зависел бы от мгновения подписки,
-												 *          а не от того, что произошло с узлом
+												 *          а не от того, что произошло с узлом.
 												 *
 												 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 												 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 												 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+												 *
 												 */
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова статуса события
@@ -45652,11 +46084,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 												 *          а не общим сторожем смены состояния: сторож привязан к правке
 												 *          подписок, и состав извещений зависел бы от мгновения подписки,
-												 *          а не от того, что произошло с узлом
+												 *          а не от того, что произошло с узлом.
 												 *
 												 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 												 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 												 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+												 *
 												 */
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова статуса события
@@ -45735,25 +46168,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
-																// Устанавливаем семейство IP-адресов
-																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																client->endpoint.size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server), unixsocket);
 															} break;
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
 																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_family = AF_UNIX;
-																// Устанавливаем семейство IP-адресов для сервера
-																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для клиента
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path));
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																client->endpoint.size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server), unixsocket);
 																// Получаем путь к файлу unix-сокета
 																string fullpath = "", sockname = "";
 																// Выполняем поиск последнего слеша разделителя
@@ -45825,7 +46248,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * @details Признак INITIAL ставится тремя сотнями строк выше, до всякой
 																		 *          работы с ядром. Этот путь возвращал отказ, оставив его стоять,
 																		 *          и последующий launch поднимал узел, чья фиксация провалилась.
-																		 *          Все прочие пути отказа этой ветви состояние снимают
+																		 *          Все прочие пути отказа этой ветви состояние снимают.
+																		 *
 																		 */
 																		client->state.status = event::status_t::NONE;
 																		// Выходим из функции с ошибкой
@@ -45917,6 +46341,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * @warning Сносить файл здесь НЕЛЬЗЯ ни в одном из исходов: неудачный `bind`
 																		 *          не создаёт ничего, а при занятом имени файл принадлежит ЖИВОМУ
 																		 *          чужому узлу, и снос обрывает ему приём
+																		 *
 																		 */
 																		if(errno == EADDRINUSE){
 																			// Увеличиваем индекс цикла подбора временного файла
@@ -45933,6 +46358,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          вращение с созданием и сносом файла на каждом обороте. Отказ
 																		 *          постоянный есть у сокета, уже привязанного: повторная привязка
 																		 *          отвечает EINVAL - проверено щупом
+																		 *
 																		 */
 																		return false;
 																	}
@@ -46001,11 +46427,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 														 *          а не общим сторожем смены состояния: сторож привязан к правке
 														 *          подписок, и состав извещений зависел бы от мгновения подписки,
-														 *          а не от того, что произошло с узлом
+														 *          а не от того, что произошло с узлом.
 														 *
 														 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 														 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 														 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+														 *
 														 */
 														if(client->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова статуса события
@@ -46095,6 +46522,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * @note Подписка нужна не только новому отклику: у современного набора
 															 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
 															 *       прежний отклик сведений получал бы вчерашнее содержимое
+															 *
 															 */
 															if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
 																// Выполняем подписку на метаданные принимаемых сообщений
@@ -46153,6 +46581,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 *       нулями. Прежде источник здесь разыменовывался
 														 *       безусловно, хотя проверялся на пустоту двадцатью
 														 *       строками выше
+														 *
 														 */
 														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 														// Выполняем бинд сокета клиента на адрес целевой машины
@@ -46214,11 +46643,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 															 *          а не общим сторожем смены состояния: сторож привязан к правке
 															 *          подписок, и состав извещений зависел бы от мгновения подписки,
-															 *          а не от того, что произошло с узлом
+															 *          а не от того, что произошло с узлом.
 															 *
 															 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 															 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 															 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+															 *
 															 */
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова статуса события
@@ -46272,11 +46702,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																		 *          а не общим сторожем смены состояния: сторож привязан к правке
 																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																		 *          а не от того, что произошло с узлом
+																		 *          а не от того, что произошло с узлом.
 																		 *
 																		 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																		 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																		 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																		 *
 																		 */
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова статуса события
@@ -46385,11 +46816,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																		 *          а не общим сторожем смены состояния: сторож привязан к правке
 																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																		 *          а не от того, что произошло с узлом
+																		 *          а не от того, что произошло с узлом.
 																		 *
 																		 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																		 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																		 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																		 *
 																		 */
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова статуса события
@@ -46490,11 +46922,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																			 *          а не общим сторожем смены состояния: сторож привязан к правке
 																			 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																			 *          а не от того, что произошло с узлом
+																			 *          а не от того, что произошло с узлом.
 																			 *
 																			 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																			 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																			 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																			 *
 																			 */
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова статуса события
@@ -46621,11 +47054,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																	 *          а не общим сторожем смены состояния: сторож привязан к правке
 																	 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																	 *          а не от того, что произошло с узлом
+																	 *          а не от того, что произошло с узлом.
 																	 *
 																	 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																	 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																	 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																	 *
 																	 */
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова статуса события
@@ -46759,6 +47193,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * @note Подписка нужна не только новому отклику: у современного набора
 															 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
 															 *       прежний отклик сведений получал бы вчерашнее содержимое
+															 *
 															 */
 															if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
 																// Выполняем подписку на метаданные принимаемых сообщений
@@ -46880,11 +47315,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 															 *          а не общим сторожем смены состояния: сторож привязан к правке
 															 *          подписок, и состав извещений зависел бы от мгновения подписки,
-															 *          а не от того, что произошло с узлом
+															 *          а не от того, что произошло с узлом.
 															 *
 															 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 															 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 															 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+															 *
 															 */
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова статуса события
@@ -46943,11 +47379,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																		 *          а не общим сторожем смены состояния: сторож привязан к правке
 																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																		 *          а не от того, что произошло с узлом
+																		 *          а не от того, что произошло с узлом.
 																		 *
 																		 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																		 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																		 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																		 *
 																		 */
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова статуса события
@@ -47061,11 +47498,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																		 *          а не общим сторожем смены состояния: сторож привязан к правке
 																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																		 *          а не от того, что произошло с узлом
+																		 *          а не от того, что произошло с узлом.
 																		 *
 																		 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																		 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																		 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																		 *
 																		 */
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова статуса события
@@ -47176,11 +47614,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																			 *          а не общим сторожем смены состояния: сторож привязан к правке
 																			 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																			 *          а не от того, что произошло с узлом
+																			 *          а не от того, что произошло с узлом.
 																			 *
 																			 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																			 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																			 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																			 *
 																			 */
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова статуса события
@@ -47314,11 +47753,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 																	 *          а не общим сторожем смены состояния: сторож привязан к правке
 																	 *          подписок, и состав извещений зависел бы от мгновения подписки,
-																	 *          а не от того, что произошло с узлом
+																	 *          а не от того, что произошло с узлом.
 																	 *
 																	 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 																	 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 																	 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+																	 *
 																	 */
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова статуса события
@@ -47504,8 +47944,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * Заводим сокет, если он ещё не заведён
 						 *
 						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
-						 * опций события известен целиком, и часть из них ядро принимает прямо
-						 * при создании сокета, не требуя отдельных обращений
+						 *          опций события известен целиком, и часть из них ядро принимает прямо
+						 *          при создании сокета, не требуя отдельных обращений.
+						 *
 						 */
 						if(server->fd == net::invalid_socket_t){
 							// Если завести сокет не удалось, фиксировать больше нечего
@@ -47516,10 +47957,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Применяем к заведённому сокету накопленные настройки события
 							 *
 							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
-							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
-							 * стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
-							 * не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
-							 * а зависание на чтении
+							 *       опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 *       стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
+							 *       не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
+							 *       а зависание на чтении
+							 *
 							 */
 							const uint16_t options = server->state.options;
 							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
@@ -47530,8 +47972,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если вступление в группу рассылки было отложено, исполняем его
 							 *
 							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
-							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
-							 * остальной работы по фиксации настроек
+							 *       порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 *       остальной работы по фиксации настроек
+							 *
 							 */
 							if(server->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
@@ -47540,11 +47983,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
 							 * @details Устройство групповой рассылки и сроки ожидания задаются до
-							 * фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
-							 * -1 и терялись молча: отказ виден лишь строкой в журнале
+							 *          фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
+							 *          -1 и терялись молча: отказ виден лишь строкой в журнале.
 							 *
 							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
-							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 *       ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 *
 							 */
 							if(!server->iface.empty())
 								// Устанавливаем отложенное устройство групповой рассылки
@@ -47573,6 +48017,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 * @note Он приехал привязанным и слушающим: адрес принадлежит отправителю,
 						 *       а у получателя его нет вовсе. Остальной путь фиксации событие
 						 *       проходит обычным порядком
+						 *
 						 */
 						if((result = server->state.adopted)){
 							// Создаём запись списка изменений
@@ -47583,6 +48028,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * @warning Подписка лежит внутри разбора адреса привязки, а у принятого
 							 *          описателя адреса нет вовсе - пропустив разбор целиком, событие
 							 *          осталось бы без подписки, и запуск отвергался бы отказом
+							 *
 							 */
 							event = ::change::make(server->fd, ::change::filter_t::READ, ::change::ADD | ::change::DISABLE, 0, 0, server);
 							// Добавляем новое событие в список изменений
@@ -47604,11 +48050,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 							 *          а не общим сторожем смены состояния: сторож привязан к правке
 							 *          подписок, и состав извещений зависел бы от мгновения подписки,
-							 *          а не от того, что произошло с узлом
+							 *          а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 							 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 							 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+							 *
 							 */
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова статуса события
@@ -47668,11 +48115,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 												 *          а не общим сторожем смены состояния: сторож привязан к правке
 												 *          подписок, и состав извещений зависел бы от мгновения подписки,
-												 *          а не от того, что произошло с узлом
+												 *          а не от того, что произошло с узлом.
 												 *
 												 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 												 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 												 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+												 *
 												 */
 												if(server->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова статуса события
@@ -47758,11 +48206,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 												 *          а не общим сторожем смены состояния: сторож привязан к правке
 												 *          подписок, и состав извещений зависел бы от мгновения подписки,
-												 *          а не от того, что произошло с узлом
+												 *          а не от того, что произошло с узлом.
 												 *
 												 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 												 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 												 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+												 *
 												 */
 												if(server->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова статуса события
@@ -47850,14 +48299,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Удаляем файл сокета
 																		::unlink(unixsocket.c_str());
 																}
-																// Устанавливаем семейство IP-адресов
-																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
-																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																const socklen_t size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server), unixsocket);
 																// Выполняем бинд сокета сервера на адрес целевой машины
 																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
@@ -47888,9 +48331,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * Возвращаем узел в несведённое состояние
 																	 *
 																	 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
-																	 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
-																	 * отвечает согласием узлу, какого нет: сокет не привязан, а
-																	 * событие числится запущенным
+																	 *          неудавшаяся привязка оставляет его стоять. Тогда `launch`
+																	 *          отвечает согласием узлу, какого нет: сокет не привязан, а
+																	 *          событие числится запущенным.
+																	 *
 																	 */
 																	server->state.status = event::status_t::NONE;
 																	// Выводим результат
@@ -47901,12 +48345,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
 																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
-																// Устанавливаем семейство IP-адресов для сервера
-																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
-																// Очищаем всю структуру для клиента
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path));
-																// Очищаем всю структуру для сервера
-																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Структура статистики файла
 																struct stat info;
 																// Выполняем извлечение данных статистики
@@ -47916,10 +48354,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Удаляем файл сокета
 																		::unlink(unixsocket.c_str());
 																}
-																// Копируем установленный адрес сервера
-																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
-																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
+																// Заполняем адрес сервера и запоминаем его фактическую длину
+																const socklen_t size = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server), unixsocket);
 																// Выполняем бинд сокета сервера на адрес целевой машины
 																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
@@ -47952,7 +48388,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
 																	 *          возвращал отказ, оставив его стоять: launch() смотрит именно
 																	 *          на него и поднял бы узел, чья привязка не удалась. Соседние
-																	 *          пути привязки той же ветви состояние снимают
+																	 *          пути привязки той же ветви состояние снимают.
+																	 *
 																	 */
 																	server->state.status = event::status_t::NONE;
 																	// Выводим результат
@@ -48016,11 +48453,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 														 *          а не общим сторожем смены состояния: сторож привязан к правке
 														 *          подписок, и состав извещений зависел бы от мгновения подписки,
-														 *          а не от того, что произошло с узлом
+														 *          а не от того, что произошло с узлом.
 														 *
 														 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 														 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 														 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+														 *
 														 */
 														if(server->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова статуса события
@@ -48117,6 +48555,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
 															 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
 															 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+															 *
 															 */
 															#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
 																// Выполняем подписку на метаданные принимаемых сообщений
@@ -48185,9 +48624,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Возвращаем узел в несведённое состояние
 															 *
 															 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
-															 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
-															 * отвечает согласием узлу, какого нет: сокет не привязан, а
-															 * событие числится запущенным
+															 *          неудавшаяся привязка оставляет его стоять. Тогда `launch`
+															 *          отвечает согласием узлу, какого нет: сокет не привязан, а
+															 *          событие числится запущенным.
+															 *
 															 */
 															server->state.status = event::status_t::NONE;
 															// Выводим результат
@@ -48217,11 +48657,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 															 *          а не общим сторожем смены состояния: сторож привязан к правке
 															 *          подписок, и состав извещений зависел бы от мгновения подписки,
-															 *          а не от того, что произошло с узлом
+															 *          а не от того, что произошло с узлом.
 															 *
 															 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 															 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 															 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+															 *
 															 */
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова статуса события
@@ -48321,6 +48762,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
 															 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
 															 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+															 *
 															 */
 															#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
 																// Выполняем подписку на метаданные принимаемых сообщений
@@ -48393,9 +48835,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Возвращаем узел в несведённое состояние
 															 *
 															 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
-															 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
-															 * отвечает согласием узлу, какого нет: сокет не привязан, а
-															 * событие числится запущенным
+															 *          неудавшаяся привязка оставляет его стоять. Тогда `launch`
+															 *          отвечает согласием узлу, какого нет: сокет не привязан, а
+															 *          событие числится запущенным.
+															 *
 															 */
 															server->state.status = event::status_t::NONE;
 															// Выводим результат
@@ -48425,11 +48868,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
 															 *          а не общим сторожем смены состояния: сторож привязан к правке
 															 *          подписок, и состав извещений зависел бы от мгновения подписки,
-															 *          а не от того, что произошло с узлом
+															 *          а не от того, что произошло с узлом.
 															 *
 															 * @warning Извещение стоит в КОНЦЕ удавшейся ветви, а не сразу за присвоением
 															 *          состояния: поставь его раньше - и потребитель получит весть об успехе
 															 *          прежде, чем ветвь успеет отказать, а следом ещё и отказ
+															 *
 															 */
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова статуса события
@@ -49079,11 +49523,12 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					// Возвращаем значение по умолчанию
 					return false;
 				/**
+				 * Первый по порядку создания узел пары
+				 *
 				 * Сохраняем исходный порядок концов пары: идентификаторы выдаются
 				 * монотонно, поэтому узел с меньшим идентификатором был создан первым и
 				 * получал fds[0] (для pipe это конец на чтение, порядок важен)
 				 */
-				// Первый по порядку создания узел пары
 				::io::ipc_t * first = ((id < ipc->partner) ? ipc : mate);
 				// Второй по порядку создания узел пары
 				::io::ipc_t * second = ((id < ipc->partner) ? mate : ipc);
@@ -49096,13 +49541,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Восстанавливаем тип очереди парного узла
 				mate->transfer.queue.type((((mate->state.type == event::type_t::NONE) || (mate->state.type == event::type_t::STREAM)) ? net_queue_t::type_t::TCP : net_queue_t::type_t::UDP));
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные опции первого узла пары
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49110,7 +49557,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные опции первого узла пары
 				const uint16_t reapply0 = ipc->state.options;
 				// Запоминаем выставленные опции парного узла
 				const uint16_t reapply1 = mate->state.options;
@@ -49200,13 +49646,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					// Возвращаем значение по умолчанию
 					return false;
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные в состоянии узла опции
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49214,7 +49662,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные в состоянии узла опции
 				const uint16_t reapply = tunnel->state.options;
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				tunnel->state.options = event::options::NONE;
@@ -49259,13 +49706,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем статус события в неопределённое состояние
 				fs->state.status = event::status_t::NONE;
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные в состоянии узла опции
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49273,7 +49722,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные в состоянии узла опции
 				const uint16_t reapply = fs->state.options;
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				fs->state.options = event::options::NONE;
@@ -49323,13 +49771,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем статус события в неопределённое состояние
 				dir->state.status = event::status_t::NONE;
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные в состоянии узла опции
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49337,7 +49787,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные в состоянии узла опции
 				const uint16_t reapply = dir->state.options;
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				dir->state.options = event::options::NONE;
@@ -49385,6 +49834,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					 *          маршрута по умолчанию: узел после всякой перестройки оказывался
 					 *          привязан к устройству, какого никто не называл. Состояние же
 					 *          узла ведёт ровно заказанное - пустое, если заказа не было
+					 *
 					 */
 					iface = client->iface;
 					// Снимаем размер буфера приёма
@@ -49418,12 +49868,12 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          когда подъём уже назначен: не сними мы срок, он выстрелил бы
 				 *          следом и повёл **второй** подъём поверх того, что ведёт
 				 *          вызывающий, - два подключения на одно событие, каждое со
-				 *          своим дескриптором
+				 *          своим дескриптором.
 				 *
 				 *          Опция при этом не отменяется: она останется в силе, и
 				 *          следующий обрыв заведёт переподключение как обычно.
 				 *          Снимается лишь назначенная попытка, ставшая ненужной, - её
-				 *          заменяет собой сама перестройка
+				 *          заменяет собой сама перестройка.
 				 *
 				 */
 				switch(static_cast <uint8_t> (::__awh_internal_timer__)){
@@ -49449,13 +49899,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					// Возвращаем значение по умолчанию
 					return false;
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные в состоянии узла опции
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49463,7 +49915,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные в состоянии узла опции
 				const uint16_t reapply = client->state.options;
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				client->state.options = event::options::NONE;
@@ -49497,7 +49948,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 * @details Смысл перестройки у клиента один: сохранить идентификатор
 				 *          события со всеми выставленными в него настройками, чтобы не
 				 *          вносить их заново. Подключение же и запуск - это то, чем
-				 *          вызывающий за перестройку платит, и плата эта невелика
+				 *          вызывающий за перестройку платит, и плата эта невелика.
 				 *
 				 * @note Переигрывать подключение перестройка не вправе, и довод тому
 				 *       следующий. Она делала бы это к **прежнему** получателю - до
@@ -49532,10 +49983,11 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Запоминаем исходный статус события, чтобы вернуть узел в то же состояние после подмены дескриптора
 				const event::status_t status = server->state.status;
 				/**
+				 * Флаг того, что событие было переведено в режим прослушивания (потоковый сервер)
+				 *
 				 * Определяем, какие стадии подъёма сервера были пройдены до перестройки:
 				 * commit (bind), listen (::listen) и launch (включение чтения). Их и переиграем
 				 */
-				// Флаг того, что событие было переведено в режим прослушивания (потоковый сервер)
 				const bool listened = ((status == event::status_t::SUCCESS) || (status == event::status_t::LISTENING));
 				// Флаг того, что событие было закоммичено (привязано)
 				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
@@ -49544,10 +49996,11 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Запоминаем размер очереди прослушивания для повторного listen()
 				const uint32_t backlog = server->backlog.max;
 				/**
+				 * Флаг наличия действующего дескриптора
+				 *
 				 * Снимаем снимок состояния, живущего только на дескрипторе: при перестройке
 				 * дескриптора оно теряется и должно быть переприменено на новый дескриптор
 				 */
-				// Флаг наличия действующего дескриптора
 				const bool present = (server->fd != net::invalid_socket_t);
 				// Название привязанного сетевого интерфейса
 				string iface = "";
@@ -49568,6 +50021,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					 *          маршрута по умолчанию: узел после всякой перестройки оказывался
 					 *          привязан к устройству, какого никто не называл. Состояние же
 					 *          узла ведёт ровно заказанное - пустое, если заказа не было
+					 *
 					 */
 					iface = server->iface;
 					// Снимаем размер буфера приёма
@@ -49599,13 +50053,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					// Возвращаем значение по умолчанию
 					return false;
 				/**
-				 * Переприменяем опции узла, сбросив прежде запомненные
+				 * Запоминаем выставленные в состоянии узла опции
+				 *
+				 * @note Переприменяем опции узла, сбросив прежде запомненные
 				 *
 				 * @details Установка опции пропускает те, что уже записаны в состоянии
 				 *          узла: выставлять на дескрипторе то, что на нём и так стоит,
 				 *          незачем. Дескриптор, однако, теперь **новый**, а состояние
 				 *          сохранено, и без сброса переприменение проходит мимо целиком -
-				 *          опции остаются записанными, но не выставленными
+				 *          опции остаются записанными, но не выставленными.
 				 *
 				 * @warning Дороже всего обходится потеря неблокирующего режима: она
 				 *          обнаруживается не отказом, а зависанием - подключение к
@@ -49613,7 +50069,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				 *          весь цикл событий стоит вместе с ним
 				 *
 				 */
-				// Запоминаем выставленные в состоянии узла опции
 				const uint16_t reapply = server->state.options;
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				server->state.options = event::options::NONE;
@@ -49737,8 +50192,10 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 					 * лишь когда они заполнены, а иначе - из семейства узла, которое
 					 * известно всегда, и сетевые параметры извлекаются по умолчанию
 					 */
-					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
-					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					const net::attr_net_t * source = (
+						((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+						awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr
+					);
 					// Определяем разновидность адреса источника
 					net::type_t type = net::type_t::NONE;
 					// Если атрибуты источника заполнены, берём разновидность из них
@@ -49983,7 +50440,6 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является посредником
 				/**
 				 * Если узел является туннелем
 				 *
@@ -49991,13 +50447,14 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 				 *          не всем системам: эта заводит устройство сама и имя ему выдаёт,
 				 *          но есть системы, где связь канального уровня заводится
 				 *          административно, и движку остаётся лишь открыть готовую по имени - без имени он отказывает прямо:
-				 *          «tunnel device name is required»
+				 *          «tunnel device name is required».
 				 *
 				 * @warning Прежде разбор узла туннеля здесь отсутствовал вовсе: договор
 				 *          требовал имя, а передать его было НЕЧЕМ, и туннели у систем Sun
 				 *          не работали вовсе. Имя запоминается на узле, а к делу его
 				 *          приводит заведение устройства - при фиксации настроек либо
 				 *          пересозданием
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
@@ -50046,24 +50503,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Устанавливаем IP-адрес в источник сетевого адреса
 								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 								/**
-								 * Устройство выхода групповой рассылки задаётся отдельной
-								 * настройкой гнезда: привязка его не задаёт, и рассылка без
-								 * неё уходит туда, куда укажет таблица маршрутов
-								 */
-								/**
 								 * Запоминаем названное устройство всегда
+								 *
+								 * @details Устройство выхода групповой рассылки задаётся отдельной
+								 *          настройкой гнезда: привязка его не задаёт, и рассылка без
+								 *          неё уходит туда, куда укажет таблица маршрутов.
 								 *
 								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
 								 *          рассылки и лишь до заведения сокета. Назови устройство
 								 *          прежде режима - имя терялось, и режим забирал его у
 								 *          `getIface()`, а тот при неназванном устройстве отвечает
 								 *          интерфейсом маршрута по умолчанию
+								 *
 								 */
 								client->iface.assign(src.iface.begin(), src.iface.end());
 								// Если событие работает групповой рассылкой
 								if(client->state.delivery == event::delivery_mode_t::MULTICAST){
 									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 									if(client->transfer.fd != net::invalid_socket_t)
+										// Применяем устройство к уже заведённому сокету
 										result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 									// Устройство запомнено до фиксации настроек
 									else result = true;
@@ -50074,8 +50532,9 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								if(client->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
 								/**
+								 * Устанавливаем текст ошибки
+								 *
 								 * Разводим два повода отказа. Устройства может не быть в системе
 								 * вовсе, а может быть - но без адреса запрошенного семейства:
 								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
@@ -50131,24 +50590,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Устанавливаем IP-адрес в источник сетевого адреса
 								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 								/**
-								 * Устройство выхода групповой рассылки задаётся отдельной
-								 * настройкой гнезда: привязка его не задаёт, и рассылка без
-								 * неё уходит туда, куда укажет таблица маршрутов
-								 */
-								/**
 								 * Запоминаем названное устройство всегда
+								 *
+								 * @details Устройство выхода групповой рассылки задаётся отдельной
+								 *          настройкой гнезда: привязка его не задаёт, и рассылка без
+								 *          неё уходит туда, куда укажет таблица маршрутов.
 								 *
 								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
 								 *          рассылки и лишь до заведения сокета. Назови устройство
 								 *          прежде режима - имя терялось, и режим забирал его у
 								 *          `getIface()`, а тот при неназванном устройстве отвечает
 								 *          интерфейсом маршрута по умолчанию
+								 *
 								 */
 								client->iface.assign(src.iface.begin(), src.iface.end());
 								// Если событие работает групповой рассылкой
 								if(client->state.delivery == event::delivery_mode_t::MULTICAST){
 									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 									if(client->transfer.fd != net::invalid_socket_t)
+										// Применяем устройство к уже заведённому сокету
 										result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 									// Устройство запомнено до фиксации настроек
 									else result = true;
@@ -50159,8 +50619,9 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								if(client->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
 								/**
+								 * Устанавливаем текст ошибки
+								 *
 								 * Разводим два повода отказа. Устройства может не быть в системе
 								 * вовсе, а может быть - но без адреса запрошенного семейства:
 								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
@@ -50219,26 +50680,28 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Устанавливаем IP-адрес в хост сервера
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 								// Если событие является мультикастовым
-								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
-									// Устанавливаем интерфейс для мультикастовой передачи
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(server->fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											server->iface.assign(name.begin(), name.end());
-											result = true;
-										}
+								if(server->state.delivery == event::delivery_mode_t::MULTICAST){
+									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+									if(server->fd != net::invalid_socket_t)
+										// Применяем устройство к уже заведённому сокету
+										result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+									// Запоминаем устройство групповой рассылки до фиксации настроек
+									else {
+										// Запоминаем имя устройства до заведения сокета
+										server->iface.assign(name.begin(), name.end());
+										// Считаем настройку применённой
+										result = true;
 									}
+							}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
 								/**
+								 * Устанавливаем текст ошибки
+								 *
 								 * Разводим два повода отказа. Устройства может не быть в системе
 								 * вовсе, а может быть - но без адреса запрошенного семейства:
 								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
@@ -50287,26 +50750,28 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Устанавливаем IP-адрес в хост сервера
 								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 								// Если событие является мультикастовым
-								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
-									// Устанавливаем интерфейс для мультикастовой передачи
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(server->fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											server->iface.assign(name.begin(), name.end());
-											result = true;
-										}
+								if(server->state.delivery == event::delivery_mode_t::MULTICAST){
+									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+									if(server->fd != net::invalid_socket_t)
+										// Применяем устройство к уже заведённому сокету
+										result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+									// Запоминаем устройство групповой рассылки до фиксации настроек
+									else {
+										// Запоминаем имя устройства до заведения сокета
+										server->iface.assign(name.begin(), name.end());
+										// Считаем настройку применённой
+										result = true;
 									}
+								}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
 								/**
+								 * Устанавливаем текст ошибки
+								 *
 								 * Разводим два повода отказа. Устройства может не быть в системе
 								 * вовсе, а может быть - но без адреса запрошенного семейства:
 								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
@@ -54711,7 +55176,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 													 *          готовой структурой, и зона лежит в её `sin6_scope_id`.
 													 *          Без возврата дейтаграммный сервер отдавал запись без
 													 *          хвоста устройства, тогда как поточный отдавал с ним:
-													 *          тот идёт через `source`, зону сохраняющий
+													 *          тот идёт через `source`, зону сохраняющий.
 													 *
 													 */
 													if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id > 0){
@@ -55250,18 +55715,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
 														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 														// Если событие является мультикастовым
-														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-															// Устанавливаем интерфейс для мультикастовой передачи
-															{
-																// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-																if(server->fd != net::invalid_socket_t)
-																	result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-																// Запоминаем устройство групповой рассылки до фиксации настроек
-																else {
-																	server->iface.assign(src.iface.begin(), src.iface.end());
-																	result = true;
-																}
+														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+															if(server->fd != net::invalid_socket_t)
+																// Применяем устройство к уже заведённому сокету
+																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															// Запоминаем устройство групповой рассылки до фиксации настроек
+															else {
+																// Запоминаем имя устройства до заведения сокета
+																server->iface.assign(src.iface.begin(), src.iface.end());
+																// Считаем настройку применённой
+																result = true;
 															}
+														}
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -55314,18 +55780,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
 														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 														// Если событие является мультикастовым
-														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-															// Устанавливаем интерфейс для мультикастовой передачи
-															{
-																// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-																if(server->fd != net::invalid_socket_t)
-																	result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-																// Запоминаем устройство групповой рассылки до фиксации настроек
-																else {
-																	server->iface.assign(src.iface.begin(), src.iface.end());
-																	result = true;
-																}
+														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+															if(server->fd != net::invalid_socket_t)
+																// Применяем устройство к уже заведённому сокету
+																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															// Запоминаем устройство групповой рассылки до фиксации настроек
+															else {
+																// Запоминаем имя устройства до заведения сокета
+																server->iface.assign(src.iface.begin(), src.iface.end());
+																// Считаем настройку применённой
+																result = true;
 															}
+														}
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -55911,18 +56378,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-													// Устанавливаем интерфейс для мультикастовой передачи
-													{
-														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-														if(server->fd != net::invalid_socket_t)
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-														// Запоминаем устройство групповой рассылки до фиксации настроек
-														else {
-															server->iface.assign(src.iface.begin(), src.iface.end());
-															result = true;
-														}
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														// Применяем устройство к уже заведённому сокету
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														// Запоминаем имя устройства до заведения сокета
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														// Считаем настройку применённой
+														result = true;
 													}
+												}
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -56381,7 +56849,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 *          хекстета, встроенного наследием KAME, либо из названия
 											 *          устройства - а здесь нет ни того, ни другого. Без переноса
 											 *          зона остаётся нулевой, и привязка к канальному адресу
-											 *          отвечает «Can't assign requested address»
+											 *          отвечает «Can't assign requested address».
 											 *
 											 * @note Зона записывается названием устройства либо его номером;
 											 *       неизвестное название даёт ноль, что равносильно её отсутствию
@@ -56412,18 +56880,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-													// Устанавливаем интерфейс для мультикастовой передачи
-													{
-														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-														if(server->fd != net::invalid_socket_t)
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-														// Запоминаем устройство групповой рассылки до фиксации настроек
-														else {
-															server->iface.assign(src.iface.begin(), src.iface.end());
-															result = true;
-														}
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														// Применяем устройство к уже заведённому сокету
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														// Запоминаем имя устройства до заведения сокета
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														// Считаем настройку применённой
+														result = true;
 													}
+												}
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -56880,18 +57349,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-													// Устанавливаем интерфейс для мультикастовой передачи
-													{
-														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-														if(server->fd != net::invalid_socket_t)
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-														// Запоминаем устройство групповой рассылки до фиксации настроек
-														else {
-															server->iface.assign(src.iface.begin(), src.iface.end());
-															result = true;
-														}
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														// Применяем устройство к уже заведённому сокету
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														// Запоминаем имя устройства до заведения сокета
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														// Считаем настройку применённой
+														result = true;
 													}
+												}
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -56991,18 +57461,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-													// Устанавливаем интерфейс для мультикастовой передачи
-													{
-														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-														if(server->fd != net::invalid_socket_t)
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-														// Запоминаем устройство групповой рассылки до фиксации настроек
-														else {
-															server->iface.assign(src.iface.begin(), src.iface.end());
-															result = true;
-														}
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														// Применяем устройство к уже заведённому сокету
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														// Запоминаем имя устройства до заведения сокета
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														// Считаем настройку применённой
+														result = true;
 													}
+												}
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -58911,18 +59382,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 													// Если событие является мультикастовым
-													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-														// Устанавливаем интерфейс для мультикастовой передачи
-														{
-															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-															if(server->fd != net::invalid_socket_t)
-																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-															// Запоминаем устройство групповой рассылки до фиксации настроек
-															else {
-																server->iface.assign(src.iface.begin(), src.iface.end());
-																result = true;
-															}
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															// Применяем устройство к уже заведённому сокету
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															// Запоминаем имя устройства до заведения сокета
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															// Считаем настройку применённой
+															result = true;
 														}
+													}
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -58975,18 +59447,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
 													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 													// Если событие является мультикастовым
-													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-														// Устанавливаем интерфейс для мультикастовой передачи
-														{
-															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-															if(server->fd != net::invalid_socket_t)
-																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-															// Запоминаем устройство групповой рассылки до фиксации настроек
-															else {
-																server->iface.assign(src.iface.begin(), src.iface.end());
-																result = true;
-															}
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															// Применяем устройство к уже заведённому сокету
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															// Запоминаем имя устройства до заведения сокета
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															// Считаем настройку применённой
+															result = true;
 														}
+													}
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -59398,18 +59871,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 											// Если событие является мультикастовым
-											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-												// Устанавливаем интерфейс для мультикастовой передачи
-												{
-													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-													if(server->fd != net::invalid_socket_t)
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-													// Запоминаем устройство групповой рассылки до фиксации настроек
-													else {
-														server->iface.assign(src.iface.begin(), src.iface.end());
-														result = true;
-													}
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(server->fd != net::invalid_socket_t)
+													// Применяем устройство к уже заведённому сокету
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													// Запоминаем имя устройства до заведения сокета
+													server->iface.assign(src.iface.begin(), src.iface.end());
+													// Считаем настройку применённой
+													result = true;
 												}
+											}
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -59508,10 +59982,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										tunnel->source = make_unique <net::addr_net_ipv6_t> ();
 									// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
 									awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
-									// Переносим зону вслед за адресом
 									/**
+									 * Переносим зону вслед за адресом
+									 *
 									 * @warning Перенос брал у поданного объекта ОДНО поле адреса, и зона терялась
 									 *          молча. Закреплено проверкой IoNodeKeepsAddressZoneByObjectTest
+									 *
 									 */
 									awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 								// Если типы адресов не соответствуют
@@ -59558,10 +60034,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										mediator->host = make_unique <net::addr_net_ipv6_t> ();
 									// Устанавливаем полученный IP-адрес в хост посредника
 									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
-									// Переносим зону вслед за адресом
 									/**
+									 * Переносим зону вслед за адресом
+									 *
 									 * @warning Перенос брал у поданного объекта ОДНО поле адреса, и зона терялась
 									 *          молча. Закреплено проверкой IoNodeKeepsAddressZoneByObjectTest
+									 *
 									 */
 									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 								// Если типы адресов не соответствуют
@@ -59645,6 +60123,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 *
 									 * @note Нуль зоной не считается: он значит «зона не названа», и затирать им
 									 *       выведенную нельзя
+									 *
 									 */
 									if(awh_cast <const net::addr_net_ipv6_t *> (value)->zone > 0)
 										// Ставим зону, названную подателем адреса
@@ -59772,6 +60251,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 *
 										 * @note Нуль зоной не считается: он значит «зона не названа», и затирать им
 										 *       выведенную нельзя
+										 *
 										 */
 										if(awh_cast <const net::addr_net_ipv6_t *> (value)->zone > 0)
 											// Ставим зону, названную подателем адреса
@@ -59791,18 +60271,19 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
 											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 											// Если событие является мультикастовым
-											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
-												// Устанавливаем интерфейс для мультикастовой передачи
-												{
-													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-													if(server->fd != net::invalid_socket_t)
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
-													// Запоминаем устройство групповой рассылки до фиксации настроек
-													else {
-														server->iface.assign(src.iface.begin(), src.iface.end());
-														result = true;
-													}
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty()){
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(server->fd != net::invalid_socket_t)
+													// Применяем устройство к уже заведённому сокету
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													// Запоминаем имя устройства до заведения сокета
+													server->iface.assign(src.iface.begin(), src.iface.end());
+													// Считаем настройку применённой
+													result = true;
 												}
+											}
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -60000,8 +60481,10 @@ uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 					 * лишь когда они заполнены, а иначе - из семейства узла, которое
 					 * известно всегда, и сетевые параметры извлекаются по умолчанию
 					 */
-					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
-					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					const net::attr_net_t * source = (
+						((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+						awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr
+					);
 					// Определяем разновидность адреса источника
 					net::type_t type = net::type_t::NONE;
 					// Если атрибуты источника заполнены, берём разновидность из них
@@ -60301,8 +60784,10 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 					 * лишь когда они заполнены, а иначе - из семейства узла, которое
 					 * известно всегда, и сетевые параметры извлекаются по умолчанию
 					 */
-					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
-					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					const net::attr_net_t * source = (
+						((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+						awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr
+					);
 					// Определяем разновидность адреса источника
 					net::type_t type = net::type_t::NONE;
 					// Если атрибуты источника заполнены, берём разновидность из них
@@ -60528,7 +61013,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
  * @details Признак решается наличием средства запроса выдачи, а не перечнем систем
  *          поимённо: перечень устареет с первым же выпуском, который средство
  *          добавит. По IPv6 средство есть у всех систем породы - IPV6_RECVTCLASS, -
- *          а по IPv4 средство заведено не у всех систем
+ *          а по IPv4 средство заведено не у всех систем.
  *
  * @warning Выдавать отсутствие отметок нулевым значением нельзя, и здесь тому
  *          причина: ноль - это законное NOT_ECT, то есть «отправитель отметок не
@@ -60775,6 +61260,7 @@ awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event
 					 *
 					 * @note Спрашивать её у сокета нельзя: у датаграмм она туда и не
 					 *       ставится вовсе, а едет управляющими данными отправки
+					 *
 					 */
 					if(client->state.type == event::type_t::DATAGRAM)
 						// Извлекаем метку перегрузки из класса обслуживания узла
@@ -60843,8 +61329,7 @@ awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event
  * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
  *
  * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
- *       октет заголовка, поэтому установка затрагивает только младшие
- *       два бита
+ *       октет заголовка, поэтому установка затрагивает только младшие два бита
  *
  * @param id     идентификатор события
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -60888,6 +61373,7 @@ bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, co
 					 * @note У потоковой отправки управляющих данных нет, и метку класть
 					 *       некуда; сокет там принадлежит единственному соединению,
 					 *       поэтому опция ничего чужого не задевает
+					 *
 					 */
 					if(client->state.type != event::type_t::DATAGRAM)
 						// Устанавливаем значение поля Explicit Congestion Notification (ECN) клиента
@@ -60914,6 +61400,7 @@ bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, co
 				 * @note Ради него всё и затевалось: сокет у датаграммного сервера один на
 				 *       все соединения, и опция сокета метила бы датаграммы всех соединений
 				 *       разом. На узле метка принадлежит своему соединению
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
@@ -61143,10 +61630,11 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 				 * Если сокет ещё не заведён, вступление откладывается до фиксации
 				 *
 				 * @details Вступление обязано идти ДО фиксации настроек - оно само
-				 * привязывает дескриптор к порту группы. Но сокет заводит именно
-				 * фиксация, оттого доводы копятся, а применяются сразу после того,
-				 * как сокет заведён: порядок «привязка - вступление» соблюдается,
-				 * и соблюдает его теперь движок, а не вызывающая сторона
+				 *          привязывает дескриптор к порту группы. Но сокет заводит именно
+				 *          фиксация, оттого доводы копятся, а применяются сразу после того,
+				 *          как сокет заведён: порядок «привязка - вступление» соблюдается,
+				 *          и соблюдает его теперь движок, а не вызывающая сторона.
+				 *
 				 */
 				if((::io::descriptor(i->second.get()) == net::invalid_socket_t) &&
 				   ((i->second->state.node == event::node_t::CLIENT) ||
@@ -61807,12 +62295,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 				 * Если сокет ещё не заведён, вступление откладывается до фиксации
 				 *
 				 * @details Разбор здесь тот же, что и у перегрузки со строками:
-				 * адреса приводятся к тексту и копятся, а исполняется вступление
-				 * фиксацией, сразу после того, как сокет заведён
+				 *          адреса приводятся к тексту и копятся, а исполняется вступление
+				 *          фиксацией, сразу после того, как сокет заведён.
 				 *
 				 * @note Обе перегрузки самостоятельны - одна другую не зовёт, - оттого
-				 * отложить вступление нужно в КАЖДОЙ. Сделать это лишь в одной значит
-				 * оставить вторую дверь, за которой подписка теряется молча
+				 *       отложить вступление нужно в КАЖДОЙ. Сделать это лишь в одной значит
+				 *       оставить вторую дверь, за которой подписка теряется молча
+				 *
 				 */
 				if((::io::descriptor(i->second.get()) == net::invalid_socket_t) &&
 				   ((i->second->state.node == event::node_t::CLIENT) ||
@@ -62490,7 +62979,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 			 *          уничтожение - тем и жива круглосуточная связь. Но у ручного
 			 *          уничтожения смысл ровно обратный: вызывающий просит событие
 			 *          убрать, а не поднять, и без снятия опции убрать его было бы
-			 *          нечем вовсе - каждое обращение возрождало бы событие заново
+			 *          нечем вовсе - каждое обращение возрождало бы событие заново.
 			 *
 			 * @note Единственный способ прекратить бесконечную череду подъёмов -
 			 *       это и есть ручное уничтожение: числа попыток движок не ведёт
@@ -62546,6 +63035,8 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 	 */
 	try {
 		/**
+		 * Создаём пару сокетов
+		 *
 		 * НАМЕРЕННОЕ РЕШЕНИЕ: пара описателей заводится ЗДЕСЬ, а не фиксацией настроек
 		 *
 		 * @details Прочие узлы движка ресурс ядра фиксацией и заводят: к мигу `commit`
@@ -62554,11 +63045,11 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 		 *          в том, что КОНЦЫ ПАРЫ ЖИВУТ ПОРОЗНЬ: в кластере один конец
 		 *          закрывается сразу после разделения, и работа идёт со вторым. Оттого
 		 *          `commit` и применяется к ОДНОМУ узлу, а не к паре: у каждого конца
-		 *          своя судьба, и общей фиксации у них быть не может
+		 *          своя судьба, и общей фиксации у них быть не может.
 		 *
 		 * @details Сама же пара рождается одним обращением к системе - разделить его
 		 *          между двумя вызовами нечем, - и потому заводится ДО того, как концы
-		 *          разойдутся: здесь, при заведении событий
+		 *          разойдутся: здесь, при заведении событий.
 		 *
 		 * @warning Фиксация одного конца заводила бы ресурс ЧУЖОМУ узлу - побочное
 		 *          действие, о котором вызывающая сторона не предупреждена, - и
@@ -62577,8 +63068,8 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 		 * @warning Сводить это место к общему порядку РАДИ ЕДИНООБРАЗИЯ нельзя: попытка
 		 *          отложить заведение разрывает пару. Устроено так во ВСЕХ движках, и
 		 *          несимметричность эта намеренная, а не пробел
+		 *
 		 */
-		// Создаём пару сокетов
 		const auto & fds = this->_eth.socket.ipc(family, type, protocol);
 		// Если пара сокетов создана удачно
 		if((fds[0] != net::invalid_socket_t) && (fds[1] != net::invalid_socket_t)){
@@ -62955,7 +63446,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 			 *          подъём снимка, снятого чужим процессом: описатель ему достаётся
 			 *          от `restore`, а фиксацию тот зовёт сам. Пары заводятся не здесь,
 			 *          а вызовом `events`: концы её рождаются одним обращением к
-			 *          системе, и разделить его между двумя вызовами нечем
+			 *          системе, и разделить его между двумя вызовами нечем.
 			 *
 			 * @note Фиксация пустому узлу отвечает отказом намеренно: описателя у него
 			 *       нет, а заводить его здесь значило бы завести одинокий конец пары,
@@ -62968,6 +63459,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 				 *
 				 * @note Домен UNIX и канал допускаются наравне: пара строится сокетами
 				 *       в обоих случаях
+				 *
 				 */
 				if((family != event::family_t::PIPE) && (family != event::family_t::UDS))
 					// Выводим пустой идентификатор события
@@ -63261,8 +63753,9 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Сокет здесь НЕ заводится намеренно
 								 *
 								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
-								 * опций события известен целиком: часть из них ядро принимает прямо
-								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 *          опций события известен целиком: часть из них ядро принимает прямо
+								 *          при создании сокета, и отдельные обращения за ними становятся не нужны.
+								 *
 								 */
 								{
 									// Выполняем инициализацию объекта хоста клиента
@@ -63349,6 +63842,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
 								 * опций события известен целиком: часть из них ядро принимает прямо
 								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 *
 								 */
 								{
 									// Выполняем инициализацию объекта хоста клиента
@@ -63500,8 +63994,9 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Сокет здесь НЕ заводится намеренно
 								 *
 								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
-								 * опций события известен целиком: часть из них ядро принимает прямо
-								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 *          опций события известен целиком: часть из них ядро принимает прямо
+								 *          при создании сокета, и отдельные обращения за ними становятся не нужны.
+								 *
 								 */
 								{
 									// Выполняем инициализацию объекта хоста сервера
@@ -63580,8 +64075,9 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Сокет здесь НЕ заводится намеренно
 								 *
 								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
-								 * опций события известен целиком: часть из них ядро принимает прямо
-								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 *          опций события известен целиком: часть из них ядро принимает прямо
+								 *          при создании сокета, и отдельные обращения за ними становятся не нужны.
+								 *
 								 */
 								{
 									// Выполняем инициализацию объекта хоста сервера
@@ -63970,6 +64466,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				 * @note Ветвь эта стоит ЯВНО, хотя и отвечает тем же отказом, что и
 				 *       общий разбор: прежде отказ приходил путём неизвестного вида
 				 *       узла, и по коду одно от другого было не отличить
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::ORIGIN): return false;
 				// Если узел является туннелем
@@ -64003,10 +64500,11 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 			 * Если сокет ещё не заведён, опции только запоминаются
 			 *
 			 * @details Сокеты клиента и сервера, равно как и устройство туннеля,
-			    * заводятся при фиксации настроек
-			 * (`commit`), и до неё применять опции попросту не к чему. Фиксация
-			 * применит запомненное сама, причём часть опций - прямо при создании
-			 * сокета, без отдельных обращений к ядру
+			 *          заводятся при фиксации настроек
+			 *          (`commit`), и до неё применять опции попросту не к чему. Фиксация
+			 *          применит запомненное сама, причём часть опций - прямо при создании
+			 *          сокета, без отдельных обращений к ядру.
+			 *
 			 */
 			if((fd == net::invalid_socket_t) &&
 			   ((i->second->state.node == event::node_t::CLIENT) ||
@@ -64057,6 +64555,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 								 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 								 *       действующего, а обращение к ядру стоит на каждом узле
+								 *
 								 */
 								} else isSetup = true;
 								// Если опция не установлена
@@ -64083,6 +64582,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 				 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 				 *       действующего, а обращение к ядру стоит на каждом узле
+				 *
 				 */
 				} else isSetup = true;
 				// Если опция не установлена
@@ -64108,6 +64608,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 					 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 					 *       действующего, а обращение к ядру стоит на каждом узле
+					 *
 					 */
 					} else isSetup = true;
 					// Если опция не установлена
@@ -64310,8 +64811,8 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 														::timer::simple::cancel(
 															peer->timeouts.read,
 															peer->timeouts.write,
-															peer->bandwidthUse().read.timeout,
-															peer->bandwidthUse().write.timeout,
+															peer->bandwidthInitialize().read.timeout,
+															peer->bandwidthInitialize().write.timeout,
 															peer->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -64329,8 +64830,8 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 														::timer::difficult::cancel(
 															peer->timeouts.read,
 															peer->timeouts.write,
-															peer->bandwidthUse().read.timeout,
-															peer->bandwidthUse().write.timeout,
+															peer->bandwidthInitialize().read.timeout,
+															peer->bandwidthInitialize().write.timeout,
 															peer->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -64373,8 +64874,8 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 															client->timeouts.write,
 															client->timeouts.connect,
 															client->timeouts.reconnect,
-															client->bandwidthUse().read.timeout,
-															client->bandwidthUse().write.timeout,
+															client->bandwidthInitialize().read.timeout,
+															client->bandwidthInitialize().write.timeout,
 															client->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -64396,8 +64897,8 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 															client->timeouts.write,
 															client->timeouts.connect,
 															client->timeouts.reconnect,
-															client->bandwidthUse().read.timeout,
-															client->bandwidthUse().write.timeout,
+															client->bandwidthInitialize().read.timeout,
+															client->bandwidthInitialize().write.timeout,
 															client->id
 														);
 													// Событию без набора параметров полосы снимать в нём нечего
@@ -64495,6 +64996,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 						 *       действующего, а обращение к ядру стоит на каждом узле
+						 *
 						 */
 						} else isSetup = true;
 						// Если опция не установлена
@@ -64517,6 +65019,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 						 *       действующего, а обращение к ядру стоит на каждом узле
+						 *
 						 */
 						} else isSetup = true;
 						// Если опция не установлена
@@ -64530,6 +65033,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 *       что она уровня сокета, а не протокола: смысл она имеет для любого
 						 *       соединения, будь то TCP, SCTP или UNIX-сокет. Дейтаграммному сокету
 						 *       ядро её принимает и оставляет без последствий - обрывать там нечего
+						 *
 						 */
 						if(event::options::HARD_CLOSE & options){
 							// Устанавливаем режим немедленного обрыва соединения
@@ -64546,6 +65050,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 						 *       действующего, а обращение к ядру стоит на каждом узле
+						 *
 						 */
 						} else isSetup = true;
 						// Если опция не установлена
@@ -64570,6 +65075,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 							 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 							 *       действующего, а обращение к ядру стоит на каждом узле
+							 *
 							 */
 							} else isSetup = true;
 							// Если опция не установлена
@@ -64615,6 +65121,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 												 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 												 *       действующего, а обращение к ядру стоит на каждом узле
+												 *
 												 */
 												} else isSetup = true;
 												// Если опция не установлена
@@ -64639,6 +65146,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 										 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 										 *       действующего, а обращение к ядру стоит на каждом узле
+										 *
 										 */
 										} else isSetup = true;
 										// Если опция не установлена
@@ -64676,6 +65184,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
 											 *       снятие того, что не установлено, ничего не меняет ни на новом
 											 *       дескрипторе, ни на действующем
+											 *
 											 */
 											} else isSetup = true;
 											// Если опция не установлена
@@ -64698,6 +65207,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 											 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 											 *       действующего, а обращение к ядру стоит на каждом узле
+											 *
 											 */
 											} else isSetup = true;
 											// Если опция не установлена
@@ -64744,6 +65254,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 													 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 													 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 													 *       действующего, а обращение к ядру стоит на каждом узле
+													 *
 													 */
 													} else isSetup = true;
 													// Если опция не установлена
@@ -64773,6 +65284,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 									 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 									 *       действующего, а обращение к ядру стоит на каждом узле
+									 *
 									 */
 									} else isSetup = true;
 									// Если опция не установлена
@@ -64801,6 +65313,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
 									 *       снятие того, что не установлено, ничего не меняет ни на новом
 									 *       дескрипторе, ни на действующем
+									 *
 									 */
 									} else isSetup = true;
 									// Если опция не установлена
@@ -64823,6 +65336,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 									 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 									 *       действующего, а обращение к ядру стоит на каждом узле
+									 *
 									 */
 									} else isSetup = true;
 									// Если опция не установлена
@@ -64841,6 +65355,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				 *          файлу и каталогу. Прочим она не означает ничего, а запомненный
 				 *          у них бит вводит в заблуждение: на нём и вышел дефект снятия
 				 *          снимка, где слушающее событие выглядело переподключаемым
+				 *
 				 */
 				if(::io::continuable(i->second.get())){
 					// Если опция передана как AUTO_RECONNECT
@@ -64869,6 +65384,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
 				 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
 				 *       действующего, а обращение к ядру стоит на каждом узле
+				 *
 				 */
 				} else isSetup = true;
 				// Если опция не установлена
@@ -64959,6 +65475,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 				 * @note Ветвь эта стоит ЯВНО, хотя и отвечает тем же отказом, что и
 				 *       общий разбор: прежде отказ приходил путём неизвестного вида
 				 *       узла, и по коду одно от другого было не отличить
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::ORIGIN): return false;
 				// Если узел является туннелем
@@ -65255,8 +65772,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 																::timer::simple::cancel(
 																	peer->timeouts.read,
 																	peer->timeouts.write,
-																	peer->bandwidthUse().read.timeout,
-																	peer->bandwidthUse().write.timeout,
+																	peer->bandwidthInitialize().read.timeout,
+																	peer->bandwidthInitialize().write.timeout,
 																	peer->id
 																);
 															// Событию без набора параметров полосы снимать в нём нечего
@@ -65274,8 +65791,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 																::timer::difficult::cancel(
 																	peer->timeouts.read,
 																	peer->timeouts.write,
-																	peer->bandwidthUse().read.timeout,
-																	peer->bandwidthUse().write.timeout,
+																	peer->bandwidthInitialize().read.timeout,
+																	peer->bandwidthInitialize().write.timeout,
 																	peer->id
 																);
 															// Событию без набора параметров полосы снимать в нём нечего
@@ -65318,8 +65835,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 																	client->timeouts.write,
 																	client->timeouts.connect,
 																	client->timeouts.reconnect,
-																	client->bandwidthUse().read.timeout,
-																	client->bandwidthUse().write.timeout,
+																	client->bandwidthInitialize().read.timeout,
+																	client->bandwidthInitialize().write.timeout,
 																	client->id
 																);
 															// Событию без набора параметров полосы снимать в нём нечего
@@ -65341,8 +65858,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 																	client->timeouts.write,
 																	client->timeouts.connect,
 																	client->timeouts.reconnect,
-																	client->bandwidthUse().read.timeout,
-																	client->bandwidthUse().write.timeout,
+																	client->bandwidthInitialize().read.timeout,
+																	client->bandwidthInitialize().write.timeout,
 																	client->id
 																);
 															// Событию без набора параметров полосы снимать в нём нечего
@@ -66642,14 +67159,16 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								/**
-								 * Семейства узлов сличать незачем
+								 * Устанавливаем идентификатор события-приёмника в объекте посредника
+								 *
+								 * @note Семейства узлов сличать незачем
 								 *
 								 * @details Посредник несёт адрес ВНУТРИ туннеля, а приёмник - перенос
 								 *          наружу: слои разные, и семейства их между собой не связаны.
 								 *          Туннель IPv6 поверх переноса IPv4 - обычный расклад, и
-								 *          сличение семейств запрещало его вовсе
+								 *          сличение семейств запрещало его вовсе.
+								 *
 								 */
-								// Устанавливаем идентификатор события-приёмника в объекте посредника
 								mediator->dest = j->second->id;
 								// Устанавливаем тип события в объекте посредника
 								mediator->state.type = j->second->state.type;
@@ -66788,7 +67307,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
  *          получения. Своего сообщения движок при этом не шлёт: разметка обмена
  *          принадлежит вызывающей стороне, и вкладывать в неё что-либо движок не
  *          вправе. Оттого снятие лишь ОТМЕЧАЕТ передачу, а уносит описатель ближайшее
- *          исходящее сообщение узла-переносчика
+ *          исходящее сообщение узла-переносчика.
  *
  * @note Годными переносчиками служат события домена UNIX: пара обмена, подключение и
  *       принятое подключение. Узлы IP негодны - служебные данные живут только в
@@ -66839,6 +67358,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		 *          приём им заводится в кольце, а кольцо служебных данных не отдаёт
 		 *          вовсе - описатель приехал бы и пропал молча. Годной остаётся пара
 		 *          обмена, которой приём в кольце не заводится
+		 *
 		 */
 		const bool suitable = (j->second->state.node == event::node_t::IPC);
 		// Получаем дескриптор события, ведущего к процессу-получателю
@@ -66848,6 +67368,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		 *
 		 * @note Отказ здесь честный и с причиной: годность переносчика решает система,
 		 *       и молчаливая пустышка увела бы разбор в сторону
+		 *
 		 */
 		if(carrier == net::invalid_socket_t){
 			// Записываем ошибку в лог
@@ -66860,7 +67381,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		 *
 		 * @details Снимок обязан отдавать объект ЧИСТЫМ: получатель заводит по нему свой
 		 *          описатель и подаёт свои обращения, и памяти о прежнем владельце в
-		 *          объекте оставаться не должно
+		 *          объекте оставаться не должно.
 		 *
 		 * @warning Порядок здесь обязателен и он обратен прочим движкам: СПЕРВА снимаются
 		 *          поданные обращения, и лишь потом учёт. Кольцо держит обращения предъяв-
@@ -66870,9 +67391,12 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		 * @warning Отвязка идёт ПРЕЖДЕ передачи описателя: отдав его, мы уже не знаем,
 		 *          когда получатель подаст свои обращения, и снятие задним числом гасило
 		 *          бы чужие, а не свои
+		 *
 		 */
 		{
-			// Перебираем учтённые обращения кольца
+			/**
+			 * Перебираем учтённые обращения кольца
+			 */
 			for(size_t index = 0; index < ::inflight::slots.size(); index++){
 				// Получаем текущее обращение
 				::inflight::slot_t & slot = ::inflight::slots.at(index);
@@ -66886,6 +67410,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 			 *
 			 * @note Забвение снимает признак заведения подписки: держать его для отданного
 			 *       описателя незачем, а номер его система успевает выдать заново
+			 *
 			 */
 			::kernel::forget(sock);
 			/**
@@ -66894,11 +67419,12 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 			 * @details Отвязанный узел работать больше не может: обращений у него нет, а
 			 *          описатель ушёл получателю. Захоти вызывающая сторона употребить его
 			 *          снова - ей надлежит пройти обычный путь заведения, `commit` и
-			 *          `launch`, как для только что созданного события
+			 *          `launch`, как для только что созданного события.
 			 *
 			 * @note Фиксация допускается ровно при состоянии NONE, и сброс сюда - это не
 			 *       уборка, а условие повторного заведения: оставь мы состояние прежним,
 			 *       повторная фиксация отвергалась бы молча
+			 *
 			 */
 			i->second->state.stash = event::status_t::NONE;
 			// Возвращаем состояние узла к исходному
@@ -66939,7 +67465,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
  * @details Заменяет собой фиксацию настроек: та завела бы событию свой дескриптор, а
  *          здесь он берётся готовым - приехавшим служебными данными. Всё остальное
  *          событие проходит тем же путём: фиксация зовётся отсюда же и, застав
- *          дескриптор заведённым, к его созданию не идёт вовсе
+ *          дескриптор заведённым, к его созданию не идёт вовсе.
  *
  * @note Соответствие метки описателю даёт СТРОГИЙ ПОРЯДОК: служебные данные метки не
  *       несут, в них ходят одни описатели. Очередь передачи у узла одна, порядок в ней
@@ -66975,6 +67501,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		 *
 		 * @note Снимок годен ОДНОМУ подъёму: второй достался бы уже поднятому событию
 		 *       и увёл бы два события на один описатель
+		 *
 		 */
 		if(::handoff::__awh_raised__.count(label) > 0){
 			// Записываем ошибку в лог
@@ -66996,6 +67523,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		 *
 		 * @note Снимок достаётся событию заведённому, но ещё не зафиксированному:
 		 *       подмена уже работающего дескриптора оставила бы прежний висеть
+		 *
 		 */
 		if(::io::descriptor(i->second.get()) != net::invalid_socket_t){
 			// Записываем ошибку в лог
@@ -67008,6 +67536,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		 *
 		 * @note Сообщение, которым описатель едет, ещё не пришло. Отказ здесь верный:
 		 *       подъём повторяют по приходе известия, а не ждут внутри движка
+		 *
 		 */
 		if(::handoff::__awh_incoming__.empty()){
 			// Записываем ошибку в лог
@@ -67024,6 +67553,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		 *
 		 * @warning Описатель приехал ОТКРЫТЫМ: не достанься он событию, закрыть его
 		 *          обязаны мы, иначе он течёт. Особенно на этом пути отказа
+		 *
 		 */
 		if(!::io::coherence(i->second.get(), sock)){
 			// Закрываем приехавший описатель: событию он не достался
@@ -67047,6 +67577,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		 *
 		 * @note Путь заведения обязан оставаться единственным: заведи мы событие здесь
 		 *       своими руками, два пути разошлись бы на первой же правке фиксации
+		 *
 		 */
 		if(!(result = this->commit(id))){
 			// Записываем ошибку в лог
@@ -67122,6 +67653,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 				 *       только тогда, когда ближайшим стал именно этот таймер. Поэтому
 				 *       постановка десятков тысяч таймеров обходится единицами обращений
 				 *       к ядру вместо десятков тысяч записей в списке изменений
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
@@ -67379,13 +67911,15 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									#endif
 								}
 								/**
-								 * Состояние узла обязано быть СНЯТО перед выходом
+								 * Снимаем флаг ожидания подключения
+								 *
+								 * @note Состояние узла обязано быть СНЯТО перед выходом
 								 *
 								 * @details Признак LAUNCHED ставится ДО развилки по типу сокета, то есть
 								 *          ещё не зная, годен ли тип вовсе. Эта ветвь об отказе докладывала,
 								 *          но признак оставляла стоять, и узел с негодным типом числился
 								 *          запущенным. Соседняя ветвь серверного узла того же места признак
-								 *          снимает
+								 *          снимает.
 								 *
 								 * @warning Ветвь НЕДОСТИЖИМА, и правка стоит доводом устройства, а не
 								 *          снятым замером: у типа сокета пять значений, четыре рабочих
@@ -67393,8 +67927,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								 *          Тип задаётся только при заведении узла и смене не подлежит.
 								 *          У соседней ветви серверного узла щель есть - там в перечень
 								 *          не входит STREAM, - и там откат стоял изначально
+								 *
 								 */
-								// Снимаем флаг ожидания подключения
 								client->state.status = event::status_t::INITIAL;
 							}
 						}
@@ -67805,15 +68339,23 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												 *          прежде отсутствовал: он проваливался в default, где довод
 												 *          сам же перечисляет SEQPACKET среди допустимых. Домен UNIX
 												 *          вида SEQPACKET оттого не подключался вовсе, хотя система
-												 *          его несёт (замерено щупом у Linux и обеих систем Sun)
+												 *          его несёт (замерено щупом у Linux и обеих систем Sun).
+												 *
 												 */
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Если событие является UNIX-сокетом
 													if(client->state.family == event::family_t::UDS){
-														// Получаем размер объекта сокета
+														/**
+														 * Определяем фактическую длину адреса цели
+														 *
+														 * @note У абстрактной формы пути нулевой первый октет, и длина
+														 *       считается по имени за ним; файловая форма считается по строке
+														 *
+														 */
 														client->endpoint.size = (
-															offsetof(struct sockaddr_un, sun_path) +
-															::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path)
+															(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path[0] == '\0')
+															? (offsetof(struct sockaddr_un, sun_path) + 1 + ::strnlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path + 1, (sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path) - 1)))
+															: (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path))
 														);
 													}
 													// Если подключение к удаленному серверу не выполнено
@@ -67874,12 +68416,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 													 *
 													 * @details sctp_connectx ждёт адреса, уложенные вплотную друг за другом, каждый своей
 													 *          длины, и шагает по ним, разбирая семейство каждого. Массив с постоянным
-													 *          шагом ему негоден
+													 *          шагом ему негоден.
 													 *
 													 * @warning Прежде здесь стоял vector <struct sockaddr>, и это было неверно дважды:
 													 *          адрес IPv6 занимает 28 октетов против 16 у sockaddr и усекался при
 													 *          копировании, а шаг массива оставался равен 16 и уводил разбор на середину
 													 *          следующего адреса
+													 *
 													 */
 													vector <uint8_t> addrs;
 													/**
@@ -67909,10 +68452,11 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 													 * @details Список неоднороден по устройству: в него попадают события чужого протокола,
 													 *          чужого семейства адресов и вовсе не клиентские узлы. Заявка же одна, и
 													 *          неоднозначность разрешается единственным способом - образцом берётся ПЕРВЫЙ
-													 *          узел списка, а всякий не подошедший к нему отбрасывается предупреждением
+													 *          узел списка, а всякий не подошедший к нему отбрасывается предупреждением.
 													 *
 													 * @warning Молчаливое отбрасывание здесь недопустимо: событие осталось бы незаведённым
 													 *          и без единого отчёта о себе, а вызывающая сторона считала бы его подключённым
+													 *
 													 */
 													for(size_t j = 1; j < ids.size(); j++){
 														// Выполняем поиск идентификатора события
@@ -67969,7 +68513,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															#endif
 														}
 													}
-													// Если подключение к удаленному серверу не выполнено
+													/**
+													 * Если подключение к удаленному серверу не выполнено
+													 * Число адресов заявки видно снаружи: им закрепляется слияние
+													 * списка подключения в одну многодомную заявку
+													 */
+													client->addresses = static_cast <uint8_t> (count);
+													// Выполняем подключение к удалённому серверу списком адресов
 													if(!(result = (::sctp_connectx(client->transfer.fd, reinterpret_cast <struct sockaddr *> (addrs.data()), static_cast <int32_t> (count), &client->transfer.sctp.use().id) == 0))){
 														// Если ошибка не является ошибкой в процессе подключения
 														if(!(result = (errno == EINPROGRESS))){
@@ -68798,11 +69348,12 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									 *          несёт: щуп на чистом C (socket(AF_UNIX, SOCK_SEQPACKET), bind,
 									 *          listen) отвечает согласием: вид этот система несёт. Там, где не
 									 *          несёт, io::coherence подменяет его дейтаграммным, и отказ приходит
-									 *          от ЯДРА с настоящим errno, а не от нашего разбора
+									 *          от ЯДРА с настоящим errno, а не от нашего разбора.
 									 *
 									 * @warning Условие спрашивало про ПРОТОКОЛ там, где годность решает пара
 									 *          «семейство + вид»: код, поднимающий сервер домена UNIX вида
 									 *          SEQPACKET, отвергался движком, хотя система его несёт
+									 *
 									 */
 									if((server->state.protocol == event::protocol_t::SCTP) || (server->state.family == event::family_t::UDS)){
 										// Выполняем слушать порт сервера
@@ -69649,7 +70200,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 * @details Отправка зовёт отклик записи СИНХРОННО, а отклик вправе долить очередь
 	 *          новой отправкой - и так без конца. Возвратность эта идёт через одно
 	 *          горлышко, оттого и счёт ведётся здесь, а не у отклика: мест, где отклик
-	 *          записи зовётся, полторы сотни
+	 *          записи зовётся, полторы сотни.
 	 *
 	 * @note Счётчик поточно-местный: отправку вправе звать не только поток цикла
 	 *
@@ -69662,7 +70213,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 *          в бесконечную возвратность и валил стек. Дефект был не предположен, а
 	 *          ПОЙМАН: проверка возвратности из общего файла набора уронила набор `net`
 	 *          падением по памяти - обращение на запись по адресу в области стека,
-	 *          неразворачиваемая цепочка вызовов, случайный кадр падения
+	 *          неразворачиваемая цепочка вызовов, случайный кадр падения.
 	 *
 	 * @note Отказ здесь договора НЕ нарушает: отправка и так вправе принять меньше
 	 *       заказанного, вплоть до нуля, - потребитель обязан разбирать её ответ
@@ -69671,6 +70222,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 *          вместо восьми мегабайт потока, срыв придёт вшестеро раньше и с чужой
 	 *          памятью под ногами - то есть будет неотличим от порчи памяти. Правило,
 	 *          нарушение которого молчаливо, заводить нельзя
+	 *
 	 */
 	if(depth >= ::io::DEPTH_LIMIT){
 		// Выводим в журнал сообщение о возвратном заходе в отправку
@@ -69687,7 +70239,9 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 */
 	struct depth_guard_t {
 		uint16_t & value;   // Счётчик глубины
+		// Поднимаем счётчик глубины на входе
 		explicit depth_guard_t(uint16_t & value) noexcept : value(value) { this->value++; }
+		// Опускаем счётчик глубины на выходе
 		~depth_guard_t() noexcept { this->value--; }
 	} depth_guard(depth);
 	// Результат работы функции
@@ -69709,13 +70263,14 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 			 *          установленного источника и шлёт их обычным путём. Этим же вызовом
 			 *          отправка заводится заново после того, как источник ответил отказом,
 			 *          вернув ложь, либо после пересоздания узла, где признак вытягивания
-			 *          гасится вместе с очисткой очереди
+			 *          гасится вместе с очисткой очереди.
 			 *
 			 * @note Ради нулевой записи источника заводить отправку заново не нужно: движок
 			 *       спросит его сам на ближайшем сливе очереди, когда места станет больше
 			 *
 			 * @note Отправлять здесь нечего, поэтому возвращается ноль: наружу уходит ровно
 			 *       столько данных, сколько передано вызовом, а передано не было ничего
+			 *
 			 */
 			if((buffer == nullptr) && (size == 0)){
 				/**
@@ -70398,11 +70953,12 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
 							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
 							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
-							 *          ответом движка, дробил бы их без нужды
+							 *          ответом движка, дробил бы их без нужды.
 							 *
 							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
 							 *       такого нет вовсе (проверено по заголовкам), и там ответом
 							 *       остаётся прежняя величина
+							 *
 							 */
 							{
 								// Спрашиваем у ядра размер накопителя канала
@@ -70411,6 +70967,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								 * @warning Отказ обращения обязан уйти СВОИМ каналом, а не
 								 *          раствориться в подставленной величине: потребитель
 								 *          получает число и по нему одному отказа не различит
+								 *
 								 */
 								if(size <= 0)
 									// Записываем ошибку в лог
@@ -70543,6 +71100,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 						 *
 						 * @warning ветки здесь не было вовсе, и дескриптор канала уходил в getsockopt,
 						 * отвечавший ENOTSOCK; размер буфера канала задаётся ядром, как и у узла IPC
+						 *
 						 */
 						case static_cast <uint8_t> (event::family_t::PIPE):
 							/**
@@ -70552,11 +71110,12 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
 							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
 							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
-							 *          ответом движка, дробил бы их без нужды
+							 *          ответом движка, дробил бы их без нужды.
 							 *
 							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
 							 *       такого нет вовсе (проверено по заголовкам), и там ответом
 							 *       остаётся прежняя величина
+							 *
 							 */
 							{
 								// Спрашиваем у ядра размер накопителя канала
@@ -70565,6 +71124,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								 * @warning Отказ обращения обязан уйти СВОИМ каналом, а не
 								 *          раствориться в подставленной величине: потребитель
 								 *          получает число и по нему одному отказа не различит
+								 *
 								 */
 								if(size <= 0)
 									// Записываем ошибку в лог
@@ -70873,8 +71433,10 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 							/**
 							 * Размер буфера канала задаётся ядром и сокетными опциями не настраивается,
 							 * поэтому операция считается выполненной так же, как и для межпроцессного соединения.
+							 *
 							 * @warning здесь вызывался getBufferSize на дескрипторе канала - сокетный вызов
-							 * отвечал ENOTSOCK, и настройка буфера клиента-канала всегда возвращала отказ.
+							 *          отвечал ENOTSOCK, и настройка буфера клиента-канала всегда возвращала отказ
+							 *
 							 */
 							result = true;
 						break;
@@ -71010,8 +71572,9 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 				 *
 				 * @note Обнулением времени ведро заводится заново при первом же обращении:
 				 *       нулевое время означает «ведро ещё не заводилось»
+				 *
 				 */
-				::bandwidth::tokensWrite = 0.;
+				::bandwidth::tokensWrite = .0;
 				// Сбрасываем время последнего пополнения ведра токенов
 				::bandwidth::timeWrite = 0;
 			} break;
@@ -71036,8 +71599,9 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 				 *
 				 * @note Обнулением времени ведро заводится заново при первом же обращении:
 				 *       нулевое время означает «ведро ещё не заводилось»
+				 *
 				 */
-				::bandwidth::tokensRead = 0.;
+				::bandwidth::tokensRead = .0;
 				// Сбрасываем время последнего пополнения ведра токенов
 				::bandwidth::timeRead = 0;
 			} break;
@@ -71108,9 +71672,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Если пропускная способность для установки является автоматической
 										if(fmk::compare(bandwidth, "auto"))
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
-											peer->bandwidthUse().write.limit = 0;
+											peer->bandwidthInitialize().write.limit = 0;
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
-										else peer->bandwidthUse().write.limit = fmk::bpsSize(bandwidth);
+										else peer->bandwidthInitialize().write.limit = fmk::bpsSize(bandwidth);
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
 										if(peer->bandwidth().write.limit == 0){
 											/**
@@ -71120,12 +71684,12 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
-													::timer::simple::cancel(peer->bandwidthUse().write.timeout, peer->id);
+													::timer::simple::cancel(peer->bandwidthInitialize().write.timeout, peer->id);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
-													::timer::difficult::cancel(peer->bandwidthUse().write.timeout, peer->id);
+													::timer::difficult::cancel(peer->bandwidthInitialize().write.timeout, peer->id);
 												break;
 											}
 										}
@@ -71135,9 +71699,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Если пропускная способность для установки является автоматической
 										if(fmk::compare(bandwidth, "auto"))
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
-											peer->bandwidthUse().read.limit = 0;
+											peer->bandwidthInitialize().read.limit = 0;
 										// Устанавливаем пропускную способность для ограничения входящего трафика
-										else peer->bandwidthUse().read.limit = fmk::bpsSize(bandwidth);
+										else peer->bandwidthInitialize().read.limit = fmk::bpsSize(bandwidth);
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
 										if(peer->bandwidth().read.limit == 0){
 											/**
@@ -71147,12 +71711,12 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
-													::timer::simple::cancel(peer->bandwidthUse().read.timeout, peer->id);
+													::timer::simple::cancel(peer->bandwidthInitialize().read.timeout, peer->id);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
-													::timer::difficult::cancel(peer->bandwidthUse().read.timeout, peer->id);
+													::timer::difficult::cancel(peer->bandwidthInitialize().read.timeout, peer->id);
 												break;
 											}
 										}
@@ -71321,9 +71885,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Если пропускная способность для установки является автоматической
 										if(fmk::compare(bandwidth, "auto"))
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
-											client->bandwidthUse().write.limit = 0;
+											client->bandwidthInitialize().write.limit = 0;
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
-										else client->bandwidthUse().write.limit = fmk::bpsSize(bandwidth);
+										else client->bandwidthInitialize().write.limit = fmk::bpsSize(bandwidth);
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
 										if(client->bandwidth().write.limit == 0){
 											/**
@@ -71333,12 +71897,12 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
-													::timer::simple::cancel(client->bandwidthUse().write.timeout, client->id);
+													::timer::simple::cancel(client->bandwidthInitialize().write.timeout, client->id);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Деактивируем таймаут ограничения пропускной способности на запись данных
-													::timer::difficult::cancel(client->bandwidthUse().write.timeout, client->id);
+													::timer::difficult::cancel(client->bandwidthInitialize().write.timeout, client->id);
 												break;
 											}
 										}
@@ -71348,9 +71912,9 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										// Если пропускная способность для установки является автоматической
 										if(fmk::compare(bandwidth, "auto"))
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
-											client->bandwidthUse().read.limit = 0;
+											client->bandwidthInitialize().read.limit = 0;
 										// Устанавливаем пропускную способность для ограничения входящего трафика
-										else client->bandwidthUse().read.limit = fmk::bpsSize(bandwidth);
+										else client->bandwidthInitialize().read.limit = fmk::bpsSize(bandwidth);
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
 										if(client->bandwidth().read.limit == 0){
 											/**
@@ -71360,12 +71924,12 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
-													::timer::simple::cancel(client->bandwidthUse().read.timeout, client->id);
+													::timer::simple::cancel(client->bandwidthInitialize().read.timeout, client->id);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Деактивируем таймаут ограничения пропускной способности на чтение данных
-													::timer::difficult::cancel(client->bandwidthUse().read.timeout, client->id);
+													::timer::difficult::cancel(client->bandwidthInitialize().read.timeout, client->id);
 												break;
 											}
 										}
@@ -71646,20 +72210,19 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					 *          туда, куда укажет таблица маршрутов. Прежде настройка эта
 					 *          ставилась одному лишь серверу, и клиент, которому устройство
 					 *          назвали, рассылал не по нему: обнаружение шлюза на машине с
-					 *          несколькими сетями уходило мимо названной
+					 *          несколькими сетями уходило мимо названной.
 					 *
 					 * @note Порядок вызовов произволен, поэтому настройка ставится с обеих
 					 *       сторон: здесь - когда устройство назвали прежде режима, и в
 					 *       установке устройства - когда режим назвали прежде него
 					 *
-					 */
-					/**
 					 * @warning Устройство берётся из НАЗВАННОГО событию, а не из `getIface()`.
 					 *          Тот при неназванном устройстве отвечает интерфейсом маршрута по
 					 *          умолчанию - и рассылка уходила туда, куда пользователь её не
 					 *          посылал: на машине с VPN устройством выхода назначался туннель,
 					 *          а он групповую рассылку не несёт. Договор же обратный: не назвал
 					 *          устройства - решает ядро, и настройка гнезда не ставится вовсе
+					 *
 					 */
 					if(delivery == event::delivery_mode_t::MULTICAST){
 						// Получаем название устройства, названного событию
@@ -71670,10 +72233,13 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 							{
 								// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 								if(client->transfer.fd != net::invalid_socket_t)
+									// Применяем устройство к уже заведённому сокету
 									return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, iface);
 								// Запоминаем устройство групповой рассылки до фиксации настроек
 								else {
+									// Запоминаем имя устройства до заведения сокета
 									client->iface.assign(iface.begin(), iface.end());
+									// Выводим успех: настройка применена
 									return true;
 								}
 							}
@@ -71834,7 +72400,7 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
  *
  * @details Задаёт предел жизни ИСХОДЯЩИХ пакетов числом от 0 до 255. Парой к
  *          `getCountHops` НЕ является: тот отдаёт число переходов последнего
- *          ПРИНЯТОГО пакета. Договор - в `include/net/io.hpp`
+ *          ПРИНЯТОГО пакета. Договор - в `include/net/io.hpp`.
  *
  * @param id   идентификатор события
  * @param hops максимальное количество хопов (0-255)
@@ -72505,6 +73071,15 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 			::local::guard_t guard(i->second.get());
 			/**
 			 * Определяем чем является текущий узел
+			 *
+			 * @note Веток `IPC` и `FILE` здесь нет НАМЕРЕННО (решение от 08.09.2026):
+			 *       срок ставится там, где работа зависит от внешних обстоятельств,
+			 *       каких не проконтролировать, а межпроцессный обмен идёт в пределах
+			 *       одного приложения, и собственный код себе внешним обстоятельством
+			 *       не является - срок здесь маскировал бы свои же дефекты. Кому он
+			 *       понадобится, тот заведёт узел таймера и проверит им. По той же
+			 *       причине узел `IPC` не имеет и поля сроков
+			 *
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				/**
@@ -72515,6 +73090,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 				 *       реализация снимала фильтр таймера ядра и ставила его заново без
 				 *       указателя на узел события, из-за чего сработавший таймер молча
 				 *       отбрасывался при опросе как принадлежащий уже удалённому узлу
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
@@ -72573,12 +73149,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							// Если событие является неблокирующим
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 								/**
+								 * Если таймаут для действия чтения находится в состоянии ожидания
+								 *
 								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
 								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
 								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
 								 *       в силу лишь при следующем взведении таймаута.
+								 *
 								 */
-								// Если таймаут для действия чтения находится в состоянии ожидания
 								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(peer->state.status != event::status_t::PAUSED){
@@ -72623,6 +73201,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
 								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
 								 *       в силу лишь при следующем взведении таймаута.
+								 *
 								 */
 								// Если таймаут для действия записи находится в состоянии ожидания
 								if(peer->timeouts.write.status == event::status_t::PENDING){
@@ -72764,12 +73343,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 								/**
+								 * Если таймаут для действия чтения находится в состоянии ожидания
+								 *
 								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
 								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
 								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
 								 *       в силу лишь при следующем взведении таймаута.
+								 *
 								 */
-								// Если таймаут для действия чтения находится в состоянии ожидания
 								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(client->state.status != event::status_t::PAUSED){
@@ -72802,12 +73383,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								{
 									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
 									if(client->transfer.fd != net::invalid_socket_t)
+										// Снимаем срок ожидания чтения с заведённого сокета
 										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
 								}
 							// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
 							} else {
 								// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
 								if(client->transfer.fd != net::invalid_socket_t)
+									// Ставим срок ожидания чтения на заведённый сокет
 									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, timeout);
 							}
 						} break;
@@ -72818,12 +73401,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 								/**
+								 * Если таймаут для действия записи находится в состоянии ожидания
+								 *
 								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
 								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
 								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
 								 *       в силу лишь при следующем взведении таймаута.
+								 *
 								 */
-								// Если таймаут для действия записи находится в состоянии ожидания
 								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(client->state.status != event::status_t::PAUSED){
@@ -72856,12 +73441,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								{
 									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
 									if(client->transfer.fd != net::invalid_socket_t)
+										// Снимаем срок ожидания записи с заведённого сокета
 										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 								}
 							// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
 							} else {
 								// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
 								if(client->transfer.fd != net::invalid_socket_t)
+									// Ставим срок ожидания записи на заведённый сокет
 									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, timeout);
 							}
 						} break;
@@ -72923,13 +73510,12 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 							if(server->state.status == event::status_t::LAUNCHED){
 								// Если событие является блокирующим
-								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
-									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
-										if(server->fd != net::invalid_socket_t)
-											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, timeout);
-									}
+								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
+									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+									if(server->fd != net::invalid_socket_t)
+										// Ставим срок ожидания чтения на заведённый сокет
+										this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, timeout);
+								}
 							}
 						} break;
 						// Если действие является записью
@@ -72939,13 +73525,12 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							// Если сервер находится в запущенном состоянии и обрабатывает одноранговые узлы-источника
 							if(server->state.status == event::status_t::LAUNCHED){
 								// Если событие является блокирующим
-								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
-									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
-										if(server->fd != net::invalid_socket_t)
-											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, timeout);
-									}
+								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
+									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+									if(server->fd != net::invalid_socket_t)
+										// Ставим срок ожидания записи на заведённый сокет
+										this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, timeout);
+								}
 							}
 						} break;
 						// Для остальных типов действий
@@ -73064,6 +73649,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 			 *
 			 * @note Своих сроков посредник не несёт и передаёт просьбу связанному
 			 *       событию, как то делает и выставление срока
+			 *
 			 */
 			case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 				// Получаем объект посредника
@@ -73081,6 +73667,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 			 * @note Оба они наследуются от удалённого узла и набор сроков несут его,
 			 *       а вот сервер, при схожем наборе, наследуется от узла напрямую -
 			 *       и приводить его к удалённому нельзя
+			 *
 			 */
 			case static_cast <uint8_t> (event::node_t::PEER):
 			// Если узел является исходящим узлом
@@ -73174,6 +73761,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 		 * @note Так бывает, когда ожидание не велось вовсе, снято у события либо срока
 		 *       иного, а также когда снятый срок успел истечь: продолжение тогда взвело
 		 *       бы ожидание на пустом месте, а просили не этого
+		 *
 		 */
 		if(left == 0)
 			// Выводим отрицательный результат продолжения ожидания
@@ -73185,6 +73773,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 		 *       продолжение идёт остатком, задержке не равным. Оттого задержка
 		 *       подменяется на время постановки и возвращается сразу после: иначе
 		 *       остаток осел бы в узле и стал бы задержкой всех ожиданий последующих
+		 *
 		 */
 		const uint32_t saved = timeout->delay;
 		// Выставляем сроку остаток прерванного ожидания
@@ -73212,6 +73801,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 		 * @note Без неё движок, вернувшись из отклика, распорядится сроком по-своему:
 		 *       одноразовый снимет, возобновляемый взведёт заново, - и продолжение
 		 *       пропало бы впустую
+		 *
 		 */
 		::timer::__continue__(timeout->id, eid);
 		// Выводим положительный результат продолжения ожидания
@@ -74262,12 +74852,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
-												::timer::simple::cancel(peer->timeouts.read, peer->bandwidthUse().read.timeout, peer->id);
+												::timer::simple::cancel(peer->timeouts.read, peer->bandwidthInitialize().read.timeout, peer->id);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Деактивируем таймаут на ожидание получения данных
-												::timer::difficult::cancel(peer->timeouts.read, peer->bandwidthUse().read.timeout, peer->id);
+												::timer::difficult::cancel(peer->timeouts.read, peer->bandwidthInitialize().read.timeout, peer->id);
 											break;
 										}
 									// Снимаем таймаут на получение данных
@@ -74327,12 +74917,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
-												::timer::simple::cancel(peer->timeouts.write, peer->bandwidthUse().write.timeout, peer->id);
+												::timer::simple::cancel(peer->timeouts.write, peer->bandwidthInitialize().write.timeout, peer->id);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Деактивируем таймаут на ожидание записи данных
-												::timer::difficult::cancel(peer->timeouts.write, peer->bandwidthUse().write.timeout, peer->id);
+												::timer::difficult::cancel(peer->timeouts.write, peer->bandwidthInitialize().write.timeout, peer->id);
 											break;
 										}
 									// Снимаем таймаут на запись данных
@@ -74683,12 +75273,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание получения данных
-												::timer::simple::cancel(client->timeouts.read, client->bandwidthUse().read.timeout, client->id);
+												::timer::simple::cancel(client->timeouts.read, client->bandwidthInitialize().read.timeout, client->id);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Деактивируем таймаут на ожидание получения данных
-												::timer::difficult::cancel(client->timeouts.read, client->bandwidthUse().read.timeout, client->id);
+												::timer::difficult::cancel(client->timeouts.read, client->bandwidthInitialize().read.timeout, client->id);
 											break;
 										}
 									// Снимаем таймаут на получение данных
@@ -74748,12 +75338,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Деактивируем таймаут на ожидание записи данных
-												::timer::simple::cancel(client->timeouts.write, client->bandwidthUse().write.timeout, client->id);
+												::timer::simple::cancel(client->timeouts.write, client->bandwidthInitialize().write.timeout, client->id);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Деактивируем таймаут на ожидание записи данных
-												::timer::difficult::cancel(client->timeouts.write, client->bandwidthUse().write.timeout, client->id);
+												::timer::difficult::cancel(client->timeouts.write, client->bandwidthInitialize().write.timeout, client->id);
 											break;
 										}
 									// Снимаем таймаут на запись данных
@@ -75126,6 +75716,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 				 * @note Ветвь эта стоит ЯВНО, хотя и отвечает тем же отказом, что и
 				 *       общий разбор: прежде отказ приходил путём неизвестного вида
 				 *       узла, и по коду одно от другого было не отличить
+				 *
 				 */
 				case static_cast <uint8_t> (event::node_t::ORIGIN): return false;
 				// Если узел является посредником
@@ -75219,11 +75810,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 						 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 						 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-						 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+						 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 						 *
 						 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 						 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 						 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+						 *
 						 */
 						if(result && (ipc->callbacks.status != nullptr))
 							// Вызываем функцию обратного вызова статуса события
@@ -75257,11 +75849,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (dir->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -75296,11 +75889,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (fs->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -75335,8 +75929,8 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 											::timer::simple::cancel(
 												peer->timeouts.read,
 												peer->timeouts.write,
-												peer->bandwidthUse().read.timeout,
-												peer->bandwidthUse().write.timeout,
+												peer->bandwidthInitialize().read.timeout,
+												peer->bandwidthInitialize().write.timeout,
 												peer->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -75354,8 +75948,8 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 											::timer::difficult::cancel(
 												peer->timeouts.read,
 												peer->timeouts.write,
-												peer->bandwidthUse().read.timeout,
-												peer->bandwidthUse().write.timeout,
+												peer->bandwidthInitialize().read.timeout,
+												peer->bandwidthInitialize().write.timeout,
 												peer->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -75383,11 +75977,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (peer->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -75444,11 +76039,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (origin->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -75495,8 +76091,8 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 												client->timeouts.write,
 												client->timeouts.connect,
 												client->timeouts.reconnect,
-												client->bandwidthUse().read.timeout,
-												client->bandwidthUse().write.timeout,
+												client->bandwidthInitialize().read.timeout,
+												client->bandwidthInitialize().write.timeout,
 												client->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -75518,8 +76114,8 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 												client->timeouts.write,
 												client->timeouts.connect,
 												client->timeouts.reconnect,
-												client->bandwidthUse().read.timeout,
-												client->bandwidthUse().write.timeout,
+												client->bandwidthInitialize().read.timeout,
+												client->bandwidthInitialize().write.timeout,
 												client->id
 											);
 										// Событию без набора параметров полосы снимать в нём нечего
@@ -75549,11 +76145,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (client->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -75619,11 +76216,12 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							 *          пауза снимает подписку быстрым путём `rate_t::INSTANT`, бьющим прямо в
 							 *          ядро мимо функции правки подписок, а сторож живёт внутри неё и оттого не
 							 *          срабатывает вовсе. Положись извещение на сторожа, состав его зависел бы от
-							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом
+							 *          того, какой дверью движок правил подписку, а не от того, что произошло с узлом.
 							 *
 							 * @warning Извещение стоит ПОД ИТОГОМ пинка, а не за присвоением состояния: пинок,
 							 *          применяющий снятие подписки, сам вправе не удаться, и известив до него,
 							 *          движок сообщал бы о НАМЕРЕННОЙ паузе, а не о состоявшейся
+							 *
 							 */
 							if(result && (server->callbacks.status != nullptr))
 								// Вызываем функцию обратного вызова статуса события
@@ -76156,9 +76754,10 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
-						// Возвращаем результат проверки
 						/**
-						 * У клиента-канала живость судится состоянием, а не кодом отказа
+						 * Возвращаем результат проверки
+						 *
+						 * @note У клиента-канала живость судится состоянием, а не кодом отказа
 						 *
 						 * @warning Канал сокетом НЕ является, и `getsockopt(SO_ERROR)` отвечает
 						 *          ему `ENOTSOCK`, а `getError` при отказе выдаёт -1. Сличение
@@ -76167,9 +76766,12 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 						 *          ЗНАЧЕНИЕМ отказа: отказ виден журналом, а ложный ответ под
 						 *          ним не виден ничем. Найдено сличением с находкой у
 						 *          порта завершений
+						 *
 						 */
-						return ((i->second->state.family == event::family_t::PIPE) ||
-						 (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0));
+						return (
+							(i->second->state.family == event::family_t::PIPE) ||
+							(this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0)
+						);
 				} break;
 			}
 		}
@@ -76254,6 +76856,7 @@ void awh::engine::IO::clear() noexcept {
 			 *       `deinitialize()` своя ветвь разбора, где условия на состояние нет
 			 *       вовсе, — оттого щуп, сворачивавший движок через неё, утечки не
 			 *       видел ни разу
+			 *
 			 */
 			{
 				/**
@@ -76410,8 +77013,8 @@ void awh::engine::IO::clear() noexcept {
 									::timer::simple::cancel(
 										peer->timeouts.read,
 										peer->timeouts.write,
-										peer->bandwidthUse().read.timeout,
-										peer->bandwidthUse().write.timeout,
+										peer->bandwidthInitialize().read.timeout,
+										peer->bandwidthInitialize().write.timeout,
 										peer->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -76429,8 +77032,8 @@ void awh::engine::IO::clear() noexcept {
 									::timer::difficult::cancel(
 										peer->timeouts.read,
 										peer->timeouts.write,
-										peer->bandwidthUse().read.timeout,
-										peer->bandwidthUse().write.timeout,
+										peer->bandwidthInitialize().read.timeout,
+										peer->bandwidthInitialize().write.timeout,
 										peer->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -76460,7 +77063,9 @@ void awh::engine::IO::clear() noexcept {
 									events[count++] = ::change::make(peer->transfer.fd, ::change::filter_t::WRITE, ::change::DELETE, 0, 0, nullptr);
 								// Если у нас есть события которые нужно удалить
 								if(count > 0)
-									// Выполняем удаление события из списка ожидания
+									/**
+									 * Выполняем удаление события из списка ожидания
+									 */
 									for(uint8_t index = 0; index < count; index++) ::kernel::apply(events[index]);
 							}
 							// Закрываем дескриптор сокета
@@ -76586,8 +77191,8 @@ void awh::engine::IO::clear() noexcept {
 										client->timeouts.write,
 										client->timeouts.connect,
 										client->timeouts.reconnect,
-										client->bandwidthUse().read.timeout,
-										client->bandwidthUse().write.timeout,
+										client->bandwidthInitialize().read.timeout,
+										client->bandwidthInitialize().write.timeout,
 										client->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -76609,8 +77214,8 @@ void awh::engine::IO::clear() noexcept {
 										client->timeouts.write,
 										client->timeouts.connect,
 										client->timeouts.reconnect,
-										client->bandwidthUse().read.timeout,
-										client->bandwidthUse().write.timeout,
+										client->bandwidthInitialize().read.timeout,
+										client->bandwidthInitialize().write.timeout,
 										client->id
 									);
 								// Событию без набора параметров полосы снимать в нём нечего
@@ -76626,15 +77231,16 @@ void awh::engine::IO::clear() noexcept {
 						}
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
 							/**
+							 * Если в сокете нет ошибок
+							 *
 							 * @warning Заслон по семейству обязателен: у клиента-канала
 							 *          `getError` отвечает -1, и весь разбор ниже - снятие
 							 *          подписок чтения и записи - пропускался ЦЕЛИКОМ. Узел
 							 *          сносился, а подписки на его описатель оставались
+							 *
 							 */
-							if((client->state.family == event::family_t::PIPE) ||
-							 (this->_eth.socket.getError(client->transfer.fd) == 0)){
+							if((client->state.family == event::family_t::PIPE) || (this->_eth.socket.getError(client->transfer.fd) == 0)){
 								// Количество событий для удаления
 								size_t count = 0;
 								// Объекты событий для удаления из списка ожидания
@@ -76649,7 +77255,9 @@ void awh::engine::IO::clear() noexcept {
 									events[count++] = ::change::make(client->transfer.fd, ::change::filter_t::WRITE, ::change::DELETE, 0, 0, nullptr);
 								// Если у нас есть события которые нужно удалить
 								if(count > 0)
-									// Выполняем удаление события из списка ожидания
+									/**
+									 * Выполняем удаление события из списка ожидания
+									 */
 									for(uint8_t index = 0; index < count; index++) ::kernel::apply(events[index]);
 							}
 							// Закрываем дескриптор сокета
@@ -76747,8 +77355,7 @@ void awh::engine::IO::clear() noexcept {
 									// Удаляем файл сокета клиента
 									::unlink(address.c_str());
 							}
-						}
-						{
+						}{
 							// Сохраняем объект функции обратного вызова SCTP
 							auto callbacks = ::move(server->sctp.callbacks);
 							/**
@@ -76757,6 +77364,7 @@ void awh::engine::IO::clear() noexcept {
 							 * @warning Заносить сюда `memset` НЕЛЬЗЯ: набор несёт список типов
 							 *          событий подписки - хранилище `unordered_set`, держащее
 							 *          память в куче
+							 *
 							 */
 							server->sctp = ::io::sctp_endpoint_t();
 							// Восстанавливаем объект функции обратного вызова SCTP
@@ -76798,6 +77406,7 @@ bool awh::engine::IO::kick() noexcept {
 	 * @note Пинок со стороны выполняется как прежде и отсечению не подлежит: им
 	 *       останавливают цикл событий, ожидающий в ядре, и потеря такого пинка
 	 *       оставила бы цикл висеть до первого попутного события
+	 *
 	 */
 	if(::__awh_poll_thread_known__ && static_cast <bool> (::pthread_equal(::pthread_self(), ::__awh_poll_thread__)))
 		// Выводим успешный результат: изменения применятся ближайшим опросом
@@ -76808,6 +77417,7 @@ bool awh::engine::IO::kick() noexcept {
 		 * @note Своего средства разбудить спящий цикл у кольца нет: роль эту исполняет
 		 *       отдельный дескриптор события, подписанный на чтение, и запись в него
 		 *       и есть пробуждение
+		 *
 		 */
 		if(!(result = ::kernel::kick())){
 			/**
@@ -76844,12 +77454,13 @@ bool awh::engine::IO::initialize() noexcept {
 	 *          системы требуют подъёма средств сокетов на процесс, и подъём этот вправе
 	 *          не удаться; заведись движок при негодных средствах - приложение получило
 	 *          бы успешное заведение и неработоспособную сеть, а отказ всплыл бы позже
-	 *          и порознь: своим на каждом заведённом сокете
+	 *          и порознь: своим на каждом заведённом сокете.
 	 *
 	 * @note Судьбу приложения решает оно само: слой отвечает отказом заведения и заносит
 	 *       довод в журнал, а уходить ли от этого - дело вызывающей стороны. Библиотека
 	 *       уводить приложение из жизни не вправе, тем более что сеть нужна не всякому её
 	 *       потребителю: события файловой системы, таймеры и кодеки работают и без неё
+	 *
 	 */
 	if(!this->_eth.socket.ready())
 		// Выводим результат с ошибкой
@@ -76857,6 +77468,8 @@ bool awh::engine::IO::initialize() noexcept {
 	// Если очередь опроса ещё не инициализирован
 	if(::__awh_ep__ == net::invalid_socket_t){
 		/**
+		 * Очищаем временный список подготовленных событий
+		 *
 		 * @note Список изменений очищается перед созданием очереди. Записи попадают
 		 *       в него и тогда, когда очереди ещё нет: подписки ставятся при фиксации
 		 *       события, а очередь создаётся позже. Дожить до появления очереди такая
@@ -76866,7 +77479,6 @@ bool awh::engine::IO::initialize() noexcept {
 		 *       Тот же порядок соблюдает и метод повторной инициализации.
 		 *
 		 */
-		// Очищаем временный список подготовленных событий
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения
 		::local::graveyard.clear();
@@ -76953,6 +77565,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 		 *
 		 * @warning Описатели здесь СВОИ: они приехали открытыми и подъёма не дождались.
 		 *          Закрыть их обязаны мы, иначе они текут - и течь будут молча
+		 *
 		 */
 		::handoff::disband();
 		/**
@@ -76974,7 +77587,10 @@ bool awh::engine::IO::reinitialize() noexcept {
 		}
 		// Выполняем заведение очереди опроса и дескриптора пробуждения цикла
 		if(!(result = ::kernel::create()))
-			// Выходим из приложения
+			// Выходим из приложения: полузаведённый движок опаснее честного отказа -
+			// вызывающий получил бы объект, который выглядит живым, а обмениваться не
+			// умеет. Уход при отказе заведения и уход при отказе `bind` - одно устройство
+			// у всех четырёх движков; решение записано в находках аудита 09.09.2026
 			::_exit(EXIT_FAILURE);
 		/**
 		 * Выполняем перебор всех активных узлов
@@ -77539,7 +78155,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 	 *          снос узла доводится до конца ниже, и охранник узла позвал бы отклик
 	 *          состояния обратно в наследника - в разрушенную память. Оповещать здесь
 	 *          всё равно некого: движок сворачивается вместе с последним юнитом, а
-	 *          значит и все владельцы откликов уже уходят
+	 *          значит и все владельцы откликов уже уходят.
 	 *
 	 */
 	for(const auto & item : ::__awh_nodes__){
@@ -77805,11 +78421,10 @@ bool awh::engine::IO::deinitialize() noexcept {
 	// Если механизм ожидания заведён
 	if(::__awh_ep__ != net::invalid_socket_t){
 		/**
+		 * Снимаем наблюдение за файловой системой вместе со всем его учётом
+		 *
 		 * @note Дескриптор колец здесь не закрывается: владеет им слой колец, и
 		 *       закрытие его выполняет разрушение механизма ожидания
-		 */
-		/**
-		 * Снимаем наблюдение за файловой системой вместе со всем его учётом
 		 *
 		 * @note Кольца снятие движка переживают намеренно, а наблюдение - НЕТ.
 		 *       Оставленный учёт держит метки наблюдения, за которыми записаны уже
@@ -77823,6 +78438,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 		 * @note Снятие идёт через `::kernel::close`: закрытие дескриптора поданную
 		 *       операцию НЕ прекращает, её нужно отменить по-настоящему и довести
 		 *       отмену до ядра прежде закрытия
+		 *
 		 */
 		if(::kernel::inotify != net::invalid_socket_t){
 			// Выполняем снятие ожидания дескриптора наблюдения и его закрытие
@@ -77854,9 +78470,9 @@ bool awh::engine::IO::deinitialize() noexcept {
 		 *          и всякое новое заведение движка в том же процессе добавляло к ним ещё
 		 *          два. У epoll вызов этот стоит на том же месте - расхождение и выдало
 		 *          пропуск. Найдено ворошителем данных 13.09.2026
+		 *
 		 */
 		::kernel::destroy();
-		// Очищаем временный список подготовленных событий
 		/**
 		 * Снимаем придержанные описатели, никому не доставшиеся
 		 *
@@ -77865,8 +78481,10 @@ bool awh::engine::IO::deinitialize() noexcept {
 		 *          снятие стояло лишь у переинициализации и разрушения, а деинициализацию
 		 *          состояние передачи переживало целиком - вместе со счётчиком отложенных
 		 *          передач и метками произведённых подъёмов
+		 *
 		 */
 		::handoff::disband();
+		// Очищаем временный список подготовленных событий
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения
 		::local::graveyard.clear();
@@ -77962,6 +78580,7 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
 		 *       структура дедлайнов принимает задержку, а не остаток. Поэтому
 		 *       переключать тип таймера при поставленных таймерах следует лишь
 		 *       понимая, что их период начнётся сначала
+		 *
 		 */
 		for(const auto & item : ::__awh_nodes__){
 			/**
@@ -78145,6 +78764,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					 * @note Запись такого события несёт голову настроек отправки, и место под
 					 *       неё принадлежит очереди, а не отправителю. Не вычти мы её здесь -
 					 *       отправка отказала бы там, где приложение уверено в наличии места
+					 *
 					 */
 					if(i->second->state.protocol == event::protocol_t::SCTP)
 						// Выводим доступное место за вычетом головы настроек отправки
@@ -78166,6 +78786,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					 * @note Запись такого события несёт голову настроек отправки, и место под
 					 *       неё принадлежит очереди, а не отправителю. Не вычти мы её здесь -
 					 *       отправка отказала бы там, где приложение уверено в наличии места
+					 *
 					 */
 					if(i->second->state.protocol == event::protocol_t::SCTP)
 						// Выводим доступное место за вычетом головы настроек отправки
@@ -78430,12 +79051,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *          останавливают многократно, и всякий раз вправе поднять в новом
 			 *          потоке. Признак `SINGLE_ISSUER` держит кольца за потоком, их
 			 *          заведшим, и подачу нового цикла ядро отвергло бы молча. Довод
-			 *          целиком приведён при самом перезаведении
+			 *          целиком приведён при самом перезаведении.
 			 *
 			 * @note Отметка ставится единожды и перезаписывается только вместе с
 			 *       кольцами. Безусловная перезапись, стоявшая здесь прежде, была
 			 *       изъяном: новый поток объявлял своим себя, кольца оставались за
 			 *       прежним, и подача уходила в отвергаемое ядром
+			 *
 			 */
 			if(!::__awh_poll_thread_known__){
 				// Отмечаем, что поток опроса очереди событий известен
@@ -78457,6 +79079,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @note Заводятся они здесь, а не при подготовке движка, потому что
 			 *       `SINGLE_ISSUER` привязывает их к заведшему потоку. Довод целиком
 			 *       приведён при самом заведении
+			 *
 			 */
 			if(!::kernel::attach())
 				// Выводим результат с ошибкой
@@ -78467,6 +79090,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @note Перенос идёт каждым оборотом, а не только при заведении колец:
 			 *       движок настраивают из одного потока, а цикл ведут из другого, и
 			 *       откладывать чужие записи чужой поток вправе в любой миг
+			 *
 			 */
 			::post::flush();
 			/**
@@ -78481,6 +79105,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       ядра на этом обороте ещё не выполнялся, значит нет и разбираемой
 			 *       пачки событий, в которой поле пользовательских данных могло бы
 			 *       указывать на освобождаемый узел
+			 *
 			 */
 			if(!::local::graveyard.empty()){
 				// Получаем количество узлов, накопленных к началу оборота
@@ -78535,7 +79160,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *          ограничивает время ожидания.
 			 *
 			 *          Обращений к ядру от этого выходит на одно меньше при каждой
-			 *          правке сроков, а правятся они на каждый принятый пакет
+			 *          правке сроков, а правятся они на каждый принятый пакет.
 			 *
 			 */
 			int32_t wait = timeout;
@@ -78576,6 +79201,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @note Ожидание записей не принимает, и фиксация выполняется своим заходом -
 			 *       иначе подписки, заведённые этим оборотом, ожиданием учтены не
 			 *       будут и событие по ним пропадёт до следующего оборота
+			 *
 			 */
 			::local::commit();
 			/**
@@ -78601,6 +79227,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       событием значило бы не выйти из него вовсе: будить опрос
 			 *       некому - взвод пришёл из того же потока, который в опрос и входит,
 			 *       и пробуждения себя самого он не делает
+			 *
 			 */
 			{
 				// Выполняем блокировку списка взведённых событий
@@ -78617,7 +79244,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *
 			 * @details Голова кольца завершений двигается **после** обхода, а не по
 			 *          записи: разбор вправе подать ядру новые операции, а подача при
-			 *          движущейся голове означала бы правку кольца из-под самой себя
+			 *          движущейся голове означала бы правку кольца из-под самой себя.
 			 *
 			 * @note Двигается она ровно на разобранное, а не на всё полученное: обход
 			 *       вправе прерваться на переполнении пачки разбора, и остаток обязан
@@ -78631,7 +79258,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @details Взвод срока истечения из другого потока к ядру не обращается и
 			 *          спящий опрос сам по себе не прерывает. По отметке этой взвод и
 			 *          узнаёт, спит ли опрос и до какого срока, - и будит его, если
-			 *          новый срок наступает раньше
+			 *          новый срок наступает раньше.
 			 *
 			 * @note Отметка ставится **после** фиксации изменений и сверки взведённых
 			 *       событий: до этого мига время ожидания ещё правится, и отметка
@@ -78646,11 +79273,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * Выполняем подачу накопленного и ожидание завершений в ядре
 			 *
 			 * @details Оба действия выполняются ОДНИМ обращением: всё накопленное - и правки ожиданий, и приёмы,
-			 *          и отправки - уходит тем же обращением, которым опрос засыпает
+			 *          и отправки - уходит тем же обращением, которым опрос засыпает.
 			 *
 			 * @note Ожидается одно завершение, а не полная пачка: ядро отдаёт всё, что
 			 *       к этому мигу готово, и требовать большего значило бы держать опрос
 			 *       спящим при готовых событиях
+			 *
 			 */
 			const int32_t submitted = ::ring::submit(((wait == 0) ? 0 : 1), wait);
 			// Снимаем отметку срока: опрос больше не спит и в пробуждении не нуждается
@@ -78665,12 +79293,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @details Всякое завершение вправе дать ДВЕ записи - готовность к чтению и
 			 *          готовность к записи, - и место под них отводится с запасом вдвое.
 			 *          Правка же размера прежде стояла в КОНЦЕ оборота и опаздывала ровно
-			 *          на тот оборот, где места и не хватило
+			 *          на тот оборот, где места и не хватило.
 			 *
 			 * @warning Нехватка места здесь не безобидна: завершение отмечается разобранным
 			 *          в начале обхода, а запись учёта операции к тому времени уже
 			 *          освобождена, - и завершение, не поместившееся в пачку, пропадает
 			 *          НАВСЕГДА, а не достаётся следующему обороту
+			 *
 			 */
 			if((received > 0) && (static_cast <size_t> (received) > ::__awh_events_size__)){
 				// Сбрасываем отсчёт затишья: пачка выросла, ужимать её нечего
@@ -78694,6 +79323,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       оборот вправе сработать не единожды, а записи прежних его срабатываний
 			 *       к этому мигу ещё ждут своей очереди и на список ссылаются. Ёмкость
 			 *       списка переиспользуется, отвода памяти на оборот не прибавляется
+			 *
 			 */
 			if(!::kernel::names.empty())
 				// Выполняем очистку списка названий записей каталога
@@ -78707,21 +79337,22 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			else {
 				/**
-				 * Перебираем всю полученную пачку
-				 */
-				/**
 				 * Предел обхода: столько завершений, сколько поместится в пачку разбора
 				 *
 				 * @details Кольцо тем и отличается от очереди завершений, что остаток
 				 *          придерживает у себя: голова двигается ровно на разобранное, и
-				 *          неразобранные завершения достаются следующему обороту целыми
+				 *          неразобранные завершения достаются следующему обороту целыми.
 				 *
 				 * @warning Предел этот - не украшение. Завершение отмечается разобранным в
 				 *          начале обхода, а запись учёта операции освобождается тут же, и
 				 *          выход посреди обхода терял бы завершение НАВСЕГДА. Оттого в
 				 *          обход берётся заведомо помещающееся число, а не все забранные
+				 *
 				 */
 				const int32_t limit = ((static_cast <size_t> (received) > ::__awh_events_size__) ? static_cast <int32_t> (::__awh_events_size__) : received);
+				/**
+				 * Перебираем всю полученную пачку
+				 */
 				for(int32_t index = 0; index < limit; index++){
 					// Получаем текущее завершение
 					const struct io_uring_cqe & completion = ::ring::completion(static_cast <uint32_t> (index));
@@ -78742,6 +79373,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Пока признак этот приходит, запись учёта держится: ядро
 					 *       сообщит по ней ещё не раз. Снимается она тем завершением,
 					 *       которое пришло без него
+					 *
 					 */
 					const bool more = static_cast <bool> (completion.flags & static_cast <uint32_t> (::ring::cqe_t::MORE));
 					// Запоминаем узел, которому операция принадлежит
@@ -78758,6 +79390,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Снимается он ДО освобождения записи учёта: ядро заполнило
 					 *       адрес в самой записи, а освобождённая запись вправе тут же
 					 *       уйти под другую операцию
+					 *
 					 */
 					struct sockaddr_storage acceptedAddr{};
 					// Длина адреса удалённой стороны принятого подключения
@@ -78780,6 +79413,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       раньше, чем дойдёт до отмены. Узел, которому операция
 					 *       принадлежала, к этому мигу вправе не существовать, и
 					 *       обращение к нему было бы обращением к освобождённой памяти
+					 *
 					 */
 					if(cancelled){
 						/**
@@ -78792,6 +79426,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       его течь. Удалённая сторона при этом видела бы
 						 *       установленное подключение, которого никто не обслужит
 						 *       и никто не оборвёт - до самого конца работы процесса
+						 *
 						 */
 						if((kind == ::inflight::kind_t::ACCEPT) && (completion.res >= 0))
 							// Закрываем принятое подключение: отдать его некому
@@ -78822,6 +79457,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       освобождена деструктором `io::Client`. Запись учёта к этому
 					 *       мигу уже освобождена выше, так что пропуск завершения ничего
 					 *       не роняет
+					 *
 					 */
 					if((owner != nullptr) &&
 					   ((kind == ::inflight::kind_t::FILE) ||
@@ -78840,6 +79476,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Разбирать в нём нечего сверх учёта: байты перенесло ядро, а
 					 *       готовность источника придёт своим ожиданием, которое к этому
 					 *       мигу уже взведено заново
+					 *
 					 */
 					if(kind == ::inflight::kind_t::SPLICE){
 						// Учитываем завершение операции переноса
@@ -78854,10 +79491,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       владельцем идёт запись учёта подписок, а у чтения файла - сам
 					 *       узел. Пустить его общим путём значило бы истолковать узел
 					 *       записью учёта
+					 *
 					 */
 					if(kind == ::inflight::kind_t::FILE){
 						/**
-						 * Вид узла сличается ДО приведения к узлу файла
+						 * Получаем узел события общим видом, без приведения к узлу файла
+						 *
+						 * @note Вид узла сличается ДО приведения к узлу файла
 						 *
 						 * @details Учёт живых узлов ведётся по АДРЕСУ, и совпадение адреса
 						 *          доказывает лишь то, что по нему живёт какой-то узел, но
@@ -78865,7 +79505,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *          братья от общего `fs_t`, лежат в одной куче и получают
 						 *          освободившиеся адреса друг друга. Завершение чтения,
 						 *          пришедшее к адресу, где уже поселился узел каталога,
-						 *          приводилось к `file_t` и читало чужие поля
+						 *          приводилось к `file_t` и читало чужие поля.
 						 *
 						 * @warning Найдено надзирателем неопределённого поведения на Астре:
 						 *          «member access within address ... which does not point to
@@ -78875,22 +79515,24 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 * @note Поле вида лежит в ОБЩЕМ предке `node_t`, и читать его через
 						 *       базовый указатель законно - в отличие от чтения полей
 						 *       `Filename` через указатель на брата
+						 *
 						 */
-						// Получаем узел события общим видом, без приведения к узлу файла
 						::io::node_t * const node = reinterpret_cast <::io::node_t *> (owner);
 						// Если узел файлом не является
 						if((node == nullptr) || (node->state.node != event::node_t::FILE))
 							// Переходим к завершению следующему: разбирать его не для кого
 							continue;
 						/**
-						 * Приведение идёт домашним средством, а не голым
+						 * Получаем узел файла домашним приведением
+						 *
+						 * @note Приведение идёт домашним средством, а не голым
 						 *
 						 * @warning Прежде здесь стоял `reinterpret_cast`, обходивший
 						 *          домашний заслон: `awh_cast` разворачивается в
 						 *          `dynamic_cast` в отладочной сборке и отдал бы пустоту
 						 *          при чужом типе. Голое приведение эту проверку снимало
+						 *
 						 */
-						// Получаем узел файла домашним приведением
 						::io::file_t * const fs = awh_cast <::io::file_t *> (node);
 						// Если узел файлом не оказался
 						if(fs == nullptr)
@@ -78908,6 +79550,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       по переполнению его буфера. Данные к этому мигу уже извлечены
 					 *       из источника и лежат в канале, оттого бросить их нельзя -
 					 *       выдача повторяется здесь
+					 *
 					 */
 					if(kind == ::inflight::kind_t::SPLICE_WAIT){
 						// Выполняем повторную выдачу остатка приёмнику
@@ -78921,11 +79564,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @details Подключение ядро приняло само, и дескриптор его пришёл числовым
 					 *          исходом завершения. Общий путь готовности такому завершению не
 					 *          годится: событие там означает «сокет готов», а здесь подключение
-					 *          уже принято
+					 *          уже принято.
 					 *
 					 * @note Приём подан однократным, оттого ядром он снят и подаётся заново -
 					 *       тем же порядком, что и сработавшее ожидание: отметкой расхождения
 					 *       учёта, а не прямой подачей
+					 *
 					 */
 					if(kind == ::inflight::kind_t::ACCEPT){
 						// Получаем запись учёта подписки, которой приём принадлежал
@@ -78940,6 +79584,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *       одном слушающем сокете два приёма разом. Ветвь эта берёт на себя
 							 *       и тот случай, когда ядро прекращает многократный приём само,
 							 *       признака продолжения не выставив
+							 *
 							 */
 							if(!more){
 								// Забываем метку завершения снятого приёма
@@ -78956,23 +79601,29 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 								 *          подписки. Нехватка запасов проходит сама, и приём
 								 *          стоит подать заново; недействительный же описатель
 								 *          заново не оживёт, и подача по нему пойдёт кругами:
-								 *          ядро будет отвечать тем же отказом всякий оборот
+								 *          ядро будет отвечать тем же отказом всякий оборот.
 								 *
 								 * @warning Прежде отказ приёма не сообщался никому вовсе - ни
 								 *          потребителю, ни в журнал, - а подписка ставилась в
 								 *          очередь согласования заново. Событие сервера от того
 								 *          немо, а движок кружит по закрытому описателю
+								 *
 								 */
 								const bool doomed = ((completion.res == -EBADF) || (completion.res == -EPERM) ||
-								 (completion.res == -EINVAL) || (completion.res == -ELOOP)
-								 #if defined(EBADFD)
-									 || (completion.res == -EBADFD)
-								 #endif
+								                    (completion.res == -EINVAL) || (completion.res == -ELOOP)
+									/**
+									 * Если системе известен код отказа EBADFD
+									 */
+									#if defined(EBADFD)
+										|| (completion.res == -EBADFD)
+									#endif
 								);
 								// Если отказ приёма окончателен
 								if(doomed){
 									/**
-									 * Узел добывается через учёт живых, а не голым приведением
+									 * Получаем узел сервера, которому приём принадлежал
+									 *
+									 * @note Узел добывается через учёт живых, а не голым приведением
 									 *
 									 * @warning Прежде здесь стояло приведение `state->udata` с
 									 *          проверкой лишь на непустоту, а следом - вызов
@@ -78982,8 +79633,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 									 *          доказывает. В том же файле есть свой образец
 									 *          верного обращения - через `::io::living`,
 									 *          - и путь этот от него отступал
+									 *
 									 */
-									// Получаем узел сервера, которому приём принадлежал
 									::io::node_t * node = ((::io::living.count(state->udata) > 0) ? reinterpret_cast <::io::node_t *> (state->udata) : nullptr);
 									// Если узел сервера получен
 									if(node != nullptr){
@@ -79007,7 +79658,9 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							// Если подключение принято успешно
 							if(completion.res >= 0){
 								/**
-								 * Узел сервера добывается учётом живых и сличением ВИДА
+								 * Получаем узел, которому приём принадлежал, через учёт живых
+								 *
+								 * @note Узел сервера добывается учётом живых и сличением ВИДА
 								 *
 								 * @warning Прежде здесь стояло голое приведение `state->udata`
 								 *          с проверкой лишь на непустоту, а ниже в этот узел
@@ -79017,8 +79670,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 								 *          лежат в одной куче и наследуют освободившиеся адреса
 								 *          друг друга. Найдено по нити от отчёта надзирателя о
 								 *          таком же приведении на пути чтения файла
+								 *
 								 */
-								// Получаем узел, которому приём принадлежал, через учёт живых
 								::io::node_t * const owner = ((::io::living.count(state->udata) > 0) ? reinterpret_cast <::io::node_t *> (state->udata) : nullptr);
 								// Получаем узел сервера домашним приведением, сличив вид узла
 								::io::server_t * server = (((owner != nullptr) && (owner->state.node == event::node_t::SERVER)) ? awh_cast <::io::server_t *> (owner) : nullptr);
@@ -79030,6 +79683,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 									 * @note Путь принятия подключения читает адрес именно оттуда:
 									 *       при обычном приёме его заполняет `accept`, а здесь -
 									 *       ядро в записи учёта операции
+									 *
 									 */
 									::memcpy(&server->endpoint.client, &acceptedAddr, sizeof(acceptedAddr));
 									// Устанавливаем длину адреса удалённой стороны
@@ -79047,12 +79701,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						continue;
 					}
 					/**
-					 * Набор произошедших событий готовности
-					 *
-					 * @note Ожидание готовности отдаёт набор событий числовым исходом
-					 *       завершения, а не отдельным полем
-					 */
-					/**
 					 * Наводим указатель принятого на общий буфер
 					 *
 					 * @note Место это единственное, где указатель приводится к
@@ -79060,6 +79708,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       его вправе лишь приём, отдавший принятое из кольца, и лишь
 					 *       на время разбора этого самого завершения. Пути, читающие
 					 *       сокет своим порядком, видят общий буфер всегда
+					 *
 					 */
 					::__awh_input__ = ::__awh_buffer__;
 					/**
@@ -79067,6 +79716,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *
 					 * @note Буфер этот отдавался потребителю разбором предыдущего
 					 *       завершения, и чтение его к этому мигу заведомо закончено
+					 *
 					 */
 					if(!::pool::deferred.empty()){
 						/**
@@ -79078,12 +79728,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Выполняем очистку очереди отложенных возвратов
 						::pool::deferred.clear();
 					}
+					/**
+					 * Считаем число событий, о которых готово оповещение
+					 *
+					 * @note Ожидание готовности отдаёт набор событий числовым исходом
+					 *       завершения, а не отдельным полем
+					 *
+					 */
 					uint32_t signalEvents = ((kind == ::inflight::kind_t::POLL) && (completion.res > 0) ? static_cast <uint32_t> (completion.res) : 0);
 					/**
 					 * Готовность по непрочитанному в буфере пула
 					 *
 					 * @note Операция пустая и дескриптора не касалась вовсе: признак
 					 *       готовности берётся не у ядра, а из самого смысла подачи
+					 *
 					 */
 					if(kind == ::inflight::kind_t::READY){
 						// Выдаём наружу готовность к чтению
@@ -79102,11 +79760,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *          завершение такое пропадало молча - ни события наружу, ни
 					 *          строки в журнал. Событие, которое лишь ждёт данных, замолкало
 					 *          навсегда: подписка снята ядром вместе с отказом, а движок
-					 *          оставался уверен в обратном
+					 *          оставался уверен в обратном.
 					 *
 					 * @note Родной приём отказ свой наружу выдаёт (`EPOLLERR`), и порядок
 					 *       здесь тот же. Отмена отказом не считается: её движок запросил
 					 *       сам, и сообщать о ней потребителю не о чем
+					 *
 					 */
 					if((kind == ::inflight::kind_t::POLL) && (completion.res < 0) && (completion.res != -ECANCELED))
 						// Отмечаем ошибку дескриптора
@@ -79118,7 +79777,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *          Потребитель же устроен по модели готовности, оттого
 					 *          принятое откладывается по дескриптору, а наружу выдаётся
 					 *          обычное событие готовности к чтению - разбор ниже о разнице
-					 *          не знает вовсе, и знать ему незачем
+					 *          не знает вовсе, и знать ему незачем.
 					 *
 					 */
 					if((kind == ::inflight::kind_t::RECV) && (owner != nullptr)){
@@ -79131,6 +79790,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       выставляет признак продолжения. Снимает он себя сам при
 						 *       исчерпании буферов кольца либо при отказе, и тогда
 						 *       подписка подаётся заново обычным согласованием
+						 *
 						 */
 						if(!more)
 							// Отмечаем родной приём снятым
@@ -79150,6 +79810,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       `recv`. Наружу выдаётся и готовность, и закрытие: разбору
 						 *       ниже довольно первого, чтобы позвать приём, а тот ответит
 						 *       нулём и уже своим порядком доведёт узел до отключения
+						 *
 						 */
 						} else if(completion.res == 0)
 							// Выдаём наружу готовность к чтению и закрытие дальней стороной
@@ -79162,6 +79823,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       буферов. Событие наружу не выдаётся вовсе - подписка
 						 *       остаётся несогласованной, и ближайшее согласование подаст
 						 *       приём заново, к тому мигу буферы уже вернутся
+						 *
 						 */
 						else if(completion.res == -ENOBUFS)
 							// Событий готовности не выдаём
@@ -79175,7 +79837,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @details Ядро приняло датаграмму само и сложило в выданный из кольца
 					 *          буфер её адрес, служебные сведения и нагрузку. Наружу, как и
 					 *          у потока, выдаётся обычная готовность к чтению: разбор ниже о
-					 *          разнице не знает вовсе
+					 *          разнице не знает вовсе.
 					 *
 					 */
 					if((kind == ::inflight::kind_t::RECVMSG) && (owner != nullptr)){
@@ -79195,6 +79857,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *          обрыв дальней стороны: у сокета с границами обрывать
 						 *          нечего. Установлено щупом: пустая датаграмма даёт исход
 						 *          96 при нулевой нагрузке
+						 *
 						 */
 						if(completion.res > 0){
 							// Если ядро выдало буфер из кольца
@@ -79209,6 +79872,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 * @note Исход этот не отказ, а обычное следствие нагрузки. Событие
 						 *       наружу не выдаётся: подписка остаётся несогласованной, и
 						 *       ближайшее согласование подаст приём заново
+						 *
 						 */
 						} else if(completion.res == -ENOBUFS)
 							// Событий готовности не выдаём
@@ -79224,7 +79888,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *          дескриптору, а наружу выдаётся обычная готовность к записи -
 					 *          разбор ниже о разнице не знает вовсе, и знать ему незачем.
 					 *          Заход потребителя по этой готовности заберёт отложенный
-					 *          исход уже без всякого обращения к ядру
+					 *          исход уже без всякого обращения к ядру.
 					 *
 					 * @note Наружу выдаётся готовность и при отказе тоже, а не признак
 					 *       ошибки дескриптора: разбирать отказ отправки - забота
@@ -79242,6 +79906,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       путь закрытия узел из записи забывает, и пришедшее по
 						 *       исчезнувшему узлу завершение отложит исход без владельца -
 						 *       забрать такой исход не сможет никто
+						 *
 						 */
 						::drain::keep(state->sock, completion.res, state->udata);
 						// Выдаём наружу готовность к записи
@@ -79253,6 +79918,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       записи не подавало, и учёт с ядром разошёлся. Заслон
 						 *       снят, и подписку надо подать заново - иначе остаток
 						 *       очереди передачи не разбудил бы цикл никогда
+						 *
 						 */
 						if((state->enabled != 0) && !state->pending){
 							// Отмечаем учёт разошедшимся с ядром
@@ -79270,13 +79936,14 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *          ход, а не исключение: сработавшее ожидание ядром снято, и
 					 *          без повторной подачи узел не получил бы событий больше
 					 *          никогда. Довод в пользу однократности - при подаче
-					 *          ожидания в согласовании учёта
+					 *          ожидания в согласовании учёта.
 					 *
 					 * @note Ветвь эта берёт на себя и тот случай, когда ядро прекращает
 					 *       многократное ожидание само, не выставив признака продолжения.
 					 *       Такое возможно при переполнении внутренних очередей, и разбор
 					 *       обязан быть к нему готов, даже если многократных ожиданий
 					 *       движок не подаёт
+					 *
 					 */
 					if(((kind == ::inflight::kind_t::POLL) || (kind == ::inflight::kind_t::RECV) || (kind == ::inflight::kind_t::RECVMSG)) && !more){
 						// Если ожидание принадлежало дескриптору пробуждения цикла
@@ -79337,6 +80004,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *
 					 * @note Случай этот один - буферов в кольце не осталось. Подписка
 					 *       остаётся несогласованной и будет подана заново
+					 *
 					 */
 					if(((kind == ::inflight::kind_t::RECV) || (kind == ::inflight::kind_t::RECVMSG)) && (signalEvents == 0))
 						// Переходим к завершению следующему
@@ -79366,6 +80034,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *
 					 * @note Отметка нужна разбору, чтобы не опрашивать у ядра ошибку
 					 *       сокета: ядро о ней уже отчиталось самим завершением
+					 *
 					 */
 					if(kind == ::inflight::kind_t::SEND)
 						// Отмечаем готовность, выданную завершением родной отправки
@@ -79377,6 +80046,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       пришло: при ошибке дескриптора - её код, при готовности к
 					 *       чтению - объём, доступный к получению. Разбор событий на этот
 					 *       порядок и опирается
+					 *
 					 */
 					int64_t volume = 0;
 					/**
@@ -79391,6 +80061,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       принятые, но не извлечённые данные пропали бы вместе с узлом.
 					 *       Путь этот проходится единожды за соединение, и обращение к
 					 *       ядру на нём ничего не стоит
+					 *
 					 */
 					if(flags & ::change::HANGUP){
 						// Объём, доступный к получению
@@ -79405,6 +80076,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *
 					 * @note Код ядро назвало самим завершением, и спрашивать его настройкой
 					 *       сокета незачем - тем более что описатель бывает и не сокетом
+					 *
 					 */
 					if((kind == ::inflight::kind_t::POLL) && (completion.res < 0) && (completion.res != -ECANCELED))
 						// Запоминаем код отказа, ядром названный
@@ -79417,6 +80089,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       Код читается настройкой сокета и кладётся на то же место -
 					 *       иначе разбор принял бы за код ошибки объём, доступный к
 					 *       получению, и назвал бы её наугад
+					 *
 					 */
 					if(flags & ::change::ERROR){
 						// Код ошибки дескриптора
@@ -79432,6 +80105,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *          при этом оставался нулевым, и потребитель получал 0, а в
 						 *          журнал уходило «No error» - сообщение, каким ошибку ни
 						 *          назвать, ни найти
+						 *
 						 */
 						if(gnu::getsockopt(entry->sock, SOL_SOCKET, SO_ERROR, &code, &length) == 0){
 							/**
@@ -79446,6 +80120,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 * @note При нуле оставляем то, что положено выше: код самого
 							 *       завершения, названный ядром. Если и его нет, берётся общий
 							 *       `EIO` - он честнее нуля, читаемого как «ошибки нет»
+							 *
 							 */
 							if(code != 0)
 								// Запоминаем код ошибки дескриптора
@@ -79461,6 +80136,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       нуль читается потребителем как «ошибки нет». Кода у описателя,
 						 *       сокетом не являющегося, ядро не держит вовсе, поэтому берётся
 						 *       общий `EIO` - он честнее и нуля, и кода, названного наугад
+						 *
 						 */
 						} else volume = static_cast <int64_t> (EIO);
 					}
@@ -79481,7 +80157,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *          записи, и каждая доходила до отклика потребителю - об одном и
 						 *          том же отказе тот узнавал дважды. Готовность к обмену на
 						 *          отказавшем описателе не значит ничего, а узел сносится уже
-						 *          разбором первой записи: вторая приходит к снесённому узлу
+						 *          разбором первой записи: вторая приходит к снесённому узлу.
 						 *
 						 * @warning Признаком служит ОДИН ЛИШЬ отказ, обрыв сюда не входит: на
 						 *          обрыве узел сносится НЕ всегда - при непрочитанных данных
@@ -79496,6 +80172,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *
 						 * @note Установлено щупом 20.08.2026: одно завершение давало две записи,
 						 *       два завершения - четыре лишних отклика «I/O error» подряд
+						 *
 						 */
 						if(!(flags & ::change::ERROR)){
 							/**
@@ -79505,6 +80182,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *          чтению: прежде здесь стоял нуль, и вторая запись о том же
 							 *          обрыве всегда говорила «No error». Нагрузка при ошибке
 							 *          обязана нести её код в обеих записях
+							 *
 							 */
 							::__awh_events__[events++] = ::change::make(static_cast <uintptr_t> (entry->sock), ::change::filter_t::WRITE, flags, 0, volume, entry->udata);
 						}
@@ -79535,6 +80213,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *
 						 * @note Таблицы учёта принадлежат ему одному, и здесь они читаются
 						 *       и правятся без всякой защиты по праву единственного хозяина
+						 *
 						 */
 						// Если пользовательское событие включено, переводим взвод в пачку разбора
 						if(::kernel::notifiers.count(item.first) > 0)
@@ -79547,10 +80226,11 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *          приходит вызовом напрямую, и обогнать заведение он вправе.
 						 *          Прежде такой взвод пропадал молча, и событие чтения не
 						 *          доставлялось никогда: список изменений разобраться до взвода
-						 *          не успевает
+						 *          не успевает.
 						 *
 						 * @note Событие ЗАВЕДЁННОЕ, но отключённое, сюда не попадает: взвод по
 						 *       нему отбрасывается - отключённое событие сработать не должно
+						 *
 						 */
 						else if((::kernel::declared.count(item.first) == 0) && (item.second != nullptr))
 							// Придерживаем взвод до применения записи заведения
@@ -79563,6 +80243,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *          вместе с переведёнными всё, чему места не хватило: событие
 					 *          пропадало молча, вопреки обещанию отдать остаток следующему
 					 *          обороту
+					 *
 					 */
 					::kernel::triggered.erase(::kernel::triggered.begin(), (::kernel::triggered.begin() + translated));
 					/**
@@ -79571,6 +80252,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Без пробуждения оборот уснёт на ожидании завершений, а завершения
 					 *       по взведённому пользователем событию не будет вовсе - подавать его
 					 *       некому, событие уже взведено и лежит в списке
+					 *
 					 */
 					if(!::kernel::triggered.empty())
 						// Выполняем пробуждение цикла событий
@@ -79582,7 +80264,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *
 			 * @details Голова кольца двигается здесь, а не по записи в обходе: разбор
 			 *          вправе подать ядру новые операции, и движение головы посреди
-			 *          обхода означало бы правку кольца из-под самой себя
+			 *          обхода означало бы правку кольца из-под самой себя.
 			 *
 			 * @note Двигается она ровно на разобранное. Остаток, если обход прервался
 			 *       на переполнении пачки разбора, достаётся следующему обороту -
@@ -79631,6 +80313,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       «heap-use-after-free» на записи `refs.fetch_add` внутри
 					 *       охранника узла, а освобождена память была деструктором
 					 *       `io::Client`
+					 *
 					 */
 					if((reinterpret_cast <::io::node_t *> (ev.udata) == nullptr) || (::io::living.count(ev.udata) == 0))
 						// Пропускаем событие
@@ -79642,6 +80325,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       истёкшие сроки по событию от ядра не по чему. Разбор их
 					 *       выполняется ниже - по факту истечения, а не по факту
 					 *       прихода события
+					 *
 					 */
 					// Выполняем обработку события
 					if(::io::polling(ev, this, &this->_eth, &this->_addr))
@@ -79667,6 +80351,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * @note Память возвращается обменом с новым вектором, а не усечением:
 			 *       усечение вектора уменьшает длину, но занятую ёмкость оставляет за
 			 *       ним, то есть не возвращает ничего
+			 *
 			 */
 			if((static_cast <size_t> (received) >= ::__awh_events_size__) && (::__awh_events_size__ < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT))){
 				// Сбрасываем отсчёт затишья
@@ -79706,6 +80391,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *
 			 * @note Таймера ядра здесь нет вовсе, и путь этот единственный - оттого
 			 *       и признак разобранности снят
+			 *
 			 */
 			{
 				// Получаем текущее значение временной метки
@@ -80983,6 +81669,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
+					 *
 					 */
 				} break;
 				// Если узел является одноранговым узлом
@@ -80999,6 +81686,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
+					 *
 					 */
 				} break;
 				// Если узел является одноранговым узлом-источником
@@ -81015,6 +81703,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
+					 *
 					 */
 				} break;
 				// Если узел является туннелем
@@ -81032,6 +81721,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
+					 *
 					 */
 				} break;
 				// Если узел является клиентом
@@ -81048,6 +81738,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
+					 *
 					 */
 				} break;
 				/**
@@ -81055,6 +81746,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 				 *
 				 * @note Сервер сюда намеренно не входит: очереди отправки у слушающего узла
 				 *       нет вовсе, и вытягивать данные ему просто некуда
+				 *
 				 */
 				default: {
 					/**
@@ -81204,6 +81896,7 @@ awh::engine::IO::~IO() noexcept {
 		 *
 		 * @warning Описатели здесь СВОИ: они приехали открытыми и подъёма не дождались.
 		 *          Закрыть их обязаны мы, иначе они текут - и течь будут молча
+		 *
 		 */
 		::handoff::disband();
 		// Очищаем временный список подготовленных событий
