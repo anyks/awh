@@ -24,9 +24,21 @@
 #include <alloc/pages.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/pages.inc"
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Pages::State::State() noexcept :
+ total(0), used(0), free(0), purged(0), chunks(0) {}
 
 /**
  * @brief Конструктор
@@ -184,6 +196,7 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	 */
 	// Число кусков, перенесённых в новую таблицу
 	size_t enrolled = 0;
+	// Если прежняя таблица существует
 	if(previous != nullptr){
 		/**
 		 * Перебираем места прежней таблицы
@@ -228,7 +241,7 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	 * сейчас: отдай мы её - он читал бы отданную системе память. Теряется на этом
 	 * менее половины действующей таблицы, ибо длина удваивается
 	 */
-	// Отвечаем успехом
+	// Таблица перестроена и объявлена действующей
 	return true;
 }
 /**
@@ -263,7 +276,7 @@ bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
 	/**
 	 * Ищем свободное место, перебирая места подряд
 	 */
-	while(true){
+	for(;;){
 		// Получаем кусок, лежащий в очередном месте
 		chunk_t * const held = registry->table[index].load(std::memory_order_relaxed);
 		// Если место таблицы пусто - оно и есть искомое
@@ -288,7 +301,7 @@ bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
 	registry->table[index].store(chunk, std::memory_order_release);
 	// Увеличиваем число внесённых кусков
 	this->_enrolled++;
-	// Отвечаем успехом
+	// Кусок внесён
 	return true;
 }
 /**
@@ -332,7 +345,7 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::discover(const void * addr) cons
 	/**
 	 * Ищем кусок, перебирая места подряд
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Берём кусок очередного места ЗАХВАТОМ
 		 *
@@ -366,9 +379,7 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::discover(const void * addr) cons
 	return nullptr;
 }
 /**
- * @brief Метод записи области в указатели куска
- *
- * @param span записываемая область
+ * @brief Метод слияния отложенных областей
  *
  */
 /**
@@ -429,6 +440,12 @@ void awh::alloc::Pages::compact() noexcept {
 	// Отложенных областей не осталось
 	this->_unmerged = 0;
 }
+/**
+ * @brief Метод записи области в указатели куска
+ *
+ * @param span записываемая область
+ *
+ */
 void awh::alloc::Pages::mark(span_t * span) noexcept {
 	// Определяем номер первой страницы области в куске
 	const size_t first = static_cast <size_t> ((span->base - span->chunk->base) / PAGE);
@@ -841,7 +858,9 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::search(const size_t pages) noexce
 	 * область покрупнее с последующим делением
 	 */
 	if(pages <= LISTS){
-		// Перебираем списки по числу страниц
+		/**
+		 * Перебираем списки по числу страниц
+		 */
 		for(size_t i = pages; i <= LISTS; i++){
 			// Если список не пуст
 			if(this->_lists[i] != nullptr)
@@ -975,12 +994,11 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
 	return span;
 }
 /**
- * @brief Метод заведения кучи
+ * @brief Метод занятия области у заведённой кучи
  *
- * @param source   источник страниц
- * @param arena    занимаемая при заведении область в байтах
+ * @param arena    занимаемая область в байтах
  * @param confined запрет обращаться к источнику сверх занятого
- * @return         признак заведения кучи
+ * @return         признак занятия требуемой области
  *
  */
 bool awh::alloc::Pages::occupy(const size_t arena, const bool confined) noexcept {
@@ -1012,7 +1030,7 @@ bool awh::alloc::Pages::occupy(const size_t arena, const bool confined) noexcept
 	}
 	// Запоминаем запрет обращаться к источнику сверх занятого
 	this->_confined = confined;
-	// Отвечаем успехом
+	// Запрет закреплён
 	return true;
 }
 /**
@@ -1059,7 +1077,7 @@ bool awh::alloc::Pages::init(source_t * source, const size_t arena, const bool c
 	}
 	// Запоминаем запрет обращаться к источнику сверх занятого
 	this->_confined = confined;
-	// Отвечаем успехом
+	// Запрет закреплён
 	return true;
 }
 /**
@@ -1229,6 +1247,12 @@ void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
 			span->released = false;
 			// Обнуляем метку владельца: прежняя досталась от прошлой жизни области
 			span->tag = 0;
+			// Стопка новой жизни области пуста
+			span->stack = nullptr;
+			// Блоков в стопке новой жизни пока нет
+			span->held = 0;
+			// Блоков новой жизни ещё не нарезано
+			span->total = 0;
 			/**
 			 * Снимаем область с учёта отданного системе ТЕМ ЖЕ порядком, что и ниже
 			 *
@@ -1289,6 +1313,12 @@ void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
 	span->released = false;
 	// Обнуляем метку владельца: прежняя досталась от прошлой жизни области
 	span->tag = 0;
+	// Стопка новой жизни области пуста
+	span->stack = nullptr;
+	// Блоков в стопке новой жизни пока нет
+	span->held = 0;
+	// Блоков новой жизни ещё не нарезано
+	span->total = 0;
 	// Записываем область в указатели куска
 	this->mark(span);
 	// Если содержимое области было системе отдано
@@ -1477,6 +1507,7 @@ bool awh::alloc::Pages::expand(void * addr, const size_t pages) noexcept {
 		 *          используемых, выдача переписала бы её поля прямо под таким читателем,
 		 *          и разбор ответил бы о чужой области. Отдаём их после `mark`, когда
 		 *          указатели куска ведут уже на расширенную область
+		 *
 		 */
 		// Вносим запись соседа в местную связку поглощённых
 		neighbour->next = absorbed;
@@ -1719,8 +1750,7 @@ bool awh::alloc::Pages::free(void * addr, const uint64_t now) noexcept {
 		this->push(span);
 		// Считаем область, ждущую слияния
 		this->_unmerged++;
-
-		// Отвечаем успехом
+		// Область отмечена ждущей слияния
 		return true;
 	}
 	// Адрес куче не принадлежит
@@ -1750,9 +1780,9 @@ void awh::alloc::Pages::ceiling(const size_t limit) noexcept {
 	this->_limit = limit;
 }
 /**
- * @brief Метод определения упёртости кучи в потолок
+ * @brief Метод получения числа областей, изъятых на время отдачи
  *
- * @return признак упёртости кучи в потолок
+ * @return число изъятых областей
  *
  */
 size_t awh::alloc::Pages::pending() const noexcept {
@@ -1780,7 +1810,9 @@ size_t awh::alloc::Pages::reclaim() noexcept {
 	 * куска ведут к ней прямо
 	 */
 	for(chunk_t * chunk = this->_chunks; chunk != nullptr; chunk = chunk->next){
-		// Обходим страницы очередного куска
+		/**
+		 * Обходим страницы очередного куска
+		 */
 		for(size_t i = 0; i < PAGES; i++){
 			// Получаем область, которой принадлежит страница
 			span_t * span = chunk->index[i].load(std::memory_order_relaxed);
@@ -1842,6 +1874,33 @@ bool awh::alloc::Pages::owns(const void * addr) const noexcept {
 	return (this->lookup(addr) != nullptr);
 }
 /**
+ * @brief Метод получения записи области по адресу блока
+ *
+ * @details Разбор для холодных путей слоя выше: возврат блока в стопку области
+ *          и решение о возврате области куче. Поиск куска идёт той же подсказкой,
+ *          что и разбор адреса на пути освобождения
+ *
+ * @param addr разбираемый адрес
+ * @return    запись области страницы адреса, либо nullptr
+ *
+ */
+awh::alloc::Pages::span_t * awh::alloc::Pages::scope(const void * addr) noexcept {
+	// Если адрес не задан
+	if(addr == nullptr)
+		// Разбирать нечего
+		return nullptr;
+	// Ищем кусок, которому принадлежит адрес
+	const chunk_t * chunk = this->lookup(addr);
+	// Если куска за адресом не нашлось
+	if(chunk == nullptr)
+		// Адрес куче не принадлежит
+		return nullptr;
+	// Определяем номер страницы, которой принадлежит адрес
+	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+	// Выводим запись области страницы
+	return chunk->index[page].load(std::memory_order_acquire);
+}
+/**
  * @brief Метод пометки выданной области
  *
  * @param addr адрес начала выданной области
@@ -1887,15 +1946,18 @@ bool awh::alloc::Pages::tag(void * addr, const uint32_t tag) noexcept {
 	std::atomic_thread_fence(std::memory_order_release);
 	// Проставляем метку разряда по всем страницам области
 	this->paint(span->base, span->pages, static_cast <uint8_t> (tag));
-	// Отвечаем успехом
+	// Метка разряда проставлена
 	return true;
 }
 /**
- * @brief Метод отдачи системе свободной памяти
+ * @brief Метод изъятия областей, подлежащих отдаче системе
  *
- * @param now текущее время в миллисекундах
- * @param all отдавать всё, не глядя на отсрочку
- * @return    объём отданной системе памяти в байтах
+ * @param now    текущее время в миллисекундах
+ * @param all    отдавать всё, не глядя на отсрочку
+ * @param spans  место под изъятые области
+ * @param limit  наибольшее число изымаемых областей
+ * @param cursor место перебираемого списка, откуда продолжать
+ * @return       число изъятых областей
  *
  */
 size_t awh::alloc::Pages::detach(const uint64_t now, const bool all, void ** spans, const size_t limit, size_t * cursor) noexcept {

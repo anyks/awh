@@ -12,6 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
+ * @brief Реализация захвата выделения памяти подменой имён ELF
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -25,6 +27,10 @@
  * добыть
  */
 #if !defined(_GNU_SOURCE)
+	/**
+	 * @brief Включаем расширения GNU для подстановки длинных имён
+	 *
+	 */
 	#define _GNU_SOURCE
 #endif
 
@@ -51,6 +57,10 @@
  * признаком набора возможностей
  */
 #if !defined(RTLD_NEXT)
+	/**
+	 * @brief Устанавливаем RTLD_NEXT в специальный адрес поиска
+	 *
+	 */
 	#define RTLD_NEXT reinterpret_cast <void *> (-1l)
 #endif
 
@@ -58,6 +68,10 @@
  * Если поиск по всему процессу не объявлен
  */
 #if !defined(RTLD_DEFAULT)
+	/**
+	 * @brief Устанавливаем RTLD_DEFAULT в нулевой адрес
+	 *
+	 */
 	#define RTLD_DEFAULT reinterpret_cast <void *> (0)
 #endif
 
@@ -89,6 +103,28 @@ bool awh::alloc::ELFCapture::shadowed(const char * name, const void * ours) cons
 	return (seen == ours);
 }
 /**
+ * @brief Инкапсулируем локальные функции в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция определения работающего разрешения имён у процесса
+	 *
+	 * @return признак работающего разрешения имён
+	 *
+	 */
+	static bool __awh_elf_dynamic__() noexcept {
+		/**
+		 * Спрашиваем имя, какое есть у всякой системы
+		 *
+		 * У статической программы `dlsym` отвечает пустотой на всё: разрешать имена ей
+		 * негде и незачем - связыватель разрешил их единожды при сборке. Отличить этот
+		 * случай от порчи связывания можно лишь так: имя, какое есть заведомо, тоже пусто
+		 */
+		return (::dlsym(RTLD_DEFAULT, "getpid") != nullptr);
+	}
+};
+/**
  * @brief Метод захвата выделения памяти процесса
  *
  * @param hooks     наши функции, ставимые на место прежних
@@ -96,28 +132,12 @@ bool awh::alloc::ELFCapture::shadowed(const char * name, const void * ours) cons
  * @return          признак состоявшегося захвата
  *
  */
-/**
- * @brief Метод определения работающего разрешения имён у процесса
- *
- * @return признак работающего разрешения имён
- *
- */
-static bool __awh_elf_dynamic__() noexcept {
-	/**
-	 * Спрашиваем имя, какое есть у всякой системы
-	 *
-	 * У статической программы `dlsym` отвечает пустотой на всё: разрешать имена ей
-	 * негде и незачем - связыватель разрешил их единожды при сборке. Отличить этот
-	 * случай от порчи связывания можно лишь так: имя, какое есть заведомо, тоже пусто
-	 */
-	return (::dlsym(RTLD_DEFAULT, "getpid") != nullptr);
-}
 bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & originals) noexcept {
 	// Если захват уже состоялся
 	if(this->_acquired){
 		// Отдаём прежде добытые функции
 		originals = this->_originals;
-		// Отвечаем успехом
+		// Прежние функции отданы
 		return true;
 	}
 	// Если наши функции заданы не полностью
@@ -139,7 +159,9 @@ bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & or
 	 * одного имени связыватель туда не пропустил бы вовсе - сборка отказала бы ошибкой
 	 * двойного имени. Оттого сверка там пропускается, а не проваливается
 	 */
+	// Определяем способ связывания
 	const bool dynamic = ::__awh_elf_dynamic__();
+	// Если программа связана динамически и заслон не подтверждён
 	if(dynamic && !this->shadowed("malloc", reinterpret_cast <const void *> (hooks.malloc)))
 		// Отвечаем отказом
 		return false;
@@ -221,7 +243,7 @@ bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & or
 	this->_acquired = true;
 	// Отдаём добытые прежние функции
 	originals = this->_originals;
-	// Отвечаем успехом
+	// Прежние функции отданы
 	return true;
 }
 /**
@@ -272,6 +294,23 @@ bool awh::alloc::ELFCapture::foreign(const void * ptr) const noexcept {
 	return false;
 }
 /**
+ * @brief Метод определения владельца чужого блока
+ *
+ * @details Владелец здесь один на всю систему: подмена имён не держит нескольких
+ *          библиотек времени исполнения, и разбирать владельца нечего - звавший
+ *          разбирается прежним общим набором
+ *
+ * @param ptr разбираемый указатель
+ * @return    nullptr: владельцев несколько не бывает
+ *
+ */
+const awh::alloc::functions_t * awh::alloc::ELFCapture::owner(const void * ptr) const noexcept {
+	// Отмечаем неиспользуемый параметр
+	static_cast <void> (ptr);
+	// Владельцев несколько не бывает
+	return nullptr;
+}
+/**
  * @brief Метод получения названия способа захвата
  *
  * @return название способа захвата
@@ -291,6 +330,11 @@ const awh::alloc::functions_t & awh::alloc::ELFCapture::originals() const noexce
 	// Выводим прежние функции выделения памяти
 	return this->_originals;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::ELFCapture::ELFCapture() noexcept : _originals(), _acquired(false) {}
 /**
  * @brief Деструктор
  *

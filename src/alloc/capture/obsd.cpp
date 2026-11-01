@@ -1,24 +1,35 @@
 /**
- * @file: obsd.cpp
- * @date: 2026-08-21
+ * @file obsd.cpp
+ * @date 2026-08-21
  *
- * @brief Внутренние имена распределителя библиотеки времени исполнения OpenBSD
+ * @license{LicenseRef-AWH-1.0}
  *
- * У OpenBSD библиотека времени исполнения зовёт выдачу памяти НАПРЯМУЮ, по внутреннему
- * имени `_libc_malloc`, а `malloc` у неё лишь слабый псевдоним поверх: во всей libc
- * таких прямых вызовов 159. Подмена именами до них не достаёт по устройству, и всякий
- * блок, выданный нами и попавший во внутреннее перевыделение libc, валил процесс -
- * `recallocarray(): bogus pointer`
+ * @author Yuriy Lobarev
  *
- * Определив внутренние имена сами, мы добиваемся того, что `malloc.o` не вытягивается
- * из архива вовсе, и внутренние вызовы приходят к нам. Работает это лишь при
- * СТАТИЧЕСКОМ связывании: у разделяемой libc вызовы связаны внутри неё самой ещё при её
- * сборке, и снаружи их не перенаправить ничем
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
  *
- * Файл собирается только под OpenBSD. У динамической сборки определения эти безвредны:
- * их просто никто не зовёт
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
- * @author \ANYKS
+ * @brief Реализация внутренних имён распределителя библиотеки времени исполнения OpenBSD
+ *
+ * @details У OpenBSD библиотека времени исполнения зовёт выдачу памяти НАПРЯМУЮ, по внутреннему
+ *          имени `_libc_malloc`, а `malloc` у неё лишь слабый псевдоним поверх: во всей libc
+ *          таких прямых вызовов 159. Подмена именами до них не достаёт по устройству, и всякий
+ *          блок, выданный нами и попавший во внутреннее перевыделение libc, валил процесс -
+ *          `recallocarray(): bogus pointer`
+ *
+ *          Определив внутренние имена сами, мы добиваемся того, что `malloc.o` не вытягивается
+ *          из архива вовсе, и внутренние вызовы приходят к нам. Работает это лишь при
+ *          СТАТИЧЕСКОМ связывании: у разделяемой libc вызовы связаны внутри неё самой ещё при её
+ *          сборке, и снаружи их не перенаправить ничем
+ *
+ *          Файл собирается только под OpenBSD. У динамической сборки определения эти безвредны:
+ *          их просто никто не зовёт.
+ *
+ * @copyright Copyright © 2026
+ *
  */
 #include <cstddef>
 #include <cstring>
@@ -34,19 +45,34 @@
 bool __awh_alloc_libc_seen__ = false;
 // Выдача блока, укрытого от снимков памяти: определена фасадом распределителя
 extern void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, bool * wired) noexcept;
+/**
+ * Область связывания C для внутренних имён распределителя
+ */
 extern "C" {
+	// Объявляем системную выдачу памяти
 	void * malloc(size_t);
+	// Объявляем системное освобождение памяти
 	void free(void *);
+	// Объявляем системную обнулённую выдачу памяти
 	void * calloc(size_t, size_t);
+	// Объявляем системную перевыдачу памяти
 	void * realloc(void *, size_t);
+	// Объявляем системную выдачу с выравниванием
 	int posix_memalign(void **, size_t, size_t);
+	// Объявляем системную выдачу по адресу выравнивания
 	void * aligned_alloc(size_t, size_t);
 	// Внутренние имена, какими libc зовёт выдачу у себя внутри
+	// Определяем внутреннюю выдачу памяти с отметкой признака
 	void * _libc_malloc(size_t size) { ::__awh_alloc_libc_seen__ = true; return ::malloc(size); }
+	// Определяем внутреннее освобождение памяти с отметкой признака
 	void _libc_free(void * ptr) { ::__awh_alloc_libc_seen__ = true; ::free(ptr); }
+	// Определяем внутреннюю обнулённую выдачу с отметкой признака
 	void * _libc_calloc(size_t count, size_t size) { ::__awh_alloc_libc_seen__ = true; return ::calloc(count, size); }
+	// Определяем внутреннюю перевыдачу с отметкой признака
 	void * _libc_realloc(void * ptr, size_t size) { ::__awh_alloc_libc_seen__ = true; return ::realloc(ptr, size); }
+	// Определяем внутреннюю выдачу с выравниванием
 	int _libc_posix_memalign(void ** memptr, size_t alignment, size_t size) { return ::posix_memalign(memptr, alignment, size); }
+	// Определяем внутреннюю выдачу по адресу выравнивания
 	void * _libc_aligned_alloc(size_t alignment, size_t size) { return ::aligned_alloc(alignment, size); }
 	/**
 	 * Выдача, укрытая от снимков памяти
@@ -68,7 +94,7 @@ extern "C" {
 	 * усечённый счёт дал бы блок меньше затребованного
 	 */
 	/**
-	 * @brief Метод выдачи обнулённой укрытой памяти
+	 * @brief Функция выдачи обнулённой укрытой памяти
 	 *
 	 * @note Обнуления здесь НЕТ намеренно, и держится это на двух свойствах слоя
 	 *       крупных выдач: укрытая область берётся у системы напрямую, минуя список
@@ -92,7 +118,9 @@ extern "C" {
 		// Выдаём укрытую область
 		return ::__awh_alloc_conceal__((count * size), nullptr, false, nullptr);
 	}
+	// Определяем внутреннюю укрытую выдачу
 	void * _libc_malloc_conceal(size_t size) { return malloc_conceal(size); }
+	// Определяем внутреннюю обнулённую укрытую выдачу
 	void * _libc_calloc_conceal(size_t count, size_t size) { return calloc_conceal(count, size); }
 	/**
 	 * Освобождение с обнулением содержимого
@@ -101,6 +129,7 @@ extern "C" {
 	 * освобождает. Обнуление здесь обязательно - на нём держится вся суть вызова
 	 */
 	void _libc_freezero(void * ptr, size_t size) { if(ptr != nullptr){ ::memset(ptr, 0, size); ::free(ptr); } }
+	// Определяем освобождение с обнулением через внутреннее
 	void freezero(void * ptr, size_t size) { _libc_freezero(ptr, size); }
 	/**
 	 * Перевыдача с обнулением прироста
@@ -109,26 +138,37 @@ extern "C" {
 	 * старое содержимое затирается. Мы соблюдаем видимую часть договора
 	 */
 	void * _libc_recallocarray(void * ptr, size_t oldnmemb, size_t newnmemb, size_t size) {
+		// Если новое произведение переполнится
 		if((size != 0) && (newnmemb > (static_cast <size_t> (-1) / size))){ errno = ENOMEM; return nullptr; }
 		// Старое произведение проверяем тем же порядком: заворот дал бы КОРОТКИЙ `had`, а
 		// на нём держатся и перенос содержимого, и затирание старой тайны перед `free`
 		if((size != 0) && (oldnmemb > (static_cast <size_t> (-1) / size))){ errno = EINVAL; return nullptr; }
+		// Определяем объёмы нового и старого произведений
 		const size_t want = (newnmemb * size), had = (oldnmemb * size);
+		// Выделяем новую область
 		void * result = ::calloc(newnmemb, size);
+		// Если область выдана и старый блок существует
 		if((result != nullptr) && (ptr != nullptr)){
+			// Переносим содержимое старого блока
 			::memcpy(result, ptr, ((had < want) ? had : want));
+			// Затираем старое содержимое
 			::memset(ptr, 0, had);
+			// Освобождаем старый блок
 			::free(ptr);
 		}
+		// Выводим адрес новой области
 		return result;
 	}
+	// Определяем перевыдачу через внутреннюю
 	void * recallocarray(void * ptr, size_t o, size_t n, size_t s) { return _libc_recallocarray(ptr, o, n, s); }
 	// Заведение распределителя libc: заводить нечего, наш заводится сам
 	void _libc__malloc_init(int) {}
+	// Определяем заведение распределителя libc пустым действием
 	void _malloc_init(int) {}
 	// Настройки распределителя libc: нашими не читаются
 	char * malloc_options = nullptr;
 	// Съём состояния распределителя libc: своего съёма у нас пока нет
 	void _libc_malloc_dump(int) {}
+	// Определяем съём состояния распределителя libc пустым действием
 	void malloc_dump(int) {}
 }

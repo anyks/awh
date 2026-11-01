@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл приёма пароля с терминала без эха
- *
- * \~english
- * @brief Password intake from the terminal with the echo off
- *
- * \~
+ * @brief Реализация приёма пароля с терминала без эха
  *
  * @copyright Copyright © 2026
  *
@@ -47,6 +41,9 @@
 #else
 	#include <fcntl.h>
 	#include <termios.h>
+	/**
+	 * Если собирателем не является MSVC
+	 */
 	#if !defined(_MSC_VER)
 		#include <unistd.h>
 	#endif
@@ -84,7 +81,7 @@ namespace {
 	 */
 	static constexpr size_t WIDTHS = 256;
 	/**
-	 * @brief Метод определения байта продолжения кодировки UTF-8
+	 * @brief Функция определения байта продолжения кодировки UTF-8
 	 *
 	 * @param byte разбираемый байт
 	 * @return     признак байта продолжения
@@ -198,6 +195,11 @@ namespace {
 				 * закрытый описатель
 				 */
 				silence_t(const silence_t &) = delete;
+				/**
+				 * Присваиванию снятие эха не подлежит
+				 *
+				 * Присваивание вернуло бы настройки дважды по той же причине
+				 */
 				silence_t & operator = (const silence_t &) = delete;
 		};
 	#endif
@@ -308,7 +310,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 		/**
 		 * Выполняем приём знаков набора
 		 */
-		while(true){
+		for(;;){
 			// Принимаемый знак
 			char symbol = 0;
 			// Число прочитанных знаков
@@ -419,7 +421,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 		/**
 		 * Выполняем приём знаков набора
 		 */
-		while(true){
+		for(;;){
 			// Принимаемый знак
 			uint8_t symbol = 0;
 			// Читаем очередной знак набора

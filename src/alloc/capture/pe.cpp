@@ -56,6 +56,8 @@ namespace {
 	static awh::alloc::functions_t __awh_pe_hooks__;
 	// Владелец установленных подмен
 	static const awh::alloc::PECapture * __awh_pe_owner__ = nullptr;
+	// Пустой набор: владелец блока неизвестен и отдавать его некому
+	static const awh::alloc::functions_t __awh_pe_nobody__;
 	/**
 	 * @brief Функция передачи вызова с сохранением исходной CRT
 	 *
@@ -232,61 +234,7 @@ namespace {
 			case 8: functions.alignedMsize = reinterpret_cast <size_t (*)(void *, size_t, size_t)> (addr); break;
 		}
 	}
-};
 
-/**
- * @brief Метод разбора цели перехода горячей заплатки
- *
- * @param entry адрес входа функции
- * @return      адрес настоящего тела либо nullptr
- *
- */
-void * awh::alloc::PECapture::body(void * entry) const noexcept {
-	// Если вход не задан
-	if(entry == nullptr)
-		// Разбирать нечего
-		return nullptr;
-	/**
-	 * Для набора команд ARM64
-	 *
-	 * Вход функций выделения памяти у ucrtbase начинается горячей заплаткой: переход
-	 * через набивку, две пустые команды и четыре байта набивки, итого шестнадцать байт,
-	 * отведённых Microsoft под подмену. Настоящее тело начинается за ними, и цель
-	 * перехода на него и указывает. Команды у ARM64 по четыре байта, границу искать
-	 * не требуется, оттого разбирателя набора команд здесь нет
-	 */
-	#if defined(_M_ARM64) || defined(__aarch64__)
-		// Читаем первое слово входа
-		const uint32_t word = *reinterpret_cast <const uint32_t *> (entry);
-		// Если это не безусловный переход, вход заплаткой не начинается
-		if((word & 0xFC000000u) != 0x14000000u)
-			// Отвечаем отказом: переписывать вслепую нельзя
-			return nullptr;
-		// Извлекаем смещение перехода в словах
-		int32_t offset = static_cast <int32_t> (word & 0x03FFFFFFu);
-		/**
-		 * Расширяем знак двадцатишестиразрядного смещения
-		 *
-		 * Расширение обязательно: у _msize и _recalloc переход отрицательный, тело их
-		 * лежит раньше входа, и без расширения знака адрес вышел бы диким
-		 */
-		if(offset & 0x02000000)
-			// Доводим до отрицательного числа
-			offset |= static_cast <int32_t> (0xFC000000u);
-		// Возвращаем адрес настоящего тела
-		return (reinterpret_cast <uint8_t *> (entry) + (static_cast <intptr_t> (offset) * 4));
-	/**
-	 * Для прочих наборов команд
-	 *
-	 * У x86-64 команды переменной длины, и границу их без разбирателя не найти.
-	 * Разбиратель этот здесь не написан намеренно: Windows x86-64 покрыта иными
-	 * средствами, а ARM64 - тот случай, ради какого модуль и заведён
-	 */
-	#else
-		// Отвечаем отказом: способ разбора для этого набора команд не написан
-		return nullptr;
-	#endif
-}
 /**
  * Для набора команд x86-64
  */
@@ -343,12 +291,69 @@ void * awh::alloc::PECapture::body(void * entry) const noexcept {
 		return length;
 	}
 #endif
+};
+
+/**
+ * @brief Метод разбора цели перехода горячей заплатки
+ *
+ * @param entry адрес входа функции
+ * @return      адрес настоящего тела либо nullptr
+ *
+ */
+void * awh::alloc::PECapture::body(void * entry) const noexcept {
+	// Если вход не задан
+	if(entry == nullptr)
+		// Разбирать нечего
+		return nullptr;
+	/**
+	 * Для набора команд ARM64
+	 *
+	 * Вход функций выделения памяти у ucrtbase начинается горячей заплаткой: переход
+	 * через набивку, две пустые команды и четыре байта набивки, итого шестнадцать байт,
+	 * отведённых Microsoft под подмену. Настоящее тело начинается за ними, и цель
+	 * перехода на него и указывает. Команды у ARM64 по четыре байта, границу искать
+	 * не требуется, оттого разбирателя набора команд здесь нет
+	 */
+	#if defined(_M_ARM64) || defined(__aarch64__)
+		// Читаем первое слово входа
+		const uint32_t word = *reinterpret_cast <const uint32_t *> (entry);
+		// Если это не безусловный переход, вход заплаткой не начинается
+		if((word & 0xFC000000u) != 0x14000000u)
+			// Отвечаем отказом: переписывать вслепую нельзя
+			return nullptr;
+		// Извлекаем смещение перехода в словах
+		int32_t offset = static_cast <int32_t> (word & 0x03FFFFFFu);
+		/**
+		 * Расширяем знак двадцатишестиразрядного смещения
+		 *
+		 * Расширение обязательно: у _msize и _recalloc переход отрицательный, тело их
+		 * лежит раньше входа, и без расширения знака адрес вышел бы диким
+		 */
+		if(offset & 0x02000000)
+			// Доводим до отрицательного числа
+			offset |= static_cast <int32_t> (0xFC000000u);
+		// Возвращаем адрес настоящего тела
+		return (reinterpret_cast <uint8_t *> (entry) + (static_cast <intptr_t> (offset) * 4));
+	/**
+	 * Для прочих наборов команд
+	 *
+	 * У x86-64 команды переменной длины, и границу их без разбирателя не найти.
+	 * Разбиратель этот здесь не написан намеренно: Windows x86-64 покрыта иными
+	 * средствами, а ARM64 - тот случай, ради какого модуль и заведён
+	 */
+	#else
+		// Отвечаем отказом: способ разбора для этого набора команд не написан
+		return nullptr;
+	#endif
+}
 /**
  * @brief Метод измерения длины команд входа функции
  *
- * @param entry адрес входа функции
- * @param need  требуемое число байт
- * @return      длина целого числа команд не менее требуемой, либо нуль
+ * @param entry   адрес входа функции
+ * @param need    требуемое число байт
+ * @param offsets массив под смещения начал команд, либо nullptr
+ * @param count   число разобранных команд, либо nullptr
+ * @return        длина целого числа команд не менее требуемой, либо нуль
  *
  */
 size_t awh::alloc::PECapture::prologue(const void * entry, const size_t need, size_t * offsets, size_t * count) const noexcept {
@@ -795,7 +800,7 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		::FlushInstructionCache(::GetCurrentProcess(), entry, PATCH_SIZE);
 		// Отмечаем подмену наложенной
 		patch.applied = true;
-		// Отвечаем успехом
+		// Подмена наложена
 		return true;
 	/**
 	 * Для набора команд x86-64
@@ -1011,7 +1016,7 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		::FlushInstructionCache(::GetCurrentProcess(), relay, (used + 14u));
 		// Отмечаем подмену наложенной
 		patch.applied = true;
-		// Отвечаем успехом
+		// Подмена наложена
 		return true;
 	/**
 	 * Для прочих наборов команд
@@ -1051,10 +1056,10 @@ void awh::alloc::PECapture::revert(patch_t & patch) noexcept {
 	patch.applied = false;
 }
 /**
- * @brief Метод захвата выделения памяти процесса
+ * @brief Метод захвата выделения памяти загруженных CRT
  *
  * @param hooks     наши функции, ставимые на место прежних
- * @param originals прежние функции, отдаваемые захватом
+ * @param originals прежние функции первой найденной CRT для прямых вызовов
  * @return          признак состоявшегося захвата
  *
  */
@@ -1079,7 +1084,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 	void * entries[LIBRARY_COUNT][PATCH_TOTAL] = {{nullptr}};
 	// Подмены с сохранением исходной библиотеки
 	const functions_t targets[LIBRARY_COUNT] = {__awh_pe_targets__ <0> (hooks), __awh_pe_targets__ <1> (hooks)};
-	// Номер первой найденной библиотеки
+	// Номер первой пригодной библиотеки
 	size_t first = LIBRARY_COUNT;
 	/**
 	 * Проверяем все обязательные группы до изменения первого входа
@@ -1091,10 +1096,8 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 		if(modules[library] == nullptr)
 			// Загружать новую CRT ради захвата не требуется
 			continue;
-		// Если это первая найденная библиотека
-		if(first == LIBRARY_COUNT)
-			// Запоминаем основной набор прежних функций
-			first = library;
+		// Признак пригодности обязательной группы этой библиотеки
+		bool fit = true;
 		/**
 		 * Проверяем входы обязательной группы
 		 */
@@ -1103,9 +1106,37 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 			entries[library][i] = reinterpret_cast <void *> (::GetProcAddress(modules[library], NAMES[i]));
 			// Если вход непригоден либо замена не задана
 			if(!this->suits(entries[library][i]) || (pick(hooks, i) == nullptr))
-				// Отказываем до изменения кода
-				return false;
+				// Отмечаем обязательную группу непригодной
+				fit = false;
 		}
+		/**
+		 * Непригодная библиотека исключается целиком, а не валит захват
+		 *
+		 * Замерено на ARM64 у Windows 11 (26.10.2026): входы пятёрки у msvcrt
+		 * открываются подписанием адреса возврата (pacibsp), горячей заплатки на входе
+		 * нет - и разбор такого входа не написан. Отказ ЦЕЛИКОМ лишал распределителя
+		 * и годную библиотеку: ucrtbase платку на той же машине сохранила, а захват
+		 * не состоялся вовсе, все выдачи уходили в систему. Исключение безопасно:
+		 * модули, связанные с отказавшей CRT, остаются на ней всеми своими выдачами и
+		 * освобождениями - обмен блоками между CRT разных библиотек запрещён их
+		 * устройством и без нас, оттого сужение охвата ничьих путей не перемешивает
+		 */
+		if(!fit){
+			/**
+			 * Забываем входы и описатель исключённой библиотеки
+			 */
+			for(size_t i = 0; i < PATCH_TOTAL; i++)
+				// Оставляем исходный вход нетронутым
+				entries[library][i] = nullptr;
+			// Исключаем библиотеку из захвата
+			modules[library] = nullptr;
+			// К следующей библиотеке
+			continue;
+		}
+		// Если это первая пригодная библиотека
+		if(first == LIBRARY_COUNT)
+			// Запоминаем основной набор прежних функций
+			first = library;
 		// Признак наличия откликов выровненной семьи
 		bool aligned = ((hooks.alignedFreeFrom != nullptr) && (hooks.alignedReallocFrom != nullptr));
 		/**
@@ -1135,7 +1166,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 				entries[library][i] = nullptr;
 		}
 	}
-	// Если ни одна CRT не загружена
+	// Если ни одна CRT не загружена либо пригодна
 	if(first == LIBRARY_COUNT)
 		// Подменять нечего
 		return false;
@@ -1225,7 +1256,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 	originals = __awh_pe_originals__[first];
 	// Отмечаем захват состоявшимся
 	this->_acquired = true;
-	// Отвечаем успехом
+	// Захват состоялся
 	return true;
 }
 /**
@@ -1309,6 +1340,28 @@ bool awh::alloc::PECapture::foreign(const void * ptr) const noexcept {
 	return false;
 }
 /**
+ * @brief Метод определения владельца чужого блока
+ *
+ * @details Владельца чужого блока здесь опознать НЕЧЕМ: несколько библиотек
+ *          времени исполнения держат разные кучи, а перебор куч с проверкой
+ *          (`HeapValidate`) на чужом указателе валит процесс РАНЬШЕ сделки -
+ *          проверено 29.10 на MS Windows: авария при инициализации самого
+ *          захвата. Перехваченные входы и без того отдают владельцу через
+ *          наборы с номером библиотеки, а generic-путь без контекста библиотеки
+ *          отвечает пустым набором: блок молча утекает - так безопаснее, чем
+ *          унести его не в ту кучу и валить процесс
+ *
+ * @param ptr разбираемый указатель
+ * @return    пустой набор: владелец неизвестен и отдавать некому
+ *
+ */
+const awh::alloc::functions_t * awh::alloc::PECapture::owner(const void * ptr) const noexcept {
+	// Отмечаем неиспользуемый параметр
+	static_cast <void> (ptr);
+	// Владельца не опознать: отдавать некому
+	return &__awh_pe_nobody__;
+}
+/**
  * @brief Метод получения названия способа захвата
  *
  * @return название способа захвата
@@ -1325,7 +1378,7 @@ const char * awh::alloc::PECapture::name() const noexcept {
 awh::alloc::PECapture::Patch::Patch() noexcept :
  entry(nullptr), body(nullptr), saved{0}, moved(0), applied(false) {}
 /**
- * @brief Конструктор захвата обеих библиотек времени исполнения
+ * @brief Конструктор
  *
  */
 awh::alloc::PECapture::PECapture() noexcept :

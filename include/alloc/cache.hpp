@@ -75,8 +75,73 @@
  * \~english
  * @brief Header file of the thread-local block caches
  *
+ * @section cache_decisions Deliberate decisions
+ *
+ * @details <b>The thread cache takes no lock at all.</b> That is its whole point:
+ *          allocation and free on the hot path are done by taking a block off a list,
+ *          and no other thread touches that list. A lock is taken only when exchanging
+ *          batches with the central lists, that is, once per batch.
+ *
+ *          <b>Memory for the cache itself is taken from the page heap, not from
+ *          malloc.</b> The cache is created from under the intercepted malloc, and
+ *          asking it for memory would go into infinite recursion.
+ *
+ *          <b>The thread-local pointer is plain, and destruction hangs on a key.</b>
+ *          A thread-local with a destructor is written via __cxa_thread_atexit, and
+ *          that is free to ask for memory - from the same malloc. Hence the thread
+ *          holds a bare pointer, and returning blocks on thread exit hangs on a
+ *          pthread_key_create key (FlsAlloc on Windows), whose callback allocates
+ *          nothing.
+ *
+ *          <b>Caches of finished threads are reused, not returned.</b> The number of
+ *          simultaneously living threads is usually stable, and returning cache memory
+ *          to the heap with new creation per thread would be wasted work.
+ *
+ *          <b>The list takes no lock, but counters are read by a foreign thread.</b>
+ *          Querying consumption sums the accumulated occupied and the cache-held
+ *          across ALL caches, hence these fields are atomic, though only the owner
+ *          writes them. The conclusion nobody accesses the cache so plain fields
+ *          suffice is wrong, and plain they once were - ThreadSanitizer reported both
+ *          races. Counters are fixed by separate load and store, not an atomic RMW:
+ *          only the owner may write them, and a prohibition on the fast path would
+ *          cost for nothing.
+ *
+ *          <b>Returning the excess drops the cache BELOW the limit, not exactly to
+ *          it.</b> The cache limit is still respected: returning starts exactly at it.
+ *          But it used to stop exactly at it too - and the next free would return
+ *          what was beyond the limit and trigger returning again. A cache that
+ *          reached the limit went to the central lists on EVERY free, taking the
+ *          shared lock once per action: exactly what the cache was built to avoid. A
+ *          reserve of a quarter limit gives the cache a batch of actions before the
+ *          next return, and it costs only that the cache holds a quarter less memory.
+ *          The depth of the reserve does not affect the measurement at all - half,
+ *          quarter and eighth all gave the same - what matters is the presence of
+ *          the reserve. Measurements and analysis are recorded at Cache::relieve.
+ *
+ *          <b>The working limit serves as a lever for the yield request.</b> The
+ *          request is read by the owner on cold paths, not on every free: that would
+ *          cost about five hundredths on three benchmark scenarios. A thread that
+ *          only frees never goes to class refill - hence whoever sets the request
+ *          drops the working limit to zero, and excess returning starts on the very
+ *          first free. The limit set by the application is stored separately and
+ *          restored once the request is fulfilled. The order of the two writes
+ *          matters: the lever is dropped BEFORE the request - and the same window is
+ *          closed a second time by self-healing in Cache::relieve. The cost of a miss
+ *          is proven by substitution: a cache with the dropped lever empties on every
+ *          free and holds nothing - 92.57 ns/op and ZERO bytes in cache versus 9.15
+ *          ns/op and 32768 bytes. Confirmed by the CacheWorksAfterPurge check, which
+ *          also proved the ability to refuse on the same substitution.
+ *
+ *          <b>The cache limit is set in bytes, not in blocks.</b> A limit in blocks
+ *          would mean kilobytes for small classes and megabytes for large ones, that
+ *          is, nothing at all. What the application needs is a memory consumption
+ *          limit.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -123,13 +188,23 @@
 #endif
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -139,6 +214,7 @@ namespace awh {
 		 * \~english
 		 * @brief Thread-local block cache class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Cache {
 			public:
@@ -154,6 +230,30 @@ namespace awh {
 				 */
 				// Предел кэша потока по умолчанию в байтах
 				static constexpr size_t LIMIT = (4u * 1024u * 1024u);
+				/**
+				 * Порог мёртвого запаса разряда в кэше
+				 *
+				 * Освобождение чужим потоком ложится в кэш потока-освободителя, и разряд,
+				 * который тот сам не выдаёт, копится без пользы: центральные списки пусты,
+				 * и выдающий поток нарезает всё новые области. Замерено суточной выдержкой
+				 * движка 27.10: по одному блоку 656 Б на оборот копилось сутки - +33,8 МБ,
+				 * страница каждые ~24 с, - при пределе кэша в 64 МБ отдача излишка не
+				 * достигалась бы и за день. Список разряда, существенно выросший за окно
+				 * наблюдения IDLE_WINDOW, отдаётся центральным спискам ЦЕЛИКОМ;
+				 * горячий запас, из которого идут выдачи, не трогается вовсе
+				 */
+				// Порог мёртвого запаса разряда в кэше в байтах
+				static constexpr size_t IDLE = (1u * 1024u * 1024u);
+				/**
+				 * Окно наблюдения за ростом списка в миллисекундах
+				 *
+				 * Список сливается центру, если он вырос за окно наблюдения: выброс
+				 * разрушения дерева укладывается в окно МИЛЛИСЕКУНДАМИ и не сливается
+				 * (его единственный слив за круг стоит ничтожно), а список, копимый
+				 * часами, сливается каждое окно и держится в пределах IDLE
+				 */
+				// Окно наблюдения за ростом списка в миллисекундах
+				static constexpr uint64_t IDLE_WINDOW = 60000;
 			private:
 				/**
 				 * \~russian
@@ -175,6 +275,19 @@ namespace awh {
 				 * \~english
 				 * @brief Method of refilling a class with a batch from the central lists
 				 *
+				 * @warning The class list MUST be empty: the batch taken is placed at the head
+				 *          directly, and whatever lay in the list before would be lost silently -
+				 *          the blocks would remain issued to the cache forever. The only caller,
+				 *          `alloc`, enters here only with the list exhausted, and the flush
+				 *          request executed right here empties all classes before taking
+				 *
+				 * @note Cold tail of the fast allocation path: moved into the code file so that
+				 *       the substitution carries only taking a block off the list head
+				 *
+				 * @param index class index
+				 * @return      address of the issued block or nullptr
+				 *
+				 * \~
 				 */
 				void * refill(const size_t index) noexcept;
 				/**
@@ -187,11 +300,21 @@ namespace awh {
 				 * \~english
 				 * @brief Method of giving the excess back to the central lists
 				 *
+				 * @note Only the excess beyond the cache limit is returned: the cache keeps a
+				 *       working set at hand
+				 *
+				 * \~
 				 */
 				void relieve() noexcept;
 				/**
+				 * \~russian
 				 * @brief Список свободных блоков одного разряда
 				 *
+				 *
+				 * \~english
+				 * @brief Free block list of one size class
+				 *
+				 * \~
 				 */
 				typedef struct List {
 					// Голова списка свободных блоков
@@ -199,6 +322,20 @@ namespace awh {
 					// Число свободных блоков в списке
 					size_t count;
 				} list_t;
+			private:
+				/**
+				 * Наблюдение за ростом списка разряда
+				 *
+				 * Наблюдается ОДИН разряд за раз: слив мёртвого запаса - случай
+				 * редкий, и держать по метке на каждый разряд незачем. Метка
+				 * снимается пробуждением кэша - освобождением в наблюдаемый список
+				 */
+				// Наблюдаемый разряд плюс единица, нуль если наблюдения нет
+				size_t _watch;
+				// Миг начала наблюдения в миллисекундах
+				uint64_t _watched;
+				// Занятое наблюдаемого списка при начале наблюдения в байтах
+				size_t _stocked;
 			private:
 				/**
 				 * Управляющий, заведший кэш
@@ -316,6 +453,36 @@ namespace awh {
 				 * \~english
 				 * @brief Request to yield the cache, set by a foreign thread
 				 *
+				 * @details The thread cache is NOT protected by a lock, and that is its whole
+				 *          point: only the owning thread accesses it, and access costs a few
+				 *          instructions. Hence touching a foreign cache is forbidden AT ALL -
+				 *          and it was done before: returning memory to the system
+				 *          (Allocator::purge) emptied all thread caches in a row, including
+				 *          those working right now
+				 *
+				 * @details The corruption looked like this: a live block owned by the
+				 *          application ended up in the free list, and list traversal hit
+				 *          application data instead of a pointer. Found by the fuzzer
+				 *          tools/fuzz/alloc.cpp on 23.08.2026, proven by ThreadSanitizer:
+				 *          Caches::flush edited the lists of a foreign cache (cache.cpp:255-265)
+				 *          while the owner was writing them in Cache::refill
+				 *
+				 * @details Instead a request is set on the foreign cache, and the owner
+				 *          empties it THEMSELVES next time they go the cold path
+				 *
+				 * @warning A thread cache that has slept for long will NOT be emptied by a
+				 *          foreign request: nobody can take memory from it until it wakes up.
+				 *          It cannot be otherwise - taking memory from a working thread
+				 *          without its participation is impossible - but returning memory to
+				 *          the system became less complete because of it. A finishing thread
+				 *          cache is returned entirely, and that did not change
+				 *
+				 * @warning Counting fuzzer crashes as a measure does NOT work here: it depends
+				 *          on machine load, and the same build gave either 16 failures out of
+				 *          20 or none at all. Judgement should go by the number of races that
+				 *          ThreadSanitizer names
+				 *
+				 * \~
 				 */
 				std::atomic <bool> _yield;
 			private:
@@ -353,8 +520,34 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning a batch of blocks to the central lists
 				 *
+				 * @param index class index
+				 * @param count number of blocks being returned
+				 * @return      number of blocks actually returned
+				 *
+				 * \~
 				 */
 				size_t drain(const size_t index, const size_t count) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения мига наблюдения за ростом
+				 *
+				 * @details Часы стоят лишь на наблюдении мёртвого запаса: зовутся по
+				 *          разу на освобождении в переросший порог список, а не на каждом
+				 *          освобождении
+				 *
+				 * @return миг в миллисекундах
+				 *
+				 * \~english
+				 * @brief Method of getting the growth observation instant
+				 *
+				 * @details The clock is used only for dead stock observation: called once
+				 *          per free into a list past the threshold, not per every free
+				 *
+				 * @return instant in milliseconds
+				 *
+				 * \~
+				 */
+				static uint64_t ticking() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -368,6 +561,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the cache
 				 *
+				 * @param central central lists
+				 * @param classes size classes
+				 * @param limit   cache limit in bytes
+				 * @return        sign of the cache having been initialized
+				 *
+				 * \~
 				 */
 				bool init(central_t * central, classes_t * classes, const size_t limit) noexcept;
 				/**
@@ -377,6 +576,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning all cached blocks to the central lists
 				 *
+				 * \~
 				 */
 				void flush() noexcept;
 				/**
@@ -389,6 +589,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of detaching the cache from a finished thread
 				 *
+				 * @note The cache is returned to the pool for reuse by a new thread:
+				 *       its blocks go back to the central lists
+				 *
+				 * \~
 				 */
 				void release() noexcept;
 			public:
@@ -402,31 +606,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating a block of a class
 				 *
+				 * @param index class index
+				 * @return      address of the allocated block or nullptr
+				 *
+				 * \~
 				 */
-				AWH_CACHE_INLINE void * alloc(const size_t index) noexcept {
-					/**
-					 * Годность разряда здесь НЕ спрашивается: за неё ручается звавший
-					 *
-					 * Спрашивал её всякий, кто сюда заходит, - без этого ему не решить,
-					 * идти ли быстрой дорогой, - а сличение стояло ВТОРИЧНО на каждой
-					 * выдаче. Счётчик инструкций отдавал ему два с половиной действия из
-					 * ста одного, и столько же второму такому сличению у возврата
-					 */
-					// Если свободных блоков разряда в кэше не осталось
-					if(this->_lists[index].free == nullptr)
-						// Забираем у центральных списков пачку блоков
-						return this->refill(index);
-					// Снимаем блок с головы списка
-					void * result = this->_lists[index].free;
-					// Головой списка становится следующий блок
-					this->_lists[index].free = awh::alloc::Link::next(result);
-					// Уменьшаем число блоков в кэше
-					this->_lists[index].count--;
-					// Уменьшаем лежащее в кэше
-					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - this->_classes->extent(index)), std::memory_order_relaxed);
-					// Выводим выданный блок
-					return result;
-				}
+				AWH_CACHE_INLINE void * alloc(const size_t index) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод возврата блока разряда
@@ -437,52 +622,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning a block of a class
 				 *
+				 * @param index class index
+				 * @param addr  address of the block being returned
+				 *
+				 * \~
 				 */
-				AWH_CACHE_INLINE void free(const size_t index, void * addr) noexcept {
-					/**
-					 * Ни разряд, ни адрес здесь НЕ спрашиваются: за них ручается звавший
-					 *
-					 * Довод тот же, что у выдачи двумя десятками строк выше: возврат
-					 * спрашивает и годность разряда, и наличие адреса сам, прежде чем
-					 * решить, куда нести блок
-					 */
-					// Связываем возвращаемый блок с прежней головой списка
-					awh::alloc::Link::next(addr, this->_lists[index].free);
-					// Головой списка становится возвращаемый блок
-					this->_lists[index].free = addr;
-					// Увеличиваем число блоков в кэше
-					this->_lists[index].count++;
-					/**
-					 * Лежащее в кэше считаем В РЕГИСТРЕ, а записываем однажды
-					 *
-					 * Записанное неделимое поле собиратель обязан перечитать из памяти,
-					 * и проверка предела читала ровно то, что сама же секундой раньше
-					 * записала: пересылка из записи в чтение стоит нескольких тактов на
-					 * КАЖДОМ освобождении. Разбор машинного кода на FreeBSD показал эту
-					 * пару - `movq %rcx, 0x18(%r14)` и тут же `movq 0x18(%r14), %rax` -
-					 * в пике профиля возврата
-					 */
-					// Считаем лежащее в кэше после возврата блока
-					const size_t bytes = (this->_bytes.load(std::memory_order_relaxed) + this->_classes->extent(index));
-					// Увеличиваем лежащее в кэше
-					this->_bytes.store(bytes, std::memory_order_relaxed);
-					/**
-					 * @brief Если предел кэша перебран
-					 *
-					 * @details Просьба опустошиться здесь НЕ читается намеренно
-					 *
-					 *         Читать её на каждом освобождении стоит около пяти сотых на трёх
-					 *         сценариях замера разом (81 780 → 77 760 тыс.оп/с на одном разряде,
-					 *         801 095 → 753 877 на потоках, 84 864 → 80 840 на освобождении
-					 *         чужим) - и не даёт ничего: поток, который только освобождает, копит
-					 *         блоки в своём кэше, кэш перебирает предел, и просьбу видит
-					 *         `relieve`. Мгновенности здесь не требуется вовсе
-					 *
-					 */
-					if(bytes > this->_limit.load(std::memory_order_relaxed))
-						// Отдаём излишек центральным спискам
-						this->relieve();
-				}
+				AWH_CACHE_INLINE void free(const size_t index, void * addr) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -497,22 +642,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of accumulating the memory occupied by the application
 				 *
+				 * @note Takes no lock at all: the cache belongs to a single thread
+				 *
+				 * @param delta change of the occupied memory in bytes
+				 * @param batch value upon reaching which the accumulated amount is handed out
+				 * @return      the accumulated amount handed out, or zero
+				 *
+				 * \~
 				 */
-				AWH_CACHE_INLINE int64_t tally(const int64_t delta, const int64_t batch) noexcept {
-					// Накапливаем изменение занятого
-					const int64_t result = (this->_tally.load(std::memory_order_relaxed) + delta);
-					// Если накопленное не дотянуло до величины отдачи
-					if((result < batch) && (result > -batch)){
-						// Запоминаем накопленное
-						this->_tally.store(result, std::memory_order_relaxed);
-						// Отдавать нечего
-						return 0;
-					}
-					// Обнуляем накопленное: оно уходит наружу
-					this->_tally.store(0, std::memory_order_relaxed);
-					// Выводим отдаваемое наружу накопленное
-					return result;
-				}
+				AWH_CACHE_INLINE int64_t tally(const int64_t delta, const int64_t batch) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения накопленного, но не отданного наружу
@@ -522,6 +660,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting what is accumulated but not yet handed out
 				 *
+				 * @return accumulated value in bytes
+				 *
+				 * \~
 				 */
 				int64_t pending() const noexcept;
 				/**
@@ -541,6 +682,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of accumulating freed memory up to a check step
 				 *
+				 * @note Takes no lock at all: the cache belongs to a single thread. That is why it
+				 *       was built: checking the return threshold goes to the heap UNDER THE SHARED
+				 *       LOCK, and asking it on every free would give 194 nanoseconds per action
+				 *       instead of four (measured). With a counter the shared lock is taken once
+				 *       per step, not once per free
+				 *
+				 * @param delta freed memory change in bytes
+				 * @param step  step upon reaching which the threshold is due to be checked
+				 * @return      sign that the step has been passed and the threshold is due
+				 *
+				 * \~
 				 */
 				bool stepped(const size_t delta, const size_t step) noexcept;
 				/**
@@ -552,11 +704,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the slot for the chunk lookup hint
 				 *
+				 * @return hint slot address
+				 *
+				 * \~
 				 */
-				AWH_CACHE_INLINE void ** hint() noexcept {
-					// Выводим место под подсказку поиска
-					return &this->_hint;
-				}
+				AWH_CACHE_INLINE void ** hint() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -567,6 +719,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the cache limit
 				 *
+				 * @param limit cache limit in bytes
+				 *
+				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
@@ -578,12 +733,21 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the amount held in the cache
 				 *
+				 * @return amount held in bytes
+				 *
+				 * \~
 				 */
 				size_t bytes() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Cache() noexcept;
 			/**
@@ -610,8 +774,13 @@ namespace awh {
 		 * потока. Здесь лишь снят вызов с пути чтения
 		 */
 		#if defined(__APPLE__) || defined(__MACH__)
+			/**
+			 * Место потока хранится ключом системы
+			 */
 			#define AWH_ALLOC_TSD 1
+			// Ключ места потока
 			extern pthread_key_t __awh_alloc_tsd__;
+			// Признак готовности захвата
 			extern std::atomic <bool> __awh_alloc_armed__;
 			/**
 			 * Прямое чтение места потока, минуя вызов
@@ -635,43 +804,18 @@ namespace awh {
 			extern std::atomic <size_t> __awh_alloc_direct__;
 			/**
 			 * \~russian
-			 * @brief Метод получения основания места потока
+			 * @brief Функция получения основания места потока
 			 *
 			 * @return основание места потока, либо nullptr у неведомого набора команд
 			 *
 			 * \~english
-			 * @brief Method of getting the thread-specific storage base
+			 * @brief Function of getting the thread-specific storage base
 			 *
+			 * @return thread-specific storage base address
+			 *
+			 * \~
 			 */
-			AWH_CACHE_INLINE void ** __awh_alloc_slots__() noexcept {
-				/**
-				 * Если набор команд принадлежит ARM64
-				 */
-				#if defined(__aarch64__) || defined(__arm64__)
-					// Основание места потока
-					uintptr_t base = 0;
-					// Читаем основание места потока из своего регистра
-					__asm__ __volatile__("mrs %0, tpidrro_el0" : "=r" (base));
-					// Выводим основание, сняв младшие разряды: там номер ядра
-					return reinterpret_cast <void **> (base & ~static_cast <uintptr_t> (7));
-				/**
-				 * Если набор команд принадлежит x86-64
-				 */
-				#elif defined(__x86_64__)
-					// Основание места потока
-					void ** base = nullptr;
-					// Читаем основание места потока из своего сегмента
-					__asm__ __volatile__("movq %%gs:0, %0" : "=r" (base));
-					// Выводим основание места потока
-					return base;
-				/**
-				 * Если набор команд неведом
-				 */
-				#else
-					// Прямого чтения у этого набора команд нет
-					return nullptr;
-				#endif
-			}
+			AWH_CACHE_INLINE void ** __awh_alloc_slots__() noexcept;
 		#endif
 		/**
 		 * Зеркало кэша текущего потока
@@ -683,7 +827,11 @@ namespace awh {
 		 * зеркало не заводится вовсе
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64) && !defined(__APPLE__) && !defined(__MACH__) && !defined(__OpenBSD__)
+			/**
+			 * Зеркало места потока хранится переменной TLS
+			 */
 			#define AWH_ALLOC_MIRROR 1
+			// Зеркало места потока
 			extern __thread cache_t * __awh_alloc_mirror__ __attribute__((tls_model("initial-exec")));
 		#endif
 		/**
@@ -693,6 +841,7 @@ namespace awh {
 		 * \~english
 		 * @brief Thread-local caches manager class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Caches {
 			private:
@@ -770,6 +919,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of creating a cache for the current thread
 				 *
+				 * @return sign of successful creation
+				 *
+				 * \~
 				 */
 				cache_t * create() noexcept;
 				/**
@@ -784,6 +936,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of handing out the shares of the common budget
 				 *
+				 * @note The budget is shared between all caches: each gets a fair share
+				 *
+				 * @note The budget is recalculated when caches are created or destroyed:
+				 *       the share depends on the number of active caches and the total
+				 *       limit set by the application. A single cache gets the whole
+				 *       budget, and two caches get half each
+				 *
+				 * \~
 				 */
 				void reshare() noexcept;
 			public:
@@ -798,6 +958,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the caches manager
 				 *
+				 * @param central central lists
+				 * @param classes size classes
+				 * @return        sign of successful initialization
+				 *
+				 * \~
 				 */
 				bool init(central_t * central, classes_t * classes) noexcept;
 				/**
@@ -814,8 +979,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of creating the thread cache storage key
 				 *
-				 * @return flag of the key having been created
+				 * @note The key is created once per process and destroyed on exit:
+				 *       no per-thread cleanup is needed
 				 *
+				 * @return sign of successful creation
+				 *
+				 * \~
 				 */
 				bool arm() noexcept;
 				/**
@@ -827,6 +996,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of destroying the caches manager
 				 *
+				 * @note All caches are emptied and the pool is released
+				 *
+				 * \~
 				 */
 				void destroy() noexcept;
 			private:
@@ -842,6 +1014,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of creating a cache for the current thread
 				 *
+				 * @note The cache is taken from the pool or created fresh:
+				 *       the pool is checked first to avoid allocation
+				 *
+				 * @return sign of successful creation
+				 *
+				 * \~
 				 */
 				cache_t * enter() noexcept;
 			public:
@@ -856,62 +1034,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the current thread cache
 				 *
+				 * @note The cache is created on first access for the thread:
+				 *       no upfront allocation is needed, and threads that never allocate
+				 *       never get a cache. The cache is destroyed on thread exit
+				 *
+				 * @return current thread cache or nullptr
+				 *
+				 * \~
 				 */
-				AWH_CACHE_INLINE cache_t * local() noexcept {
-					/**
-					 * Отвечаем из зеркала, не заходя в файл кода
-					 *
-					 * Заполненное зеркало значит, что кэш потоку уже заведён и записан в
-					 * ключ хранения: прочие проверки холодного пути отвечали бы то же
-					 * самое. Профиль `perf` на Debian отдавал `Caches::local` 9.9 %
-					 * времени сценария одного разряда - и то была цена вызова, а не работы
-					 */
-					#if defined(AWH_ALLOC_MIRROR)
-						// Если зеркало заполнено
-						if(__awh_alloc_mirror__ != nullptr)
-							// Выводим кэш из зеркала
-							return __awh_alloc_mirror__;
-					/**
-					 * Отвечаем из ключа хранения, не заходя в файл кода
-					 *
-					 * Довод и опыт - у самого ключа двумя десятками строк выше: зеркала у
-					 * macOS нет, и быстрый путь уходил там вызовом на каждой выдаче
-					 */
-					#elif defined(AWH_ALLOC_TSD)
-						/**
-						 * Читаем место потока напрямую, если прямой путь проверен
-						 *
-						 * Проверка идёт однажды, при заведении ключа: довод и замеры - у
-						 * самого номера места
-						 */
-						{
-							// Читаем номер места потока для прямого чтения
-							const size_t slot = __awh_alloc_direct__.load(std::memory_order_relaxed);
-							// Если прямое чтение заведено
-							if(slot != AWH_ALLOC_NOSLOT){
-								// Читаем кэш прямо из места потока
-								cache_t * result = reinterpret_cast <cache_t *> (__awh_alloc_slots__()[slot]);
-								// Если кэш потоку уже заведён
-								if(result != nullptr)
-									// Выводим кэш из места потока
-									return result;
-								// Уходим холодным путём: кэша потоку ещё нет
-								return this->enter();
-							}
-						}
-						// Если ключ хранения заведён
-						if(__awh_alloc_armed__.load(std::memory_order_relaxed)){
-							// Читаем кэш из ключа хранения потока
-							cache_t * result = reinterpret_cast <cache_t *> (::pthread_getspecific(__awh_alloc_tsd__));
-							// Если кэш потоку уже заведён
-							if(result != nullptr)
-								// Выводим кэш из ключа хранения
-								return result;
-						}
-					#endif
-					// Уходим холодным путём: кэша потоку ещё нет либо зеркала нет вовсе
-					return this->enter();
-				}
+				AWH_CACHE_INLINE cache_t * local() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отвязки кэша от завершившегося потока
@@ -921,6 +1052,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of detaching a cache from a finished thread
 				 *
+				 * @param cache cache being detached
+				 *
+				 * \~
 				 */
 				void retire(cache_t * cache) noexcept;
 			public:
@@ -935,6 +1069,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the per-thread cache limit
 				 *
+				 * @note The limit applies to new caches: existing ones keep their limit
+				 *
+				 * @param limit cache limit in bytes
+				 *
+				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
@@ -947,6 +1086,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the amount held in all caches
 				 *
+				 * @param count number of initialized caches
+				 * @return      amount held in the caches in bytes
+				 *
+				 * \~
 				 */
 				size_t cached(size_t * count) noexcept;
 				/**
@@ -962,6 +1105,13 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting what the caches accumulated but have not handed out
 				 *
+				 * @note The value is approximate: it is read without locks, and other
+				 *       threads may be adding or removing blocks at the same time.
+				 *       The exact value is not needed for the purpose of this method
+				 *
+				 * @return accumulated value in bytes
+				 *
+				 * \~
 				 */
 				int64_t pending() noexcept;
 				/**
@@ -973,6 +1123,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning all cached blocks to the central lists
 				 *
+				 * @return number of blocks actually returned
+				 *
+				 * \~
 				 */
 				size_t flush() noexcept;
 			public:
@@ -983,6 +1136,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring the lock before forking
 				 *
+				 * \~
 				 */
 				void prepare() noexcept;
 				/**
@@ -992,6 +1146,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the lock after forking
 				 *
+				 * \~
 				 */
 				void resume() noexcept;
 				/**
@@ -1008,12 +1163,25 @@ namespace awh {
 				 * \~english
 				 * @brief Method of reconciling the caches in the forked child
 				 *
+				 * @note The child gets a copy of the parent's caches with locks in an undefined
+				 *       state: they must be reset before any use
+				 *
+				 * @note The cache pool is cleared: the child starts with fresh caches,
+				 *       and any cache pointers held by the parent are invalid
+				 *
+				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Caches() noexcept;
 		} caches_t;

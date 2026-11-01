@@ -12,11 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл съёма стека вызовов
- *
- * \~english
- * @brief Call stack capture file
+ * @brief Реализация съёма стека вызовов
  *
  * @copyright Copyright © 2026
  *
@@ -101,9 +97,16 @@ namespace {
 	 * записаны они в `cache.cpp`
 	 */
 	#elif !defined(__APPLE__) && !defined(__MACH__) && !defined(__OpenBSD__)
+		/**
+		 * @brief Устанавливаем признак хранения отметки средствами собирателя
+		 *
+		 */
 		#define AWH_TRACE_TLS 1
 		// Признак нахождения потока внутри съёма
 		static __thread bool __awh_trace_busy__ __attribute__((tls_model("initial-exec"))) = false;
+	/**
+	 * Для macOS и OpenBSD
+	 */
 	#else
 		/**
 		 * macOS и OpenBSD хранят признак ключом системы
@@ -117,7 +120,7 @@ namespace {
 		static ::pthread_key_t __awh_trace_key__;
 	#endif
 	/**
-	 * @brief Метод определения нахождения потока внутри съёма
+	 * @brief Функция определения нахождения потока внутри съёма
 	 *
 	 * @return признак нахождения потока внутри съёма
 	 *
@@ -138,7 +141,7 @@ namespace {
 		 */
 		#elif defined(AWH_TRACE_TLS)
 			// Выводим признак нахождения потока внутри съёма
-			return __awh_trace_busy__;
+			return ::__awh_trace_busy__;
 		/**
 		 * Для macOS и OpenBSD
 		 */
@@ -148,7 +151,7 @@ namespace {
 		#endif
 	}
 	/**
-	 * @brief Метод отметки нахождения потока внутри съёма
+	 * @brief Функция отметки нахождения потока внутри съёма
 	 *
 	 * @param value признак нахождения потока внутри съёма
 	 *
@@ -169,7 +172,7 @@ namespace {
 		 */
 		#elif defined(AWH_TRACE_TLS)
 			// Отмечаем нахождение потока внутри съёма
-			__awh_trace_busy__ = value;
+			::__awh_trace_busy__ = value;
 		/**
 		 * Для macOS и OpenBSD
 		 */
@@ -193,7 +196,11 @@ namespace {
 			size_t count;
 		} walk_t;
 		/**
-		 * @brief Метод обхода уровня стека вызовов
+		 * Если собирателем не является MSVC
+		 */
+		#if !defined(_MSC_VER)
+		/**
+		 * @brief Функция обхода уровня стека вызовов
 		 *
 		 * @note Обход раскруткой заведён лишь там, где есть её заголовок: у нативного
 		 *       MSVC съём идёт обходом `RtlVirtualUnwind` по таблицам системы
@@ -203,7 +210,6 @@ namespace {
 		 * @return        признак продолжения обхода
 		 *
 		 */
-		#if !defined(_MSC_VER)
 		static ::_Unwind_Reason_Code walker(struct ::_Unwind_Context * context, void * arg) noexcept {
 			// Получаем ход съёма стека вызовов
 			walk_t * walk = reinterpret_cast <walk_t *> (arg);
@@ -265,6 +271,9 @@ bool awh::alloc::Trace::init() noexcept {
 	if(!this->_keyed.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
 		// Выводим готовность съёма как она есть
 		return this->_warmed.load(std::memory_order_acquire);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Заводим ключ признака нахождения потока внутри съёма
 		::__awh_trace_key__ = ::FlsAlloc(nullptr);
@@ -275,6 +284,9 @@ bool awh::alloc::Trace::init() noexcept {
 			// Отвечаем отказом
 			return false;
 		}
+	/**
+	 * Для систем ELF
+	 */
 	#elif defined(AWH_TRACE_TLS)
 		/**
 		 * Заводить нечего: место под признак отведено в блоке TLS при запуске программы
@@ -301,7 +313,7 @@ bool awh::alloc::Trace::init() noexcept {
 	this->_warmed.store(true, std::memory_order_release);
 	// Прогреваем съём
 	static_cast <void> (this->capture(frames, 8, 0));
-	// Отвечаем успехом
+	// Съём прогрет
 	return true;
 }
 /**
@@ -319,9 +331,15 @@ void awh::alloc::Trace::reset() noexcept {
 			::FlsFree(::__awh_trace_key__);
 			// Отмечаем ключ снятым
 			::__awh_trace_key__ = FLS_OUT_OF_INDEXES;
+		/**
+		 * Для систем ELF
+		 */
 		#elif defined(AWH_TRACE_TLS)
 			// Снимаем признак нахождения потока внутри съёма
-			__awh_trace_busy__ = false;
+			::__awh_trace_busy__ = false;
+		/**
+		 * Для macOS и OpenBSD
+		 */
 		#else
 			// Снимаем ключ признака нахождения потока внутри съёма
 			::pthread_key_delete(::__awh_trace_key__);
@@ -363,7 +381,13 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 	{
 		// Наибольшее число снимаемых уровней
 		const size_t cap = ((depth > DEPTH) ? DEPTH : depth);
+		/**
+		 * Для нативного MSVC
+		 */
 		#if defined(_MSC_VER)
+			/**
+			 * Для 64-разрядного x86 и ARM64
+			 */
 			#if defined(_M_X64) || defined(_M_ARM64)
 				/**
 				 * Съём обходом таблиц раскрутки системы
@@ -385,17 +409,30 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 				 * Счётчик команд зовётся по-разному у разных архитектур
 				 */
 				#if defined(_M_ARM64)
+					/**
+					 * @brief Устанавливаем счётчик команд в Pc
+					 *
+					 */
 					#define __AWH_TRACE_PC__ Pc
+				/**
+				 * Для x86-64
+				 */
 				#else
+					/**
+					 * @brief Устанавливаем счётчик команд в Rip
+					 *
+					 */
 					#define __AWH_TRACE_PC__ Rip
 				#endif
 				// Остаток пропускаемых ближних уровней (свой уровень тоже пропускаем)
 				size_t rest = (skip + 1);
-				// Выполняем обход уровней стека вызовов
+				/**
+				 * Выполняем обход уровней стека вызовов
+				 */
 				while(result < cap){
 					// Адрес начала образа, которому принадлежит уровень
 					::DWORD64 image = 0;
-					// Выполняем поиск записи раскрутки текущего уровня
+					// Ищем запись раскрутки текущего уровня
 					::PRUNTIME_FUNCTION entry = ::RtlLookupFunctionEntry(context.__AWH_TRACE_PC__, &image, &history);
 					// Если записи раскрутки нет, дальше шагать нечем
 					if(entry == nullptr)
@@ -425,6 +462,9 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 				 * Снимаем название счётчика команд
 				 */
 				#undef __AWH_TRACE_PC__
+			/**
+			 * Для 32-разрядного x86
+			 */
 			#else
 				/**
 				 * Съём родным средством системы
@@ -436,6 +476,9 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 					static_cast <ULONG> (skip + 1), static_cast <ULONG> (cap),
 					reinterpret_cast <PVOID *> (const_cast <void **> (frames)), nullptr));
 			#endif
+		/**
+		 * Для прочих собирателей
+		 */
 		#else
 			// Ход съёма стека вызовов
 			walk_t walk;
@@ -528,7 +571,7 @@ bool awh::alloc::Trace::resolve(const void * frame, symbol_t & symbol) noexcept 
 		symbol.begin = reinterpret_cast <const void *> (image);
 		// Записываем смещение разбираемого адреса от начала образа
 		symbol.offset = (reinterpret_cast <const uint8_t *> (frame) - reinterpret_cast <const uint8_t *> (image));
-		// Отвечаем успехом
+		// Смещение от начала образа записано
 		return true;
 	/**
 	 * Для операционной системы не являющейся MS Windows
@@ -562,7 +605,7 @@ bool awh::alloc::Trace::resolve(const void * frame, symbol_t & symbol) noexcept 
 		symbol.begin = ((info.dli_saddr != nullptr) ? info.dli_saddr : info.dli_fbase);
 		// Записываем смещение разбираемого адреса от начала функции
 		symbol.offset = (reinterpret_cast <const uint8_t *> (frame) - reinterpret_cast <const uint8_t *> (symbol.begin));
-		// Отвечаем успехом
+		// Смещение от начала функции записано
 		return true;
 	#endif
 }
@@ -593,14 +636,40 @@ bool awh::alloc::Trace::capturing() const noexcept {
  *
  */
 const char * awh::alloc::Trace::name() const noexcept {
-	// Выводим название способа съёма
+	/**
+	 * Для нативного MSVC
+	 */
 	#if defined(_MSC_VER)
+		/**
+		 * Для 64-разрядного x86 и ARM64
+		 */
 		#if defined(_M_X64) || defined(_M_ARM64)
+			// Выводим название способа съёма
 			return "RtlVirtualUnwind";
+		/**
+		 * Для 32-разрядного x86
+		 */
 		#else
+			// Выводим название способа съёма
 			return "RtlCaptureStackBackTrace";
 		#endif
+	/**
+	 * Для прочих собирателей
+	 */
 	#else
+		// Выводим название способа съёма
 		return "_Unwind_Backtrace";
 	#endif
 }
+
+/**
+ * @brief Конструктор Symbol
+ *
+ */
+awh::alloc::Symbol::Symbol() noexcept :
+ image(nullptr), name(nullptr), begin(nullptr), offset(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Trace::Trace() noexcept : _warmed(false), _keyed(false) {}

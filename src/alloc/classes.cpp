@@ -222,11 +222,15 @@ size_t awh::alloc::Classes::init(const size_t limit) noexcept {
 	{
 		// Номер текущего разряда
 		size_t current = 0;
-		// Перебираем места мелкой таблицы
+		/**
+		 * Перебираем места мелкой таблицы
+		 */
 		for(size_t i = 0; i < (sizeof(this->_small) / sizeof(this->_small[0])); i++){
 			// Определяем наибольший размер, отвечающий этому месту таблицы
 			const size_t size = (i * STEP_SMALL);
-			// Двигаем разряд, пока его блок не вместит требуемый размер
+			/**
+			 * Двигаем разряд, пока его блок не вместит требуемый размер
+			 */
 			while((current < count) && (this->_size[current] < size))
 				// Переходим к следующему разряду
 				current++;
@@ -240,11 +244,15 @@ size_t awh::alloc::Classes::init(const size_t limit) noexcept {
 	{
 		// Номер текущего разряда
 		size_t current = 0;
-		// Перебираем места крупной таблицы
+		/**
+		 * Перебираем места крупной таблицы
+		 */
 		for(size_t i = 0; i < (sizeof(this->_large) / sizeof(this->_large[0])); i++){
 			// Определяем наибольший размер, отвечающий этому месту таблицы
 			const size_t size = (i * STEP_LARGE);
-			// Двигаем разряд, пока его блок не вместит требуемый размер
+			/**
+			 * Двигаем разряд, пока его блок не вместит требуемый размер
+			 */
 			while((current < count) && (this->_size[current] < size))
 				// Переходим к следующему разряду
 				current++;

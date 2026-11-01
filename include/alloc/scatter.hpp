@@ -77,8 +77,79 @@
  * \~english
  * @brief Header file of scattering the key material across the image
  *
+ * @section scatter_decisions Intentional decisions
+ *
+ * @details <b>The task.</b> A key embedded in an image is found NOT by code analysis
+ *          but by searching for a region of high entropy: thirty-two random bytes are
+ *          visible in the image as a blob and are found by a scanner in seconds, without
+ *          understanding the logic. Hence the material does not lie in the image ready
+ *          or in a pile - it is scattered across the carrier and derived from it at
+ *          startup.
+ *
+ *          <b>A framework that must not be lost.</b> The application derives the key
+ *          ITSELF, without a human, - so everything needed is inside, and the machine
+ *          owner has it. What is bought is the cost of search, not impossibility:
+ *          scattering blocks the blob scanner and piece-by-piece analysis, but does not
+ *          block someone who snapshots the assembled material at a breakpoint on entry
+ *          to the key derivation. Against the latter there is no remedy here and none
+ *          is promised.
+ *
+ *          <b>Both sides of one contract compute ONE layout from ONE seed.</b> The
+ *          layer (`lay`) runs at build time on a closed machine: secret and seed in,
+ *          carrier out. The gatherer (`gather`) runs at startup in the image: carrier
+ *          and the same seed in, assembled material in the secret vessel out. Both
+ *          sides derive the permutation of places and the gamma from the seed with the
+ *          same reproducible stream, hence the stream must give one sequence on every
+ *          system - and it does: `splitmix64` is pure arithmetic over a sixty-four-bit
+ *          word, with no platform access.
+ *
+ *          <b>Gamma overlay is mandatory, not decoration.</b> Should an open byte of
+ *          the secret lie in the carrier, even scattered, - the secret's places would
+ *          betray themselves by piece-by-piece analysis: thirty-two distinctive bytes
+ *          among working data. Hence the carrier stores `secret XOR gamma`, and the
+ *          gamma is derived from the seed, which is not in the image at all. This is
+ *          what "the key is not stored but derived" means: the image holds an overlay,
+ *          and it cannot be removed without the seed.
+ *
+ *          <b>The carrier is uniform across its full length.</b> Places not occupied
+ *          by the secret are filled with bytes of the same stream, not zeros and not
+ *          randomness from outside. This way the secret places are indistinguishable
+ *          from the fill by distribution, and there is no blob in the image. Had we
+ *          filled the rest with zeros - the secret would show as islands among emptiness;
+ *          had we taken randomness from outside - the layout would stop being
+ *          reproducible, and reproducibility is needed: one seed gives one build.
+ *
+ *          <b>The carrier capacity is declared by the layer, and it is NOT less than
+ *          the secret length.</b> The excess beyond the length is a place for fill bytes
+ *          and for scattering the secret wider. The wider the carrier, the rarer the
+ *          secret places, the more expensive to gather them without the seed, - but the
+ *          thicker the image. The trade-off is given to the caller.
+ *
+ *          <b>The assembled material goes into the secret vessel BYTE BY BYTE, bypassing
+ *          the heap.</b> A single temporary assembly on the stack or in the heap would
+ *          negate the whole effort: the assembled material would lie open in unprotected
+ *          memory. The gatherer pours byte by byte straight into `vessel_t`, and no
+ *          intermediate assembly arises.
+ *
+ *          <b>Binding to the code checksum is done by an anchor.</b> `anchor` mixes
+ *          into the seed the checksum of its own code and the key version: an image
+ *          patch changes the checksum, and with it the seed and the whole stream, and
+ *          the secret is assembled incorrectly - the protection is inseparable from
+ *          decryption. The mechanism is here; the checksum itself and the image region
+ *          it is taken from are supplied by the caller - on macOS and MS Windows the
+ *          signature fixes the region AFTER build, and it must be chosen with the
+ *          stands of each system.
+ *
+ *          <b>What scattering does NOT do.</b> It does not derive the key from the
+ *          assembled material - derivation (KDF, password stretching) is the contract
+ *          of the cryptographic library, and scattering leaves the assembled material
+ *          in the secret vessel, nothing more.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 /**
@@ -152,15 +223,32 @@ namespace awh {
 				 * @param seed     зерно раскладки из закрытого контура
 				 * @param checksum контрольная сумма кода либо иной якорь, либо нуль
 				 * @param version  версия ключа, разводящая контуры сборок
-				 * @return          зерно, привязанное к якорю и версии
+				 * @return         зерно, привязанное к якорю и версии
 				 *
 				 * \~english
 				 * @brief Method of blending an anchor into the layout seed
 				 *
+				 * @note Binds the layout to an anchor - the checksum of its own code and
+				 *       the key version. Both sides of the contract call it IDENTICALLY
+				 *       before `lay` and `gather`, passing one seed, one anchor, one
+				 *       version: otherwise the stream diverges and the secret is not
+				 *       assembled
+				 *
+				 * @note An image patch - removing a check, inserting a breakpoint -
+				 *       changes the checksum, and with it the seed and the whole stream:
+				 *       the secret is assembled incorrectly. The protection becomes
+				 *       inseparable from decryption - not "the application detected a
+				 *       breach" but "the container did not open"
+				 *
+				 * @note The checksum itself and the image region it is taken from are
+				 *       supplied by the caller: on macOS and MS Windows the signature
+				 *       fixes the region AFTER build, and it must be chosen with the
+				 *       stands of each system
+				 *
 				 * @param seed     layout seed from the closed loop
 				 * @param checksum code checksum or another anchor, or zero
 				 * @param version  key version separating build loops
-				 * @return          seed bound to the anchor and the version
+				 * @return         seed bound to the anchor and the version
 				 *
 				 * \~
 				 */
@@ -177,18 +265,26 @@ namespace awh {
 				 *
 				 * @param secret   адрес секрета
 				 * @param length   длина секрета в байтах
-				 * @param seed      зерно раскладки из закрытого контура
-				 * @param capacity  ёмкость носителя в байтах, не меньше длины секрета
-				 * @return           носитель с рассеянным секретом либо пустой при отказе
+				 * @param seed     зерно раскладки из закрытого контура
+				 * @param capacity ёмкость носителя в байтах, не меньше длины секрета
+				 * @return         носитель с рассеянным секретом либо пустой при отказе
 				 *
 				 * \~english
 				 * @brief Method of laying the secret out across the carrier (build time)
 				 *
+				 * @note Works at build time on a closed machine: the secret does not
+				 *       leave the image, only the carrier goes into the image. Not called
+				 *       in the application
+				 *
+				 * @note The carrier capacity must be NOT less than the secret length:
+				 *       otherwise there is nowhere for the secret parts to lie, and the
+				 *       method answers with an empty carrier
+				 *
 				 * @param secret   address of the secret
 				 * @param length   length of the secret in bytes
-				 * @param seed      layout seed from the closed loop
-				 * @param capacity  capacity of the carrier in bytes, not less than the length
-				 * @return           carrier with the scattered secret, or empty on refusal
+				 * @param seed     layout seed from the closed loop
+				 * @param capacity capacity of the carrier in bytes, not less than the length
+				 * @return         carrier with the scattered secret, or empty on refusal
 				 *
 				 * \~
 				 */
@@ -214,17 +310,30 @@ namespace awh {
 				 * @param secret адрес секрета
 				 * @param length длина секрета в байтах
 				 * @param seed   зерно раскладки из закрытого контура
-				 * @return        признак выполнения операции
+				 * @return       признак выполнения операции
 				 *
 				 * \~english
 				 * @brief Method of weaving the secret into a provided working table (build time)
+				 *
+				 * @note Unlike `lay`, it does not create its own carrier and does not fill
+				 *       other places: it edits the provided table at the secret places and
+				 *       leaves the rest - real working data - untouched. This way the
+				 *       secret blends with meaningful data instead of forming its own
+				 *       region of high entropy that a scanner would find whole
+				 *
+				 * @note The table must be suitable as a carrier, and this is the caller's
+				 *       responsibility: editing it at the secret places is allowed (those
+				 *       places are given to the secret and no working value remains there),
+				 *       and its own entropy is sufficient that the secret's grains do not
+				 *       stand out. A table of zeros or coherent text is not suitable as a
+				 *       carrier
 				 *
 				 * @param table  address of the working table edited at the secret places
 				 * @param size   size of the working table in bytes, not less than the length
 				 * @param secret address of the secret
 				 * @param length length of the secret in bytes
 				 * @param seed   layout seed from the closed loop
-				 * @return        flag of the operation performed
+				 * @return       flag of the operation performed
 				 *
 				 * \~
 				 */
@@ -240,15 +349,19 @@ namespace awh {
 				 * @param carrier носитель, полученный от `lay`
 				 * @param length  длина секрета в байтах
 				 * @param name    имя порождаемого массива носителя
-				 * @return         исходный текст на C++ либо пустая строка при отказе
+				 * @return        исходный текст на C++ либо пустая строка при отказе
 				 *
 				 * \~english
 				 * @brief Method of emitting the source text with the carrier (build time)
 				 *
+				 * @note Works at build time: returns ready-to-include C++ source text with
+				 *       the carrier as an array. The text carries neither the secret nor
+				 *       the seed - only the carrier, the secret length, and the capacity
+				 *
 				 * @param carrier carrier obtained from `lay`
 				 * @param length  length of the secret in bytes
 				 * @param name    name of the emitted carrier array
-				 * @return         C++ source text, or an empty string on refusal
+				 * @return        C++ source text, or an empty string on refusal
 				 *
 				 * \~
 				 */
@@ -271,17 +384,27 @@ namespace awh {
 				 * @param seed     то же зерно, каким велась раскладка
 				 * @param length   длина секрета в байтах
 				 * @param vessel   приёмник, куда ложится собранный секрет
-				 * @return          признак выполнения операции
+				 * @return         признак выполнения операции
 				 *
 				 * \~english
 				 * @brief Method of gathering the secret from the carrier into the vessel (run time)
+				 *
+				 * @note Works at startup in the image: removes the overlay and pours the
+				 *       secret BYTE BY BYTE straight into the vessel, bypassing the heap.
+				 *       There is no intermediate assembly
+				 *
+				 * @note The seed must match the one used for the layout: a foreign seed
+				 *       will gather garbage from the carrier, not the secret
+				 *
+				 * @note The vessel is created HERE for the secret length: its previous
+				 *       content is removed
 				 *
 				 * @param carrier  address of the carrier in the image
 				 * @param capacity capacity of the carrier in bytes
 				 * @param seed     the same seed the layout was made with
 				 * @param length   length of the secret in bytes
 				 * @param vessel   vessel the gathered secret is put into
-				 * @return          flag of the operation performed
+				 * @return         flag of the operation performed
 				 *
 				 * \~
 				 */

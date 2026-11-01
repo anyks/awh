@@ -40,6 +40,29 @@
  * \~english
  * @brief Header file of the central free lists
  *
+ * @section central_decisions Deliberate decisions
+ *
+ * @details <b>The linkage of free blocks lives in the blocks themselves.</b> A separate
+ *          link table would cost memory per block and an access on every allocation. A
+ *          free block is read by nobody, and its first eight bytes are free to hold a
+ *          pointer to the next one: the smallest class is sixteen bytes, there is
+ *          always room.
+ *
+ *          <b>Each class has its own lock, while the heap has a shared one.</b> A single
+ *          shared lock would reduce the whole allocator to a queue of threads. The
+ *          acquisition order is always the same - first the class, then the heap - and
+ *          the reverse order exists nowhere, hence no deadlock arises.
+ *
+ *          <b>Blocks are transferred in batches, not one by one.</b> Acquiring a lock
+ *          costs more than the transfer itself, hence the thread-local cache takes and
+ *          returns a linked chain of blocks at once, paying for the lock once per
+ *          batch.
+ *
+ *          <b>The region class is tagged in the heap itself.</b> Free must determine the
+ *          class by the address alone, and a separate address-to-class table would be a
+ *          second accounting of the same. The heap already stores the region by each of
+ *          its pages - the tag goes there.
+ *
  * \~
  *
  * @copyright Copyright © 2026
@@ -86,8 +109,13 @@
 #endif
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -96,8 +124,13 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -122,15 +155,52 @@ namespace awh {
 				 */
 				static constexpr size_t BATCH = 64;
 				/**
+				 * \~russian
+				 * @brief Окно покоя области перед возвратом куче в миллисекундах
+				 *
+				 * @details Область, чьи блоки вернулись все, покоится в цепочке разряда:
+				 *          работа, строящая и разрушающая одно вместилище раунд за раундом,
+				 *          берёт те же области вновь, и немедленная отдача их куче обращала
+				 *          бы выборку в перешагивание тысяч пустых областей - замером
+				 *          полного набора YAML выборка платила по шесть тысяч переходов
+				 *          на пачку, и снятие значения с дерева падало вдвое
+				 *
+				 * \~english
+				 * @brief Region idle window before returning to the heap in milliseconds
+				 *
+				 * @details A region whose blocks have all returned idles in the class chain:
+				 *          work building and destroying the same vessel round after round
+				 *          takes the same regions again, and returning them to the heap
+				 *          immediately turned fetching into stepping over thousands of empty
+				 *          regions - by a full YAML set measurement fetching paid six
+				 *          thousand hops per burst, and taking a value from the tree halved
+				 *
+				 * \~
+				 */
+				static constexpr uint64_t SPAN_WINDOW = 60000;
+				/**
+				 * \~russian
 				 * @brief Наибольший размер придерживаемой области в страницах кучи
 				 *
 				 * @details Придержка и рост области НА МЕСТЕ враждебны друг другу: растёт область
 				 *          за счёт свободных соседей, а придержанная для кучи занята. Придержка
 				 *          без предела роняла «рост перевыдачей» вчетверо, отбирая единственный
 				 *          сценарий, где порог держался на всех системах.
+				 *
+				 *
+				 * \~english
+				 * @brief Largest retained region size in heap pages
+				 *
+				 * @details Retention and in-place region growth are hostile to each other: a region
+				 *          grows at the expense of free neighbours, while a retained one is occupied
+				 *          for the heap. Boundless retention dropped reallocation growth fourfold,
+				 *          taking away the one scenario where the threshold held on all systems.
+				 *
+				 * \~
 				 */
 				static constexpr size_t KEPT_PAGES = 8;
 				/**
+				 * \~russian
 				 * @brief Потолок придержки областей сверх разрядов по умолчанию в байтах
 				 *
 				 * @details <b>Нуль: придержка ВЫКЛЮЧЕНА по умолчанию, и это решение замера.</b>
@@ -144,6 +214,24 @@ namespace awh {
 				 *
 				 * @note Приложению, не растящему области перевыдачей, придержка даётся
 				 *       настройкой: обмен этот - его выбор, а не наш
+				 *
+				 *
+				 * \~english
+				 * @brief Default ceiling of retained regions beyond the size classes in bytes
+				 *
+				 * @details ZERO: retention is DISABLED by default, and this is a measured decision.
+				 *          It accelerates the allocate-free cycle on regions beyond the size classes
+				 *          1.5 times (73,563 to 113,074 thousand actions per second) but drops
+				 *          in-place region growth fourfold (18,050 to 3,913): a region grows at the
+				 *          expense of FREE neighbours, while a retained one is occupied for the heap.
+				 *          By the speed threshold the trade-off is unprofitable - large blocks do not
+				 *          win even with it (tcmalloc has 115,315), and in-place growth was the one
+				 *          scenario where the threshold held on all systems.
+				 *
+				 * @note For an application not growing regions by reallocation, retention is
+				 *       given by a setting: this trade-off is its choice, not ours
+				 *
+				 * \~
 				 */
 				static constexpr size_t DEFAULT_KEPT = 0;
 			public:
@@ -164,16 +252,32 @@ namespace awh {
 					// Нарезано областей под разряды
 					size_t regions;
 					/**
+					 * \~russian
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					explicit State() noexcept :
-					 live(0), cached(0), regions(0) {}
+					explicit State() noexcept;
 				} state_t;
 			private:
 				/**
+				 * \~russian
 				 * @brief Структура центрального списка одного разряда
 				 *
+				 *
+				 * \~english
+				 * @brief Structure of a central free list of one size class
+				 *
+				 * \~
 				 */
 				typedef struct List {
 					// Замок разряда
@@ -184,23 +288,38 @@ namespace awh {
 					size_t count;
 					// Число нарезанных под разряд областей
 					size_t regions;
-					// Голова списка свободных блоков
-					void * free;
+					// Голова цепочки областей разряда
+					Pages::span_t * top;
+					// Число возвратов пачек в разряд
+					size_t returns;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					explicit List() noexcept :
-					 live(0), count(0),
-					 regions(0), free(nullptr) {}
+					explicit List() noexcept;
 				} list_t;
 				/**
+				 * \~russian
 				 * @brief Структура записи придержанной области сверх разрядов
 				 *
 				 * @details Кладётся в САМУ придержанную область: та свободна, а держать под
 				 *          неё отдельную память значило бы просить память у распределителя
 				 *          изнутри его же освобождени.
 				 *
+				 *
+				 * \~english
+				 * @brief Structure of a retained region record beyond the size classes
+				 *
+				 * @details Placed into the RETAINED region itself: the region is free, and holding
+				 *          separate memory for it would mean asking the allocator for memory from
+				 *          inside its own free.
+				 *
+				 * \~
 				 */
 				typedef struct Kept {
 					// Размер области в страницах кучи
@@ -256,7 +375,18 @@ namespace awh {
 				 *       прежнее поведение дословно
 				 *
 				 * \~english
-				 * @brief Held-back sections by page count
+				 * @brief Retained regions by page count
+				 *
+				 * @details Retention of released regions beyond the size classes.
+				 *
+				 * @note Below the class boundary allocation is held by the thread cache, above the
+				 *       chunk size by the huge allocation layer retention, and BETWEEN them every
+				 *       action went to the page heap: finding a region, taking it from the list,
+				 *       splitting, marking all its pages - and all under the heap lock. The counter
+				 *       showed exactly one Pages::alloc and one Pages::mark call per allocation
+				 *
+				 * @note A retained region is NOT returned to the heap: it stays allocated and waits
+				 *       for the next request of the same size. It is returned on request of memory
 				 *
 				 * \~
 				 */
@@ -279,9 +409,25 @@ namespace awh {
 				 * \~english
 				 * @brief Method of carving a new region for a class
 				 *
+				 * @note Called under the heap lock: the region is taken from the page heap and split
+				 *       into blocks of the class size
+				 *
+				 * @param index class index
+				 * @return      sign of successful operation
+				 *
 				 * \~
 				 */
 				bool carve(const size_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отдачи куче покоящихся областей разряда
+				 *
+				 * \~english
+				 * @brief Method of returning idling regions of a class to the heap
+				 *
+				 * \~
+				 */
+				size_t shed(const size_t index, const uint64_t now, const bool all) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -294,6 +440,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the central free lists
 				 *
+				 * @param pages   page heap
+				 * @param classes size classes
+				 * @return        sign of successful initialization
+				 *
 				 * \~
 				 */
 				bool init(pages_t * pages, classes_t * classes) noexcept;
@@ -305,6 +455,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resetting the central free lists
+				 *
+				 * @note Returns all blocks to the page heap and clears the lists
 				 *
 				 * \~
 				 */
@@ -323,6 +475,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of fetching a batch of blocks of a class
 				 *
+				 * @param index class index
+				 * @param head  head of the fetched block chain
+				 * @param tail  tail of the fetched block chain
+				 * @param count requested number of blocks
+				 * @return      number of blocks actually fetched
+				 *
 				 * \~
 				 */
 				size_t fetch(const size_t index, void ** head, void ** tail, const size_t count) noexcept;
@@ -338,6 +496,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning a batch of blocks of a class
 				 *
+				 * @param index class index
+				 * @param head  head of the returned block chain
+				 * @param tail  tail of the returned block chain
+				 * @param count number of blocks being returned
+				 *
 				 * \~
 				 */
 				void back(const size_t index, void * head, void * tail, const size_t count) noexcept;
@@ -352,6 +515,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allocating memory beyond the size classes
+				 *
+				 * @param size   required size in bytes
+				 * @param served actually allocated size in bytes, or nullptr
+				 * @return       address of the allocated memory or nullptr
 				 *
 				 * \~
 				 */
@@ -370,6 +537,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of expanding an allocated region in place
 				 *
+				 * @note Growth goes at the expense of FREE neighbours: a retained region is
+				 *       occupied for the heap and cannot be grown into. Refusal here is not
+				 *       an error - the caller moves the content by ordinary means
+				 *
+				 * @param addr address of the start of the region being expanded
+				 * @param size required size in bytes
+				 * @return     sign of the expansion having taken place
+				 *
 				 * \~
 				 */
 				bool expand(void * addr, const size_t size) noexcept;
@@ -383,6 +558,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of returning memory allocated beyond the size classes
+				 *
+				 * @param addr address of the memory being returned
+				 * @param now  current time in milliseconds
+				 * @return     sign of the memory having been returned
 				 *
 				 * \~
 				 */
@@ -406,24 +585,20 @@ namespace awh {
 				 * \~english
 				 * @brief Method of quickly identifying a size class block
 				 *
+				 * @details Answers with the class number by a single read of the page tag,
+				 *          touching neither page pointers nor the region record.
+				 *
+				 * @note Refusal means only that the quick path did not work: resolution
+				 *       goes the full way through `owner`
+				 *
+				 * @param addr  address being resolved
+				 * @param index class number the address belongs to
+				 * @param hint  hint storage location for the lookup
+				 * @return      sign of an identified class block
+				 *
 				 * \~
 				 */
-				AWH_CENTRAL_INLINE bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept {
-					// Если куча не заведена либо разбирать нечего
-					if((this->_pages == nullptr) || (addr == nullptr) || (index == nullptr))
-						// Разбирать нечего
-						return false;
-					// Получаем метку разряда по адресу
-					const uint8_t tag = this->_pages->classify(addr, hint);
-					// Если метки у страницы нет
-					if(tag == 0)
-						// Быстрым путём не вышло
-						return false;
-					// Записываем номер разряда: метка на единицу больше него
-					(* index) = static_cast <size_t> (tag - 1);
-					// Отвечаем успехом
-					return true;
-				}
+				AWH_CENTRAL_INLINE bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод определения разряда, которому принадлежит адрес
@@ -437,66 +612,16 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining the class an address belongs to
 				 *
+				 * @param addr  address being resolved
+				 * @param index class number, or LIMIT if the memory was allocated beyond the
+				 *              size classes
+				 * @param begin start address of the region the address belongs to
+				 * @param size  region size in bytes
+				 * @return      sign of the address having been allocated by us
+				 *
 				 * \~
 				 */
-				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept {
-					// Если куча не заведена либо адрес не задан
-					if((this->_pages == nullptr) || (addr == nullptr))
-						// Разбирать нечего
-						return false;
-					// Размер области в страницах кучи
-					size_t pages = 0;
-					// Метка владельца области
-					uint32_t tag = 0;
-					// Адрес начала области
-					void * base = nullptr;
-					/**
-					 * Описываем область, которой принадлежит адрес
-					 */
-					{
-						/**
-						 * @brief Разбираем адрес БЕЗ замка кучи
-						 *
-						 * @details Замок здесь стоял на пути КАЖДОГО освобождения и обращал его в
-						 *          очередь: восемь потоков на мелкой выдаче давали 285 наносекунд на
-						 *          действие против 84 без него, и время на действие РОСЛО с числом
-						 *          потоков - верный признак очереди.
-						 *
-						 * @note Читать без замка позволено потому, что живая область неизменна:
-						 *       дробят и сливают лишь свободные, а у живой ни границы, ни метка не
-						 *       меняются, пока её не освободят. Таблица же поиска куска сменяется
-						 *       целой записью, и читатель берёт её одним неделимым обращением
-						 *
-						 * @note Исключение одно - РОСТ НА МЕСТЕ: он поглощает свободных соседей и
-						 *       раздвигает границу живой области. Читателя это не задевает по трём
-						 *       причинам. Растит область САМ владелец блока, и всякий, кто в тот же
-						 *       миг спрашивает о ТОМ ЖЕ блоке, состязается с ним и без нас.
-						 *       Поглощаются лишь СВОБОДНЫЕ соседи, за которыми живых блоков нет, -
-						 *       стало быть, чужой блок таким ростом не задевается вовсе. А
-						 *       поглощённые учётные записи возвращаются в оборот лишь после того,
-						 *       как указатели куска переведены на расширенную область: читатель,
-						 *       успевший взять запись соседа, читает её, а не переписанную заново
-						 *
-						 */
-						if(!this->_pages->describe(addr, &base, &pages, &tag, hint))
-							// Адрес выдан не нами
-							return false;
-					}
-					// Если требуется адрес начала области
-					if(begin != nullptr)
-						// Записываем адрес начала области
-						(* begin) = base;
-					// Если требуется номер разряда
-					if(index != nullptr)
-						// Записываем номер разряда, либо признак выдачи сверх разрядов
-						(* index) = ((tag > 0) ? static_cast <size_t> (tag - 1) : Classes::LIMIT);
-					// Если требуется размер области
-					if(size != nullptr)
-						// Записываем размер области в байтах
-						(* size) = (pages * Pages::PAGE);
-					// Отвечаем успехом
-					return true;
-				}
+				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -508,6 +633,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of returning free memory to the system
+				 *
+				 * @param now current time in milliseconds
+				 * @param all return everything regardless of the delay
+				 * @return    amount of memory returned to the system in bytes
 				 *
 				 * \~
 				 */
@@ -522,6 +651,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the memory release policy
 				 *
+				 * @param delay delay in milliseconds: -1 means never return
+				 * @param block smallest returned piece in bytes
+				 *
 				 * \~
 				 */
 				void policy(const int64_t delay, const size_t block) noexcept;
@@ -533,6 +665,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the ceiling of memory taken from the source
+				 *
+				 * @param limit ceiling in bytes: zero means no ceiling
 				 *
 				 * \~
 				 */
@@ -547,6 +681,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the ceiling of the span reserve
+				 *
+				 * @note Retention accelerates the allocate-free cycle 1.5 times but drops in-place
+				 *       growth fourfold. Zero disables retention entirely
+				 *
+				 * @param limit ceiling in bytes: zero means no retention
 				 *
 				 * \~
 				 */
@@ -565,6 +704,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of occupying an area of the heap
+				 *
+				 * @note Needed because on ELF systems the heap is established long before capture -
+				 *       from the first standard library allocation; what the application ordered at
+				 *       establishment has nowhere to be applied there
 				 *
 				 * @param arena    area to occupy in bytes
 				 * @param confined ban on going to the source beyond what is occupied
@@ -591,8 +734,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of taking a span from the heap, awaiting withheld ones
 				 *
+				 * @note The return sweep withdraws free regions from the lists for the duration of
+				 *       the system call, and under the set heap ceiling allocation hits emptiness
+				 *       where memory exists - it is withdrawn and about to return. Measured on
+				 *       OpenBSD: eight shortages on eight threads, and ALL eight fell exactly on
+				 *       withdrawn regions. Hence refusal with a non-zero number of withdrawn is
+				 *       reason to wait, not to answer with refusal
+				 *
 				 * @param pages required number of heap pages
-				 * @return      address of the allocated span or nullptr
+				 * @return      address of the taken region or nullptr
 				 *
 				 * \~
 				 */
@@ -606,6 +756,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of taking a span from the reserve
+				 *
+				 * @param pages required number of heap pages
+				 * @return      address of the retained region or nullptr
 				 *
 				 * \~
 				 */
@@ -625,6 +778,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of reserving a freed span
 				 *
+				 * @note Answers with refusal when retention is not advisable: the ceiling is
+				 *       exhausted, the region is too large, or retention is disabled entirely.
+				 *       Refusal is not an error - the region goes to the heap by ordinary means
+				 *
+				 * @param addr  address of the region being freed
+				 * @param pages region size in heap pages
+				 * @return      sign of the region having been retained
+				 *
 				 * \~
 				 */
 				bool keep(void * addr, const size_t pages) noexcept;
@@ -638,6 +799,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning the reserved spans to the heap
 				 *
+				 * @param all return everything, ignoring the ceiling
+				 * @return    volume returned to the heap in bytes
+				 *
 				 * \~
 				 */
 				size_t unkeep(const bool all) noexcept;
@@ -650,6 +814,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of determining whether the heap has hit its ceiling
+				 *
+				 * @return sign of the heap having hit its ceiling
 				 *
 				 * \~
 				 */
@@ -676,6 +842,21 @@ namespace awh {
 				 * \~english
 				 * @brief Method of locating the heap region an address belongs to
 				 *
+				 * @note Goes to the heap UNDER LOCK, and that is the whole point of the method.
+				 *       Previously address resolution (Allocator::resolve) went to the heap directly,
+				 *       bypassing the lock, while the heap was editing the chunk list in Pages::grow.
+				 *       ThreadSanitizer named the race directly: write in pages.cpp:457 against read
+				 *       in pages.cpp:972
+				 *
+				 * @note The method is called from address resolution on a fault, not from a
+				 *       signal handler: a signal handler must not take the lock
+				 *
+				 * @param addr  address being resolved
+				 * @param begin start address of the found region
+				 * @param pages size of the found region in heap pages
+				 * @param live  sign of the region being issued to the outside
+				 * @return      sign of the address belonging to the heap
+				 *
 				 * \~
 				 */
 				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) noexcept;
@@ -689,6 +870,8 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the central free lists state
 				 *
+				 * @return lists state
+				 *
 				 * \~
 				 */
 				state_t state() noexcept;
@@ -700,6 +883,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the page heap state
+				 *
+				 * @return page heap state
 				 *
 				 * \~
 				 */
@@ -735,13 +920,21 @@ namespace awh {
 				 * \~english
 				 * @brief Method of forcibly releasing all locks in the forked child
 				 *
+				 * @note The fork child gets a single thread, while locks held by the parent's
+				 *       other threads remain held forever
+				 *
 				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit Central() noexcept;
 		} central_t;

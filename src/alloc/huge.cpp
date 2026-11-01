@@ -12,11 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл слоя крупных выдач
- *
- * \~english
- * @brief Huge allocation layer file
+ * @brief Реализация слоя крупных выдач
  *
  * @copyright Copyright © 2026
  *
@@ -29,15 +25,34 @@
 #include <alloc/pages.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/spin.inc"
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
 
 /**
  * Метка снесённого места таблицы поиска
- *
  */
 awh::alloc::Huge::record_t * const awh::alloc::Huge::_tomb = reinterpret_cast <awh::alloc::Huge::record_t *> (static_cast <uintptr_t> (1));
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Huge::State::State() noexcept : live(0), taken(0), given(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Huge::Record::Record() noexcept :
+ sealed(false), hidden(false),
+ span(0), size(0), opened(0),
+ base(nullptr), block(nullptr), spare(nullptr) {}
 
 /**
  * @brief Конструктор
@@ -171,7 +186,7 @@ bool awh::alloc::Huge::rehash(const size_t length) noexcept {
 	if(previous != nullptr)
 		// Отдаём источнику память прежней таблицы
 		this->_source->release(previous, region);
-	// Отвечаем успехом
+	// Прежняя таблица возвращена источнику
 	return true;
 }
 /**
@@ -226,6 +241,9 @@ bool awh::alloc::Huge::enroll(record_t * record) noexcept {
 	 */
 	// Число пройденных мест таблицы
 	size_t passed = 0;
+	/**
+	 * Ищем место записи линейным розыском
+	 */
 	while((this->_table[index] != nullptr) && (this->_table[index] != this->_tomb)){
 		// Если запись в таблице уже есть
 		if(this->_table[index]->block == record->block)
@@ -238,15 +256,15 @@ bool awh::alloc::Huge::enroll(record_t * record) noexcept {
 			// Отвечаем отказом: свободного места нет
 			return false;
 	}
-	// Записываем запись в найденное место
 	// Если найденное место помечено снесённым
 	if(this->_table[index] == this->_tomb)
 		// Уменьшаем число снесённых мест: надгробие занято живой записью
 		this->_buried--;
+	// Записываем запись в найденное место
 	this->_table[index] = record;
 	// Увеличиваем число внесённых записей
 	this->_enrolled++;
-	// Отвечаем успехом
+	// Запись внесена
 	return true;
 }
 /**
@@ -326,7 +344,7 @@ bool awh::alloc::Huge::init(source_t * source) noexcept {
 		return false;
 	// Запоминаем источник страниц
 	this->_source = source;
-	// Отвечаем успехом
+	// Источник страниц закреплён
 	return true;
 }
 /**
@@ -378,7 +396,9 @@ void awh::alloc::Huge::reset() noexcept {
 	 * неотданной. Оттого им и отведён свой обход, идущий ДО сброса списка
 	 */
 	{
-		// Перебираем придержанные области
+		/**
+		 * Перебираем придержанные области
+		 */
 		for(record_t * record = this->_cached; record != nullptr; record = record->spare)
 			// Отдаём источнику придержанную область
 			this->_source->release(record->base, record->span);
@@ -818,6 +838,8 @@ void * awh::alloc::Huge::alloc(const size_t size, const size_t alignment) noexce
  *
  * @param size   требуемый размер в байтах
  * @param hidden признак состоявшегося укрытия
+ * @param wire   признак необходимости запрета уходить в подкачку
+ * @param wired  признак состоявшегося запрета либо nullptr
  * @return       адрес выданного блока либо nullptr
  *
  */

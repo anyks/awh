@@ -56,6 +56,48 @@
  * \~english
  * @brief Header file of the password intake from the terminal with the echo off
  *
+ * @section prompt_decisions Intentional decisions
+ *
+ * @details <b>The TERMINAL is read, not the input stream.</b> The input stream may be
+ *          replaced by anyone - a pipeline, a file redirect, a foreign process, - and
+ *          the password would then come not from a person but from wherever, with the
+ *          echo still on. Hence the intake goes directly through the terminal device
+ *          (`/dev/tty` on POSIX, console on MS Windows), and the absence of a terminal
+ *          is a REFUSAL, not a reason to read the stream.
+ *
+ *          <b>The password goes directly into the secret vessel.</b> There is no
+ *          intermediate storage at all: every reallocation of it would leave a copy in
+ *          the heap that nobody wipes. Capacity is declared in advance - at input it is
+ *          known, - and input beyond it answers with a refusal, not by growing the
+ *          vessel.
+ *
+ *          <b>Echo is removed, not replaced with asterisks.</b> The number of password
+ *          characters is itself information, and there is no reason to hand it to an
+ *          observer looking over the shoulder. `sudo` does the same, and people are
+ *          already used to it.
+ *
+ *          <b>Terminal settings are returned by the destructor.</b> Exit from the intake
+ *          can be early or by exception, and a terminal left without echo makes the
+ *          person's entire session unusable, not just our application.
+ *
+ *          <b>There is no CANCELLED outcome, and this was established by experiment.</b>
+ *          The interrupt key press does not reach us on any system: line editing turns it
+ *          into a signal, and the process dies before our character parsing. Measured
+ *          2026-09-15 under a pseudoterminal - feeding `0x03` kills the probe mid-input.
+ *          The `CANCELLED` outcome stood here and was removed as unreachable: the path to
+ *          it is not closed on any platform, not "closed but rare".
+ *
+ *          Removing line editing (`ICANON`) so the key would reach us is not allowed:
+ *          together with it the person loses the usual way to exit input, and the
+ *          application stops being killable by interrupt.
+ *
+ *          <b>What the intake does NOT cover.</b> The same signal does not run the
+ *          destructor, and the terminal is left without echo - the person fixes this with
+ *          `stty sane`. Installing a signal handler for that is not allowed: the
+ *          application may have its own, and it matters more than ours.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -147,6 +189,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of accepting a password from the terminal with the echo off
 				 *
+				 * @note The vessel must be created IN ADVANCE: its capacity is the upper bound of
+				 *       input, and it is known to the caller, not to us
+				 *
+				 * @note The previous content of the vessel is removed: the intake starts from the
+				 *       beginning
+				 *
 				 * @param vessel vessel the password is put into
 				 * @param hint   hint printed to the human, or nullptr
 				 * @return       outcome of the password intake
@@ -165,6 +213,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether a terminal is available
+				 *
+				 * @note It is useful to ask BEFORE creating the vessel: no terminal - no point
+				 *       in taking protected memory
 				 *
 				 * @return flag of an available terminal
 				 *

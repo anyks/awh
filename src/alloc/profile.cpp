@@ -12,11 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл учёта мест выдачи памяти
- *
- * \~english
- * @brief Allocation site accounting file
+ * @brief Реализация учёта мест выдачи памяти
  *
  * @copyright Copyright © 2026
  *
@@ -28,15 +24,33 @@
 #include <alloc/profile.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/spin.inc"
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
 
 /**
  * Метка снесённого места таблицы учёта
- *
  */
 awh::alloc::Profile::record_t * const awh::alloc::Profile::_tomb = reinterpret_cast <awh::alloc::Profile::record_t *> (static_cast <uintptr_t> (1));
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Holding::Holding() noexcept :
+ block(nullptr), size(0), stamp(0), frames(nullptr), depth(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Profile::State::State() noexcept :
+ live(0), bytes(0), enrolled(0), dropped(0) {}
 
 /**
  * @brief Конструктор
@@ -169,7 +183,7 @@ bool awh::alloc::Profile::rehash(const size_t length) noexcept {
 	if(previous != nullptr)
 		// Отдаём источнику память прежней таблицы
 		this->_source->release(previous, region);
-	// Отвечаем успехом
+	// Прежняя таблица возвращена источнику
 	return true;
 }
 /**
@@ -240,6 +254,9 @@ bool awh::alloc::Profile::insert(record_t * record) noexcept {
 	 */
 	// Число пройденных мест таблицы
 	size_t passed = 0;
+	/**
+	 * Ищем место записи линейным розыском
+	 */
 	while((this->_table[index] != nullptr) && (this->_table[index] != _tomb)){
 		// Если запись в таблице уже есть
 		if(this->_table[index]->block == record->block)
@@ -260,7 +277,7 @@ bool awh::alloc::Profile::insert(record_t * record) noexcept {
 	this->_table[index] = record;
 	// Увеличиваем число внесённых записей
 	this->_enrolled++;
-	// Отвечаем успехом
+	// Запись внесена
 	return true;
 }
 /**
@@ -355,7 +372,7 @@ bool awh::alloc::Profile::init(source_t * source, trace_t * trace) noexcept {
 	this->_source = source;
 	// Запоминаем съём стека вызовов
 	this->_trace = trace;
-	// Отвечаем успехом
+	// Съём стека закреплён
 	return true;
 }
 /**
@@ -533,7 +550,7 @@ bool awh::alloc::Profile::enroll(const void * block, const size_t size, const ui
 	this->_state.enrolled++;
 	// Запоминаем число учитываемых живых блоков
 	this->_live.store(this->_state.live, std::memory_order_relaxed);
-	// Отвечаем успехом
+	// Предел живых блоков запомнен
 	return true;
 }
 /**
@@ -565,13 +582,13 @@ bool awh::alloc::Profile::amend(const void * block, const size_t size) noexcept 
 	record->size = size;
 	// Увеличиваем объём учитываемых живых блоков на новый размер
 	this->_state.bytes += size;
-	// Отвечаем успехом
+	// Объём живых блоков увеличен
 	return true;
 }
 /**
  * @brief Метод снятия блока с учёта
  *
- * @param block адрес блока
+ * @param block адрес освобождаемого блока
  * @return      признак снятия блока с учёта
  *
  */
@@ -590,7 +607,7 @@ bool awh::alloc::Profile::expel(const void * block) noexcept {
 		return false;
 	// Снимаем запись с учёта
 	this->discard(index);
-	// Отвечаем успехом
+	// Блок снят с учёта
 	return true;
 }
 /**

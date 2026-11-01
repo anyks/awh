@@ -46,8 +46,38 @@
  * @brief Header file of the page heap — allocating and returning page-multiple regions,
  *        coalescing adjacent free regions and deferred return of memory to the system
  *
+ * @section pages_decisions Deliberate decisions
+ *
+ * @details <b>Own memory for accounting records, not standard library containers.</b>
+ *          This heap shadows the process-wide malloc, and any container inside it
+ *          would go for memory to it — that is, into infinite recursion on the very
+ *          first allocation. Hence span accounting records are taken from its own
+ *          carving allocator, which in turn takes them straight from the page source.
+ *          For the same reason there is neither new nor exceptions here.
+ *
+ *          <b>Chunks from the source are large and aligned.</b> A four-megabyte
+ *          region, aligned to its own size, allows finding its start from any address
+ *          inside it with a single mask, without search. It follows that heap pages
+ *          are a quantity of their own (8 KB), not what the system calls a page: on
+ *          MS Windows the allocation granularity is 64 KB, and accounting by it would
+ *          mean splitting memory four times coarser than needed.
+ *
+ *          <b>A chunk is returned to the system entirely or not at all.</b> MS Windows
+ *          does not allow freeing part of a reserved region: MEM_RELEASE accepts only
+ *          the address obtained from VirtualAlloc. Hence only content is returned in
+ *          parts (purge), while addresses are freed only together with the whole
+ *          chunk.
+ *
+ *          <b>Coalescing goes only within a chunk.</b> Two address-adjacent chunks
+ *          may be returned to the system separately, and a span coalesced across their
+ *          boundary would split in two on return. Hence the chunk boundary is
+ *          impenetrable for coalescing.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -84,13 +114,23 @@
 #endif
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -103,6 +143,11 @@ namespace awh {
 		 * \~english
 		 * @brief Page heap class
 		 *
+		 * @note There are no locks inside: the caller takes them. This heap is the
+		 *       foundation of the allocator, and the lock placement is chosen by it,
+		 *       not by the heap
+		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Pages {
 			public:
@@ -134,6 +179,7 @@ namespace awh {
 				 * \~english
 				 * @brief Page heap state
 				 *
+				 * \~
 				 */
 				typedef struct State {
 					// Взято у источника всего
@@ -147,13 +193,22 @@ namespace awh {
 					// Число взятых у источника кусков
 					size_t chunks;
 					/**
+					 * \~russian
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					State() noexcept :
-					 total(0), used(0), free(0), purged(0), chunks(0) {}
+					State() noexcept;
 				} state_t;
-			private:
 				/**
 				 * Предварительное объявление вложенных видов
 				 *
@@ -163,9 +218,16 @@ namespace awh {
 				 */
 				struct Chunk;
 				struct Span;
+			public:
 				/**
+				 * \~russian
 				 * @brief Учётная запись области страниц
 				 *
+				 *
+				 * \~english
+				 * @brief Accounting record of a page span
+				 *
+				 * \~
 				 */
 				typedef struct Span {
 					// Адрес начала области
@@ -190,6 +252,24 @@ namespace awh {
 					uint64_t stamp;
 					// Метка владельца области, проставляемая слоем выше
 					uint32_t tag;
+					/**
+					 * Стопка свободных блоков области и их число
+					 *
+					 * Стопка ведётся слоем выше (центральными списками разрядов): блок,
+					 * возвращённый в область, ложится в её стопку, и область, чья стопка
+					 * держит все её блоки, возвращается куче целиком. Пока хоть один блок
+					 * удержан наружу - в кэше потока либо у прикладного кода - область
+					 * числится занятой и не возвращается: оттого повторная выдача не может
+					 * наложить чужой блок на живой
+					 */
+					// Голова стопки свободных блоков области
+					void * stack;
+					// Число блоков в стопке области
+					size_t held;
+					// Всего блоков, нарезанных в области
+					size_t total;
+					// Миг полного освобождения области, либо нуль
+					uint64_t idled;
 					// Кусок, которому принадлежит область
 					Chunk * chunk;
 					// Предыдущая область в списке свободных
@@ -198,8 +278,14 @@ namespace awh {
 					Span * next;
 				} span_t;
 				/**
+				 * \~russian
 				 * @brief Учётная запись куска, взятого у источника
 				 *
+				 *
+				 * \~english
+				 * @brief Accounting record of a chunk taken from the source
+				 *
+				 * \~
 				 */
 				typedef struct Chunk {
 					// Адрес начала куска
@@ -224,6 +310,7 @@ namespace awh {
 					std::atomic <span_t *> index[PAGES];
 				} chunk_t;
 				/**
+				 * \~russian
 				 * @brief Лист радикс-карты: метки разрядов по страницам
 				 *
 				 * @note Метка лежит байтом на страницу адресного пространства и читается
@@ -232,21 +319,49 @@ namespace awh {
 				 *       `describe`. Неделимые они потому, что читатель разбирает адрес
 				 *       БЕЗ замка кучи
 				 *
+				 *
+				 * \~english
+				 * @brief Radix map leaf: class tags by pages
+				 *
+				 * @note The tag lies as one byte per page of address space and is read without
+				 *       finding the chunk - by page number. Zero means the page is not given to a
+				 *       class: then resolution goes the full way through `describe`. They are atomic
+				 *       because the reader resolves the address WITHOUT the heap lock
+				 *
+				 * \~
 				 */
 				typedef std::atomic <uint8_t> leaf_t;
 				/**
+				 * \~russian
 				 * @brief Средний ярус радикс-карты: места, держащие листы
 				 *
+				 *
+				 * \~english
+				 * @brief Radix map middle tier: slots holding leaves
+				 *
+				 * \~
 				 */
 				typedef std::atomic <leaf_t *> mid_t;
 				/**
+				 * \~russian
 				 * @brief Корень радикс-карты: места, держащие средние ярусы
 				 *
+				 *
+				 * \~english
+				 * @brief Radix map root: slots holding middle tiers
+				 *
+				 * \~
 				 */
 				typedef std::atomic <mid_t *> root_t;
 				/**
+				 * \~russian
 				 * @brief Запись таблицы поиска куска по адресу
 				 *
+				 *
+				 * \~english
+				 * @brief Chunk lookup table record by address
+				 *
+				 * \~
 				 */
 				typedef struct Registry {
 					/**
@@ -345,47 +460,97 @@ namespace awh {
 				state_t _state;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
 				 * @return адрес выданной памяти либо nullptr
 				 *
+				 *
+				 * \~english
+				 * @brief Method of allocating memory for an accounting record
+				 *
+				 * @return address of the allocated memory or nullptr
+				 *
+				 * \~
 				 */
 				void * meta(const size_t size) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод взятия у источника нового куска
 				 *
 				 * @return взятый кусок либо nullptr
 				 *
+				 *
+				 * \~english
+				 * @brief Method of taking a new chunk from the source
+				 *
+				 * @return the taken chunk or nullptr
+				 *
+				 * \~
 				 */
 				chunk_t * grow() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод внесения области в список свободных
 				 *
 				 * @param span вносимая область
 				 *
+				 *
+				 * \~english
+				 * @brief Method of inserting a span into the free list
+				 *
+				 * @param span the span being inserted
+				 *
+				 * \~
 				 */
 				void push(span_t * span) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод изъятия области из списка свободных
 				 *
 				 * @param span изымаемая область
 				 *
+				 *
+				 * \~english
+				 * @brief Method of removing a span from the free list
+				 *
+				 * @param span the span being removed
+				 *
+				 * \~
 				 */
 				void pull(span_t * span) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод поиска свободной области требуемого размера
 				 *
 				 * @param pages требуемое число страниц
 				 * @return      найденная область либо nullptr
 				 *
+				 *
+				 * \~english
+				 * @brief Method of finding a free span of the required size
+				 *
+				 * @param pages required number of pages
+				 * @return      found span or nullptr
+				 *
+				 * \~
 				 */
 				span_t * search(const size_t pages) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод слияния области с соседями по куску
 				 *
 				 * @param span сливаемая область
 				 * @return     область после слияния
 				 *
+				 *
+				 * \~english
+				 * @brief Method of merging a span with its neighbours in a chunk
+				 *
+				 * @param span the span being merged
+				 * @return     span after merging
+				 *
+				 * \~
 				 */
 				span_t * merge(span_t * span) noexcept;
 				/**
@@ -402,16 +567,34 @@ namespace awh {
 				 * \~english
 				 * @brief Method of merging the deferred spans
 				 *
+				 * @note Called only when the span search failed, and when returning memory
+				 *       to the system. Merging on every free was expensive: a span merged
+				 *       with neighbours grows to a whole chunk, and writing it into the
+				 *       chunk pointers goes over all 512 pages - while the very next
+				 *       allocation splits it back and writes again. The measurement showed
+				 *       about seven tenths of the beyond-class allocation path time went
+				 *       into this
+				 *
+				 * \~
 				 */
 				void compact() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод записи области в указатели куска
 				 *
 				 * @param span записываемая область
 				 *
+				 *
+				 * \~english
+				 * @brief Method of writing a span into the chunk pointers
+				 *
+				 * @param span the span being written
+				 *
+				 * \~
 				 */
 				void mark(span_t * span) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод проставления меток разрядов по страницам радикс-карты
 				 *
 				 * @note Заводит корень, средние ярусы и листы по мере надобности, а метки
@@ -422,6 +605,19 @@ namespace awh {
 				 * @param pages число страниц диапазона
 				 * @param tag   проставляемая метка разряда
 				 *
+				 *
+				 * \~english
+				 * @brief Method of setting class tags on radix map pages
+				 *
+				 * @note Creates the root, middle tiers and leaves as needed, and writes the tags
+				 *       behind a release barrier set by the caller: the reader takes them with an
+				 *       acquire in `classify`
+				 *
+				 * @param addr  address of the first page of the range
+				 * @param pages number of pages in the range
+				 * @param tag   class tag being set
+				 *
+				 * \~
 				 */
 				void paint(const void * addr, const size_t pages, const uint8_t tag) noexcept;
 				/**
@@ -434,6 +630,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of rebuilding the chunk lookup table
 				 *
+				 * @param length required table length in slots
+				 * @return       table rebuild flag
+				 *
+				 * \~
 				 */
 				bool rehash(const size_t length) noexcept;
 				/**
@@ -446,6 +646,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of enrolling a chunk into the lookup table
 				 *
+				 * @param chunk the chunk being enrolled
+				 * @return      enrollment flag
+				 *
+				 * \~
 				 */
 				bool enroll(chunk_t * chunk) noexcept;
 				/**
@@ -458,6 +662,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of looking up the chunk an address belongs to
 				 *
+				 * @param addr address being resolved
+				 * @return     found chunk or nullptr
+				 *
+				 * \~
 				 */
 				chunk_t * discover(const void * addr) const noexcept;
 				/**
@@ -475,32 +683,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of looking up the chunk an address belongs to
 				 *
+				 * @note The hint is tried first: a thread frees blocks from the same few chunks it
+				 *       allocated from, and comparing the bounds of the last found chunk answers
+				 *       almost always. The table lookup is the cold tail and stays in the code file
+				 *
+				 * @param addr address being resolved
+				 * @param hint lookup hint storage location
+				 * @return     found chunk or nullptr
+				 *
+				 * \~
 				 */
-				AWH_PAGES_INLINE chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept {
-					/**
-					 * Сперва пробуем подсказку
-					 *
-					 * Поток освобождает блоки из тех же немногих кусков, что и выдавал, и
-					 * сличение границ последнего найденного куска отвечает почти всегда
-					 */
-					if(hint != nullptr){
-						// Получаем кусок из подсказки
-						chunk_t * chunk = reinterpret_cast <chunk_t *> (* hint);
-						// Если подсказка задана и адрес лежит внутри её куска
-						if((chunk != nullptr) && (reinterpret_cast <uintptr_t> (addr) >= reinterpret_cast <uintptr_t> (chunk->base)) &&
-						   (reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)))
-							// Выводим кусок из подсказки
-							return chunk;
-					}
-					// Ищем кусок по таблице
-					chunk_t * chunk = this->discover(addr);
-					// Если кусок найден и подсказку требуется запомнить
-					if((chunk != nullptr) && (hint != nullptr))
-						// Запоминаем найденный кусок подсказкой
-						(* hint) = chunk;
-					// Выводим найденный кусок
-					return chunk;
-				}
+				AWH_PAGES_INLINE chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -514,6 +707,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the heap
 				 *
+				 * @param source   page source
+				 * @param arena    area to take at initialization in bytes
+				 * @param confined ban on going to the source beyond what is taken
+				 * @return         sign of successful initialization
+				 *
+				 * \~
 				 */
 				bool init(source_t * source, const size_t arena, const bool confined) noexcept;
 				/**
@@ -533,10 +732,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of occupying an area of an already initialized heap
 				 *
-				 * @param arena    area to occupy in bytes
-				 * @param confined ban on going to the source beyond what is occupied
-				 * @return         flag of the required area having been occupied
+				 * @note Needed because on ELF systems name substitution works from process
+				 *       startup: the heap is established on the very first standard library
+				 *       allocation, long before capture, and nobody there knows what the
+				 *       application ordered at initialization. Takes the MISSING part, not the
+				 *       whole requested area
 				 *
+				 * @param arena    area to occupy in bytes
+				 * @param confined ban on going to the source beyond what is taken
+				 * @return         sign of successful occupation
+				 *
+				 * \~
 				 */
 				bool occupy(const size_t arena, const bool confined) noexcept;
 				/**
@@ -548,6 +754,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of destroying the heap
 				 *
+				 * @note Returns everything taken to the source, including the accounting record
+				 *       memory
+				 *
+				 * \~
 				 */
 				void destroy() noexcept;
 			public:
@@ -561,9 +771,19 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating a region of pages
 				 *
+				 * @param pages required number of heap pages
+				 * @return      address of the allocated region or nullptr
+				 *
+				 * \~
 				 */
 				/**
+				 * \~russian
 				 * @param served действительно выданное число страниц, либо nullptr
+				 *
+				 * \~english
+				 * @param served actually allocated number of pages, or nullptr
+				 *
+				 * \~
 				 */
 				void * alloc(const size_t pages, size_t * served = nullptr) noexcept;
 				/**
@@ -581,6 +801,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning a region of pages
 				 *
+				 * @note The time is passed from the outside rather than taken from the system:
+				 *       the heap is called under the allocator lock, and a clock call from there
+				 *       would cost a kernel transition on every free
+				 *
+				 * @param addr address of the region being returned
+				 * @param now  current time in milliseconds
+				 * @return     sign of the region having been returned
+				 *
+				 * \~
 				 */
 				bool free(void * addr, const uint64_t now) noexcept;
 				/**
@@ -606,6 +835,23 @@ namespace awh {
 				 * \~english
 				 * @brief Method of expanding an allocated region in place
 				 *
+				 * @details Grows the region at the expense of the ADJACENT free span lying
+				 *          right behind it in the same chunk. This does not always work -
+				 *          the neighbour may be occupied, small, or absent entirely - and
+				 *          refusal here is not an error: the caller moves the content by
+				 *          ordinary means
+				 *
+				 * @note This is why the method exists: moving the content while growing costs a
+				 *       copy of the whole block, and on a doubling chain its price becomes
+				 *       quadratic. Measured, the chain 16 bytes -> 256 KB took 14 750 us for us
+				 *       against 2 499 for the system allocator, while a SINGLE copy of the same
+				 *       chain costs 4 440 - the system allocator simply did not copy
+				 *
+				 * @param addr  address of the region being expanded
+				 * @param pages new size in pages
+				 * @return      sign of the expansion having taken place
+				 *
+				 * \~
 				 */
 				bool expand(void * addr, const size_t pages) noexcept;
 				/**
@@ -618,6 +864,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining the size of an allocated region
 				 *
+				 * @param addr address of the allocated region
+				 * @return     region size in heap pages, or zero
+				 *
+				 * \~
 				 */
 				size_t size(const void * addr) const noexcept;
 				/**
@@ -633,6 +883,13 @@ namespace awh {
 				 * \~english
 				 * @brief Method of finding the region an address belongs to
 				 *
+				 * @param addr  address being resolved
+				 * @param begin start address of the found region
+				 * @param pages size of the found region in heap pages
+				 * @param live  sign of the region being issued to the outside
+				 * @return      sign of the address belonging to the heap
+				 *
+				 * \~
 				 */
 				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) const noexcept;
 				/**
@@ -648,22 +905,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of checking whether an address belongs to the heap
 				 *
+				 * @note Unlike locate it works in constant time and suits calling on
+				 *       every free
+				 *
+				 * @param addr address being resolved
+				 * @return     sign of the address belonging to the heap
+				 *
+				 * \~
 				 */
 				bool owns(const void * addr) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод описания области, которой принадлежит адрес
-				 *
-				 * @param addr  разбираемый адрес
-				 * @param begin адрес начала найденной области
-				 * @param pages размер найденной области в страницах кучи
-				 * @param tag   метка владельца найденной области
-				 * @return      признак того, что адрес принадлежит выданной наружу области
-				 *
-				 * \~english
-				 * @brief Method of describing the region an address belongs to
-				 *
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод получения метки разряда по адресу
@@ -683,63 +933,66 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the size class tag by address
 				 *
+				 * @details The fast free path: answers with the class tag in a single read,
+				 *          touching neither page pointers nor the span record
+				 *
+				 * @note Zero means the tag cannot be answered: the address is not ours, or the
+				 *       page is not given to a class. Then resolution goes the full way through
+				 *       `describe`
+				 *
+				 * @param addr address being resolved
+				 * @param hint lookup hint storage location
+				 * @return     class tag, or zero
+				 *
+				 * \~
 				 */
-				AWH_PAGES_INLINE uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept {
-					// Подсказка карте не нужна: она отвечает номером страницы
-					(void) hint;
-					// Определяем номер страницы адреса
-					const uintptr_t page = (reinterpret_cast <uintptr_t> (addr) >> SHIFT);
-					// Получаем корень радикс-карты
-					const root_t * root = this->_root.load(std::memory_order_acquire);
-					// Если корень не заведён
-					if(root == nullptr)
-						// Ответить меткой нельзя
-						return 0;
-					// Получаем средний ярус радикс-карты
-					const mid_t * mid = root[page >> (LEAF_BITS * 2)].load(std::memory_order_acquire);
-					// Если среднего яруса нет
-					if(mid == nullptr)
-						// Ответить меткой нельзя
-						return 0;
-					// Получаем лист радикс-карты
-					const leaf_t * leaf = mid[(page >> LEAF_BITS) & LEAF_MASK].load(std::memory_order_acquire);
-					// Если листа нет
-					if(leaf == nullptr)
-						// Ответить меткой нельзя
-						return 0;
-					// Выводим метку разряда страницы
-					return leaf[page & LEAF_MASK].load(std::memory_order_acquire);
-				}
-				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept {
-					// Ищем кусок, которому принадлежит адрес
-					const chunk_t * chunk = this->lookup(addr, hint);
-					// Если куска за адресом не нашлось
-					if(chunk == nullptr)
-						// Адрес куче не принадлежит
-						return false;
-					// Определяем номер страницы, которой принадлежит адрес
-					const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
-					// Получаем область, которой принадлежит страница
-					const span_t * span = chunk->index[page].load(std::memory_order_acquire);
-					// Если области у страницы нет либо область наружу не выдана
-					if((span == nullptr) || span->released)
-						// Описывать нечего
-						return false;
-					// Если требуется адрес начала области
-					if(begin != nullptr)
-						// Записываем адрес начала области
-						(* begin) = span->base;
-					// Если требуется размер области
-					if(pages != nullptr)
-						// Записываем размер области
-						(* pages) = span->pages;
-					// Если требуется метка владельца
-					if(tag != nullptr)
-						// Записываем метку владельца
-						(* tag) = span->tag;
-					// Отвечаем успехом
-					return true;
-				}
+				AWH_PAGES_INLINE uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения записи области по адресу блока
+				 *
+				 * @details Разбор для холодных путей слоя выше: возврат блока в стопку
+				 *          области и решение о возврате области куче
+				 *
+				 * @param addr разбираемый адрес
+				 * @return     запись области страницы адреса, либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of getting the span record of a block address
+				 *
+				 * @details Resolution for the cold paths of the layer above: returning a
+				 *          block to its span stack and deciding on returning the span
+				 *
+				 * @param addr address being resolved
+				 * @return     span record of the address page, or nullptr
+				 *
+				 * \~
+				 */
+				span_t * scope(const void * addr) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод описания области, которой принадлежит адрес
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала найденной области
+				 * @param pages размер найденной области в страницах кучи
+				 * @param tag   метка владельца найденной области
+				 * @param hint  место хранения подсказки поиска
+				 * @return      признак того, что адрес принадлежит выданной наружу области
+				 *
+				 * \~english
+				 * @brief Method of describing the region an address belongs to
+				 *
+				 * @param addr  address being resolved
+				 * @param begin start address of the found region
+				 * @param pages size of the found region in heap pages
+				 * @param tag   owner tag of the found region
+				 * @param hint  lookup hint storage location
+				 * @return      sign of the address belonging to a region issued outward
+				 *
+				 * \~
+				 */
+				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод пометки выданной области
@@ -751,6 +1004,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of tagging an allocated region
 				 *
+				 * @param addr address of the region
+				 * @param tag  class tag being set
+				 * @return     sign of the tag having been set
+				 *
+				 * \~
 				 */
 				bool tag(void * addr, const uint32_t tag) noexcept;
 			public:
@@ -758,13 +1016,18 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод отдачи системе свободной памяти
 				 *
-				 * @param now  текущее время в миллисекундах
-				 * @param all  отдавать всё, не глядя на отсрочку
-				 * @return     объём отданной системе памяти в байтах
+				 * @param now текущее время в миллисекундах
+				 * @param all отдавать всё, не глядя на отсрочку
+				 * @return    объём отданной системе памяти в байтах
 				 *
 				 * \~english
 				 * @brief Method of returning free memory to the system
 				 *
+				 * @param now current time in milliseconds
+				 * @param all return everything, ignoring the delay
+				 * @return    volume returned to the system in bytes
+				 *
+				 * \~
 				 */
 				size_t purge(const uint64_t now, const bool all) noexcept;
 				/**
@@ -786,6 +1049,19 @@ namespace awh {
 				 * \~english
 				 * @brief Method of detaching the regions to be returned to the system
 				 *
+				 * @note The half of the return that runs UNDER THE LOCK. The second half - the
+				 *       call to the source - must run outside: those are system calls, and
+				 *       holding the heap lock across them would make the other threads spin for
+				 *       the whole time the kernel works
+				 *
+				 * @param now    current time in milliseconds
+				 * @param all    return everything regardless of the delay
+				 * @param spans  place for the detached regions
+				 * @param limit  maximum number of regions to detach
+				 * @param cursor position in the traversed list to continue from
+				 * @return       number of detached regions
+				 *
+				 * \~
 				 */
 				size_t detach(const uint64_t now, const bool all, void ** spans, const size_t limit, size_t * cursor) noexcept;
 				/**
@@ -794,14 +1070,23 @@ namespace awh {
 				 *
 				 * @note Половина отдачи, идущая ПОД ЗАМКОМ, вслед за обращением к источнику
 				 *
-				 * @param spans  изъятые области
-				 * @param count  число изъятых областей
-				 * @param given  признаки состоявшейся отдачи по каждой области
-				 * @return       объём отданной системе памяти в байтах
+				 * @param spans изъятые области
+				 * @param count число изъятых областей
+				 * @param given признаки состоявшейся отдачи по каждой области
+				 * @return      объём отданной системе памяти в байтах
 				 *
 				 * \~english
 				 * @brief Method of returning the detached regions to the free lists
 				 *
+				 * @note The half of the return that runs UNDER THE LOCK, following the call to
+				 *       the source
+				 *
+				 * @param spans detached regions
+				 * @param count number of detached regions
+				 * @param given signs of the return having taken place for each region
+				 * @return      amount of memory returned to the system in bytes
+				 *
+				 * \~
 				 */
 				size_t attach(void ** spans, const size_t count, const bool * given) noexcept;
 				/**
@@ -818,6 +1103,13 @@ namespace awh {
 				 * \~english
 				 * @brief Method of discharging a detached region to the source
 				 *
+				 * @note The region is given back to the source and the memory is released: the
+				 *       page fault cost is paid on the next allocation of the same size
+				 *
+				 * @param span detached region record
+				 * @return     number of pages actually discharged
+				 *
+				 * \~
 				 */
 				bool discharge(void * span) const noexcept;
 				/**
@@ -830,6 +1122,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the memory release policy
 				 *
+				 * @param delay delay in milliseconds: -1 means never return
+				 * @param block smallest returned piece in bytes
+				 *
+				 * \~
 				 */
 				void policy(const int64_t delay, const size_t block) noexcept;
 				/**
@@ -845,6 +1141,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the ceiling of memory taken from the source
 				 *
+				 * @note The ceiling applies to the page heap and guards: hitting it, the heap
+				 *       answers with refusal
+				 *
+				 * @param limit ceiling in bytes: zero means no ceiling
+				 *
+				 * \~
 				 */
 				void ceiling(const size_t limit) noexcept;
 				/**
@@ -859,6 +1161,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the heap has hit its ceiling
 				 *
+				 * @note The flag is set by the allocation path and cleared by the purge
+				 *       path
+				 *
+				 * @return sign of the heap having hit its ceiling
+				 *
+				 * \~
 				 */
 				bool jammed() noexcept;
 				/**
@@ -873,8 +1181,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the number of spans withheld for purging
 				 *
+				 * @note The value is approximate: it is read without locks, and other
+				 *       threads may be changing the lists at the same time. The exact
+				 *       value is not needed for the purpose of this method. The count
+				 *       is updated by the allocation and free paths
+				 *
 				 * @return number of withheld spans
 				 *
+				 * \~
 				 */
 				size_t pending() const noexcept;
 				/**
@@ -892,8 +1206,16 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning withheld spans to the lists in a fork child
 				 *
-				 * @return number of returned spans
+				 * @note Call ONLY in a fork child. The detached regions live in a local array
+				 *       on the stack of the returning thread, and the fork hands the child the
+				 *       regions and the counter, but not the thread obliged to put them back:
+				 *       without the return they drop out of the heap forever. The traversal
+				 *       goes over chunks, not over lists - a detached region lies in no list
+				 *       at all
 				 *
+				 * @return number of spans returned to the lists
+				 *
+				 * \~
 				 */
 				size_t reclaim() noexcept;
 			public:
@@ -906,12 +1228,20 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the heap state
 				 *
+				 * @return heap state
+				 *
+				 * \~
 				 */
 				const state_t & state() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Pages() noexcept;
 		} pages_t;

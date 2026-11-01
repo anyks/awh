@@ -35,8 +35,28 @@
  * \~english
  * @brief Header file of the memory allocator lock
  *
+ * @section spin_decisions Intentional decisions
+ *
+ * @details <b>The lock is ours, not std::mutex.</b> This lock is taken from under
+ *          intercepted malloc, and a standard mutex may on its very first acquisition
+ *          call memory allocation - and call that very malloc it was taken from under.
+ *          This recursion cannot be broken, hence the lock is a single word in memory
+ *          and allocates nothing at all.
+ *
+ *          <b>Inlining is mandatory.</b> Lock acquisition is on every allocation path,
+ *          and a call here would cost more than the acquisition itself. Hence the body
+ *          is placed inline with forced inlining, not in a code file.
+ *
+ *          <b>Spinning with yielding, not bare spinning.</b> Bare spinning on a
+ *          single-core machine costs a whole time quantum: the thread holding the lock
+ *          will not get it until the spinning thread is forcibly descheduled. Hence
+ *          after brief spinning the thread yields time itself.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -48,7 +68,7 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "../sys/macro/global.hpp"
 
@@ -71,13 +91,23 @@
 #endif
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Framework namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Memory allocator namespace
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -87,6 +117,7 @@ namespace awh {
 		 * \~english
 		 * @brief Memory allocator lock class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Spin {
 			public:
@@ -107,6 +138,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring a contended lock
 				 *
+				 * @note Moved to a code file: called only when the lock is held
+				 *
+				 * \~
 				 */
 				void wait() noexcept;
 			public:
@@ -117,15 +151,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring the lock
 				 *
+				 * \~
 				 */
-				AWH_SPIN_INLINE void acquire() noexcept {
-					// Значение незахваченного замка
-					uint32_t free = 0;
-					// Пробуем захватить замок разом
-					if(!this->_held.compare_exchange_weak(free, 1, std::memory_order_acquire, std::memory_order_relaxed))
-						// Захватываем замок кружением
-						this->wait();
-				}
+				AWH_SPIN_INLINE void acquire() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод освобождения замка
@@ -133,11 +161,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the lock
 				 *
+				 * \~
 				 */
-				AWH_SPIN_INLINE void release() noexcept {
-					// Освобождаем замок
-					this->_held.store(0, std::memory_order_release);
-				}
+				AWH_SPIN_INLINE void release() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод задания отклика на заклинивший замок
@@ -154,6 +180,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the callback for a stuck lock
 				 *
+				 * @note The callback is called when the lock is not released for a
+				 *       thousand time yields in a row, - this is no longer thread
+				 *       contention but an unreleased lock. The allocator hangs process
+				 *       forking analysis here: `fork`, called bypassing the runtime
+				 *       library wrapper, does not call `pthread_atfork` callbacks at
+				 *       all, and a lock acquired by a thread that did not survive the
+				 *       fork would otherwise remain acquired forever
+				 *
+				 * @param callback callback function
+				 *
+				 * \~
 				 */
 				static void onStuck(void (* callback)()) noexcept;
 				/**
@@ -166,10 +203,16 @@ namespace awh {
 				 * \~english
 				 * @brief Method of forcibly releasing the lock
 				 *
+				 * @note Needed by the child after process forking: a lock acquired by a
+				 *       thread that did not survive the fork would otherwise remain
+				 *       acquired forever
+				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @note Стоит он ЗДЕСЬ, а не в файле кода, вопреки общему укладу модуля,
@@ -183,6 +226,25 @@ namespace awh {
 				 *
 				 * @note Довод общий с набором функций захвата (`capture.hpp`); там же
 				 *       записано, чем этот вид дефекта доказан
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * @note It is HERE, not in a code file, contrary to the module's general
+				 *       layout, and deliberately: the `constexpr` marker requires a body
+				 *       at the declaration. These locks lie as module variables, and
+				 *       memory allocation capture happens BEFORE module variables are
+				 *       constructed - the application may create a framework object as
+				 *       a file-level variable. Without `constexpr` the compiler creates
+				 *       ordinary construction for the variable, and that ZEROES the lock:
+				 *       a lock acquired by that time would appear free, and the thread
+				 *       holding it would hold nothing
+				 *
+				 * @note The reasoning is shared with the capture function set
+				 *       (`capture.hpp`); there it is also recorded how this kind of defect
+				 *       was proven
+				 *
+				 * \~
 				 */
 				constexpr Spin() noexcept : _held(0) {}
 		} spin_t;
@@ -200,6 +262,7 @@ namespace awh {
 		 * \~english
 		 * @brief Scoped lock holder class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Hold {
 			private:
@@ -207,23 +270,29 @@ namespace awh {
 				spin_t & _spin;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param spin удерживаемый замок
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * @param spin lock to hold
+				 *
+				 * \~
 				 */
-				AWH_SPIN_INLINE Hold(spin_t & spin) noexcept : _spin(spin) {
-					// Захватываем замок
-					this->_spin.acquire();
-				}
+				AWH_SPIN_INLINE Hold(spin_t & spin) noexcept;
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
-				AWH_SPIN_INLINE ~Hold() noexcept {
-					// Освобождаем замок
-					this->_spin.release();
-				}
+				AWH_SPIN_INLINE ~Hold() noexcept;
 		} hold_t;
 	};
 };

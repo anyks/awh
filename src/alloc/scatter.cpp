@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл рассеяния ключевого материала по образу
- *
- * \~english
- * @brief Key material scattering file
- *
- * \~
+ * @brief Реализация рассеяния ключевого материала по образу
  *
  * @copyright Copyright © 2026
  *
@@ -61,8 +55,9 @@ namespace {
 			uint64_t next() noexcept {
 				// Продвигаем состояние потока золотым сечением
 				uint64_t value = (this->_state += 0x9E3779B97F4A7C15ULL);
-				// Перемешиваем разряды числа
+				// Рассеиваем старшие разряды первой ступенью
 				value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9ULL;
+				// Рассеиваем младшие разряды второй ступенью
 				value = (value ^ (value >> 27)) * 0x94D049BB133111EBULL;
 				// Выводим перемешанное число
 				return (value ^ (value >> 31));
@@ -87,7 +82,7 @@ namespace {
 			explicit stream_t(const uint64_t seed) noexcept : _state(seed) {}
 	};
 	/**
-	 * @brief Метод построения перестановки мест носителя
+	 * @brief Функция построения перестановки мест носителя
 	 *
 	 * @note Обе стороны договора строят перестановку ОДНИМ и тем же ходом из одного
 	 *       зерна: тасование Фишера-Йетса, обход сверху вниз. Оттого место i-го байта
@@ -116,9 +111,11 @@ namespace {
 		for(size_t i = capacity; i-- > 1;){
 			// Выбираем место для обмена
 			const size_t j = static_cast <size_t> (stream.next() % (i + 1));
-			// Обмениваем места
+			// Запоминаем обмениваемое место
 			const uint32_t swap = places[i];
+			// Ставим место j-е на место i-е
 			places[i] = places[j];
+			// Возвращаем запомненное место на место j-е
 			places[j] = swap;
 		}
 		// Выводим перестановку мест носителя
@@ -270,8 +267,9 @@ std::string awh::alloc::Scatter::emit(const std::vector <uint8_t> & carrier, con
 	 * Дописываем разряды носителя по шестнадцати в строке
 	 */
 	for(size_t i = 0; i < carrier.size(); i++){
-		// Дописываем очередной разряд носителя
+		// Записываем очередной разряд носителя
 		::snprintf(cell, sizeof(cell), "0x%02X", carrier[i]);
+		// Дописываем разряд к объявлению
 		result.append(cell);
 		// Если разряд не последний
 		if((i + 1) < carrier.size()){

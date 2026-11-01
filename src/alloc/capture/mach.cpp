@@ -12,6 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
+ * @brief Реализация захвата выделения памяти зоной macOS
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -66,7 +68,7 @@ namespace {
 	// Отклик у потомка после ветвления процесса
 	static void (* __awh_zone_child__)() = nullptr;
 	/**
-	 * @brief Метод определения размера блока зоны
+	 * @brief Функция определения размера блока зоны
 	 *
 	 * @param zone зона, у которой спрашивают
 	 * @param ptr  разбираемый указатель
@@ -90,7 +92,7 @@ namespace {
 		return (* __awh_zone_hooks__.msize)(ptr);
 	}
 	/**
-	 * @brief Метод выделения памяти зоной
+	 * @brief Функция выделения памяти зоной
 	 *
 	 * @param zone зона, у которой просят
 	 * @param size требуемый размер в байтах
@@ -104,7 +106,7 @@ namespace {
 		return (* __awh_zone_hooks__.malloc)(size);
 	}
 	/**
-	 * @brief Метод выделения обнулённой памяти зоной
+	 * @brief Функция выделения обнулённой памяти зоной
 	 *
 	 * @param zone  зона, у которой просят
 	 * @param count число элементов
@@ -119,7 +121,7 @@ namespace {
 		return (* __awh_zone_hooks__.calloc)(count, size);
 	}
 	/**
-	 * @brief Метод выделения памяти зоной с выравниванием по странице
+	 * @brief Функция выделения памяти зоной с выравниванием по странице
 	 *
 	 * @param zone зона, у которой просят
 	 * @param size требуемый размер в байтах
@@ -161,7 +163,7 @@ namespace {
 		return nullptr;
 	}
 	/**
-	 * @brief Метод выделения памяти зоной с выравниванием по странице
+	 * @brief Функция выделения памяти зоной с выравниванием по странице
 	 *
 	 * @param zone зона, у которой просят
 	 * @param size требуемый размер в байтах
@@ -178,7 +180,7 @@ namespace {
 		return ::reserveAligned(zone, static_cast <size_t> (::getpagesize()), size);
 	}
 	/**
-	 * @brief Метод выделения памяти зоной пачкой
+	 * @brief Функция выделения памяти зоной пачкой
 	 *
 	 * @param zone   зона, у которой просят
 	 * @param size   требуемый размер блока в байтах
@@ -213,7 +215,7 @@ namespace {
 		return result;
 	}
 	/**
-	 * @brief Метод освобождения памяти зоной пачкой
+	 * @brief Функция освобождения памяти зоной пачкой
 	 *
 	 * @param zone   зона, у которой просят
 	 * @param blocks массив адресов освобождаемых блоков
@@ -234,7 +236,7 @@ namespace {
 		}
 	}
 	/**
-	 * @brief Метод освобождения памяти зоной
+	 * @brief Функция освобождения памяти зоной
 	 *
 	 * @param zone зона, у которой просят
 	 * @param ptr  адрес освобождаемой памяти
@@ -247,7 +249,7 @@ namespace {
 		(* __awh_zone_hooks__.free)(ptr);
 	}
 	/**
-	 * @brief Метод освобождения памяти зоной с известным размером
+	 * @brief Функция освобождения памяти зоной с известным размером
 	 *
 	 * @param zone зона, у которой просят
 	 * @param ptr  адрес освобождаемой памяти
@@ -261,7 +263,7 @@ namespace {
 		(* __awh_zone_hooks__.free)(ptr);
 	}
 	/**
-	 * @brief Метод изменения размера памяти зоной
+	 * @brief Функция изменения размера памяти зоной
 	 *
 	 * @param zone зона, у которой просят
 	 * @param ptr  адрес изменяемой памяти
@@ -276,7 +278,7 @@ namespace {
 		return (* __awh_zone_hooks__.realloc)(ptr, size);
 	}
 	/**
-	 * @brief Метод разрушения зоны
+	 * @brief Функция разрушения зоны
 	 *
 	 * @param zone разрушаемая зона
 	 *
@@ -291,7 +293,7 @@ namespace {
 		(void) zone;
 	}
 	/**
-	 * @brief Метод отдачи системе свободной памяти зоны
+	 * @brief Функция отдачи системе свободной памяти зоны
 	 *
 	 * @param zone зона, у которой просят
 	 * @param goal требуемый объём в байтах
@@ -305,7 +307,7 @@ namespace {
 		return 0;
 	}
 	/**
-	 * @brief Метод опознания принадлежности адреса зоне
+	 * @brief Функция опознания принадлежности адреса зоне
 	 *
 	 * @param zone зона, у которой спрашивают
 	 * @param ptr  разбираемый адрес
@@ -317,7 +319,7 @@ namespace {
 		return static_cast <boolean_t> (::measure(zone, ptr) != 0);
 	}
 	/**
-	 * @brief Метод перечисления блоков зоны для средств разбора памяти
+	 * @brief Функция перечисления блоков зоны для средств разбора памяти
 	 *
 	 * @return признак успеха перечисления
 	 *
@@ -336,7 +338,7 @@ namespace {
 		return KERN_FAILURE;
 	}
 	/**
-	 * @brief Метод определения хорошего размера блока
+	 * @brief Функция определения хорошего размера блока
 	 *
 	 * @param zone зона, у которой спрашивают
 	 * @param size требуемый размер в байтах
@@ -350,7 +352,7 @@ namespace {
 		return size;
 	}
 	/**
-	 * @brief Метод проверки целостности зоны
+	 * @brief Функция проверки целостности зоны
 	 *
 	 * @param zone проверяемая зона
 	 * @return     признак целостности
@@ -363,7 +365,7 @@ namespace {
 		return 1;
 	}
 	/**
-	 * @brief Метод печати состояния зоны
+	 * @brief Функция печати состояния зоны
 	 *
 	 */
 	static void describe(::malloc_zone_t * zone, boolean_t verbose) noexcept {
@@ -371,7 +373,7 @@ namespace {
 		(void) zone; (void) verbose;
 	}
 	/**
-	 * @brief Метод захвата замков зоны перед ветвлением процесса
+	 * @brief Функция захвата замков зоны перед ветвлением процесса
 	 *
 	 */
 	static void freeze(::malloc_zone_t * zone) noexcept {
@@ -383,7 +385,7 @@ namespace {
 			(* ::__awh_zone_before__)();
 	}
 	/**
-	 * @brief Метод освобождения замков зоны после ветвления процесса
+	 * @brief Функция освобождения замков зоны после ветвления процесса
 	 *
 	 */
 	static void thaw(::malloc_zone_t * zone) noexcept {
@@ -395,7 +397,7 @@ namespace {
 			(* ::__awh_zone_after__)();
 	}
 	/**
-	 * @brief Метод сбора статистики зоны
+	 * @brief Функция сбора статистики зоны
 	 *
 	 */
 	static void collect(::malloc_zone_t * zone, ::malloc_statistics_t * stats) noexcept {
@@ -423,6 +425,7 @@ namespace {
 		 *       удерживаемого, а тот ведётся только при включённом съёме мест выдачи.
 		 *       Средства разбора числом этим лишь украшают печать, тогда как объём
 		 *       читают всерьёз
+		 *
 		 */
 		// Задаём занятое прикладным кодом прямо сейчас
 		stats->size_in_use = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
@@ -432,7 +435,7 @@ namespace {
 		stats->size_allocated = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
 	}
 	/**
-	 * @brief Метод определения занятости зоны
+	 * @brief Функция определения занятости зоны
 	 *
 	 * @return признак занятости зоны
 	 *
@@ -444,7 +447,7 @@ namespace {
 		return 0;
 	}
 	/**
-	 * @brief Метод включения записи обращений к адресу
+	 * @brief Функция включения записи обращений к адресу
 	 *
 	 */
 	static void trace(::malloc_zone_t * zone, void * address) noexcept {
@@ -452,7 +455,7 @@ namespace {
 		(void) zone; (void) address;
 	}
 	/**
-	 * @brief Метод перезаведения замков зоны у потомка ветвления
+	 * @brief Функция перезаведения замков зоны у потомка ветвления
 	 *
 	 */
 	static void relock(::malloc_zone_t * zone) noexcept {
@@ -473,7 +476,7 @@ namespace {
 	// Средства разбора нашей зоны
 	static ::malloc_introspection_t __awh_zone_introspect__;
 	/**
-	 * @brief Метод получения зоны, обслуживающей выделение памяти процесса
+	 * @brief Функция получения зоны, обслуживающей выделение памяти процесса
 	 *
 	 * @return обслуживающая зона либо nullptr
 	 *
@@ -508,7 +511,7 @@ namespace {
 	 * возвращалось никогда. Обращение же прямо к зоне минует перечень вовсе
 	 */
 	/**
-	 * @brief Метод выделения памяти прежним распределителем
+	 * @brief Функция выделения памяти прежним распределителем
 	 *
 	 * @param size требуемый размер в байтах
 	 * @return     адрес выданной памяти либо nullptr
@@ -523,7 +526,7 @@ namespace {
 		return ::malloc_zone_malloc(::__awh_zone_previous__, size);
 	}
 	/**
-	 * @brief Метод выделения обнулённой памяти прежним распределителем
+	 * @brief Функция выделения обнулённой памяти прежним распределителем
 	 *
 	 * @param count число элементов
 	 * @param size  размер элемента в байтах
@@ -539,7 +542,7 @@ namespace {
 		return ::malloc_zone_calloc(::__awh_zone_previous__, count, size);
 	}
 	/**
-	 * @brief Метод изменения размера памяти прежним распределителем
+	 * @brief Функция изменения размера памяти прежним распределителем
 	 *
 	 * @param ptr  адрес изменяемой памяти
 	 * @param size требуемый размер в байтах
@@ -555,7 +558,7 @@ namespace {
 		return ::malloc_zone_realloc(::__awh_zone_previous__, ptr, size);
 	}
 	/**
-	 * @brief Метод измерения блока прежним распределителем
+	 * @brief Функция измерения блока прежним распределителем
 	 *
 	 * @warning Спрашивать `malloc_size` здесь НЕЛЬЗЯ: имя это обходит ВСЕ зоны процесса,
 	 *          нашу в том числе, а наша зона отвечает на вопрос о размере нашим же
@@ -581,7 +584,7 @@ namespace {
 		return (* ::__awh_zone_previous__->size)(::__awh_zone_previous__, ptr);
 	}
 	/**
-	 * @brief Метод освобождения памяти прежним распределителем
+	 * @brief Функция освобождения памяти прежним распределителем
 	 *
 	 * @param ptr адрес освобождаемой памяти
 	 *
@@ -606,6 +609,7 @@ namespace {
 		 * при `priorMeasure`. Разница одна: там он вскрылся сразу, у ветвления процесса,
 		 * а здесь пролежал незамеченным - блоки, выданные мимо нас, в наборе проверок
 		 * не освобождаются
+		 *
 		 */
 		/**
 		 * Отдаём блок прежней основной зоне, если она его узнаёт
@@ -661,7 +665,7 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	if(this->_acquired){
 		// Отдаём прежде добытые функции
 		originals = this->_originals;
-		// Отвечаем успехом
+		// Прежние функции отданы
 		return true;
 	}
 	// Если наши функции заданы не полностью
@@ -820,7 +824,7 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	this->_acquired = true;
 	// Отдаём прежние функции
 	originals = this->_originals;
-	// Отвечаем успехом
+	// Прежние функции отданы
 	return true;
 }
 /**
@@ -913,6 +917,23 @@ bool awh::alloc::ZoneCapture::foreign(const void * ptr) const noexcept {
 	return ((* ::__awh_zone_previous__->size)(::__awh_zone_previous__, ptr) != 0);
 }
 /**
+ * @brief Метод определения владельца чужого блока
+ *
+ * @details Владелец здесь один на всю систему: зона не держит нескольких
+ *          библиотек времени исполнения, и разбирать владельца нечего - звавший
+ *          разбирается прежним общим набором
+ *
+ * @param ptr разбираемый указатель
+ * @return    nullptr: владельцев несколько не бывает
+ *
+ */
+const awh::alloc::functions_t * awh::alloc::ZoneCapture::owner(const void * ptr) const noexcept {
+	// Отмечаем неиспользуемый параметр
+	static_cast <void> (ptr);
+	// Владельцев несколько не бывает
+	return nullptr;
+}
+/**
  * @brief Метод получения названия способа захвата
  *
  * @return название способа захвата
@@ -949,7 +970,7 @@ const awh::alloc::functions_t & awh::alloc::ZoneCapture::originals() const noexc
 	return this->_originals;
 }
 /**
- * @brief Деструктор
+ * @brief Конструктор
  *
  * @details Захват здесь НЕ снимается намеренно. Память, выданная нами, живёт дольше
  *          самого захвата: разрушители статических объектов чужих единиц трансляции
@@ -964,6 +985,18 @@ const awh::alloc::functions_t & awh::alloc::ZoneCapture::originals() const noexc
  *          берёт на себя обязанность не освобождать выданное нами после этого.
  *          Распределители третьей стороны поступают так же: память при выходе процесса
  *          намеренно не возвращается вовсе.
+ *
+ */
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::ZoneCapture::ZoneCapture() noexcept : _originals(), _acquired(false) {}
+/**
+ * @brief Деструктор
+ *
+ * @note Память при выходе процесса намеренно не возвращается вовсе, как и у
+ *       распределителей третьей стороны
  *
  */
 awh::alloc::ZoneCapture::~ZoneCapture() noexcept {}

@@ -49,8 +49,43 @@
  * \~english
  * @brief Header file of the secret vessel — byte-by-byte intake into protected memory
  *
+ * @section vessel_decisions Deliberate decisions
+ *
+ * @details <b>Built for intake that cannot pass through the heap.</b> Reading a password
+ *          from the terminal and assembling a key from material scattered across the
+ *          image normally pass through an intermediate container, and every reallocation
+ *          of that container leaves a copy in the heap that no one wipes. The vessel
+ *          takes the content byte by byte straight into protected memory, and the
+ *          intermediate container never appears at all.
+ *
+ *          <b>Capacity is set at establishment, and the vessel does NOT GROW.</b> Growth
+ *          would mean reallocation, reallocation a copy of the previous content in the
+ *          heap — exactly the trouble the vessel is built to avoid. Intake beyond
+ *          capacity answers with a refusal, and the upper bound is declared by the
+ *          caller: for a password it is known in advance. This requirement was set when
+ *          the contract was agreed on 15.09.2026.
+ *
+ *          <b>Content is not handed out by pointer.</b> As long as a pointer crosses the
+ *          contract boundary, protecting storage is pointless: the content is taken by a
+ *          breakpoint at the entry to that very contract which itself carries it out.
+ *          Hence access goes through a handler and lives for the duration of the call.
+ *
+ *          <b>Between accesses the vessel is CLOSED.</b> Pages are made inaccessible, and
+ *          reading by address answers with a refusal, not with bytes. Reveals are counted
+ *          by the allocator itself: the area is locked at zero, and only at zero —
+ *          otherwise the thread that finished first would close the memory from under
+ *          the second.
+ *
+ *          <b>What the vessel does NOT do.</b> It does not protect against one who reads
+ *          process memory at the MOMENT of access: the content is revealed then. Cheaper
+ *          paths are removed — a copy in the heap, a memory snapshot, swapping, a crash
+ *          dump.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 /**
@@ -107,6 +142,10 @@ namespace awh {
 		 * \~english
 		 * @brief Strictness of the secret vessel
 		 *
+		 *
+		 * @details Decides what to do when the system does not give the promised
+		 *          protection: answer with a refusal, or work with a note in the log.
+		 *
 		 * \~
 		 */
 		enum class secrecy_t : uint8_t {
@@ -144,6 +183,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the capacity of the vessel
 				 *
+				 *
+				 * @return capacity of the vessel in bytes
+				 *
 				 * \~
 				 */
 				size_t capacity() const noexcept;
@@ -155,6 +197,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the length of the content
+				 *
+				 *
+				 * @return occupied length in the vessel in bytes
 				 *
 				 * \~
 				 */
@@ -171,6 +216,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting information about the protection achieved
 				 *
+				 *
+				 * @note Reports what happened IN FACT, not what was asked for: silent downgrade
+				 *       of protection is worse than an honest refusal
+				 *
+				 * @return information about the protection achieved
+				 *
 				 * \~
 				 */
 				const shelter_t & shelter() const noexcept;
@@ -182,6 +233,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the vessel is established
+				 *
+				 *
+				 * @return sign of an established vessel
 				 *
 				 * \~
 				 */
@@ -195,10 +249,17 @@ namespace awh {
 				 *       отвечает отказом
 				 *
 				 * @param capacity ёмкость приёмника в байтах
-				 * @return          признак выполнения операции
+				 * @return         признак выполнения операции
 				 *
 				 * \~english
 				 * @brief Method of establishing a vessel of the given capacity
+				 *
+				 *
+				 * @note This capacity is final: the vessel does not grow, and intake beyond it
+				 *       answers with a refusal
+				 *
+				 * @param capacity capacity of the vessel in bytes
+				 * @return         sign of successful operation
 				 *
 				 * \~
 				 */
@@ -212,6 +273,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of accepting the next byte of the content
+				 *
+				 *
+				 * @param byte the byte being accepted
+				 * @return     sign of successful operation
 				 *
 				 * \~
 				 */
@@ -228,6 +293,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of dropping the last accepted byte
+				 *
+				 *
+				 * @note Built for terminal input: without it fixing a typo in a password is
+				 *       impossible at all, and the person has to start typing over. The dropped
+				 *       byte is wiped in place
+				 *
+				 * @return sign of successful operation
 				 *
 				 * \~
 				 */
@@ -252,6 +324,19 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of accessing the content of the vessel
+				 *
+				 *
+				 * @note Content is revealed only for the duration of the handler call: leaving it
+				 *       — normally, early, or by exception — seals the vessel on its own
+				 *
+				 * @note The handler must NOT remember the given address: outside the call the area
+				 *       is closed, and accessing it crashes the program
+				 *
+				 * @note Leaving the handler by exception is LEGAL: the vessel is sealed under it
+				 *       as well, and the exception itself goes outward untouched
+				 *
+				 * @param callback content handler
+				 * @return         sign of successful operation
 				 *
 				 * \~
 				 */
@@ -291,8 +376,13 @@ namespace awh {
 						// Приёмник, подлежащий запечатыванию
 						Vessel * vessel;
 						/**
+						 * \~russian
 						 * @brief Деструктор
 						 *
+						 * \~english
+						 * @brief Destructor
+						 *
+						 * \~
 						 */
 						~sealer_t() noexcept {
 							// Закрываем область приёмника
@@ -317,6 +407,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of wiping and releasing the vessel
 				 *
+				 * @note Called by the destructor itself: keeping the secret longer than
+				 *       needed is pointless, and a forgotten wipe is the most common flaw
+				 *       of such schemes
+				 *
 				 * \~
 				 */
 				void wipe() noexcept;
@@ -330,6 +424,8 @@ namespace awh {
 				 * \~english
 				 * @brief Constructor
 				 *
+				 * @param secrecy strictness of the vessel
+				 *
 				 * \~
 				 */
 				explicit Vessel(const secrecy_t secrecy = secrecy_t::STRICT) noexcept;
@@ -342,6 +438,7 @@ namespace awh {
 				 * удваивает
 				 */
 				Vessel(const Vessel &) = delete;
+				// Запрещаем оператор копирования
 				Vessel & operator = (const Vessel &) = delete;
 			public:
 				/**
@@ -352,6 +449,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Move constructor
+				 *
+				 * @param vessel the vessel being moved
 				 *
 				 * \~
 				 */
@@ -365,6 +464,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Move assignment operator
+				 *
+				 * @param vessel the vessel being moved
+				 * @return       reference to the current object
 				 *
 				 * \~
 				 */

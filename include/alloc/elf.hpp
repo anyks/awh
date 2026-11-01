@@ -45,6 +45,35 @@
  * \~english
  * @brief Header file of memory allocation capture by ELF symbol interposition
  *
+ * @section elf_decisions Intentional decisions
+ *
+ * @details <b>Interposition happens at link time, and capture merely verifies it.</b>
+ *          The ELF format is designed so that the name `malloc`, defined in the program
+ *          itself, shadows the same-named one from the runtime library at ALL process
+ *          references - nothing needs to be rewritten. Hence `acquire` here does not
+ *          change a single byte: it verifies that interposition actually took place and
+ *          extracts the previous functions. Reporting success without verifying would
+ *          promise capture where there is none.
+ *
+ *          <b>Verification compares addresses, not name presence.</b> The name `malloc`
+ *          always resolves - the question is whose it is. Hence capture asks the linker
+ *          what address the process sees and compares it with the address of our
+ *          function. A mismatch means shadowing failed: our code file was discarded by
+ *          the linker as unused, or the library was linked before us.
+ *
+ *          <b>Previous functions are extracted by `RTLD_NEXT`, not by library name.</b>
+ *          The runtime library is called `libc.so.6` on glibc, `libc.so.7` on FreeBSD,
+ *          `libc.so` on musl and Solaris - enumerating them would be guessing.
+ *          `RTLD_NEXT` asks for "the next definition after ours", and the answer is
+ *          correct on all ELF systems.
+ *
+ *          <b>The only ELF-specific thing is the block size measurement method name.</b>
+ *          `malloc_usable_size` on Linux and Solaris, `malloc_size` on FreeBSD and macOS,
+ *          while OpenBSD and NetBSD have no such method at all - and there the block size
+ *          is taken from the heap itself.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -69,13 +98,23 @@
 #include "../sys/macro/global.hpp"
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Framework namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Memory allocator namespace
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -85,6 +124,7 @@ namespace awh {
 		 * \~english
 		 * @brief ELF symbol interposition capture class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ ELFCapture : public Capture {
 			private:
@@ -94,51 +134,112 @@ namespace awh {
 				bool _acquired;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод сверки того, что имя заслонено нами
 				 *
 				 * @param name название сверяемого имени
 				 * @param ours адрес нашей функции
 				 * @return     признак того, что процесс видит наш адрес
 				 *
+				 * \~english
+				 * @brief Method of verifying that a name is shadowed by us
+				 *
+				 * @param name name to verify
+				 * @param ours address of our function
+				 * @return     flag that the process sees our address
+				 *
+				 * \~
 				 */
 				bool shadowed(const char * name, const void * ours) const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод захвата выделения памяти процесса
 				 *
 				 * @param hooks     наши функции, ставимые на место прежних
 				 * @param originals прежние функции, отдаваемые захватом
 				 * @return          признак состоявшегося захвата
 				 *
+				 * \~english
+				 * @brief Method of capturing process memory allocation
+				 *
+				 * @param hooks     our functions replacing the previous ones
+				 * @param originals previous functions returned by the capture
+				 * @return          flag of the capture having taken place
+				 *
+				 * \~
 				 */
 				bool acquire(const functions_t & hooks, functions_t & originals) noexcept override;
 				/**
+				 * \~russian
 				 * @brief Метод снятия захвата
 				 *
+				 * \~english
+				 * @brief Method of releasing the capture
+				 *
+				 * \~
 				 */
 				void release() noexcept override;
 				/**
+				 * \~russian
 				 * @brief Метод определения состоявшегося захвата
 				 *
 				 * @return признак захвата
 				 *
+				 * \~english
+				 * @brief Method of determining whether capture has taken place
+				 *
+				 * @return capture flag
+				 *
+				 * \~
 				 */
 				bool acquired() const noexcept override;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод опознания указателя, выданного прежним распределителем
 				 *
 				 * @param ptr разбираемый указатель
 				 * @return    признак принадлежности прежнему распределителю
 				 *
+				 * \~english
+				 * @brief Method of identifying a pointer issued by the previous allocator
+				 *
+				 * @param ptr pointer to examine
+				 * @return    flag of belonging to the previous allocator
+				 *
+				 * \~
 				 */
 				bool foreign(const void * ptr) const noexcept override;
+				/**
+				 * \~russian
+				 * @brief Метод определения владельца чужого блока
+				 *
+				 * @param ptr разбираемый указатель
+				 * @return    nullptr: владельцев несколько не бывает
+				 *
+				 * \~english
+				 * @brief Method of determining the owner of a foreign block
+				 *
+				 * @param ptr pointer being resolved
+				 * @return    nullptr: there are never multiple owners
+				 *
+				 * \~
+				 */
+				const functions_t * owner(const void * ptr) const noexcept override;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод получения названия способа захвата
 				 *
 				 * @return название способа захвата
 				 *
+				 * \~english
+				 * @brief Method of getting the capture method name
+				 *
+				 * @return capture method name
+				 *
+				 * \~
 				 */
 				const char * name() const noexcept override;
 			public:
@@ -151,17 +252,30 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the previous allocation functions
 				 *
+				 * @return previous functions
+				 *
+				 * \~
 				 */
 				const functions_t & originals() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
-				ELFCapture() noexcept : _originals(), _acquired(false) {}
+				ELFCapture() noexcept;
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				~ELFCapture() noexcept override;
 		} elf_capture_t;

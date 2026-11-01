@@ -12,6 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
+ * @brief Реализация поток-локальных кэшей блоков
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -22,9 +24,28 @@
 #include <cstdio>
 #include <alloc/link.hpp>
 #include <alloc/cache.hpp>
+
+/**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/classes.inc"
+#include "internal/link.inc"
+#include "internal/spin.inc"
+#include "internal/cache.inc"
+
+/**
+ * Если операционной системой является OpenBSD
+ */
 #if defined(__OpenBSD__)
 	#include <dlfcn.h>
+	/**
+	 * Если постоянная RTLD_DEFAULT не определена
+	 */
 	#if !defined(RTLD_DEFAULT)
+		/**
+		 * @brief Устанавливаем RTLD_DEFAULT в нулевой адрес
+		 *
+		 */
 		#define RTLD_DEFAULT reinterpret_cast <void *> (0)
 	#endif
 #endif
@@ -33,6 +54,7 @@
  * Стандартные заголовочные файлы
  */
 #include <new>
+#include <chrono>
 #include <cstring>
 
 /**
@@ -59,7 +81,7 @@
  */
 namespace {
 	/**
-	 * @brief Метод чтения указателя на следующий свободный блок
+	 * @brief Функция чтения указателя на следующий свободный блок
 	 *
 	 * @param block читаемый свободный блок
 	 * @return      следующий свободный блок
@@ -70,7 +92,7 @@ namespace {
 		return awh::alloc::Link::next(block);
 	}
 	/**
-	 * @brief Метод записи указателя на следующий свободный блок
+	 * @brief Функция записи указателя на следующий свободный блок
 	 *
 	 * @param block      изменяемый свободный блок
 	 * @param subsequent записываемый следующий свободный блок
@@ -96,9 +118,19 @@ namespace {
  *
  */
 awh::alloc::Cache::Cache() noexcept :
- _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _kept(LIMIT), _tally(0), _freed(0), _yield(false), _hint(nullptr), _next(nullptr), _busy(false) {
+ _watch(0), _watched(0), _stocked(0), _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _kept(LIMIT), _tally(0), _freed(0), _yield(false), _hint(nullptr), _next(nullptr), _busy(false) {
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
+}
+/**
+ * @brief Метод получения мига наблюдения за ростом
+ *
+ * @return миг в миллисекундах
+ *
+ */
+uint64_t awh::alloc::Cache::ticking() noexcept {
+	// Выводим миг монотонных часов в миллисекундах
+	return static_cast <uint64_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 /**
  * @brief Метод заведения кэша
@@ -122,6 +154,12 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	this->_limit.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
 	// Запоминаем предел, заданный приложением
 	this->_kept.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
+	// Снимаем наблюдение за ростом списка
+	this->_watch = 0;
+	// Обнуляем миг наблюдения
+	this->_watched = 0;
+	// Обнуляем занятое наблюдаемого списка
+	this->_stocked = 0;
 	// Лежащего в кэше пока нет
 	this->_bytes.store(0, std::memory_order_relaxed);
 	/**
@@ -133,20 +171,20 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	 */
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
-	// Отвечаем успехом
+	// Кэш заведён
 	return true;
 }
 /**
- * @brief Метод накопления освобождённого до шага проверки порога
+ * @brief Метод накопления освобождённого до шага проверки
+ *
+ * @param delta изменение освобождённого в байтах
+ * @param step  шаг, по достижении которого пора проверять порог
+ * @return      признак того, что шаг пройден и порог пора проверить
  *
  * @note Запись эта прежде описывала совсем иной метод: говорила о «занятом прикладным
  *       кодом», звала второй довод `batch` при имени `step` и обещала возврат
  *       накопленного числом, тогда как метод отвечает признаком. Верное описание стоит
  *       у объявления, в заголовочном файле
- *
- * @param delta изменение освобождённого в байтах
- * @param step  шаг, по достижении которого пора проверять порог
- * @return      признак того, что шаг пройден и порог пора проверить
  *
  */
 bool awh::alloc::Cache::stepped(const size_t delta, const size_t step) noexcept {
@@ -241,7 +279,9 @@ void awh::alloc::Cache::flush() noexcept {
 	 * Отдаём блоки всех разрядов
 	 */
 	for(size_t i = 0; i < Classes::LIMIT; i++){
-		// Отдаём все блоки очередного разряда
+		/**
+		 * Отдаём все блоки очередного разряда
+		 */
 		while(this->_lists[i].count > 0){
 			// Если отдать не вышло
 			if(this->drain(i, this->_lists[i].count) == 0)
@@ -383,6 +423,9 @@ void awh::alloc::Cache::relieve() noexcept {
 		this->_limit.store(this->_kept.load(std::memory_order_relaxed), std::memory_order_relaxed);
 	// Считаем цель отдачи: предел кэша правит чужой поток, и вид у него неделимый
 	const size_t target = ((this->_limit.load(std::memory_order_relaxed) / 4u) * 3u);
+	/**
+	 * Отдаём излишек, пока лежащее не уйдёт под цель
+	 */
 	while(this->_bytes.load(std::memory_order_relaxed) > target){
 		// Число отданного за оборот
 		size_t given = 0;
@@ -450,12 +493,17 @@ size_t awh::alloc::Cache::bytes() const noexcept {
 	 * но определён: зовут его в общем для всех систем коде
 	 */
 	#define AWH_ALLOC_BUSY false
+	/**
+	 * @brief Устанавливаем снятие признака в пустое действие
+	 *
+	 */
 	#define AWH_ALLOC_BUSY_SET(value) static_cast <void> (value)
+/**
+ * Для операционной системы, не являющейся MS Windows
+ */
 #else
 	// Ключ хранения кэша, отслеживаемый системой
 	static pthread_key_t __awh_alloc_key__;
-size_t __awh_local_null_count__ = 0;
-size_t __awh_local_cache_count__ = 0;
 	/**
 	 * Определения ключа и признака его заведённости, объявленных в заголовочном файле
 	 *
@@ -463,8 +511,11 @@ size_t __awh_local_cache_count__ = 0;
 	 * сюда вызовом. Доводы записаны у объявления
 	 */
 	#if defined(AWH_ALLOC_TSD)
+		// Ключ быстрого пути местного кэша
 		pthread_key_t awh::alloc::__awh_alloc_tsd__ = 0;
+		// Признак заведённого ключа быстрого пути
 		std::atomic <bool> awh::alloc::__awh_alloc_armed__(false);
+		// Прямое значение быстрого пути местного кэша
 		std::atomic <size_t> awh::alloc::__awh_alloc_direct__(awh::alloc::AWH_ALLOC_NOSLOT);
 	#endif
 	/**
@@ -495,6 +546,7 @@ size_t __awh_local_cache_count__ = 0;
 	 *       там лениво через `_tlv_get_addr`, а тот просит памяти - то есть зовёт нас
 	 *       изнутри выдачи. Проверено прежде на признаке возвратности: весь набор щупов
 	 *       валился сразу за захватом. Там чтение идёт ключом системы, как и шло
+	 *
 	 */
 	/**
 	 * @note У OpenBSD зеркала НЕТ тоже, и по своей причине: обращение к месту потока
@@ -503,6 +555,7 @@ size_t __awh_local_cache_count__ = 0;
 	 *       валится обвалом памяти, без него отрабатывает все семь сценариев. Довод
 	 *       этот в файле уже записан - им объяснено, отчего признак возвратности
 	 *       читается лишь при статической сборке
+	 *
 	 */
 	#if defined(AWH_ALLOC_MIRROR)
 		/**
@@ -579,14 +632,36 @@ size_t __awh_local_cache_count__ = 0;
 		 * же и объявит его сборкой: cmake -DCMAKE_BUILD_ALLOCATOR_OPENBSD_FULL=ON
 		 */
 		#if defined(AWH_ALLOC_OPENBSD_FULL)
+			/**
+			 * @brief Устанавливаем признак полного перехвата в истину
+			 *
+			 */
 			#define __awh_alloc_solo__ true
+		/**
+		 * Для частичного перехвата
+		 */
 		#else
+			/**
+			 * @brief Устанавливаем признак полного перехвата в ложь
+			 *
+			 */
 			#define __awh_alloc_solo__ false
 		#endif
+		// Признак нахождения потока внутри работы с ключом
 		static __thread bool __awh_alloc_busy__ __attribute__((tls_model("initial-exec"))) = false;
-		// Читаем и правим признак нахождения внутри работы с ключом
+		/**
+		 * @brief Устанавливаем чтение признака работы с ключом
+		 *
+		 */
 		#define AWH_ALLOC_BUSY (__awh_alloc_solo__ && __awh_alloc_busy__)
+		/**
+		 * @brief Устанавливаем правку признака работы с ключом
+		 *
+		 */
 		#define AWH_ALLOC_BUSY_SET(value) do { if(__awh_alloc_solo__) __awh_alloc_busy__ = (value); } while(false)
+	/**
+	 * Для систем ELF со зеркалом
+	 */
 	#elif defined(AWH_ALLOC_MIRROR)
 		/**
 		 * Прочим системам ELF сторож заводится ТОЖЕ
@@ -620,10 +695,21 @@ size_t __awh_local_cache_count__ = 0;
 		 * Замерено на щупе: macOS, FreeBSD, NetBSD и OpenBSD выделений на отметку не
 		 * дают ни при каком номере ключа, glibc даёт при номере от тридцати двух
 		 */
+		// Признак нахождения потока внутри работы с ключом
 		static __thread bool __awh_alloc_busy__ __attribute__((tls_model("initial-exec"))) = false;
-		// Читаем и правим признак нахождения внутри работы с ключом
+		/**
+		 * @brief Устанавливаем чтение признака работы с ключом
+		 *
+		 */
 		#define AWH_ALLOC_BUSY (__awh_alloc_busy__)
+		/**
+		 * @brief Устанавливаем правку признака работы с ключом
+		 *
+		 */
 		#define AWH_ALLOC_BUSY_SET(value) __awh_alloc_busy__ = (value)
+	/**
+	 * Для прочих систем
+	 */
 	#else
 		/**
 		 * Прочим системам признак не заводится ВОВСЕ
@@ -638,17 +724,26 @@ size_t __awh_local_cache_count__ = 0;
 		 * с самим потоком
 		 */
 		#define AWH_ALLOC_BUSY false
+		/**
+		 * @brief Устанавливаем снятие признака в пустое действие
+		 *
+		 */
 		#define AWH_ALLOC_BUSY_SET(value) static_cast <void> (value)
 	#endif
 #endif
 
 /**
- * @brief Метод получения кэша текущего потока
- *
- * @return кэш текущего потока либо nullptr
+ * @brief Инкапсулируем локальные функции в пространство имён
  *
  */
-static awh::alloc::cache_t * attached() noexcept {
+namespace {
+	/**
+	 * @brief Функция получения кэша текущего потока
+	 *
+	 * @return кэш текущего потока либо nullptr
+	 *
+	 */
+	static awh::alloc::cache_t * attached() noexcept {
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -695,80 +790,95 @@ static awh::alloc::cache_t * attached() noexcept {
 		// Выводим кэш из ключа хранения потока
 		return result;
 	#endif
-}
-/**
- * @brief Метод привязки кэша к текущему потоку
- *
- * @param cache привязываемый кэш
- *
- */
-static void attach(awh::alloc::cache_t * cache) noexcept {
+	}
 	/**
-	 * Если операционной системой является MS Windows
+	 * @brief Функция привязки кэша к текущему потоку
+	 *
+	 * @param cache привязываемый кэш
+	 *
+	 */
+	static void attach(awh::alloc::cache_t * cache) noexcept {
+		/**
+		 * Если операционной системой является MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если место хранения не заведено
+			if(__awh_alloc_slot__ == FLS_OUT_OF_INDEXES)
+				// Привязывать некуда
+				return;
+			// Записываем кэш в место хранения потока
+			::FlsSetValue(__awh_alloc_slot__, cache);
+		/**
+		 * Если операционной системой является Unix
+		 */
+		#else
+			/**
+			 * Отмечаем поток работающим с ключом на время записи
+			 *
+			 * Запись просит памяти ровно как и чтение: место под значения ключей заводится
+			 * потоку лениво. Без отметки выдача, случившаяся внутри записи, спросила бы
+			 * кэш - и пришла бы сюда снова
+			 */
+			AWH_ALLOC_BUSY_SET(true);
+			// Записываем кэш в ключ хранения потока
+			::pthread_setspecific(__awh_alloc_key__, cache);
+			/**
+			 * Записываем кэш в зеркало
+			 *
+			 * Пишется оно ПОСЛЕ ключа: ключ - хранение, зеркало - его отражение, и
+			 * отражать нечего, пока хранение не заполнено
+			 */
+			#if defined(AWH_ALLOC_MIRROR)
+				// Записываем кэш в зеркало
+				awh::alloc::__awh_alloc_mirror__ = cache;
+			#endif
+			// Снимаем отметку работы с ключом
+			AWH_ALLOC_BUSY_SET(false);
+		#endif
+	}
+	/**
+	 * Для операционной системы MS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Если место хранения не заведено
-		if(__awh_alloc_slot__ == FLS_OUT_OF_INDEXES)
-			// Привязывать некуда
-			return;
-		// Записываем кэш в место хранения потока
-		::FlsSetValue(__awh_alloc_slot__, cache);
 	/**
-	 * Если операционной системой является Unix
+	 * @brief Отклик завершения потока
+	 *
+	 * @param value кэш завершившегося потока
+	 *
+	 */
+	static void WINAPI __awh_alloc_finish__(void * value) noexcept {
+	/**
+	 * Для операционной системы, не являющейся MS Windows
 	 */
 	#else
+	/**
+	 * @brief Отклик завершения потока
+	 *
+	 * @param value кэш завершившегося потока
+	 *
+	 */
+	static void __awh_alloc_finish__(void * value) noexcept {
+	#endif
+		// Если кэша нет
+		if(value == nullptr)
+			// Отпускать нечего
+			return;
 		/**
-		 * Отмечаем поток работающим с ключом на время записи
+		 * Чистим зеркало ПРЕЖДЕ отпускания кэша
 		 *
-		 * Запись просит памяти ровно как и чтение: место под значения ключей заводится
-		 * потоку лениво. Без отметки выдача, случившаяся внутри записи, спросила бы
-		 * кэш - и пришла бы сюда снова
-		 */
-		AWH_ALLOC_BUSY_SET(true);
-		// Записываем кэш в ключ хранения потока
-		::pthread_setspecific(__awh_alloc_key__, cache);
-		/**
-		 * Записываем кэш в зеркало
-		 *
-		 * Пишется оно ПОСЛЕ ключа: ключ - хранение, зеркало - его отражение, и
-		 * отражать нечего, пока хранение не заполнено
+		 * Отпускание само просит и отдаёт память, а всякая выдача читает зеркало: остань
+		 * там снесённый кэш - обращение ушло бы к нему
 		 */
 		#if defined(AWH_ALLOC_MIRROR)
-			awh::alloc::__awh_alloc_mirror__ = cache;
+			// Чистим зеркало
+			awh::alloc::__awh_alloc_mirror__ = nullptr;
 		#endif
-		// Снимаем отметку работы с ключом
-		AWH_ALLOC_BUSY_SET(false);
-	#endif
-}
-/**
- * @brief Отклик завершения потока
- *
- * @param value кэш завершившегося потока
- *
- */
-#if defined(_WIN32) || defined(_WIN64)
-static void WINAPI __awh_alloc_finish__(void * value) noexcept {
-#else
-static void __awh_alloc_finish__(void * value) noexcept {
-#endif
-	// Если кэша нет
-	if(value == nullptr)
-		// Отпускать нечего
-		return;
-	/**
-	 * Чистим зеркало ПРЕЖДЕ отпускания кэша
-	 *
-	 * Отпускание само просит и отдаёт память, а всякая выдача читает зеркало: остань
-	 * там снесённый кэш - обращение ушло бы к нему
-	 */
-	#if defined(AWH_ALLOC_MIRROR)
-		awh::alloc::__awh_alloc_mirror__ = nullptr;
-	#endif
-	// Приводим значение к кэшу
-	awh::alloc::cache_t * cache = reinterpret_cast <awh::alloc::cache_t *> (value);
-	// Отвязываем кэш от завершившегося потока
-	cache->release();
-}
+		// Приводим значение к кэшу
+		awh::alloc::cache_t * cache = reinterpret_cast <awh::alloc::cache_t *> (value);
+		// Отвязываем кэш от завершившегося потока
+		cache->release();
+	}
+};
 
 /**
  * @brief Конструктор
@@ -812,7 +922,7 @@ bool awh::alloc::Caches::init(central_t * central, classes_t * classes) noexcept
 	 * обычного своего кода. До того обращения за кэшем отвечают пустотой, а выдача идёт
 	 * общим путём через центральные списки - медленнее, но верно
 	 */
-	// Отвечаем успехом
+	// Кэш заведён; ключ потока заведёт arm
 	return true;
 }
 /**
@@ -843,6 +953,7 @@ bool awh::alloc::Caches::arm() noexcept {
 	 * Статику опознаём по пустоте разрешения имён: искать ему там негде
 	 */
 	#if defined(__OpenBSD__)
+		// Если программа связана статически
 		if(__awh_alloc_solo__)
 			// Отвечаем отказом: ключа не будет
 			return false;
@@ -920,9 +1031,7 @@ bool awh::alloc::Caches::arm() noexcept {
 	return this->_keyed;
 }
 /**
- * @brief Метод заведения кэша текущему потоку
- *
- * @return заведённый кэш либо nullptr
+ * @brief Метод раздачи доли общего запаса заведённым кэшам
  *
  */
 void awh::alloc::Caches::reshare() noexcept {
@@ -1046,7 +1155,7 @@ awh::alloc::cache_t * awh::alloc::Caches::create() noexcept {
 	return result;
 }
 /**
- * @brief Метод получения кэша текущего потока
+ * @brief Метод заведения кэша текущему потоку
  *
  * @return кэш текущего потока либо nullptr
  *
@@ -1071,6 +1180,7 @@ awh::alloc::cache_t * awh::alloc::Caches::enter() noexcept {
 	 * @details Сторож повторности обязателен: `pthread_key_create` при заведении ключа
 	 *          сам просит памяти, и вложенная выдача без сторожа ушла бы в бесконечное
 	 *          заведение кэшей. Сторож снимает вложенность отказом от кэша
+	 *
 	 */
 	if(!this->_keyed){
 		// Если поток уже работает с ключом хранения

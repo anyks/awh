@@ -50,8 +50,43 @@
  * @brief Header file of call stack capture — remembering the allocation site and
  *        resolving captured addresses into names
  *
+ * @section trace_decisions Intentional decisions
+ *
+ * @details <b>Capture uses unwinding, not `backtrace` from execinfo.h.</b> That header
+ *          does not exist on musl at all, on FreeBSD and NetBSD it requires a separate
+ *          library (`-lexecinfo`), and on glibc `backtrace` on first use loads libgcc_s
+ *          via `dlopen` - i.e. ALLOCATES MEMORY, while we are inside memory allocation.
+ *          Unwinding (`_Unwind_Backtrace`) is available on all compilers we build with
+ *          and links at load time.
+ *
+ *          <b>On MS Windows capture is native.</b> There is no unwinding of the same
+ *          kind, and `RtlCaptureStackBackTrace` captures the stack without memory and
+ *          without locks - it is the system's native path, and there is no reason to
+ *          imitate it with something foreign.
+ *
+ *          <b>Warm-up is mandatory.</b> The first unwinding call builds unwind section
+ *          pointers and on some systems allocates memory. Hence capture is warmed up
+ *          ONCE at creation - outside any allocation - and thereafter does not request
+ *          memory. This is verified not by reasoning but by observation: a probe counts
+ *          calls to our own malloc around the capture.
+ *
+ *          <b>Recursion is broken by a thread flag, not by a prohibition.</b> Unwinding
+ *          may request memory, and that request would come back into the capture. The
+ *          "we are inside capture" flag is stored in a system key, NOT a thread-local
+ *          slot: lazy creation of the latter itself calls memory allocation (verified by
+ *          a stack overflow on macOS inside `_tlv_get_addr`).
+ *
+ *          <b>Names are extracted separately from capture.</b> Resolving an address to a
+ *          name (`dladdr`, image scanning on MS Windows) is expensive and requests
+ *          memory. Capture must be cheap: it is on the allocation path. Hence the
+ *          captured data is stored as addresses, and names are extracted later - at
+ *          reporting time.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -69,13 +104,23 @@
 #include "../sys/macro/global.hpp"
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Framework namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Memory allocator namespace
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -91,6 +136,14 @@ namespace awh {
 		 * \~english
 		 * @brief Information about a call stack address
 		 *
+		 * @note The strings point to image memory and system facility memory: they
+		 *       are valid until the next resolution call IN THE SAME THREAD, and
+		 *       whoever needs them longer must copy them. The thread caveat is not
+		 *       superfluous: on MS Windows the image name is stored by us, and the
+		 *       buffer for it is per-thread - resolution in a foreign thread does
+		 *       not touch the string
+		 *
+		 * \~
 		 */
 		typedef struct Symbol {
 			// Название образа, которому принадлежит адрес
@@ -102,11 +155,15 @@ namespace awh {
 			// Смещение разбираемого адреса от начала функции
 			ptrdiff_t offset;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
-			Symbol() noexcept :
-			 image(nullptr), name(nullptr), begin(nullptr), offset(0) {}
+			Symbol() noexcept;
 		} symbol_t;
 		/**
 		 * \~russian
@@ -115,6 +172,7 @@ namespace awh {
 		 * \~english
 		 * @brief Call stack capture class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Trace {
 			public:
@@ -155,6 +213,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the call stack capture
 				 *
+				 * @note Call outside memory allocation: initialization warms up the
+				 *       unwinding, and on first use it may request memory
+				 *
+				 * @return flag of capture initialization
+				 *
+				 * \~
 				 */
 				bool init() noexcept;
 				/**
@@ -164,6 +228,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of shutting down the call stack capture
 				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
@@ -182,6 +247,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of capturing the call stack
 				 *
+				 * @note The method does not request memory at all: captured data goes into
+				 *       the passed array, and the unwinding is warmed up at initialization
+				 *
+				 * @param frames array for call stack addresses
+				 * @param depth  array length in entries
+				 * @param skip   number of nearest levels to skip
+				 * @return       number of captured addresses
+				 *
+				 * \~
 				 */
 				size_t capture(const void ** frames, const size_t depth, const size_t skip) noexcept;
 				/**
@@ -198,6 +272,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resolving a stack address into a name
 				 *
+				 * @note The method is expensive and requests memory: it must not be called
+				 *       on the allocation path, it is for reporting
+				 *
+				 * @param frame  address to resolve
+				 * @param symbol information about the resolved address
+				 * @return       flag of address resolution
+				 *
+				 * \~
 				 */
 				bool resolve(const void * frame, symbol_t & symbol) noexcept;
 			public:
@@ -210,6 +292,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the capture is ready
 				 *
+				 * @return flag of capture readiness
+				 *
+				 * \~
 				 */
 				bool ready() const noexcept;
 				/**
@@ -228,6 +313,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the thread is inside a capture
 				 *
+				 * @note While a thread captures the stack, any memory allocation requested
+				 *       by the unwinding itself (on OpenBSD it occasionally does) comes to
+				 *       our allocator. Such allocation must not be counted: it is not the
+				 *       caller's allocation but a capture overhead, and has no stack of its
+				 *       own - the recursion guard breaks the nested capture. Counting such
+				 *       allocations would pollute the allocation site table with stackless
+				 *       entries
+				 *
+				 * @return flag of the thread being inside a capture
+				 *
+				 * \~
 				 */
 				bool capturing() const noexcept;
 				/**
@@ -239,14 +335,22 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the capture method name
 				 *
+				 * @return capture method name
+				 *
+				 * \~
 				 */
 				const char * name() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
-				Trace() noexcept : _warmed(false), _keyed(false) {}
+				Trace() noexcept;
 		} trace_t;
 	};
 };

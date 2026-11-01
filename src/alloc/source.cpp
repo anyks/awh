@@ -130,6 +130,67 @@ namespace {
 };
 
 /**
+ * @brief Метод запрета области уходить в подкачку
+ *
+ * @param addr   адрес области
+ * @param size   размер области в байтах
+ * @param wanted признак необходимости запрета
+ * @return       признак выполнения операции
+ *
+ */
+bool awh::alloc::Source::wire(void * addr, const size_t size, const bool wanted) noexcept {
+	// Запрета у источника по умолчанию нет
+	(void) addr; (void) size; (void) wanted;
+	// Отвечаем отказом
+	return false;
+}
+
+/**
+ * @brief Метод отведения области, укрытой от снимков памяти
+ *
+ * @param size   требуемый размер в байтах
+ * @param actual действительно выданный размер
+ * @param hidden признак состоявшегося укрытия
+ * @return       адрес выданной области либо nullptr
+ *
+ */
+void * awh::alloc::Source::conceal(const size_t size, size_t & actual, bool & hidden) noexcept {
+	// Укрытия у источника по умолчанию нет
+	hidden = false;
+	// Отводим область обычным путём
+	return this->alloc(size, 0, actual);
+}
+
+/**
+ * @brief Метод смены доступности области
+ *
+ * @param addr   адрес области
+ * @param size   размер области
+ * @param opened признак открытой области: ложь закрывает её вовсе
+ * @return       признак выполнения операции
+ *
+ */
+bool awh::alloc::Source::protect(void * addr, const size_t size, const bool opened) noexcept {
+	// Область не наша, менять доступность нечему
+	(void) addr; (void) size; (void) opened;
+	// Отвечаем отказом: источник страницами системы не владеет
+	return false;
+}
+
+/**
+ * @brief Деструктор
+ *
+ */
+awh::alloc::Source::~Source() noexcept {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::SystemSource::SystemSource() noexcept :
+ _granularity(0), _superpages(false), _superpaged(0), _ceiling(0), _taken(0) {}
+
+/**
  * @brief Метод определения размера страницы у системы
  *
  * @return размер страницы в байтах
@@ -190,7 +251,7 @@ size_t awh::alloc::SystemSource::granularity() const noexcept {
 	return detected;
 }
 /**
- * @brief Метод задания просьбы о крупных страницах
+ * @brief Метод включения просьбы о крупных страницах
  *
  * @param wanted признак просьбы о крупных страницах
  *
@@ -222,7 +283,7 @@ size_t awh::alloc::SystemSource::taken() const noexcept {
 /**
  * @brief Метод получения числа областей, доставшихся крупными страницами
  *
- * @return число областей
+ * @return число областей, доставшихся крупными страницами
  *
  */
 size_t awh::alloc::SystemSource::superpaged() const noexcept {
@@ -230,17 +291,22 @@ size_t awh::alloc::SystemSource::superpaged() const noexcept {
 	return this->_superpaged.load(std::memory_order_relaxed);
 }
 /**
- * @brief Метод отведения области крупными страницами
- *
- * @note Отказ здесь - обычный исход: крупные страницы у всех наших систем требуют либо
- *       заранее отведённого запаса, либо особого права. Отказавшись, выдача идёт
- *       обычным путём
- *
- * @param size выравненный по зерну размер в байтах
- * @return     адрес отведённой области либо nullptr
+ * @brief Инкапсулируем локальные функции в пространство имён
  *
  */
-static void * __awh_source_huge__(const size_t size) noexcept {
+namespace {
+	/**
+	 * @brief Функция отведения области крупными страницами
+	 *
+	 * @note Отказ здесь - обычный исход: крупные страницы у всех наших систем требуют либо
+	 *       заранее отведённого запаса, либо особого права. Отказавшись, выдача идёт
+	 *       обычным путём
+	 *
+	 * @param size выравненный по зерну размер в байтах
+	 * @return     адрес отведённой области либо nullptr
+	 *
+	 */
+	static void * __awh_source_huge__(const size_t size) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -336,65 +402,55 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 	#endif
 }
 /**
- * @brief Метод совета системе держать область крупными страницами
- *
- * @note Совет этот не отводит крупных страниц, а просит собрать их из обычных: систему
- *       он ни к чему не обязывает, и ответ его нам безразличен
- *
- * @note Совет заведён под тем же гейтом, что и его зватель: советуют системе через
- *       `madvise`, какого у MS Windows нет вовсе - там крупные страницы просятся
- *       признаком `MEM_LARGE_PAGES` при самом отведении. Прежде определение из гейта
- *       ВЫПАДАЛО, и у Windows выходила функция, не званная ниоткуда - clang отвечал на
- *       неё `-Wunused-function`. Мёртвым кодом она при этом не была: на POSIX путь
- *       замкнут - обычное отведение зовёт совет сразу за `mmap`, когда о крупных
- *       страницах просили
- *
- * @param addr адрес отображённой области
- * @param size размер области в байтах
+ * @brief Инкапсулируем локальные функции в пространство имён
  *
  */
-/**
- * Для систем с поддержкой совета отображённым страницам
- */
-#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * @brief Функция совета системе собрать крупные страницы
-	 *
-	 * @param addr адрес отображённой области
-	 * @param size размер отображённой области
-	 *
+	 * Для систем с поддержкой совета отображённым страницам
 	 */
-	static void __awh_source_advise__(void * addr, const size_t size) noexcept {
+	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
-		 * Если доступен совет о крупных страницах
+		 * @brief Функция совета системе собрать крупные страницы
+		 *
+		 * @note Совет этот не отводит крупных страниц, а просит собрать их из обычных: систему
+		 *       он ни к чему не обязывает, и ответ его нам безразличен
+		 *
+		 * @param addr адрес отображённой области
+		 * @param size размер отображённой области
+		 *
 		 */
-		#if defined(MADV_HUGEPAGE)
-			// Советуем системе собрать крупные страницы
-			::madvise(addr, size, MADV_HUGEPAGE);
-		/**
-		 * Если доступно объединение страниц
-		 */
-		#elif defined(MADV_COLLAPSE)
-			// Просим собрать область из крупных страниц
-			::madvise(addr, size, MADV_COLLAPSE);
-		/**
-		 * Если советы о крупных страницах недоступны
-		 */
-		#else
-			// Адрес не используется без поддержки совета
-			static_cast <void> (addr);
-			// Размер не используется без поддержки совета
-			static_cast <void> (size);
-		#endif
-	}
-#endif
+		static void __awh_source_advise__(void * addr, const size_t size) noexcept {
+			/**
+			 * Если доступен совет о крупных страницах
+			 */
+			#if defined(MADV_HUGEPAGE)
+				// Советуем системе собрать крупные страницы
+				::madvise(addr, size, MADV_HUGEPAGE);
+			/**
+			 * Если доступно объединение страниц
+			 */
+			#elif defined(MADV_COLLAPSE)
+				// Просим собрать область из крупных страниц
+				::madvise(addr, size, MADV_COLLAPSE);
+			/**
+			 * Если советы о крупных страницах недоступны
+			 */
+			#else
+				// Адрес не используется без поддержки совета
+				static_cast <void> (addr);
+				// Размер не используется без поддержки совета
+				static_cast <void> (size);
+			#endif
+		}
+	#endif
+};
 /**
- * @brief Метод отведения области у системы
+ * @brief Метод выдачи области страниц
  *
  * @param size      требуемый размер в байтах
  * @param alignment требуемое выравнивание в байтах
- * @param actual    действительно выданный размер в байтах
- * @return          адрес отведённой области либо nullptr
+ * @param actual    действительно выданный размер
+ * @return          адрес выданной области либо nullptr
  *
  */
 void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment, size_t & actual) noexcept {

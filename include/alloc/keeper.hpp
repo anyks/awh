@@ -51,8 +51,46 @@
  * \~english
  * @brief Header file of the concealed memory allocator for the standard containers
  *
+ * @section keeper_decisions Intentional decisions
+ *
+ * @details <b>Needed for content, not for speed.</b> A standard container holds
+ *          content in the shared heap: from there it goes to swap, ends up in a crash
+ *          memory snapshot, and remains lying after being freed. A container on this
+ *          allocator gets concealed memory that does not go to swap and is wiped on
+ *          free.
+ *
+ *          <b>Allocation is by pages.</b> Concealment and swap prohibition are granted
+ *          by the system not smaller than a page, hence every allocation here costs at
+ *          least four kilobytes. Keeping small items scattered in such a container is
+ *          wasteful - it is designed for keys, passwords, and identifiers, not for
+ *          general content.
+ *
+ *          <b>Return goes through `release`, not `free`.</b> They coincide only where
+ *          process memory capture has taken place: on macOS and MS Windows without
+ *          capture `free` belongs to the system and does not recognize our region - it
+ *          crashes the program with "pointer being freed was not allocated".
+ *
+ *          <b>Wiping on return is not needed.</b> Wiping is promised by the concealed
+ *          allocation itself: the allocator zeroes the content before returning the
+ *          region to the system. A second wipe here would add nothing.
+ *
+ *          <b>Promises differ by system.</b> Concealment from memory snapshots is not
+ *          available on macOS and NetBSD, and swap prohibition requires privileges on
+ *          illumos. On Linux concealment IS available and took effect on 2026-09-15:
+ *          it is given not by allocation but by the `MADV_DONTDUMP` advice after it,
+ *          and hence was never tried before - the record listed Linux as incapable,
+ *          while the facility has been in the kernel since version 3.4. Measured on
+ *          Debian 12: before the fix `hidden` answered false, after - true. What
+ *          actually took effect is told by `shelter_t` at `Allocator::secure`; the
+ *          language container has nowhere to ask, so the one who creates the container
+ *          is supposed to ask, - there is no silent promise downgrade here, but the
+ *          container cannot notify itself either.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -71,13 +109,23 @@
 #include "alloc.hpp"
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Framework namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Memory allocator namespace
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -91,6 +139,7 @@ namespace awh {
 		 *
 		 * @tparam T type of the stored value
 		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
@@ -100,6 +149,7 @@ namespace awh {
 		 * \~english
 		 * @brief Class of the concealed memory allocator
 		 *
+		 * \~
 		 */
 		class Keeper {
 			public:
@@ -117,6 +167,7 @@ namespace awh {
 				 *
 				 * @tparam U another value type
 				 *
+				 * \~
 				 */
 				template <typename U>
 				/**
@@ -126,6 +177,7 @@ namespace awh {
 				 * \~english
 				 * @brief Structure of rebinding the allocator to another value type
 				 *
+				 * \~
 				 */
 				struct rebind {
 					// Распределитель для иного типа значения
@@ -142,6 +194,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating memory for the values
 				 *
+				 * @param count number of values
+				 * @return      address of the allocated memory
+				 *
+				 * \~
 				 */
 				T * allocate(const size_t count){
 					// Если выдавать нечего
@@ -173,6 +229,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of deallocating memory
 				 *
+				 * @note Wiping the content is promised by the concealed allocation itself
+				 *
+				 * @param addr  address of the memory to return
+				 * @param count number of values
+				 *
+				 * \~
 				 */
 				void deallocate(T * addr, const size_t count) noexcept {
 					// Число значений здесь не нужно: размер выдачи распределитель помнит сам
@@ -182,8 +244,13 @@ namespace awh {
 				}
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit Keeper() noexcept = default;
 				/**
@@ -197,11 +264,17 @@ namespace awh {
 				 *
 				 * @tparam U another value type
 				 *
+				 * \~
 				 */
 				template <typename U>
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Keeper(const Keeper <U> &) noexcept {}
 		};
@@ -218,6 +291,7 @@ namespace awh {
 		 * @tparam T type of first value compared
 		 * @tparam U type of the second value being compared
 		 *
+		 * \~
 		 */
 		template <typename T, typename U>
 		/**
@@ -232,6 +306,12 @@ namespace awh {
 		 * \~english
 		 * @brief Comparison operator of the allocators
 		 *
+		 * @note These allocators have no state, hence they are always equal: memory
+		 *       issued by one is returned by the other without consequences
+		 *
+		 * @return flag of allocator equality
+		 *
+		 * \~
 		 */
 		inline bool operator == (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители равны всегда
@@ -250,6 +330,7 @@ namespace awh {
 		 * @tparam T type of first value compared
 		 * @tparam U type of the second value being compared
 		 *
+		 * \~
 		 */
 		template <typename T, typename U>
 		/**
@@ -261,6 +342,9 @@ namespace awh {
 		 * \~english
 		 * @brief Comparison operator of the allocators
 		 *
+		 * @return flag of allocator inequality
+		 *
+		 * \~
 		 */
 		inline bool operator != (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители не равны никогда

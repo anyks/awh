@@ -12,11 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл заслонов и карантина
- *
- * \~english
- * @brief Guard pages and quarantine file
+ * @brief Реализация заслонов и карантина
  *
  * @copyright Copyright © 2026
  *
@@ -28,15 +24,33 @@
 #include <alloc/guard.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/spin.inc"
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
 
 /**
  * Метка снесённого места таблицы поиска
- *
  */
 awh::alloc::Guard::record_t * const awh::alloc::Guard::_tomb = reinterpret_cast <awh::alloc::Guard::record_t *> (static_cast <uintptr_t> (1));
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Guard::State::State() noexcept :
+ live(0), sealed(0), taken(0), given(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Guard::Record::Record() noexcept :
+ block(nullptr), base(nullptr), span(0), size(0), sealed(false), queue(nullptr) {}
 
 /**
  * @brief Конструктор
@@ -170,7 +184,7 @@ bool awh::alloc::Guard::rehash(const size_t length) noexcept {
 	if(previous != nullptr)
 		// Отдаём источнику память прежней таблицы
 		this->_source->release(previous, region);
-	// Отвечаем успехом
+	// Прежняя таблица возвращена источнику
 	return true;
 }
 /**
@@ -241,6 +255,9 @@ bool awh::alloc::Guard::enroll(record_t * record) noexcept {
 	 */
 	// Число пройденных мест таблицы
 	size_t passed = 0;
+	/**
+	 * Ищем место записи линейным розыском
+	 */
 	while((this->_table[index] != nullptr) && (this->_table[index] != this->_tomb)){
 		// Если запись в таблице уже есть
 		if(this->_table[index]->block == record->block)
@@ -261,7 +278,7 @@ bool awh::alloc::Guard::enroll(record_t * record) noexcept {
 	this->_table[index] = record;
 	// Увеличиваем число внесённых записей
 	this->_enrolled++;
-	// Отвечаем успехом
+	// Запись внесена
 	return true;
 }
 /**
@@ -350,7 +367,7 @@ bool awh::alloc::Guard::init(source_t * source) noexcept {
 	 */
 	// Снимаем приговор: источник задан заново
 	this->_unable.store(false, std::memory_order_relaxed);
-	// Отвечаем успехом
+	// Заслоны снова пригодны
 	return true;
 }
 /**
@@ -586,8 +603,9 @@ void * awh::alloc::Guard::alloc(const size_t size) noexcept {
 /**
  * @brief Метод освобождения заслонённого блока
  *
- * @param ptr адрес освобождаемого блока
- * @return    затребованный размер блока в байтах, либо нуль если блок не наш
+ * @param ptr  адрес освобождаемого блока
+ * @param mine признак принадлежности адреса заслонам
+ * @return     затребованный размер блока в байтах, либо нуль
  *
  */
 size_t awh::alloc::Guard::free(void * ptr, bool * mine) noexcept {
@@ -854,6 +872,13 @@ void awh::alloc::Guard::adopt() noexcept {
  * @brief Конструктор
  *
  */
+awh::alloc::Quarantine::State::State() noexcept :
+ held(0), bytes(0), passed(0), spoiled(0), culprit(nullptr), offset(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::alloc::Quarantine::Quarantine() noexcept :
  _source(nullptr), _ring(nullptr), _length(0), _region(0), _head(0), _tail(0),
  _held(0), _bytes(0), _limit(0), _junk(false) {}
@@ -944,7 +969,7 @@ bool awh::alloc::Quarantine::init(source_t * source, const size_t limit) noexcep
 	this->_length = length;
 	// Запоминаем размер взятой под кольцо области
 	this->_region = actual;
-	// Отвечаем успехом
+	// Кольцо карантина заведено
 	return true;
 }
 /**

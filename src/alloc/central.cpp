@@ -12,26 +12,37 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
+ * @brief Реализация центральных списков свободных блоков
+ *
  * @copyright Copyright © 2026
  *
  */
-
-/**
- * Подключаем заголовочный файл
- */
-#include <alloc/link.hpp>
-#include <alloc/central.hpp>
 
 /**
  * Стандартные заголовочные файлы
  */
 #include <thread>
 #include <chrono>
+#include <cstring>
 
 /**
- * Стандартные заголовочные файлы
+ * Подключаем заголовочный файл проекта
  */
-#include <cstring>
+#include <sys/fmk.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <alloc/link.hpp>
+#include <alloc/central.hpp>
+
+/**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "internal/link.inc"
+#include "internal/spin.inc"
+#include "internal/pages.inc"
+#include "internal/classes.inc"
 
 /**
  * @brief Пространство имён вспомогательных средств
@@ -39,7 +50,12 @@
  */
 namespace {
 	/**
-	 * @brief Метод чтения указателя на следующий свободный блок
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция чтения указателя на следующий свободный блок
 	 *
 	 * @param block читаемый свободный блок
 	 * @return      следующий свободный блок
@@ -47,10 +63,10 @@ namespace {
 	 */
 	static void * following(void * block) noexcept {
 		// Выводим следующий свободный блок, разбирая перемешивание
-		return awh::alloc::Link::next(block);
+		return alloc::link_t::next(block);
 	}
 	/**
-	 * @brief Метод записи указателя на следующий свободный блок
+	 * @brief Функция записи указателя на следующий свободный блок
 	 *
 	 * @param block      изменяемый свободный блок
 	 * @param subsequent записываемый следующий свободный блок
@@ -58,7 +74,7 @@ namespace {
 	 */
 	static void following(void * block, void * subsequent) noexcept {
 		// Записываем указатель перемешанным
-		awh::alloc::Link::next(block, subsequent);
+		alloc::link_t::next(block, subsequent);
 	}
 };
 
@@ -66,9 +82,25 @@ namespace {
  * @brief Конструктор
  *
  */
+awh::alloc::Central::State::State() noexcept :
+ live(0), cached(0), regions(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::alloc::Central::List::List() noexcept :
+ live(0), count(0),
+ regions(0), top(nullptr), returns(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::alloc::Central::Central() noexcept :
- _pages(nullptr), _classes(nullptr), _heap(), _reserve(), _kept{}, _keptBytes(0),
- _keptCeiling(DEFAULT_KEPT) {}
+ _heap(), _reserve(), _keptBytes(0),
+ _keptCeiling(DEFAULT_KEPT), _kept{}, _pages(nullptr),
+ _classes(nullptr) {}
 /**
  * @brief Метод заведения центральных списков
  *
@@ -92,7 +124,7 @@ bool awh::alloc::Central::init(pages_t * pages, classes_t * classes) noexcept {
 	this->_pages = pages;
 	// Запоминаем разряды размеров
 	this->_classes = classes;
-	// Отвечаем успехом
+	// Списки связаны с разрядами
 	return true;
 }
 /**
@@ -107,7 +139,7 @@ void awh::alloc::Central::reset() noexcept {
 		// Захватываем замок разряда
 		this->_lists[i].lock.acquire();
 		// Обнуляем голову списка свободных блоков
-		this->_lists[i].free = nullptr;
+		this->_lists[i].top = nullptr;
 		// Обнуляем число свободных блоков
 		this->_lists[i].count = 0;
 		// Обнуляем число выданных кэшам блоков
@@ -140,13 +172,6 @@ void awh::alloc::Central::reset() noexcept {
 	this->_pages = nullptr;
 }
 /**
- * @brief Метод нарезки новой области под разряд
- *
- * @param index номер разряда
- * @return      признак нарезки области
- *
- */
-/**
  * Метка разряда обязана вмещаться в байт
  *
  * Куче она отдаётся числом, а хранится там байтом на страницу куска - на том стоит
@@ -154,8 +179,14 @@ void awh::alloc::Central::reset() noexcept {
  * куча отвергла бы метку старших разрядов, и области их не размечались бы вовсе.
  * Сторож этот валит сборку, а не работу
  */
-static_assert((awh::alloc::Classes::LIMIT + 1) <= 255, "метка разряда не вмещается в байт");
-
+static_assert((awh::alloc::Classes::LIMIT + 1) <= 255, "the digit marker does not fit into a byte");
+/**
+ * @brief Метод нарезки новой области под разряд
+ *
+ * @param index номер разряда
+ * @return      признак нарезки области
+ *
+ */
 bool awh::alloc::Central::carve(const size_t index) noexcept {
 	// Получаем размер блока разряда
 	const size_t size = this->_classes->size(index);
@@ -224,19 +255,50 @@ bool awh::alloc::Central::carve(const size_t index) noexcept {
 	 * Связываем от конца к началу: так голова цепочки приходится на начало области,
 	 * а выдача блоков подряд идёт по возрастанию адреса и щадит упреждающее чтение
 	 */
+	// Ищем запись области нарезанного куска
+	Pages::span_t * span = this->_pages->scope(base);
+	// Если запись области не нашлась
+	if(span == nullptr){
+		// Возвращаем куче область: без её записи нарезать нельзя
+		this->_pages->free(base, 0);
+		// Отвечаем отказом
+		return false;
+	}
+	/**
+	 * Нарезаем область на блоки и связываем их в стопку области
+	 *
+	 * Связываем от конца к началу: так голова стопки приходится на начало области,
+	 * а выдача блоков подряд идёт по возрастанию адреса и щадит упреждающее чтение
+	 */
 	for(size_t i = 0; i < carved; i++){
 		// Определяем адрес очередного блока
 		uint8_t * block = (base + (i * size));
-		// Связываем блок со следующим, а последний - с прежней головой списка
-		::following(block, ((i + 1) < carved) ? (base + ((i + 1) * size)) : this->_lists[index].free);
+		// Связываем блок со следующим, а последний - с прежней головой стопки
+		::following(block, ((i + 1) < carved) ? (base + ((i + 1) * size)) : span->stack);
 	}
-	// Головой списка становится первый блок нарезанной области
-	this->_lists[index].free = base;
+	// Головой стопки области становится первый блок нарезанной цепочки
+	span->stack = base;
+	// В стопке области лежат все её блоки
+	span->held = carved;
+	// Всего в области нарезано блоков
+	span->total = carved;
+	// Свеженарезанная область покоя не знает
+	span->idled = 0;
+	// Связываем область с прежней головой цепочки разряда
+	span->next = this->_lists[index].top;
+	// Прежней области перед нарезанной нет
+	span->prev = nullptr;
+	// Если прежняя голова есть
+	if(this->_lists[index].top != nullptr)
+		// Записываем нарезанную область перед прежней головой
+		this->_lists[index].top->prev = span;
+	// Головой цепочки становится нарезанная область
+	this->_lists[index].top = span;
 	// Увеличиваем число свободных блоков
 	this->_lists[index].count += carved;
 	// Увеличиваем число нарезанных областей
 	this->_lists[index].regions++;
-	// Отвечаем успехом
+	// Область нарезана и учтена
 	return true;
 }
 /**
@@ -254,54 +316,79 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	if((this->_classes == nullptr) || (index >= this->_classes->count()))
 		// Изымать нечего
 		return 0;
-	// Если требуемое число блоков не задано либо выводить некуда
+	// Если требуется нулевое число блоков
 	if((count == 0) || (head == nullptr) || (tail == nullptr))
 		// Изымать нечего
 		return 0;
-	// Обнуляем голову изымаемой цепочки
-	(* head) = nullptr;
-	// Обнуляем хвост изымаемой цепочки
-	(* tail) = nullptr;
 	// Захватываем замок разряда
 	hold_t hold(this->_lists[index].lock);
-	// Если свободных блоков не осталось
-	if(this->_lists[index].free == nullptr){
+	// Область, чья стопка кормит набор
+	Pages::span_t * span = this->_lists[index].top;
+	/**
+	 * Ищем первую область со свободными блоками
+	 *
+	 * Область с пустой стопкой остаётся в цепочке: её блоки ещё удержаны
+	 * наружу и вернутся в неё же возвратом пачки
+	 */
+	while((span != nullptr) && (span->stack == nullptr))
+		// Переходим к следующей области
+		span = span->next;
+	// Если свободных блоков разряда нигде нет
+	if(span == nullptr){
 		// Нарезаем новую область под разряд
 		if(!this->carve(index))
 			// Изымать нечего
 			return 0;
+		// Свежая область кормит набор первой
+		span = this->_lists[index].top;
 	}
 	// Число действительно изъятых блоков
 	size_t result = 0;
-	// Голова изымаемой цепочки
-	void * first = this->_lists[index].free;
-	// Хвост изымаемой цепочки
-	void * last = first;
+	// Голова изъятой цепочки
+	void * first = nullptr;
+	// Хвост изъятой цепочки
+	void * last = nullptr;
 	/**
-	 * Снимаем со списка требуемое число блоков
+	 * Снимаем со стопок требуемое число блоков
 	 */
-	while((result < count) && (last != nullptr)){
+	while(result < count){
+		/**
+		 * Ищем область со свободными блоками
+		 */
+		while((span != nullptr) && (span->stack == nullptr))
+			// Переходим к следующей области
+			span = span->next;
+		// Если свободных блоков больше нет
+		if(span == nullptr)
+			// Прекращаем набор
+			break;
+		// Снимаем блок с головы стопки области
+		void * block = span->stack;
+		// Головой стопки становится следующий блок
+		span->stack = ::following(block);
+		// Уменьшаем число блоков в стопке области
+		span->held--;
+		// Взявший блок область покоя не знает
+		span->idled = 0;
+		// Уменьшаем число свободных блоков
+		this->_lists[index].count--;
+		// Если голова изъятой цепочки ещё не взята
+		if(first == nullptr)
+			// Головой становится снятый блок
+			first = block;
+		// Связываем хвост цепочки со снятым блоком
+		else ::following(last, block);
+		// Хвостом становится снятый блок
+		last = block;
 		// Увеличиваем число изъятых блоков
 		result++;
-		// Если требуемое число блоков набрано
-		if(result == count)
-			// Прекращаем набор: хвостом остаётся текущий блок
-			break;
-		// Получаем следующий свободный блок
-		void * subsequent = ::following(last);
-		// Если следующего блока нет
-		if(subsequent == nullptr)
-			// Прекращаем набор: список исчерпан
-			break;
-		// Хвостом становится следующий блок
-		last = subsequent;
 	}
-	// Головой списка становится блок, следующий за хвостом изъятой цепочки
-	this->_lists[index].free = ::following(last);
+	// Если изъять ничего не удалось
+	if(result == 0)
+		// Изымать нечего
+		return 0;
 	// Обрываем цепочку у хвоста
 	::following(last, nullptr);
-	// Уменьшаем число свободных блоков
-	this->_lists[index].count -= result;
 	// Увеличиваем число выданных кэшам блоков
 	this->_lists[index].live += result;
 	// Выводим голову изъятой цепочки
@@ -310,6 +397,121 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	(* tail) = last;
 	// Выводим число изъятых блоков
 	return result;
+}
+/**
+ * @brief Метод отдачи куче покоящихся областей разряда
+ *
+ * @note Замок разряда держит ЗВАННЫЙ: разбор пачки зовёт метод под своим замком,
+ *       отдаче памяти приходится брать замок самой
+ *
+ * @param index номер разряда
+ * @param now   текущий миг в миллисекундах
+ * @param all   признак отдачи покоящихся областей без сверки окна
+ * @return      число отданных куче областей
+ *
+ */
+size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const bool all) noexcept {
+	// Если списки не заведены либо разряд неведом
+	if((this->_classes == nullptr) || (index >= this->_classes->count()))
+		// Отдавать нечего
+		return 0;
+	// Число отданных куче областей
+	size_t result = 0;
+	// Цепочка областей, перестоявших окно
+	Pages::span_t * freed = nullptr;
+	/**
+	 * Обходим цепочку разряда, изымая перестоявшие области
+	 */
+	for(Pages::span_t * record = this->_lists[index].top; record != nullptr;){
+		// Запоминаем следующую область прежде изъятия
+		Pages::span_t * subsequent = record->next;
+		// Если область покоится дольше окна
+		if((record->idled != 0) && (all || ((now - record->idled) >= SPAN_WINDOW))){
+			// Изымаем область из цепочки разряда
+			if(record->prev != nullptr)
+				// Прежняя область связывается с последующей
+				record->prev->next = record->next;
+			// Если изымается голова цепочки
+			else this->_lists[index].top = record->next;
+			// Если последующая область есть
+			if(record->next != nullptr)
+				// Последующая область связывается с прежней
+				record->next->prev = record->prev;
+			// Уменьшаем число нарезанных областей
+			this->_lists[index].regions--;
+			// Связываем область с прежней головой цепочки возврата
+			record->next = freed;
+			// Прежней области перед изъятой нет
+			record->prev = nullptr;
+			// Головой цепочки возврата становится изъятая область
+			freed = record;
+		}
+		// Переходим к следующей области
+		record = subsequent;
+	}
+	/**
+	 * Куче возвращаются области, чьи блоки все в стопке; слияние соседей
+	 * собирает из них и бывший общий кусок целиком
+	 */
+	while(freed != nullptr){
+		// Запоминаем следующую область цепочки возврата
+		Pages::span_t * span = freed->next;
+		// Запоминаем число блоков возвращаемой области
+		const size_t total = freed->total;
+		// Признак состоявшегося возврата области куче
+		bool released = false;
+		/**
+		 * Возвращаем область куче под её замком
+		 *
+		 * Списки свободных областей и метки страниц разделяются со взятием,
+		 * расширением и отдачей памяти системе, поэтому одного замка разряда мало
+		 */
+		{
+			// Захватываем замок кучи
+			hold_t hold(this->_heap);
+			// Возвращаем полностью свободную область куче
+			released = this->_pages->free(freed->base, 0);
+		}
+		// Если куча приняла область
+		if(released){
+			// Снимаем её блоки со счёта свободных в разряде
+			this->_lists[index].count -= total;
+			// Считаем отданную область
+			result++;
+		// Если возврат не состоялся
+		} else {
+			// Возвращаем область в цепочку разряда вместе со всеми её блоками
+			freed->next = this->_lists[index].top;
+			// Прежняя голова получает ссылку на возвращённую область
+			if(this->_lists[index].top != nullptr)
+				// Записываем прежнюю область перед возвращённой
+				this->_lists[index].top->prev = freed;
+			// Возвращённая область становится головой цепочки разряда
+			this->_lists[index].top = freed;
+			// Восстанавливаем число нарезанных областей разряда
+			this->_lists[index].regions++;
+			// Возвращённая область покоя более не знает
+			freed->idled = 0;
+		}
+		// Переходим к следующей области
+		freed = span;
+	}
+	// Выводим число отданных куче областей
+	return result;
+}
+/**
+ * @brief Функция получения мига в миллисекундах
+ *
+ * @details Часы модульные НАМЕРЕННО: слой внизу пирамиды не вправе звать
+ *          вышележащий модуль fmk - без них микробенчмарк модуля не собирался
+ *          (нет символа), да и связка модуля с верхним слоем нарушает порядок
+ *
+ * @return миг монотонных часов в миллисекундах
+ *
+ */
+static uint64_t millisecond() noexcept {
+	// Выводим миг монотонных часов в миллисекундах
+	return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
 }
 /**
  * @brief Метод возврата пачки блоков разряда
@@ -331,23 +533,97 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 		return;
 	// Захватываем замок разряда
 	hold_t hold(this->_lists[index].lock);
-	// Связываем хвост возвращаемой цепочки с прежней головой списка
-	::following(tail, this->_lists[index].free);
-	// Головой списка становится голова возвращаемой цепочки
-	this->_lists[index].free = head;
+	// Разбираемый блок возвращаемой цепочки
+	void * block = head;
+	/**
+	 * Возвращаем блоки в стопки их областей
+	 */
+	for(size_t i = 0; (i < count) && (block != nullptr); i++){
+		// Запоминаем следующий блок прежде перестройки связей
+		void * subsequent = ::following(block);
+		// Ищем область, которой принадлежит блок
+		Pages::span_t * span = this->_pages->scope(block);
+		// Если область блока не нашлась - блок не наш, дальше без него
+		if(span == nullptr){
+			// Переходим к следующему блоку
+			block = subsequent;
+			// Продолжаем разбор
+			continue;
+		}
+		// Запоминаем пустоту стопки области прежде пополнения
+		const bool drained = (span->stack == nullptr);
+		// Ложим блок в стопку его области
+		::following(block, span->stack);
+		// Головой стопки становится возвращаемый блок
+		span->stack = block;
+		// Увеличиваем число блоков в стопке области
+		span->held++;
+		/**
+		 * Пробуждённая область становится головой цепочки разряда
+		 *
+		 * Выборка идёт с головы, переступая области с пустыми стопками. Область,
+		 * чья стопка опустела и наполнилась вновь, обязана кормить разряд ПЕРВОЙ -
+		 * иначе она остаётся в глубине цепочки за областями, держимыми наружу, и
+		 * всякая пачка выборки перешагивает их. Замером полного набора YAML выборка
+		 * платила в среднем по шесть тысяч переходов на пачку
+		 */
+		if(drained && (span->prev != nullptr)){
+			// Прежняя область связывается с последующей
+			span->prev->next = span->next;
+			// Если последующая область есть
+			if(span->next != nullptr)
+				// Последующая область связывается с прежней
+				span->next->prev = span->prev;
+			// Область связывается с прежней головой цепочки
+			span->next = this->_lists[index].top;
+			// Прежней области перед переносимой нет
+			span->prev = nullptr;
+			// Если прежняя голова есть
+			if(this->_lists[index].top != nullptr)
+				// Прежняя голова получает ссылку на переносимую
+				this->_lists[index].top->prev = span;
+			// Переносимая область становится головой цепочки
+			this->_lists[index].top = span;
+		}
+		/**
+		 * Если область стала полностью свободной - отмечаем миг покоя
+		 *
+		 * Область остаётся в цепочке разряда: раунд, разрушающий вместилище,
+		 * следующим же раундом возьмёт его вновь, и отдача области куче обращала
+		 * бы этот оборот в перешагивание пустых областей. Куче область уйдёт
+		 * обходом покоя, перестояв окно. Пока хоть один блок области удержан
+		 * наружу, покоя нет: это и защищает живой блок от наложения
+		 */
+		if(span->held == span->total)
+			// Запоминаем миг полного освобождения области
+			span->idled = millisecond();
+		// Переходим к следующему блоку
+		block = subsequent;
+	}
 	// Увеличиваем число свободных блоков
 	this->_lists[index].count += count;
 	// Уменьшаем число выданных кэшам блоков
 	this->_lists[index].live -= ((this->_lists[index].live < count) ? this->_lists[index].live : count);
+	/**
+	 * Возвращаем куче области, перестоявшие окно покоя
+	 *
+	 * Обход шаговый: раз в двести пятьдесят шесть возвратов пачек. Область,
+	 * чьи блоки вернулись в раунде, будет взята следующим же раундом из головы
+	 * цепочки, и окно её не выпустит; область, чей разряд угас, перестоит окно
+	 * и уйдёт куче на слияние с соседями
+	 */
+	if(((++this->_lists[index].returns) & 0xFFu) == 0)
+		// Отдаём покоящиеся области, перестоявшие окно
+		this->shed(index, millisecond(), false);
 }
 /**
- * @brief Метод выдачи памяти сверх разрядов
+ * @brief Метод взятия у кучи области с ожиданием изымаемых
+ *
+ * @param pages требуемое число страниц кучи
+ * @return      адрес выданной области либо nullptr
  *
  * @note Размер, не помещающийся в кусок кучи, здесь не обслуживается: такие запросы
  *       обращаются к источнику страниц напрямую слоем выше
- *
- * @param size требуемый размер в байтах
- * @return     адрес выданной памяти либо nullptr
  *
  */
 void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
@@ -364,7 +640,7 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 	// Число заходов, отводимых уступке времени
 	static constexpr size_t SPINS = 64;
 	// Наибольшее время ожидания изымаемых областей
-	static constexpr auto PATIENCE = std::chrono::milliseconds(50);
+	static constexpr uint64_t PATIENCE = 50;
 	/**
 	 * Часы спрашиваем ЛЕНИВО - лишь когда первый заход не удался
 	 *
@@ -372,16 +648,15 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 	 * семи сотых времени на `clock_gettime` через vDSO, и половина того приходилась
 	 * сюда. Удачный заход - а он и есть обычный - часов теперь не спрашивает вовсе
 	 */
-	// Отметка начала ожидания, берётся при первой неудаче
-	std::chrono::steady_clock::time_point began;
-	// Признак взятой отметки
-	bool timing = false;
+	uint64_t began = 0;
 	// Число сделанных заходов
 	size_t attempt = 0;
+	// Признак взятой отметки
+	bool timing = false;
 	/**
 	 * Пробуем, пока не выйдет срок
 	 */
-	while(true){
+	for(;;){
 		{
 			// Захватываем замок кучи
 			hold_t hold(this->_heap);
@@ -402,19 +677,19 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 		 * Уступаем ВНЕ замка кучи: обход отдачи возвращает изъятые области под тем же
 		 * замком, и держи мы его - ждали бы того, чему сами мешаем
 		 */
-		if(attempt++ < SPINS)
+	if(attempt++ < SPINS)
 			// Уступаем время тому, кто отдаёт
 			std::this_thread::yield();
 		// Спим понемногу: уступка у этой системы, видимо, ничего не стоит
-		else std::this_thread::sleep_for(std::chrono::microseconds(200));
+		else std::this_thread::sleep_for(chrono::microseconds(200));
 		// Если отметка начала ожидания ещё не взята
 		if(!timing){
-			// Запоминаем начало ожидания
-			began = std::chrono::steady_clock::now();
 			// Отмечаем отметку взятой
 			timing = true;
+			// Запоминаем начало ожидания
+			began = millisecond();
 		// Если срок ожидания вышел
-		} else if((std::chrono::steady_clock::now() - began) >= PATIENCE)
+		} else if((millisecond() - began) >= PATIENCE)
 			// Выходим: изымаемых областей мы не дождались
 			break;
 	}
@@ -445,8 +720,9 @@ void * awh::alloc::Central::recall(const size_t pages) noexcept {
 	this->_kept[pages] = kept->next;
 	// Определяем объём выдаваемой области
 	const size_t held = (pages * Pages::PAGE);
-	// Уменьшаем объём придержанного, не уходя ниже нуля (под замком, оттого чтение-запись раздельны)
+	// Читаем объём придержанного
 	const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
+	// Уменьшаем объём придержанного, не уходя ниже нуля (под замком, оттого чтение-запись раздельны)
 	this->_keptBytes.store((have - ((have < held) ? have : held)), std::memory_order_relaxed);
 	// Выводим придержанную область
 	return reinterpret_cast <void *> (kept);
@@ -488,7 +764,7 @@ bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 	this->_kept[pages] = kept;
 	// Увеличиваем объём придержанного (под замком, оттого чтение-запись раздельны)
 	this->_keptBytes.store((this->_keptBytes.load(std::memory_order_relaxed) + held), std::memory_order_relaxed);
-	// Отвечаем успехом
+	// Придержанное учтено
 	return true;
 }
 /**
@@ -535,8 +811,9 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 				this->_kept[i] = kept->next;
 				// Определяем объём изъятой области
 				const size_t held = (i * Pages::PAGE);
-				// Уменьшаем объём придержанного, не уходя ниже нуля (под замком)
+				// Читаем объём придержанного
 				const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
+				// Уменьшаем объём придержанного, не уходя ниже нуля (под замком)
 				this->_keptBytes.store((have - ((have < held) ? have : held)), std::memory_order_relaxed);
 				// Связываем изъятую область со снятой цепочкой
 				kept->next = taken;
@@ -579,8 +856,9 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 /**
  * @brief Метод выдачи памяти сверх разрядов
  *
- * @param size требуемый размер в байтах
- * @return     адрес выданной памяти либо nullptr
+ * @param size   требуемый размер в байтах
+ * @param served действительно выданный размер в байтах, либо nullptr
+ * @return       адрес выданной памяти либо nullptr
  *
  */
 void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
@@ -741,6 +1019,7 @@ bool awh::alloc::Central::free(void * addr, const uint64_t now, const bool keepi
  * регистров под пять выходных доводов, из которых путь мелкого блока берёт лишь два.
  * Подставленный, он даёт собирателю выбросить неиспользуемые доводы целиком - а поиск
  * куска и описание области под ним подставлялись и прежде (`AWH_PAGES_INLINE`)
+ *
  */
 /**
  * @brief Метод отдачи системе свободной памяти
@@ -762,7 +1041,19 @@ size_t awh::alloc::Central::purge(const uint64_t now, const bool all) noexcept {
 	 * бы их стороною
 	 */
 	this->unkeep(all);
-	// Объём отданной системе памяти
+	/**
+	 * Отдаём куче покоящиеся области разрядов ПРЕЖДЕ обхода списков кучи
+	 *
+	 * Иначе покоящиеся области остались бы для кучи нарезанными, и отдача системе
+	 * обошла бы их стороною
+	 */
+	for(size_t i = 0; (this->_classes != nullptr) && (i < this->_classes->count()); i++){
+		// Захватываем замок разряда
+		hold_t hold(this->_lists[i].lock);
+		// Отдаём покоящиеся области очередного разряда
+		this->shed(i, now, all);
+	}
+	// Объём отданной системы памяти
 	size_t result = 0;
 	// Место перебора списков свободных областей
 	size_t cursor = 0;
@@ -834,9 +1125,11 @@ void awh::alloc::Central::policy(const int64_t delay, const size_t block) noexce
 	this->_pages->policy(delay, block);
 }
 /**
- * @brief Метод задания потолка взятого у источника
+ * @brief Метод занятия области у кучи
  *
- * @param limit потолок в байтах: нуль - без потолка
+ * @param arena    занимаемая область в байтах
+ * @param confined запрет обращаться к источнику сверх занятого
+ * @return         признак занятия требуемой области
  *
  */
 bool awh::alloc::Central::occupy(const size_t arena, const bool confined) noexcept {
@@ -850,9 +1143,9 @@ bool awh::alloc::Central::occupy(const size_t arena, const bool confined) noexce
 	return this->_pages->occupy(arena, confined);
 }
 /**
- * @brief Метод задания потолка взятого у источника
+ * @brief Метод задания потолка придержки областей сверх разрядов
  *
- * @param limit потолок взятого у источника в байтах
+ * @param limit потолок придержки в байтах
  *
  */
 /**
@@ -876,6 +1169,12 @@ void awh::alloc::Central::keeper(const size_t limit) noexcept {
 	 */
 	this->unkeep(limit == 0);
 }
+/**
+ * @brief Метод задания потолка взятого у источника
+ *
+ * @param limit потолок в байтах: нуль - без потолка
+ *
+ */
 void awh::alloc::Central::ceiling(const size_t limit) noexcept {
 	// Если куча не заведена
 	if(this->_pages == nullptr)

@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
- * @brief Файл приёмника тайн — побайтного приёма в защищённую память
- *
- * \~english
- * @brief Secret vessel file — byte-by-byte intake into protected memory
- *
- * \~
+ * @brief Реализация приёмника тайн — побайтного приёма в защищённую память
  *
  * @copyright Copyright © 2026
  *
@@ -40,7 +34,7 @@
  */
 namespace {
 	/**
-	 * @brief Метод затирания памяти, неустранимого собирателем
+	 * @brief Функция затирания памяти, неустранимого собирателем
 	 *
 	 * @note Обычный `memset` собиратель выбрасывает как запись, какую никто не читает,
 	 *       - и затирание тайны исчезает вместе с ним. Запись через изменчивый
@@ -253,9 +247,9 @@ void awh::alloc::Vessel::wipe() noexcept {
 	this->_shelter = shelter_t();
 }
 /**
- * @brief Конструктор
+ * @brief Конструктор переноса
  *
- * @param secrecy строгость приёмника
+ * @param vessel переносимый приёмник
  *
  */
 awh::alloc::Vessel::Vessel(const secrecy_t secrecy) noexcept :

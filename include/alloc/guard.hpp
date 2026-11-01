@@ -62,8 +62,57 @@
  * @brief Header file of guard pages and quarantine — issuing part of the blocks
  *        between protected pages and holding freed memory back from reuse
  *
+ * @section guard_decisions Deliberate decisions
+ *
+ * @details <b>Guarded blocks are taken straight from the source, not from the page
+ *          heap.</b> The heap carves chunks of four megabytes and hands out logical
+ *          pages of eight kilobytes from them; a guard is a system page, and a
+ *          prohibition in the middle of a chunk would cover neighbouring allocations
+ *          unrelated to the defect.
+ *
+ *          <b>There are two guards, not one.</b> A single trailing guard catches
+ *          overflow but leaves underrun before the block start unnoticed - it would
+ *          have to be caught by comparing a pattern on free, that is, much later than
+ *          the defect point. Two guards catch both edges immediately, at the cost of
+ *          two pages per block; this allocation is selective anyway.
+ *
+ *          <b>The block is pressed against the trailing guard.</b> Overflow by a
+ *          single byte must crash the access, not land in an alignment gap. The gap is
+ *          inevitable but lies before the block, where underrun is caught by the
+ *          leading guard.
+ *
+ *          <b>A freed guarded block is closed entirely, not returned.</b> Were we to
+ *          return it to the system at once - the address would go to the next
+ *          allocation, and access through a dangling pointer would pass silently. A
+ *          closed region crashes the access at the defect point and is identified as
+ *          freed by address resolution.
+ *
+ *          <b>Holding closed regions is limited by TWO bounds.</b> By count - for the
+ *          sake of address space for small blocks, and by volume - for memory itself
+ *          with large ones. A count bound alone is not enough: under guards up to a
+ *          megabyte is allocated, and four thousand regions would hold up to four
+ *          gigabytes. Measured on load cycles: 201 megabytes held with ZERO occupied,
+ *          and the growth stopped not because memory was returned but because the
+ *          region count hit its limit.
+ *
+ *          <b>Quarantine is a ring of records, not linkage inside blocks.</b> Linkage
+ *          inside a block would take the first bytes, and the seed of a freed block
+ *          could not be checked: it is precisely the bytes overwritten by linkage that
+ *          a write through a dangling pointer corrupts most often. The ring lies aside
+ *          and does not touch the block at all.
+ *
+ *          <b>Liveness of a class block is known only through quarantine.</b> A free
+ *          block lies in the lists without any mark, and enumerating lists under locks
+ *          at the fault itself is doubly unreliable. Hence resolution answers FREED
+ *          when the block is found in quarantine, and LIVE when the region is alive
+ *          and the block is not in quarantine. With quarantine disabled the latter
+ *          means nothing - as stated in the setting.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -101,13 +150,23 @@
 #endif
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -117,6 +176,7 @@ namespace awh {
 		 * \~english
 		 * @brief Guard pages class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Guard {
 			public:
@@ -155,6 +215,7 @@ namespace awh {
 				 * \~english
 				 * @brief Guard pages state
 				 *
+				 * \~
 				 */
 				typedef struct State {
 					// Число живых заслонённых блоков
@@ -166,15 +227,32 @@ namespace awh {
 					// Выдано прикладному коду под заслонами в байтах
 					size_t given;
 					/**
+					 * \~russian
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					State() noexcept : live(0), sealed(0), taken(0), given(0) {}
+					State() noexcept;
 				} state_t;
 			private:
 				/**
+				 * \~russian
 				 * @brief Учётная запись заслонённого блока
 				 *
+				 *
+				 * \~english
+				 * @brief Accounting record of a guarded block
+				 *
+				 * \~
 				 */
 				typedef struct Record {
 					// Адрес выданного прикладному коду блока
@@ -190,11 +268,21 @@ namespace awh {
 					// Следующая закрытая область в очереди на отдачу
 					struct Record * queue;
 					/**
+					 * \~russian
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					Record() noexcept :
-					 block(nullptr), base(nullptr), span(0), size(0), sealed(false), queue(nullptr) {}
+					Record() noexcept;
 				} record_t;
 			private:
 				// Источник страниц
@@ -266,35 +354,71 @@ namespace awh {
 				static record_t * const _tomb;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
 				 * @return адрес выданной памяти либо nullptr
 				 *
+				 *
+				 * \~english
+				 * @brief Method of allocating memory for an accounting record
+				 *
+				 * @return address of the allocated memory or nullptr
+				 *
+				 * \~
 				 */
 				void * meta() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод перестроения таблицы поиска
 				 *
 				 * @param length требуемая длина таблицы в местах
 				 * @return       признак перестроения таблицы
 				 *
+				 *
+				 * \~english
+				 * @brief Method of rebuilding the lookup table
+				 *
+				 * @param length required table length in slots
+				 * @return       table rebuild flag
+				 *
+				 * \~
 				 */
 				bool rehash(const size_t length) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод внесения записи в таблицу поиска
 				 *
 				 * @param record вносимая запись
 				 * @return       признак внесения записи
 				 *
+				 *
+				 * \~english
+				 * @brief Method of enrolling a record into the lookup table
+				 *
+				 * @param record the record being enrolled
+				 * @return       enrollment flag
+				 *
+				 * \~
 				 */
 				bool enroll(record_t * record) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод поиска записи по адресу блока
 				 *
-				 * @param addr разбираемый адрес
+				 * @param addr  разбираемый адрес
 				 * @param exact признак поиска ровно по началу блока
 				 * @return      найденная запись либо nullptr
 				 *
+				 *
+				 * \~english
+				 * @brief Method of finding a record by block address
+				 *
+				 * @param addr  address being resolved
+				 * @param exact flag of searching exactly by block start
+				 * @return      found record or nullptr
+				 *
+				 * \~
 				 */
 				record_t * lookup(const void * addr, const bool exact) const noexcept;
 			public:
@@ -308,6 +432,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the guard pages
 				 *
+				 * @param source page source
+				 * @return       sign of successful initialization
+				 *
+				 * \~
 				 */
 				bool init(source_t * source) noexcept;
 				/**
@@ -317,6 +445,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of shutting down the guard pages
 				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
@@ -333,6 +462,13 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the next allocation needs a guard
 				 *
+				 * @note The method changes the sampling counter and is therefore called exactly once
+				 *       per allocation; asking again about the same request will answer differently
+				 *
+				 * @param size required size in bytes
+				 * @return     sign of a guard being needed
+				 *
+				 * \~
 				 */
 				/**
 				 * \~russian
@@ -346,24 +482,40 @@ namespace awh {
 				 * \~english
 				 * @brief Method of sampling an allocation for guarding
 				 *
+				 * @note Cold tail of wanted: reached only when guards are enabled
+				 *
+				 * @param size required size in bytes
+				 * @return     sign of the sampling having taken this allocation
+				 *
+				 * \~
 				 */
 				bool sampled(const size_t size) noexcept;
-				AWH_GUARD_INLINE bool wanted(const size_t size) noexcept {
-					/**
-					 * Отвечаем отказом, не заходя в файл кода
-					 *
-					 * Заслоны выключены у подавляющего большинства приложений - и вопрос этот стоит
-					 * на пути КАЖДОЙ выдачи. Профиль `perf` на Debian отдавал методу
-					 * 1.8 % времени, и то была цена вызова: работы здесь одно нестрогое
-					 * чтение
-					 */
-					// Если заслоны выключены
-					if(this->_rate.load(std::memory_order_relaxed) == 0)
-						// Заслон не нужен
-						return false;
-					// Уходим холодным путём: заслоны включены, идёт выборка
-					return this->sampled(size);
-				}
+				/**
+				 * \~russian
+				 * @brief Метод определения надобности заслона очередной выдаче
+				 *
+				 * @details Заслоны выключены у подавляющего большинства приложений, а вопрос
+				 *          стоит на пути каждой выдачи: работы здесь одно нестрогое чтение,
+				 *          а вызов стоил дороже работы. При включённых заслонах решение
+				 *          принимает выборка холодного пути.
+				 *
+				 * @param size требуемый размер в байтах
+				 * @return     признак надобности заслона
+				 *
+				 * \~english
+				 * @brief Method of determining whether the next allocation needs a guard
+				 *
+				 * @details Guards are off in the vast majority of applications, and the
+				 *          question stands on the path of every allocation: the work here
+				 *          is a single relaxed read, while the call cost more than the work.
+				 *          With guards enabled, the decision is made by the cold path sampling.
+				 *
+				 * @param size required size in bytes
+				 * @return     sign of the guard being needed
+				 *
+				 * \~
+				 */
+				AWH_GUARD_INLINE bool wanted(const size_t size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод выдачи заслонённого блока
@@ -374,6 +526,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating a guarded block
 				 *
+				 * @param size required size in bytes
+				 * @return     address of the allocated block or nullptr
+				 *
+				 * \~
 				 */
 				void * alloc(const size_t size) noexcept;
 				/**
@@ -395,6 +551,19 @@ namespace awh {
 				 * \~english
 				 * @brief Method of freeing a guarded block
 				 *
+				 * @note The region is closed wholly and is not returned to the system: an access
+				 *       to the freed address is bound to crash, not to pass
+				 *
+				 * @note The ownership flag is returned SEPARATELY from the size: a repeated free
+				 *       of a guarded block yields a zero size with a perfectly our address, and
+				 *       without telling these cases apart such a pointer would go to the previous
+				 *       allocator, that is, to a foreign heap
+				 *
+				 * @param ptr  address of the block being freed
+				 * @param mine sign of the address belonging to the guards
+				 * @return     requested block size in bytes, or zero
+				 *
+				 * \~
 				 */
 				size_t free(void * ptr, bool * mine) noexcept;
 				/**
@@ -408,6 +577,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the address belongs to the guards
 				 *
+				 * @param ptr  address being resolved
+				 * @param size block size in bytes, if it has been determined
+				 * @return     sign of the address belonging to the guards
+				 *
+				 * \~
 				 */
 				bool owner(const void * ptr, size_t * size) const noexcept;
 			public:
@@ -425,6 +599,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resolving an access address
 				 *
+				 * @param addr   address being resolved
+				 * @param begin  block start address, if it has been determined
+				 * @param size   block size in bytes, if it has been determined
+				 * @param offset offset of the address from the block start
+				 * @param sealed sign of the block having been freed
+				 * @return       sign of the address belonging to a guarded region
+				 *
+				 * \~
 				 */
 				bool resolve(const void * addr, const void ** begin, size_t * size, ptrdiff_t * offset, bool * sealed) const noexcept;
 			public:
@@ -437,6 +619,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the sampling rate
 				 *
+				 * @param rate one allocation out of how many: zero means guards off
+				 *
+				 * \~
 				 */
 				void rate(const size_t rate) noexcept;
 				/**
@@ -448,6 +633,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the guard pages state
 				 *
+				 * @return guard pages state
+				 *
+				 * \~
 				 */
 				state_t state() noexcept;
 			public:
@@ -458,6 +646,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring the lock before process forking
 				 *
+				 * \~
 				 */
 				void prepare() noexcept;
 				/**
@@ -467,6 +656,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the lock after process forking
 				 *
+				 * \~
 				 */
 				void resume() noexcept;
 				/**
@@ -476,12 +666,19 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resetting the lock in the forked child
 				 *
+				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Guard() noexcept;
 		} guard_t;
@@ -492,6 +689,7 @@ namespace awh {
 		 * \~english
 		 * @brief Freed memory quarantine class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Quarantine {
 			public:
@@ -511,6 +709,7 @@ namespace awh {
 				 * \~english
 				 * @brief Quarantine state
 				 *
+				 * \~
 				 */
 				typedef struct State {
 					// Число блоков, удерживаемых карантином
@@ -526,16 +725,26 @@ namespace awh {
 					// Смещение первой порчи от начала испорченного блока
 					size_t offset;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					State() noexcept :
-					 held(0), bytes(0), passed(0), spoiled(0), culprit(nullptr), offset(0) {}
+					State() noexcept;
 				} state_t;
 			private:
 				/**
+				 * \~russian
 				 * @brief Место кольца карантина
 				 *
+				 *
+				 * \~english
+				 * @brief Quarantine ring slot
+				 *
+				 * \~
 				 */
 				typedef struct Slot {
 					// Адрес удерживаемого блока
@@ -572,12 +781,22 @@ namespace awh {
 				state_t _state;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод сличения засева удерживаемого блока
 				 *
 				 * @param block разбираемый блок
 				 * @param size  размер блока в байтах
 				 * @return      признак сохранности засева
 				 *
+				 *
+				 * \~english
+				 * @brief Method of comparing the seed of a held block
+				 *
+				 * @param block block being resolved
+				 * @param size  block size in bytes
+				 * @return      sign of the seed having survived
+				 *
+				 * \~
 				 */
 				bool intact(const void * block, const size_t size) noexcept;
 			public:
@@ -592,6 +811,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the quarantine
 				 *
+				 * @param source page source
+				 * @param limit  quarantine volume ceiling in bytes: zero means no quarantine
+				 * @return       sign of successful initialization
+				 *
+				 * \~
 				 */
 				bool init(source_t * source, const size_t limit) noexcept;
 				/**
@@ -604,6 +828,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of shutting down the quarantine
 				 *
+				 * @note Held blocks are NOT returned: there is nowhere to return them - the layers
+				 *       they belong to have already been torn down by this instant
+				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
@@ -615,14 +843,24 @@ namespace awh {
 				 *       переполниться, и звать `release` до опустошения обязан тот, кто
 				 *       знает, куда возвращать вытесненное
 				 *
-				 * @param ptr    адрес удерживаемого блока
-				 * @param size   размер удерживаемого блока в байтах
-				 * @param index  номер разряда, которому принадлежит блок
-				 * @return       признак принятия блока карантином
+				 * @param ptr   адрес удерживаемого блока
+				 * @param size  размер удерживаемого блока в байтах
+				 * @param index номер разряда, которому принадлежит блок
+				 * @return      признак принятия блока карантином
 				 *
 				 * \~english
 				 * @brief Method of holding a freed block
 				 *
+				 * @note The quarantine does NOT evict: the receiver is free to overflow, and
+				 *       `release` must be called before filling up by whoever knows where to
+				 *       return the evicted block
+				 *
+				 * @param ptr   address of the block being held
+				 * @param size  size of the held block in bytes
+				 * @param index class index the block belongs to
+				 * @return      sign of the block having been taken into quarantine
+				 *
+				 * \~
 				 */
 				bool hold(void * ptr, const size_t size, const size_t index) noexcept;
 				/**
@@ -639,20 +877,34 @@ namespace awh {
 				 * \~english
 				 * @brief Method of taking out the oldest held block
 				 *
+				 * @note A block is taken out only when the quarantine overflows by volume or by
+				 *       the number of places; while it fits, the method answers with emptiness
+				 *
+				 * @param size  size of the taken-out block in bytes
+				 * @param index class index of the taken-out block
+				 * @return      address of the taken-out block or nullptr
+				 *
+				 * \~
 				 */
 				void * release(size_t * size, size_t * index) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод определения удержания адреса карантином
 				 *
-				 * @param addr   разбираемый адрес
-				 * @param begin  адрес начала блока, если он определён
-				 * @param size   размер блока, если он определён
-				 * @return       признак удержания адреса карантином
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала блока, если он определён
+				 * @param size  размер блока, если он определён
+				 * @return      признак удержания адреса карантином
 				 *
 				 * \~english
 				 * @brief Method of determining whether the address is held by the quarantine
 				 *
+				 * @param addr  address being resolved
+				 * @param begin block start address, if defined
+				 * @param size  block size in bytes, if defined
+				 * @return      sign of the address being held by the quarantine
+				 *
+				 * \~
 				 */
 				bool held(const void * addr, const void ** begin, size_t * size) noexcept;
 			public:
@@ -665,6 +917,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the quarantine volume ceiling
 				 *
+				 * @param limit volume ceiling in bytes: zero disables the quarantine
+				 *
+				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
@@ -676,6 +931,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the junk filling of held memory
 				 *
+				 * @param junk sign of junk filling
+				 *
+				 * \~
 				 */
 				void junk(const bool junk) noexcept;
 				/**
@@ -687,6 +945,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the quarantine state
 				 *
+				 * @return quarantine state
+				 *
+				 * \~
 				 */
 				state_t state() noexcept;
 			public:
@@ -697,6 +958,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring the lock before process forking
 				 *
+				 * \~
 				 */
 				void prepare() noexcept;
 				/**
@@ -706,6 +968,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the lock after process forking
 				 *
+				 * \~
 				 */
 				void resume() noexcept;
 				/**
@@ -715,12 +978,18 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resetting the lock in the forked child
 				 *
+				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Quarantine() noexcept;
 		} quarantine_t;

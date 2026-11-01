@@ -59,8 +59,51 @@
  * @brief Header file of the huge allocation layer — serving requests that do not fit
  *        into a page heap chunk
  *
+ * @section huge_decisions Deliberate decisions
+ *
+ * @details <b>A huge allocation is taken straight from the source, bypassing the page
+ *          heap.</b> The heap carves address space into four-megabyte chunks and does
+ *          not carry its regions across a chunk boundary: a region there is described
+ *          by a place within a single chunk, and a request beyond a chunk cannot be
+ *          expressed at all. Hence such requests are served by a layer above the heap,
+ *          addressing the source directly — exactly as stated at @c Central::alloc.
+ *
+ *          <b>Accounting is kept in a side table, not in a header before the block.</b>
+ *          A header would shift the allocated address off the page boundary, and a huge
+ *          allocation is taken from the source precisely to land on a page: that is
+ *          required both by aligned allocation and by returning part of a region to the
+ *          system. The table lies separately and does not touch the allocated block.
+ *
+ *          <b>A released region is retained under a ceiling, not returned
+ *          immediately.</b> Previously it was returned to the system at once: holding
+ *          free chunks of many megabytes in reserve would mean accumulating exactly
+ *          what people come to us complaining about in terms of consumption. The
+ *          argument was valid for consumption, but it counted the price of returning as
+ *          a SYSTEM CALL, whereas the real price lies in pages: a region taken anew
+ *          comes clean, and for each of its pages a page fault is paid on first access.
+ *          The measurement split the price threefold and showed at five megabytes —
+ *          allocation 1.2 μs, page touching 306 μs versus 9.4 for the system
+ *          allocator. The cliff was exactly at the layer boundary: up to four megabytes
+ *          we matched the system allocator, beyond it we were seven times slower. It
+ *          was noticed not by us but by a neighbouring session on codecs, where it
+ *          looked like a fivefold codec slowdown.
+ *
+ *          Hence the region is now retained ready for reuse, and returned — on request
+ *          of `Allocator::purge()` or beyond the `options.hugeCache` ceiling. That
+ *          ceiling is the price for speed, given as a number: zero restores the
+ *          previous behaviour verbatim. A concealed region is never retained — the
+ *          contract promises its return to the system.
+ *
+ *          <b>The layer has no place among the size classes, but it has a number.</b>
+ *          Free recognises the layer by the class number handed over by size parsing:
+ *          asking the layer on every free beyond the classes would mean taking its lock
+ *          where there are no huge allocations at all.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
+ * \~
  */
 
 #pragma once
@@ -80,13 +123,23 @@
 #include "../sys/macro/global.hpp"
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -96,6 +149,7 @@ namespace awh {
 		 * \~english
 		 * @brief Huge allocation layer class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Huge {
 			public:
@@ -118,6 +172,7 @@ namespace awh {
 				 * \~english
 				 * @brief State of the huge allocation layer
 				 *
+				 * \~
 				 */
 				typedef struct State {
 					// Число живых крупных выдач
@@ -127,10 +182,15 @@ namespace awh {
 					// Выдано прикладному коду крупными выдачами в байтах
 					size_t given;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					State() noexcept : live(0), taken(0), given(0) {}
+					State() noexcept;
 				} state_t;
 			private:
 				/**
@@ -140,6 +200,7 @@ namespace awh {
 				 * \~english
 				 * @brief Huge allocation record
 				 *
+				 * \~
 				 */
 				typedef struct Record {
 					/**
@@ -179,13 +240,15 @@ namespace awh {
 					// Следующая повторно используемая запись
 					struct Record * spare;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					explicit Record() noexcept :
-					 sealed(false), hidden(false),
-					 span(0), size(0), opened(0),
-					 base(nullptr), block(nullptr), spare(nullptr) {}
+					explicit Record() noexcept;
 				} record_t;
 			private:
 				// Источник страниц
@@ -235,10 +298,17 @@ namespace awh {
 				static record_t * const _tomb;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
 				 * @return адрес выданной памяти либо nullptr
 				 *
+				 * \~english
+				 * @brief Method of allocating memory for an accounting record
+				 *
+				 * @return address of the allocated memory or nullptr
+				 *
+				 * \~
 				 */
 				void * meta() noexcept;
 				/**
@@ -253,6 +323,12 @@ namespace awh {
 				 * \~english
 				 * @brief Method of reusing a retained region
 				 *
+				 * @param size      required size in bytes
+				 * @param alignment required alignment in bytes
+				 * @param actual    actual size of the allocated region
+				 * @return          address of the region or nullptr
+				 *
+				 * \~
 				 */
 				uint8_t * recycle(const size_t size, const size_t alignment, size_t & actual) noexcept;
 				/**
@@ -266,31 +342,61 @@ namespace awh {
 				 * \~english
 				 * @brief Method of retaining a released region
 				 *
+				 * @param base start address of the region
+				 * @param span region size in bytes
+				 * @return     retention flag
+				 *
+				 * \~
 				 */
 				bool retain(uint8_t * base, const size_t span) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод перестроения таблицы поиска
 				 *
 				 * @param length требуемая длина таблицы в местах
 				 * @return       признак перестроения таблицы
 				 *
+				 * \~english
+				 * @brief Method of rebuilding the lookup table
+				 *
+				 * @param length required table length in slots
+				 * @return       table rebuild flag
+				 *
+				 * \~
 				 */
 				bool rehash(const size_t length) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод внесения записи в таблицу поиска
 				 *
 				 * @param record вносимая запись
 				 * @return       признак внесения записи
 				 *
+				 * \~english
+				 * @brief Method of enrolling a record into the lookup table
+				 *
+				 * @param record the record being enrolled
+				 * @return       enrollment flag
+				 *
+				 * \~
 				 */
 				bool enroll(record_t * record) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод поиска записи по адресу блока
 				 *
 				 * @param addr  разбираемый адрес
 				 * @param exact признак поиска ровно по началу блока
 				 * @return      найденная запись либо nullptr
 				 *
+				 * \~english
+				 * @brief Method of finding a record by block address
+				 *
+				 * @param addr  address being resolved
+				 * @param exact flag of searching exactly by block start
+				 * @return      found record or nullptr
+				 *
+				 * \~
 				 */
 				record_t * lookup(const void * addr, const bool exact) const noexcept;
 			public:
@@ -307,6 +413,7 @@ namespace awh {
 				 * @param source page source
 				 * @return       layer initialization flag
 				 *
+				 * \~
 				 */
 				bool init(source_t * source) noexcept;
 				/**
@@ -316,6 +423,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of tearing down the huge allocation layer
 				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
@@ -334,6 +442,15 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the retention ceiling
 				 *
+				 * @note Retention is needed for the price of PAGES, not the price of allocation: a
+				 *       huge region allocation costs about a microsecond, while first access to
+				 *       its pages after fresh mapping costs three hundred. A region taken from
+				 *       the system anew comes clean, and a page fault is paid for each of its
+				 *       pages
+				 *
+				 * @param bytes retention ceiling in bytes: zero means no retention
+				 *
+				 * \~
 				 */
 				void ceiling(const size_t bytes) noexcept;
 				/**
@@ -345,6 +462,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the retained regions to the system
 				 *
+				 * @return volume returned to the system in bytes
+				 *
+				 * \~
 				 */
 				size_t drain() noexcept;
 			public:
@@ -361,6 +481,7 @@ namespace awh {
 				 * @param size required size in bytes
 				 * @return     flag of the size being served by the layer
 				 *
+				 * \~
 				 */
 				static bool wanted(const size_t size) noexcept;
 			public:
@@ -379,6 +500,7 @@ namespace awh {
 				 * @param alignment required alignment in bytes, zero means page alignment
 				 * @return          address of the allocated memory or nullptr
 				 *
+				 * \~
 				 */
 				void * alloc(const size_t size, const size_t alignment) noexcept;
 				/**
@@ -399,10 +521,18 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating a block concealed from memory dumps
 				 *
+				 * @note This block is wiped on free and does not appear in a crash memory dump
+				 *       where the system supports it. The `hidden` answer tells whether the
+				 *       concealment happened: a silent downgrade of the promise is worse than
+				 *       an honest refusal
+				 *
 				 * @param size   required size in bytes
 				 * @param hidden flag of the concealment having taken place
+				 * @param wire   flag of needing to prevent swapping out
+				 * @param wired  flag of the swap prevention having taken place or nullptr
 				 * @return       address of the allocated block or nullptr
 				 *
+				 * \~
 				 */
 				void * conceal(const size_t size, bool & hidden, const bool wire = false, bool * wired = nullptr) noexcept;
 				/**
@@ -416,8 +546,9 @@ namespace awh {
 				 * @brief Method of freeing a huge allocation
 				 *
 				 * @param ptr address of the memory being freed
-				 * @return   size requested by the application code or zero
+				 * @return    size requested by the application code or zero
 				 *
+				 * \~
 				 */
 				size_t free(void * ptr) noexcept;
 				/**
@@ -435,6 +566,7 @@ namespace awh {
 				 * @param size block size in bytes
 				 * @return     flag of the address belonging to the layer
 				 *
+				 * \~
 				 */
 				bool owner(const void * ptr, size_t * size) const noexcept;
 				/**
@@ -456,6 +588,7 @@ namespace awh {
 				 * @param offset offset of the address being resolved from the block start
 				 * @return       flag of the address belonging to the layer
 				 *
+				 * \~
 				 */
 				bool resolve(const void * addr, const void ** begin, size_t * size, ptrdiff_t * offset) const noexcept;
 			public:
@@ -477,6 +610,17 @@ namespace awh {
 				 * \~english
 				 * @brief Method of changing the accessibility of an allocated block
 				 *
+				 * @note Reveals are COUNTED: the area is locked at zero, and only at zero.
+				 *       Otherwise the thread that finished first would close the memory from
+				 *       under the second — a denial of access amid someone else's work
+				 *
+				 * @note Block boundaries are rounded to pages: accessibility changes go by
+				 *       pages, and the system may reject an unaligned start
+				 *
+				 * @param addr   address of the allocated block
+				 * @param opened flag of the block being opened
+				 * @return       sign of successful operation
+				 *
 				 * \~
 				 */
 				bool shield(const void * addr, const bool opened) noexcept;
@@ -492,6 +636,7 @@ namespace awh {
 				 *
 				 * @return state of the huge allocation layer
 				 *
+				 * \~
 				 */
 				state_t state() noexcept;
 			public:
@@ -502,6 +647,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of preparing the layer for a process fork
 				 *
+				 * \~
 				 */
 				void prepare() noexcept;
 				/**
@@ -511,6 +657,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resuming the layer after a fork
 				 *
+				 * \~
 				 */
 				void resume() noexcept;
 				/**
@@ -520,17 +667,28 @@ namespace awh {
 				 * \~english
 				 * @brief Method of bringing the layer in order in a fork child
 				 *
+				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit Huge() noexcept;
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				~Huge() noexcept = default;
 		} huge_t;

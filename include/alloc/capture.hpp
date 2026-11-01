@@ -46,6 +46,36 @@
  * @brief Header file of process memory allocation capture — the contract between the
  *        allocator and the way it shadows memory allocation
  *
+ * @section capture_decisions Intentional decisions
+ *
+ * @details <b>There are three methods, divided by technique, not by system.</b> Symbol
+ *          interposition at link time works the same on Linux, all BSDs, and Solaris -
+ *          the ELF format allows it, and dividing the technique by families would mean
+ *          writing the same thing three times. Only two are special: macOS requires
+ *          registering an allocator zone, and MS Windows does not allow symbol
+ *          interposition at all, and there the function entry is rewritten with a jump
+ *          to itself.
+ *
+ *          <b>Capture returns the previous functions, not hides them.</b> Part of the
+ *          process memory was issued before capture, and it must be freed by whoever
+ *          issued it. Hence the contract requires not only installing our functions but
+ *          also returning the previous ones - without them capture would mean corrupting
+ *          foreign memory.
+ *
+ *          <b>Identifying a foreign pointer is the capture's job, not the heap's.</b> The
+ *          heap knows only its own regions; saying that a pointer belongs to the previous
+ *          allocator rather than being lost entirely can only be done by whoever shadowed
+ *          that allocator. On MS Windows this is scanning the process heaps; on others -
+ *          the address not being in our regions.
+ *
+ *          <b>Capture refusal is a normal outcome, not an exception.</b> The method may
+ *          prove inapplicable: on Windows the function entry may not carry a hot patch,
+ *          on macOS the zone may already be taken by another interposer. Then capture
+ *          answers with refusal, and the allocator remains the system one. Blind
+ *          rewriting is not allowed: corrupting the runtime library code is irreparable.
+ *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -64,13 +94,23 @@
 #include "../sys/macro/global.hpp"
 
 /**
+ * \~russian
  * @brief Пространство имён фреймворка
  *
+ * \~english
+ * @brief Framework namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
+	 * \~english
+	 * @brief Memory allocator namespace
+	 *
+	 * \~
 	 */
 	namespace alloc {
 		/**
@@ -83,82 +123,218 @@ namespace awh {
 		 * \~english
 		 * @brief Set of memory allocation functions
 		 *
+		 * @note The same type describes both our functions replacing the previous
+		 *       ones and the previous ones returned by capture: they share the same
+		 *       contract
+		 *
+		 * \~
 		 */
 		typedef struct Functions {
-			// Выделение памяти
-			void * (* malloc)(size_t);
-			// Освобождение памяти
-			void (* free)(void *);
-			// Выделение обнулённой памяти
-			void * (* calloc)(size_t, size_t);
-			// Изменение размера выделенной памяти
-			void * (* realloc)(void *, size_t);
-			// Определение размера выделенного блока
-			size_t (* msize)(const void *);
-			/**
-			 * Выделение памяти с требуемым выравниванием
-			 *
-			 * Нужно не всякому приёму захвата: у систем ELF выравнивающая выдача
-			 * библиотеки времени исполнения идёт своим путём и нашего malloc не зовёт.
-			 * У macOS же зона обязана его иметь: библиотека зовёт `zone->memalign`
-			 * БЕЗ проверки на пустоту, и пустое поле валит процесс обращением по нулю -
-			 * проверено съёмом стека, где `xpc_atfork_child` шёл в `posix_memalign`
-			 */
-			// Выделение памяти с требуемым выравниванием
-			void * (* memalign)(size_t, size_t);
-			/**
-			 * Выровненная семья MS Windows
-			 *
-			 * У MSVCRT выровненная выдача идёт СВОИМИ именами, и нашего `malloc` они не
-			 * зовут: блок, выданный `_aligned_malloc`, шёл мимо распределителя целиком -
-			 * ни учёт мест выдачи, ни заслоны, ни отчёт его не считали. Оттого семья эта
-			 * перехватывается наравне с обычной выдачей
-			 *
-			 * Порядок доводов у `_aligned_malloc` ОБРАТЕН порядку `memalign`: размер
-			 * идёт первым, выравнивание вторым. Держать их одним полем оттого нельзя
-			 *
-			 * Освобождать выданное обязан `_aligned_free`, а не `free`: у MSVCRT это
-			 * разные пути, и перехватить один без другого значило бы отдать наш блок
-			 * чужому распределителю. Семья потому и перехватывается ЦЕЛИКОМ либо не
-			 * перехватывается вовсе
-			 *
-			 * Прочим системам поля эти не нужны и остаются пустыми: у ELF и macOS
-			 * выровненная выдача идёт через `memalign` выше
-			 */
-			// Выделение памяти с требуемым выравниванием (размер, выравнивание)
-			void * (* alignedAlloc)(size_t, size_t);
-			// Освобождение памяти, выданной с выравниванием
-			void (* alignedFree)(void *);
-			// Изменение размера памяти, выданной с выравниванием
-			void * (* alignedRealloc)(void *, size_t, size_t);
-			// Определение размера памяти, выданной с выравниванием
-			size_t (* alignedMsize)(void *, size_t, size_t);
 			/**
 			 * \~russian
-			 * @brief Отклики с явным набором прежних функций
-			 *
-			 * @note Захват нескольких CRT передаёт набор той библиотеки, через которую
-			 *       пришёл вызов. Старый блок возвращается своему распределителю.
+			 * @brief Функция выделения памяти
 			 *
 			 * \~english
-			 * @brief Callbacks with an explicit set of original functions
-			 *
-			 * @note Capture of multiple CRTs passes the functions of the library that
-			 *       received the call. Legacy blocks return to their original allocator.
+			 * @brief Function that allocates memory
 			 *
 			 * \~
 			 */
-			// Освобождение памяти через исходную CRT
+			void * (* malloc)(size_t);
+			/**
+			 * \~russian
+			 * @brief Функция освобождения выделенной памяти
+			 *
+			 * \~english
+			 * @brief Function that frees allocated memory
+			 *
+			 * \~
+			 */
+			void (* free)(void *);
+			/**
+			 * \~russian
+			 * @brief Функция выделения обнулённой памяти
+			 *
+			 * \~english
+			 * @brief Function that allocates zero-initialised memory
+			 *
+			 * \~
+			 */
+			void * (* calloc)(size_t, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция изменения размера выделенной памяти
+			 *
+			 * \~english
+			 * @brief Function that resizes an allocated block
+			 *
+			 * \~
+			 */
+			void * (* realloc)(void *, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция определения размера выделенного блока
+			 *
+			 * \~english
+			 * @brief Function that reports the size of an allocated block
+			 *
+			 * \~
+			 */
+			size_t (* msize)(const void *);
+			/**
+			 * \~russian
+			 * @brief Функция выделения памяти с требуемым выравниванием
+			 *
+			 * @details Нужно не всякому приёму захвата: у систем ELF выравнивающая выдача
+			 *          библиотеки времени исполнения идёт своим путём и нашего malloc не зовёт.
+			 *          У macOS же зона обязана его иметь: библиотека зовёт `zone->memalign`
+			 *          БЕЗ проверки на пустоту, и пустое поле валит процесс обращением по нулю -
+			 *          проверено съёмом стека, где `xpc_atfork_child` шёл в `posix_memalign`.
+			 *
+			 * \~english
+			 * @brief Memory allocation function with the required alignment
+			 *
+			 * @details Not every capture technique needs it: on ELF systems the runtime
+			 *          library allocates aligned memory on its own and never calls our malloc.
+			 *          On macOS, however, the zone must provide it: the library calls
+			 *          `zone->memalign` WITHOUT checking for null, and an empty field crashes the
+			 *          process through a null dereference - verified by a stack sample where
+			 *          `xpc_atfork_child` went into `posix_memalign`.
+			 *
+			 * \~
+			 */
+			void * (* memalign)(size_t, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция выделения памяти с требуемым выравниванием (размер, выравнивание)
+			 *
+			 * @details Прочим системам поля эти не нужны и остаются пустыми: у ELF и macOS
+			 *          выровненная выдача идёт через `memalign` выше.
+			 *
+			 * @note У MSVCRT выровненная выдача идёт СВОИМИ именами, и нашего `malloc` они не
+			 *       зовут: блок, выданный `_aligned_malloc`, шёл мимо распределителя целиком -
+			 *       ни учёт мест выдачи, ни заслоны, ни отчёт его не считали. Оттого семья эта
+			 *       перехватывается наравне с обычной выдачей
+			 *
+			 * @note Порядок доводов у `_aligned_malloc` ОБРАТЕН порядку `memalign`: размер
+			 *       идёт первым, выравнивание вторым. Держать их одним полем оттого нельзя
+			 *
+			 * @note Освобождать выданное обязан `_aligned_free`, а не `free`: у MSVCRT это
+			 *       разные пути, и перехватить один без другого значило бы отдать наш блок
+			 *       чужому распределителю. Семья потому и перехватывается ЦЕЛИКОМ либо не
+			 *       перехватывается вовсе
+			 *
+			 * \~english
+			 * @brief Aligned allocation function (size, alignment)
+			 *
+			 * @details Other systems leave these fields empty: on ELF and macOS aligned
+			 *          allocation goes through `memalign` above.
+			 *
+			 * @note MSVCRT allocates aligned memory under ITS OWN names, and they never call
+			 *       our `malloc`: a block issued by `_aligned_malloc` bypassed the allocator
+			 *       entirely - neither allocation-site accounting, nor guards, nor reports
+			 *       counted it. That is why this family is intercepted alongside ordinary
+			 *       allocation
+			 *
+			 * @note The argument order of `_aligned_malloc` is the REVERSE of `memalign`:
+			 *       size comes first, alignment second. That is why they cannot share one field
+			 *
+			 * @note Memory issued by `_aligned_malloc` must be freed by `_aligned_free`, not by
+			 *       `free`: the paths differ in MSVCRT, and intercepting one without the other
+			 *       would hand our block to a foreign allocator. That is why the family is
+			 *       intercepted WHOLLY or not at all
+			 *
+			 * \~
+			 */
+			void * (* alignedAlloc)(size_t, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция освобождения памяти, выданной с выравниванием
+			 *
+			 * \~english
+			 * @brief Function that frees aligned memory
+			 *
+			 * \~
+			 */
+			void (* alignedFree)(void *);
+			/**
+			 * \~russian
+			 * @brief Функция изменения размера памяти, выданной с выравниванием
+			 *
+			 * \~english
+			 * @brief Function that resizes an aligned block
+			 *
+			 * \~
+			 */
+			void * (* alignedRealloc)(void *, size_t, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция определения размера памяти, выданной с выравниванием
+			 *
+			 * \~english
+			 * @brief Function that reports the size of an aligned block
+			 *
+			 * \~
+			 */
+			size_t (* alignedMsize)(void *, size_t, size_t);
+			/**
+			 * \~russian
+			 * @brief Функция освобождения памяти через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that frees memory through the original CRT
+			 *
+			 * \~
+			 */
 			void (* freeFrom)(void *, const Functions &);
-			// Изменение размера через исходную CRT
+			/**
+			 * \~russian
+			 * @brief Функция изменения размера через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that resizes memory through the original CRT
+			 *
+			 * \~
+			 */
 			void * (* reallocFrom)(void *, size_t, const Functions &);
-			// Определение размера через исходную CRT
+			/**
+			 * \~russian
+			 * @brief Функция определения размера через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that reports memory size through the original CRT
+			 *
+			 * \~
+			 */
 			size_t (* msizeFrom)(const void *, const Functions &);
-			// Освобождение выровненной памяти через исходную CRT
+			/**
+			 * \~russian
+			 * @brief Функция освобождения выровненной памяти через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that frees aligned memory through the original CRT
+			 *
+			 * \~
+			 */
 			void (* alignedFreeFrom)(void *, const Functions &);
-			// Изменение размера выровненной памяти через исходную CRT
+			/**
+			 * \~russian
+			 * @brief Функция изменения размера выровненной памяти через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that resizes aligned memory through the original CRT
+			 *
+			 * \~
+			 */
 			void * (* alignedReallocFrom)(void *, size_t, size_t, const Functions &);
-			// Определение размера выровненной памяти через исходную CRT
+			/**
+			 * \~russian
+			 * @brief Функция определения размера выровненной памяти через исходную CRT
+			 *
+			 * \~english
+			 * @brief Function that reports aligned memory size through the original CRT
+			 *
+			 * \~
+			 */
 			size_t (* alignedMsizeFrom)(void *, size_t, size_t, const Functions &);
 			/**
 			 * \~russian
@@ -216,6 +392,7 @@ namespace awh {
 		 * обернётся падением до входа в `main` у потребителя
 		 */
 		static_assert((Functions().malloc == nullptr), "набор функций обязан заводиться постоянным значением");
+
 		/**
 		 * \~russian
 		 * @brief Класс захвата выделения памяти процесса
@@ -223,6 +400,7 @@ namespace awh {
 		 * \~english
 		 * @brief Process memory allocation capture class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Capture {
 			public:
@@ -240,10 +418,14 @@ namespace awh {
 				 * \~english
 				 * @brief Method of capturing process memory allocation
 				 *
+				 * @note Call before spawning threads: rewriting patches the entry points of
+				 *       an already loaded runtime library
+				 *
 				 * @param hooks     our functions installed in place of the previous ones
 				 * @param originals previous functions returned by the capture
 				 * @return          flag of the capture having taken place
 				 *
+				 * \~
 				 */
 				virtual bool acquire(const functions_t & hooks, functions_t & originals) noexcept = 0;
 				/**
@@ -257,6 +439,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing the capture
 				 *
+				 * @note Releasing returns the previous functions to their place, but does
+				 *       not by itself make memory issued by us valid: it must be freed by
+				 *       whoever issued it, and the allocator must survive the release
+				 *
+				 * \~
 				 */
 				virtual void release() noexcept = 0;
 				/**
@@ -270,6 +457,7 @@ namespace awh {
 				 *
 				 * @return capture flag
 				 *
+				 * \~
 				 */
 				virtual bool acquired() const noexcept = 0;
 			public:
@@ -286,11 +474,58 @@ namespace awh {
 				 * \~english
 				 * @brief Method of identifying a pointer issued by the previous allocator
 				 *
+				 * @note Identification is needed because part of the process memory was
+				 *       issued before capture, and it must be freed by the previous
+				 *       allocator
+				 *
 				 * @param ptr pointer being resolved
 				 * @return    flag of belonging to the previous allocator
 				 *
+				 * \~
 				 */
 				virtual bool foreign(const void * ptr) const noexcept = 0;
+				/**
+				 * \~russian
+				 * @brief Метод определения владельца чужого блока
+				 *
+				 * @details Переписывание входа держит несколько библиотек времени
+				 *          исполнения, и блок, выданный до захвата, принадлежит одной из
+				 *          них: освобождать его обязан её же набор функций, иной - порча
+				 *          чужой кучи. Звавший без контекста библиотеки (оператор языка,
+				 *          общий хук) спрашивает владельца здесь
+				 *
+				 * @note Пустой набор означает «владелец неизвестен»: блок отдаётся
+				 *       никому и утекает молча - так безопаснее, чем унести чужой блок
+				 *       не в ту кучу. Нуль означает, что способ захвата не ведает
+				 *       несколькими владельцами вовсе (одна библиотека на всю систему),
+				 *       и звавший разбирается прежним порядком
+				 *
+				 * @param ptr разбираемый указатель
+				 * @return    набор прежних функций владельца, пустой набор при
+				 *            неизвестном владельце, либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of determining the owner of a foreign block
+				 *
+				 * @details Entry rewriting holds several runtimes, and a block issued
+				 *          before the capture belongs to one of them: it must be freed
+				 *          by that library's own function set - any other one corrupts
+				 *          a foreign heap. The caller without library context (a language
+				 *          operator, the generic hook) asks for the owner here
+				 *
+				 * @note An empty set means the owner is unknown: the block goes to
+				 *       nobody and leaks silently - safer than carrying a foreign block
+				 *       to the wrong heap. Nullptr means the capture method knows no
+				 *       multiple owners at all (one library per system) and the caller
+				 *       resolves it the usual way
+				 *
+				 * @param ptr pointer being resolved
+				 * @return    original function set of the owner, an empty set for an
+				 *            unknown owner, or nullptr
+				 *
+				 * \~
+				 */
+				virtual const functions_t * owner(const void * ptr) const noexcept = 0;
 			public:
 				/**
 				 * \~russian
@@ -303,12 +538,18 @@ namespace awh {
 				 *
 				 * @return capture method name
 				 *
+				 * \~
 				 */
 				virtual const char * name() const noexcept = 0;
 			public:
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				virtual ~Capture() noexcept {}
 		} capture_t;
