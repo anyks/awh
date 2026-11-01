@@ -546,6 +546,48 @@
 
 /**
  * \~russian
+ * Если компилятор принадлежит к Visual Studio
+ *
+ * \~english
+ * If the compiler belongs to Visual Studio
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	/**
+	 * \~russian
+	 * Принудительная подстановка средствами Visual Studio
+	 *
+	 * \~english
+	 * Forced substitution using Visual Studio tools
+	 *
+	 * \~
+	 */
+	#define __AWH_INLINE__ __forceinline
+/**
+ * \~russian
+ * Если компилятор принадлежит к семейству GCC или Clang
+ *
+ * \~english
+ * If the compiler belongs to the GCC or Clang family
+ *
+ * \~
+ */
+#else
+	/**
+	 * \~russian
+	 * Принудительная подстановка средствами GCC и Clang
+	 *
+	 * \~english
+	 * Forced inlining via GCC and Clang
+	 *
+	 * \~
+	 */
+	#define __AWH_INLINE__ inline __attribute__((always_inline))
+#endif
+
+/**
+ * \~russian
  * Плотная укладка полей структуры
  *
  * @details Оснастки расходятся не написанием, а УСТРОЙСТВОМ указания: у GCC и clang
