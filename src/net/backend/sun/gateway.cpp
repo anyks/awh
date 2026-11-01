@@ -21,16 +21,15 @@
  */
 
 /**
- * Единица выравнивания адресов в сообщениях маршрутизации
+ * Макрос выравнивания структуры адреса внутри сообщения маршрутизации
+ *
+ * @details Единица выравнивания адресов в сообщениях маршрутизации.
  *
  * @note Ядро выравнивает длину структуры адреса внутри сообщения
  *       маршрутизации по размеру длинного целого. Неверная единица сдвигает
  *       чтение всех адресов, кроме первого: они читаются с середины соседней
  *       структуры и выглядят пустыми, а маршрут при этом считается найденным.
  *
- */
-/**
- * Макрос выравнивания структуры адреса внутри сообщения маршрутизации
  */
 #define AWH_SA_ALIGN sizeof(long)
 
@@ -51,18 +50,16 @@
 
 /**
  * Системные заголовочные файлы
- */
-#include <fcntl.h>
-#include <ifaddrs.h>
-/**
- * Заголовки потокового снятия таблиц ядра
+ *
+ * @details Заголовки потокового снятия таблиц ядра.
  *
  * @note Заголовка «sys/sysctl.h» у Sun Solaris и illumos НЕТ ВОВСЕ, а с ним нет и
  *       снимка таблицы маршрутов через NET_RT_DUMP. Таблицы снимаются интерфейсом
  *       mib2 - подробности у пространства имён mib
- *
  */
+#include <fcntl.h>
 #include <unistd.h>
+#include <ifaddrs.h>
 #include <stropts.h>
 #include <sys/stream.h>
 #include <sys/tihdr.h>
@@ -86,6 +83,15 @@
  */
 using namespace std;
 
+/**
+ * Если inline атрубит не подключён
+ */
+#if !defined(AWH_GW_INLINE)
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_GW_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Инкапсулируем статичные функции в пространство имён
@@ -97,10 +103,10 @@ namespace gw {
 	 *
 	 */
 	typedef struct Addrs {
-		// Адрес назначения маршрута
-		struct sockaddr * dst;
 		// Адрес шлюза маршрута
 		struct sockaddr * gw;
+		// Адрес назначения маршрута
+		struct sockaddr * dst;
 		// Маска подсети маршрута
 		struct sockaddr * mask;
 		// Сетевой интерфейс маршрута (канальный уровень)
@@ -109,8 +115,8 @@ namespace gw {
 		 * @brief Конструктор
 		 *
 		 */
-		Addrs() noexcept :
-		 dst(nullptr), gw(nullptr),
+		explicit Addrs() noexcept :
+		 gw(nullptr), dst(nullptr),
 		 mask(nullptr), ifp(nullptr) {}
 	} addrs_t;
 
@@ -121,7 +127,7 @@ namespace gw {
 	 * @return       маска подсети
 	 *
 	 */
-	static in_addr_t prefix2mask(const uint8_t prefix) noexcept {
+	static constexpr in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
 		if(prefix == 0)
 			// Возвращаем маску подсети
@@ -144,7 +150,7 @@ namespace gw {
 	 * @return     длина структуры адреса маршрута
 	 *
 	 */
-	static size_t length(const struct sockaddr * addr) noexcept {
+	static AWH_GW_INLINE size_t length(const struct sockaddr * addr) noexcept {
 		// Если объект адреса маршрута не передан
 		if(addr == nullptr)
 			// Выводим длину пустой структуры адреса
@@ -176,7 +182,7 @@ namespace gw {
 	 * @return     объект следующего адреса маршрута
 	 *
 	 */
-	static struct sockaddr * advance(struct sockaddr * addr) noexcept {
+	static AWH_GW_INLINE struct sockaddr * advance(struct sockaddr * addr) noexcept {
 		// Извлекаем объект следующего адреса маршрута
 		return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(::gw::length(addr)));
 	}
@@ -187,7 +193,7 @@ namespace gw {
 	 * @return    структура распарсенных адресов маршрута
 	 *
 	 */
-	static addrs_t parse(const struct rt_msghdr * rtm) noexcept {
+	static AWH_GW_INLINE addrs_t parse(const struct rt_msghdr * rtm) noexcept {
 		// Результат разбора адресов маршрута
 		addrs_t result;
 		// Объект текущего адреса маршрута
@@ -344,314 +350,254 @@ namespace gw {
  *       попутная, потому пока он повторён, и правки следует вносить В ОБА МЕСТА
  *
  */
-	namespace mib {
+namespace mib {
+	/**
+	 * @brief Функция снятия одной таблицы ядра
+	 *
+	 * @details Запрос подаётся один, а таблицы ядро отдаёт все подряд - оттого
+	 *          выдача разбирается до конца даже после того, как искомая таблица
+	 *          найдена: недочитанный поток оставил бы устройство с непрочитанными
+	 *          сообщениями, а закрытие его посреди выдачи ядро расценивает отказом.
+	 *
+	 * @param level  уровень искомой таблицы
+	 * @param name   название искомой таблицы
+	 * @param buffer буфер, в который складываются записи таблицы
+	 * @return       признак того, что таблица снята
+	 *
+	 */
+	static bool table(const int32_t level, const int32_t name, vector <char> & buffer) noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Очищаем буфер записей
+		buffer.clear();
+		// Выполняем открытие потокового устройства
+		const int32_t fd = ::open("/dev/arp", O_RDWR);
+		// Если устройство открыть не удалось
+		if(fd < 0)
+			// Выводим результат с ошибкой
+			return result;
 		/**
-		 * @brief Функция снятия одной таблицы ядра
+		 * Надеваем модули поверх устройства
 		 *
-		 * @details Запрос подаётся один, а таблицы ядро отдаёт все подряд - оттого
-		 *          выдача разбирается до конца даже после того, как искомая таблица
-		 *          найдена: недочитанный поток оставил бы устройство с непрочитанными
-		 *          сообщениями, а закрытие его посреди выдачи ядро расценивает отказом
-		 *
-		 * @param level  уровень искомой таблицы
-		 * @param name   название искомой таблицы
-		 * @param buffer буфер, в который складываются записи таблицы
-		 * @return       признак того, что таблица снята
+		 * @note Без них ядро отдаёт лишь таблицы самого ARP, а нужны сведения
+		 *       уровня IP - их выдают надетые модули
 		 *
 		 */
-		static bool table(const int32_t level, const int32_t name, vector <char> & buffer) noexcept {
-			// Результат работы функции
-			bool result = false;
-			// Очищаем буфер записей
-			buffer.clear();
-			// Выполняем открытие потокового устройства
-			const int32_t fd = ::open("/dev/arp", O_RDWR);
-			// Если устройство открыть не удалось
-			if(fd < 0)
-				// Выводим результат с ошибкой
-				return result;
-			/**
-			 * Надеваем модули поверх устройства
-			 *
-			 * @note Без них ядро отдаёт лишь таблицы самого ARP, а нужны сведения
-			 *       уровня IP - их выдают надетые модули
-			 */
-			if((::ioctl(fd, I_PUSH, "tcp") < 0) || (::ioctl(fd, I_PUSH, "udp") < 0)){
-				// Выполняем закрытие потокового устройства
-				::close(fd);
-				// Выводим результат с ошибкой
-				return result;
-			}
-			// Место под запрос управления
-			char request[sizeof(struct T_optmgmt_req) + sizeof(struct opthdr)] = {0};
-			// Получаем заголовок запроса управления
-			struct T_optmgmt_req * req = reinterpret_cast <struct T_optmgmt_req *> (request);
-			// Получаем описание запрашиваемой таблицы
-			struct opthdr * opt = reinterpret_cast <struct opthdr *> (req + 1);
-			// Устанавливаем разновидность запроса
-			req->PRIM_type = T_SVR4_OPTMGMT_REQ;
-			// Устанавливаем смещение описания в запросе
-			req->OPT_offset = sizeof(struct T_optmgmt_req);
-			// Устанавливаем размер описания в запросе
-			req->OPT_length = sizeof(struct opthdr);
-			// Затребуем действующие значения
-			req->MGMT_flags = T_CURRENT;
-			// Запрашиваем таблицы уровня IP
-			opt->level = MIB2_IP;
-			// Таблицы запрашиваются все разом
-			opt->name = 0;
-			// Тела у запроса нет
-			opt->len = 0;
-			// Собираем управляющую часть сообщения
-			struct strbuf control = {};
-			// Устанавливаем данные управляющей части
-			control.buf = request;
-			// Устанавливаем размер управляющей части
-			control.len = static_cast <int32_t> (sizeof(request));
-			// Выполняем подачу запроса ядру
-			if(::putmsg(fd, &control, nullptr, 0) < 0){
-				// Выполняем закрытие потокового устройства
-				::close(fd);
-				// Выводим результат с ошибкой
-				return result;
-			}
-			// Место под заголовок ответа
-			char answer[1024] = {0};
-			// Тело очередной таблицы
-			vector <char> chunk(0x10000);
-			// Собираем управляющую часть ответа
-			control.buf = answer;
-			// Устанавливаем предельный размер управляющей части
-			control.maxlen = static_cast <int32_t> (sizeof(answer));
-			/**
-			 * Разбираем выдачу ядра до самого конца
-			 */
-			for(;;){
-				// Признаки полученного сообщения
-				int32_t flags = 0;
-				// Сбрасываем размер полученной управляющей части
-				control.len = 0;
-				// Выполняем получение заголовка очередной таблицы
-				if(::getmsg(fd, &control, nullptr, &flags) < 0)
-					// Выходим из разбора выдачи
-					break;
-				// Если заголовок ответа не поместился, разбирать нечего
-				if(static_cast <size_t> (control.len) < sizeof(struct T_optmgmt_ack))
-					// Выходим из разбора выдачи
-					break;
-				// Получаем заголовок ответа
-				const struct T_optmgmt_ack * ack = reinterpret_cast <const struct T_optmgmt_ack *> (answer);
-				// Если ядро ответило отказом либо ответ не тот, разбирать нечего
-				if(ack->PRIM_type != T_OPTMGMT_ACK)
-					// Выходим из разбора выдачи
-					break;
-				// Если описание таблицы не поместилось, разбирать нечего
-				if(static_cast <size_t> (ack->OPT_length) < sizeof(struct opthdr))
-					// Выходим из разбора выдачи
-					break;
-				// Получаем описание очередной таблицы
-				const struct opthdr * head = reinterpret_cast <const struct opthdr *> (answer + ack->OPT_offset);
-				// Если описание пустое, выдача окончена
-				if((head->len == 0) && (head->level == 0) && (head->name == 0))
-					// Выходим из разбора выдачи
-					break;
-				// Собираем часть сообщения с записями таблицы
-				struct strbuf body = {};
-				// Устанавливаем буфер записей таблицы
-				body.buf = chunk.data();
-				// Устанавливаем предельный размер записей таблицы
-				body.maxlen = static_cast <int32_t> (chunk.size());
-				// Сбрасываем размер полученных записей
-				body.len = 0;
-				// Сбрасываем признаки полученного сообщения
-				flags = 0;
-				// Выполняем получение записей очередной таблицы
-				if(::getmsg(fd, nullptr, &body, &flags) < 0)
-					// Выходим из разбора выдачи
-					break;
-				/**
-				 * Если таблица оказалась искомой
-				 *
-				 * @note Оба поля заголовка объявлены системой БЕЗЗНАКОВЫМИ (`t_uscalar_t`),
-				 *       а доводы приходят знаковыми - оттого gcc и давал `-Wsign-compare`.
-				 *       Приведение здесь у ДОВОДОВ: значения суть постоянные MIB, всегда
-				 *       положительные, и отрицательный довод после приведения дал бы
-				 *       огромное число, не совпадающее ни с одной таблицей
-				 */
-				if((head->level == static_cast <t_uscalar_t> (level)) && (head->name == static_cast <t_uscalar_t> (name))){
-					// Запоминаем записи искомой таблицы
-					buffer.assign(chunk.data(), (chunk.data() + body.len));
-					// Отмечаем, что таблица снята
-					result = true;
-				}
-			}
+		if((::ioctl(fd, I_PUSH, "tcp") < 0) || (::ioctl(fd, I_PUSH, "udp") < 0)){
 			// Выполняем закрытие потокового устройства
 			::close(fd);
-			// Выводим результат
+			// Выводим результат с ошибкой
 			return result;
 		}
-		/**
-		 * @brief Функция складывания одного сообщения маршрута в буфер
-		 *
-		 * @warning Порядок частей сообщения задан разбором и менять его нельзя:
-		 *          адрес назначения, адрес шлюза, маска подсети, ссылка на
-		 *          устройство - ровно в этой очерёдности их и ждёт функция parse
-		 *
-		 * @param buffer буфер, в который складывается сообщение маршрута
-		 * @param dst    адрес назначения маршрута
-		 * @param gw     адрес шлюза маршрута
-		 * @param mask   маска подсети маршрута
-		 * @param name   имя устройства, которым идёт маршрут
-		 * @param flags  признаки маршрута
-		 *
-		 */
-		static void message(vector <uint8_t> & buffer, struct sockaddr * dst, struct sockaddr * gw, struct sockaddr * mask, const char * name, const int32_t flags) noexcept {
-			// Ссылка на устройство, которым идёт маршрут
-			struct sockaddr_dl link;
-			// Зануляем ссылку на устройство
-			::memset(&link, 0, sizeof(link));
-			// Устанавливаем вид ссылочного адреса
-			link.sdl_family = AF_LINK;
-			// Получаем номер устройства по его имени
-			link.sdl_index = static_cast <uint16_t> (::if_nametoindex(name));
-			// Получаем размер имени устройства
-			const size_t length = ::strlen(name);
-			// Если имя устройства помещается в ссылку
-			if(length < sizeof(link.sdl_data)){
-				// Устанавливаем размер имени устройства
-				link.sdl_nlen = static_cast <uint8_t> (length);
-				// Копируем имя устройства в ссылку
-				::memcpy(link.sdl_data, name, length);
-			}
-			// Получаем размер сообщения маршрута
-			const size_t size = (sizeof(struct rt_msghdr) + ROUNDUP(::gw::length(dst)) + ROUNDUP(::gw::length(gw)) + ROUNDUP(::gw::length(mask)) + ROUNDUP(sizeof(struct sockaddr_dl)));
-			// Запоминаем место, с которого начинается сообщение
-			const size_t offset = buffer.size();
-			// Расширяем буфер под сообщение маршрута
-			buffer.resize(offset + size, 0);
-			// Получаем заголовок сообщения маршрута
-			struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (buffer.data() + offset);
-			// Устанавливаем версию сообщения маршрута
-			rtm->rtm_version = RTM_VERSION;
-			// Устанавливаем разновидность сообщения маршрута
-			rtm->rtm_type = RTM_GET;
-			// Устанавливаем полный размер сообщения маршрута
-			rtm->rtm_msglen = static_cast <uint16_t> (size);
-			// Устанавливаем признаки маршрута
-			rtm->rtm_flags = flags;
-			// Устанавливаем номер устройства, которым идёт маршрут
-			rtm->rtm_index = link.sdl_index;
-			// Устанавливаем набор вложенных адресов
-			rtm->rtm_addrs = (RTA_DST | RTA_GATEWAY | RTA_NETMASK | RTA_IFP);
-			// Получаем место под вложенные адреса
-			uint8_t * payload = (buffer.data() + offset + sizeof(struct rt_msghdr));
-			/**
-			 * Складываем вложенные адреса подряд
-			 */
-			for(struct sockaddr * addr : {dst, gw, mask}){
-				// Копируем очередной адрес в сообщение
-				::memcpy(payload, addr, ::gw::length(addr));
-				// Смещаемся к месту следующего адреса
-				payload += ROUNDUP(::gw::length(addr));
-			}
-			// Копируем ссылку на устройство в сообщение
-			::memcpy(payload, &link, sizeof(link));
+		// Место под запрос управления
+		char request[sizeof(struct T_optmgmt_req) + sizeof(struct opthdr)] = {0};
+		// Получаем заголовок запроса управления
+		struct T_optmgmt_req * req = reinterpret_cast <struct T_optmgmt_req *> (request);
+		// Получаем описание запрашиваемой таблицы
+		struct opthdr * opt = reinterpret_cast <struct opthdr *> (req + 1);
+		// Устанавливаем разновидность запроса
+		req->PRIM_type = T_SVR4_OPTMGMT_REQ;
+		// Устанавливаем смещение описания в запросе
+		req->OPT_offset = sizeof(struct T_optmgmt_req);
+		// Устанавливаем размер описания в запросе
+		req->OPT_length = sizeof(struct opthdr);
+		// Затребуем действующие значения
+		req->MGMT_flags = T_CURRENT;
+		// Запрашиваем таблицы уровня IP
+		opt->level = MIB2_IP;
+		// Таблицы запрашиваются все разом
+		opt->name = 0;
+		// Тела у запроса нет
+		opt->len = 0;
+		// Собираем управляющую часть сообщения
+		struct strbuf control = {};
+		// Устанавливаем данные управляющей части
+		control.buf = request;
+		// Устанавливаем размер управляющей части
+		control.len = static_cast <int32_t> (sizeof(request));
+		// Выполняем подачу запроса ядру
+		if(::putmsg(fd, &control, nullptr, 0) < 0){
+			// Выполняем закрытие потокового устройства
+			::close(fd);
+			// Выводим результат с ошибкой
+			return result;
 		}
+		// Место под заголовок ответа
+		char answer[1024] = {0};
+		// Тело очередной таблицы
+		vector <char> chunk(0x10000);
+		// Собираем управляющую часть ответа
+		control.buf = answer;
+		// Устанавливаем предельный размер управляющей части
+		control.maxlen = static_cast <int32_t> (sizeof(answer));
 		/**
-		 * @brief Функция снятия таблицы маршрутов в виде сообщений маршрута
-		 *
-		 * @details Разбор маршрутов во всём модуле опирается на сообщения вида
-		 *          rt_msghdr, какими их отдаёт сокет маршрутизации. Таблица же
-		 *          снимается интерфейсом mib2 и приходит записями иного вида,
-		 *          оттого записи здесь ПЕРЕКЛАДЫВАЮТСЯ в сообщения маршрута -
-		 *          и весь разбор остаётся ровно тем же, что у BSD
-		 *
-		 * @note Складываются четыре части: адрес назначения, адрес шлюза, маска
-		 *       подсети и ссылка на устройство - ровно тот набор, что разбирает
-		 *       функция parse
-		 *
-		 * @param family вид адресов снимаемой таблицы
-		 * @param buffer буфер, в который складываются сообщения маршрутов
-		 * @return       признак того, что таблица снята
-		 *
+		 * Разбираем выдачу ядра до самого конца
 		 */
-		static bool routes(const int32_t family, vector <uint8_t> & buffer) noexcept {
-			// Очищаем буфер сообщений маршрутов
-			buffer.clear();
-			// Записи снятой таблицы маршрутов
-			vector <char> entries;
-			// Если снимается таблица маршрутов IPv6
-			if(family == AF_INET6){
-				// Снимаем таблицу маршрутов IPv6
-				if(!::mib::table(MIB2_IP6, MIB2_IP6_ROUTE, entries))
-					// Выводим результат с ошибкой
-					return false;
-				// Получаем количество записей таблицы маршрутов
-				const size_t count = (entries.size() / sizeof(mib2_ipv6RouteEntry_t));
-				// Получаем записи таблицы маршрутов
-				const mib2_ipv6RouteEntry_t * items = reinterpret_cast <const mib2_ipv6RouteEntry_t *> (entries.data());
-				/**
-				 * Перекладываем записи таблицы в сообщения маршрутов
-				 */
-				for(size_t i = 0; i < count; i++){
-					// Имя устройства, которым идёт маршрут
-					char name[LIFNAMSIZ + 1];
-					// Зануляем имя устройства
-					::memset(name, 0, sizeof(name));
-					// Получаем размер имени устройства
-					const size_t length = static_cast <size_t> (items[i].ipv6RouteIfIndex.o_length);
-					// Если имя устройства получено
-					if((length > 0) && (length < sizeof(name)))
-						// Копируем имя устройства
-						::memcpy(name, items[i].ipv6RouteIfIndex.o_bytes, length);
-					// Адрес назначения маршрута
-					struct sockaddr_in6 dst;
-					// Адрес шлюза маршрута
-					struct sockaddr_in6 gw;
-					// Маска подсети маршрута
-					struct sockaddr_in6 mask;
-					// Зануляем адрес назначения маршрута
-					::memset(&dst, 0, sizeof(dst));
-					// Зануляем адрес шлюза маршрута
-					::memset(&gw, 0, sizeof(gw));
-					// Зануляем маску подсети маршрута
-					::memset(&mask, 0, sizeof(mask));
-					// Устанавливаем вид адреса назначения
-					dst.sin6_family = AF_INET6;
-					// Устанавливаем вид адреса шлюза
-					gw.sin6_family = AF_INET6;
-					// Устанавливаем вид маски подсети
-					mask.sin6_family = AF_INET6;
-					// Устанавливаем адрес назначения маршрута
-					::memcpy(&dst.sin6_addr, &items[i].ipv6RouteDest, sizeof(struct in6_addr));
-					// Устанавливаем адрес шлюза маршрута
-					::memcpy(&gw.sin6_addr, &items[i].ipv6RouteNextHop, sizeof(struct in6_addr));
-					// Получаем длину префикса маршрута
-					int32_t prefix = items[i].ipv6RoutePfxLength;
-					// Если длина префикса выходит за пределы
-					if((prefix < 0) || (prefix > 128))
-						// Устанавливаем длину префикса по умолчанию
-						prefix = 0;
-					/**
-					 * Собираем маску подсети из длины префикса
-					 */
-					for(int32_t bit = 0; bit < prefix; bit++)
-						// Устанавливаем очередной разряд маски подсети
-						mask.sin6_addr.s6_addr[bit / 8] |= static_cast <uint8_t> (0x80 >> (bit % 8));
-					// Складываем сообщение маршрута в буфер
-					::mib::message(buffer, reinterpret_cast <struct sockaddr *> (&dst), reinterpret_cast <struct sockaddr *> (&gw), reinterpret_cast <struct sockaddr *> (&mask), name, items[i].ipv6RouteInfo.re_flags);
-				}
-				// Выводим результат
-				return true;
+		for(;;){
+			// Признаки полученного сообщения
+			int32_t flags = 0;
+			// Сбрасываем размер полученной управляющей части
+			control.len = 0;
+			// Выполняем получение заголовка очередной таблицы
+			if(::getmsg(fd, &control, nullptr, &flags) < 0)
+				// Выходим из разбора выдачи
+				break;
+			// Если заголовок ответа не поместился, разбирать нечего
+			if(static_cast <size_t> (control.len) < sizeof(struct T_optmgmt_ack))
+				// Выходим из разбора выдачи
+				break;
+			// Получаем заголовок ответа
+			const struct T_optmgmt_ack * ack = reinterpret_cast <const struct T_optmgmt_ack *> (answer);
+			// Если ядро ответило отказом либо ответ не тот, разбирать нечего
+			if(ack->PRIM_type != T_OPTMGMT_ACK)
+				// Выходим из разбора выдачи
+				break;
+			// Если описание таблицы не поместилось, разбирать нечего
+			if(static_cast <size_t> (ack->OPT_length) < sizeof(struct opthdr))
+				// Выходим из разбора выдачи
+				break;
+			// Получаем описание очередной таблицы
+			const struct opthdr * head = reinterpret_cast <const struct opthdr *> (answer + ack->OPT_offset);
+			// Если описание пустое, выдача окончена
+			if((head->len == 0) && (head->level == 0) && (head->name == 0))
+				// Выходим из разбора выдачи
+				break;
+			// Собираем часть сообщения с записями таблицы
+			struct strbuf body = {};
+			// Устанавливаем буфер записей таблицы
+			body.buf = chunk.data();
+			// Устанавливаем предельный размер записей таблицы
+			body.maxlen = static_cast <int32_t> (chunk.size());
+			// Сбрасываем размер полученных записей
+			body.len = 0;
+			// Сбрасываем признаки полученного сообщения
+			flags = 0;
+			// Выполняем получение записей очередной таблицы
+			if(::getmsg(fd, nullptr, &body, &flags) < 0)
+				// Выходим из разбора выдачи
+				break;
+			/**
+			 * Если таблица оказалась искомой
+			 *
+			 * @note Оба поля заголовка объявлены системой БЕЗЗНАКОВЫМИ (`t_uscalar_t`),
+			 *       а доводы приходят знаковыми - оттого gcc и давал `-Wsign-compare`.
+			 *       Приведение здесь у ДОВОДОВ: значения суть постоянные MIB, всегда
+			 *       положительные, и отрицательный довод после приведения дал бы
+			 *       огромное число, не совпадающее ни с одной таблицей
+			 *
+			 */
+			if((head->level == static_cast <t_uscalar_t> (level)) && (head->name == static_cast <t_uscalar_t> (name))){
+				// Запоминаем записи искомой таблицы
+				buffer.assign(chunk.data(), (chunk.data() + body.len));
+				// Отмечаем, что таблица снята
+				result = true;
 			}
-			// Снимаем таблицу маршрутов IPv4
-			if(!::mib::table(MIB2_IP, MIB2_IP_ROUTE, entries))
+		}
+		// Выполняем закрытие потокового устройства
+		::close(fd);
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция складывания одного сообщения маршрута в буфер
+	 *
+	 * @warning Порядок частей сообщения задан разбором и менять его нельзя:
+	 *          адрес назначения, адрес шлюза, маска подсети, ссылка на
+	 *          устройство - ровно в этой очерёдности их и ждёт функция parse.
+	 *
+	 * @param buffer буфер, в который складывается сообщение маршрута
+	 * @param dst    адрес назначения маршрута
+	 * @param gw     адрес шлюза маршрута
+	 * @param mask   маска подсети маршрута
+	 * @param name   имя устройства, которым идёт маршрут
+	 * @param flags  признаки маршрута
+	 *
+	 */
+	static void message(vector <uint8_t> & buffer, struct sockaddr * dst, struct sockaddr * gw, struct sockaddr * mask, const char * name, const int32_t flags) noexcept {
+		// Ссылка на устройство, которым идёт маршрут
+		struct sockaddr_dl link;
+		// Зануляем ссылку на устройство
+		::memset(&link, 0, sizeof(link));
+		// Устанавливаем вид ссылочного адреса
+		link.sdl_family = AF_LINK;
+		// Получаем номер устройства по его имени
+		link.sdl_index = static_cast <uint16_t> (::if_nametoindex(name));
+		// Получаем размер имени устройства
+		const size_t length = ::strlen(name);
+		// Если имя устройства помещается в ссылку
+		if(length < sizeof(link.sdl_data)){
+			// Устанавливаем размер имени устройства
+			link.sdl_nlen = static_cast <uint8_t> (length);
+			// Копируем имя устройства в ссылку
+			::memcpy(link.sdl_data, name, length);
+		}
+		// Получаем размер сообщения маршрута
+		const size_t size = (sizeof(struct rt_msghdr) + ROUNDUP(::gw::length(dst)) + ROUNDUP(::gw::length(gw)) + ROUNDUP(::gw::length(mask)) + ROUNDUP(sizeof(struct sockaddr_dl)));
+		// Запоминаем место, с которого начинается сообщение
+		const size_t offset = buffer.size();
+		// Расширяем буфер под сообщение маршрута
+		buffer.resize(offset + size, 0);
+		// Получаем заголовок сообщения маршрута
+		struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (buffer.data() + offset);
+		// Устанавливаем версию сообщения маршрута
+		rtm->rtm_version = RTM_VERSION;
+		// Устанавливаем разновидность сообщения маршрута
+		rtm->rtm_type = RTM_GET;
+		// Устанавливаем полный размер сообщения маршрута
+		rtm->rtm_msglen = static_cast <uint16_t> (size);
+		// Устанавливаем признаки маршрута
+		rtm->rtm_flags = flags;
+		// Устанавливаем номер устройства, которым идёт маршрут
+		rtm->rtm_index = link.sdl_index;
+		// Устанавливаем набор вложенных адресов
+		rtm->rtm_addrs = (RTA_DST | RTA_GATEWAY | RTA_NETMASK | RTA_IFP);
+		// Получаем место под вложенные адреса
+		uint8_t * payload = (buffer.data() + offset + sizeof(struct rt_msghdr));
+		/**
+		 * Складываем вложенные адреса подряд
+		 */
+		for(struct sockaddr * addr : {dst, gw, mask}){
+			// Копируем очередной адрес в сообщение
+			::memcpy(payload, addr, ::gw::length(addr));
+			// Смещаемся к месту следующего адреса
+			payload += ROUNDUP(::gw::length(addr));
+		}
+		// Копируем ссылку на устройство в сообщение
+		::memcpy(payload, &link, sizeof(link));
+	}
+	/**
+	 * @brief Функция снятия таблицы маршрутов в виде сообщений маршрута
+	 *
+	 * @details Разбор маршрутов во всём модуле опирается на сообщения вида
+	 *          rt_msghdr, какими их отдаёт сокет маршрутизации. Таблица же
+	 *          снимается интерфейсом mib2 и приходит записями иного вида,
+	 *          оттого записи здесь ПЕРЕКЛАДЫВАЮТСЯ в сообщения маршрута -
+	 *          и весь разбор остаётся ровно тем же, что у BSD.
+	 *
+	 * @note Складываются четыре части: адрес назначения, адрес шлюза, маска
+	 *       подсети и ссылка на устройство - ровно тот набор, что разбирает
+	 *       функция parse
+	 *
+	 * @param family вид адресов снимаемой таблицы
+	 * @param buffer буфер, в который складываются сообщения маршрутов
+	 * @return       признак того, что таблица снята
+	 *
+	 */
+	static bool routes(const int32_t family, vector <uint8_t> & buffer) noexcept {
+		// Очищаем буфер сообщений маршрутов
+		buffer.clear();
+		// Записи снятой таблицы маршрутов
+		vector <char> entries;
+		// Если снимается таблица маршрутов IPv6
+		if(family == AF_INET6){
+			// Снимаем таблицу маршрутов IPv6
+			if(!::mib::table(MIB2_IP6, MIB2_IP6_ROUTE, entries))
 				// Выводим результат с ошибкой
 				return false;
 			// Получаем количество записей таблицы маршрутов
-			const size_t count = (entries.size() / sizeof(mib2_ipRouteEntry_t));
+			const size_t count = (entries.size() / sizeof(mib2_ipv6RouteEntry_t));
 			// Получаем записи таблицы маршрутов
-			const mib2_ipRouteEntry_t * items = reinterpret_cast <const mib2_ipRouteEntry_t *> (entries.data());
+			const mib2_ipv6RouteEntry_t * items = reinterpret_cast <const mib2_ipv6RouteEntry_t *> (entries.data());
 			/**
 			 * Перекладываем записи таблицы в сообщения маршрутов
 			 */
@@ -661,17 +607,17 @@ namespace gw {
 				// Зануляем имя устройства
 				::memset(name, 0, sizeof(name));
 				// Получаем размер имени устройства
-				const size_t length = static_cast <size_t> (items[i].ipRouteIfIndex.o_length);
+				const size_t length = static_cast <size_t> (items[i].ipv6RouteIfIndex.o_length);
 				// Если имя устройства получено
 				if((length > 0) && (length < sizeof(name)))
 					// Копируем имя устройства
-					::memcpy(name, items[i].ipRouteIfIndex.o_bytes, length);
+					::memcpy(name, items[i].ipv6RouteIfIndex.o_bytes, length);
 				// Адрес назначения маршрута
-				struct sockaddr_in dst;
+				struct sockaddr_in6 dst;
 				// Адрес шлюза маршрута
-				struct sockaddr_in gw;
+				struct sockaddr_in6 gw;
 				// Маска подсети маршрута
-				struct sockaddr_in mask;
+				struct sockaddr_in6 mask;
 				// Зануляем адрес назначения маршрута
 				::memset(&dst, 0, sizeof(dst));
 				// Зануляем адрес шлюза маршрута
@@ -679,24 +625,86 @@ namespace gw {
 				// Зануляем маску подсети маршрута
 				::memset(&mask, 0, sizeof(mask));
 				// Устанавливаем вид адреса назначения
-				dst.sin_family = AF_INET;
+				dst.sin6_family = AF_INET6;
 				// Устанавливаем вид адреса шлюза
-				gw.sin_family = AF_INET;
+				gw.sin6_family = AF_INET6;
 				// Устанавливаем вид маски подсети
-				mask.sin_family = AF_INET;
+				mask.sin6_family = AF_INET6;
 				// Устанавливаем адрес назначения маршрута
-				dst.sin_addr.s_addr = items[i].ipRouteDest;
+				::memcpy(&dst.sin6_addr, &items[i].ipv6RouteDest, sizeof(struct in6_addr));
 				// Устанавливаем адрес шлюза маршрута
-				gw.sin_addr.s_addr = items[i].ipRouteNextHop;
-				// Устанавливаем маску подсети маршрута
-				mask.sin_addr.s_addr = items[i].ipRouteMask;
+				::memcpy(&gw.sin6_addr, &items[i].ipv6RouteNextHop, sizeof(struct in6_addr));
+				// Получаем длину префикса маршрута
+				int32_t prefix = items[i].ipv6RoutePfxLength;
+				// Если длина префикса выходит за пределы
+				if((prefix < 0) || (prefix > 128))
+					// Устанавливаем длину префикса по умолчанию
+					prefix = 0;
+				/**
+				 * Собираем маску подсети из длины префикса
+				 */
+				for(int32_t bit = 0; bit < prefix; bit++)
+					// Устанавливаем очередной разряд маски подсети
+					mask.sin6_addr.s6_addr[bit / 8] |= static_cast <uint8_t> (0x80 >> (bit % 8));
 				// Складываем сообщение маршрута в буфер
-				::mib::message(buffer, reinterpret_cast <struct sockaddr *> (&dst), reinterpret_cast <struct sockaddr *> (&gw), reinterpret_cast <struct sockaddr *> (&mask), name, items[i].ipRouteInfo.re_flags);
+				::mib::message(buffer, reinterpret_cast <struct sockaddr *> (&dst), reinterpret_cast <struct sockaddr *> (&gw), reinterpret_cast <struct sockaddr *> (&mask), name, items[i].ipv6RouteInfo.re_flags);
 			}
 			// Выводим результат
 			return true;
 		}
-	};
+		// Снимаем таблицу маршрутов IPv4
+		if(!::mib::table(MIB2_IP, MIB2_IP_ROUTE, entries))
+			// Выводим результат с ошибкой
+			return false;
+		// Получаем количество записей таблицы маршрутов
+		const size_t count = (entries.size() / sizeof(mib2_ipRouteEntry_t));
+		// Получаем записи таблицы маршрутов
+		const mib2_ipRouteEntry_t * items = reinterpret_cast <const mib2_ipRouteEntry_t *> (entries.data());
+		/**
+		 * Перекладываем записи таблицы в сообщения маршрутов
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Имя устройства, которым идёт маршрут
+			char name[LIFNAMSIZ + 1];
+			// Зануляем имя устройства
+			::memset(name, 0, sizeof(name));
+			// Получаем размер имени устройства
+			const size_t length = static_cast <size_t> (items[i].ipRouteIfIndex.o_length);
+			// Если имя устройства получено
+			if((length > 0) && (length < sizeof(name)))
+				// Копируем имя устройства
+				::memcpy(name, items[i].ipRouteIfIndex.o_bytes, length);
+			// Адрес назначения маршрута
+			struct sockaddr_in dst;
+			// Адрес шлюза маршрута
+			struct sockaddr_in gw;
+			// Маска подсети маршрута
+			struct sockaddr_in mask;
+			// Зануляем адрес назначения маршрута
+			::memset(&dst, 0, sizeof(dst));
+			// Зануляем адрес шлюза маршрута
+			::memset(&gw, 0, sizeof(gw));
+			// Зануляем маску подсети маршрута
+			::memset(&mask, 0, sizeof(mask));
+			// Устанавливаем вид адреса назначения
+			dst.sin_family = AF_INET;
+			// Устанавливаем вид адреса шлюза
+			gw.sin_family = AF_INET;
+			// Устанавливаем вид маски подсети
+			mask.sin_family = AF_INET;
+			// Устанавливаем адрес назначения маршрута
+			dst.sin_addr.s_addr = items[i].ipRouteDest;
+			// Устанавливаем адрес шлюза маршрута
+			gw.sin_addr.s_addr = items[i].ipRouteNextHop;
+			// Устанавливаем маску подсети маршрута
+			mask.sin_addr.s_addr = items[i].ipRouteMask;
+			// Складываем сообщение маршрута в буфер
+			::mib::message(buffer, reinterpret_cast <struct sockaddr *> (&dst), reinterpret_cast <struct sockaddr *> (&gw), reinterpret_cast <struct sockaddr *> (&mask), name, items[i].ipRouteInfo.re_flags);
+		}
+		// Выводим результат
+		return true;
+	}
+};
 
 /**
  * @brief Конструктор
@@ -729,6 +737,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -780,18 +789,22 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Предполагаем совпадение и проверяем условия
 						bool match = true;
 						/**
+						 * Если ищем маршрут по умолчанию
+						 *
 						 * @note Маршрутом по умолчанию считается только маршрут с нулевой
 						 *       длиной префикса. Одного нулевого адреса назначения мало:
 						 *       ему отвечают и более узкие маршруты, а ядро на запрос
 						 *       нулевого адреса возвращает самый точный из них, а вовсе
 						 *       не маршрут по умолчанию.
+						 *
 						 */
-						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
-							match = (((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0) &&
-							         ((mask != nullptr ? mask->sin_addr.s_addr : 0) == 0) &&
-							         ((rtm->rtm_flags & RTF_HOST) == 0));
+							match = (
+								((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0) &&
+							    ((mask != nullptr ? mask->sin_addr.s_addr : 0) == 0) &&
+							    ((rtm->rtm_flags & RTF_HOST) == 0)
+							);
 						// Если ищем конкретный маршрут
 						else {
 							// Если задан gateway, он должен совпадать
@@ -803,6 +816,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
 							/**
+							 * Если задан интерфейс
+							 *
 							 * @note Устройство записи, снятой через mib2, известно не
 							 *       всегда: у маршрута по умолчанию поле ipRouteIfIndex
 							 *       пусто. Отвергать такую запись по несовпадению
@@ -810,8 +825,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 *       спрошенный вместе с устройством, не находился бы
 							 *       вовсе. Устройство тогда доспрашивается у ядра по
 							 *       адресу шлюза записи
+							 *
 							 */
-							// Если задан интерфейс
 							if(searchIfIndex != 0){
 								// Индекс сетевого интерфейса записи маршрута
 								uint32_t index = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
@@ -900,14 +915,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *          сличением поля назначения. Это не подбор маршрута:
 					 *          адрес своей же сети, у которого нет отдельной записи,
 					 *          объявлялся недостижимым, а адрес, покрытый более
-					 *          широкой записью, - тоже
+					 *          широкой записью, - тоже.
 					 *
 					 * @note Запрос идёт только тогда, когда спрашивают именно маршрут:
 					 *       при заданном шлюзе либо устройстве спрашивают не «куда
 					 *       пойдёт пакет», а «есть ли такая запись», и для этого
 					 *       по-прежнему обходится вся таблица
-					 */
-					/**
+					 *
 					 * @note Нулевым адресом маршрут по умолчанию у этих систем не
 					 *       спрашивается: на запрос 0.0.0.0 ядро отвечает не маршрутом
 					 *       по умолчанию, а пустышкой - нулевым шлюзом при маске
@@ -916,6 +930,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *       правильный, на нулевой - нет. Маршрут по умолчанию потому
 					 *       берётся обходом таблицы, а устройство ему доопределяется
 					 *       ниже запросом по адресу его же шлюза
+					 *
 					 */
 					if((awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0) &&
 					   (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
@@ -939,13 +954,15 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					if(!result){
 						/**
-						 * Снимаем ВСЕ маршруты IPv4
+						 * Буфер данных для получения маршрутов
+						 *
+						 * @details Снимаем ВСЕ маршруты IPv4.
 						 *
 						 * @note Снимка таблицы через sysctl у этих систем нет, и таблица
 						 *       снимается интерфейсом mib2, а её записи перекладываются в
 						 *       сообщения маршрута - разбор ниже остаётся тем же, что у BSD
+						 *
 						 */
-						// Буфер данных для получения маршрутов
 						vector <uint8_t> buffer;
 						// Снимаем таблицу маршрутов IPv4
 						if(!::mib::routes(AF_INET, buffer)){
@@ -954,13 +971,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+								log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
+								log::print("Kernel routing table could not be obtained", log::flag_t::CRITICAL);
 							#endif
 							// Возвращаем результат
 							return result;
@@ -1007,6 +1024,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *       Устройство тогда доспрашивается у ядра запросом по адресу
 					 *       шлюза: шлюз достижим напрямую, и его маршрут устройство
 					 *       несёт всегда
+					 *
 					 */
 					if(result && (foundIfIndex == 0)){
 						// Получаем адрес шлюза найденного маршрута
@@ -1093,18 +1111,22 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Предполагаем совпадение и проверяем условия
 						bool match = true;
 						/**
+						 * Если ищем маршрут по умолчанию
+						 *
 						 * @note Маршрутом по умолчанию считается только маршрут с нулевой
 						 *       длиной префикса. Одного нулевого адреса назначения мало:
 						 *       ему отвечают и более узкие маршруты - например "::/96"
 						 *       через петлевой интерфейс, - а ядро на запрос нулевого
 						 *       адреса возвращает самый точный из них.
+						 *
 						 */
-						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
-							match = (((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)) &&
-							         ((mask == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&mask->sin6_addr)) &&
-							         ((rtm->rtm_flags & RTF_HOST) == 0));
+							match = (
+								((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)) &&
+							    ((mask == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&mask->sin6_addr)) &&
+							    ((rtm->rtm_flags & RTF_HOST) == 0)
+							);
 						// Если ищем конкретный маршрут
 						else {
 							// Проверка шлюза
@@ -1116,11 +1138,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
 							/**
+							 * Проверка интерфейса
+							 *
 							 * @note Устройство записи берётся из поля RTA_IFP, а при его
 							 *       отсутствии - из заголовка сообщения: снимок таблицы
 							 *       поля RTA_IFP не несёт
+							 *
 							 */
-							// Проверка интерфейса
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
 								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
@@ -1193,13 +1217,15 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					if(!result){
 						/**
-						 * Снимаем ВСЕ маршруты IPv6
+						 * Буфер данных для получения маршрутов
+						 *
+						 * @details Снимаем ВСЕ маршруты IPv6.
 						 *
 						 * @note Снимка таблицы через sysctl у этих систем нет, и таблица
 						 *       снимается интерфейсом mib2, а её записи перекладываются в
 						 *       сообщения маршрута - разбор ниже остаётся тем же, что у BSD
+						 *
 						 */
-						// Буфер данных для получения маршрутов
 						vector <uint8_t> buffer;
 						// Снимаем таблицу маршрутов IPv6
 						if(!::mib::routes(AF_INET6, buffer)){
@@ -1208,13 +1234,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+								log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
+								log::print("Kernel routing table could not be obtained", log::flag_t::CRITICAL);
 							#endif
 							// Возвращаем результат
 							return result;
@@ -1273,13 +1299,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -1290,13 +1316,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -1308,13 +1334,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1340,7 +1366,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
 		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
 		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
-		 *          непроверенных длин в проекте насчитано четыре
+		 *          непроверенных длин в проекте насчитано четыре.
 		 *
 		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
 		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
@@ -1359,6 +1385,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
 		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
 		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 *
 		 */
 		if(route.destination != nullptr){
 			// Предел длины префикса, отвечающий разрядности адреса назначения
@@ -1366,7 +1393,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				log::print("Route prefix length %u exceeds the limit %u of the %s address", log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -1380,6 +1407,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -1402,13 +1430,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1519,20 +1547,19 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to find IPv4 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::print("Unable to find IPv4 address for interface \"%s\"", log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
 					 * Используем интерфейс как link-layer gateway (-interface)
-					 */
-					/**
+					 *
 					 * @note Ссылочного адреса устройства (sockaddr_dl) ядро этих систем в
 					 *       поле шлюза НЕ принимает - отвечает EINVAL. Маршрут через
 					 *       устройство задаётся здесь адресом IPv4 самого устройства, ровно
@@ -1540,6 +1567,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 *       `route add -net 192.0.2.0 -netmask 255.255.255.0 -interface 10.0.0.5`.
 					 *       Флаг RTF_GATEWAY при этом НЕ ставится: маршрут остаётся прямым,
 					 *       и система показывает его признаком «U», а не «UG»
+					 *
 					 */
 					} else if(!isDefault && !isGateway && isIfname) {
 						// Список сетевых интерфейсов
@@ -1604,13 +1632,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Закрываем сокет
@@ -1627,13 +1655,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1746,24 +1774,24 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Unable to find IPv6 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
+								log::print("Unable to find IPv6 address for interface \"%s\"", log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
 					 * Используем интерфейс как link-layer gateway (-interface)
-					 */
-					/**
+					 *
 					 * @note Ссылочного адреса устройства (sockaddr_dl) ядро этих систем в
 					 *       поле шлюза НЕ принимает - отвечает EINVAL, ровно как и по IPv4.
 					 *       Маршрут через устройство задаётся адресом IPv6 самого
 					 *       устройства, а флаг RTF_GATEWAY не ставится: маршрут прямой
+					 *
 					 */
 					} else if(!isDefault && !isGateway && isIfname) {
 						// Список сетевых интерфейсов
@@ -1850,16 +1878,16 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
-					// Закрываем
+					// Закрываем сокет маршрутизации
 					::close(sock);
 				} break;
 				// Во всех остальных случаях
@@ -1869,13 +1897,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -1886,13 +1914,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -1904,13 +1932,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1936,7 +1964,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
 		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
 		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
-		 *          непроверенных длин в проекте насчитано четыре
+		 *          непроверенных длин в проекте насчитано четыре.
 		 *
 		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
 		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
@@ -1955,6 +1983,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
 		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
 		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 *
 		 */
 		if(route.destination != nullptr){
 			// Предел длины префикса, отвечающий разрядности адреса назначения
@@ -1962,7 +1991,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				log::print("Route prefix length %u exceeds the limit %u of the %s address", log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -1976,6 +2005,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 *          четыре: надзиратель `address` отвечает `heap-buffer-overflow`.
 		 *          Оба поля объявлены общим основанием `net::addr_t` и заполняются
 		 *          потребителем порознь, запретить такую пару языком нечем
+		 *
 		 */
 		if((route.gateway != nullptr) && (route.destination != nullptr) &&
 		   (route.gateway->size != route.destination->size))
@@ -1990,13 +2020,15 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 				// Если адрес является IPv4
 				case 4: {
 					/**
-					 * Снимаем ВСЕ маршруты IPv4
+					 * Буфер данных для получения маршрутов
+					 *
+					 * @details Снимаем ВСЕ маршруты IPv4.
 					 *
 					 * @note Снимка таблицы через sysctl у этих систем нет, и таблица
 					 *       снимается интерфейсом mib2, а её записи перекладываются в
 					 *       сообщения маршрута - разбор ниже остаётся тем же, что у BSD
+					 *
 					 */
-					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer;
 					// Снимаем таблицу маршрутов IPv4
 					if(!::mib::routes(AF_INET, buffer)){
@@ -2005,13 +2037,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+							log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
+							log::print("Kernel routing table could not be obtained", log::flag_t::CRITICAL);
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2027,13 +2059,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2079,10 +2111,11 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						// Флаг совпадения маршрута
 						bool match = true;
 						/**
+						 * Проверяем, является ли адрес назначения маршрута default route
+						 *
 						 * РЕЖИМ 1:
 						 * Удалить ЛЮБОЙ default route (dst_str == "0.0.0.0" или nullptr + dst=0.0.0.0)
 						 */
-						// Проверяем, является ли адрес назначения маршрута default route
 						const bool isDefault = ((dst != nullptr) && (dst->sin_addr.s_addr == INADDR_ANY));
 						// Если требуется удалить ЛЮБОЙ default route
 						if(isDefault && (netmsk == 0) &&
@@ -2091,17 +2124,19 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Удаляем ЛЮБОЙ default route
 							goto DeleteRoute;
 						/**
-						 * РЕЖИМ 2:
-						 * Точное совпадение по заданным параметрам
+						 * Если маска подсети задана
+						 *
+						 * @note РЕЖИМ 2:
+						 *       Точное совпадение по заданным параметрам
 						 *
 						 * @warning Условия совпадения НАКАПЛИВАЮТСЯ через "match = match && ...",
-						 * а не перезаписываются. Присваивание вместо накопления означает, что верх
-						 * берёт последняя проверка, а прежние отбрасываются: запрос на удаление
-						 * хостового маршрута до 192.0.2.1 через шлюз 10.100.1.10 сводился к одному
-						 * лишь условию по шлюзу и сносил ВСЕ маршруты через этот шлюз, включая
-						 * маршрут по умолчанию. Стенд Solaris так и остался без сети (12.08.2026)
+						 *          а не перезаписываются. Присваивание вместо накопления означает, что верх
+						 *          берёт последняя проверка, а прежние отбрасываются: запрос на удаление
+						 *          хостового маршрута до 192.0.2.1 через шлюз 10.100.1.10 сводился к одному
+						 *          лишь условию по шлюзу и сносил ВСЕ маршруты через этот шлюз, включая
+						 *          маршрут по умолчанию. Стенд Solaris так и остался без сети (12.08.2026)
+						 *
 						 */
-						// Если маска подсети задана
 						if(netmsk > 0)
 							// Устанавливаем флаг совпадения по маске подсети маршрута
 							match = (match && (mask != nullptr) && (mask->sin_addr.s_addr == netmsk));
@@ -2117,13 +2152,15 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = (match && (gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
-						// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
 						/**
+						 * Если имя сетевого интерфейса задано (и шлюз НЕ задан)
+						 *
 						 * @note Устройство записи берётся из поля RTA_IFP, а при его
 						 *       отсутствии - из заголовка сообщения. Требование ifp
 						 *       отвергало здесь любую запись, а условие это - единственное,
 						 *       каким сносится маршрут, заданный одним устройством, без
 						 *       шлюза: так заданы маршруты через устройства точка-точка
+						 *
 						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
@@ -2218,13 +2255,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -2243,13 +2280,15 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					/**
-					 * Снимаем ВСЕ маршруты IPv6
+					 * Буфер данных для получения маршрутов
+					 *
+					 * @details Снимаем ВСЕ маршруты IPv6.
 					 *
 					 * @note Снимка таблицы через sysctl у этих систем нет, и таблица
 					 *       снимается интерфейсом mib2, а её записи перекладываются в
 					 *       сообщения маршрута - разбор ниже остаётся тем же, что у BSD
+					 *
 					 */
-					// Буфер данных для получения маршрутов
 					vector <uint8_t> buffer;
 					// Снимаем таблицу маршрутов IPv6
 					if(!::mib::routes(AF_INET6, buffer)){
@@ -2258,13 +2297,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+							log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
+							log::print("Kernel routing table could not be obtained", log::flag_t::CRITICAL);
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2280,13 +2319,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2389,13 +2428,15 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], zeroAddr, 16) != 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
-						// Если имя сетевого интерфейса задано
 						/**
+						 * Если имя сетевого интерфейса задано
+						 *
 						 * @note Устройство записи берётся из поля RTA_IFP, а при его
 						 *       отсутствии - из заголовка сообщения. Требование ifp
 						 *       отвергало здесь любую запись, а условие это - единственное,
 						 *       каким сносится маршрут, заданный одним устройством, без
 						 *       шлюза: так заданы маршруты через устройства точка-точка
+						 *
 						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
@@ -2490,13 +2531,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -2519,13 +2560,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
+						log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
+						log::print("Unsupported address family", log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -2536,13 +2577,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
+				log::print("Gateway address is not initialized", log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -2554,13 +2595,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2570,9 +2611,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
  * @brief Конструктор
  *
  */
-awh::eth::Gateway::Gateway() noexcept {}
+awh::eth::Gateway::Gateway() noexcept = default;
 /**
  * @brief Деструктор
  *
  */
-awh::eth::Gateway::~Gateway() noexcept {}
+awh::eth::Gateway::~Gateway() noexcept = default;

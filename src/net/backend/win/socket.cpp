@@ -82,6 +82,7 @@
  *       MS Windows не тремя настройками сокета, как у наречий POSIX, а одной посылкой
  *       управления, и описание её живёт именно здесь. Оснастка MinGW тянула этот
  *       заголовок попутно, MSVC - нет
+ *
  */
 #include <mstcpip.h>
 
@@ -342,6 +343,7 @@ namespace {
 			 * @note Отпуск при этом не вешается вовсе: отпускать нечего, своей ссылки
 			 *       слой не брал. Отпусти он чужую - отнял бы средства у того, кто их
 			 *       поднял и ими пользуется
+			 *
 			 */
 			if(::__awh_winsock_raised__())
 				// Выходим из функции: средства сокетов годны
@@ -364,6 +366,7 @@ namespace {
 			 *       версию она вправе понизить до той, какую умеет, и сообщить об этом
 			 *       одними лишь выданными сведениями. Наложенный обмен, на котором
 			 *       стоит движок, младше версии 2.2 не работает вовсе
+			 *
 			 */
 			if((LOBYTE(data.wVersion) != 2) || (HIBYTE(data.wVersion) != 2)){
 				// Запоминаем описание расхождения версий средств сокетов
@@ -385,6 +388,7 @@ namespace {
 			 *       который жил бы ровно столько же, у слоя этого нет вовсе.
 			 *       Вешается оно лишь тогда, когда ссылка ВЗЯТА - то есть когда слой
 			 *       поднял средства сам
+			 *
 			 */
 			::atexit([]() noexcept -> void {
 				// Выполняем отпуск взятой ссылки на средства сокетов системы
@@ -587,6 +591,7 @@ namespace {
 		 * @note Обычных часов для последнего мало: ход их у MS Windows зернист -
 		 *       шагом в 15.6 мс, - и два приложения, запущенные в один шаг, получили
 		 *       бы совпадающее значение
+		 *
 		 */
 		const wstring pipe = fmk::format(
 			L"\\\\.\\pipe\\awh-ipc-%d-%llu-%llu",
@@ -610,6 +615,7 @@ namespace {
 			 *       система заводит ещё один экземпляр того же канала, и чужой
 			 *       работник вправе подключиться к нашему концу. С признаком
 			 *       занятость имени оборачивается честным отказом
+			 *
 			 */
 			PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
 			(message ? (PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE) : (PIPE_TYPE_BYTE | PIPE_READMODE_BYTE)) | PIPE_WAIT,
@@ -681,6 +687,7 @@ namespace {
 		 *
 		 * @note Достижимость отказа при этом близка к нулю: переключение идёт на
 		 *       только что открытом описателе своего же канала
+		 *
 		 */
 		if(!::SetNamedPipeHandleState(client, &mode, nullptr, nullptr))
 			/**
@@ -773,6 +780,7 @@ namespace {
 			 *
 			 * @note Свёртка своя, ASCII, а не средствами языка: `tolower` зависит от
 			 *       местности, а GUID - данные протокольные
+			 *
 			 */
 			for(; (i < ifname.size()) && (adapter->AdapterName[i] != '\0'); i++){
 				// Получаем очередной символ искомого названия
@@ -855,6 +863,7 @@ namespace {
 		 *
 		 * @note Пустой адрес (`::`) и означает у эталонных слоёв выбор устройства самой
 		 *       системой, и перебирать устройства машины ради него незачем
+		 *
 		 */
 		if(empty)
 			// Выводим отсутствие номера устройства
@@ -887,6 +896,7 @@ namespace {
 			 *
 			 * @note Тем же порядком поступает и эталонный слой: он держит в своём складе
 			 *       признак поднятости и сличает адреса лишь у поднятых устройств
+			 *
 			 */
 			if(adapter->OperStatus != IfOperStatusUp)
 				// Переходим к устройству следующему
@@ -1122,6 +1132,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 		 *
 		 * @note Отказ самого `PeekNamedPipe` - у канала безымянного он спрашивается тем же
 		 *       описателем и отвечает - оставляет прежний ответ «неизвестно»
+		 *
 		 */
 		DWORD waiting = 0;
 		// Если описатель каналом не является либо занятости своей не назвал
@@ -1180,6 +1191,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 	 * @note Каналу БЕЗЫМЯННОМУ обращение это отвечает отказом: описатель его заведён без
 	 *       права на чтение свойств. Такому отвечаем пустым размером - вызывающая сторона
 	 *       пустой ответ и так разбирает, - но МОЛЧА, без записи в журнал потребителя
+	 *
 	 */
 	if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE){
 		// Размеры накопителей канала на отправку и на приём
@@ -1245,6 +1257,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 		 * @note Отказ этот прежде уходил в журнал потребителя записью уровня отказа -
 		 *       четыре записи за прогон набора, все в перестройке пары узлов IPC. Он и
 		 *       был последним, что оставалось от семидесяти одной записи аудита 160
+		 *
 		 */
 		if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE)
 			// Выводим действительный размер накопителя канала
@@ -1302,6 +1315,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	 *
 	 * @note Договор этот общий на все системы: решён по наречиям POSIX 03.09.2026
 	 *       и здесь приведён к тому же виду
+	 *
 	 */
 	if(delivery == event::delivery_mode_t::NONE)
 		// Возвращаем отрицательный результат установки
@@ -1388,6 +1402,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	 *
 	 * @note Договор этот общий на все системы: решён по наречиям POSIX 03.09.2026
 	 *       и здесь приведён к тому же виду
+	 *
 	 */
 	if(delivery == event::delivery_mode_t::NONE)
 		// Возвращаем пустое число переходов
@@ -1745,6 +1760,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	 * @note Ответ здесь тот же, что и у отказа опроса, - `NONE`. Умножения значений это
 	 *       не создаёт: у семейства местного узла настройки этой нет вовсе, и «не задано»
 	 *       единственный верный ответ ему
+	 *
 	 */
 	if((family != event::family_t::IPV4) && (family != event::family_t::IPV6))
 		// Выводим неопределённый способ обнаружения MTU
@@ -1827,6 +1843,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	 *       `get`/`set`, а РАЗБОР, У КОТОРОГО НЕТ ВЕТВИ ДЛЯ НЕУЧТЁННОГО ЗНАЧЕНИЯ.
 	 *       Расхождение пары было лишь способом заметить первый такой разбор, и, приняв
 	 *       способ за предмет, я закрыл половину места
+	 *
 	 */
 	if((family != event::family_t::IPV4) && (family != event::family_t::IPV6))
 		// Выводим отрицательный результат установки
@@ -2534,6 +2551,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *          подписки на приём, тогда как порождённый процесс стучится сразу, едва
 	 *          запустившись. Отказ в такой миг означает не занятость чужим, а лишь
 	 *          то, что встречная сторона ещё не готова.
+	 *
 	 */
 	static constexpr uint32_t TIMEOUT = 5000;
 	/**
@@ -2543,6 +2561,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *       заново на КАЖДОМ заходе, и обмен, у какого экземпляр канала перехватывает
 	 *       кто-то ещё, кружил бы здесь без конца. Столько же заходов отмерено и
 	 *       встречной стороне - в юните кластера
+	 *
 	 */
 	static constexpr uint32_t ROUNDS = 200;
 	// Описатель открытого конца канала
@@ -2555,6 +2574,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 * @note Наложение обязательно: обмен ведётся портом завершений, а у описателя без
 	 *       наложения система выстраивает обращения в очередь, и запись из одного
 	 *       потока дожидается чтения из другого
+	 *
 	 */
 	while((result = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr)) == INVALID_HANDLE_VALUE){
 		// Получаем код отказа открытия конца канала
@@ -2570,6 +2590,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 		 *          ожидания свободного нет ни одного.
 		 *
 		 * @note Прочие отказы заходов не повторяют: имя, какого нет вовсе, не появится
+		 *
 		 */
 		if((reason != ERROR_PIPE_BUSY) && (reason != ERROR_FILE_NOT_FOUND))
 			// Прерываем ожидание освобождения экземпляра канала
@@ -2679,6 +2700,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *       к приёму держится именно на нём - чтение нулевой длины ждёт прихода
 	 *       сообщения лишь у канала, работающего сообщениями, а у канала, работающего
 	 *       потоком октетов, оно отвечает сразу и обращается в холостой оборот
+	 *
 	 */
 	if(!::SetNamedPipeHandleState(result, &mode, nullptr, nullptr))
 		/**
@@ -2762,6 +2784,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 *
 	 * @note Так же поступают и эталонные слои: у них семейства IP выдают два сокета
 	 *       обычным заведением, а связанную пару строят одни лишь PIPE и UDS
+	 *
 	 */
 	if((family == event::family_t::IPV4) || (family == event::family_t::IPV6)){
 		/**
@@ -2791,6 +2814,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 *
 	 * @note Строй канала выбирается видом: потоковому - октетов, прочим - сообщений.
 	 *       Границы сообщений домен UNIX держит у обоих недостающих видов
+	 *
 	 */
 	if((family == event::family_t::UDS) || (family == event::family_t::PIPE))
 		// Выполняем заведение пары связанных концов именованного канала
@@ -3319,6 +3343,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	 *       опрос и настройка - шли к системе у узла, где уведомления о перегрузке нет
 	 *       и быть не может. То же было найдено у обнаружения MTU, там разбор стоял у
 	 *       настройки и отсутствовал у опроса; здесь его не было ни у той, ни у другой
+	 *
 	 */
 	if((family != event::family_t::IPV4) && (family != event::family_t::IPV6))
 		// Выводим отсутствие признака перегрузки
@@ -3400,6 +3425,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	 *
 	 * @note Нулевое значение означает и нулевой класс обслуживания, и отсутствие метки
 	 *       перегрузки - строить ради него управляющие данные незачем
+	 *
 	 */
 	if(traffic == 0)
 		// Выполняем отправку датаграммы обычным обращением
@@ -3414,6 +3440,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	 *       принять. Отказывать в отправке из-за этого было бы неверно: датаграмма
 	 *       пропала бы вовсе, а расхождение прячется в свойствах системы, не в данных.
 	 *       Тем же порядком обходится у BSD и отсутствие метки IPv4 у NetBSD
+	 *
 	 */
 	if((traffic & 0x03) == 0x03)
 		// Выполняем отправку датаграммы обычным обращением
@@ -3477,6 +3504,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	 *
 	 * @note Кладутся лишь два младших разряда: настройка эта класса обслуживания при
 	 *       себе не несёт, и весь октет она приняла бы за метку целиком
+	 *
 	 */
 	const INT value = static_cast <INT> (traffic & 0x03);
 	// Устанавливаем уровень управляющих данных
@@ -3492,7 +3520,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	// Количество отправленных октетов
 	DWORD bytes = 0;
 	// Если отправить датаграмму с меткой перегрузки не удалось
-	if(::send(sock, &message, static_cast <DWORD> (flags), &bytes, nullptr, nullptr) != 0)
+	if(send(sock, &message, static_cast <DWORD> (flags), &bytes, nullptr, nullptr) != 0)
 		// Выводим признак отказа отправки
 		return -1;
 	// Выводим количество отправленных октетов
@@ -3573,6 +3601,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 	 *       опрос и настройка - шли к системе у узла, где уведомления о перегрузке нет
 	 *       и быть не может. То же было найдено у обнаружения MTU, там разбор стоял у
 	 *       настройки и отсутствовал у опроса; здесь его не было ни у той, ни у другой
+	 *
 	 */
 	if((family != event::family_t::IPV4) && (family != event::family_t::IPV6))
 		// Выводим отрицательный результат установки
@@ -3722,6 +3751,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	 *
 	 * @note Итог её в общий результат НЕ входит: без неё пропадает лишь метка
 	 *       перегрузки, тогда как число переходов и устройство приёма приходят исправно
+	 *
 	 */
 	if(::setsockopt(sock, level, service, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0)
 		/**
@@ -3829,6 +3859,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *       по имени `SM_IO_BLOCK` читается как «блокирующий», и разбор 09.09.2026
 				 *       принял его за таковой: канал заведён наложенным и блокирующим быть не
 				 *       может, отчего согласие выглядело успехом на невыполненное дело
+				 *
 				 */
 				return true;
 			/**
@@ -3843,6 +3874,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 *
 			 * @note Умолчание это касается лишь канала: сокету всякая неподдерживаемая
 			 *       настройка по-прежнему отвечает отказом с записью в журнал
+			 *
 			 */
 			default:
 				// Выводим положительный результат: настройка каналу не свойственна
@@ -3890,6 +3922,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 *       сокете TCP, где она бессмысленна у обеих систем, её имеющих, -
 			 *       оттуда она убрана, а договор закреплён `SocketHeaderInclusionIPv6Test`
 			 *       на сокете неструктурированном
+			 *
 			 */
 			level = ((family == event::family_t::IPV6) ? IPPROTO_IPV6 : IPPROTO_IP);
 			// Устанавливаем название настройки по семейству адресов сокета
