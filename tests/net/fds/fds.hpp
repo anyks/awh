@@ -37,9 +37,6 @@
  *
  */
 class FdsFixture : public testing::Test {
-	protected:
-		// Объект работы с файловыми дескрипторами
-		std::unique_ptr <awh::fds_t> _fds;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

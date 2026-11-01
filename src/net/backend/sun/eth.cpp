@@ -90,18 +90,16 @@ namespace options {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			fds_t fds;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
-			if(!fds.limit(AWH_MAX_COUNT_FDS)){
+			if(!fds::limit(AWH_MAX_COUNT_FDS)){
 				// Получаем лимиты файловых дескрипторов
-				const auto & limits = fds.limit();
+				const auto & limits = fds::limit();
 				// Если текущий лимит меньше желаемого
 				if(limits.first < AWH_MAX_COUNT_FDS)
 					// Записываем в лог сообщение подсказки
-					fds.help(limits.first, AWH_MAX_COUNT_FDS);
+					fds::help(limits.first, AWH_MAX_COUNT_FDS);
 			}
 			/**
 			 * Если необходимо выполнить тюннинг операционной системы
