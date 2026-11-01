@@ -159423,5 +159423,366 @@
     "settings_changed": false,
     "blocker": "Defender realtime ON differs from approved OFF; idle passed",
     "automation_status": "PAUSED"
+  },
+  "iocp_socket_wsasendmsg_fix_20261101": {
+    "result": {
+      "status": "PASS_WINDOWS_RELEASE_ON_TEST_SUITE",
+      "source_archive_sha256": "60cd200383bca27fedf48c5cf39e6ac0969d0ea25cb0ddf58afa9a109fd7d76b",
+      "socket_source_sha256": "570cc2b432d2f94fceff54cb34c5324bdc6091145ab8e12b69dce05f3c499bb3",
+      "iocp_source_sha256": "96ff1df6769e5ac764e93ea93d95db30ec9acc2433df52fc9d932297bc609d54",
+      "executable_sha256": "a8372e4773f626c0043e5f223161f8e8ce3970e38462ac80e8d96e6d820b7df8",
+      "socket_object_sha256": "bec249436f94b42b5980fd9758d88dfb86f368c0b1eafd6de6974ab1a3559ea3",
+      "passed": 719,
+      "skipped": 4,
+      "disabled": 5,
+      "soak_excluded": true,
+      "ecn_targeted_coverage_count": 1,
+      "allocator_config": "ON; capture not independently verified",
+      "style_before_errors": 33,
+      "style_after_errors": 33,
+      "style_new_errors": 0,
+      "initial_run_invalid_due_to_working_directory": true,
+      "first_run_udp_splice_timeout_not_reproduced": true,
+      "performance_claim": false
+    },
+    "archive": {
+      "path": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/awh-iocp-socket-wsasendmsg-20261101.tar.gz",
+      "sha256": "5f9c3246ef529ba150ff3f2ebe6d4da301d17419a486acb87e9fa8d9d92b8c12",
+      "files_verified": 30,
+      "bytes": 21814845
+    },
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-socket-wsasendmsg-result-20261101.txt"
+  },
+  "iocp_dual_crt_diagnostic_current_20261101": {
+    "result": {
+      "status": "PARTIAL_CAPTURE_CONFIRMED_EXTENDED_CRASH",
+      "capture_observe": {
+        "exit": 0,
+        "captured": true,
+        "malloc_origin": "LIVE",
+        "new_origin": "LIVE",
+        "ucrtbase_malloc_origin": "LIVE",
+        "msvcrt_malloc_origin": "LIVE",
+        "ecn_test_pass": true,
+        "exe_sha256": "25cbac5914234c6d13a974e20b5c6357f4e966918b584000e864e24c6dfd0655"
+      },
+      "extended_contract": {
+        "direct_bash_exit": 139,
+        "first_ps_exit_unavailable": true,
+        "both_crt_contract_markers": true,
+        "threads_marker": "4 x 2000",
+        "gdb_signal": "SIGSEGV",
+        "top": "__awh_alloc_malloc__",
+        "exe_sha256": "67ea0d331e483aeb1e0617726174d980b620963c08e3d5d1306c9a180b3fdb60",
+        "release_O3_without_debug_symbols": true
+      },
+      "link_common_library_sha256": "d4646ab8dcfe70766a092be685482402930c3d9c5320a7e251fb8c5dcb23fb28",
+      "source_files_verified": 72,
+      "scope": "Windows x86-64; old fixture attached to current unit net; both probe binaries use identical link inputs except wrapper and output; causal attribution open",
+      "allocator_acceptance": "OPEN",
+      "benchmark_performance": "NOT_RUN"
+    },
+    "archive": {
+      "path": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/awh-iocp-crt-capture-diagnostic-20261101.tar.gz",
+      "sha256": "c1ed1568ef3051dbd23ddb56a8313ac90a0c22c4f425337f036873bc85442f41",
+      "files_verified": 26,
+      "bytes": 35822811
+    },
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-crt-capture-diagnostic-20261101.txt"
+  },
+  "iocp_current_off_preparation_20261101": {
+    "result": {
+      "status": "OFF_BUILD_AND_FUNCTIONAL_CONTROLS_PASS",
+      "source_archive_sha256": "7e8212ed2ec3176f75c4c4e3a69a74257d2aa042975f4363a011c567a258ed23",
+      "baseline_exe_sha256": "480713b3650e219daa588155464b96f550b055ec3da8e05e863833040c747521",
+      "observer_exe_sha256": "5ba245e5c2c5b20f2d5869d82b49b939016d93f18457caa6ea083bb641c40184",
+      "library_sha256": "03c620ba9d2d7bc97425a60eb6eb007df15b7c881ff0bdad40d489cb5f1209b2",
+      "functional_processes": 2,
+      "transfer_bytes_per_process": 536870912,
+      "operations_per_process": 8192,
+      "crt_ucrtbase": "unchanged origin UNKNOWN",
+      "crt_msvcrt": "unchanged origin UNKNOWN",
+      "malloc_new": "capture false origin UNKNOWN",
+      "performance_claim": false,
+      "defender": "ON during earlier preflight; not modified; no performance gate applied",
+      "dependencies": "robocopy checked size/time, not whole-tree SHA",
+      "historical_competitors_source_matches": true
+    },
+    "archive": {
+      "path": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/awh-iocp-current-off-preparation-20261101.tar.gz",
+      "sha256": "c73eab91ec85e2f3efd0f84da448ee588bf6dedf2c6498a05eb018b594cc3fb0",
+      "verified_files": 27,
+      "bytes": 25219235
+    },
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-current-off-preparation-20261101.txt"
+  },
+  "iocp_current_relative_stream_proposal_20261101": {
+    "status": "PROPOSED_AWAITING_APPROVAL",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-current-relative-stream-proposed-20261101.txt",
+    "local_validation": {
+      "status": "LOCAL_STATIC_CHECK_PASS",
+      "runner_unchanged_sha256": "876daf8af23df6f87479710df3e6716d1a5fdf3d6ee33869660a4e0653377fd2",
+      "plan_sha256": "ad43c711ec640f57743f6606bfff08982fc1e612141993692575ca8ad9f8b3d1",
+      "orders": 12,
+      "conditioning": 6,
+      "measurement": 6,
+      "max_processes": 291,
+      "warmup_active_exempt": true,
+      "ordinary_thresholds": [
+        1,
+        1,
+        3
+      ],
+      "one_attempt": true,
+      "existing_observer_compatible_with_runner": true,
+      "real_series_started": false,
+      "windows_mock_tests_not_yet_run": true
+    }
+  },
+  "iocp_current_relative_stream_20261101": {
+    "result": {
+      "status": "VERIFIED_INCOMPLETE_BACKGROUND_STOP",
+      "processes": 19,
+      "process_gib": 9.5,
+      "completed_measurement_blocks": 0,
+      "conditioning_blocks_completed": 0,
+      "idle": [
+        {
+          "block": 0,
+          "percent": 0.322365274876135,
+          "top": [
+            {
+              "pid": 2724,
+              "name": "powershell",
+              "cpu_seconds": 0.03125,
+              "percent": 0.128946109950454
+            },
+            {
+              "pid": 2000,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.064473054975227
+            },
+            {
+              "pid": 140,
+              "name": "Registry",
+              "cpu_seconds": 0.015625,
+              "percent": 0.064473054975227
+            },
+            {
+              "pid": 3340,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.064473054975227
+            }
+          ]
+        },
+        {
+          "block": 1,
+          "percent": 0.06499433274376298,
+          "top": [
+            {
+              "pid": 3340,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.06499433274376298
+            }
+          ]
+        }
+      ],
+      "batches": [
+        {
+          "name": "block0-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": true,
+          "count": 1,
+          "total_percent": 4.258118397142624,
+          "non_system_percent": 4.258118397142624,
+          "seconds": 0.6421557,
+          "top": [
+            {
+              "pid": 2724,
+              "name": "powershell",
+              "cpu_seconds": 0.125,
+              "percent": 2.4332105126529284
+            },
+            {
+              "pid": 7648,
+              "name": "MsMpEng",
+              "cpu_seconds": 0.046875,
+              "percent": 0.9124539422448481
+            },
+            {
+              "pid": 8980,
+              "name": "conhost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.30415131408161605
+            },
+            {
+              "pid": 2000,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.30415131408161605
+            },
+            {
+              "pid": 660,
+              "name": "csrss",
+              "cpu_seconds": 0.015625,
+              "percent": 0.30415131408161605
+            }
+          ]
+        },
+        {
+          "name": "block0-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": true,
+          "count": 1,
+          "total_percent": 2.363628521055538,
+          "non_system_percent": 2.02596730376189,
+          "seconds": 0.5784273999999999,
+          "top": [
+            {
+              "pid": 7648,
+              "name": "MsMpEng",
+              "cpu_seconds": 0.078125,
+              "percent": 1.6883060864682415
+            },
+            {
+              "pid": 2724,
+              "name": "powershell",
+              "cpu_seconds": 0.015625,
+              "percent": 0.3376612172936483
+            },
+            {
+              "pid": 4,
+              "name": "System",
+              "cpu_seconds": 0.015625,
+              "percent": 0.3376612172936483
+            }
+          ]
+        },
+        {
+          "name": "block0-attempt0-2-libevent",
+          "engine": "libevent",
+          "warmup": true,
+          "count": 1,
+          "total_percent": 1.3217635108339774,
+          "non_system_percent": 1.3217635108339774,
+          "seconds": 0.44329979999999997,
+          "top": [
+            {
+              "pid": 7648,
+              "name": "MsMpEng",
+              "cpu_seconds": 0.046875,
+              "percent": 1.3217635108339774
+            }
+          ]
+        },
+        {
+          "name": "block1-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "count": 8,
+          "total_percent": 0.9765784275291157,
+          "non_system_percent": 0.7905634889521412,
+          "seconds": 4.1999315,
+          "top": [
+            {
+              "pid": 7648,
+              "name": "MsMpEng",
+              "cpu_seconds": 0.125,
+              "percent": 0.3720298771539488
+            },
+            {
+              "pid": 2724,
+              "name": "powershell",
+              "cpu_seconds": 0.078125,
+              "percent": 0.23251867322121803
+            },
+            {
+              "pid": 4,
+              "name": "System",
+              "cpu_seconds": 0.0625,
+              "percent": 0.1860149385769744
+            },
+            {
+              "pid": 2628,
+              "name": "svchost",
+              "cpu_seconds": 0.046875,
+              "percent": 0.1395112039327308
+            },
+            {
+              "pid": 1648,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.0465037346442436
+            }
+          ]
+        },
+        {
+          "name": "block1-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "count": 8,
+          "total_percent": 1.1646649272244776,
+          "non_system_percent": 1.1033667731600314,
+          "seconds": 3.1862705,
+          "top": [
+            {
+              "pid": 7648,
+              "name": "MsMpEng",
+              "cpu_seconds": 0.203125,
+              "percent": 0.7968760028378005
+            },
+            {
+              "pid": 2724,
+              "name": "powershell",
+              "cpu_seconds": 0.03125,
+              "percent": 0.12259630812889238
+            },
+            {
+              "pid": 2000,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.06129815406444619
+            },
+            {
+              "pid": 5012,
+              "name": "OneDrive.Sync.Service",
+              "cpu_seconds": 0.015625,
+              "percent": 0.06129815406444619
+            },
+            {
+              "pid": 3340,
+              "name": "svchost",
+              "cpu_seconds": 0.015625,
+              "percent": 0.06129815406444619
+            },
+            {
+              "pid": 4,
+              "name": "System",
+              "cpu_seconds": 0.015625,
+              "percent": 0.06129815406444619
+            }
+          ]
+        }
+      ],
+      "reason": "block1 libuv non-System >1%",
+      "all_process_data_verified": true,
+      "defender_before_after": true,
+      "wpr_idle_before_after": true,
+      "timer_restored": true,
+      "binary_hashes_verified_before_after": true,
+      "performance_claim": false,
+      "host_isolation_unknown": true
+    },
+    "archive": {
+      "path": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/awh-iocp-relative-stream-20261101.tar.gz",
+      "sha256": "0bbd535aed9d2df561295d71c8e46e79ccfbd7de7deaef2ba1c088dba0172564",
+      "verified_files": 54,
+      "bytes": 177056
+    },
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-relative-stream-result-20261101.txt",
+    "approved_plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-current-relative-stream-proposed-20261101.txt"
   }
 }
