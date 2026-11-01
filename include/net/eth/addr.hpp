@@ -66,6 +66,16 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Предварительное объявление объекта управления шлюзами
+		 *
+		 * \~english
+		 * @brief Forward declaration of the object of the management of the gateways
+		 *
+		 * \~
+		 */
+		class Gateway;
+		/**
+		 * \~russian
 		 * @brief Класс для работы с сетевыми адресами
 		 *
 		 * @details Отвечает на вопрос, через какое устройство и с каким адресом
@@ -100,17 +110,6 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		/**
-		 * \~russian
-		 * @brief Предварительное объявление объекта управления шлюзами
-		 *
-		 * \~english
-		 * @brief Forward declaration of the object of the management of the gateways
-		 *
-		 * \~
-		 */
-		class Gateway;
-
 		typedef class __AWH_SHARED_EXPORT__ Network_Address {
 			private:
 				// Объект работы с сетевым интерфейсом

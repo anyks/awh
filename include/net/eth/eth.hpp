@@ -79,12 +79,12 @@ namespace awh {
 	 * @details Сводит воедино средства работы с сетью на уровне системы - те, что
 	 *          лежат ниже отдельного подключения и касаются машины целиком:
 	 *          сетевые устройства и их настройки, адреса и маршруты, шлюзы,
-	 *          проброс портов, свойства сокетов
+	 *          проброс портов, свойства сокетов.
 	 *
 	 *          Собственной работы класс не ведёт и служит лишь общей точкой
 	 *          доступа: за каждое направление отвечает свой вложенный объект, к
 	 *          которому и обращаются напрямую. Заведён он затем, чтобы движку
-	 *          хватало одной ссылки вместо полудюжины
+	 *          хватало одной ссылки вместо полудюжины.
 	 *
 	 * @note Средства протокола с управлением потоком доступны лишь на Linux и
 	 *       FreeBSD - на прочих системах соответствующего объекта попросту нет, и
@@ -97,17 +97,21 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Class for working with the Ethernet network level
+	 *
 	 * @details Brings together the means of working with the network at the level of the system — those that
 	 *          lie below a separate connection and concern the machine entirely:
 	 *          the network devices and their settings, the addresses and the routes, the gateways,
-	 *          the port forwarding, the properties of the sockets
+	 *          the port forwarding, the properties of the sockets.
+	 *
 	 *          The class performs no work of its own and serves only as a common point of
 	 *          access: each direction is answered for by its own nested object, which
 	 *          is addressed directly. It is started so that one reference would be enough
-	 *          for the engine instead of half a dozen
+	 *          for the engine instead of half a dozen.
+	 *
 	 * @note The means of the protocol with the flow control are available only on Linux and
 	 *       FreeBSD — on the other systems the corresponding object is simply absent, and
 	 *       an address to it will not be built
+	 *
 	 * @warning Much of what is here changes the settings of the **whole machine**, and not of one
 	 *          connection: bringing a device up, correcting the routes, forwarding the ports.
 	 *          The rights for such things are supervisory ones, and the consequences outlive the completion
