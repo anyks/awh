@@ -87,25 +87,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_YAML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_YAML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -155,7 +136,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static AWH_YAML_INLINE bool unescape(string & token) noexcept {
+	static __AWH_INLINE__ bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -207,7 +188,7 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static AWH_YAML_INLINE string escape(const string_view name) noexcept {
+	static __AWH_INLINE__ string escape(const string_view name) noexcept {
 		// Собираемое звено пути
 		string result = "";
 		// Выполняем выделение места под звено пути
@@ -257,7 +238,7 @@ namespace {
 	 * @return       смещение знака конца строки либо `npos`, если его нет
 	 *
 	 */
-	static AWH_YAML_INLINE size_t forward(const string & source, const size_t from) noexcept {
+	static __AWH_INLINE__ size_t forward(const string & source, const size_t from) noexcept {
 		/**
 		 * Выполняем перебор знаков текста от заданного смещения
 		 */
@@ -290,7 +271,7 @@ namespace {
 	 * @return       смещение знака конца строки либо `npos`, если его нет
 	 *
 	 */
-	static AWH_YAML_INLINE size_t backward(const string & source, const size_t from) noexcept {
+	static __AWH_INLINE__ size_t backward(const string & source, const size_t from) noexcept {
 		/**
 		 * Если удержанный текст пуст вовсе
 		 *
@@ -413,7 +394,7 @@ namespace {
 	 * @return       признак того, что ссылки пролёта объявлениями обеспечены
 	 *
 	 */
-	static AWH_YAML_INLINE bool referable(const string_view span, const string_view result) noexcept {
+	static __AWH_INLINE__ bool referable(const string_view span, const string_view result) noexcept {
 		/**
 		 * Выполняем перебор всех знаков переносимого пролёта
 		 */
@@ -530,7 +511,7 @@ namespace {
 	 * @return         признак совпадения заданных настроек с настройками по умолчанию
 	 *
 	 */
-	static AWH_YAML_INLINE bool untouched(const writer_t::settings_t & settings) noexcept {
+	static __AWH_INLINE__ bool untouched(const writer_t::settings_t & settings) noexcept {
 		// Настройки записи текста документа, установленные по умолчанию
 		const writer_t::settings_t fallback;
 		// Выполняем сверку всякого поля заданных настроек с полем настроек по умолчанию
@@ -569,7 +550,7 @@ namespace {
 	 * @return     правило усечения переводов строк в конце значения
 	 *
 	 */
-	static AWH_YAML_INLINE codec::yaml::chomp_t __awh_chomping__(const string & text) noexcept {
+	static __AWH_INLINE__ codec::yaml::chomp_t __awh_chomping__(const string & text) noexcept {
 		/**
 		 * Если содержимое переводом строки не оканчивается
 		 */
@@ -619,7 +600,7 @@ namespace {
 	 * @return         признак того, что обрезка предисловие изменила
 	 *
 	 */
-	static AWH_YAML_INLINE bool __awh_trimmed__(const string_view preamble, string & result, const size_t blocked) noexcept {
+	static __AWH_INLINE__ bool __awh_trimmed__(const string_view preamble, string & result, const size_t blocked) noexcept {
 		// Признак того, что обрезка предисловие изменила
 		bool trimmed = false;
 		/**

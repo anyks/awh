@@ -47,24 +47,6 @@ using namespace std;
  *
  */
 namespace {
-	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_XML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_XML_INLINE inline __attribute__((always_inline))
-	#endif
 
 	/**
 	 * @brief Функция проверки пересечения входного среза с выходным буфером
@@ -74,7 +56,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static AWH_XML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
+	static __AWH_INLINE__ bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения

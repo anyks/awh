@@ -70,25 +70,6 @@ namespace {
 	using namespace awh::codec::toml;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_TOML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_TOML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция проверки знака на принадлежность к управляющим
 	 *
 	 * @details Описание отводит тексту настроек знаки печатные, знак горизонтальной
@@ -113,7 +94,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static AWH_TOML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
+	static __AWH_INLINE__ bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения

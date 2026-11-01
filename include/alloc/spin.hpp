@@ -73,24 +73,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_SPIN_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_SPIN_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -153,7 +135,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_SPIN_INLINE void acquire() noexcept;
+				__AWH_INLINE__ void acquire() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод освобождения замка
@@ -163,7 +145,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_SPIN_INLINE void release() noexcept;
+				__AWH_INLINE__ void release() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод задания отклика на заклинивший замок
@@ -282,7 +264,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_SPIN_INLINE Hold(spin_t & spin) noexcept;
+				__AWH_INLINE__ Hold(spin_t & spin) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -292,7 +274,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_SPIN_INLINE ~Hold() noexcept;
+				__AWH_INLINE__ ~Hold() noexcept;
 		} hold_t;
 	};
 };

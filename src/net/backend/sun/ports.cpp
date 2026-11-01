@@ -506,16 +506,6 @@
 #include <net/queue.hpp>
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_PORTS_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_PORTS_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -3049,7 +3039,7 @@ namespace {
 		 * @return       результат перевзвода наблюдения
 		 *
 		 */
-		static AWH_PORTS_INLINE bool rewatch(const uintptr_t object) noexcept {
+		static __AWH_INLINE__ bool rewatch(const uintptr_t object) noexcept {
 			// Получаем дескриптор наблюдаемого объекта
 			auto i = ::ports::__awh_objects__.find(object);
 			// Если дескриптор не найден, наблюдение уже снято и перевзводить нечего
@@ -3077,7 +3067,7 @@ namespace {
 		 * @param sock дескриптор наблюдаемого объекта
 		 *
 		 */
-		static AWH_PORTS_INLINE void unwatch(const awh::net::socket_t sock) noexcept {
+		static __AWH_INLINE__ void unwatch(const awh::net::socket_t sock) noexcept {
 			// Получаем запись о наблюдаемом объекте
 			auto i = ::ports::__awh_watches__.find(sock);
 			// Если запись о наблюдаемом объекте не заведена, снимать нечего
@@ -3329,7 +3319,7 @@ namespace {
 		 *          и выглядит это зависанием соединений
 		 *
 		 */
-		static AWH_PORTS_INLINE void disband() noexcept {
+		static __AWH_INLINE__ void disband() noexcept {
 			/**
 			 * Снимаем учёт наблюдений за объектами файловой системы
 			 *
@@ -3367,7 +3357,7 @@ namespace {
 		 * @return       результат подачи оповещения
 		 *
 		 */
-		static AWH_PORTS_INLINE bool notify(const int32_t events, void * user) noexcept {
+		static __AWH_INLINE__ bool notify(const int32_t events, void * user) noexcept {
 			// Если очередь оповещений не заведена
 			if(::__awh_port__ == net::invalid_socket_t)
 				// Выводим результат
@@ -4302,7 +4292,7 @@ namespace fs {
 	 * @return     строка адреса UNIX-сокета
 	 *
 	 */
-	static AWH_PORTS_INLINE string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
+	static __AWH_INLINE__ string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
 		// Проверяем корректность длины структуры
 		if(size <= offsetof(struct sockaddr_un, sun_path))
 			// Возвращаем пустую строку
@@ -4430,7 +4420,7 @@ namespace ether {
 	 * @return аппаратный адрес встречной стороны
 	 *
 	 */
-	[[maybe_unused]] static AWH_PORTS_INLINE string peer() noexcept {
+	[[maybe_unused]] static __AWH_INLINE__ string peer() noexcept {
 		// Выдуманный аппаратный адрес встречной стороны: 02:41:57:48:00:01
 		static const uint8_t address[::ether::ADDR_SIZE] = {0x02, 0x41, 0x57, 0x48, 0x00, 0x01};
 		// Выводим аппаратный адрес встречной стороны
@@ -4510,7 +4500,7 @@ namespace ether {
 	 * @return широковещательный аппаратный адрес
 	 *
 	 */
-	static AWH_PORTS_INLINE string broadcast() noexcept {
+	static __AWH_INLINE__ string broadcast() noexcept {
 		// Широковещательный аппаратный адрес
 		static const uint8_t address[::ether::ADDR_SIZE] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 		// Выводим широковещательный аппаратный адрес
@@ -4528,7 +4518,7 @@ namespace ether {
 	 * @return       заготовленный заголовок кадра
 	 *
 	 */
-	static AWH_PORTS_INLINE string header(const string & target, const string & source, const uint16_t type) noexcept {
+	static __AWH_INLINE__ string header(const string & target, const string & source, const uint16_t type) noexcept {
 		// Результат работы функции
 		string result;
 		// Отводим место под заголовок кадра
@@ -4552,7 +4542,7 @@ namespace ether {
 	 * @return       опознаватель протокола либо нуль
 	 *
 	 */
-	static AWH_PORTS_INLINE uint16_t type(const uint8_t * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ uint16_t type(const uint8_t * buffer, const size_t size) noexcept {
 		// Если кадр короче своего заголовка
 		if(size < ::ether::HEADER_SIZE)
 			// Выводим пустой опознаватель протокола
@@ -4569,7 +4559,7 @@ namespace ether {
 	 * @return       накопленное с учётом области
 	 *
 	 */
-	static AWH_PORTS_INLINE uint32_t accumulate(const uint8_t * buffer, const size_t size, uint32_t acc) noexcept {
+	static __AWH_INLINE__ uint32_t accumulate(const uint8_t * buffer, const size_t size, uint32_t acc) noexcept {
 		// Смещение разбираемого слова
 		size_t offset = 0;
 		/**
@@ -5126,7 +5116,7 @@ namespace events {
 	 * @return     результат закрытия
 	 *
 	 */
-	static AWH_PORTS_INLINE int32_t close(const awh::net::socket_t sock) noexcept;
+	static __AWH_INLINE__ int32_t close(const awh::net::socket_t sock) noexcept;
 };
 
 /**
@@ -5691,7 +5681,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static AWH_PORTS_INLINE event::id_t identifier() noexcept {
+	static __AWH_INLINE__ event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -5711,7 +5701,7 @@ namespace local {
 	 * @return текущее время в наносекундах
 	 *
 	 */
-	static AWH_PORTS_INLINE uint64_t nanostamp() noexcept {
+	static __AWH_INLINE__ uint64_t nanostamp() noexcept {
 		/**
 		 * Возвращаем текущее время монотонных часов в наносекундах
 		 *
@@ -5866,7 +5856,7 @@ namespace local {
 	 * @return      предельный размер одной операции в октетах
 	 *
 	 */
-	static AWH_PORTS_INLINE double burst(const uint64_t limit, const size_t mtu) noexcept {
+	static __AWH_INLINE__ double burst(const uint64_t limit, const size_t mtu) noexcept {
 		// Объём, который предел выдаёт за окно всплеска
 		const double slice = (static_cast <double> (limit) * ::local::window());
 		// Возвращаем больший из объёма окна и размера кадра
@@ -6136,7 +6126,7 @@ namespace events {
 	 *          не подкрепляет его, а отменяет
 	 *
 	 */
-	static AWH_PORTS_INLINE void __drop__() noexcept {
+	static __AWH_INLINE__ void __drop__() noexcept {
 		// Снимаем признак отложенного взвода, так-как очередь сейчас будет от него очищена
 		::events::__awh_timer_deferred__ = false;
 		/**
@@ -6161,7 +6151,7 @@ namespace events {
 	 *          линеен по её длине
 	 *
 	 */
-	static AWH_PORTS_INLINE void drop() noexcept {
+	static __AWH_INLINE__ void drop() noexcept {
 		// Если отложенного взвода в очереди изменений нет, снимать нечего
 		if(::events::__awh_timer_deferred__)
 			// Выполняем снятие отложенного взвода из очереди изменений
@@ -6228,7 +6218,7 @@ namespace events {
 	 * @param timer объект таймера
 	 *
 	 */
-	static AWH_PORTS_INLINE void announce(::io::timer_t * timer) noexcept {
+	static __AWH_INLINE__ void announce(::io::timer_t * timer) noexcept {
 		// Если статусы события изменились
 		if((timer->state.status != timer->state.stash) && reportable(timer->state.status)){
 			// Если установлена функция обратного вызова
@@ -6519,7 +6509,7 @@ namespace events {
 	 * @param mode состояние события: включено либо выключено
 	 *
 	 */
-	static AWH_PORTS_INLINE void state(const uint64_t id, const bool mode) noexcept {
+	static __AWH_INLINE__ void state(const uint64_t id, const bool mode) noexcept {
 		// Если событие требуется включить
 		if(mode)
 			// Запоминаем событие как включённое
@@ -6533,7 +6523,7 @@ namespace events {
 	 * @param id опознаватель пользовательского события
 	 *
 	 */
-	static AWH_PORTS_INLINE void erase(const uint64_t id) noexcept {
+	static __AWH_INLINE__ void erase(const uint64_t id) noexcept {
 		// Снимаем событие с учёта включённых
 		::events::__awh_notify_enabled__.erase(id);
 	}
@@ -6549,7 +6539,7 @@ namespace events {
 	 * @return      результат взвода события
 	 *
 	 */
-	static AWH_PORTS_INLINE bool fire(const uint64_t id, void * udata) noexcept {
+	static __AWH_INLINE__ bool fire(const uint64_t id, void * udata) noexcept {
 		// Если событие выключено, подавать оповещение не следует
 		if(::events::__awh_notify_enabled__.count(id) == 0)
 			// Выводим результат
@@ -6650,7 +6640,7 @@ namespace events {
 	 * @return     результат закрытия
 	 *
 	 */
-	static AWH_PORTS_INLINE int32_t close(const awh::net::socket_t sock) noexcept {
+	static __AWH_INLINE__ int32_t close(const awh::net::socket_t sock) noexcept {
 		// Забываем желаемый набор событий закрываемого дескриптора
 		::events::forget(sock);
 		// Выполняем закрытие дескриптора
@@ -6674,7 +6664,7 @@ namespace events {
 	 * @param events разряды, сработавшие в оповещении
 	 *
 	 */
-	static AWH_PORTS_INLINE void consume(const awh::net::socket_t sock, const int32_t events) noexcept {
+	static __AWH_INLINE__ void consume(const awh::net::socket_t sock, const int32_t events) noexcept {
 		// Получаем желаемый набор событий дескриптора
 		auto i = ::events::__awh_wanted__.find(sock);
 		// Если запись о желаемом наборе заведена
@@ -7570,7 +7560,7 @@ namespace handoff {
 	 * @return выданная метка передачи
 	 *
 	 */
-	static AWH_PORTS_INLINE uint64_t label() noexcept {
+	static __AWH_INLINE__ uint64_t label() noexcept {
 		// Счётчик выданных меток передачи
 		static uint64_t counter = 0;
 		// Выводим метку передачи, собранную из номера процесса и счётчика
@@ -7584,7 +7574,7 @@ namespace handoff {
 	 * @param label метка передачи
 	 *
 	 */
-	static AWH_PORTS_INLINE void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
+	static __AWH_INLINE__ void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
 		/**
 		 * @warning Описатель УДВАИВАЕТСЯ, а не запоминается как есть. Отметка живёт до
 		 *          ближайшего исходящего сообщения переносчика, а настоящий `sendmsg`
@@ -7627,7 +7617,7 @@ namespace handoff {
 	 * @param id идентификатор узла-переносчика
 	 *
 	 */
-	static AWH_PORTS_INLINE void forget(const event::id_t id) noexcept {
+	static __AWH_INLINE__ void forget(const event::id_t id) noexcept {
 		// Выполняем поиск отметок отложенной передачи узла
 		auto i = ::handoff::__awh_outgoing__.find(id);
 		// Если отметок у узла нет, снимать нечего
@@ -8006,7 +7996,7 @@ namespace timer {
 	 * @return идентификатор источника монотонного времени
 	 *
 	 */
-	static AWH_PORTS_INLINE clockid_t monotonic() noexcept {
+	static __AWH_INLINE__ clockid_t monotonic() noexcept {
 		// Выполняем выбор точного источника монотонного времени
 		return CLOCK_MONOTONIC;
 	}
@@ -8023,7 +8013,7 @@ namespace timer {
 	 * @return текущее время в миллисекундах
 	 *
 	 */
-	static AWH_PORTS_INLINE uint64_t timestamp() noexcept {
+	static __AWH_INLINE__ uint64_t timestamp() noexcept {
 		/**
 		 * Возвращаем текущее время монотонных часов в миллисекундах
 		 *
@@ -8047,7 +8037,7 @@ namespace timer {
 	 *          ещё не начался. Снятое здесь значение обслуживает весь оборот целиком.
 	 *
 	 */
-	static AWH_PORTS_INLINE void capture() noexcept {
+	static __AWH_INLINE__ void capture() noexcept {
 		// Снимаем слепок времени для текущего оборота цикла событий
 		snapshot = timestamp();
 	}
@@ -8060,7 +8050,7 @@ namespace timer {
 	 *          по слепку, состарившемуся на длительность разбора событий.
 	 *
 	 */
-	static AWH_PORTS_INLINE void release() noexcept {
+	static __AWH_INLINE__ void release() noexcept {
 		// Сбрасываем слепок времени прошедшего оборота цикла событий
 		snapshot = 0;
 	}
@@ -8083,7 +8073,7 @@ namespace timer {
 	 * @return  текущее время в миллисекундах
 	 *
 	 */
-	static AWH_PORTS_INLINE uint64_t now() noexcept {
+	static __AWH_INLINE__ uint64_t now() noexcept {
 		// Отдаём слепок оборота, а вне оборота обращаемся к часам напрямую
 		return ((snapshot != 0) ? snapshot : timestamp());
 	}
@@ -8177,7 +8167,7 @@ namespace timer {
 	 * @param deadline срок истечения снимаемого ожидания
 	 *
 	 */
-	static AWH_PORTS_INLINE void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
+	static __AWH_INLINE__ void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
 		// Запоминаем идентификатор события, чей срок снимается
 		__awh_continued__.did = eid;
 		// Запоминаем идентификатор самого снимаемого срока
@@ -8201,7 +8191,7 @@ namespace timer {
 	 * @return    остаток срока в миллисекундах, либо ноль, если запись чужая
 	 *
 	 */
-	static AWH_PORTS_INLINE uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если запись принадлежит иному событию либо иному сроку, остатка нет
 		if((__awh_continued__.did != eid) || (__awh_continued__.dtid != tid))
 			// Выводим отсутствие остатка
@@ -8235,7 +8225,7 @@ namespace timer {
 	 * @param eid идентификатор события, чьё ожидание продолжается
 	 *
 	 */
-	static AWH_PORTS_INLINE void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Запоминаем идентификатор события, чьё ожидание продолжается
 		__awh_continued__.eid = eid;
 		// Запоминаем идентификатор самого продолжаемого срока
@@ -8252,7 +8242,7 @@ namespace timer {
 	 * @return    была ли отметка выставлена для этого срока этого события
 	 *
 	 */
-	static AWH_PORTS_INLINE bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если отметка принадлежит иному событию либо иному сроку
 		if((__awh_continued__.eid != eid) || (__awh_continued__.tid != tid))
 			// Выводим отсутствие отметки
@@ -8557,7 +8547,7 @@ namespace timer {
 		 *          обходился дороже всей отправки вне ядра.
 		 *
 		 */
-		static AWH_PORTS_INLINE void __rearm__(const uint64_t stamp = 0) noexcept {
+		static __AWH_INLINE__ void __rearm__(const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -8585,7 +8575,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		[[maybe_unused]] static AWH_PORTS_INLINE bool empty() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -8595,7 +8585,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		[[maybe_unused]] static AWH_PORTS_INLINE size_t size() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -8605,7 +8595,7 @@ namespace timer {
 		 * @return UINT64_MAX если очередь пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static AWH_PORTS_INLINE uint64_t deadline() noexcept {
+		static __AWH_INLINE__ uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если очередь пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__.begin()->deadline);
 		}
@@ -8613,7 +8603,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static AWH_PORTS_INLINE void clear() noexcept {
+		static __AWH_INLINE__ void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем список активных таймеров
@@ -8630,7 +8620,7 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static AWH_PORTS_INLINE void disarm() noexcept {
+		static __AWH_INLINE__ void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
@@ -8642,7 +8632,7 @@ namespace timer {
 		 *          очереди, и взвестись тогда не могли.
 		 *
 		 */
-		static AWH_PORTS_INLINE void rearm() noexcept {
+		static __AWH_INLINE__ void rearm() noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__();
 		}
@@ -8739,7 +8729,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8754,7 +8744,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8772,7 +8762,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8817,7 +8807,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8952,7 +8942,7 @@ namespace timer {
 		 * @param flag флаг активации таймера
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag) noexcept {
+		static __AWH_INLINE__ void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -8967,7 +8957,7 @@ namespace timer {
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(record_t rec, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void set(record_t rec, const event::id_t eid) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag);
 			/**
@@ -8988,7 +8978,7 @@ namespace timer {
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void set(record_t rec1, record_t rec2, const event::id_t eid) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9925,7 +9915,7 @@ namespace timer {
 		 * @param eid идентификатор события
 		 *
 		 */
-		static AWH_PORTS_INLINE void __try_release_chunk__(const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void __try_release_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка меньше размера вектора чанков, проверяем его на возможность освобождения
@@ -9942,7 +9932,7 @@ namespace timer {
 		 * @brief Функция освобождения всех пустых чанков с возвратом в пул для переиспользования
 		 *
 		 */
-		static AWH_PORTS_INLINE void __release_empty_chunks__() noexcept {
+		static __AWH_INLINE__ void __release_empty_chunks__() noexcept {
 			/**
 			 * Перебираем все активные чанки
 			 */
@@ -9960,7 +9950,7 @@ namespace timer {
 		 * @param idx   индекс таймера в куче
 		 *
 		 */
-		static AWH_PORTS_INLINE void __set_slot__(const timer_t & timer, const int32_t idx) noexcept {
+		static __AWH_INLINE__ void __set_slot__(const timer_t & timer, const int32_t idx) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (timer.eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, слот обновить нельзя
@@ -9983,7 +9973,7 @@ namespace timer {
 		 * @param b индекс второго элемента в куче
 		 *
 		 */
-		static AWH_PORTS_INLINE void __swap_heap__(const int32_t a, const int32_t b) noexcept {
+		static __AWH_INLINE__ void __swap_heap__(const int32_t a, const int32_t b) noexcept {
 			// Обмениваем два элемента в куче
 			::swap(__awh_heap__[a], __awh_heap__[b]);
 			// Синхронизируем индексы обоих таймеров в слотах чанков
@@ -10231,7 +10221,7 @@ namespace timer {
 		 *          обходился дороже всей отправки вне ядра.
 		 *
 		 */
-		static AWH_PORTS_INLINE void __rearm__(const uint64_t stamp = 0) noexcept {
+		static __AWH_INLINE__ void __rearm__(const uint64_t stamp = 0) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -10259,7 +10249,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		[[maybe_unused]] static AWH_PORTS_INLINE bool empty() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -10269,7 +10259,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		[[maybe_unused]] static AWH_PORTS_INLINE size_t size() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -10277,7 +10267,7 @@ namespace timer {
 		 * @brief Функция инициализации подсистему таймеров
 		 *
 		 */
-		static AWH_PORTS_INLINE void init() noexcept {
+		static __AWH_INLINE__ void init() noexcept {
 			// Выделяем память под пиковую нагрузку
 			__awh_heap__.reserve(AWH_HEAP_SIZE_INTERNAL_TIMER);
 			// Выделяем память под ~256k уникальных идентификаторов событий
@@ -10287,7 +10277,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static AWH_PORTS_INLINE void clear() noexcept {
+		static __AWH_INLINE__ void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем карту активных чанков
@@ -10306,7 +10296,7 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static AWH_PORTS_INLINE void disarm() noexcept {
+		static __AWH_INLINE__ void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
@@ -10318,7 +10308,7 @@ namespace timer {
 		 *          очереди, и взвестись тогда не могли.
 		 *
 		 */
-		static AWH_PORTS_INLINE void rearm() noexcept {
+		static __AWH_INLINE__ void rearm() noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__();
 		}
@@ -10326,7 +10316,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки пула чанков (вернуть память ОС)
 		 *
 		 */
-		static AWH_PORTS_INLINE void shrink() noexcept {
+		static __AWH_INLINE__ void shrink() noexcept {
 			// Очищаем пул чанков, удаляя все объекты чанков и освобождая память, возвращая её операционной системе
 			__awh_chunk_pool__.clear();
 		}
@@ -10336,7 +10326,7 @@ namespace timer {
 		 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static AWH_PORTS_INLINE uint64_t deadline() noexcept {
+		static __AWH_INLINE__ uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__[0].deadline);
 		}
@@ -10502,7 +10492,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10517,7 +10507,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10535,7 +10525,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10580,7 +10570,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10769,7 +10759,7 @@ namespace timer {
 		 * @param flag флаг активации таймера
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag) noexcept {
+		static __AWH_INLINE__ void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -10784,7 +10774,7 @@ namespace timer {
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(record_t rec, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void set(record_t rec, const event::id_t eid) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag);
 			/**
@@ -10805,7 +10795,7 @@ namespace timer {
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_PORTS_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void set(record_t rec1, record_t rec2, const event::id_t eid) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -11728,7 +11718,7 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_PORTS_INLINE bool retriable(T * node) noexcept {
+	static __AWH_INLINE__ bool retriable(T * node) noexcept {
 		/**
 		 * Определяем возникшую ошибку
 		 */
@@ -11780,7 +11770,7 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_PORTS_INLINE bool pending(T * node) noexcept {
+	static __AWH_INLINE__ bool pending(T * node) noexcept {
 		// Выводим результат проверки
 		return (
 			(errno == EADDRINUSE) &&
@@ -11808,7 +11798,7 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_PORTS_INLINE bool unnamed(T * node) noexcept {
+	static __AWH_INLINE__ bool unnamed(T * node) noexcept {
 		/**
 		 * Проверка ведётся по состоянию узла, а НЕ по errno
 		 *
@@ -11842,7 +11832,7 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_PORTS_INLINE bool awaited(T * node) noexcept {
+	static __AWH_INLINE__ bool awaited(T * node) noexcept {
 		// Выводим результат проверки
 		return (
 			(node->state.protocol == event::protocol_t::SCTP) &&
@@ -11873,7 +11863,7 @@ namespace sctp {
 	 * @return      свободное место очереди за вычетом головы настроек
 	 *
 	 */
-	static AWH_PORTS_INLINE size_t vacancy(T * node, net_queue_t & queue) noexcept {
+	static __AWH_INLINE__ size_t vacancy(T * node, net_queue_t & queue) noexcept {
 		// Получаем количество свободного места в очереди
 		const size_t result = queue.available();
 		// Если событие работает по протоколу SCTP
@@ -11900,7 +11890,7 @@ namespace sctp {
 	 * @param node узел события
 	 *
 	 */
-	static AWH_PORTS_INLINE void forget(T * node) noexcept {
+	static __AWH_INLINE__ void forget(T * node) noexcept {
 		// Если набор параметров SCTP у узла заводился
 		if(node->transfer.sctp.has()){
 			// Сбрасываем остаток полезной нагрузки записи
@@ -12083,7 +12073,7 @@ namespace sctp {
 	 * @param bytes количество ушедших октетов
 	 *
 	 */
-	static AWH_PORTS_INLINE void drain(T * node, const size_t bytes) noexcept {
+	static __AWH_INLINE__ void drain(T * node, const size_t bytes) noexcept {
 		// Если событие работает по протоколу SCTP
 		if(node->state.protocol == event::protocol_t::SCTP)
 			// Уменьшаем остаток полезной нагрузки записи на ушедшие октеты
@@ -12134,7 +12124,7 @@ namespace sctp {
 	 * @return     результат работы функции
 	 *
 	 */
-	static AWH_PORTS_INLINE bool partial(T * node, const bool end, const eth_t * eth) noexcept {
+	static __AWH_INLINE__ bool partial(T * node, const bool end, const eth_t * eth) noexcept {
 		/**
 		 * Если сообщение отправляется по частям, а вопрос о режиме ещё не улаживался
 		 *
@@ -12174,7 +12164,7 @@ namespace sctp {
 	 * @param size   размер прочитанных данных
 	 *
 	 */
-	static AWH_PORTS_INLINE void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
 		// Если отклик чтения данных вместе с метаданными установлен
 		if(node->transfer.sctp.endpoint().callbacks.message != nullptr){
 			// Выполняем выдачу данных вместе с метаданными
@@ -22079,7 +22069,7 @@ namespace io {
 	 * @return ссылка на счётчик глубины текущего потока
 	 *
 	 */
-	static AWH_PORTS_INLINE uint16_t & depth() noexcept {
+	static __AWH_INLINE__ uint16_t & depth() noexcept {
 		// Счётчик глубины возвратного захода в отправку
 		static thread_local uint16_t result = 0;
 		// Выводим счётчик глубины
@@ -22108,7 +22098,7 @@ namespace io {
 	 * @return признак того, что писать в сокет можно прямо сейчас
 	 *
 	 */
-	static AWH_PORTS_INLINE bool immediate() noexcept {
+	static __AWH_INLINE__ bool immediate() noexcept {
 		// Писать немедленно вправе заход, не подошедший к пределу глубины
 		return (::io::depth() < ::io::DEPTH_LIMIT);
 	}
@@ -32467,7 +32457,7 @@ namespace io {
 	 * @return     осмысленна ли узлу опция
 	 *
 	 */
-	static AWH_PORTS_INLINE bool continuable(const ::io::node_t * node) noexcept {
+	static __AWH_INLINE__ bool continuable(const ::io::node_t * node) noexcept {
 		// Если узла нет вовсе, опцию запоминать некому
 		if(node == nullptr)
 			// Выводим отрицательный результат
@@ -32501,7 +32491,7 @@ namespace io {
 	 * @return     результат передачи дескриптора узлу
 	 *
 	 */
-	static AWH_PORTS_INLINE bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
+	static __AWH_INLINE__ bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
 		/**
 		 * Отмечаем описатель принятым передачей
 		 *
@@ -32597,7 +32587,7 @@ namespace io {
 	 * @return     дескриптор сокета узла события
 	 *
 	 */
-	static AWH_PORTS_INLINE net::socket_t descriptor(const ::io::node_t * node) noexcept {
+	static __AWH_INLINE__ net::socket_t descriptor(const ::io::node_t * node) noexcept {
 		/**
 		 * Определяем чем является текущий узел
 		 */
@@ -32645,7 +32635,7 @@ namespace io {
 	 * @return      код отказа, годный для strerror
 	 *
 	 */
-	static AWH_PORTS_INLINE int32_t reason(::io::node_t * node) noexcept {
+	static __AWH_INLINE__ int32_t reason(::io::node_t * node) noexcept {
 		// Получаем описатель узла
 		const net::socket_t fd = ::io::descriptor(node);
 		// Код отказа, о котором сообщил сокет
@@ -32684,7 +32674,7 @@ namespace io {
 	 * @return     следует ли сносить узел
 	 *
 	 */
-	static AWH_PORTS_INLINE bool fault(::io::node_t * node) noexcept {
+	static __AWH_INLINE__ bool fault(::io::node_t * node) noexcept {
 		// Разыскиваем настоящую причину отказа
 		const int32_t code = ::io::reason(node);
 		// Если сокет назвал причину, разбираем её как отказ
@@ -32705,7 +32695,7 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
-	static AWH_PORTS_INLINE bool socket(::io::node_t * node, const eth_t * eth) noexcept {
+	static __AWH_INLINE__ bool socket(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -35977,7 +35967,7 @@ namespace io {
 	 * @return     предельный размер одной записи в октетах, ноль - предела нет
 	 *
 	 */
-	static AWH_PORTS_INLINE size_t portion(::io::node_t * node) noexcept {
+	static __AWH_INLINE__ size_t portion(::io::node_t * node) noexcept {
 		// Если событие принадлежит к дейтаграммному типу
 		if(node->state.type == event::type_t::DATAGRAM)
 			// Возвращаем предельный размер одной дейтаграммы

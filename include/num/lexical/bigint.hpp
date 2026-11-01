@@ -544,7 +544,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE uint64_t toHigh64(const uint64_t value, bool & truncated) noexcept {
+		__AWH_INLINE__ uint64_t toHigh64(const uint64_t value, bool & truncated) noexcept {
 			// Отбрасывать при нормализации одного слова нечего
 			truncated = false;
 			// Если значение является нулевым
@@ -573,7 +573,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE uint64_t toHigh64(const uint64_t high, const uint64_t low, bool & truncated) noexcept {
+		__AWH_INLINE__ uint64_t toHigh64(const uint64_t high, const uint64_t low, bool & truncated) noexcept {
 			// Если старшее слово является нулевым
 			if(high == 0){
 				// Выводим результат нормализации младшего слова
@@ -614,7 +614,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE uint64_t toHigh64(const uint32_t high, const uint32_t low, bool & truncated) noexcept {
+		__AWH_INLINE__ uint64_t toHigh64(const uint32_t high, const uint32_t low, bool & truncated) noexcept {
 			// Выводим результат нормализации объединённого значения
 			return toHigh64((static_cast <uint64_t> (high) << 32) | static_cast <uint64_t> (low), truncated);
 		}
@@ -639,7 +639,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE uint64_t toHigh64(const uint32_t high, const uint32_t middle, const uint32_t low, bool & truncated) noexcept {
+		__AWH_INLINE__ uint64_t toHigh64(const uint32_t high, const uint32_t middle, const uint32_t low, bool & truncated) noexcept {
 			// Выводим результат сборки старшего слова и объединённых младших
 			return toHigh64(
 				static_cast <uint64_t> (high),
@@ -666,7 +666,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE limb_t scalarAdd(const limb_t x, const limb_t y, bool & overflow) noexcept {
+		__AWH_INLINE__ limb_t scalarAdd(const limb_t x, const limb_t y, bool & overflow) noexcept {
 			// Результат сложения разрядов
 			limb_t result = 0;
 			/**
@@ -706,7 +706,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE limb_t scalarMul(const limb_t x, const limb_t y, limb_t & carry) noexcept {
+		__AWH_INLINE__ limb_t scalarMul(const limb_t x, const limb_t y, limb_t & carry) noexcept {
 			/**
 			 * Для 64-битного разряда используем расширенное умножение
 			 */
@@ -845,7 +845,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE bool smallAdd(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
+		__AWH_INLINE__ bool smallAdd(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
 			// Выполняем добавление скаляра с нулевого разряда
 			return smallAddFrom(limbs, value, 0);
 		}

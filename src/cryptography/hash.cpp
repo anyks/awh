@@ -350,7 +350,7 @@ namespace awh {
 		 * @return       пара чисел результата свёртки
 		 *
 		 */
-		static AWH_HASH_INLINE conv_t compact(const uint8_t * buffer, const size_t size, const uint64_t seed) noexcept {
+		static __AWH_INLINE__ conv_t compact(const uint8_t * buffer, const size_t size, const uint64_t seed) noexcept {
 			// Первое поглощаемое число
 			uint64_t first = 0;
 			// Второе поглощаемое число
@@ -477,7 +477,7 @@ namespace awh {
 		 * @return       пара чисел результата свёртки
 		 *
 		 */
-		static AWH_HASH_INLINE conv_t fold(const void * buffer, const size_t size, const uint64_t seed) noexcept {
+		static __AWH_INLINE__ conv_t fold(const void * buffer, const size_t size, const uint64_t seed) noexcept {
 			// Получаем буфер данных для свёртки
 			const uint8_t * data = static_cast <const uint8_t *> (buffer);
 			// Определяем размер данных для свёртки

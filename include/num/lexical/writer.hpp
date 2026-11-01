@@ -219,7 +219,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr size_t maxRecordLength() noexcept {
+		__AWH_INLINE__ constexpr size_t maxRecordLength() noexcept {
 			// Выводим достаточный размер места под запись числа
 			return (
 				// Знак числа, ведущий ноль целой части и разделитель дробной части
@@ -245,7 +245,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr size_t decimalLength(const uint64_t value) noexcept {
+		__AWH_INLINE__ constexpr size_t decimalLength(const uint64_t value) noexcept {
 			// Выводим количество десятичных цифр значения
 			return (
 				(value >= 10000000000000000000ull) ? 20 : (value >= 1000000000000000000ull) ? 19 :
@@ -293,7 +293,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE void writeDecimal(UC * last, uint64_t value) noexcept {
+		__AWH_INLINE__ void writeDecimal(UC * last, uint64_t value) noexcept {
 			// Указатель на текущую позицию записи
 			UC * position = last;
 			/**

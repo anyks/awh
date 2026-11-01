@@ -84,16 +84,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_GW_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_GW_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Инкапсулируем статичные функции в пространство имён
  *
  */
@@ -155,7 +145,7 @@ namespace gw {
 	 * @return     длина структуры адреса маршрута
 	 *
 	 */
-	static AWH_GW_INLINE size_t length(const struct sockaddr * addr) noexcept {
+	static __AWH_INLINE__ size_t length(const struct sockaddr * addr) noexcept {
 		// Если объект адреса маршрута не передан
 		if(addr == nullptr)
 			// Выводим длину пустой структуры адреса
@@ -187,7 +177,7 @@ namespace gw {
 	 * @return     объект следующего адреса маршрута
 	 *
 	 */
-	static AWH_GW_INLINE struct sockaddr * advance(struct sockaddr * addr) noexcept {
+	static __AWH_INLINE__ struct sockaddr * advance(struct sockaddr * addr) noexcept {
 		// Извлекаем объект следующего адреса маршрута
 		return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(::gw::length(addr)));
 	}
@@ -198,7 +188,7 @@ namespace gw {
 	 * @return    структура распарсенных адресов маршрута
 	 *
 	 */
-	static AWH_GW_INLINE addrs_t parse(const struct rt_msghdr * rtm) noexcept {
+	static __AWH_INLINE__ addrs_t parse(const struct rt_msghdr * rtm) noexcept {
 		// Результат разбора адресов маршрута
 		addrs_t result;
 		// Объект текущего адреса маршрута

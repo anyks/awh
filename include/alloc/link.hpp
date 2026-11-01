@@ -111,24 +111,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_LINK_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_LINK_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -183,7 +165,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				static AWH_LINK_INLINE void * mangle(const void * block, void * value) noexcept;
+				static __AWH_INLINE__ void * mangle(const void * block, void * value) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -217,7 +199,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				static AWH_LINK_INLINE void * next(void * block) noexcept;
+				static __AWH_INLINE__ void * next(void * block) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод записи указателя на следующий свободный блок
@@ -233,7 +215,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				static AWH_LINK_INLINE void next(void * block, void * subsequent) noexcept;
+				static __AWH_INLINE__ void next(void * block, void * subsequent) noexcept;
 		} link_t;
 	};
 };

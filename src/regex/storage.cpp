@@ -90,24 +90,6 @@ namespace {
  *
  */
 namespace {
-	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
 
 	/**
 	 * @brief Функция записи восьмиразрядного числа
@@ -116,7 +98,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void write8(const uint8_t value, string & result) noexcept {
+	static __AWH_INLINE__ void write8(const uint8_t value, string & result) noexcept {
 		// Записываем числ
 		result.push_back(static_cast <char> (value));
 	}
@@ -127,7 +109,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void write16(const uint16_t value, string & result) noexcept {
+	static __AWH_INLINE__ void write16(const uint16_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -149,7 +131,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	[[maybe_unused]] static AWH_REGEX_INLINE void write32(const uint32_t value, string & result) noexcept {
+	[[maybe_unused]] static __AWH_INLINE__ void write32(const uint32_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -164,7 +146,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void write64(const uint64_t value, string & result) noexcept {
+	static __AWH_INLINE__ void write64(const uint64_t value, string & result) noexcept {
 		/**
 		 * Записываем числ байтами от младшего
 		 */
@@ -185,7 +167,7 @@ namespace {
 	 *          соразмерно объёму прочитанного.
 	 *
 	 */
-	static AWH_REGEX_INLINE void writeVar(uint32_t value, string & result) noexcept {
+	static __AWH_INLINE__ void writeVar(uint32_t value, string & result) noexcept {
 		/**
 		 * Записываем числ семиразрядными долями
 		 */
@@ -207,7 +189,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	static AWH_REGEX_INLINE bool readVar(string_view data, size_t & offset, uint32_t & value) noexcept {
+	static __AWH_INLINE__ bool readVar(string_view data, size_t & offset, uint32_t & value) noexcept {
 		// Сбрасываем прочитанного числа
 		value = 0;
 		/**
@@ -247,7 +229,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void writeText(const string & value, string & result) noexcept {
+	static __AWH_INLINE__ void writeText(const string & value, string & result) noexcept {
 		// Записываем длину последовательности
 		writeVar(static_cast <uint32_t> (value.size()), result);
 		// Записываем содержимого последовательности
@@ -262,7 +244,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	static AWH_REGEX_INLINE bool read8(string_view data, size_t & offset, uint8_t & value) noexcept {
+	static __AWH_INLINE__ bool read8(string_view data, size_t & offset, uint8_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -283,7 +265,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	static AWH_REGEX_INLINE bool read16(string_view data, size_t & offset, uint16_t & value) noexcept {
+	static __AWH_INLINE__ bool read16(string_view data, size_t & offset, uint16_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -312,7 +294,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	[[maybe_unused]] static AWH_REGEX_INLINE bool read32(string_view data, size_t & offset, uint32_t & value) noexcept {
+	[[maybe_unused]] static __AWH_INLINE__ bool read32(string_view data, size_t & offset, uint32_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -339,7 +321,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	static AWH_REGEX_INLINE bool read64(string_view data, size_t & offset, uint64_t & value) noexcept {
+	static __AWH_INLINE__ bool read64(string_view data, size_t & offset, uint64_t & value) noexcept {
 		/**
 		 * Если запись оборвана до завершения числа
 		 */
@@ -366,7 +348,7 @@ namespace {
 	 * @return       результат чтения последовательности
 	 *
 	 */
-	static AWH_REGEX_INLINE bool readText(string_view data, size_t & offset, string & value) noexcept {
+	static __AWH_INLINE__ bool readText(string_view data, size_t & offset, string & value) noexcept {
 		// Длина прочитанной последовательности
 		uint32_t length = 0;
 		/**
@@ -399,7 +381,7 @@ namespace {
 	 *          восстановление сличает опознание со своим.
 	 *
 	 */
-	static AWH_REGEX_INLINE uint16_t platform() noexcept {
+	static __AWH_INLINE__ uint16_t platform() noexcept {
 		// Проба порядка байтов машины
 		const uint32_t probe = 0x01020304;
 		// Собираемое опознание устройства машины
@@ -434,7 +416,7 @@ namespace {
 	 *          какого порождён.
 	 *
 	 */
-	static AWH_REGEX_INLINE uint64_t hardware() noexcept {
+	static __AWH_INLINE__ uint64_t hardware() noexcept {
 		// Собираемое опознание машины
 		uint64_t result = 0xCBF29CE484222325ull;
 		/**
@@ -506,7 +488,7 @@ namespace {
 	 * @param result запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void align(string & result) noexcept {
+	static __AWH_INLINE__ void align(string & result) noexcept {
 		/**
 		 * Добавляем байтов заполнения до границы
 		 */
@@ -534,7 +516,7 @@ namespace {
 	 * @param result  запись хранилища
 	 *
 	 */
-	static AWH_REGEX_INLINE void writeRegion(const awh::regex::Sequence <T> & records, string & result) noexcept {
+	static __AWH_INLINE__ void writeRegion(const awh::regex::Sequence <T> & records, string & result) noexcept {
 		// Записываем количество записей набора
 		writeVar(static_cast <uint32_t> (records.size()), result);
 		// Выравниваем записю по границе восьми байтов
@@ -569,7 +551,7 @@ namespace {
 	 * @return         результат восстановления набора
 	 *
 	 */
-	static AWH_REGEX_INLINE bool readRegion(string_view data, size_t & offset, const size_t limit, awh::regex::Sequence <T> & records) noexcept {
+	static __AWH_INLINE__ bool readRegion(string_view data, size_t & offset, const size_t limit, awh::regex::Sequence <T> & records) noexcept {
 		// Количество записей восстанавливаемого набора
 		uint32_t count = 0;
 		/**
@@ -644,7 +626,7 @@ namespace {
 	 *          на сумму в этом не полагается.
 	 *
 	 */
-	static AWH_REGEX_INLINE uint64_t checksum(string_view data) noexcept {
+	static __AWH_INLINE__ uint64_t checksum(string_view data) noexcept {
 		// Получаем позицию чтения записи
 		size_t offset = 0;
 		// Накопленная контрольная сумма записи

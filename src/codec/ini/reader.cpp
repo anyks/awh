@@ -59,25 +59,6 @@ namespace {
 	using namespace awh::codec::ini;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_INI_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_INI_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Наибольший объём разобранного текста, удерживаемый до уплотнения хранилища
 	 *
 	 * @details Разобранное начало хранилища освобождается не при всяком событии, а лишь
@@ -100,7 +81,7 @@ namespace {
 	 * @return     строка без пробельной обвязки по краям
 	 *
 	 */
-	static AWH_INI_INLINE string_view trim(const string_view text) noexcept {
+	static __AWH_INLINE__ string_view trim(const string_view text) noexcept {
 		// Начало значащей части строки
 		size_t begin = 0;
 		// Конец значащей части строки
@@ -133,7 +114,7 @@ namespace {
 	 * @return        результат проверки
 	 *
 	 */
-	static AWH_INI_INLINE bool continued(const string_view text, const bool escapes) noexcept {
+	static __AWH_INLINE__ bool continued(const string_view text, const bool escapes) noexcept {
 		/**
 		 * Если строка пуста либо не оканчивается обратной косой чертой
 		 */
@@ -168,7 +149,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_INI_INLINE bool indented(const string_view text) noexcept {
+	static __AWH_INLINE__ bool indented(const string_view text) noexcept {
 		/**
 		 * Если строка пуста либо не начата пробельным знаком
 		 */
@@ -188,7 +169,7 @@ namespace {
 	 * @return       признак того, что знак конца строки обнаружен
 	 *
 	 */
-	static AWH_INI_INLINE bool split(const string_view text, const size_t begin, size_t & length, size_t & next) noexcept {
+	static __AWH_INLINE__ bool split(const string_view text, const size_t begin, size_t & length, size_t & next) noexcept {
 		/**
 		 * Выполняем перебор знаков разбираемого текста
 		 */
@@ -251,7 +232,7 @@ namespace {
 	 * @return       признак успешного разбора
 	 *
 	 */
-	static AWH_INI_INLINE bool unescape(const string_view text, const size_t offset, size_t & length, string & result, bool & hexed) noexcept {
+	static __AWH_INLINE__ bool unescape(const string_view text, const size_t offset, size_t & length, string & result, bool & hexed) noexcept {
 		/**
 		 * Если за обратной косой чертой знака не осталось
 		 */

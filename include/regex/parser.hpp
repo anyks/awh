@@ -1620,7 +1620,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_REGEX_INLINE void skipSpaces() noexcept;
+				__AWH_INLINE__ void skipSpaces() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод пропуска пробельных символов и комментариев в режиме «EXTENDED»
@@ -1751,7 +1751,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_REGEX_INLINE bool walks(const node_t type) noexcept;
+				__AWH_INLINE__ bool walks(const node_t type) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод разбора начальных указаний регулярного выражения

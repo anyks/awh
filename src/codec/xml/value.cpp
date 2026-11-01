@@ -57,25 +57,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_XML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_XML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -121,7 +102,7 @@ namespace {
 	 * @return пустая строка
 	 *
 	 */
-	static AWH_XML_INLINE const string & empty() noexcept {
+	static __AWH_INLINE__ const string & empty() noexcept {
 		// Пустая строка, выдаваемая при отсутствии содержимого
 		static const string result;
 		// Выводим пустую строку
@@ -140,7 +121,7 @@ namespace {
 	 * @return       признак успешности разбора
 	 *
 	 */
-	static AWH_XML_INLINE bool tokens(const string & path, vector <string> & result) noexcept {
+	static __AWH_INLINE__ bool tokens(const string & path, vector <string> & result) noexcept {
 		// Выполняем очистку перечня звеньев пути
 		result.clear();
 		/**
@@ -211,7 +192,7 @@ namespace {
 	 * @return       признак того, что звено является номером узла
 	 *
 	 */
-	static AWH_XML_INLINE bool numbered(const string & token, size_t & result) noexcept {
+	static __AWH_INLINE__ bool numbered(const string & token, size_t & result) noexcept {
 		/**
 		 * Если содержимое звена номером узла не является
 		 */
@@ -271,7 +252,7 @@ namespace {
 	 * @return      корневой узел разметки, либо само значение, если развернуть его нельзя
 	 *
 	 */
-	static AWH_XML_INLINE const codec::xml::value_t & unwrapDocument(const codec::xml::value_t & value) noexcept {
+	static __AWH_INLINE__ const codec::xml::value_t & unwrapDocument(const codec::xml::value_t & value) noexcept {
 		/**
 		 * Если значение видом своим является документом
 		 */

@@ -132,24 +132,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_GUARD_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_GUARD_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -515,7 +497,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_GUARD_INLINE bool wanted(const size_t size) noexcept;
+				__AWH_INLINE__ bool wanted(const size_t size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод выдачи заслонённого блока

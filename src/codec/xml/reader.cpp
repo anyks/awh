@@ -59,25 +59,6 @@ namespace {
 	using namespace codec::xml;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_XML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_XML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Запас байтов, удерживаемых на границе куска дословного раздела
 	 *
 	 * @details Раздел завершается тремя знаками, и последние два байта куска удерживаются
@@ -144,7 +125,7 @@ namespace {
 	 * @return       результат проверки допустимости знака
 	 *
 	 */
-	static AWH_XML_INLINE bool pubid(const char letter) noexcept {
+	static __AWH_INLINE__ bool pubid(const char letter) noexcept {
 		/**
 		 * Определяем проверяемый знак
 		 */
@@ -170,7 +151,7 @@ namespace {
 	 * @return       результат сличения
 	 *
 	 */
-	static AWH_XML_INLINE bool alike(const string_view first, const string_view second) noexcept {
+	static __AWH_INLINE__ bool alike(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков разнятся
 		 */
@@ -202,7 +183,7 @@ namespace {
 	 * @return        результат проверки поддержки издания
 	 *
 	 */
-	static AWH_XML_INLINE bool supported(const string_view version) noexcept {
+	static __AWH_INLINE__ bool supported(const string_view version) noexcept {
 		/**
 		 * Если объявленное издание записано короче допустимого
 		 */
@@ -235,7 +216,7 @@ namespace {
 	 * @return       количество знаков в последовательности
 	 *
 	 */
-	static AWH_XML_INLINE size_t codepoints(const char * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ size_t codepoints(const char * buffer, const size_t size) noexcept {
 		// Количество продолжающих байтов последовательности
 		size_t count = 0;
 		// Положение чтения в буфере последовательности
@@ -281,7 +262,7 @@ namespace {
 	 * @return       положение ближайшего знака либо размер буфера
 	 *
 	 */
-	static AWH_XML_INLINE size_t special(const char * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ size_t special(const char * buffer, const size_t size) noexcept {
 		// Положение чтения в буфере содержимого
 		size_t offset = 0;
 		/**
@@ -330,7 +311,7 @@ namespace {
 	 * @return     собранный ключ имени
 	 *
 	 */
-	static AWH_XML_INLINE uint64_t key(const string_view name) noexcept {
+	static __AWH_INLINE__ uint64_t key(const string_view name) noexcept {
 		// Собираемый ключ имени
 		uint64_t result = name.length();
 		// Получаем количество знаков имени, вмещаемых ключом
@@ -361,7 +342,7 @@ namespace {
 	 * @return      свёртка имени атрибута
 	 *
 	 */
-	static AWH_XML_INLINE uint64_t digest(const string_view local, const string_view uri) noexcept {
+	static __AWH_INLINE__ uint64_t digest(const string_view local, const string_view uri) noexcept {
 		// Собираемая свёртка имени атрибута
 		uint64_t result = 0xCBF29CE484222325ull;
 		/**
@@ -399,7 +380,7 @@ namespace {
 	 * @return       положение ближайшего конца строки либо размер буфера
 	 *
 	 */
-	static AWH_XML_INLINE size_t scan(const char * buffer, const size_t size, size_t & signs) noexcept {
+	static __AWH_INLINE__ size_t scan(const char * buffer, const size_t size, size_t & signs) noexcept {
 		// Количество продолжающих байтов последовательности
 		size_t count = 0;
 		// Положение чтения в буфере разбираемого текста
@@ -471,7 +452,7 @@ namespace {
 	 * @param offset положение, до которого место требуется досчитать
 	 *
 	 */
-	static AWH_XML_INLINE void measure(const string_view buffer, uint32_t & line, uint32_t & column, size_t & from, const size_t offset) noexcept {
+	static __AWH_INLINE__ void measure(const string_view buffer, uint32_t & line, uint32_t & column, size_t & from, const size_t offset) noexcept {
 		/**
 		 * Выполняем перебор строк отрезка одним проходом: конец строки и число знаков
 		 */
@@ -517,7 +498,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_XML_INLINE bool started(const string_view name) noexcept {
+	static __AWH_INLINE__ bool started(const string_view name) noexcept {
 		/**
 		 * Если проверяемое имя пусто
 		 *
@@ -579,7 +560,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static AWH_XML_INLINE bool plain(const string_view buffer, size_t from, const size_t offset) noexcept {
+	static __AWH_INLINE__ bool plain(const string_view buffer, size_t from, const size_t offset) noexcept {
 		// Получаем конец проверяемого отрезка исходного текста
 		const size_t end = (offset < buffer.size() ? offset : buffer.size());
 		// Размер слова, которым ведётся проверка

@@ -56,7 +56,7 @@ namespace awh {
 		 * @return      перемешанный указатель
 		 *
 		 */
-		AWH_LINK_INLINE void * link_t::mangle(const void * block, void * value) noexcept {
+		__AWH_INLINE__ void * link_t::mangle(const void * block, void * value) noexcept {
 			/**
 			 * Признак AWH_ALLOC_NO_MANGLE снимает заслон списка свободных блоков
 			 *
@@ -87,7 +87,7 @@ namespace awh {
 		 * @return      следующий свободный блок
 		 *
 		 */
-		AWH_LINK_INLINE void * link_t::next(void * block) noexcept {
+		__AWH_INLINE__ void * link_t::next(void * block) noexcept {
 			// Хранимое значение
 			void * result = nullptr;
 			/**
@@ -108,7 +108,7 @@ namespace awh {
 		 * @param subsequent записываемый следующий свободный блок
 		 *
 		 */
-		AWH_LINK_INLINE void link_t::next(void * block, void * subsequent) noexcept {
+		__AWH_INLINE__ void link_t::next(void * block, void * subsequent) noexcept {
 			// Получаем перемешанное значение
 			void * value = link_t::mangle(block, subsequent);
 			// Записываем значение побайтовым копированием

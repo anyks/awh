@@ -55,7 +55,7 @@ namespace awh {
 		 * @return      адрес выданного блока либо nullptr
 		 *
 		 */
-		AWH_CACHE_INLINE void * cache_t::alloc(const size_t index) noexcept {
+		__AWH_INLINE__ void * cache_t::alloc(const size_t index) noexcept {
 			/**
 			 * Если свободных блоков разряда в кэше не осталось
 			 *
@@ -87,7 +87,7 @@ namespace awh {
 		 * @param addr  адрес возвращаемого блока
 		 *
 		 */
-		AWH_CACHE_INLINE void cache_t::free(const size_t index, void * addr) noexcept {
+		__AWH_INLINE__ void cache_t::free(const size_t index, void * addr) noexcept {
 			/**
 			 * Связываем возвращаемый блок с прежней головой списка
 			 *
@@ -206,7 +206,7 @@ namespace awh {
 		 * @return      отдаваемое наружу накопленное, либо нуль
 		 *
 		 */
-		AWH_CACHE_INLINE int64_t cache_t::tally(const int64_t delta, const int64_t batch) noexcept {
+		__AWH_INLINE__ int64_t cache_t::tally(const int64_t delta, const int64_t batch) noexcept {
 			// Накапливаем изменение занятого
 			const int64_t result = (this->_tally.load(std::memory_order_relaxed) + delta);
 			// Если накопленное не дотянуло до величины отдачи
@@ -227,7 +227,7 @@ namespace awh {
 		 * @return место под подсказку поиска
 		 *
 		 */
-		AWH_CACHE_INLINE void ** cache_t::hint() noexcept {
+		__AWH_INLINE__ void ** cache_t::hint() noexcept {
 			// Выводим место под подсказку поиска
 			return &this->_hint;
 		}
@@ -241,7 +241,7 @@ namespace awh {
 		 * @return основание места потока, либо nullptr у неведомого набора команд
 		 *
 		 */
-		AWH_CACHE_INLINE void ** __awh_alloc_slots__() noexcept {
+		__AWH_INLINE__ void ** __awh_alloc_slots__() noexcept {
 			/**
 			 * Если набор команд принадлежит ARM64
 			 */
@@ -279,7 +279,7 @@ namespace awh {
 		 * @return кэш текущего потока либо nullptr
 		 *
 		 */
-		AWH_CACHE_INLINE cache_t * caches_t::local() noexcept {
+		__AWH_INLINE__ cache_t * caches_t::local() noexcept {
 			/**
 			 * Отвечаем из зеркала, не заходя в файл кода
 			 *

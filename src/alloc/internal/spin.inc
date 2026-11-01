@@ -50,7 +50,7 @@ namespace awh {
 		 * @brief Метод захвата замка
 		 *
 		 */
-		AWH_SPIN_INLINE void spin_t::acquire() noexcept {
+		__AWH_INLINE__ void spin_t::acquire() noexcept {
 			// Значение незахваченного замка
 			uint32_t free = 0;
 			// Пробуем захватить замок разом
@@ -62,7 +62,7 @@ namespace awh {
 		 * @brief Метод освобождения замка
 		 *
 		 */
-		AWH_SPIN_INLINE void spin_t::release() noexcept {
+		__AWH_INLINE__ void spin_t::release() noexcept {
 			// Освобождаем замок
 			this->_held.store(0, std::memory_order_release);
 		}
@@ -72,7 +72,7 @@ namespace awh {
 		 * @param spin удерживаемый замок
 		 *
 		 */
-		AWH_SPIN_INLINE hold_t::Hold(spin_t & spin) noexcept : _spin(spin) {
+		__AWH_INLINE__ hold_t::Hold(spin_t & spin) noexcept : _spin(spin) {
 			// Захватываем замок
 			this->_spin.acquire();
 		}
@@ -80,7 +80,7 @@ namespace awh {
 		 * @brief Деструктор
 		 *
 		 */
-		AWH_SPIN_INLINE hold_t::~Hold() noexcept {
+		__AWH_INLINE__ hold_t::~Hold() noexcept {
 			// Освобождаем замок
 			this->_spin.release();
 		}

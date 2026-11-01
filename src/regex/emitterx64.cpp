@@ -73,24 +73,6 @@ using namespace std;
  *
  */
 namespace {
-	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
 
 	/**
 	 * @brief Размер участка доводов, вызывающим отводимого
@@ -184,7 +166,7 @@ namespace {
 	 * @param value размещаемый байт команды
 	 *
 	 */
-	static AWH_REGEX_INLINE void emit8(vector <uint8_t> & code, const uint8_t value) noexcept {
+	static __AWH_INLINE__ void emit8(vector <uint8_t> & code, const uint8_t value) noexcept {
 		// Размещаем байт команды
 		code.push_back(value);
 	}
@@ -195,7 +177,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	static AWH_REGEX_INLINE void emit32(vector <uint8_t> & code, const uint32_t value) noexcept {
+	static __AWH_INLINE__ void emit32(vector <uint8_t> & code, const uint32_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -210,7 +192,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	static AWH_REGEX_INLINE void emit64(vector <uint8_t> & code, const uint64_t value) noexcept {
+	static __AWH_INLINE__ void emit64(vector <uint8_t> & code, const uint64_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -278,7 +260,7 @@ namespace {
 	 *          путей, ошибиться в каких легко.
 	 *
 	 */
-	static AWH_REGEX_INLINE void memory(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
+	static __AWH_INLINE__ void memory(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
 		// Размещаем байт расширения набора регистров
 		emit8(code, rex(true, reg, 0, base));
 		// Размещаем код команды процессора

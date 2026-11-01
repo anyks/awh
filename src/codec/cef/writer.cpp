@@ -70,25 +70,6 @@ namespace {
 	using namespace awh::codec::cef;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_CEF_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_CEF_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Имена полей заголовка записи в дереве контейнера ABC
 	 *
 	 * @details Порядок отвечает порядку полей в записи и порядку членов перечня полей:
@@ -123,7 +104,7 @@ namespace {
 	 * @return     признак представимости значения
 	 *
 	 */
-	static AWH_CEF_INLINE bool representable(const string_view text) noexcept {
+	static __AWH_INLINE__ bool representable(const string_view text) noexcept {
 		// Выводим признак отсутствия перевода строки, запись разрывающего
 		return (text.find('\n') == string_view::npos);
 	}

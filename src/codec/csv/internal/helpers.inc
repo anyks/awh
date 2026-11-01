@@ -59,23 +59,6 @@ namespace awh {
 		 * Пространство имён контейнера CSV
 		 */
 		namespace csv {
-			/**
-			 * Если компилятор принадлежит к Visual Studio
-			 */
-			#if defined(_MSC_VER)
-				/**
-				 * Принудительная подстановка средствами Visual Studio
-				 */
-				#define AWH_CSV_INLINE __forceinline
-			/**
-			 * Если компилятор не принадлежит к Visual Studio
-			 */
-			#else
-				/**
-				 * Принудительная подстановка средствами GCC и Clang
-				 */
-				#define AWH_CSV_INLINE inline __attribute__((always_inline))
-			#endif
 
 			/**
 			 * @brief Функция посредник получения длины последовательности знака
@@ -84,7 +67,7 @@ namespace awh {
 			 * @return       длина последовательности знака в байтах, нулевая при ошибке
 			 *
 			 */
-			AWH_CSV_INLINE size_t sequence(const uint8_t letter) noexcept {
+			__AWH_INLINE__ size_t sequence(const uint8_t letter) noexcept {
 				// Выводим длину общим телом, лежащим в единице трансляции кодировщика
 				return utf8::sequence(letter);
 			}
@@ -95,7 +78,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 */
-			AWH_CSV_INLINE bool suitableChar(const uint32_t code) noexcept {
+			__AWH_INLINE__ bool suitableChar(const uint32_t code) noexcept {
 				// Если знаком является табуляция, перевод строки либо возврат каретки
 				if((code == 0x09) || (code == 0x0A) || (code == 0x0D))
 					// Выводим положительный результат проверки знака
@@ -124,7 +107,7 @@ namespace awh {
 			 * @return       прочитанное кодовое значение знака
 			 *
 			 */
-			AWH_CSV_INLINE uint32_t readCode(const char * buffer, const size_t size, size_t & length) noexcept {
+			__AWH_INLINE__ uint32_t readCode(const char * buffer, const size_t size, size_t & length) noexcept {
 				// Выполняем сброс длины прочитанной последовательности
 				length = 0;
 				// Если исходный текст не передан

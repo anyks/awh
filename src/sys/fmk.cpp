@@ -101,24 +101,6 @@
 #include <encoding/charset/charset.hpp>
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_FMK_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_FMK_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -168,7 +150,7 @@ namespace {
 	 * @return       символ, переведённый в верхний регистр
 	 *
 	 */
-	static AWH_FMK_INLINE wint_t wideUpper(const wint_t letter) noexcept {
+	static __AWH_INLINE__ wint_t wideUpper(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -204,7 +186,7 @@ namespace {
 	 * @details Пояснение к работе средства смотрите у wideUpper
 	 *
 	 */
-	static AWH_FMK_INLINE wint_t wideLower(const wint_t letter) noexcept {
+	static __AWH_INLINE__ wint_t wideLower(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -239,7 +221,7 @@ namespace {
 	 * @return     результирующая широкая строка (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
 	 *
 	 */
-	static AWH_FMK_INLINE wstring utf8ToWide(const char * data, const size_t size) noexcept {
+	static __AWH_INLINE__ wstring utf8ToWide(const char * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -394,7 +376,7 @@ namespace {
 	 * @return     результирующая строка в кодировке UTF-8
 	 *
 	 */
-	static AWH_FMK_INLINE string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
+	static __AWH_INLINE__ string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -522,7 +504,7 @@ namespace {
 	 * @return          число в безэкспоненциальной форме
 	 *
 	 */
-	static AWH_FMK_INLINE string noexpFixed(const double number, const int32_t precision) noexcept {
+	static __AWH_INLINE__ string noexpFixed(const double number, const int32_t precision) noexcept {
 		// Если число не является конечным, записывать нечего
 		if(!::isfinite(number))
 			// Выводим нулевой результат
@@ -721,7 +703,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	static AWH_FMK_INLINE T & split(string_view str, string_view delim, T & container) noexcept {
+	static __AWH_INLINE__ T & split(string_view str, string_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -839,7 +821,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	static AWH_FMK_INLINE T & split(wstring_view str, wstring_view delim, T & container) noexcept {
+	static __AWH_INLINE__ T & split(wstring_view str, wstring_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -1266,7 +1248,7 @@ namespace {
 	 * @param callback  функция обратного вызова для каждой найденной записи
 	 *
 	 */
-	static AWH_FMK_INLINE void parseKeyValue(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
+	static __AWH_INLINE__ void parseKeyValue(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
 		// Тип текстового представления обрабатываемых данных
 		using view_t = basic_string_view <T>;
 		// Получаем размер обрабатываемого текста
@@ -1502,7 +1484,7 @@ namespace {
 	 *       оставляет
 	 *
 	 */
-	static AWH_FMK_INLINE void raiseCoreLimit() noexcept {
+	static __AWH_INLINE__ void raiseCoreLimit() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1528,7 +1510,7 @@ namespace {
 	 *       отдало бы ему половину прежнего кода и половину нового
 	 *
 	 */
-	static AWH_FMK_INLINE void startup() noexcept {
+	static __AWH_INLINE__ void startup() noexcept {
 		// Поднимаем предел дампа ядра: в выпускной сборке это пусто
 		::raiseCoreLimit();
 		/**
@@ -1551,7 +1533,7 @@ namespace {
 	 *       заведение это - одно на процесс
 	 *
 	 */
-	static AWH_FMK_INLINE void seizeAllocator() noexcept {
+	static __AWH_INLINE__ void seizeAllocator() noexcept {
 		// Выполняем заведение один раз на весь процесс
 		std::call_once(::__awh_startup_once__, &::startup);
 	}
@@ -1672,7 +1654,7 @@ namespace timer {
 		 * @return идентификатор источника монотонного времени
 		 *
 		 */
-		static AWH_FMK_INLINE clockid_t monotonic() noexcept {
+		static __AWH_INLINE__ clockid_t monotonic() noexcept {
 			// Шаг дешёвых монотонных часов
 			struct timespec resolution{};
 			// Если шаг дешёвых часов получен и он не превышает миллисекунды
@@ -1750,7 +1732,7 @@ namespace timer {
 			 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t frequency() noexcept {
+			static __AWH_INLINE__ uint64_t frequency() noexcept {
 				// Частота счётчика системного таймера
 				uint64_t result = 0;
 				/**
@@ -1788,7 +1770,7 @@ namespace timer {
 			 * @return текущее показание счётчика в тактах
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t ticks() noexcept {
+			static __AWH_INLINE__ uint64_t ticks() noexcept {
 				// Текущее показание счётчика системного таймера
 				uint64_t result = 0;
 				/**
@@ -1826,7 +1808,7 @@ namespace timer {
 			 * @return      время в заданных долях секунды
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
+			static __AWH_INLINE__ uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
 				// Выводим время, сложенное из целых секунд и остатка
 				return (((value / counter) * scale) + (((value % counter) * scale) / counter));
 			}
@@ -1905,7 +1887,7 @@ namespace timer {
 			 * @return идентификатор источника монотонного времени
 			 *
 			 */
-			static AWH_FMK_INLINE clockid_t monotonic() noexcept {
+			static __AWH_INLINE__ clockid_t monotonic() noexcept {
 				// Частота системного таймера
 				int32_t hz = 0;
 				// Размер получаемого значения
@@ -1949,7 +1931,7 @@ namespace timer {
 			 * @return частота счётчика в тактах за секунду либо ноль, если счётчик негоден
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t frequency() noexcept {
+			static __AWH_INLINE__ uint64_t frequency() noexcept {
 				// Частота счётчика системного таймера
 				uint64_t result = 0;
 				// Выполняем чтение частоты счётчика системного таймера
@@ -1970,7 +1952,7 @@ namespace timer {
 			 * @return текущее показание счётчика в тактах
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t ticks() noexcept {
+			static __AWH_INLINE__ uint64_t ticks() noexcept {
 				// Текущее показание счётчика системного таймера
 				uint64_t result = 0;
 				// Выполняем чтение показания счётчика системного таймера
@@ -1992,7 +1974,7 @@ namespace timer {
 			 * @return      время в заданных долях секунды
 			 *
 			 */
-			static AWH_FMK_INLINE uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
+			static __AWH_INLINE__ uint64_t convert(const uint64_t value, const uint64_t scale) noexcept {
 				// Выводим время, сложенное из целых секунд и остатка
 				return (((value / counter) * scale) + (((value % counter) * scale) / counter));
 			}

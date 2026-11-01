@@ -406,7 +406,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_ABC_INLINE bool container() const noexcept {
+						__AWH_INLINE__ bool container() const noexcept {
 							// Выводим признак того, что узел является вместимым
 							return ((static_cast <uint32_t> (this->type) & static_cast <uint32_t> (type_t::CONTAINER)) != 0);
 						}
@@ -423,7 +423,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_ABC_INLINE uint32_t length() const noexcept {
+						__AWH_INLINE__ uint32_t length() const noexcept {
 							// Выводим количество детей вместимого либо длину содержимого
 							return this->content[0];
 						}
@@ -440,7 +440,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_ABC_INLINE uint32_t extent() const noexcept {
+						__AWH_INLINE__ uint32_t extent() const noexcept {
 							/**
 							 * Если узел вместимым не является, размах его равен одному узлу.
 							 *
@@ -468,7 +468,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_ABC_INLINE void length(const uint32_t value) noexcept {
+						__AWH_INLINE__ void length(const uint32_t value) noexcept {
 							// Выполняем установку количества детей вместимого либо длины содержимого
 							this->content[0] = value;
 						}
@@ -485,7 +485,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_ABC_INLINE void extent(const uint32_t value) noexcept {
+						__AWH_INLINE__ void extent(const uint32_t value) noexcept {
 							// Выполняем установку размаха поддерева узла
 							this->content[1] = value;
 						}

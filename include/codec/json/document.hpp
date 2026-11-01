@@ -314,7 +314,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE uint32_t length() const noexcept {
+						__AWH_INLINE__ uint32_t length() const noexcept {
 							// Выводим количество детей вместилища либо длину содержимого
 							return this->content[0];
 						}
@@ -337,7 +337,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE uint32_t extent() const noexcept {
+						__AWH_INLINE__ uint32_t extent() const noexcept {
 							// Выводим размах поддерева вместилища либо единицу у прочих узлов
 							return (this->nested() ? this->content[1] : 1);
 						}
@@ -354,7 +354,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE void length(const uint32_t value) noexcept {
+						__AWH_INLINE__ void length(const uint32_t value) noexcept {
 							// Устанавливаем количество детей вместилища либо длину содержимого
 							this->content[0] = value;
 						}
@@ -377,7 +377,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE void extent(const uint32_t value) noexcept {
+						__AWH_INLINE__ void extent(const uint32_t value) noexcept {
 							/**
 							 * Если узел является вместилищем
 							 */
@@ -406,7 +406,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE bool native() const noexcept {
+						__AWH_INLINE__ bool native() const noexcept {
 							// Получаем разряды вида значения узла
 							const uint16_t mask = static_cast <uint16_t> (this->type);
 							// Выводим признак того, что число хранится самим узлом
@@ -425,7 +425,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE bool nested() const noexcept {
+						__AWH_INLINE__ bool nested() const noexcept {
 							// Выводим признак принадлежности узла к вместилищам
 							return ((static_cast <uint16_t> (this->type) & (static_cast <uint16_t> (type_t::ARRAY) | static_cast <uint16_t> (type_t::OBJECT))) != 0);
 						}
@@ -456,7 +456,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE T number() const noexcept {
+						__AWH_INLINE__ T number() const noexcept {
 							// Извлекаемое из узла число
 							T result;
 							// Выполняем перенос байтов числа из содержимого узла
@@ -491,7 +491,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_JSON_INLINE void number(const T value) noexcept {
+						__AWH_INLINE__ void number(const T value) noexcept {
 							// Выполняем обнуление содержимого узла
 							this->content[0] = 0;
 							// Выполняем обнуление старшей половины содержимого узла
@@ -629,7 +629,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE bool valid() const noexcept {
+							__AWH_INLINE__ bool valid() const noexcept {
 								// Выводим признак действительности ссылки
 								return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()) && (this->_stamp == this->_doc->_stamp));
 							}
@@ -646,7 +646,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE kind_t kind() const noexcept {
+							__AWH_INLINE__ kind_t kind() const noexcept {
 								// Выводим вид узла документа, если ссылка действительна
 								return (this->valid() ? json::kind(this->_doc->_nodes[this->_index].type) : kind_t::NONE);
 							}
@@ -669,7 +669,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE type_t type() const noexcept {
+							__AWH_INLINE__ type_t type() const noexcept {
 								// Выводим вид значения документа, если ссылка действительна
 								return (this->valid() ? this->_doc->_nodes[this->_index].type : type_t::UNDEFINED);
 							}
@@ -704,7 +704,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE bool is(const type_t type) const noexcept {
+							__AWH_INLINE__ bool is(const type_t type) const noexcept {
 								/**
 								 * \~russian
 								 * Если спрошено об отсутствии значения
@@ -739,7 +739,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE size_t size() const noexcept {
+							__AWH_INLINE__ size_t size() const noexcept {
 								/**
 								 * Если ссылка недействительна
 								 */
@@ -781,7 +781,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE bool empty() const noexcept {
+							__AWH_INLINE__ bool empty() const noexcept {
 								// Выводим признак отсутствия детей у вместилища
 								return (this->size() == 0);
 							}
@@ -798,7 +798,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE string_view name() const noexcept {
+							__AWH_INLINE__ string_view name() const noexcept {
 								/**
 								 * Если ссылка недействительна
 								 */
@@ -1306,7 +1306,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE Value next() const noexcept {
+							__AWH_INLINE__ Value next() const noexcept {
 								/**
 								 * Если ссылка недействительна
 								 */
@@ -1331,7 +1331,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE Value begin() const noexcept {
+							__AWH_INLINE__ Value begin() const noexcept {
 								/**
 								 * Если вместилище пусто
 								 */

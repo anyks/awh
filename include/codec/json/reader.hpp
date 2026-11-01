@@ -1091,7 +1091,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					AWH_JSON_INLINE event_t event() const noexcept {
+					__AWH_INLINE__ event_t event() const noexcept {
 						// Выводим вид текущего события
 						return this->_current.event;
 					}
@@ -1132,7 +1132,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					AWH_JSON_INLINE span_t content() const noexcept {
+					__AWH_INLINE__ span_t content() const noexcept {
 						// Выводим указание на содержимое текущего события
 						return this->_current.content;
 					}
@@ -1149,7 +1149,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					AWH_JSON_INLINE const string & storage() const noexcept {
+					__AWH_INLINE__ const string & storage() const noexcept {
 						// Выводим хранилище знаков разбора
 						return this->_storage;
 					}
@@ -1224,7 +1224,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					AWH_JSON_INLINE uint64_t origin() const noexcept {
+					__AWH_INLINE__ uint64_t origin() const noexcept {
 						// Выводим количество байтов, выброшенных из хранилища знаков
 						return this->_origin;
 					}

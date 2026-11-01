@@ -59,25 +59,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_YAML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_YAML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * Начало меток типов, описанием заданных
 	 */
 	static constexpr string_view STANDARD_TAG = "tag:yaml.org,2002:";
@@ -90,7 +71,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static AWH_YAML_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
+	static __AWH_INLINE__ bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -115,7 +96,7 @@ namespace {
 	 * @return     признак того, что текст чертою конца закрыт
 	 *
 	 */
-	static AWH_YAML_INLINE bool finalized(const string & text) noexcept {
+	static __AWH_INLINE__ bool finalized(const string & text) noexcept {
 		// Смещение конца просматриваемой части текста
 		size_t bottom = text.length();
 		/**
@@ -241,7 +222,7 @@ namespace {
 	 * @param result   строка, куда дописывается запись метки типа
 	 *
 	 */
-	static AWH_YAML_INLINE void escaped(const string & name, const bool verbatim, string & result) noexcept {
+	static __AWH_INLINE__ void escaped(const string & name, const bool verbatim, string & result) noexcept {
 		// Разряды долевой записи знака
 		static const char * const DIGITS = "0123456789ABCDEF";
 		/**
@@ -309,7 +290,7 @@ namespace {
 	 * @param result строка, куда дописывается последовательность
 	 *
 	 */
-	static AWH_YAML_INLINE void escaped(const uint32_t code, string & result) noexcept {
+	static __AWH_INLINE__ void escaped(const uint32_t code, string & result) noexcept {
 		// Количество разрядов записи знака
 		size_t digits = 2;
 		// Разряды шестнадцатеричной записи знака

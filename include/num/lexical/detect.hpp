@@ -294,24 +294,6 @@
 #endif
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(AWH_LEXICAL_VISUAL_STUDIO)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_ASCII_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_ASCII_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * Определяем проверку внутренних инвариантов модуля
  *

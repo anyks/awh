@@ -338,16 +338,6 @@
 #include <sys/log.hpp>
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_EPOLL_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_EPOLL_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -2559,7 +2549,7 @@ namespace change {
 	 * @return       собранная запись
 	 *
 	 */
-	static AWH_EPOLL_INLINE record_t make(const uintptr_t ident, const filter_t filter, const uint16_t flags, const uint32_t fflags, const int64_t data, void * udata) noexcept {
+	static __AWH_INLINE__ record_t make(const uintptr_t ident, const filter_t filter, const uint16_t flags, const uint32_t fflags, const int64_t data, void * udata) noexcept {
 		// Создаём запись списка изменений
 		record_t result;
 		// Устанавливаем числовую нагрузку записи
@@ -3787,7 +3777,7 @@ namespace kernel {
 	 * @return     результат закрытия
 	 *
 	 */
-	static AWH_EPOLL_INLINE int32_t close(const net::socket_t sock) noexcept;
+	static __AWH_INLINE__ int32_t close(const net::socket_t sock) noexcept;
 };
 
 /**
@@ -4511,7 +4501,7 @@ namespace kernel {
 	 * @return     результат закрытия
 	 *
 	 */
-	static AWH_EPOLL_INLINE int32_t close(const net::socket_t sock) noexcept {
+	static __AWH_INLINE__ int32_t close(const net::socket_t sock) noexcept {
 		// Забываем состояние учёта закрываемого дескриптора
 		::kernel::forget(sock);
 		// Выполняем закрытие дескриптора
@@ -5913,7 +5903,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static AWH_EPOLL_INLINE event::id_t identifier() noexcept {
+	static __AWH_INLINE__ event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -6065,7 +6055,7 @@ namespace local {
 	 * @return      предельный размер одной операции в октетах
 	 *
 	 */
-	static AWH_EPOLL_INLINE double burst(const uint64_t limit, const size_t mtu) noexcept {
+	static __AWH_INLINE__ double burst(const uint64_t limit, const size_t mtu) noexcept {
 		// Объём, который предел выдаёт за окно всплеска
 		const double slice = (static_cast <double> (limit) * ::local::window());
 		// Возвращаем больший из объёма окна и размера кадра
@@ -6443,7 +6433,7 @@ namespace events {
 	 * @param timer объект таймера
 	 *
 	 */
-	static AWH_EPOLL_INLINE void announce(::io::timer_t * timer) noexcept {
+	static __AWH_INLINE__ void announce(::io::timer_t * timer) noexcept {
 		// Если статусы события изменились
 		if((timer->state.status != timer->state.stash) && reportable(timer->state.status)){
 			// Если установлена функция обратного вызова
@@ -7070,7 +7060,7 @@ namespace handoff {
 	 * @return выданная метка передачи
 	 *
 	 */
-	static AWH_EPOLL_INLINE uint64_t label() noexcept {
+	static __AWH_INLINE__ uint64_t label() noexcept {
 		// Счётчик выданных меток передачи
 		static uint64_t counter = 0;
 		// Выводим метку передачи, собранную из номера процесса и счётчика
@@ -7503,7 +7493,7 @@ namespace timer {
 	 * @return идентификатор источника монотонного времени
 	 *
 	 */
-	static AWH_EPOLL_INLINE clockid_t monotonic() noexcept {
+	static __AWH_INLINE__ clockid_t monotonic() noexcept {
 		// Шаг дешёвых монотонных часов
 		struct timespec resolution{};
 		// Если шаг дешёвых часов получен и он не превышает миллисекунды
@@ -7553,7 +7543,7 @@ namespace timer {
 	 *          ещё не начался. Снятое здесь значение обслуживает весь оборот целиком.
 	 *
 	 */
-	static AWH_EPOLL_INLINE void capture() noexcept {
+	static __AWH_INLINE__ void capture() noexcept {
 		// Снимаем слепок времени для текущего оборота цикла событий
 		snapshot = timestamp();
 	}
@@ -7567,7 +7557,7 @@ namespace timer {
 	 *          по слепку, состарившемуся на длительность разбора событий.
 	 *
 	 */
-	static AWH_EPOLL_INLINE void release() noexcept {
+	static __AWH_INLINE__ void release() noexcept {
 		// Сбрасываем слепок времени прошедшего оборота цикла событий
 		snapshot = 0;
 	}
@@ -7591,7 +7581,7 @@ namespace timer {
 	 * @return  текущее время в миллисекундах
 	 *
 	 */
-	static AWH_EPOLL_INLINE uint64_t now() noexcept {
+	static __AWH_INLINE__ uint64_t now() noexcept {
 		// Отдаём слепок оборота, а вне оборота обращаемся к часам напрямую
 		return ((snapshot != 0) ? snapshot : timestamp());
 	}
@@ -7685,7 +7675,7 @@ namespace timer {
 	 * @param deadline срок истечения снимаемого ожидания
 	 *
 	 */
-	static AWH_EPOLL_INLINE void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
+	static __AWH_INLINE__ void __remember__(const uint8_t tid, const event::id_t eid, const uint64_t deadline) noexcept {
 		// Запоминаем идентификатор события, чей срок снимается
 		__awh_continued__.did = eid;
 		// Запоминаем идентификатор самого снимаемого срока
@@ -7709,7 +7699,7 @@ namespace timer {
 	 * @return    остаток срока в миллисекундах, либо ноль, если запись чужая
 	 *
 	 */
-	static AWH_EPOLL_INLINE uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ uint64_t __dropped__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если запись принадлежит иному событию либо иному сроку, остатка нет
 		if((__awh_continued__.did != eid) || (__awh_continued__.dtid != tid))
 			// Выводим отсутствие остатка
@@ -7743,7 +7733,7 @@ namespace timer {
 	 * @param eid идентификатор события, чьё ожидание продолжается
 	 *
 	 */
-	static AWH_EPOLL_INLINE void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ void __continue__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Запоминаем идентификатор события, чьё ожидание продолжается
 		__awh_continued__.eid = eid;
 		// Запоминаем идентификатор самого продолжаемого срока
@@ -7760,7 +7750,7 @@ namespace timer {
 	 * @return    была ли отметка выставлена для этого срока этого события
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ bool __continued__(const uint8_t tid, const event::id_t eid) noexcept {
 		// Если отметка принадлежит иному событию либо иному сроку
 		if((__awh_continued__.eid != eid) || (__awh_continued__.tid != tid))
 			// Выводим отсутствие отметки
@@ -8012,7 +8002,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __rearm__(const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void __rearm__(const event::rate_t rate) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -8060,7 +8050,7 @@ namespace timer {
 		 * @return UINT64_MAX если очередь пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static AWH_EPOLL_INLINE uint64_t deadline() noexcept {
+		static __AWH_INLINE__ uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если очередь пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__.begin()->deadline);
 		}
@@ -8068,7 +8058,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static AWH_EPOLL_INLINE void clear() noexcept {
+		static __AWH_INLINE__ void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем список активных таймеров
@@ -8085,7 +8075,7 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static AWH_EPOLL_INLINE void disarm() noexcept {
+		static __AWH_INLINE__ void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
@@ -8099,7 +8089,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void rearm(const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
@@ -8195,7 +8185,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8210,7 +8200,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8228,7 +8218,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8273,7 +8263,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8410,7 +8400,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -8426,7 +8416,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -8448,7 +8438,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9374,7 +9364,7 @@ namespace timer {
 		 * @param eid идентификатор события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __try_release_chunk__(const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void __try_release_chunk__(const event::id_t eid) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
 			// Если индекс чанка меньше размера вектора чанков, проверяем его на возможность освобождения
@@ -9391,7 +9381,7 @@ namespace timer {
 		 * @brief Функция освобождения всех пустых чанков с возвратом в пул для переиспользования
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __release_empty_chunks__() noexcept {
+		static __AWH_INLINE__ void __release_empty_chunks__() noexcept {
 			/**
 			 * Перебираем все активные чанки
 			 */
@@ -9409,7 +9399,7 @@ namespace timer {
 		 * @param idx   индекс таймера в куче
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __set_slot__(const timer_t & timer, const int32_t idx) noexcept {
+		static __AWH_INLINE__ void __set_slot__(const timer_t & timer, const int32_t idx) noexcept {
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (timer.eid >> 10);
 			// Если индекс чанка превышает текущий размер вектора чанков, слот обновить нельзя
@@ -9432,7 +9422,7 @@ namespace timer {
 		 * @param b индекс второго элемента в куче
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __swap_heap__(const int32_t a, const int32_t b) noexcept {
+		static __AWH_INLINE__ void __swap_heap__(const int32_t a, const int32_t b) noexcept {
 			// Обмениваем два элемента в куче
 			::swap(__awh_heap__[a], __awh_heap__[b]);
 			// Синхронизируем индексы обоих таймеров в слотах чанков
@@ -9629,7 +9619,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void __rearm__(const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void __rearm__(const event::rate_t rate) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -9657,7 +9647,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		[[maybe_unused]] static AWH_EPOLL_INLINE bool empty() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -9667,7 +9657,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		[[maybe_unused]] stati AWH_EPOLL_INLINEc size_t size() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -9676,7 +9666,7 @@ namespace timer {
 		 * @brief Функция инициализации подсистему таймеров
 		 *
 		 */
-		static AWH_EPOLL_INLINE void init() noexcept {
+		static __AWH_INLINE__ void init() noexcept {
 			// Выделяем память под пиковую нагрузку
 			__awh_heap__.reserve(AWH_HEAP_SIZE_INTERNAL_TIMER);
 			// Выделяем память под ~256k уникальных идентификаторов событий
@@ -9686,7 +9676,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки очереди таймеров
 		 *
 		 */
-		static AWH_EPOLL_INLINE void clear() noexcept {
+		static __AWH_INLINE__ void clear() noexcept {
 			// Очищаем очередь таймеров
 			__awh_heap__.clear();
 			// Очищаем карту активных чанков
@@ -9705,7 +9695,7 @@ namespace timer {
 		 *          за уже взведённый и обращения к ядру не произойдёт.
 		 *
 		 */
-		static AWH_EPOLL_INLINE void disarm() noexcept {
+		static __AWH_INLINE__ void disarm() noexcept {
 			// Снимаем запомненный срок истечения, так-как таймер ядра операционной системы уже сработал
 			__awh_armed__ = UINT64_MAX;
 		}
@@ -9719,7 +9709,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void rearm(const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void rearm(const event::rate_t rate) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
 			__rearm__(rate);
 		}
@@ -9727,7 +9717,7 @@ namespace timer {
 		 * @brief Функция принудительной очистки пула чанков (вернуть память ОС)
 		 *
 		 */
-		static AWH_EPOLL_INLINE void shrink() noexcept {
+		static __AWH_INLINE__ void shrink() noexcept {
 			// Очищаем пул чанков, удаляя все объекты чанков и освобождая память, возвращая её операционной системе
 			__awh_chunk_pool__.clear();
 		}
@@ -9737,7 +9727,7 @@ namespace timer {
 		 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
 		 *
 		 */
-		static AWH_EPOLL_INLINE uint64_t deadline() noexcept {
+		static __AWH_INLINE__ uint64_t deadline() noexcept {
 			// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 			return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__[0].deadline);
 		}
@@ -9902,7 +9892,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9917,7 +9907,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9935,7 +9925,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -9980,7 +9970,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static AWH_EPOLL_INLINE void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
+		static __AWH_INLINE__ void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10171,7 +10161,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
@@ -10187,7 +10177,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(record_t rec, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate);
 			/**
@@ -10209,7 +10199,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
+		static __AWH_INLINE__ void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10234,7 +10224,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10262,7 +10252,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10293,7 +10283,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10327,7 +10317,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		[[maybe_unused]] static AWH_EPOLL_INLINE void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -11159,7 +11149,7 @@ namespace sctp {
 	 * @return      свободное место очереди за вычетом головы настроек
 	 *
 	 */
-	static AWH_EPOLL_INLINE size_t vacancy(T * node, net_queue_t & queue) noexcept {
+	static __AWH_INLINE__ size_t vacancy(T * node, net_queue_t & queue) noexcept {
 		// Получаем количество свободного места в очереди
 		const size_t result = queue.available();
 		// Если событие работает по протоколу SCTP
@@ -11186,7 +11176,7 @@ namespace sctp {
 	 * @param node узел события
 	 *
 	 */
-	static AWH_EPOLL_INLINE void forget(T * node) noexcept {
+	static __AWH_INLINE__ void forget(T * node) noexcept {
 		// Если набор параметров SCTP у узла заводился
 		if(node->transfer.sctp.has()){
 			// Сбрасываем остаток полезной нагрузки записи
@@ -11369,7 +11359,7 @@ namespace sctp {
 	 * @param bytes количество ушедших октетов
 	 *
 	 */
-	static AWH_EPOLL_INLINE void drain(T * node, const size_t bytes) noexcept {
+	static __AWH_INLINE__ void drain(T * node, const size_t bytes) noexcept {
 		// Если событие работает по протоколу SCTP
 		if(node->state.protocol == event::protocol_t::SCTP)
 			// Уменьшаем остаток полезной нагрузки записи на ушедшие октеты
@@ -20817,7 +20807,7 @@ namespace io {
 	 * @return ссылка на счётчик глубины текущего потока
 	 *
 	 */
-	static AWH_EPOLL_INLINE uint16_t & depth() noexcept {
+	static __AWH_INLINE__ uint16_t & depth() noexcept {
 		// Счётчик глубины возвратного захода в отправку
 		static thread_local uint16_t result = 0;
 		// Выводим счётчик глубины
@@ -20846,7 +20836,7 @@ namespace io {
 	 * @return признак того, что писать в сокет можно прямо сейчас
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool immediate() noexcept {
+	static __AWH_INLINE__ bool immediate() noexcept {
 		// Писать немедленно вправе заход, не подошедший к пределу глубины
 		return (::io::depth() < ::io::DEPTH_LIMIT);
 	}
@@ -30824,7 +30814,7 @@ namespace io {
 	 * @return     осмысленна ли узлу опция
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool continuable(const ::io::node_t * node) noexcept {
+	static __AWH_INLINE__ bool continuable(const ::io::node_t * node) noexcept {
 		// Если узла нет вовсе, опцию запоминать некому
 		if(node == nullptr)
 			// Выводим отрицательный результат
@@ -30859,7 +30849,7 @@ namespace io {
 	 * @return     результат передачи дескриптора узлу
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
+	static __AWH_INLINE__ bool adopt(::io::node_t * node, const net::socket_t sock) noexcept {
 		/**
 		 * Отмечаем описатель принятым передачей
 		 *
@@ -30955,7 +30945,7 @@ namespace io {
 	 * @return     дескриптор сокета узла события
 	 *
 	 */
-	static AWH_EPOLL_INLINE net::socket_t descriptor(const ::io::node_t * node) noexcept {
+	static __AWH_INLINE__ net::socket_t descriptor(const ::io::node_t * node) noexcept {
 		/**
 		 * Определяем чем является текущий узел
 		 */
@@ -30992,7 +30982,7 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool socket(::io::node_t * node, const eth_t * eth) noexcept {
+	static __AWH_INLINE__ bool socket(::io::node_t * node, const eth_t * eth) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -34334,7 +34324,7 @@ namespace io {
 	 * @return     признак наличия непрочитанных данных, подлежащих извлечению
 	 *
 	 */
-	static AWH_EPOLL_INLINE bool pending(::io::node_t * node, const int64_t size) noexcept {
+	static __AWH_INLINE__ bool pending(::io::node_t * node, const int64_t size) noexcept {
 		// Если буфер приёма пуст
 		if(size <= 0)
 			// Сообщаем, что извлекать нечего
@@ -34411,7 +34401,7 @@ namespace io {
 	 * @return     предельный размер одной записи в октетах, ноль - предела нет
 	 *
 	 */
-	static AWH_EPOLL_INLINE size_t portion(::io::node_t * node) noexcept {
+	static __AWH_INLINE__ size_t portion(::io::node_t * node) noexcept {
 		// Если событие принадлежит к дейтаграммному типу
 		if(node->state.type == event::type_t::DATAGRAM)
 			// Возвращаем предельный размер одной дейтаграммы

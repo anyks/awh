@@ -226,46 +226,6 @@
 
 /**
  * \~russian
- * Если принудительная подстановка ещё не определена
- *
- * @details Определение ограждается потому, что заголовочные файлы модуля
- *          подключаются в разном порядке, а определение это несут два из них.
- *          Visual Studio на повторное определение отвечает предупреждением
- *          C4005, и виден он лишь у него: GCC и Clang повторное определение
- *          тождественное пропускают молча.
- *
- * \~english
- * If a forced substitution has not yet been defined
- *
- * @details The definition is guarded because the module's header files are
- *          included in varying orders, yet two of them contain the definition itself.
- *          Visual Studio issues a C4005 warning upon redefinition—a warning specific
- *          to that compiler—whereas GCC and Clang silently ignore identical redefinitions.
- *
- * \~
- */
-#if !defined(AWH_REGEX_INLINE)
-	/**
-	 * Если компилятор является Visual Studio
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE inline __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-#endif
-
-/**
- * \~russian
  * Выбор собственного поиска байта
  *
  * @details В OpenBSD на x86-64 библиотечный memchr проходит текст командой

@@ -687,7 +687,7 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
                     prev = t; break
                 k -= 1
             whole = acc + " " + prev
-            if not re.search(r"\b(?:inline|constexpr|__forceinline)\b|[A-Z][A-Z0-9_]*_INLINE\b", whole) and not template_above(code, n):
+            if not re.search(r"\b(?:inline|constexpr|__forceinline|__AWH_INLINE__)\b|[A-Z][A-Z0-9_]*_INLINE\b", whole) and not template_above(code, n):
                 if not (prev.startswith("template") or re.search(r"\btemplate\b", whole)):
                     name = None
                     for cand in re.finditer(r"(?<![\w:<>~])(~?[A-Za-z_~][\w:<>]*|operator\s*(?:[^(){}\s]+|new\[\]|delete\[\]))\s*\(", s):
@@ -696,7 +696,7 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
                         name = cand.group(1).strip(); break
                     if name is None:
                         name = declarator[:24]
-                    report(path, n, "ERROR", "§5.5", f"определение «{name}» с телом в заголовке — перенеси тело в .cpp, в заголовке оставь объявление; в заголовке тело допустимо лишь там, где пометка `inline`/`constexpr`/модульный `AWH_*_INLINE` или шаблон уже стоят")
+                    report(path, n, "ERROR", "§5.5", f"определение «{name}» с телом в заголовке — перенеси тело в .cpp, в заголовке оставь объявление; в заголовке тело допустимо лишь там, где пометка `inline`/`constexpr`/`__AWH_INLINE__` или шаблон уже стоят")
         opens, closes = s.count("{"), s.count("}")
         kind = ("decl" if marked_decl else ("stmt" if marked_stmt else "body"))
         if marked_decl and tmpl_ctx:
@@ -927,7 +927,7 @@ def check_file(path, lines, members, report, fixes=None):
         # голые системные функции
         def is_declaration(name, pos):
             """Заголовок объявления/определения, а не вызов: перед именем — только
-            модификаторы и тип (`AWH_CACHE_INLINE void free(`, `static inline size_t read(`),
+            модификаторы и тип (`__AWH_INLINE__ void free(`, `static inline size_t read(`),
             без операторов и без управляющего слова (`return free(p);` остаётся вызовом)."""
             head = code[:pos].lstrip()
             if not head or DECL_LEAD_KW.match(head):

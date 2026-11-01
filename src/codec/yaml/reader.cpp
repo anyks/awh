@@ -44,24 +44,6 @@ using namespace awh::codec::yaml;
  *
  */
 namespace {
-	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_YAML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_YAML_INLINE inline __attribute__((always_inline))
-	#endif
 
 	/**
 	 * Начало меток типов, описанием заданных
@@ -89,7 +71,7 @@ namespace {
 	 * @return     признак того, что содержимое отвечает записи base64
 	 *
 	 */
-	static AWH_YAML_INLINE bool base64(const string_view text) noexcept {
+	static __AWH_INLINE__ bool base64(const string_view text) noexcept {
 		// Количество значащих знаков записи
 		size_t count = 0;
 		// Количество знаков заполнения в конце записи
@@ -162,7 +144,7 @@ namespace {
 	 * @return     признак того, что содержимое отвечает записи отметки времени
 	 *
 	 */
-	static AWH_YAML_INLINE bool stamp(const string_view text) noexcept {
+	static __AWH_INLINE__ bool stamp(const string_view text) noexcept {
 		// Положение разбираемого знака в записи
 		size_t offset = 0;
 		/**
@@ -379,7 +361,7 @@ namespace {
 	 * @return     запись без пробельной обвязки в конце
 	 *
 	 */
-	static AWH_YAML_INLINE string_view trimmed(const string_view text) noexcept {
+	static __AWH_INLINE__ string_view trimmed(const string_view text) noexcept {
 		// Длина записи без пробельной обвязки
 		size_t length = text.size();
 		/**
@@ -398,7 +380,7 @@ namespace {
 	 * @return     запись без пробельной обвязки
 	 *
 	 */
-	static AWH_YAML_INLINE string_view stripped(const string_view text) noexcept {
+	static __AWH_INLINE__ string_view stripped(const string_view text) noexcept {
 		// Смещение начала записи без пробельной обвязки
 		size_t offset = 0;
 		/**
@@ -430,7 +412,7 @@ namespace {
 	 * @return         смещение найденного возврата либо `npos`, если его нет
 	 *
 	 */
-	static AWH_YAML_INLINE size_t carrying(const string & buffer, const size_t from, const size_t boundary) noexcept {
+	static __AWH_INLINE__ size_t carrying(const string & buffer, const size_t from, const size_t boundary) noexcept {
 		/**
 		 * Выполняем перебор знаков разбираемой строки
 		 */
@@ -472,7 +454,7 @@ namespace {
 	 * @return         смещение знака конца строки либо `npos`, если его нет
 	 *
 	 */
-	static AWH_YAML_INLINE size_t terminator(const string & buffer, const size_t from, const bool sealed, bool & deferred) noexcept {
+	static __AWH_INLINE__ size_t terminator(const string & buffer, const size_t from, const bool sealed, bool & deferred) noexcept {
 		// Выполняем сброс признака отложенного решения
 		deferred = false;
 		// Разыскиваем знак перевода строки
@@ -569,7 +551,7 @@ namespace {
 	 * @return      признак того, что строка открывает ограду и не закрывает её
 	 *
 	 */
-	static AWH_YAML_INLINE bool unclosed(const string_view line, const size_t depth) noexcept {
+	static __AWH_INLINE__ bool unclosed(const string_view line, const size_t depth) noexcept {
 		// Смещение разбираемого знака строки
 		size_t offset = 0;
 		/**
@@ -823,7 +805,7 @@ namespace {
 	 * @return      содержимое значения со свёрнутыми переводами строк
 	 *
 	 */
-	static AWH_YAML_INLINE string folding(const string_view text, const style_t style) noexcept {
+	static __AWH_INLINE__ string folding(const string_view text, const style_t style) noexcept {
 		// Смещение разбираемого знака содержимого
 		size_t offset = 0;
 		// Собираемое содержимое значения со свёрнутыми переводами
@@ -1018,7 +1000,7 @@ namespace {
 	 * @return         признак того, что знак разделителем имени пары является
 	 *
 	 */
-	static AWH_YAML_INLINE bool separated(const string_view line, const size_t position) noexcept {
+	static __AWH_INLINE__ bool separated(const string_view line, const size_t position) noexcept {
 		// Выводим признак разделителя имени пары
 		return (
 			(line[position] == ':') && (((position + 1) >= line.size()) ||
@@ -1074,7 +1056,7 @@ namespace {
 	 * @return       признак успешного разбора записи
 	 *
 	 */
-	static AWH_YAML_INLINE bool hexadecimal(const string_view text, const size_t offset, const size_t count, uint32_t & code) noexcept {
+	static __AWH_INLINE__ bool hexadecimal(const string_view text, const size_t offset, const size_t count, uint32_t & code) noexcept {
 		/**
 		 * Если разрядов записи в строке не хватает
 		 */
@@ -1136,7 +1118,7 @@ namespace {
 	 * @return    признак успешного раскрытия метки типа
 	 *
 	 */
-	static AWH_YAML_INLINE bool unescaped(string & tag) noexcept {
+	static __AWH_INLINE__ bool unescaped(string & tag) noexcept {
 		// Разыскиваем первую долевую запись знака в метке типа
 		size_t offset = tag.find('%');
 		/**

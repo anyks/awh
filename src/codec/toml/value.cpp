@@ -66,25 +66,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_TOML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_TOML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -166,7 +147,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static AWH_TOML_INLINE bool unescape(string & token) noexcept {
+	static __AWH_INLINE__ bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -212,7 +193,7 @@ namespace {
 	 * @return      признак числовой записи
 	 *
 	 */
-	static AWH_TOML_INLINE bool numbering(const string & text, size_t & index) noexcept {
+	static __AWH_INLINE__ bool numbering(const string & text, size_t & index) noexcept {
 		/**
 		 * Если запись пуста вовсе
 		 */
@@ -274,7 +255,7 @@ namespace {
 	 * @return ссылка на неопределённое значение
 	 *
 	 */
-	static AWH_TOML_INLINE const value_t & missing() noexcept {
+	static __AWH_INLINE__ const value_t & missing() noexcept {
 		// Неопределённое значение, обращением неудачным выдаваемое
 		static const value_t result;
 		// Выводим ссылку на неопределённое значение
@@ -286,7 +267,7 @@ namespace {
 	 * @return ссылка на пустую запись
 	 *
 	 */
-	static AWH_TOML_INLINE const string & nothing() noexcept {
+	static __AWH_INLINE__ const string & nothing() noexcept {
 		// Пустая запись, обращением неудачным выдаваемая
 		static const string result;
 		// Выводим ссылку на пустую запись

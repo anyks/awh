@@ -90,25 +90,6 @@ namespace {
 	using namespace awh::codec::cef;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_CEF_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_CEF_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -147,7 +128,7 @@ namespace {
 	 * @return     звено пути с поставленной отменяющей записью
 	 *
 	 */
-	static AWH_CEF_INLINE string encode(const string_view name) noexcept {
+	static __AWH_INLINE__ string encode(const string_view name) noexcept {
 		// Результирующее звено пути
 		string result = "";
 		// Выделяем память под результирующее звено пути
@@ -191,7 +172,7 @@ namespace {
 	 * @return     имя, звеном пути обозначенное
 	 *
 	 */
-	static AWH_CEF_INLINE string decode(const string_view link) noexcept {
+	static __AWH_INLINE__ string decode(const string_view link) noexcept {
 		// Результирующее имя, звеном обозначенное
 		string result = "";
 		// Выделяем память под результирующее имя
@@ -251,7 +232,7 @@ namespace {
 	 * @return       признак числового вида звена пути
 	 *
 	 */
-	static AWH_CEF_INLINE bool indexOf(const string & link, size_t & result) noexcept {
+	static __AWH_INLINE__ bool indexOf(const string & link, size_t & result) noexcept {
 		// Сбрасываем номер значения перечня
 		result = 0;
 		// Если звено пути пусто
@@ -300,7 +281,7 @@ namespace {
 	 * @return       признак разбора записи целиком
 	 *
 	 */
-	static AWH_CEF_INLINE bool numberOf(const string & value, T & result) noexcept {
+	static __AWH_INLINE__ bool numberOf(const string & value, T & result) noexcept {
 		// Выполняем разбор записи числа модулем разбора чисел
 		const auto parsed = lexical_t::fromChars(value.data(), (value.data() + value.size()), result);
 		// Если разбор записи числа отказом завершился
@@ -325,7 +306,7 @@ namespace {
 	 * @return     звенья пути со снятой отменяющей записью
 	 *
 	 */
-	static AWH_CEF_INLINE vector <string> split(const string & path) noexcept {
+	static __AWH_INLINE__ vector <string> split(const string & path) noexcept {
 		// Результирующие звенья пути
 		vector <string> result;
 		// Если путь пуст либо корнем является

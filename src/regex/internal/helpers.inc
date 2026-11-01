@@ -58,7 +58,7 @@ namespace awh {
 		 * @return      результат проверки установки режима компиляции
 		 *
 		 */
-		AWH_REGEX_INLINE bool hasFlag(const uint32_t flags, const flag_t value) noexcept {
+		__AWH_INLINE__ bool hasFlag(const uint32_t flags, const flag_t value) noexcept {
 			// Проверяем установку режима компиляции
 			return ((flags & static_cast <uint32_t> (value)) != 0);
 		}
@@ -79,7 +79,7 @@ namespace awh {
 		 * @return      кодовое значение символа в позиции текста
 		 *
 		 */
-		AWH_REGEX_INLINE uint32_t letter(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept {
+		__AWH_INLINE__ uint32_t letter(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept {
 			// Устанавливаем длину символа в байтах
 			width = 1;
 			/**
@@ -123,7 +123,7 @@ namespace awh {
 		 * @return       результат проверки одинаковости инструкций
 		 *
 		 */
-		AWH_REGEX_INLINE bool identical(const instruction_t & first, const instruction_t & second) noexcept {
+		__AWH_INLINE__ bool identical(const instruction_t & first, const instruction_t & second) noexcept {
 			/**
 			 * Если код операции либо набор режимов не совпадает
 			 */
@@ -176,7 +176,7 @@ namespace awh {
 		 * @return            результат проверки сопоставления байта дословно
 		 *
 		 */
-		AWH_REGEX_INLINE bool verbatim(const instruction_t & instruction) noexcept {
+		__AWH_INLINE__ bool verbatim(const instruction_t & instruction) noexcept {
 			// Выводим результат проверки сопоставления байта дословно
 			return (
 				(instruction.type == opcode_t::CHAR) && (instruction.letter.code < 0x80) &&
@@ -216,7 +216,7 @@ namespace awh {
 			 *       должен быть действительным и при нулевом размере.
 			 *
 			 */
-			AWH_REGEX_INLINE static const void * findByte(const void * text, const int value, const size_t size) noexcept {
+			__AWH_INLINE__ static const void * findByte(const void * text, const int value, const size_t size) noexcept {
 				// Библиотечный поиск байта: memchr быстрее любого цикла
 				return ::memchr(text, value, size);
 			}

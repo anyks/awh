@@ -56,25 +56,6 @@ namespace {
 	using namespace awh::codec::xml;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_XML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_XML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Наибольшее количество байтов начала текста, удерживаемых для определения кодировки
 	 *
 	 * @details Объявление разметки стоит в самом начале текста, и его длина договором
@@ -115,7 +96,7 @@ namespace {
 	 * @return       определённая кодировка исходного текста
 	 *
 	 */
-	static AWH_XML_INLINE encoding_t detect(const char * buffer, const size_t size, size_t & length) noexcept {
+	static __AWH_INLINE__ encoding_t detect(const char * buffer, const size_t size, size_t & length) noexcept {
 		// Выполняем сброс длины обнаруженной метки порядка байтов
 		length = 0;
 		/**
@@ -216,7 +197,7 @@ namespace {
 	 * @return       объявленная кодировка исходного текста
 	 *
 	 */
-	static AWH_XML_INLINE encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known, string_view & label) noexcept {
+	static __AWH_INLINE__ encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known, string_view & label) noexcept {
 		// Выполняем сброс имени объявленной кодировки
 		label = "";
 		// Выполняем сброс признака поддержки объявленной кодировки

@@ -87,25 +87,6 @@ namespace {
 	static thread_local fs_t __awh_fs__;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_INI_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_INI_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция проверки годности каталога, куда ложится файл
 	 *
 	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
@@ -149,7 +130,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static AWH_INI_INLINE bool unescape(string & token) noexcept {
+	static __AWH_INLINE__ bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -201,7 +182,7 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static AWH_INI_INLINE string escape(const string_view name) noexcept {
+	static __AWH_INLINE__ string escape(const string_view name) noexcept {
 		// Собираемое звено пути
 		string result = "";
 		// Выполняем выделение места под звено пути
@@ -248,7 +229,7 @@ namespace {
 	 * @return         признак совпадения заданных настроек с настройками по умолчанию
 	 *
 	 */
-	static AWH_INI_INLINE bool untouched(const codec::ini::writer_t::settings_t & settings) noexcept {
+	static __AWH_INLINE__ bool untouched(const codec::ini::writer_t::settings_t & settings) noexcept {
 		// Настройки записи текста настроек, установленные по умолчанию
 		const codec::ini::writer_t::settings_t fallback;
 		// Выполняем сверку всякого поля заданных настроек с полем настроек по умолчанию
@@ -276,7 +257,7 @@ namespace {
 	 * @param lower  признак приведения имени к нижнему регистру
 	 *
 	 */
-	static AWH_INI_INLINE void appended(string & buffer, const string_view name, const bool lower) noexcept {
+	static __AWH_INLINE__ void appended(string & buffer, const string_view name, const bool lower) noexcept {
 		/**
 		 * Если приведение имени к нижнему регистру не требуется
 		 */

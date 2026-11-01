@@ -51,25 +51,6 @@ using namespace std;
 using namespace awh::codec::yaml;
 
 /**
- * @brief Принудительная подстановка горячих обращений кодека
- *
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_YAML_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_YAML_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Внутренние служебные объекты приведения названий кодировок
  *
  */
@@ -91,7 +72,7 @@ namespace {
 	 * @return       результат сличения
 	 *
 	 */
-	static AWH_YAML_INLINE bool compare(const string_view first, const string_view second) noexcept {
+	static __AWH_INLINE__ bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков не совпадают
 		 */
@@ -161,7 +142,7 @@ namespace {
 	 * @return     прочитанное дробное число
 	 *
 	 */
-	static AWH_YAML_INLINE double decimal(const char * text) noexcept {
+	static __AWH_INLINE__ double decimal(const char * text) noexcept {
 		// Прочитанное дробное число
 		double result = .0;
 		// Получаем длину читаемой записи дробного числа
@@ -221,7 +202,7 @@ namespace {
 	 * @return         признак совпадения записи с одним из написаний
 	 *
 	 */
-	static AWH_YAML_INLINE bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {
+	static __AWH_INLINE__ bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {
 		/**
 		 * Выполняем перебор всех допустимых написаний
 		 *
@@ -252,7 +233,7 @@ namespace {
 	 * @return      признак того, что запись состоит из одних цифр
 	 *
 	 */
-	static AWH_YAML_INLINE bool digits(const string_view text, const bool score) noexcept {
+	static __AWH_INLINE__ bool digits(const string_view text, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 */
@@ -299,7 +280,7 @@ namespace {
 	 * @return      признак соответствия записи системе счисления
 	 *
 	 */
-	static AWH_YAML_INLINE bool based(const string_view text, const uint8_t radix, const bool score) noexcept {
+	static __AWH_INLINE__ bool based(const string_view text, const uint8_t radix, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 *
@@ -394,7 +375,7 @@ namespace {
 	 * @return      признак соответствия записи дробному числу
 	 *
 	 */
-	static AWH_YAML_INLINE bool floating(const string_view text, const bool score) noexcept {
+	static __AWH_INLINE__ bool floating(const string_view text, const bool score) noexcept {
 		/**
 		 * Если запись пуста
 		 *
@@ -616,7 +597,7 @@ namespace {
 	 * @return       дробное приближение записанного числа
 	 *
 	 */
-	static AWH_YAML_INLINE double approximate(const string & text, const size_t offset, const uint8_t radix) noexcept {
+	static __AWH_INLINE__ double approximate(const string & text, const size_t offset, const uint8_t radix) noexcept {
 		// Собираемое дробное приближение числа
 		double result = .0;
 		/**
@@ -682,7 +663,7 @@ namespace {
 	 * @return     признак соответствия записи шестидесятиричному числу
 	 *
 	 */
-	static AWH_YAML_INLINE bool sexagesimal(const string_view text) noexcept {
+	static __AWH_INLINE__ bool sexagesimal(const string_view text) noexcept {
 		/**
 		 * Если запись не несёт разделителя частей
 		 */

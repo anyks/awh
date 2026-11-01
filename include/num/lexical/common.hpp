@@ -57,6 +57,11 @@
 #endif
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/macro/global.hpp"
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include "detect.hpp"
@@ -408,7 +413,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
+		__AWH_INLINE__ constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs & rhs));
 		}
@@ -428,7 +433,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
+		__AWH_INLINE__ constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs | rhs));
 		}
@@ -448,7 +453,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
+		__AWH_INLINE__ constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs ^ rhs));
 		}
@@ -468,7 +473,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
+		__AWH_INLINE__ constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
 			// Выполняем проверку наличия искомого флага
 			return ((format & flag) != format_t::NONE);
 		}
@@ -809,7 +814,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE int32_t leadingZeros(const uint64_t value) noexcept {
+		__AWH_INLINE__ int32_t leadingZeros(const uint64_t value) noexcept {
 			// Если исходное значение нулевое, значащих бит нет
 			if(value == 0)
 				// Выводим полную разрядность значения
@@ -898,7 +903,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
+		__AWH_INLINE__ constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
 			// Выполняем умножение с расширением разрядности
 			return (static_cast <uint64_t> (x) * static_cast <uint64_t> (y));
 		}
@@ -919,7 +924,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr value128_t multiply128Generic(const uint64_t x, const uint64_t y) noexcept {
+		__AWH_INLINE__ constexpr value128_t multiply128Generic(const uint64_t x, const uint64_t y) noexcept {
 			// Произведение младших слов множителей
 			const uint64_t lowLow = multiply32(static_cast <uint32_t> (x), static_cast <uint32_t> (y));
 			// Произведение старшего слова первого множителя на младшее слово второго
@@ -953,7 +958,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE value128_t multiply128(const uint64_t x, const uint64_t y) noexcept {
+		__AWH_INLINE__ value128_t multiply128(const uint64_t x, const uint64_t y) noexcept {
 			/**
 			 * Для платформ с поддержкой 128-битного целого используем нативный тип
 			 */
@@ -2815,7 +2820,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE void toFloat(const bool negative, const mantissa_t & mantissa, T & value) noexcept {
+		__AWH_INLINE__ void toFloat(const bool negative, const mantissa_t & mantissa, T & value) noexcept {
 			/**
 			 * Создаём тип данных эквивалентного беззнакового целого
 			 */
@@ -2858,7 +2863,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE mantissa_t toExtended(const T value) noexcept {
+		__AWH_INLINE__ mantissa_t toExtended(const T value) noexcept {
 			/**
 			 * Создаём тип данных эквивалентного беззнакового целого
 			 */
@@ -2918,7 +2923,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE mantissa_t toExtendedHalfway(const T value) noexcept {
+		__AWH_INLINE__ mantissa_t toExtendedHalfway(const T value) noexcept {
 			// Получаем расширенное представление исходного числа
 			mantissa_t result = toExtended(value);
 			// Компенсируем удвоение мантиссы показателем степени
@@ -3056,7 +3061,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
+		__AWH_INLINE__ constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
 			/**
 			 * Выполняем перебор всех сравниваемых символов
 			 */
@@ -3100,7 +3105,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isSpace(const UC symbol) noexcept {
+		__AWH_INLINE__ constexpr bool isSpace(const UC symbol) noexcept {
 			// Выполняем проверку по таблице пробельных символов
 			return ((symbol < 256) && luts_t <>::spaces[static_cast <uint8_t> (symbol)]);
 		}
@@ -3133,7 +3138,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isDigit(const UC symbol) noexcept {
+		__AWH_INLINE__ constexpr bool isDigit(const UC symbol) noexcept {
 			// Выполняем проверку попадания символа в диапазон десятичных цифр
 			return !((symbol > UC('9')) || (symbol < UC('0')));
 		}
@@ -3166,7 +3171,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr uint8_t charToDigit(const UC symbol) noexcept {
+		__AWH_INLINE__ constexpr uint8_t charToDigit(const UC symbol) noexcept {
 			/**
 			 * Создаём тип данных беззнакового символа
 			 */
@@ -3193,7 +3198,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr size_t maxDigitsU64(const int32_t base) noexcept {
+		__AWH_INLINE__ constexpr size_t maxDigitsU64(const int32_t base) noexcept {
 			// Выводим максимальное количество цифр из таблицы
 			return luts_t <>::maxDigits[base - 2];
 		}

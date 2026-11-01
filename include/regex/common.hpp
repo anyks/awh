@@ -94,46 +94,6 @@
 
 /**
  * \~russian
- * Если принудительная подстановка ещё не определена
- *
- * @details Ограждение и довод к нему - см. prefilter.hpp: определение это
- *          несут два заголовочных файла, подключаемых в разном порядке, - этот
- *          и prefilter.hpp, общих определений не подключающий. Прочие
- *          заголовочные файлы модуля берут определение отсюда.
- *
- * \~english
- * If the forced inlining is not yet defined
- *
- * @details The guard and the rationale behind it - see prefilter.hpp: the
- *          definition is carried by two header files included in different
- *          order - this one and prefilter.hpp, which does not include any
- *          common definitions. The other header files of the module take the
- *          definition from here.
- *
- * \~
- */
-#if !defined(AWH_REGEX_INLINE)
-	/**
-	 * Если используется компилятор Microsoft Visual C++
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Microsoft Visual C++
-		 */
-		#define AWH_REGEX_INLINE inline __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-#endif
-
-/**
- * \~russian
  * Если запрет подстановки метода телом вызывающего ещё не определён
  *
  * @details Запрет нужен исполнению с возвратом и медленному пути пополнения
@@ -1519,7 +1479,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_REGEX_INLINE void push(const T & record) {
+				__AWH_INLINE__ void push(const T & record) {
 					// Размещаем записю в конце набора
 					this->emplace(record);
 				}
@@ -1620,7 +1580,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_REGEX_INLINE T * emplace(Args &&... args) {
+				__AWH_INLINE__ T * emplace(Args &&... args) {
 					/**
 					 * Если места под запись нет либо набор обозревающий
 					 */

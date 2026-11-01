@@ -170,24 +170,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_CACHE_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_CACHE_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -611,7 +593,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CACHE_INLINE void * alloc(const size_t index) noexcept;
+				__AWH_INLINE__ void * alloc(const size_t index) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод возврата блока разряда
@@ -627,7 +609,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CACHE_INLINE void free(const size_t index, void * addr) noexcept;
+				__AWH_INLINE__ void free(const size_t index, void * addr) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -650,7 +632,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CACHE_INLINE int64_t tally(const int64_t delta, const int64_t batch) noexcept;
+				__AWH_INLINE__ int64_t tally(const int64_t delta, const int64_t batch) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения накопленного, но не отданного наружу
@@ -708,7 +690,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CACHE_INLINE void ** hint() noexcept;
+				__AWH_INLINE__ void ** hint() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -815,7 +797,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_CACHE_INLINE void ** __awh_alloc_slots__() noexcept;
+			__AWH_INLINE__ void ** __awh_alloc_slots__() noexcept;
 		#endif
 		/**
 		 * Зеркало кэша текущего потока
@@ -1042,7 +1024,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CACHE_INLINE cache_t * local() noexcept;
+				__AWH_INLINE__ cache_t * local() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отвязки кэша от завершившегося потока

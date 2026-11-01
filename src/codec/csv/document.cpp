@@ -62,25 +62,6 @@ namespace {
 	using namespace codec::csv;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_CSV_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_CSV_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -318,7 +299,7 @@ namespace {
 	 * @return     результат суждения
 	 *
 	 */
-	static AWH_CSV_INLINE bool writable(const string_view text) noexcept {
+	static __AWH_INLINE__ bool writable(const string_view text) noexcept {
 		/**
 		 * Выполняем перебор всех знаков содержимого поля
 		 */

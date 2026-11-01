@@ -51,25 +51,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция проверки принадлежности символа символам слова
 	 *
 	 * @details Режим «UCP» заменяет набор символов слова ASCII соответствующим
@@ -80,7 +61,7 @@ namespace {
 	 * @return      результат проверки принадлежности символа символам слова
 	 *
 	 */
-	static AWH_REGEX_INLINE bool word(const uint32_t code, const uint32_t flags) noexcept {
+	static __AWH_INLINE__ bool word(const uint32_t code, const uint32_t flags) noexcept {
 		/**
 		 * Если установлен режим соответствия сокращённых классов свойствам Юникода
 		 */

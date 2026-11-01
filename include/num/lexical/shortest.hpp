@@ -128,7 +128,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr int32_t log10PowerOfTwo(const int32_t exponent) noexcept {
+		__AWH_INLINE__ constexpr int32_t log10PowerOfTwo(const int32_t exponent) noexcept {
 			// Выводим целую часть логарифма степени двойки по основанию десять
 			return static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 78913u) >> 18);
 		}
@@ -147,7 +147,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr int32_t log10PowerOfFive(const int32_t exponent) noexcept {
+		__AWH_INLINE__ constexpr int32_t log10PowerOfFive(const int32_t exponent) noexcept {
 			// Выводим целую часть логарифма степени пятёрки по основанию десять
 			return static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 732923u) >> 20);
 		}
@@ -166,7 +166,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr int32_t bitsPowerOfFive(const int32_t exponent) noexcept {
+		__AWH_INLINE__ constexpr int32_t bitsPowerOfFive(const int32_t exponent) noexcept {
 			// Выводим количество двоичных разрядов степени пятёрки
 			return (static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 1217359u) >> 19) + 1);
 		}
@@ -187,7 +187,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE bool multipleOfPowerOfFive(const uint64_t value, const int32_t exponent) noexcept {
+		__AWH_INLINE__ bool multipleOfPowerOfFive(const uint64_t value, const int32_t exponent) noexcept {
 			// Количество множителей пятёрки в проверяемом значении
 			int32_t count = 0;
 			// Обрабатываемое значение
@@ -221,7 +221,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool multipleOfPowerOfTwo(const uint64_t value, const int32_t exponent) noexcept {
+		__AWH_INLINE__ constexpr bool multipleOfPowerOfTwo(const uint64_t value, const int32_t exponent) noexcept {
 			// Выводим результат проверки кратности значения степени двойки
 			return ((value & ((1ull << exponent) - 1ull)) == 0ull);
 		}
@@ -257,7 +257,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE uint64_t multiplyShift(const uint64_t value, const uint64_t high, const uint64_t low, const int32_t shift) noexcept {
+		__AWH_INLINE__ uint64_t multiplyShift(const uint64_t value, const uint64_t high, const uint64_t low, const int32_t shift) noexcept {
 			// Выполняем умножение значения на младшее слово множителя
 			const value128_t product = multiply128(value, low);
 			// Выполняем умножение значения на старшее слово множителя

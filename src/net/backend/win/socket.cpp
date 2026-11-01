@@ -163,25 +163,6 @@ using namespace std;
 #endif
 
 /**
- * @brief Принудительная подстановка горячих обращений кодека
- *
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_SOCKET_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_SOCKET_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Название бэкенда для записей в журнале
  *
  */
@@ -277,7 +258,7 @@ namespace {
 	 * @return результат проверки поднятости средств сокетов системы
 	 *
 	 */
-	static bool AWH_SOCKET_INLINE __awh_winsock_raised__() noexcept {
+	static bool __AWH_INLINE__ __awh_winsock_raised__() noexcept {
 		// Выполняем заведение сокета на выброс
 		const SOCKET sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		// Если сокет завести не удалось, средства сокетов не подняты
@@ -334,7 +315,7 @@ namespace {
 	 * @return результат подъёма средств сокетов системы
 	 *
 	 */
-	static AWH_SOCKET_INLINE bool __awh_winsock__() noexcept {
+	static __AWH_INLINE__ bool __awh_winsock__() noexcept {
 		// Выполняем подъём средств сокетов системы единожды на процесс
 		std::call_once(::__awh_winsock_once__, []() noexcept -> void {
 			/**
@@ -430,7 +411,7 @@ namespace {
 	 * @return описание последней ошибки сокета вместе с её кодом
 	 *
 	 */
-	static AWH_SOCKET_INLINE string __awh_socket_error__() noexcept {
+	static __AWH_INLINE__ string __awh_socket_error__() noexcept {
 		// Получаем код последней ошибки сокета
 		const int32_t code = ::WSAGetLastError();
 		// Буфер сообщения, отводимый самой системой
@@ -483,7 +464,7 @@ namespace {
 	 * @return     признак именованного канала
 	 *
 	 */
-	static AWH_SOCKET_INLINE bool __awh_socket_pipe__(const awh::net::socket_t sock) noexcept {
+	static __AWH_INLINE__ bool __awh_socket_pipe__(const awh::net::socket_t sock) noexcept {
 		// Вид описателя в понимании средств работы с сокетами
 		int32_t type = 0;
 		// Размер значения вида описателя

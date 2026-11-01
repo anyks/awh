@@ -162,22 +162,6 @@
 
 /**
  * \~russian
- * Принудительная подстановка средствами GCC и Clang
- *
- * @details Посредники обязаны разворачиваться в место обращения целиком: смысл их в
- *          том, чтобы не стоить ничего сверх самого вызова
- *
- * \~english
- * Forced substitution by the means of GCC and Clang
- * @details The mediators are obliged to unfold into the place of the address entirely: their point is in
- *          costing nothing beyond the call itself
- *
- * \~
- */
-#define AWH_GNU_INLINE inline __attribute__((always_inline))
-
-/**
- * \~russian
  * @brief Основное пространство имён
  *
  *
@@ -235,7 +219,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE net::socket_t socket(const int32_t domain, const int32_t type, const int32_t protocol) noexcept {
+		__AWH_INLINE__ net::socket_t socket(const int32_t domain, const int32_t type, const int32_t protocol) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -266,7 +250,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t bind(const net::socket_t sock, const struct sockaddr * addr, const socklen_t size) noexcept {
+		__AWH_INLINE__ int32_t bind(const net::socket_t sock, const struct sockaddr * addr, const socklen_t size) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -295,7 +279,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t listen(const net::socket_t sock, const int32_t backlog) noexcept {
+		__AWH_INLINE__ int32_t listen(const net::socket_t sock, const int32_t backlog) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -326,7 +310,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE net::socket_t accept(const net::socket_t sock, struct sockaddr * addr, socklen_t * size) noexcept {
+		__AWH_INLINE__ net::socket_t accept(const net::socket_t sock, struct sockaddr * addr, socklen_t * size) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -357,7 +341,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t connect(const net::socket_t sock, const struct sockaddr * addr, const socklen_t size) noexcept {
+		__AWH_INLINE__ int32_t connect(const net::socket_t sock, const struct sockaddr * addr, const socklen_t size) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -384,7 +368,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t close(const net::socket_t sock) noexcept {
+		__AWH_INLINE__ int32_t close(const net::socket_t sock) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -413,7 +397,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t shutdown(const net::socket_t sock, const int32_t how) noexcept {
+		__AWH_INLINE__ int32_t shutdown(const net::socket_t sock, const int32_t how) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -446,7 +430,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t recv(const net::socket_t sock, void * buffer, const size_t size, const int32_t flags) noexcept {
+		__AWH_INLINE__ ssize_t recv(const net::socket_t sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -479,7 +463,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t send(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
+		__AWH_INLINE__ ssize_t send(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -516,7 +500,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t recvfrom(const net::socket_t sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
+		__AWH_INLINE__ ssize_t recvfrom(const net::socket_t sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -553,7 +537,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t sendto(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
+		__AWH_INLINE__ ssize_t sendto(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -591,7 +575,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t recvmsg(const net::socket_t sock, struct msghdr * message, const int32_t flags) noexcept {
+		__AWH_INLINE__ ssize_t recvmsg(const net::socket_t sock, struct msghdr * message, const int32_t flags) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -622,7 +606,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t sendmsg(const net::socket_t sock, const struct msghdr * message, const int32_t flags) noexcept {
+		__AWH_INLINE__ ssize_t sendmsg(const net::socket_t sock, const struct msghdr * message, const int32_t flags) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -653,7 +637,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t read(const net::socket_t sock, void * buffer, const size_t size) noexcept {
+		__AWH_INLINE__ ssize_t read(const net::socket_t sock, void * buffer, const size_t size) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -684,7 +668,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t write(const net::socket_t sock, const void * buffer, const size_t size) noexcept {
+		__AWH_INLINE__ ssize_t write(const net::socket_t sock, const void * buffer, const size_t size) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -715,7 +699,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t readv(const net::socket_t sock, const struct iovec * buffer, const int32_t count) noexcept {
+		__AWH_INLINE__ ssize_t readv(const net::socket_t sock, const struct iovec * buffer, const int32_t count) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -746,7 +730,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE ssize_t writev(const net::socket_t sock, const struct iovec * buffer, const int32_t count) noexcept {
+		__AWH_INLINE__ ssize_t writev(const net::socket_t sock, const struct iovec * buffer, const int32_t count) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -781,7 +765,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t getsockopt(const net::socket_t sock, const int32_t level, const int32_t name, void * value, socklen_t * length) noexcept {
+		__AWH_INLINE__ int32_t getsockopt(const net::socket_t sock, const int32_t level, const int32_t name, void * value, socklen_t * length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -816,7 +800,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t setsockopt(const net::socket_t sock, const int32_t level, const int32_t name, const void * value, const socklen_t length) noexcept {
+		__AWH_INLINE__ int32_t setsockopt(const net::socket_t sock, const int32_t level, const int32_t name, const void * value, const socklen_t length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -847,7 +831,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t getsockname(const net::socket_t sock, struct sockaddr * addr, socklen_t * length) noexcept {
+		__AWH_INLINE__ int32_t getsockname(const net::socket_t sock, struct sockaddr * addr, socklen_t * length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -878,7 +862,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t getpeername(const net::socket_t sock, struct sockaddr * addr, socklen_t * length) noexcept {
+		__AWH_INLINE__ int32_t getpeername(const net::socket_t sock, struct sockaddr * addr, socklen_t * length) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -913,7 +897,7 @@ namespace awh {
 		 * \~
 		 */
 		template <typename... Args>
-		AWH_GNU_INLINE int32_t fcntl(const net::socket_t sock, const int32_t request, Args... args) noexcept {
+		__AWH_INLINE__ int32_t fcntl(const net::socket_t sock, const int32_t request, Args... args) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -944,7 +928,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t ioctl(const net::socket_t sock, const uint64_t request, void * data) noexcept {
+		__AWH_INLINE__ int32_t ioctl(const net::socket_t sock, const uint64_t request, void * data) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -975,7 +959,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t poll(struct pollfd * fds, const nfds_t count, const int32_t timeout) noexcept {
+		__AWH_INLINE__ int32_t poll(struct pollfd * fds, const nfds_t count, const int32_t timeout) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -1011,7 +995,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t epollCreate(const int32_t flags) noexcept {
+		__AWH_INLINE__ int32_t epollCreate(const int32_t flags) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -1044,7 +1028,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t epollCtl(const int32_t epfd, const int32_t op, const net::socket_t sock, struct epoll_event * event) noexcept {
+		__AWH_INLINE__ int32_t epollCtl(const int32_t epfd, const int32_t op, const net::socket_t sock, struct epoll_event * event) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -1077,7 +1061,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_GNU_INLINE int32_t epollWait(const int32_t epfd, struct epoll_event * events, const int32_t count, const int32_t timeout) noexcept {
+		__AWH_INLINE__ int32_t epollWait(const int32_t epfd, struct epoll_event * events, const int32_t count, const int32_t timeout) noexcept {
 			/**
 			 * Если работа ведётся через обходной стек DPDK
 			 */
@@ -1124,7 +1108,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_GNU_INLINE int32_t ioUringSetup(const uint32_t entries, struct io_uring_params * params) noexcept {
+			__AWH_INLINE__ int32_t ioUringSetup(const uint32_t entries, struct io_uring_params * params) noexcept {
 				return static_cast <int32_t> (::syscall(__NR_io_uring_setup, entries, params));
 			}
 			/**
@@ -1160,7 +1144,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_GNU_INLINE int32_t ioUringEnter(const int32_t fd, const uint32_t submitted, const uint32_t waiting, const uint32_t flags, const void * arg, const size_t size) noexcept {
+			__AWH_INLINE__ int32_t ioUringEnter(const int32_t fd, const uint32_t submitted, const uint32_t waiting, const uint32_t flags, const void * arg, const size_t size) noexcept {
 				return static_cast <int32_t> (::syscall(__NR_io_uring_enter, fd, submitted, waiting, flags, arg, size));
 			}
 			/**
@@ -1188,7 +1172,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_GNU_INLINE int32_t ioUringRegister(const int32_t fd, const uint32_t op, void * arg, const uint32_t count) noexcept {
+			__AWH_INLINE__ int32_t ioUringRegister(const int32_t fd, const uint32_t op, void * arg, const uint32_t count) noexcept {
 				return static_cast <int32_t> (::syscall(__NR_io_uring_register, fd, op, arg, count));
 			}
 		#endif

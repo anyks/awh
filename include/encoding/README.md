@@ -85,9 +85,9 @@ HTTP, адреса, схемы URI, числа, аппаратные адрес�
 каждый символ с обоих концов строки.
 
 Поэтому проверки в `ascii.hpp` объявлены с принудительной подстановкой —
-`AWH_ASCII_INLINE`, разворачивающийся в `inline __attribute__((always_inline))`
-для GCC и Clang и в `__forceinline` для Visual Studio, по образцу
-`AWH_LEXICAL_INLINE` из `lexical/detect.hpp`. Посредник этот и есть весь способ
+общей пометкой `__AWH_INLINE__` из `include/sys/macro/global.hpp`,
+разворачивающейся в `inline __attribute__((always_inline))` для GCC и Clang и в
+`__forceinline` для Visual Studio. Посредник этот и есть весь способ
 встраивания: **реализация методов остаётся в модулях, заголовочные файлы держат
 только объявления.**
 

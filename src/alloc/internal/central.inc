@@ -62,7 +62,7 @@ namespace awh {
 		 * @return      признак опознанного блока разряда
 		 *
 		 */
-		AWH_CENTRAL_INLINE bool central_t::sorted(const void * addr, size_t * index, void ** hint) noexcept {
+		__AWH_INLINE__ bool central_t::sorted(const void * addr, size_t * index, void ** hint) noexcept {
 			// Если куча не заведена либо разбирать нечего
 			if((this->_pages == nullptr) || (addr == nullptr) || (index == nullptr))
 				// Разбирать нечего
@@ -88,7 +88,7 @@ namespace awh {
 		 * @return      признак того, что адрес выдан нами
 		 *
 		 */
-		AWH_CENTRAL_INLINE bool central_t::owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint) noexcept {
+		__AWH_INLINE__ bool central_t::owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint) noexcept {
 			// Если куча не заведена либо адрес не задан
 			if((this->_pages == nullptr) || (addr == nullptr))
 				// Разбирать нечего

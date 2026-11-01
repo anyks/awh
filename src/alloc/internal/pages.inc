@@ -58,7 +58,7 @@ namespace awh {
 		 * @return     найденный кусок либо nullptr
 		 *
 		 */
-		AWH_PAGES_INLINE pages_t::chunk_t * pages_t::lookup(const void * addr, void ** hint) const noexcept {
+		__AWH_INLINE__ pages_t::chunk_t * pages_t::lookup(const void * addr, void ** hint) const noexcept {
 			/**
 			 * Сперва пробуем подсказку
 			 *
@@ -99,7 +99,7 @@ namespace awh {
 		 * @return     метка разряда, увеличенная на единицу, либо нуль
 		 *
 		 */
-		AWH_PAGES_INLINE uint8_t pages_t::classify(const void * addr, [[maybe_unused]] void ** hint) const noexcept {
+		__AWH_INLINE__ uint8_t pages_t::classify(const void * addr, [[maybe_unused]] void ** hint) const noexcept {
 			// Определяем номер страницы адреса
 			const uintptr_t page = (reinterpret_cast <uintptr_t> (addr) >> SHIFT);
 			// Получаем корень радикс-карты
@@ -139,7 +139,7 @@ namespace awh {
 		 *          нет.
 		 *
 		 */
-		AWH_PAGES_INLINE bool pages_t::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint) const noexcept {
+		__AWH_INLINE__ bool pages_t::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint) const noexcept {
 			// Ищем кусок, которому принадлежит адрес
 			const chunk_t * chunk = this->lookup(addr, hint);
 			// Если куска за адресом не нашлось

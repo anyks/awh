@@ -59,25 +59,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция приведения режима компиляции к его числовому значению
 	 *
 	 * @param value режим компиляции регулярного выражения
@@ -95,7 +76,7 @@ namespace {
 	 * @return       числовое значение шестнадцатеричной цифры
 	 *
 	 */
-	static AWH_REGEX_INLINE uint32_t hexValue(const char letter) noexcept {
+	static __AWH_INLINE__ uint32_t hexValue(const char letter) noexcept {
 		/**
 		 * Если символ является десятичной цифрой
 		 */
@@ -113,7 +94,7 @@ namespace {
 	 * @return       результат проверки допустимости символа имени группы
 	 *
 	 */
-	static AWH_REGEX_INLINE bool isNameChar(const char letter, const bool first) noexcept {
+	static __AWH_INLINE__ bool isNameChar(const char letter, const bool first) noexcept {
 		/**
 		 * Если проверяется первый символ имени группы
 		 */
@@ -137,7 +118,7 @@ namespace {
 	 * @return       результат извлечения числа
 	 *
 	 */
-	static AWH_REGEX_INLINE bool numbering(const string_view text, uint32_t & result) noexcept {
+	static __AWH_INLINE__ bool numbering(const string_view text, uint32_t & result) noexcept {
 		// Извлекаемое десятичное число
 		uint64_t value = 0;
 		/**
@@ -184,7 +165,7 @@ namespace {
 	 * @return        результат проверки размещения элемента сортировки
 	 *
 	 */
-	static AWH_REGEX_INLINE bool collating(const string_view pattern, const size_t pos) noexcept {
+	static __AWH_INLINE__ bool collating(const string_view pattern, const size_t pos) noexcept {
 		// Получаем размер текста регулярного выражения
 		const size_t size = pattern.size();
 		/**
@@ -1493,7 +1474,7 @@ bool awh::regex::Parser::isQuantifier(const size_t pos) const noexcept {
  * @brief Посредник пропуска пробельных символов и комментариев
  *
  */
-AWH_REGEX_INLINE void awh::regex::Parser::skipSpaces() noexcept {
+__AWH_INLINE__ void awh::regex::Parser::skipSpaces() noexcept {
 	/**
 	 * Если режим игнорирования пробельных символов установлен
 	 */
@@ -5879,7 +5860,7 @@ uint32_t awh::regex::Parser::total() noexcept {
  * @return     результат проверки нужды обхода узлов
  *
  */
-AWH_REGEX_INLINE bool awh::regex::Parser::walks(const node_t type) noexcept {
+__AWH_INLINE__ bool awh::regex::Parser::walks(const node_t type) noexcept {
 	/**
 	 * Если узел такого вида разбором не заводился
 	 */

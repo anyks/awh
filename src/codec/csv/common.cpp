@@ -52,25 +52,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_CSV_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_CSV_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
@@ -82,7 +63,7 @@ namespace {
 	 * @return       результат сличения
 	 *
 	 */
-	static AWH_CSV_INLINE bool compare(const string_view first, const string_view second) noexcept {
+	static __AWH_INLINE__ bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей расходятся
 		 */
@@ -110,7 +91,7 @@ namespace {
 	 * @return     последовательность знаков без обвязки
 	 *
 	 */
-	static AWH_CSV_INLINE string_view trim(const string_view text) noexcept {
+	static __AWH_INLINE__ string_view trim(const string_view text) noexcept {
 		// Положение первого знака, не являющегося пробельным
 		size_t begin = 0;
 		// Положение за последним знаком, не являющимся пробельным

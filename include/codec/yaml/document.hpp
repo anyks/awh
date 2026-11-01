@@ -491,7 +491,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE uint32_t length() const noexcept {
+						__AWH_INLINE__ uint32_t length() const noexcept {
 							// Выводим количество детей вместилища либо длину записи значения
 							return this->content[0];
 						}
@@ -508,7 +508,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE uint32_t extent() const noexcept {
+						__AWH_INLINE__ uint32_t extent() const noexcept {
 							// Выводим размах поддерева вместилища
 							return this->content[1];
 						}
@@ -525,7 +525,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE void length(const uint32_t value) noexcept {
+						__AWH_INLINE__ void length(const uint32_t value) noexcept {
 							// Устанавливаем количество детей вместилища либо длину записи
 							this->content[0] = value;
 						}
@@ -542,7 +542,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE void extent(const uint32_t value) noexcept {
+						__AWH_INLINE__ void extent(const uint32_t value) noexcept {
 							// Устанавливаем размах поддерева вместилища
 							this->content[1] = value;
 						}
@@ -573,7 +573,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE T numberOf() const noexcept {
+						__AWH_INLINE__ T numberOf() const noexcept {
 							// Получаемое разобранное число значения
 							T result = T();
 							// Выполняем перенос разобранного числа значения
@@ -608,7 +608,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						AWH_YAML_INLINE void numberOf(const T value) noexcept {
+						__AWH_INLINE__ void numberOf(const T value) noexcept {
 							// Выполняем сброс разобранного числа значения
 							this->number[0] = 0;
 							// Выполняем сброс старшей половины разобранного числа

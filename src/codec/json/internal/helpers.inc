@@ -83,7 +83,7 @@ namespace awh {
 			 * @return       количество разобранных байтов содержимого
 			 *
 			 */
-			AWH_JSON_INLINE size_t readSequence(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept {
+			__AWH_INLINE__ size_t readSequence(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept {
 				// Получаем ведущий байт последовательности
 				const uint8_t letter = static_cast <uint8_t> (text[offset]);
 				// Устанавливаем признак годности разобранной последовательности

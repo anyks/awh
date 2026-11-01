@@ -64,16 +64,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_ADDR_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_ADDR_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Инкапсулируем статические общие функции в локальное пространство имён
  *
  */
@@ -213,7 +203,7 @@ namespace {
 	 * @return     адрес без встроенной зоны
 	 *
 	 */
-	static AWH_ADDR_INLINE struct in6_addr unscope(const struct in6_addr & addr) noexcept {
+	static __AWH_INLINE__ struct in6_addr unscope(const struct in6_addr & addr) noexcept {
 		// Адрес без встроенной зоны
 		struct in6_addr result = addr;
 		// Если адрес в зоне не нуждается, оставляем его как есть
@@ -247,7 +237,7 @@ namespace {
 	 * @param source объект источника сетевых адресов
 	 *
 	 */
-	static AWH_ADDR_INLINE void scope(net::src_t & source) noexcept {
+	static __AWH_INLINE__ void scope(net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выходим из функции, так-как проставлять зону нечему
@@ -310,7 +300,7 @@ namespace {
 	 * @return       признак того, что запись найдена и ещё не устарела
 	 *
 	 */
-	static AWH_ADDR_INLINE bool restore(net::src_t & source) noexcept {
+	static __AWH_INLINE__ bool restore(net::src_t & source) noexcept {
 		// Если размер адреса не соответствует ни одному из семейств
 		if((source.ip->size != 4) && (source.ip->size != 16))
 			// Сообщаем, что адрес нужно определять заново
@@ -344,7 +334,7 @@ namespace {
 	 * @param source объект сетевых адресов текущей машины
 	 *
 	 */
-	static AWH_ADDR_INLINE void remember(const net::src_t & source) noexcept {
+	static __AWH_INLINE__ void remember(const net::src_t & source) noexcept {
 		// Если размер адреса не соответствует ни одному из семейств
 		if((source.ip->size != 4) && (source.ip->size != 16))
 			// Выходим из функции
@@ -380,7 +370,7 @@ namespace {
 	 * @return       результат проверки годности адреса
 	 *
 	 */
-	static AWH_ADDR_INLINE bool routable(const net::src_t & source) noexcept {
+	static __AWH_INLINE__ bool routable(const net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства, годным он быть не может
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выводим результат
@@ -407,7 +397,7 @@ namespace {
 	 * @return       результат поиска годного адреса
 	 *
 	 */
-	static AWH_ADDR_INLINE bool discover(net::src_t & source) noexcept {
+	static __AWH_INLINE__ bool discover(net::src_t & source) noexcept {
 		// Если источник хранит адрес не того семейства, искать нечего
 		if((source.ip == nullptr) || (source.ip->size != 16))
 			// Выводим результат
@@ -467,7 +457,7 @@ namespace {
 	 *          отдать выбор устройства ядру: INADDR_ANY либо IN6ADDR_ANY
 	 *
 	 */
-	static AWH_ADDR_INLINE bool zero(const net::src_t & source) noexcept {
+	static __AWH_INLINE__ bool zero(const net::src_t & source) noexcept {
 		// Если адрес либо аппаратный адрес не заданы, примет для подбора нет
 		if((source.ip == nullptr) || (source.mac == nullptr))
 			// Выводим результат проверки
@@ -496,7 +486,7 @@ namespace {
 	 * @return       вычисленная контрольная сумма
 	 *
 	 */
-	static AWH_ADDR_INLINE uint16_t checksum(const void * data, size_t length) noexcept {
+	static __AWH_INLINE__ uint16_t checksum(const void * data, size_t length) noexcept {
 		// Инициализируем сумму
 		uint32_t sum = 0;
 		// Получаем нужного вида буфер входящих данных

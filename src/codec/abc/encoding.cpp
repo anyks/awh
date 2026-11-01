@@ -54,25 +54,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_ABC_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_ABC_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция укладки записи постоянной ширины в отведённое место
 	 *
 	 * @details Посредник этот держит укладку по ГОТОВОМУ месту в одном месте, а встраивание
@@ -88,7 +69,7 @@ namespace {
 	 * @param width  ширина укладываемой записи в октетах
 	 *
 	 */
-	static AWH_ABC_INLINE void __awh_abc_fixed__(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
+	static __AWH_INLINE__ void __awh_abc_fixed__(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
 		/**
 		 * Перебираем октеты укладываемой записи
 		 */

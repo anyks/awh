@@ -58,7 +58,7 @@ namespace awh {
 		 * @return     признак надобности заслона
 		 *
 		 */
-		AWH_GUARD_INLINE bool guard_t::wanted(const size_t size) noexcept {
+		__AWH_INLINE__ bool guard_t::wanted(const size_t size) noexcept {
 			/**
 			 * Если заслоны выключены
 			 *

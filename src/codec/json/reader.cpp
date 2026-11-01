@@ -98,7 +98,7 @@ namespace {
 	 * @return       прочитанное слово
 	 *
 	 */
-	static AWH_JSON_INLINE uint64_t reading(const char * buffer) noexcept {
+	static __AWH_INLINE__ uint64_t reading(const char * buffer) noexcept {
 		// Прочитанное слово
 		uint64_t result = 0;
 		// Выполняем чтение восьми байтов исходного текста

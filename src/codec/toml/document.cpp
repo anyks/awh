@@ -94,25 +94,6 @@ namespace {
 	using namespace awh::codec::toml;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_TOML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_TOML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Знак соединения составных частей имени в ключе указателя
 	 *
 	 * @note Знак этот в имени ключа встретиться не может: разбор его отвергает
@@ -164,7 +145,7 @@ namespace {
 	 * @return     признак того, что каталог для записи годен
 	 *
 	 */
-	static AWH_TOML_INLINE bool directory(const string & path) noexcept {
+	static __AWH_INLINE__ bool directory(const string & path) noexcept {
 		// Положение последнего разделителя пути
 		const size_t slash = path.find_last_of("/\\");
 		/**
@@ -187,7 +168,7 @@ namespace {
 	 * @return    смешанное значение ключа
 	 *
 	 */
-	static AWH_TOML_INLINE uint64_t mixed(const string_view key) noexcept {
+	static __AWH_INLINE__ uint64_t mixed(const string_view key) noexcept {
 		// Смешиваемое значение ключа
 		uint64_t hash = 0x9E3779B97F4A7C15ull;
 		// Смещение очередного куска ключа
@@ -252,7 +233,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static AWH_TOML_INLINE bool unescape(string & token) noexcept {
+	static __AWH_INLINE__ bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -304,7 +285,7 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static AWH_TOML_INLINE string escape(const string_view name) noexcept {
+	static __AWH_INLINE__ string escape(const string_view name) noexcept {
 		// Собираемое звено пути
 		string result = "";
 		// Выполняем выделение места под звено пути
@@ -350,7 +331,7 @@ namespace {
 	 * @return      результат выполнения операции
 	 *
 	 */
-	static AWH_TOML_INLINE bool ordinal(const string_view part, size_t & index) noexcept {
+	static __AWH_INLINE__ bool ordinal(const string_view part, size_t & index) noexcept {
 		/**
 		 * Если часть имени пуста либо несёт ведущий ноль
 		 */
@@ -393,7 +374,7 @@ namespace {
 	 * @return         признак совпадения заданных настроек с настройками по умолчанию
 	 *
 	 */
-	static AWH_TOML_INLINE bool untouched(const writer_t::settings_t & settings) noexcept {
+	static __AWH_INLINE__ bool untouched(const writer_t::settings_t & settings) noexcept {
 		// Настройки записи текста настроек, установленные по умолчанию
 		const writer_t::settings_t fallback;
 		// Выполняем сверку всякого поля заданных настроек с полем настроек по умолчанию

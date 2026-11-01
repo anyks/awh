@@ -75,23 +75,62 @@ namespace {
 	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
+	 * @brief Функция смешивания ключа указателя имён
+	 *
+	 * @details Ключ читается кусками по восемь знаков, всякий кусок подмешивается
+	 *          со смещением своего места, а хвост — длиною всего ключа: ключи одного
+	 *          состава, но разного порядка знаков смешиваются врозь.
+	 *
+	 * @param key смешиваемый ключ
+	 * @return    смешанное значение ключа
 	 *
 	 */
-	#if defined(_MSC_VER)
+	static __AWH_INLINE__ uint64_t mixed(const string_view key) noexcept {
+		// Смешиваемое значение ключа
+		uint64_t hash = 0x9E3779B97F4A7C15ull;
+		// Смещение очередного куска ключа
+		size_t offset = 0;
 		/**
-		 * Принудительная подстановка средствами Visual Studio
+		 * Выполняем перебор кусков ключа по восемь знаков
 		 */
-		#define AWH_TOML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
+		for(; (offset + sizeof(uint64_t)) <= key.length(); offset += sizeof(uint64_t)){
+			// Кусок ключа, значением читаемый
+			uint64_t block = 0;
+			// Выполняем чтение куска ключа целиком
+			::memcpy(&block, (key.data() + offset), sizeof(block));
+			// Выполняем подмешивание куска со смещением его места
+			hash ^= (block + offset + 0x9E3779B97F4A7C15ull);
+			// Выполняем умножение смешиваемого значения
+			hash *= 0xFF51AFD7ED558CCDull;
+			// Выполняем поворот смешиваемого значения
+			hash = ((hash << 29) | (hash >> 35));
+		}
 		/**
-		 * Принудительная подстановка средствами GCC и Clang
+		 * Если ключ хвостом короче куска остаётся
 		 */
-		#define AWH_TOML_INLINE inline __attribute__((always_inline))
-	#endif
+		if(offset < key.length()){
+			// Хвост ключа, значением читаемый
+			uint64_t block = 0;
+			// Выполняем чтение хвоста ключа
+			::memcpy(&block, (key.data() + offset), (key.length() - offset));
+			// Выполняем подмешивание хвоста с длиною всего ключа
+			hash ^= (block + key.length());
+			// Выполняем умножение смешиваемого значения
+			hash *= 0xFF51AFD7ED558CCDull;
+		}
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 30);
+		// Выполняем умножение смешиваемого значения
+		hash *= 0xBF58476D1CE4E5B9ull;
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 27);
+		// Выполняем умножение смешиваемого значения
+		hash *= 0x94D049BB133111EBull;
+		// Выполняем замешивание значения напоследок
+		hash ^= (hash >> 31);
+		// Выводим смешанное значение ключа
+		return hash;
+	}
 
 	/**
 	 * @brief Функция проверки знака на пробельный знак строки
@@ -134,7 +173,7 @@ namespace {
 	 * @return         признак успешного разбора
 	 *
 	 */
-	static AWH_TOML_INLINE bool digits(const string_view text, const uint32_t radix, const bool negative, int64_t & result) noexcept {
+	static __AWH_INLINE__ bool digits(const string_view text, const uint32_t radix, const bool negative, int64_t & result) noexcept {
 		/**
 		 * Если разбирать нечего
 		 *
@@ -206,7 +245,7 @@ namespace {
 	 * @return       признак правильного построения записи
 	 *
 	 */
-	static AWH_TOML_INLINE bool separated(const string_view text, const uint32_t radix, string & result) noexcept {
+	static __AWH_INLINE__ bool separated(const string_view text, const uint32_t radix, string & result) noexcept {
 		// Выполняем очистку записи числа без разделителей
 		result.clear();
 		// Признак того, что предыдущим знаком записи была цифра
@@ -557,39 +596,437 @@ void awh::codec::toml::Reader::assemble(const uint32_t part, const uint32_t part
 	}
 }
 /**
- * @brief Метод переноса имени в хранилище объявленных имён
+ * @brief Слот указателя родов объявленных имён
  *
- * @param name переносимое имя ключа либо таблицы
- * @return     ссылка на имя, перенесённое в хранилище
+ * @details Ключ до 48 знаков лежит в самом слоте, рядом с родом, и сличение при
+ *          поиске не ходит в чужую память. Ключ длиннее слотом не вмещается и
+ *          держится слотом же во владении, отчего указатель не зависит от прочих
+ *          полей читателя и переживает копирование целиком.
  *
  */
-string_view awh::codec::toml::Reader::intern(const string_view name) noexcept {
+struct awh::codec::toml::Reader::Names::Slot {
 	/**
-	 * @brief Размер блока хранилища объявленных имён в байтах
+	 * @brief Наибольшая длина имени, слотом вмещаемая
 	 *
 	 */
-	constexpr size_t BLOCK = 0x4000;
+	static constexpr uint16_t EMBEDDED = 48;
 	/**
-	 * Если блока хранилища не заведено либо в нём не осталось места
-	 *
-	 * @note Место в блоке отводится заранее и не наращивается: дописывание сверх
-	 *       отведённого перенесло бы содержимое блока, обесценив ссылки на имена
+	 * @brief Обозначение свободного слота
 	 *
 	 */
-	if(this->_blocks.empty() || (name.length() > (this->_blocks.back().capacity() - this->_blocks.back().length()))){
-		// Выполняем заведение очередного блока хранилища
-		this->_blocks.push_back(string());
-		// Выполняем отведение места под содержимое блока хранилища
-		this->_blocks.back().reserve((name.length() > BLOCK) ? name.length() : BLOCK);
+	static constexpr uint8_t FREE = 0;
+	/**
+	 * @brief Обозначение занятого слота
+	 *
+	 */
+	static constexpr uint8_t USED = 1;
+	/**
+	 * @brief Обозначение слота снятого имени
+	 *
+	 * @note Снятое из пробы не выбрасывается: выбрасывание разорвало бы цепочку
+	 *       линейной пробы, а пересборка таблицы пометки стирает
+	 *
+	 */
+	static constexpr uint8_t DEAD = 2;
+	// Состояние слота
+	uint8_t state;
+	// Род объявленного имени
+	kind_t kind;
+	// Длина имени слота
+	uint16_t length;
+	/**
+	 * Имя слота
+	 *
+	 * @note Читается тело слота, покуда длина имени вмещаема, и владеемая слотом
+	 *       память - свыше того
+	 *
+	 */
+	union {
+		// Тело слота, короткое имя держащее
+		char body[EMBEDDED];
+		// Начало имени, слотом перенесённого
+		char * remote = nullptr;
+	} key;
+	/**
+	 * @brief Метод получения начала имени слота
+	 *
+	 * @return адрес начала имени слота
+	 *
+	 */
+	const char * data() const noexcept {
+		// Выводим начало имени, слотом хранимого
+		return ((this->length <= EMBEDDED) ? this->key.body : this->key.remote);
 	}
-	// Получаем блок хранилища объявленных имён
-	string & block = this->_blocks.back();
-	// Запоминаем смещение начала имени в блоке хранилища
-	const size_t offset = block.length();
-	// Выполняем перенос имени в блок хранилища
-	block.append(name);
-	// Выводим ссылку на имя, перенесённое в хранилище
-	return string_view(block.data() + offset, name.length());
+	/**
+	 * @brief Метод освобождения длинного имени слота
+	 *
+	 */
+	void release() noexcept {
+		/**
+		 * Если слот занят длинным именем
+		 */
+		if((this->state == USED) && (this->length > EMBEDDED))
+			// Выполняем освобождение памяти длинного имени
+			delete[] this->key.remote;
+		// Выполняем помещение слота в свободное состояние
+		this->state = FREE;
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	explicit Slot() noexcept : state(FREE), kind(static_cast <kind_t> (0)), length(0) {}
+};
+/**
+ * @brief Очистка указателя имён
+ *
+ */
+void awh::codec::toml::Reader::Names::clear() noexcept {
+	/**
+	 * Если таблица слотов заведена
+	 */
+	if(this->slots != nullptr){
+		/**
+		 * Выполняем перебор слотов таблицы
+		 */
+		for(size_t i = 0; i < this->capacity; i++)
+			// Выполняем освобождение длинного имени очередного слота
+			this->slots[i].release();
+		// Выполняем опустошение слотов таблицы
+		::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
+	}
+	// Выполняем сброс занятости указателя имён
+	this->occupied = 0;
+	// Выполняем сброс числа снятых имён
+	this->buried = 0;
+}
+/**
+ * @brief Метод пересборки таблицы слотов
+ *
+ * @param wanted требуемое количество слотов
+ *
+ */
+void awh::codec::toml::Reader::Names::rehash(const size_t wanted) noexcept {
+	// Количество слотов пересобранной таблицы
+	size_t capacity = 128;
+	/**
+	 * Выполняем подбор количества слотов степенью двойки
+	 */
+	while(capacity < wanted)
+		// Выполняем удвоение количества слотов
+		capacity <<= 1;
+	// Слоты пересобранной таблицы
+	Slot * slots = new Slot[capacity];
+	// Количество занятых слотов пересобранной таблицы
+	size_t occupied = 0;
+	/**
+	 * Выполняем перенос занятых слотов прежней таблицы
+	 */
+	for(size_t i = 0; i < this->capacity; i++){
+		// Очередной слот прежней таблицы
+		Slot & source = this->slots[i];
+		/**
+		 * Если очередной слот прежней таблицы не занят
+		 */
+		if(source.state != Slot::USED)
+			// Выполняем пропуск незанятого слота
+			continue;
+		// Положение очередного слота пробы пересобранной таблицы
+		size_t cursor = (mixed(string_view(source.data(), source.length)) & (capacity - 1));
+		/**
+		 * Выполняем розыск свободного слота пересобранной таблицы
+		 */
+		while(slots[cursor].state == Slot::USED)
+			// Выполняем переход к соседнему слоту пробы
+			cursor = ((cursor + 1) & (capacity - 1));
+		/**
+		 * Выполняем перенос слота пересобранной таблицей
+		 *
+		 * @note Длинное имя владеемою памятью переезжает вместе со слотом:
+		 *       прежняя таблица освобождается целиком, не трогая его
+		 *
+		 */
+		slots[cursor] = source;
+		// Выполняем учёт занятого слота
+		occupied++;
+	}
+	// Выполняем освобождение слотов прежней таблицы
+	delete[] this->slots;
+	// Выполняем принятие слотов пересобранной таблицы
+	this->slots = slots;
+	// Выполняем принятие количества слотов пересобранной таблицы
+	this->capacity = capacity;
+	// Выполняем принятие занятости пересобранной таблицы
+	this->occupied = occupied;
+	// Выполняем сброс числа снятых имён
+	this->buried = 0;
+}
+/**
+ * @brief Метод розыска рода объявленного имени
+ *
+ * @param key  разыскиваемое имя
+ * @param kind род найденного имени
+ * @return     признак того, что имя найдено
+ *
+ */
+bool awh::codec::toml::Reader::Names::locate(const string_view key, kind_t & kind) const noexcept {
+	/**
+	 * Если таблица слотов не заведена
+	 */
+	if(this->capacity == 0)
+		// Выводим признак необъявленного имени
+		return false;
+	// Положение очередного слота пробы
+	size_t cursor = (mixed(key) & (this->capacity - 1));
+	/**
+	 * Выполняем перебор слотов пробы
+	 */
+	while(this->slots[cursor].state != Slot::FREE){
+		// Очередной слот пробы
+		const Slot & slot = this->slots[cursor];
+		/**
+		 * Если слот занят и имя его разыскиваемому равно
+		 */
+		if((slot.state == Slot::USED) && (slot.length == key.length()) &&
+		   (::memcmp(slot.data(), key.data(), key.length()) == 0)){
+			// Выполняем выдачу рода найденного имени
+			kind = slot.kind;
+			// Выводим признак найденного имени
+			return true;
+		}
+		// Выполняем переход к соседнему слоту пробы
+		cursor = ((cursor + 1) & (this->capacity - 1));
+	}
+	// Выводим признак необъявленного имени
+	return false;
+}
+/**
+ * @brief Метод заведения имени, объявленным не бывшего
+ *
+ * @param key  заводимое имя
+ * @param kind род заводимого имени
+ * @return     признак того, что имя заведено этой установкой
+ *
+ */
+bool awh::codec::toml::Reader::Names::insert(const string_view key, const kind_t kind) noexcept {
+	/**
+	 * Если занятость таблицы вместе со снятыми подошла к половине её слотов
+	 *
+	 * @note Половина - предел пробе линейной: свыше его средняя проба растёт
+	 *       лавинно, и розыск перестаёт быть розыском по соседним слотам. Снятые
+	 *       учитываются наравне с занятыми: пометка их из пробы не выбрасывает
+	 *
+	 */
+	if(((this->occupied + this->buried) * 2) >= this->capacity)
+		// Выполняем пересборку таблицы слотов с запасом над занятостью
+		this->rehash((this->occupied > 64) ? (this->occupied * 2) : 128);
+	// Положение очередного слота пробы
+	size_t cursor = (mixed(key) & (this->capacity - 1));
+	/**
+	 * Выполняем перебор слотов пробы
+	 */
+	while(this->slots[cursor].state == Slot::USED){
+		// Очередной слот пробы
+		const Slot & slot = this->slots[cursor];
+		/**
+		 * Если имя очередного слота заводимому равно
+		 */
+		if((slot.length == key.length()) && (::memcmp(slot.data(), key.data(), key.length()) == 0))
+			// Выводим признак того, что имя заведено не было
+			return false;
+		// Выполняем переход к соседнему слоту пробы
+		cursor = ((cursor + 1) & (this->capacity - 1));
+	}
+	// Слот, именем занимаемый
+	Slot & slot = this->slots[cursor];
+	// Выполняем занятие слота пробы
+	slot.state = Slot::USED;
+	// Выполняем запоминание рода объявленного имени
+	slot.kind = kind;
+	// Выполняем запоминание длины имени слота
+	slot.length = static_cast <uint16_t> (key.length());
+	/**
+	 * Если имя слотом вмещается
+	 */
+	if(key.length() <= Slot::EMBEDDED)
+		// Выполняем перенос имени телом слота
+		::memcpy(slot.key.body, key.data(), key.length());
+	// Если имя слотом не вмещается
+	else
+		// Выполняем перенос имени памятью, слотом владеемой
+		::memcpy((slot.key.remote = new char[key.length()]), key.data(), key.length());
+	// Выполняем учёт занятого слота
+	this->occupied++;
+	// Выводим признак того, что имя заведено
+	return true;
+}
+/**
+ * @brief Метод запоминания имени с родом объявления
+ *
+ * @param key  запоминаемое имя
+ * @param kind род запоминаемого имени
+ *
+ */
+void awh::codec::toml::Reader::Names::assign(const string_view key, const kind_t kind) noexcept {
+	/**
+	 * Если имя заведением не заведено
+	 */
+	if(!this->insert(key, kind)){
+		// Положение очередного слота пробы
+		size_t cursor = (mixed(key) & (this->capacity - 1));
+		/**
+		 * Выполняем розыск слота объявленного имени
+		 */
+		while(this->slots[cursor].state != Slot::FREE){
+			// Очередной слот пробы
+			Slot & slot = this->slots[cursor];
+			/**
+			 * Если слот занят и имя его присваиваемому равно
+			 */
+			if((slot.state == Slot::USED) && (slot.length == key.length()) &&
+			   (::memcmp(slot.data(), key.data(), key.length()) == 0)){
+				// Выполняем подмену рода объявленного имени
+				slot.kind = kind;
+				// Завершаем розыск слота
+				break;
+			}
+			// Выполняем переход к соседнему слоту пробы
+			cursor = ((cursor + 1) & (this->capacity - 1));
+		}
+	}
+}
+/**
+ * @brief Метод снятия имён, объявленных содержимым таблицы набора
+ *
+ * @param prefix полное имя таблицы набора
+ * @return      количество снятых имён
+ *
+ */
+size_t awh::codec::toml::Reader::Names::drop(const string_view prefix) noexcept {
+	// Количество снятых имён
+	size_t dropped = 0;
+	/**
+	 * Выполняем перебор слотов таблицы
+	 */
+	for(size_t i = 0; i < this->capacity; i++){
+		// Очередной слот таблицы
+		Slot & slot = this->slots[i];
+		/**
+		 * Если слот занят именем содержимого таблицы набора
+		 */
+		if((slot.state == Slot::USED) && (slot.length > prefix.length()) &&
+		   (::memcmp(slot.data(), prefix.data(), prefix.length()) == 0) &&
+		   (slot.data()[prefix.length()] == '\x1F')){
+			// Выполняем освобождение длинного имени слота
+			slot.release();
+			// Выполняем пометку слота снятым именем
+			slot.state = Slot::DEAD;
+			// Выполняем учёт снятого имени
+			this->buried++;
+			// Выполняем учёт снятого имени
+			dropped++;
+		}
+	}
+	// Выводим количество снятых имён
+	return dropped;
+}
+/**
+ * @brief Оператор присваивания
+ *
+ * @param names присваиваемый указатель имён
+ * @return      приёмник присваивания
+ *
+ */
+awh::codec::toml::Reader::Names & awh::codec::toml::Reader::Names::operator = (const Names & names) noexcept {
+	/**
+	 * Если присваивается не тот же самый указатель
+	 */
+	if(this != &names){
+		// Выполняем очистку приёмника присваивания
+		this->clear();
+		/**
+		 * Выполняем перенос занятых слотов источника присваивания
+		 */
+		for(size_t i = 0; i < names.capacity; i++){
+			// Очередной слот источника присваивания
+			const Slot & source = names.slots[i];
+			/**
+			 * Если очередной слот источника занят
+			 */
+			if(source.state == Slot::USED)
+				// Выполняем заведение имени очередного слота приёмником
+				this->insert(string_view(source.data(), source.length), source.kind);
+		}
+	}
+	// Выводим приёмник присваивания
+	return *this;
+}
+/**
+ * @brief Оператор перемещения
+ *
+ * @param names перемещаемый указатель имён
+ * @return      приёмник перемещения
+ *
+ */
+awh::codec::toml::Reader::Names & awh::codec::toml::Reader::Names::operator = (Names && names) noexcept {
+	/**
+	 * Если перемещается не тот же самый указатель
+	 */
+	if(this != &names){
+		// Выполняем очистку приёмника перемещения
+		this->clear();
+		// Выполняем принятие слотов перемещаемого указателя имён
+		this->slots = names.slots;
+		// Выполняем принятие количества слотов перемещаемого указателя имён
+		this->capacity = names.capacity;
+		// Выполняем принятие занятости перемещаемого указателя имён
+		this->occupied = names.occupied;
+		// Выполняем принятие числа снятых имён перемещаемого указателя
+		this->buried = names.buried;
+		// Выполняем опустошение перемещаемого указателя имён
+		names.slots = nullptr;
+		// Выполняем обнуление количества слотов перемещаемого указателя имён
+		names.capacity = 0;
+		// Выполняем обнуление занятости перемещаемого указателя имён
+		names.occupied = 0;
+		// Выполняем обнуление числа снятых имён перемещаемого указателя
+		names.buried = 0;
+	}
+	// Выводим приёмник перемещения
+	return *this;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Reader::Names::Names() noexcept : capacity(0), occupied(0), buried(0), slots(nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ * @param names копируемый указатель имён
+ *
+ */
+awh::codec::toml::Reader::Names::Names(const Names & names) noexcept : Names() {
+	// Выполняем присваивание копируемого указателя имён
+	*this = names;
+}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param names перемещаемый указатель имён
+ *
+ */
+awh::codec::toml::Reader::Names::Names(Names && names) noexcept : Names() {
+	// Выполняем присваивание перемещаемого указателя имён
+	*this = ::move(names);
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::codec::toml::Reader::Names::~Names() noexcept {
+	// Выполняем очистку указателя имён
+	this->clear();
 }
 /**
  * @brief Метод получения рода уже объявленного имени
@@ -613,10 +1050,16 @@ awh::codec::toml::Reader::kind_t awh::codec::toml::Reader::lookup(const string_v
 	if(position < this->_staging)
 		// Выводим род объявляемого имени
 		return this->_pending.at(position).kind;
-	// Выполняем поиск имени в указателе родов объявленных имён
-	auto i = this->_names.find(name);
-	// Выводим род объявленного имени
-	return ((i != this->_names.end()) ? i->second : kind_t::NONE);
+	// Род имени, розыском в указателе объявленных получаемый
+	kind_t kind;
+	/**
+	 * Если имя среди объявленных найдено
+	 */
+	if(this->_names.locate(name, kind))
+		// Выводим род объявленного имени
+		return kind;
+	// Выводим род необъявленного имени
+	return kind_t::NONE;
 }
 /**
  * @brief Метод поиска имени среди объявляемых разбираемой записью
@@ -4717,23 +5160,9 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *       вместе с вложенными наборами таблиц, которые новая таблица заводит заново
 	 *
 	 */
-	if(this->_appending && this->_settings.duplicates){
-		/**
-		 * Выполняем снятие имён, объявленных прежней таблицей набора
-		 */
-		for(auto i = this->_names.begin(); i != this->_names.end();){
-			/**
-			 * Если имя принадлежит содержимому объявленной таблицы набора
-			 */
-			if((i->first.length() > this->_pendingTable.length()) &&
-			   (i->first.compare(0, this->_pendingTable.length(), this->_pendingTable) == 0) &&
-			   (i->first.at(this->_pendingTable.length()) == '\x1F'))
-				// Выполняем снятие имени, объявленного прежней таблицей набора
-				i = this->_names.erase(i);
-			// Выполняем переход к следующему объявленному имени
-			else ++i;
-		}
-	}
+	if(this->_appending && this->_settings.duplicates)
+		// Выполняем снятие имён, объявленных прежней таблицей набора
+		this->_names.drop(this->_pendingTable);
 	/**
 	 * Выполняем перенос имён, объявленных разобранной записью
 	 *
@@ -4765,29 +5194,13 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 		 *
 		 */
 		if(pending.implied){
-			/**
-			 * Если имя ещё не объявлено
-			 */
-			if(this->_names.count(pending.name) == 0)
-				// Выполняем заведение имени исподволь
-				this->_names.emplace(this->intern(pending.name), pending.kind);
+			// Выполняем заведение имени исподволь, объявленным не бывшего
+			this->_names.insert(pending.name, pending.kind);
 			// Переходим к следующему объявленному имени
 			continue;
 		}
-		// Выполняем поиск объявляемого имени среди объявленных прежде
-		auto i = this->_names.find(pending.name);
-		/**
-		 * Если имя объявлено прежде
-		 *
-		 * @note Подмена рода нужна заголовку таблицы, заведённой прежде исподволь:
-		 *       объявленная явно, она перестаёт быть заведённой исподволь
-		 *
-		 */
-		if(i != this->_names.end())
-			// Выполняем подмену рода объявленного имени
-			i->second = pending.kind;
-		// Выполняем запоминание объявленного имени
-		else this->_names.emplace(this->intern(pending.name), pending.kind);
+		// Выполняем запоминание объявленного имени с родом его объявления
+		this->_names.assign(pending.name, pending.kind);
 	}
 	/**
 	 * Если разобранной записью объявлена таблица
@@ -5297,19 +5710,10 @@ void awh::codec::toml::Reader::reset() noexcept {
 	this->_items.clear();
 	// Выполняем очистку имени текущей таблицы
 	this->_table.clear();
-	/**
-	 * Выполняем очистку указателя родов объявленных имён
-	 *
-	 * @note Очистка ведётся прежде хранилища имён: указатель держит ссылки на
-	 *       содержимое хранилища, и порядок обратный оставлял бы его со ссылками на
-	 *       освобождённую память
-	 *
-	 */
+	// Выполняем очистку указателя родов объявленных имён
 	this->_names.clear();
 	// Выполняем очистку накопленного текста настроек
 	this->_buffer.clear();
-	// Выполняем очистку хранилища объявленных имён
-	this->_blocks.clear();
 	// Выполняем очистку указателя имён, объявляемых разбираемой записью
 	this->_staged.clear();
 	// Выполняем очистку хранилища собираемого строкового значения

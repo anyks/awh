@@ -91,15 +91,6 @@ using namespace std;
  *
  */
 namespace {
-	/**
-	 * Если inline атрубит не подключён
-	 */
-	#if !defined(AWH_SCTP_INLINE)
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_SCTP_INLINE inline __attribute__((always_inline))
-	#endif
 
 	/**
 	 * @brief Функция опроса настройки ядра, включающей возможность протокола
@@ -141,7 +132,7 @@ namespace {
 	 * @return     включена ли возможность в работающем ядре
 	 *
 	 */
-	static AWH_SCTP_INLINE bool enabled(const char * name) noexcept {
+	static __AWH_INLINE__ bool enabled(const char * name) noexcept {
 		// Собираем путь к настройке ядра
 		char path[64];
 		// Заполняем путь к настройке ядра

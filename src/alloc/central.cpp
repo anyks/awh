@@ -44,6 +44,7 @@
 #include "internal/pages.inc"
 #include "internal/classes.inc"
 
+
 /**
  * @brief Пространство имён вспомогательных средств
  *
@@ -91,7 +92,7 @@ awh::alloc::Central::State::State() noexcept :
  */
 awh::alloc::Central::List::List() noexcept :
  live(0), count(0),
- regions(0), top(nullptr), returns(0) {}
+ regions(0), top(nullptr), tail(nullptr), returns(0) {}
 
 /**
  * @brief Конструктор
@@ -140,6 +141,8 @@ void awh::alloc::Central::reset() noexcept {
 		this->_lists[i].lock.acquire();
 		// Обнуляем голову списка свободных блоков
 		this->_lists[i].top = nullptr;
+		// Обнуляем хвост цепочки областей разряда
+		this->_lists[i].tail = nullptr;
 		// Обнуляем число свободных блоков
 		this->_lists[i].count = 0;
 		// Обнуляем число выданных кэшам блоков
@@ -294,6 +297,10 @@ bool awh::alloc::Central::carve(const size_t index) noexcept {
 		this->_lists[index].top->prev = span;
 	// Головой цепочки становится нарезанная область
 	this->_lists[index].top = span;
+	// Если цепочка была пуста, область становится и хвостом
+	if(span->next == nullptr)
+		// Хвостом цепочки становится нарезанная область
+		this->_lists[index].tail = span;
 	// Увеличиваем число свободных блоков
 	this->_lists[index].count += carved;
 	// Увеличиваем число нарезанных областей
@@ -324,15 +331,38 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	hold_t hold(this->_lists[index].lock);
 	// Область, чья стопка кормит набор
 	Pages::span_t * span = this->_lists[index].top;
+	// Число пройденных областей поиска
+	size_t passed = 0;
 	/**
-	 * Ищем первую область со свободными блоками
+	 * Ищем первую область со свободными блоками, осушенные унося к хвосту
 	 *
-	 * Область с пустой стопкой остаётся в цепочке: её блоки ещё удержаны
-	 * наружу и вернутся в неё же возвратом пачки
+	 * Область с пустой стопкой остаётся в цепочке: её блоки ещё удержаны наружу
+	 * и вернутся в неё же возвратом пачки. Но стоять впереди кормящих ей незачем:
+	 * всякая выборка шла бы через осушенные области, и работа, держащая разряд
+	 * целиком, платила бы квадрат за каждую пачку. Осушенная область уходит
+	 * к хвосту цепочки - голова кормит, хвост копит
 	 */
-	while((span != nullptr) && (span->stack == nullptr))
+	while((span != nullptr) && (span->stack == nullptr)){
+		/**
+		 * Считаем пройденные области
+		 *
+		 * Осушенная область уходит к хвосту - туда же уходит и обход: на полностью
+		 * осушённой цепочке ходьба вращала бы её без конца. Пройдено больше областей,
+		 * чем числится в разряде, - кормильца нет вовсе
+		 */
+		if(++passed > this->_lists[index].regions){
+			// Кормящей области в разряде нет
+			span = nullptr;
+			// Прекращаем поиск
+			break;
+		}
+		// Запоминаем следующую область прежде переноса
+		Pages::span_t * subsequent = span->next;
+		// Уносим осушенную область к хвосту цепочки
+		this->tail(index, span);
 		// Переходим к следующей области
-		span = span->next;
+		span = subsequent;
+	}
 	// Если свободных блоков разряда нигде нет
 	if(span == nullptr){
 		// Нарезаем новую область под разряд
@@ -353,11 +383,23 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	 */
 	while(result < count){
 		/**
-		 * Ищем область со свободными блоками
+		 * Ищем область со свободными блоками, осушенные унося к хвосту
 		 */
-		while((span != nullptr) && (span->stack == nullptr))
+		while((span != nullptr) && (span->stack == nullptr)){
+			// Считаем пройденные области тем же пределом, что и первый поиск
+			if(++passed > this->_lists[index].regions){
+				// Кормящей области в разряде нет
+				span = nullptr;
+				// Прекращаем набор
+				break;
+			}
+			// Запоминаем следующую область прежде переноса
+			Pages::span_t * subsequent = span->next;
+			// Уносим осушенную область к хвосту цепочки
+			this->tail(index, span);
 			// Переходим к следующей области
-			span = span->next;
+			span = subsequent;
+		}
 		// Если свободных блоков больше нет
 		if(span == nullptr)
 			// Прекращаем набор
@@ -399,6 +441,52 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	return result;
 }
 /**
+ * @brief Метод переноса области в хвост цепочки разряда
+ *
+ * @note Замок разряда держит ЗВАННЫЙ
+ *
+ * @param index номер разряда
+ * @param span  переносимая область
+ *
+ */
+void awh::alloc::Central::tail(const size_t index, Pages::span_t * span) noexcept {
+	// Если переносить нечего либо область уже хвост
+	if((span == nullptr) || (span == this->_lists[index].tail))
+		// Переносить нечего
+		return;
+	// Изымаем область из цепочки разряда
+	if(span->prev != nullptr)
+		// Прежняя область связывается с последующей
+		span->prev->next = span->next;
+	// Если изымается голова цепочки
+	else this->_lists[index].top = span->next;
+	// Если последующая область есть
+	if(span->next != nullptr)
+		// Последующая область связывается с прежней
+		span->next->prev = span->prev;
+	// Если цепочка опустела, переносить некуда - область и есть цепочка
+	if(this->_lists[index].top == nullptr){
+		// Головой цепочки становится переносимая область
+		this->_lists[index].top = span;
+		// Хвостом цепочки становится переносимая область
+		this->_lists[index].tail = span;
+		// Прежней области перед переносимой нет
+		span->prev = nullptr;
+		// За переносимой областью никого нет
+		span->next = nullptr;
+		// Перенос завершён
+		return;
+	}
+	// Прежний хвост связывается с переносимой областью
+	this->_lists[index].tail->next = span;
+	// Переносимая область следует за прежним хвостом
+	span->prev = this->_lists[index].tail;
+	// За переносимой областью никого нет
+	span->next = nullptr;
+	// Хвостом цепочки становится переносимая область
+	this->_lists[index].tail = span;
+}
+/**
  * @brief Метод отдачи куче покоящихся областей разряда
  *
  * @note Замок разряда держит ЗВАННЫЙ: разбор пачки зовёт метод под своим замком,
@@ -427,6 +515,10 @@ size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const b
 		Pages::span_t * subsequent = record->next;
 		// Если область покоится дольше окна
 		if((record->idled != 0) && (all || ((now - record->idled) >= SPAN_WINDOW))){
+			// Если изымается хвост цепочки, хвост уходит к прежней соседке
+			if(this->_lists[index].tail == record)
+				// Хвостом становится прежняя область
+				this->_lists[index].tail = record->prev;
 			// Изымаем область из цепочки разряда
 			if(record->prev != nullptr)
 				// Прежняя область связывается с последующей
@@ -486,6 +578,10 @@ size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const b
 			if(this->_lists[index].top != nullptr)
 				// Записываем прежнюю область перед возвращённой
 				this->_lists[index].top->prev = freed;
+			// Иначе цепочка была пуста и область становится хвостом
+			else
+				// Хвостом цепочки становится возвращённая область
+				this->_lists[index].tail = freed;
 			// Возвращённая область становится головой цепочки разряда
 			this->_lists[index].top = freed;
 			// Восстанавливаем число нарезанных областей разряда
@@ -568,6 +664,10 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 		 * платила в среднем по шесть тысяч переходов на пачку
 		 */
 		if(drained && (span->prev != nullptr)){
+			// Если область была хвостом, хвост уходит к её прежней соседке
+			if(this->_lists[index].tail == span)
+				// Хвостом становится прежняя область
+				this->_lists[index].tail = span->prev;
 			// Прежняя область связывается с последующей
 			span->prev->next = span->next;
 			// Если последующая область есть
@@ -1018,7 +1118,7 @@ bool awh::alloc::Central::free(void * addr, const uint64_t now, const bool keepi
  * показал, что до 41 % внутри самого метода уходило на пролог: шесть сохраняемых
  * регистров под пять выходных доводов, из которых путь мелкого блока берёт лишь два.
  * Подставленный, он даёт собирателю выбросить неиспользуемые доводы целиком - а поиск
- * куска и описание области под ним подставлялись и прежде (`AWH_PAGES_INLINE`)
+ * куска и описание области под ним подставлялись и прежде (`__AWH_INLINE__`)
  *
  */
 /**

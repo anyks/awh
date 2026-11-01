@@ -91,24 +91,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_CENTRAL_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_CENTRAL_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -290,6 +272,8 @@ namespace awh {
 					size_t regions;
 					// Голова цепочки областей разряда
 					Pages::span_t * top;
+					// Хвост цепочки областей разряда
+					Pages::span_t * tail;
 					// Число возвратов пачек в разряд
 					size_t returns;
 					/**
@@ -428,6 +412,16 @@ namespace awh {
 				 * \~
 				 */
 				size_t shed(const size_t index, const uint64_t now, const bool all) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод переноса области в хвост цепочки разряда
+				 *
+				 * \~english
+				 * @brief Method of moving a region to the tail of the class chain
+				 *
+				 * \~
+				 */
+				void tail(const size_t index, Pages::span_t * span) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -598,7 +592,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CENTRAL_INLINE bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept;
+				__AWH_INLINE__ bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод определения разряда, которому принадлежит адрес
@@ -621,7 +615,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept;
+				__AWH_INLINE__ bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept;
 			public:
 				/**
 				 * \~russian

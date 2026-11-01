@@ -39,22 +39,9 @@
 #include <cstdint>
 
 /**
- * Если компилятор принадлежит к семейству Visual Studio
+ * Подключаем заголовочный файл проекта
  */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_ASCII_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_ASCII_INLINE inline __attribute__((always_inline))
-#endif
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -154,7 +141,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isSpace(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isSpace(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter == ' ') || ((letter >= '\t') && (letter <= '\r')));
 		}
@@ -173,7 +160,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isDigit(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isDigit(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter >= '0') && (letter <= '9'));
 		}
@@ -192,7 +179,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isOctal(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isOctal(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter >= '0') && (letter <= '7'));
 		}
@@ -211,7 +198,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isHex(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isHex(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return (
 				((letter >= '0') && (letter <= '9')) ||
@@ -234,7 +221,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isUpper(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isUpper(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter >= 'A') && (letter <= 'Z'));
 		}
@@ -253,7 +240,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isLower(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isLower(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter >= 'a') && (letter <= 'z'));
 		}
@@ -272,7 +259,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isAlpha(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isAlpha(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return (isUpper(letter) || isLower(letter));
 		}
@@ -291,7 +278,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isAlnum(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isAlnum(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return (isAlpha(letter) || isDigit(letter));
 		}
@@ -316,7 +303,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool isPrint(const char letter) noexcept {
+		__AWH_INLINE__ constexpr bool isPrint(const char letter) noexcept {
 			// Возвращаем результат проверки
 			return ((letter >= ' ') && (letter <= '~'));
 		}
@@ -335,7 +322,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr char toUpper(const char letter) noexcept {
+		__AWH_INLINE__ constexpr char toUpper(const char letter) noexcept {
 			// Возвращаем приведённый символ
 			return (isLower(letter) ? static_cast <char> (letter - ('a' - 'A')) : letter);
 		}
@@ -354,7 +341,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr char toLower(const char letter) noexcept {
+		__AWH_INLINE__ constexpr char toLower(const char letter) noexcept {
 			// Возвращаем приведённый символ
 			return (isUpper(letter) ? static_cast <char> (letter + ('a' - 'A')) : letter);
 		}
@@ -383,7 +370,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr bool equals(const char first, const char second) noexcept {
+		__AWH_INLINE__ constexpr bool equals(const char first, const char second) noexcept {
 			// Возвращаем результат сравнения
 			return ((first == second) || (toLower(first) == toLower(second)));
 		}
@@ -402,7 +389,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_ASCII_INLINE constexpr int32_t hexValue(const char letter) noexcept {
+		__AWH_INLINE__ constexpr int32_t hexValue(const char letter) noexcept {
 			// Возвращаем числовое значение символа
 			return (
 				((letter >= '0') && (letter <= '9')) ? (letter - '0') : (

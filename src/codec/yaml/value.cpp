@@ -84,25 +84,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_YAML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_YAML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Объект для работы с файловой системой
 	 *
 	 */
@@ -172,7 +153,7 @@ namespace {
 	 * @return     назначенное правило усечения переводов строк
 	 *
 	 */
-	static AWH_YAML_INLINE codec::yaml::chomp_t chomping(const string & text) noexcept {
+	static __AWH_INLINE__ codec::yaml::chomp_t chomping(const string & text) noexcept {
 		// Выводим назначенное по содержимому правило усечения переводов строк
 		return (
 			(text.empty() || (text.back() != '\n')) ? codec::yaml::chomp_t::STRIP :
@@ -199,7 +180,7 @@ namespace {
 	 * @return     имя, записанное звеном пути
 	 *
 	 */
-	static AWH_YAML_INLINE string escape(const string_view name) noexcept {
+	static __AWH_INLINE__ string escape(const string_view name) noexcept {
 		// Собираемое звено пути
 		string result = "";
 		// Выполняем выделение места под звено пути
@@ -250,7 +231,7 @@ namespace {
 	 * @return      признак успешности снятия отменяющих записей
 	 *
 	 */
-	static AWH_YAML_INLINE bool unescape(string & token) noexcept {
+	static __AWH_INLINE__ bool unescape(string & token) noexcept {
 		/**
 		 * Выполняем перебор всех знаков отмены звена пути
 		 */
@@ -295,7 +276,7 @@ namespace {
 	 * @return     признак числовой записи
 	 *
 	 */
-	static AWH_YAML_INLINE bool numbering(const string & text, size_t & index) noexcept {
+	static __AWH_INLINE__ bool numbering(const string & text, size_t & index) noexcept {
 		/**
 		 * Если запись пуста вовсе
 		 */
@@ -356,7 +337,7 @@ namespace {
 	 * @return ссылка на пустую запись
 	 *
 	 */
-	static AWH_YAML_INLINE const string & nothing() noexcept {
+	static __AWH_INLINE__ const string & nothing() noexcept {
 		// Пустая запись, обращением неудачным выдаваемая
 		static const string result;
 		// Выводим ссылку на пустую запись
@@ -372,7 +353,7 @@ namespace {
 	 * @return ссылка на неопределённое значение
 	 *
 	 */
-	static AWH_YAML_INLINE const codec::yaml::value_t & missing() noexcept {
+	static __AWH_INLINE__ const codec::yaml::value_t & missing() noexcept {
 		// Неопределённое значение, обращением неудачным выдаваемое
 		static const codec::yaml::value_t result;
 		// Выводим ссылку на неопределённое значение

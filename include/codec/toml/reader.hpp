@@ -779,34 +779,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Хранилище имён объявленных ключей и таблиц
-					 *
-					 * @details Имена хранятся блоками, а перечень объявленного держит
-					 *          ссылки на них: имя, хранимое собственной последовательностью знаков,
-					 *          обходилось выделением памяти на каждый объявленный ключ - на файле
-					 *          настроек в шестнадцать мегабайт их набирался миллион.
-					 *
-					 * @note Хранилище взято двусторонней очередью намеренно: перечень
-					 *       блоков при дописывании нового не перемещает прежние, и ссылки на их
-					 *       содержимое остаются годными
-					 *
-					 * \~english
-					 * Storage of the names of the declared keys and tables
-					 *
-					 * @details The names are stored in blocks, while the list of what has been declared keeps
-					 *          the references to them: a name stored as a sequence of characters of its own
-					 *          cost an allocation of the memory for every declared key — on a settings
-					 *          file of sixteen megabytes a million of them accumulated.
-					 *
-					 * @note The storage has been taken as a deque deliberately: the list
-					 *       of the blocks does not move the previous ones at the appending of a new one, and the references to their
-					 *       content remain valid
-					 *
-					 * \~
-					 */
-					deque <string> _blocks;
-					/**
-					 * \~russian
 					 * Имена, объявляемые разбираемой записью
 					 *
 					 * @details Запись, которой не хватило продолжения текста, откатывается
@@ -836,6 +808,208 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Указатель родов объявленных имён читателя
+					 *
+					 * @details Ключ до 48 знаков лежит в самом слоте, рядом с родом, и сличение
+					 *          при поиске не ходит в чужую память. Ключ длиннее слотом не вмещается
+					 *          и держится слотом же во владении, отчего указатель не зависит от
+					 *          прочих полей читателя и переживает копирование целиком.
+					 *
+					 * @note Снятое имя помечается в слоте, но из пробы не выбрасывается:
+					 *       выбрасывание разорвало бы цепочку линейной пробы, а пересборка
+					 *       таблицы пометки стирает
+					 *
+					 * \~english
+					 * @brief Index of the kinds of the declared names of the reader
+					 *
+					 * @details The key of up to 48 characters lies in the slot itself, next to the kind, and the comparison
+					 *          of the search does not walk into someone else's memory. A key longer than the slot holds is
+					 *          carried by the slot itself in ownership, wherefore the index does not depend upon the other
+					 *          fields of the reader and survives a copying as a whole.
+					 *
+					 * @note A dropped name is marked in the slot, yet is not thrown out of the probe:
+					 *       the throwing away would tear the chain of the linear probe, while a rebuilding
+					 *       of the table erases the marks
+					 *
+					 * \~
+					 */
+					typedef class Names {
+						public:
+							// Количество слотов указателя имён
+							size_t capacity;
+							// Количество занятых слотов указателя имён
+							size_t occupied;
+							// Количество слотов снятых имён указателя
+							size_t buried;
+						public:
+							// Слот указателя имён
+							struct Slot;
+							// Слоты указателя имён
+							struct Slot * slots;
+						public:
+							/**
+							 * \~russian
+							 * @brief Очистка указателя имён
+							 *
+							 * @details Занятые слоты освобождаются от длинных ключей, слоты таблицы
+							 *          остаются при ней: пересборка пишет имена на место прежних.
+							 *
+							 * \~english
+							 * @brief Clearing of the index of the names
+							 *
+							 * @details The occupied slots are freed of the long keys, while the slots of the table
+							 *          stay with it: a rebuilding writes the names onto the place of the previous ones.
+							 *
+							 * \~
+							 */
+							void clear() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод пересборки таблицы слотов
+							 *
+							 * @param wanted требуемое количество слотов
+							 *
+							 * \~english
+							 * @brief Method of the rebuilding of the table of the slots
+							 *
+							 * @param wanted the required number of the slots
+							 *
+							 * \~
+							 */
+							void rehash(const size_t wanted) noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод розыска рода объявленного имени
+							 *
+							 * @param key  разыскиваемое имя
+							 * @param kind род найденного имени
+							 * @return     признак того, что имя найдено
+							 *
+							 * \~english
+							 * @brief Method of the search of the kind of a declared name
+							 *
+							 * @param key  the name being searched
+							 * @param kind the kind of the name found
+							 * @return     flag of the name having been found
+							 *
+							 * \~
+							 */
+							bool locate(const string_view key, kind_t & kind) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод заведения имени, объявленным не бывшего
+							 *
+							 * @param key  заводимое имя
+							 * @param kind род заводимого имени
+							 * @return     признак того, что имя заведено этой установкой
+							 *
+							 * \~english
+							 * @brief Method of the establishing of a name never declared before
+							 *
+							 * @param key  the name being established
+							 * @param kind the kind of the name being established
+							 * @return     flag of the name having been established by this very setting
+							 *
+							 * \~
+							 */
+							bool insert(const string_view key, const kind_t kind) noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод запоминания имени с родом объявления
+							 *
+							 * @param key  запоминаемое имя
+							 * @param kind род запоминаемого имени
+							 *
+							 * \~english
+							 * @brief Method of the remembering of a name with the kind of its declaration
+							 *
+							 * @param key  the name being remembered
+							 * @param kind the kind of the name being remembered
+							 *
+							 * \~
+							 */
+							void assign(const string_view key, const kind_t kind) noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод снятия имён, объявленных содержимым таблицы набора
+							 *
+							 * @param prefix полное имя таблицы набора
+							 * @return       количество снятых имён
+							 *
+							 * \~english
+							 * @brief Method of the dropping of the names declared by the content of an array table
+							 *
+							 * @param prefix the full name of the array table
+							 * @return       the number of the names dropped
+							 *
+							 * \~
+							 */
+							size_t drop(const string_view prefix) noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Оператор присваивания
+							 *
+							 * \~english
+							 * @brief Assignment operator
+							 *
+							 * \~
+							 */
+							Names & operator = (const Names & names) noexcept;
+							/**
+							 * \~russian
+							 * @brief Оператор перемещения
+							 *
+							 * \~english
+							 * @brief Move operator
+							 *
+							 * \~
+							 */
+							Names & operator = (Names && names) noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Names() noexcept;
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							Names(const Names & names) noexcept;
+							/**
+							 * \~russian
+							 * @brief Конструктор перемещения
+							 *
+							 * \~english
+							 * @brief Move constructor
+							 *
+							 * \~
+							 */
+							Names(Names && names) noexcept;
+							/**
+							 * \~russian
+							 * @brief Деструктор
+							 *
+							 * \~english
+							 * @brief Destructor
+							 *
+							 * \~
+							 */
+							~Names() noexcept;
+					} names_t;
+					/**
+					 * \~russian
 					 * Указатель родов уже объявленных имён
 					 *
 					 * @details Правила описания об объявлении имён сводятся к роду уже
@@ -861,7 +1035,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					unordered_map <string_view, kind_t> _names;
+					names_t _names;
 					/**
 					 * \~russian
 					 * Указатель имён, объявляемых разбираемой записью
@@ -1437,22 +1611,6 @@ namespace awh {
 					 * \~
 					 */
 					bool declare(const string & name, const kind_t kind, const error_t error, const size_t offset) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод переноса имени в хранилище объявленных имён
-					 *
-					 * @param name переносимое имя ключа либо таблицы
-					 * @return     ссылка на имя, перенесённое в хранилище
-					 *
-					 * \~english
-					 * @brief Method of transferring a name into the storage of the declared names
-					 *
-					 * @param name name of the key or of the table being transferred
-					 * @return     reference to the name transferred into the storage
-					 *
-					 * \~
-					 */
-					string_view intern(const string_view name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки полного имени из составных частей

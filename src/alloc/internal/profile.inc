@@ -57,7 +57,7 @@ namespace awh {
 		 * @return признак надобности учёта
 		 *
 		 */
-		AWH_PROFILE_INLINE bool profile_t::wanted() noexcept {
+		__AWH_INLINE__ bool profile_t::wanted() noexcept {
 			/**
 			 * Если учёт выключен
 			 *
@@ -82,7 +82,7 @@ namespace awh {
 		 * @return признак наличия учитываемых блоков
 		 *
 		 */
-		AWH_PROFILE_INLINE bool profile_t::tracking() const noexcept {
+		__AWH_INLINE__ bool profile_t::tracking() const noexcept {
 			// Выводим признак наличия учитываемых блоков
 			return (this->_live.load(std::memory_order_relaxed) > 0);
 		}

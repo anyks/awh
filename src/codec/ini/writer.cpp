@@ -70,25 +70,6 @@ namespace {
 	using namespace awh::codec::ini;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_INI_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_INI_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Функция проверки знака на нужду в записи управляющей последовательностью
 	 *
 	 * @param letter проверяемый знак значения
@@ -125,7 +106,7 @@ namespace {
 	 * @return     результат проверки записи
 	 *
 	 */
-	static AWH_INI_INLINE bool continued(const string_view text) noexcept {
+	static __AWH_INLINE__ bool continued(const string_view text) noexcept {
 		// Количество обратных косых черт в конце записи
 		size_t count = 0;
 		/**
@@ -145,7 +126,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	static AWH_INI_INLINE bool overlaps(const string & buffer, const string_view text) noexcept {
+	static __AWH_INLINE__ bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -169,7 +150,7 @@ namespace {
 	 * @return               результат проверки
 	 *
 	 */
-	static AWH_INI_INLINE bool quotable(const string_view value, const marker_t comments, const bool inlineComments, const bool trimmed, const bool stripped) noexcept {
+	static __AWH_INLINE__ bool quotable(const string_view value, const marker_t comments, const bool inlineComments, const bool trimmed, const bool stripped) noexcept {
 		/**
 		 * Если значение пусто
 		 *
@@ -217,7 +198,7 @@ namespace {
 	 * @param result текст, к которому дописывается управляющая последовательность
 	 *
 	 */
-	static AWH_INI_INLINE void escaped(const char letter, string & result) noexcept {
+	static __AWH_INLINE__ void escaped(const char letter, string & result) noexcept {
 		// Выполняем добавление обратной косой черты к тексту
 		result.push_back('\\');
 		/**

@@ -54,24 +54,6 @@
 #include "../num/bignum.hpp"
 
 /**
- * Если компилятор принадлежит к семейству Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_HASH_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_HASH_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -381,7 +363,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_HASH_INLINE typename enable_if <is_integral <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
+		__AWH_INLINE__ typename enable_if <is_integral <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
 			/**
 			 * Создаём тип данных беззнакового представления результата хэширования
 			 *
@@ -439,7 +421,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_HASH_INLINE typename enable_if <is_floating_point <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
+		__AWH_INLINE__ typename enable_if <is_floating_point <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
 			/**
 			 * Проверяем соответствие вещественного типа формату IEEE-754
 			 */
@@ -507,7 +489,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_HASH_INLINE void assign(array <uint8_t, SIZE> & result, const uint8_t * buffer) noexcept {
+		__AWH_INLINE__ void assign(array <uint8_t, SIZE> & result, const uint8_t * buffer) noexcept {
 			// Копируем сформированный хэш в результат хэширования
 			::memcpy(result.data(), buffer, SIZE);
 		}
@@ -542,7 +524,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_HASH_INLINE void assign(BigNum <BYTES, TYPE> & result, const uint8_t * buffer) noexcept {
+		__AWH_INLINE__ void assign(BigNum <BYTES, TYPE> & result, const uint8_t * buffer) noexcept {
 			/**
 			 * Проверяем совпадение размера длинного числа с размером его буфера
 			 */
@@ -597,7 +579,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		AWH_HASH_INLINE T create(const void * buffer, const size_t size, const uint64_t seed = 0) noexcept {
+		__AWH_INLINE__ T create(const void * buffer, const size_t size, const uint64_t seed = 0) noexcept {
 			// Выполняем проверку типа результата хэширования на пригодность
 			static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 			/**
@@ -869,7 +851,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T digest() const noexcept {
+			__AWH_INLINE__ T digest() const noexcept {
 				// Выполняем проверку типа результата хэширования на пригодность
 				static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 				/**
@@ -927,7 +909,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hash(const void * buffer, const size_t size) const noexcept {
+			__AWH_INLINE__ T hash(const void * buffer, const size_t size) const noexcept {
 				// Выполняем формирование хэша буфера данных
 				return hashing::create <T> (buffer, size, this->_seed);
 			}
@@ -960,7 +942,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hash(string_view text) const noexcept {
+			__AWH_INLINE__ T hash(string_view text) const noexcept {
 				// Выполняем формирование хэша текста
 				return this->hash <T> (text.data(), text.size());
 			}
@@ -1007,7 +989,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE A hash(const B & buffer) const noexcept {
+			__AWH_INLINE__ A hash(const B & buffer) const noexcept {
 				// Выполняем формирование хэша буфера данных
 				return this->hash <A> (buffer.data(), buffer.size() * sizeof(typename B::value_type));
 			}
@@ -1025,7 +1007,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE void update(string_view text) noexcept {
+			__AWH_INLINE__ void update(string_view text) noexcept {
 				// Выполняем добавление текста в потоковое хэширование
 				this->update(text.data(), text.size());
 			}
@@ -1062,7 +1044,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE void update(const B & buffer) noexcept {
+			__AWH_INLINE__ void update(const B & buffer) noexcept {
 				// Выполняем добавление данных в потоковое хэширование
 				this->update(buffer.data(), buffer.size() * sizeof(typename B::value_type));
 			}
@@ -1096,7 +1078,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE void update(const BigNum <BYTES, TYPE> & num) noexcept {
+			__AWH_INLINE__ void update(const BigNum <BYTES, TYPE> & num) noexcept {
 				// Выполняем добавление длинного числа в потоковое хэширование
 				this->update(num.data(), BYTES);
 			}
@@ -1133,7 +1115,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hash(const BigNum <BYTES, TYPE> & num) const noexcept {
+			__AWH_INLINE__ T hash(const BigNum <BYTES, TYPE> & num) const noexcept {
 				// Выполняем формирование хэша длинного числа
 				return this->hash <T> (num.data(), BYTES);
 			}
@@ -1153,7 +1135,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE uint64_t operator () (string_view text) const noexcept {
+			__AWH_INLINE__ uint64_t operator () (string_view text) const noexcept {
 				// Выполняем формирование хэша текста
 				return this->hash <uint64_t> (text.data(), text.size());
 			}

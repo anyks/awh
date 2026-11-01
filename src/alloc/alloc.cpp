@@ -53,31 +53,6 @@
 #endif
 
 /**
- * Признак принудительной подстановки
- *
- * Быстрые пути выдачи и освобождения зовут несколько мелких помощников, и собиратель
- * подставлять их сам не берётся - зовут их из многих мест. Работы же в них считанные
- * команды, а вызов стоит дороже работы: профиль `perf` на Debian отдал `enrol`,
- * `account` и `prepare` вместе 12.7 % времени сценария одного разряда
- */
-#if defined(_MSC_VER)
-	/**
-	 * @brief Устанавливаем подстановку в __forceinline
-	 *
-	 */
-	#define AWH_ALLOC_INLINE __forceinline
-/**
- * Для прочих собирателей
- */
-#else
-	/**
-	 * @brief Устанавливаем подстановку в inline с always_inline
-	 *
-	 */
-	#define AWH_ALLOC_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * Признак запрета подстановки
  *
  * Ставится холодным хвостам: подставленные в быстрый путь, они раздували бы его код и
@@ -495,7 +470,7 @@ namespace {
 	 * @return устройство распределителя
 	 *
 	 */
-	static AWH_ALLOC_INLINE machinery_t * device() noexcept {
+	static __AWH_INLINE__ machinery_t * device() noexcept {
 		/**
 		 * Читаем указатель ОДНАЖДЫ, а не собираем адрес массива
 		 *
@@ -1062,7 +1037,7 @@ namespace {
 	 * @return опубликованные грубые часы, либо точные при отсутствии опубликованных
 	 *
 	 */
-	static AWH_ALLOC_INLINE uint64_t stamp() noexcept {
+	static __AWH_INLINE__ uint64_t stamp() noexcept {
 		// Читаем опубликованные грубые часы
 		const uint64_t published = coarse.load(std::memory_order_relaxed);
 		/**
@@ -1681,7 +1656,7 @@ namespace {
 	 * @return признак готовности распределителя
 	 *
 	 */
-	static AWH_ALLOC_INLINE bool prepare() noexcept {
+	static __AWH_INLINE__ bool prepare() noexcept {
 		// Если распределитель уже готов
 		if(stage.load(std::memory_order_acquire) == STAGE_READY)
 			// Заводить нечего
@@ -1696,7 +1671,7 @@ namespace {
 	 * @param size  изменение занятого в байтах: отрицательное при освобождении
 	 *
 	 */
-	static AWH_ALLOC_INLINE void account(alloc::cache_t * cache, const int64_t size) noexcept {
+	static __AWH_INLINE__ void account(alloc::cache_t * cache, const int64_t size) noexcept {
 		/**
 		 * Признак AWH_ALLOC_NO_ACCOUNTING снимает учёт расхода памяти
 		 *
@@ -2027,7 +2002,7 @@ namespace {
 	 * @param size затребованный размер блока в байтах
 	 *
 	 */
-	static AWH_ALLOC_INLINE void enrol(void * ptr, const size_t size) noexcept {
+	static __AWH_INLINE__ void enrol(void * ptr, const size_t size) noexcept {
 		// Если выдавать было нечего либо ни одна возможность не включена
 		if((ptr == nullptr) || plain.load(std::memory_order_relaxed))
 			// Учитывать нечего
@@ -2140,7 +2115,7 @@ namespace {
 	 * @brief Функция быстрого определения размера блока
 	 *
 	 */
-	static AWH_ALLOC_INLINE size_t sized(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
+	static __AWH_INLINE__ size_t sized(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
 		/**
 		 * Пробуем опознать блок разряда меткой страницы
 		 *
@@ -2380,7 +2355,7 @@ namespace {
 	 * @return       адрес выданной памяти либо nullptr
 	 *
 	 */
-	static AWH_ALLOC_INLINE void * reserve(const size_t wanted) noexcept {
+	static __AWH_INLINE__ void * reserve(const size_t wanted) noexcept {
 		/**
 		 * Нулевой запрос обращаем в наименьший блок, а не в пустоту
 		 *
@@ -2859,7 +2834,7 @@ namespace {
 	 * @param origin  прежние функции исходной библиотеки либо nullptr
 	 *
 	 */
-	static AWH_ALLOC_INLINE void discard(void * ptr, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
+	static __AWH_INLINE__ void discard(void * ptr, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
 		// Если освобождать нечего
 		if(AWH_ALLOC_UNLIKELY(ptr == nullptr))
 			// Освобождать нечего
@@ -2955,7 +2930,7 @@ namespace {
 	 * @return       та же выданная память
 	 *
 	 */
-	static AWH_ALLOC_INLINE void * blanked(void * result, const size_t from, const size_t size) noexcept {
+	static __AWH_INLINE__ void * blanked(void * result, const size_t from, const size_t size) noexcept {
 		/**
 		 * Спрашиваем признак голой выдачи ПЕРВЫМ
 		 *

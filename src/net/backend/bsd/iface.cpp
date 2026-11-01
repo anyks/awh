@@ -107,16 +107,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_IF_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_IF_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Инкапсулируем статичные функции в пространство имён
  *
  */
@@ -133,7 +123,7 @@ namespace iface {
 	 * @return       маска подсети
 	 *
 	 */
-	static AWH_IF_INLINE in_addr_t prefix2mask(const uint8_t prefix) noexcept {
+	static __AWH_INLINE__ in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
 		if(prefix == 0)
 			// Возвращаем маску подсети
@@ -148,7 +138,7 @@ namespace iface {
 	 * @return     префикс сети
 	 *
 	 */
-	static AWH_IF_INLINE uint8_t mask2prefix(const struct in_addr & mask) noexcept {
+	static __AWH_INLINE__ uint8_t mask2prefix(const struct in_addr & mask) noexcept {
 		// Переменная результата
 		uint8_t result = 0;
 		// Преобразуем маску подсети в префикс
@@ -172,7 +162,7 @@ namespace iface {
 	 * @param name   имя сетевого интерфейса (может быть не нуль-терминированным string_view)
 	 *
 	 */
-	static AWH_IF_INLINE void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
+	static __AWH_INLINE__ void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
 		// Определяем количество копируемых байт с учётом завершающего нуля
 		const size_t length = (name.size() < static_cast <size_t> (IFNAMSIZ - 1)) ? name.size() : static_cast <size_t> (IFNAMSIZ - 1);
 		// Копируем имя интерфейса ровно на длину переданного представления
@@ -276,7 +266,7 @@ namespace iface {
 	 * @return     имя найденного сетевого интерфейса
 	 *
 	 */
-	static AWH_IF_INLINE string findNameByAddr(struct ifaddrs * list, const net::addr_t * addr) noexcept {
+	static __AWH_INLINE__ string findNameByAddr(struct ifaddrs * list, const net::addr_t * addr) noexcept {
 		/**
 		 * Перебираем все сетевые интерфейсы
 		 */
@@ -342,7 +332,7 @@ namespace iface {
 	 * @return     результат классификации интерфейса
 	 *
 	 */
-	static AWH_IF_INLINE bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
+	static __AWH_INLINE__ bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
 		// Переменная результата
 		bool result = false;
 		/**
@@ -400,7 +390,7 @@ namespace iface {
 	 * @return       признак негодной длины префикса
 	 *
 	 */
-	static AWH_IF_INLINE bool oversized(const string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
+	static __AWH_INLINE__ bool oversized(const string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 		// Если адрес не передан либо длина префикса предела не превышает
 		if((ip == nullptr) || (prefix <= ((ip->size == 16) ? 128 : 32)))
 			// Длина префикса годная
@@ -421,7 +411,7 @@ namespace iface {
 	 * @return       результат применения адреса
 	 *
 	 */
-	static AWH_IF_INLINE bool applyAddress(const net::socket_t sock, const string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
+	static __AWH_INLINE__ bool applyAddress(const net::socket_t sock, const string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если длина префикса предел разрядности адреса превышает
@@ -691,7 +681,7 @@ namespace iface {
 	 * @return       дескриптор созданного сетевого интерфейса
 	 *
 	 */
-	static AWH_IF_INLINE net::socket_t clonable(string_view driver, string & name) noexcept {
+	static __AWH_INLINE__ net::socket_t clonable(string_view driver, string & name) noexcept {
 		// Если название драйвера передано
 		if(!driver.empty()){
 			/**

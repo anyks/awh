@@ -70,16 +70,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_SOCKET_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_SOCKET_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Внутренние служебные объекты
  *
  */
@@ -173,7 +163,7 @@ namespace {
 	 * @return    результат обновления кеша
 	 *
 	 */
-	static AWH_SOCKET_INLINE bool refreshIfaceCache(const uint64_t now) noexcept {
+	static __AWH_INLINE__ bool refreshIfaceCache(const uint64_t now) noexcept {
 		// Список собранных записей сетевых интерфейсов
 		vector <iface_entry_t> entries;
 		// Список сетевых интерфейсов
@@ -239,7 +229,7 @@ namespace {
 	 * @return     результат поиска IPv4-адреса
 	 *
 	 */
-	static AWH_SOCKET_INLINE bool resolveIfaceIPv4(uint32_t & out, string_view name) noexcept {
+	static __AWH_INLINE__ bool resolveIfaceIPv4(uint32_t & out, string_view name) noexcept {
 		// Текущая метка времени в миллисекундах
 		const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 		/**
@@ -288,7 +278,7 @@ namespace {
 	 * @return        индекс сетевого интерфейса (0 - интерфейс не найден)
 	 *
 	 */
-	static AWH_SOCKET_INLINE uint32_t resolveIfaceIndexIPv6(const uint8_t * address) noexcept {
+	static __AWH_INLINE__ uint32_t resolveIfaceIndexIPv6(const uint8_t * address) noexcept {
 		// Текущая метка времени в миллисекундах
 		const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 		/**

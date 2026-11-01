@@ -124,6 +124,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/macro/global.hpp>
 #include <net/net.hpp>
 
 /**
@@ -182,34 +183,6 @@ typedef WSACMSGHDR cmsghdr;
 
 /**
  * \~russian
- * Принудительное встраивание средствами GCC и Clang
- *
- * @details Обход метаданных идёт на каждой принятой датаграмме, и посредники обязаны
- *          разворачиваться на месте обращения целиком: смысл их в том, чтобы не стоить
- *          ничего сверх самого действия
- *
- * \~english
- * Forced inlining by the means of GCC and Clang
- * @details The walk of the metadata goes on every received datagram, and the mediators are
- *          obliged to unfold at the place of the address entirely: their point is in not costing
- *          anything beyond the action itself
- *
- * \~
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_WIN_MESSAGE_INLINE __forceinline
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_WIN_MESSAGE_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
- * \~russian
  * @brief пространство имён библиотеки
  *
  * \~english
@@ -252,7 +225,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_WIN_MESSAGE_INLINE size_t align(const size_t size) noexcept {
+			__AWH_INLINE__ size_t align(const size_t size) noexcept {
 				// Выравниваем размер по границе машинного слова
 				return ((size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1));
 			}
@@ -270,7 +243,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_WIN_MESSAGE_INLINE cmsghdr * first(const struct msghdr * msg) noexcept {
+			__AWH_INLINE__ cmsghdr * first(const struct msghdr * msg) noexcept {
 				// Если буфера служебных метаданных нет либо он меньше заголовка
 				if((msg == nullptr) || (msg->msg_control == nullptr) || (msg->msg_controllen < sizeof(cmsghdr)))
 					// Выводим пустое значение
@@ -294,7 +267,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_WIN_MESSAGE_INLINE cmsghdr * next(const struct msghdr * msg, cmsghdr * cmsg) noexcept {
+			__AWH_INLINE__ cmsghdr * next(const struct msghdr * msg, cmsghdr * cmsg) noexcept {
 				// Если обход окончен либо заголовок неполон
 				if((msg == nullptr) || (cmsg == nullptr) || (cmsg->cmsg_len < sizeof(cmsghdr)))
 					// Выводим пустое значение
@@ -358,7 +331,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_WIN_MESSAGE_INLINE uint8_t * data(const cmsghdr * cmsg) noexcept {
+			__AWH_INLINE__ uint8_t * data(const cmsghdr * cmsg) noexcept {
 				// Выводим начало данных служебного метаданного
 				return (reinterpret_cast <uint8_t *> (const_cast <cmsghdr *> (cmsg)) + align(sizeof(cmsghdr)));
 			}

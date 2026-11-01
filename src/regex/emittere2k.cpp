@@ -129,25 +129,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_REGEX_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Сдвиг окна при вызове подпрограммы в парах регистров
 	 *
 	 * @details Сдвиг оставляет вызываемому последние две пары окна: доводы
@@ -368,7 +349,7 @@ namespace {
 	 * @param bundle размещаемая широкая команда
 	 *
 	 */
-	static AWH_REGEX_INLINE void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
+	static __AWH_INLINE__ void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
 		// Количество слов головной части широкой команды
 		size_t middle = (bundle.stubbed ? 1 : 0);
 		/**

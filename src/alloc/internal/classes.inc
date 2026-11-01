@@ -55,7 +55,7 @@ namespace awh {
 		 * @return действующая граница разрядов в байтах
 		 *
 		 */
-		AWH_CLASSES_INLINE size_t classes_t::maximum() const noexcept {
+		__AWH_INLINE__ size_t classes_t::maximum() const noexcept {
 			// Выводим действующую границу разрядов
 			return this->_maximum;
 		}
@@ -66,7 +66,7 @@ namespace awh {
 		 * @return     номер разряда, либо LIMIT если размер разрядами не обслуживается
 		 *
 		 */
-		AWH_CLASSES_INLINE size_t classes_t::index(const size_t size) const noexcept {
+		__AWH_INLINE__ size_t classes_t::index(const size_t size) const noexcept {
 			// Если размер разрядами не обслуживается
 			if(size > this->_maximum)
 				// Сообщаем, что разряда для него нет
@@ -104,7 +104,7 @@ namespace awh {
 		 * @return      размер блока в байтах
 		 *
 		 */
-		AWH_CLASSES_INLINE size_t classes_t::size(const size_t index) const noexcept {
+		__AWH_INLINE__ size_t classes_t::size(const size_t index) const noexcept {
 			// Выводим размер блока разряда либо нуль при негодном номере
 			return ((index < this->_count) ? this->_size[index] : 0);
 		}
@@ -124,7 +124,7 @@ namespace awh {
 		 * @return      размер блока в байтах
 		 *
 		 */
-		AWH_CLASSES_INLINE size_t classes_t::extent(const size_t index) const noexcept {
+		__AWH_INLINE__ size_t classes_t::extent(const size_t index) const noexcept {
 			// Выводим размер блока разряда
 			return this->_size[index];
 		}
@@ -134,7 +134,7 @@ namespace awh {
 		 * @return число разрядов
 		 *
 		 */
-		AWH_CLASSES_INLINE size_t classes_t::count() const noexcept {
+		__AWH_INLINE__ size_t classes_t::count() const noexcept {
 			// Выводим число заведённых разрядов
 			return this->_count;
 		}

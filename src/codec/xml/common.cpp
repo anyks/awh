@@ -52,25 +52,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Принудительная подстановка горячих обращений кодека
-	 *
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Visual Studio
-		 */
-		#define AWH_XML_INLINE __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_XML_INLINE inline __attribute__((always_inline))
-	#endif
-
-	/**
 	 * @brief Шаблон структуры посредника приведения вида ЯЗЫКА к тождественному разрядному виду
 	 *
 	 * @tparam T        тип неразрядного вида
@@ -154,7 +135,7 @@ namespace {
 	 * @return       результат сличения
 	 *
 	 */
-	static AWH_XML_INLINE bool compare(const string_view first, const string_view second) noexcept {
+	static __AWH_INLINE__ bool compare(const string_view first, const string_view second) noexcept {
 		/**
 		 * Если длины последовательностей знаков не совпадают
 		 */
@@ -186,7 +167,7 @@ namespace {
 	 * @return     содержимое без пробельной обвязки по краям
 	 *
 	 */
-	static AWH_XML_INLINE string_view trim(const string_view text) noexcept {
+	static __AWH_INLINE__ string_view trim(const string_view text) noexcept {
 		// Начало значащей части содержимого
 		size_t begin = 0;
 		// Конец значащей части содержимого

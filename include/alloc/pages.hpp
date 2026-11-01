@@ -96,24 +96,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_PAGES_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_PAGES_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -693,7 +675,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_PAGES_INLINE chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
+				__AWH_INLINE__ chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -946,7 +928,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_PAGES_INLINE uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept;
+				__AWH_INLINE__ uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения записи области по адресу блока
@@ -992,7 +974,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
+				__AWH_INLINE__ bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод пометки выданной области

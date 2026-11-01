@@ -54,24 +54,6 @@ using namespace std;
 	 *
 	 */
 	namespace {
-		/**
-		 * @brief Принудительная подстановка горячих обращений кодека
-		 *
-		 */
-		#if defined(_MSC_VER)
-			/**
-			 * Принудительная подстановка средствами Visual Studio
-			 */
-			#define AWH_REGEX_INLINE __forceinline
-		/**
-		 * Если компилятор принадлежит к семейству GCC или Clang
-		 */
-		#else
-			/**
-			 * Принудительная подстановка средствами GCC и Clang
-			 */
-			#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-		#endif
 
 		/**
 		 * @brief Наибольший номер значения таблицы адресов обстановки
@@ -134,7 +116,7 @@ using namespace std;
 		 * @param command размещаемая команда процессора
 		 *
 		 */
-		static AWH_REGEX_INLINE void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
+		static __AWH_INLINE__ void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
 			/**
 			 * Размещаем команду байтами от младшего
 			 */
@@ -150,7 +132,7 @@ using namespace std;
 		 * @param value    вписываемое значение полей команды
 		 *
 		 */
-		static AWH_REGEX_INLINE void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
+		static __AWH_INLINE__ void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
 			// Собираемая размещённая команда процессора
 			uint32_t command = 0;
 			/**

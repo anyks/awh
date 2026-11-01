@@ -125,17 +125,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_IF_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_IF_INLINE inline __attribute__((always_inline))
-#endif
-
-
-/**
  * @brief Опознаватель модуля сетевых интерфейсов
  *
  * @note Заведён по образцу модуля MS Windows: сообщения о самом модуле метятся
@@ -234,7 +223,7 @@ namespace iface {
 	 * @return     префикс сети
 	 *
 	 */
-	static AWH_IF_INLINE uint8_t mask2prefix(const struct in_addr & mask) noexcept {
+	static __AWH_INLINE__ uint8_t mask2prefix(const struct in_addr & mask) noexcept {
 		// Переменная результата
 		uint8_t result = 0;
 		// Преобразуем маску подсети в префикс
@@ -258,7 +247,7 @@ namespace iface {
 	 * @param name   имя сетевого интерфейса (может быть не нуль-терминированным string_view)
 	 *
 	 */
-	static AWH_IF_INLINE void copyName(char (& buffer)[LIFNAMSIZ], const string_view name) noexcept {
+	static __AWH_INLINE__ void copyName(char (& buffer)[LIFNAMSIZ], const string_view name) noexcept {
 		// Определяем количество копируемых байт с учётом завершающего нуля
 		const size_t length = (name.size() < static_cast <size_t> (LIFNAMSIZ - 1)) ? name.size() : static_cast <size_t> (LIFNAMSIZ - 1);
 		// Копируем имя интерфейса ровно на длину переданного представления
@@ -277,7 +266,7 @@ namespace iface {
 	 * @param name   название сетевого интерфейса
 	 *
 	 */
-	static AWH_IF_INLINE void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
+	static __AWH_INLINE__ void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
 		// Определяем количество копируемых байт с учётом завершающего нуля
 		const size_t length = (name.size() < static_cast <size_t> (IFNAMSIZ - 1)) ? name.size() : static_cast <size_t> (IFNAMSIZ - 1);
 		// Копируем имя интерфейса ровно на длину переданного представления
@@ -298,7 +287,7 @@ namespace iface {
 	 * @return     класс связи канального уровня либо DATALINK_CLASS_PHYS, если он неизвестен
 	 *
 	 */
-	static AWH_IF_INLINE datalink_class_t datalinkClass(const string_view name) noexcept {
+	static __AWH_INLINE__ datalink_class_t datalinkClass(const string_view name) noexcept {
 		// Объект управления связями канального уровня
 		dladm_handle_t handle = nullptr;
 		// Выполняем открытие управления связями канального уровня
@@ -332,7 +321,7 @@ namespace iface {
 	 * @return     результат проверки
 	 *
 	 */
-	static AWH_IF_INLINE bool isVirtualDatalink(const string_view name) noexcept {
+	static __AWH_INLINE__ bool isVirtualDatalink(const string_view name) noexcept {
 		/**
 		 * Определяем класс связи канального уровня
 		 */
@@ -377,7 +366,7 @@ namespace iface {
 	 * @return     размер MTU либо ноль, если связь канальному уровню неизвестна
 	 *
 	 */
-	static AWH_IF_INLINE uint32_t datalinkMtu(const string_view name) noexcept {
+	static __AWH_INLINE__ uint32_t datalinkMtu(const string_view name) noexcept {
 		// Объект управления связями канального уровня
 		dladm_handle_t handle = nullptr;
 		// Выполняем открытие управления связями канального уровня
@@ -649,7 +638,7 @@ namespace iface {
 	 * @return     результат классификации интерфейса
 	 *
 	 */
-	static AWH_IF_INLINE bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
+	static __AWH_INLINE__ bool classify(struct ifaddrs * list, const string_view name, const bool virt) noexcept {
 		// Переменная результата
 		bool result = false;
 		/**
@@ -715,7 +704,7 @@ namespace iface {
 	 * @return     имя заведённого логического интерфейса либо пустая строка
 	 *
 	 */
-	static AWH_IF_INLINE string logical(const net::socket_t sock, const string_view name) noexcept {
+	static __AWH_INLINE__ string logical(const net::socket_t sock, const string_view name) noexcept {
 		// Результат работы функции
 		string result;
 		// Объект запроса настройки логического интерфейса
@@ -760,7 +749,7 @@ namespace iface {
 	 * @return     имя логического интерфейса либо пустая строка
 	 *
 	 */
-	static AWH_IF_INLINE string lookup(const net::socket_t sock, const string_view name, const net::addr_t * ip) noexcept {
+	static __AWH_INLINE__ string lookup(const net::socket_t sock, const string_view name, const net::addr_t * ip) noexcept {
 		// Результат работы функции
 		string result;
 		// Запрос числа логических интерфейсов машины
@@ -852,7 +841,7 @@ namespace iface {
 	 * @return       признак негодной длины префикса
 	 *
 	 */
-	static AWH_IF_INLINE bool oversized(const string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
+	static __AWH_INLINE__ bool oversized(const string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 		// Если адрес не передан либо длина префикса предела не превышает
 		if((ip == nullptr) || (prefix <= ((ip->size == 16) ? 128 : 32)))
 			// Длина префикса годная
@@ -1446,7 +1435,7 @@ namespace iface {
 	 * @return     признак того, что связь занята именно этим вызовом
 	 *
 	 */
-	static AWH_IF_INLINE bool occupy(const string & name) noexcept {
+	static __AWH_INLINE__ bool occupy(const string & name) noexcept {
 		// Выполняем блокировку перечня розданных связей
 		const locker_t <> lock(::iface::__awh_iface_tunnel_lock__);
 		// Выводим признак того, что связь прежде роздана не была
@@ -1458,7 +1447,7 @@ namespace iface {
 	 * @param name имя освобождаемой связи
 	 *
 	 */
-	static AWH_IF_INLINE void release(const string & name) noexcept {
+	static __AWH_INLINE__ void release(const string & name) noexcept {
 		// Выполняем блокировку перечня розданных связей
 		const locker_t <> lock(::iface::__awh_iface_tunnel_lock__);
 		// Освобождаем связь в перечне розданных
@@ -1486,7 +1475,7 @@ namespace iface {
 	 * @return     дескриптор открытого устройства
 	 *
 	 */
-	static AWH_IF_INLINE net::socket_t tunnel(string & name) noexcept {
+	static __AWH_INLINE__ net::socket_t tunnel(string & name) noexcept {
 		/**
 		 * Соблюдаем заказанное имя связи
 		 *

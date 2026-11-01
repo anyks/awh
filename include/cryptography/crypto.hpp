@@ -712,7 +712,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hash(string_view text) const noexcept {
+			__AWH_INLINE__ T hash(string_view text) const noexcept {
 				// Выполняем хэширование текста
 				return hashing::create <T> (text.data(), text.size());
 			}
@@ -747,7 +747,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE A hash(const B & text) const noexcept {
+			__AWH_INLINE__ A hash(const B & text) const noexcept {
 				// Выполняем хэширование буфера данных
 				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type));
 			}
@@ -782,7 +782,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hash(const void * buffer, const size_t size) const noexcept {
+			__AWH_INLINE__ T hash(const void * buffer, const size_t size) const noexcept {
 				// Выполняем хэширование буфера данных
 				return hashing::create <T> (buffer, size);
 			}
@@ -818,7 +818,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hashWithSeed(string_view text, const uint64_t seed) const noexcept {
+			__AWH_INLINE__ T hashWithSeed(string_view text, const uint64_t seed) const noexcept {
 				// Выполняем хэширование текста с ключом
 				return hashing::create <T> (text.data(), text.size(), seed);
 			}
@@ -855,7 +855,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE A hashWithSeed(const B & text, const uint64_t seed) const noexcept {
+			__AWH_INLINE__ A hashWithSeed(const B & text, const uint64_t seed) const noexcept {
 				// Выполняем хэширование буфера данных с ключом
 				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), seed);
 			}
@@ -892,7 +892,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hashWithSeed(const void * buffer, const size_t size, const uint64_t seed) const noexcept {
+			__AWH_INLINE__ T hashWithSeed(const void * buffer, const size_t size, const uint64_t seed) const noexcept {
 				// Выполняем хэширование буфера данных с ключом
 				return hashing::create <T> (buffer, size, seed);
 			}
@@ -930,7 +930,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hashWithSeeds(string_view text, const uint64_t seed1, const uint64_t seed2) const noexcept {
+			__AWH_INLINE__ T hashWithSeeds(string_view text, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование текста с ключами
 				return hashing::create <T> (text.data(), text.size(), hashing::merge(seed1, seed2));
 			}
@@ -969,7 +969,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE A hashWithSeeds(const B & text, const uint64_t seed1, const uint64_t seed2) const noexcept {
+			__AWH_INLINE__ A hashWithSeeds(const B & text, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование буфера данных с ключами
 				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), hashing::merge(seed1, seed2));
 			}
@@ -1008,7 +1008,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			AWH_HASH_INLINE T hashWithSeeds(const void * buffer, const size_t size, const uint64_t seed1, const uint64_t seed2) const noexcept {
+			__AWH_INLINE__ T hashWithSeeds(const void * buffer, const size_t size, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование буфера данных с ключами
 				return hashing::create <T> (buffer, size, hashing::merge(seed1, seed2));
 			}

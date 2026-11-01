@@ -197,7 +197,7 @@
  *          та же подстановка выигрывает в выровненной сборке двадцати трём
  *          строкам набора до 15 процентов, теряя у одной 2.1, а в обычной -
  *          до 13. GCC подставляет метод сам, и запрет подстановки стоил бы
- *          ему до 4 процентов. Место задаёт признак «AWH_REGEX_SERIES_INLINE»
+ *          ему до 4 процентов. Место задаёт признак «__AWH_INLINE__»
  *          в файле исполнения. Проход
  *          цепочки, подставленный, не выигрывает ни на одной машине, а у LCC
  *          строки с цепочками теряют до 9.3 процента. Сличение литерала,
@@ -457,7 +457,7 @@
  *          rows of the set up to 15 per cent in the aligned build, losing 2.1 on
  *          one, and up to 13 in the ordinary one. GCC places the method by
  *          itself, and forbidding that would cost it up to 4 per cent. The place
- *          is set by the «AWH_REGEX_SERIES_INLINE» flag in the implementation
+ *          is set by the «__AWH_INLINE__» flag in the implementation
  *          file. The walk
  *          of a chain placed into the loop gains on no machine, and with LCC
  *          the rows with chains lose up to 9.3 per cent. The comparison of a

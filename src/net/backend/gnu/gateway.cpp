@@ -52,16 +52,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_GW_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_GW_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Инкапсулируем статичные функции в пространство имён работы с маршрутами
  *
  */
@@ -98,7 +88,7 @@ namespace routing {
 	 * @return        результат разбора записи
 	 *
 	 */
-	static AWH_GW_INLINE bool parse(const struct nlmsghdr * header, const uint8_t family, entry_t & entry) noexcept {
+	static __AWH_INLINE__ bool parse(const struct nlmsghdr * header, const uint8_t family, entry_t & entry) noexcept {
 		// Если сообщение не является записью таблицы маршрутов
 		if(header->nlmsg_type != RTM_NEWROUTE)
 			// Сообщаем, что запись не разобрана
@@ -170,7 +160,7 @@ namespace routing {
 	 * @return       результат добавления признака
 	 *
 	 */
-	static AWH_GW_INLINE bool attribute(struct nlmsghdr * header, const size_t limit, const uint16_t type, const void * data, const size_t size) noexcept {
+	static __AWH_INLINE__ bool attribute(struct nlmsghdr * header, const size_t limit, const uint16_t type, const void * data, const size_t size) noexcept {
 		// Если признак в сообщение не помещается
 		if((NLMSG_ALIGN(header->nlmsg_len) + RTA_ALIGN(RTA_LENGTH(size))) > limit)
 			// Сообщаем, что признак не добавлен
@@ -197,7 +187,7 @@ namespace routing {
 	 * @return      результат правки таблицы маршрутов
 	 *
 	 */
-	static AWH_GW_INLINE bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
+	static __AWH_INLINE__ bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
 		// Если адрес шлюза не инициализирован
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена

@@ -615,7 +615,7 @@
 		/**
 		 * Размещение подставляется во всякое место вызова
 		 */
-		#define AWH_REGEX_PLACING AWH_REGEX_INLINE
+		#define AWH_REGEX_PLACING __AWH_INLINE__
 	/**
 	 * Если сборка ведётся собирателем GCC либо LCC
 	 */

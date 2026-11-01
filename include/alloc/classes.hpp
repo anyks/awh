@@ -101,24 +101,6 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * Если компилятор принадлежит к Visual Studio
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_CLASSES_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_CLASSES_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * \~russian
  * @brief Пространство имён фреймворка
  *
@@ -271,7 +253,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CLASSES_INLINE size_t maximum() const noexcept;
+				__AWH_INLINE__ size_t maximum() const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -288,7 +270,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CLASSES_INLINE size_t index(const size_t size) const noexcept;
+				__AWH_INLINE__ size_t index(const size_t size) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения размера блока разряда
@@ -304,7 +286,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CLASSES_INLINE size_t size(const size_t index) const noexcept;
+				__AWH_INLINE__ size_t size(const size_t index) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения размера блока разряда БЕЗ проверки номера
@@ -339,7 +321,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CLASSES_INLINE size_t extent(const size_t index) const noexcept;
+				__AWH_INLINE__ size_t extent(const size_t index) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения числа страниц на область разряда
@@ -385,7 +367,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				AWH_CLASSES_INLINE size_t count() const noexcept;
+				__AWH_INLINE__ size_t count() const noexcept;
 			public:
 				/**
 				 * \~russian

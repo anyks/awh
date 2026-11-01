@@ -3453,7 +3453,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	 * @return положение указателя стека
 	 *
 	 */
-	static AWH_REGEX_INLINE uintptr_t stackPointer() noexcept {
+	static __AWH_INLINE__ uintptr_t stackPointer() noexcept {
 		// Положение указателя стека
 		uintptr_t result = 0;
 		/**

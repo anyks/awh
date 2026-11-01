@@ -57,46 +57,6 @@
 
 /**
  * \~russian
- * @brief Принудительная подстановка горячих обращений контейнера
- *
- * @details Обход дерева и снятие событий разбора - самые горячие пути контейнера, а работы
- *          в них одна арифметика. Оставленные в переводимом наборе, они обращаются в вызовы
- *          через границу единиц трансляции и стоят дороже самой работы.
- *
- * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
- *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
- *       `always_inline`. Смотри `include/codec/json/common.hpp`
- *
- * \~english
- * @brief Forced inlining of the hot accessors of the container
- *
- * @details The traversal of the tree and the taking of the parsing events are the hottest paths of the container,
- *          while the work in them is mere arithmetic. Left in the translation unit, they turn into calls
- *          across the boundary of the translation units and cost more than the work itself.
- *
- * @note This device is an accepted exception in AWH from the rule about clean header files:
- *       the implementation lives in `.cpp`, while for the inlining mediators with
- *       `always_inline` are made. See `include/codec/json/common.hpp`
- *
- * \~
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_ABC_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_ABC_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
- * \~russian
  * @brief Основное пространство имён
  *
  * \~english

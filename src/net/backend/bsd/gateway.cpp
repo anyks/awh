@@ -87,16 +87,6 @@
 using namespace std;
 
 /**
- * Если inline атрубит не подключён
- */
-#if !defined(AWH_GW_INLINE)
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_GW_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
  * @brief Инкапсулируем статичные функции в пространство имён
  *
  */
@@ -135,7 +125,7 @@ namespace gw {
 	 * @return       маска подсети
 	 *
 	 */
-	static AWH_GW_INLINE in_addr_t prefix2mask(const uint8_t prefix) noexcept {
+	static __AWH_INLINE__ in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
 		if(prefix == 0)
 			// Возвращаем маску подсети
@@ -161,7 +151,7 @@ namespace gw {
 	 * @return     маска подсети в сетевом порядке октетов
 	 *
 	 */
-	static AWH_GW_INLINE in_addr_t netmask4(const struct sockaddr * addr) noexcept {
+	static __AWH_INLINE__ in_addr_t netmask4(const struct sockaddr * addr) noexcept {
 		// Если адрес маски подсети не передан
 		if(addr == nullptr)
 			// Выводим пустую маску подсети
@@ -199,7 +189,7 @@ namespace gw {
 	 * @param result собираемая маска подсети из шестнадцати октетов
 	 *
 	 */
-	static AWH_GW_INLINE void netmask6(const struct sockaddr * addr, uint8_t * result) noexcept {
+	static __AWH_INLINE__ void netmask6(const struct sockaddr * addr, uint8_t * result) noexcept {
 		// Выполняем сброс собираемой маски подсети
 		::memset(result, 0, 16);
 		// Если адрес маски подсети не передан
@@ -225,7 +215,7 @@ namespace gw {
 	 * @return     объект следующего адреса маршрута
 	 *
 	 */
-	static AWH_GW_INLINE struct sockaddr * advance(struct sockaddr * addr) noexcept {
+	static __AWH_INLINE__ struct sockaddr * advance(struct sockaddr * addr) noexcept {
 		// Получаем длину структуры адреса
 		const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
 		// Извлекаем объект следующего адреса маршрута
@@ -238,7 +228,7 @@ namespace gw {
 	 * @return    структура распарсенных адресов маршрута
 	 *
 	 */
-	static AWH_GW_INLINE addrs_t parse(const struct rt_msghdr * rtm) noexcept {
+	static __AWH_INLINE__ addrs_t parse(const struct rt_msghdr * rtm) noexcept {
 		// Результат разбора адресов маршрута
 		addrs_t result;
 		// Объект текущего адреса маршрута
@@ -294,7 +284,7 @@ namespace gw {
 	 * @return       результат выполнения запроса маршрута
 	 *
 	 */
-	static AWH_GW_INLINE bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
+	static __AWH_INLINE__ bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
 		// Создаём сокет маршрутизации
 		const net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
 		// Если сокет не создан
