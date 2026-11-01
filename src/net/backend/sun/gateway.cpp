@@ -99,6 +99,11 @@ using namespace std;
  */
 namespace gw {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Структура распарсенных адресов сообщения маршрута
 	 *
 	 */
@@ -251,9 +256,9 @@ namespace gw {
 	 */
 	static bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
 		// Создаём сокет маршрутизации
-		const awh::net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+		const net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
 		// Если сокет не создан
-		if(sock == awh::net::invalid_socket_t)
+		if(sock == net::invalid_socket_t)
 			// Выводим результат
 			return false;
 		// Буфер запроса маршрута

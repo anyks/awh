@@ -68,7 +68,7 @@ namespace options {
 	 *
 	 * @details Настройки сетевого уровня у Solaris и illumos задаются не через
 	 *          `sysctl`, которого там нет вовсе, а через средство `ndd`, обращающееся
-	 *          прямо к устройству протокола: `/dev/tcp`
+	 *          прямо к устройству протокола: `/dev/tcp`.
 	 *
 	 * @par Намеренные решения
 	 *
@@ -181,9 +181,7 @@ namespace options {
  *       ним создаётся здесь наравне с прочими
  *
  */
-awh::Ethernet::Ethernet() noexcept :
- addr(), iface(), sctp(), socket(),
- gateway() {
+awh::Ethernet::Ethernet() noexcept {
 	/**
 	 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 	 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -198,4 +196,4 @@ awh::Ethernet::Ethernet() noexcept :
  * @brief Деструктор
  *
  */
-awh::Ethernet::~Ethernet() noexcept {}
+awh::Ethernet::~Ethernet() noexcept = default;
