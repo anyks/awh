@@ -44,6 +44,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -213,6 +216,7 @@ TEST(CodecSysLogDictionary, Aliases) {
 	 *
 	 * @note Иначе оборот менял бы имя: запись, прочтённая с «error», писалась бы
 	 *       обратно с «error», а не с «err», и два вида одного и того же расходились бы
+	 *
 	 */
 	EXPECT_EQ(string(entry->name), "emerg");
 }
@@ -237,6 +241,7 @@ TEST(CodecSysLogDictionary, Unknown) {
 	 *
 	 * @note Словари РАЗНЫЕ, и смешение их дало бы приоритет, отправителем не
 	 *       объявленный: «kern» есть источник, но не важность
+	 *
 	 */
 	EXPECT_EQ(syslog::severities::find("kern"), nullptr);
 }

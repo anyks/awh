@@ -40,6 +40,7 @@
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора кодеков - проверки их собираются ОДНОЙ программой, и под этой системой
  *       не шла ни одна проверка ни одного кодека
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -56,6 +57,7 @@
  * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
  *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
  *       два прогона разных процессов иначе пишут в один и тот же файл
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -111,8 +113,14 @@ namespace {
 		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
 		// Дописываем номер процесса
 		result.append("-").append(std::to_string(static_cast <uint32_t> (
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 			::_getpid()
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
 #else
 			::getpid()
 #endif
@@ -206,11 +214,17 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, кодек CSV в себе несущее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека, открывающее краткое имя csv
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод получения настроек контейнера с объявленным заголовком
+ * @brief Функция получения настроек контейнера с объявленным заголовком
  *
  * @return настройки контейнера с объявленным заголовком
  *
@@ -225,7 +239,7 @@ static csv::document_t::settings_t heading() noexcept {
 }
 
 /**
- * @brief Метод записи временного файла таблицы
+ * @brief Функция записи временного файла таблицы
  *
  * @param name имя записываемого временного файла
  * @param text записываемый текст таблицы
@@ -275,8 +289,10 @@ TEST(CodecCsvDocument, Parse) {
 TEST(CodecCsvDocument, Header) {
 	// Объект контейнера таблицы
 	csv::document_t document;
+	// Выполняем установку настроек контейнера таблицы
+	document.settings(heading());
 	// Выполняем разбор текста таблицы с объявленным заголовком
-	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n", heading()));
+	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n"));
 	// Выполняем проверку того, что заголовок записью не считается
 	ASSERT_EQ(document.rows(), 2u);
 	// Выполняем проверку имён столбцов таблицы
@@ -319,8 +335,10 @@ TEST(CodecCsvDocument, Quoted) {
 TEST(CodecCsvDocument, RowColumn) {
 	// Объект контейнера таблицы
 	csv::document_t document;
+	// Выполняем установку настроек контейнера таблицы
+	document.settings(heading());
 	// Выполняем разбор текста таблицы с объявленным заголовком
-	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n", heading()));
+	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n"));
 	// Выполняем проверку получения записи таблицы целиком
 	ASSERT_EQ(document.row(0), (vector <string_view> {"a", "1"}));
 	// Выполняем проверку получения столбца таблицы целиком по его номеру
@@ -365,8 +383,10 @@ TEST(CodecCsvDocument, RaggedError) {
 	settings.reader.ragged = csv::ragged_t::ERROR;
 	// Объект контейнера таблицы
 	csv::document_t document;
+	// Выполняем установку настроек контейнера таблицы
+	document.settings(settings);
 	// Выполняем разбор текста таблицы с записями разной длины
-	ASSERT_FALSE(document.parse("a,b\nc\n", settings));
+	ASSERT_FALSE(document.parse("a,b\nc\n"));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), csv::error_t::FIELD_COUNT_MISMATCH);
 	// Выполняем проверку номера записи, на какой разбор прекращён
@@ -413,6 +433,7 @@ TEST(CodecCsvDocument, Numeric) {
 	 *       рамки, и число, в затребованный вид не помещающееся, заворачивается по
 	 *       кругу правилами языка. Приведён кодек к общему договору решением
 	 *       от 01.09.2026, а прежде отвечал здесь отказом
+	 *
 	 */
 	ASSERT_TRUE(document.value <uint32_t> (unsigned_, 0, 0));
 	// Выполняем проверку завёрнутого значения: 2^32 - 42
@@ -521,8 +542,10 @@ TEST(CodecCsvDocument, AppendSelfViews) {
 TEST(CodecCsvDocument, Clear) {
 	// Объект контейнера таблицы
 	csv::document_t document;
+	// Выполняем установку настроек контейнера таблицы
+	document.settings(heading());
 	// Выполняем разбор текста таблицы с объявленным заголовком
-	ASSERT_TRUE(document.parse("name,value\na,1\n", heading()));
+	ASSERT_TRUE(document.parse("name,value\na,1\n"));
 	// Выполняем очистку таблицы
 	document.clear();
 	// Выполняем проверку того, что записи таблицы очищены
@@ -601,6 +624,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *          откажи запись на ВСЕХ тридцати шести и не сличись НИ ОДНОГО оборота.
 	 *          Молчаливый пропуск в проверке хуже молчаливой утраты в коде, ибо прячет
 	 *          её. Найдено у кодеков CEF и syslog 15.09.2026 в их же щупе
+	 *
 	 */
 	size_t compared = 0;
 	// Счёт сочетаний, опробованных всего
@@ -638,6 +662,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				 *          как `д\е"`. Замерено на себе при заведении этой проверки
 				 *          15.09.2026: первая её редакция меняла лишь настройку записи и
 				 *          краснела, обвиняя кодек в том, в чём виновата была сама
+				 *
 				 */
 				settings.reader.escape = escape;
 				// Устанавливаем знак конца строки
@@ -648,13 +673,16 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				csv::document_t source;
 				// Выполняем установку настроек контейнера исходной таблицы
 				source.settings(settings);
+				// Выполняем установку настроек контейнера таблицы
+				source.settings(settings);
 				/**
 				 * Выполняем разбор текста исходной таблицы
 				 *
 				 * @note Содержимое требует обрамления по четырём причинам разом:
 				 *       разделитель, кавычка, перевод строки и пробельная обвязка
+				 *
 				 */
-				ASSERT_TRUE(source.parse("имя,значение\n\"а\nб\",\"в,г\"\n\"д\"\"е\",\" ж \"\n", settings)) << combination;
+				ASSERT_TRUE(source.parse("имя,значение\n\"а\nб\",\"в,г\"\n\"д\"\"е\",\" ж \"\n")) << combination;
 				// Выполняем сборку текста таблицы установленными настройками
 				const string text = source.dump();
 				/**
@@ -663,6 +691,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				 * @note Исход законный: при запрете кавычек вовсе содержимое с переводом
 				 *       строки непредставимо. Требуется лишь, чтобы отказ был НАЗВАН, а
 				 *       не подменён пустым текстом при коде «нет ошибки»
+				 *
 				 */
 				if(source.error() != csv::error_t::NONE){
 					// Выполняем проверку того, что при отказе текст не выдан
@@ -679,6 +708,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 					 *          а не число. Моё ожидание «девять отказов» было выведено
 					 *          рассуждением и разошлось с замером - отказали шесть, ибо
 					 *          отмена косою спасает три сочетания из девяти
+					 *
 					 */
 					ASSERT_EQ(quoting, csv::quoting_t::NONE) << combination;
 					// Выполняем проверку того, что отмена обратной косою при отказе не задана
@@ -696,8 +726,10 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				compared++;
 				// Объект контейнера полученной обратно таблицы
 				csv::document_t result;
+				// Выполняем установку настроек контейнера таблицы
+				result.settings(settings);
 				// Выполняем разбор текста, собранного исходной таблицей
-				ASSERT_TRUE(result.parse(text, settings)) << combination << " текст=[" << text << "]";
+				ASSERT_TRUE(result.parse(text)) << combination << " текст=[" << text << "]";
 				// Выполняем проверку имён столбцов полученной обратно таблицы
 				ASSERT_EQ(result.header(), source.header()) << combination;
 				// Выполняем проверку количества записей полученной обратно таблицы
@@ -729,6 +761,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *          отказ на тридцати пяти сочетаниях из тридцати шести. Негодно и точное
 	 *          число - оно рассыплется от первой же прибавленной настройки, ничего не
 	 *          сказав о существе. Годна связь: сличено плюс отказано равно опробовано
+	 *
 	 */
 	ASSERT_GT(attempted, static_cast <size_t> (0));
 	// Выполняем проверку того, что всякое опробованное сочетание дало исход
@@ -741,12 +774,16 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 TEST(CodecCsvDocument, RoundTrip) {
 	// Объект контейнера исходной таблицы
 	csv::document_t source;
+	// Выполняем установку настроек контейнера таблицы
+	source.settings(heading());
 	// Выполняем разбор текста исходной таблицы с объявленным заголовком
-	ASSERT_TRUE(source.parse("name,value\n\"a\nb\",\"c,d\"\n\"e\"\"f\",g\n", heading()));
+	ASSERT_TRUE(source.parse("name,value\n\"a\nb\",\"c,d\"\n\"e\"\"f\",g\n"));
 	// Объект контейнера полученной обратно таблицы
 	csv::document_t result;
+	// Выполняем установку настроек контейнера таблицы
+	result.settings(heading());
 	// Выполняем разбор текста, собранного исходной таблицей
-	ASSERT_TRUE(result.parse(source.dump(), heading()));
+	ASSERT_TRUE(result.parse(source.dump()));
 	// Выполняем проверку имён столбцов полученной обратно таблицы
 	ASSERT_EQ(result.header(), source.header());
 	// Выполняем проверку количества записей полученной обратно таблицы
@@ -776,9 +813,9 @@ TEST(CodecCsvDocument, File) {
 	ASSERT_EQ(document.get(2, size_t(1)), "2");
 	// Адрес файла, в какой записывается таблица
 	// Сторож временного файла проверки
-	const Scratch scratch_output("awh_csv_file_out.csv");
+	const Scratch scratchOutput("awh_csv_file_out.csv");
 	// Путь к временному файлу проверки
-	const string & output = scratch_output.path();
+	const string & output = scratchOutput.path();
 	// Выполняем запись таблицы в файл
 	ASSERT_TRUE(document.save(output));
 	// Объект контейнера полученной обратно таблицы
@@ -952,6 +989,7 @@ TEST(CodecCsvDocument, HeaderRefill) {
 	 *
 	 * @note Ровно это и ловит проверку: соответствие, от прежнего заголовка уцелевшее,
 	 *       выдавало бы столбец по имени, какого в заголовке уже нет
+	 *
 	 */
 	ASSERT_FALSE(document.has("первое"));
 	// Выполняем проверку того, что имя первого круга столбца не выдаёт
@@ -963,6 +1001,7 @@ TEST(CodecCsvDocument, HeaderRefill) {
 	 *
 	 * @note Повтор оставил бы один из столбцов недостижимым по имени, а разбор
 	 *       заголовка повтор отвергает - отвергать его надлежит и правке
+	 *
 	 */
 	ASSERT_FALSE(document.header({"имя", "имя"}));
 	// Выполняем проверку того, что отвергнутое объявление заголовка не оставило
@@ -986,6 +1025,25 @@ TEST(CodecCsvDocument, MissingFileIsNotInternal) {
 	ASSERT_FALSE(document.load("/несуществующий/каталог/таблица.csv"));
 	// Выполняем проверку кода ошибки чтения
 	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_OPENED);
+}
+
+/**
+ * @brief Проверка сохранения таблицы при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecCsvDocument, EmptyFilenamePreservesTable) {
+	// Таблица значений
+	csv::document_t document;
+	// Выполняем разбор исходной таблицы
+	ASSERT_TRUE(document.parse("key,value\r\n"));
+	// Исходная запись таблицы
+	const string expected = document.dump();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения таблицы
+	ASSERT_EQ(document.dump(), expected);
 }
 
 /**
@@ -1052,6 +1110,7 @@ TEST(CodecCsvDocument, NarrowingWrapsAroundByTheLanguage) {
  *          `CodecCsvDocument.WriteToMissingDirectoryIsReported`: та добывает отказ непригодным
  *          путём и утверждает то же самое. Разнится лишь код причины - у предела
  *          `FILE_NOT_WRITTEN`, у непригодного пути `FILE_NOT_OPENED`
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 /**
@@ -1124,9 +1183,9 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
 	} guard;
 	// Адрес файла, в который ведётся запись таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("awh-codec-csv-write-failure.csv");
+	const Scratch scratchFilename("awh-codec-csv-write-failure.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	// Выполняем снос прежнего файла таблицы
 	::remove(filename.c_str());
 	// Выполняем проверку отказа записи усечённого файла таблицы
@@ -1140,6 +1199,7 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
 	 *
 	 * @note Довод тот же, что у проверки записи в несуществующий каталог: сообщение
 	 *       читает человек, а звучащий судит по коду, и сличать надо обе половины
+	 *
 	 */
 	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_WRITTEN);
 	// Выполняем снос усечённого файла таблицы
@@ -1180,6 +1240,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	const string directory = ::unique("./csv-document-rename-dir");
 	/**
 	 * @brief Сторож временного каталога проверки
+	 *
 	 */
 	struct Guard {
 		// Адрес стерегомого каталога
@@ -1192,6 +1253,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	} guard{directory};
 	// Выполняем заведение каталога, целевой путь занимающего
 	::removeDirectory(directory);
+	// Проверяем, что каталог-препятствие заведён: сохранение поверх него должно сорваться
 	ASSERT_TRUE(::makeDirectory(directory));
 	// Таблица значений
 	csv::document_t document;
@@ -1215,6 +1277,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	 *
 	 * @note Места эти у документа и у значения РАЗНЫЕ, и подмена одного другого не
 	 *       красит: половины держатся порознь, как и сами дороги сохранения
+	 *
 	 */
 	{
 		// Владеющее значение таблицы
@@ -1250,6 +1313,7 @@ TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
 	 *       отказа ДВУМЯ независимыми литералами, и проверка, сличающая сообщение,
 	 *       подмены кода не видела вовсе. Звучащий судит по коду, а сообщение читает
 	 *       человек - сличать надо обе половины, и первою ту, по которой судят
+	 *
 	 */
 	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_OPENED);
 }
@@ -1297,6 +1361,7 @@ TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 	 *
 	 * @note Записи эти числом не считаются с 01.09.2026: прежде они переносились в
 	 *       затребованный вид как есть, ибо теряться в них было нечему
+	 *
 	 */
 	for(size_t i = 4; i < 7; i++){
 		// Приёмник дробного вида с опознавательным значением
@@ -1337,9 +1402,9 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
 	ASSERT_EQ(document.rows(), static_cast <size_t> (20000));
 	// Адрес файла таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("csv-large-round-trip.csv");
+	const Scratch scratchFilename("csv-large-round-trip.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	// Выполняем проверку записи таблицы в файл
 	ASSERT_TRUE(document.save(filename));
 	// Полученная обратным чтением таблица значений
@@ -1533,13 +1598,14 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 	 *       обещано не это. Отказ по иной причине - скажем, по негодной кодировке -
 	 *       прошёл бы проверку на один лишь факт, ничего не проверив, и подмена
 	 *       причины осталась бы незамеченной
+	 *
 	 */
 	ASSERT_EQ(document.error(), csv::error_t::FIELD_TOO_LONG);
 	// Адрес файла таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("csv-malformed-callback.csv");
+	const Scratch scratchFilename("csv-malformed-callback.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	{
 		// Поток записи файла таблицы
 		ofstream file(filename, ios::binary);
@@ -1558,6 +1624,7 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 	 *       текста, разбор с выдачей записями, чтение файла целиком и чтение файла с
 	 *       выдачей записями - на десяти видах отказа и на годном тексте: приговор и
 	 *       код совпали у всех четырёх во всех одиннадцати случаях
+	 *
 	 */
 	ASSERT_EQ(document.error(), csv::error_t::FIELD_TOO_LONG);
 	// Выполняем проверку отказа чтения файла таблицы целиком
@@ -1569,13 +1636,14 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 }
 
 /**
- * @brief Проверка выдачи настроек контейнера
+ * @brief Проверка соблюдения установленных настроек контейнера
  *
- * @details Выдача настроек покрытием пройдена не была вовсе: проверки настройки лишь
- * устанавливали. Выданные настройки обязаны отвечать установленным
+ * @details Чтения настроек обратно API более не даёт, оттого соблюдение их поверяется
+ *          делом: разбор текста с объявленным заголовком обязан счесть первую запись
+ *          именами столбцов, а поле длиннее установленного предела - отвергнуть
  *
  */
-TEST(CodecCsvDocument, SettingsReadBack) {
+TEST(CodecCsvDocument, SettingsAreHonoured) {
 	// Таблица значений
 	csv::document_t document;
 	// Настройки таблицы
@@ -1586,10 +1654,12 @@ TEST(CodecCsvDocument, SettingsReadBack) {
 	settings.reader.maxField = 128;
 	// Выполняем установку настроек таблицы
 	document.settings(settings);
-	// Выполняем проверку выданного признака присутствия заголовка
-	ASSERT_EQ(document.settings().reader.header, csv::header_t::PRESENT);
-	// Выполняем проверку выданного предела длины поля
-	ASSERT_EQ(document.settings().reader.maxField, static_cast <size_t> (128));
+	// Выполняем разбор текста таблицы с объявленным заголовком
+	ASSERT_TRUE(document.parse("имя,значение\r\nАня,30\r\n"));
+	// Выполняем проверку того, что заголовок записью не сочтён
+	ASSERT_EQ(document.size(), static_cast <size_t> (1));
+	// Выполняем проверку того, что поле длиннее установленного предела отвергнуто
+	ASSERT_FALSE(document.parse("имя\r\n" + string(129, 'a') + "\r\n"));
 }
 
 /**
@@ -1604,9 +1674,9 @@ TEST(CodecCsvDocument, CallbackStopsFileReading) {
 	csv::document_t document;
 	// Адрес файла таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("csv-callback-stop-file.csv");
+	const Scratch scratchFilename("csv-callback-stop-file.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	{
 		// Поток записи файла таблицы
 		ofstream file(filename, ios::binary);
@@ -1738,21 +1808,19 @@ TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
 		document.settings(settings);
 		// Выполняем разбор таблицы, поле которой содержит разделитель
 		ASSERT_TRUE(document.parse(string("\"а,б\",в\r\nпервое,второе\r\n"))) << csv::message(document.error());
-		// Получаем настройки контейнера для правки
-		csv::document_t::settings_t writing = document.settings();
 		// Устанавливаем отказ от кавычек вовсе
-		writing.writer.quoting = csv::quoting_t::NONE;
+		settings.writer.quoting = csv::quoting_t::NONE;
 		// Устанавливаем способ записи кавычки удвоением
-		writing.writer.escape = csv::escape_t::DOUBLE;
+		settings.writer.escape = csv::escape_t::DOUBLE;
 		// Выполняем установку настроек контейнера
-		document.settings(writing);
+		document.settings(settings);
 		// Выполняем проверку того, что выдача текста отказала пустою строкою
 		ASSERT_TRUE(document.dump().empty()) << uint32_t(heading);
 		// Адрес файла, в какой записывается таблица
 		// Сторож временного файла проверки
-		const Scratch scratch_output("awh_csv_unwritable.csv");
+		const Scratch scratchOutput("awh_csv_unwritable.csv");
 		// Путь к временному файлу проверки
-		const string & output = scratch_output.path();
+		const string & output = scratchOutput.path();
 		// Выполняем проверку отказа сохранения таблицы в файл
 		ASSERT_FALSE(document.save(output)) << uint32_t(heading);
 		// Выполняем снос оставленного файла
@@ -1769,6 +1837,7 @@ TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
  *
  * @note Расхождение это нашлось сличением трёх кодеков между собою: изнутри кодека оно
  *       невидимо, набор его проходил целиком
+ *
  */
 TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
 	// Настройки контейнера
@@ -1794,6 +1863,7 @@ TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
 	 *       разбор: иначе код прежнего разбора пережил бы удавшуюся запись, и звучащий
 	 *       принял бы его за отказ её. Оттого положение отказа разбора и снимается ДО
 	 *       выдачи текста, а не после
+	 *
 	 */
 	ASSERT_EQ(doc.error(), csv::error_t::NONE);
 	ASSERT_EQ(doc.errorLocation().line, static_cast <size_t> (0));
@@ -1824,13 +1894,14 @@ TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
  * @details Запись шла прямо в цель, открытую с усечением, и отказ сбора - непредставимое
  * поле - оставлял ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ. Цель обязана либо остаться
  * прежней, либо стать новой таблицей целиком; половины её не видно никогда
+ *
  */
 TEST(CodecCsvDocument, RefusedSavingKeepsTargetIntact){
 	// Адрес файла, куда ведётся запись таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("csv-atomic-save.csv");
+	const Scratch scratchFilename("csv-atomic-save.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	// Прежнее содержимое цели
 	const string previous = "ЦЕННЫЕ,ДАННЫЕ\r\n";
 	{
@@ -1876,6 +1947,7 @@ TEST(CodecCsvDocument, RefusedSavingKeepsTargetIntact){
  * содержимом файла вместо изъяна доступа к нему
  *
  * @note Отказ отличается и от отсутствующего файла: тот отвечает `FILE_NOT_OPENED`
+ *
  */
 TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	// Объект контейнера таблицы
@@ -1891,6 +1963,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	 *       у MS Windows каталог не открывается вовсе, и распознавание было мёртвым
 	 *       кодом - выходил `FILE_NOT_OPENED`. Замер на стенде Windows 11 ARM64 показал
 	 *       это прямо, и распознавание перенесено ДО открытия у всех кодеков рамки
+	 *
 	 */
 	// Выполняем проверку кода отказа чтения каталога
 	ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_READ);
@@ -1901,6 +1974,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	 *
 	 * @note У POSIX код этот ОТЛИЧЕН от кода отказа чтения каталога, и в том вся суть
 	 *       проверки; у MS Windows он тот же, и различения там нет - довод выше
+	 *
 	 */
 	ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_OPENED);
 	/**
@@ -1913,6 +1987,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	 * @warning Половина эта заведена по пробелу, найденному щупом 06.09.2026: подмена
 	 *          кода в чтении с обработчиком не красила НИЧЕГО - проверка выше стерегла
 	 *          один лишь путь загрузки, и второй путь мог отвечать чем угодно
+	 *
 	 */
 	{
 		// Обработчик очередной записи таблицы
@@ -1931,6 +2006,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 		 * @note Код здесь ИНОЙ - файла нет вовсе, и открыть его не удалось, - и половина
 		 *       эта стережёт различение двух причин: без неё оба случая могли бы отвечать
 		 *       одним кодом, и потребитель не отличал бы отсутствия файла от каталога
+		 *
 		 */
 		ASSERT_FALSE(missing.read("./нет-такого-файла-таблицы.csv", handler));
 		// Выполняем проверку кода отказа открытия файла
@@ -1947,6 +2023,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
  *
  * @note Таблицы бывают рваные, и поле, у одних записей сущее, у других отсутствует: такой
  *       столбец таблице принадлежит, и пустоты в нём законны
+ *
  */
 TEST(CodecCsvDocument, MissingColumnYieldsNothing){
 	// Объект контейнера таблицы
@@ -1968,7 +2045,7 @@ TEST(CodecCsvDocument, MissingColumnYieldsNothing){
 		// Объект контейнера таблицы
 		csv::document_t ragged;
 		// Настройки контейнера таблицы
-		csv::document_t::settings_t settings = ragged.settings();
+		csv::document_t::settings_t settings;
 		// Снимаем требование одинаковой ширины записей
 		settings.reader.strict = false;
 		// Выполняем установку настроек контейнера
@@ -1994,6 +2071,7 @@ TEST(CodecCsvDocument, MissingColumnYieldsNothing){
  * отказ на записи из единственного пустого поля приходит именно оттуда: таблица уходила
  * молча короче на эту запись. Договор сборки текста иной - пустой текст при таблице
  * непустой означает оглашённый отказ, и звучащий его отличит
+ *
  */
 TEST(CodecCsvDocument, RefusedEmptyRecordStopsText){
 	// Объект контейнера таблицы
@@ -2002,8 +2080,8 @@ TEST(CodecCsvDocument, RefusedEmptyRecordStopsText){
 	ASSERT_TRUE(doc.parse("значение\r\n\"\"\r\nдругое\r\n"));
 	// Выполняем проверку количества собранных записей
 	ASSERT_EQ(doc.rows(), static_cast <size_t> (3));
-	// Получаем настройки контейнера таблицы
-	csv::document_t::settings_t settings = doc.settings();
+	// Настройки контейнера таблицы
+	csv::document_t::settings_t settings;
 	// Устанавливаем отказ от кавычек вовсе
 	settings.writer.quoting = csv::quoting_t::NONE;
 	// Устанавливаем способ записи кавычки знаком отмены
@@ -2032,6 +2110,7 @@ TEST(CodecCsvDocument, RefusedEmptyRecordStopsText){
  *          набор не строит. Механизм доказан щупом на сборке со сниженным до 64 байт
  *          пределом: без сторожа разбор отвечал успехом при шести записях, две из которых
  *          были испорчены чужим содержимым, а со сторожем - отказом `STORAGE_EXHAUSTED`
+ *
  */
 TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	// Выполняем проверку наличия описания кода отказа
@@ -2043,6 +2122,7 @@ TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	 *       на вопрос «есть ли описание вообще», а обещано большее - описание, называющее
 	 *       именно это условие. Наименьшее изменение, обращающее прежнее сличение в ложь,
 	 *       было пустою строкою, и всякая иная подмена текста его переживала
+	 *
 	 */
 	ASSERT_STREQ(csv::message(csv::error_t::STORAGE_EXHAUSTED), "the text does not fit the width of the parser storage");
 	// Выполняем проверку того, что код отказа отличен от прочих отказов чтения
@@ -2063,6 +2143,7 @@ TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	 *
 	 * @note Путь этот второй и стережётся отдельно: сборка из разбора и построение
 	 *       вручную растят одно и то же хранилище, а сторож стоял лишь у первой
+	 *
 	 */
 	{
 		// Объект контейнера таблицы
@@ -2112,9 +2193,9 @@ TEST(CodecCsvDocument, RefusalChannelSpeaksOnWriting){
 	ASSERT_EQ(doc.error(), csv::error_t::UNWRITABLE_FIELD);
 	// Адрес файла, в который ведётся запись
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("awh-csv-refusal.csv");
+	const Scratch scratchFilename("awh-csv-refusal.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	// Выполняем проверку отказа записи таблицы в файл
 	ASSERT_FALSE(doc.save(filename));
 	// Выполняем проверку того, что причина отказа названа
@@ -2208,6 +2289,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
 	 *
 	 * @note Сличение это и есть предмет проверки: правило одно, и называть причину
 	 *       обязаны оба судьи одинаково
+	 *
 	 */
 	{
 		// Настройки контейнера таблицы
@@ -2250,6 +2332,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
  * обратиться к столбцу по имени не представится вовсе
  *
  * @note Замер до правки: имён изнутри обработчика - 0, после разбора - 2
+ *
  */
 TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	// Текст таблицы с заголовком
@@ -2286,9 +2369,9 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	{
 		// Адрес временного файла таблицы
 		// Сторож временного файла проверки
-		const Scratch scratch_filename("csv-handler-header.csv");
+		const Scratch scratchFilename("csv-handler-header.csv");
 		// Путь к временному файлу проверки
-		const string & filename = scratch_filename.path();
+		const string & filename = scratchFilename.path();
 		/**
 		 * Выполняем запись текста таблицы в файл
 		 */
@@ -2325,6 +2408,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	 *
 	 * @note Записей у неё нет, выдачи не случается, и перенос по ходу подачи не
 	 *       отрабатывает ни разу: заголовок обязан сняться зовом после цикла
+	 *
 	 */
 	{
 		// Контейнер таблицы
@@ -2351,6 +2435,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
  * предупреждал с самого начала, а держащий - молчал
  *
  * @note Замер: поле, снятое до долива записей, после него читалось пустым
+ *
  */
 TEST(CodecCsvDocument, ViewsLiveUntilTheNearestChange){
 	// Контейнер таблицы
@@ -2377,6 +2462,7 @@ TEST(CodecCsvDocument, ViewsLiveUntilTheNearestChange){
 		 *          случившийся в середине и сброшенный доливом следующим, уходил незамечен.
 		 *          Отступ при этом обманывал: половина выглядела частью цикла. Найдено
 		 *          предупреждением `-Wmisleading-indentation` на стенде MinGW 06.09.2026
+		 *
 		 */
 		ASSERT_EQ(doc.error(), csv::error_t::NONE) << "долив " << i;
 	}
@@ -2387,6 +2473,7 @@ TEST(CodecCsvDocument, ViewsLiveUntilTheNearestChange){
 	 *
 	 * @note Прежний вид здесь не читается вовсе: чтение его есть обращение к памяти
 	 *       освобождённой, и надзор такое чтение по праву валит
+	 *
 	 */
 	ASSERT_EQ(doc.get(0, 0), "один");
 }
@@ -2433,8 +2520,10 @@ TEST(CodecCsvDocument, DuplicateHeaderPathsDivergeDeliberately) {
 		 *
 		 * @note Ровно эта плата и оговорена у признака: обращение по имени доходит до
 		 *       первого столбца, а второй достижим одним лишь номером
+		 *
 		 */
 		ASSERT_TRUE(doc.has("имя"));
+		// Проверяем, что обращение по имени доходит до первого столбца
 		ASSERT_EQ(doc.get(0, "имя"), "1");
 		ASSERT_EQ(doc.get(0, 1), "2");
 	}
@@ -2496,7 +2585,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	// Отключаем ожидание заголовка
 	settings.reader.header = csv::header_t::NONE;
 	/**
-	 * @brief Метод извлечения содержимого поля затребованным видом
+	 * @brief Функция извлечения содержимого поля затребованным видом
 	 *
 	 * @param spelling написание числа в поле таблицы
 	 * @param result   извлечённое значение
@@ -2537,6 +2626,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 *       переменился решением от 01.09.2026: непомещающееся более не
 	 *       отвергается, а заворачивается по кругу, и важно, что заворачивается оно
 	 *       ОДИНАКОВО при обоих написаниях
+	 *
 	 */
 	{
 		// Извлечённые значения обоих написаний
@@ -2572,6 +2662,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 *       отказом там, где число теряется. Решением от 01.09.2026 кодек
 	 *       приведён к общему договору рамки, а тот дробь ОКРУГЛЯЕТ с уводом половины
 	 *       от нуля, следуя языку
+	 *
 	 */
 	{
 		// Извлечённое значение поля таблицы
@@ -2582,7 +2673,9 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 		ASSERT_EQ(value, static_cast <uint64_t> (301));
 		// Выполняем проверку принятия настоящей дроби видом дробным
 		double real = 0.;
+		// Прогоняем ту же дробь «300.5» приёмником двойной точности
 		ASSERT_TRUE(extract("300.5", real));
+		// Проверяем, что вид двойной точности держит дробь без округления
 		ASSERT_DOUBLE_EQ(real, 300.5);
 	}
 	/**
@@ -2598,6 +2691,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 *
 	 * @note Предел этот тот же, что у кодеков JSON и XML: договор извлечения общий, и
 	 *       чинить утрату здесь нечем - она случается у самого разбора
+	 *
 	 */
 	{
 		// Извлечённые значения обоих написаний
@@ -2623,12 +2717,14 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 *
 	 * @note Половина с согласием обязательна: закрепи здесь одно расхождение, и
 	 *       посредник, отвергающий вообще всё, прошёл бы проверку целиком
+	 *
 	 */
 	{
 		// Извлечённое значение посредником приведения
 		int64_t spelled = 0;
 		// Выполняем проверку согласия посредника с извлечением у записи целой
 		ASSERT_TRUE(csv::integer("300", spelled));
+		// Проверяем число, посредником извлечённое из записи целой
 		ASSERT_EQ(spelled, static_cast <int64_t> (300));
 		// Выполняем проверку согласия посредника с извлечением у записи отрицательной
 		ASSERT_TRUE(csv::integer("-1", spelled));
@@ -2642,12 +2738,15 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 			ASSERT_FALSE(csv::integer("300.0", spelled));
 			// Выполняем проверку успеха извлечения той же записи
 			int64_t extracted = 0;
+			// Прогоняем извлечение той же записи «300.0» мимо посредника
 			ASSERT_TRUE(extract("300.0", extracted));
+			// Проверяем, что дробная запись «300.0» извлечению даёт те же 300
 			ASSERT_EQ(extracted, static_cast <int64_t> (300));
 			// Выполняем проверку отказа посредника записи с показателем степени
 			ASSERT_FALSE(csv::integer("1e3", spelled));
 			// Выполняем проверку успеха извлечения той же записи
 			ASSERT_TRUE(extract("1e3", extracted));
+			// Проверяем, что запись с показателем степени «1e3» извлечению даёт 1000
 			ASSERT_EQ(extracted, static_cast <int64_t> (1000));
 		}
 	}
@@ -2657,6 +2756,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 * @note Прежде дробный вид их принимал - терять в них было нечего. Решением
 	 *       от 01.09.2026 записи `nan` и `inf` числом у кодеков рамки не
 	 *       считаются вовсе, и отвергают их ОБА вида равно
+	 *
 	 */
 	{
 		// Извлечённое значение поля таблицы
@@ -2692,7 +2792,7 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 	// Отключаем ожидание заголовка
 	settings.reader.header = csv::header_t::NONE;
 	/**
-	 * @brief Метод извлечения содержимого поля затребованным видом
+	 * @brief Функция извлечения содержимого поля затребованным видом
 	 *
 	 * @param spelling написание числа в поле таблицы
 	 * @param result   извлечённое значение
@@ -2725,6 +2825,7 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 		ASSERT_TRUE(::std::isinf(single));
 		// Выполняем проверку принятия того же числа видом, его вмещающим
 		ASSERT_TRUE(extract("1e308", real));
+		// Проверяем, что вмещающему виду число 1e308 досталось без утраты
 		ASSERT_DOUBLE_EQ(real, 1e308);
 	}
 	/**
@@ -2733,12 +2834,14 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 	 * @note Утверждается лишь успех извлечения, а не сам исход: исчезает число НЕ
 	 *       ВСЕГДА - при округлении вверх приведение отдаёт наименьшее поднормальное
 	 *       вместо нуля, - и закреплять исход значило бы закреплять режим округления
+	 *
 	 */
 	{
 		// Выполняем проверку принятия числа, в виде исчезающего
 		ASSERT_TRUE(extract("1e-50", single));
 		// Выполняем проверку принятия того же числа видом, его вмещающим
 		ASSERT_TRUE(extract("1e-50", real));
+		// Проверяем, что вид двойной точности принимает число, в одинарной исчезающее
 		ASSERT_DOUBLE_EQ(real, 1e-50);
 	}
 	/**
@@ -2762,9 +2865,11 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 	{
 		// Выполняем проверку принятия числа, уцелевшего при сужении вида
 		ASSERT_TRUE(extract("1.5", single));
+		// Проверяем, что уцелевшее при сужении число легло в приёмник без изменений
 		ASSERT_FLOAT_EQ(single, 1.5f);
 		// Выполняем проверку принятия числа, часть разрядов при сужении потерявшего
 		ASSERT_TRUE(extract("0.1", single));
+		// Проверяем, что утраченные разряды не обратили число нулём
 		ASSERT_NE(single, 0.f);
 	}
 }
@@ -2830,6 +2935,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 	 * @warning Случай, где кавычки у пустого поля НЕОБХОДИМЫ, стоит отдельно и приведению
 	 *          не подлежит: запись из одного пустого поля, собранная голой, обратилась бы
 	 *          пустою строкою, а это уже не запись. Половина эта закрепляет именно её
+	 *
 	 */
 	{
 		// Настройки контейнера таблицы
@@ -2878,11 +2984,11 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 	// Адрес временного файла таблицы
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("csv-paths-agreement.csv");
+	const Scratch scratchFilename("csv-paths-agreement.csv");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	/**
-	 * @brief Метод сличения приговоров всех четырёх путей подачи
+	 * @brief Функция сличения приговоров всех четырёх путей подачи
 	 *
 	 * @param text     подаваемый текст таблицы
 	 * @param settings настройки контейнера таблицы
@@ -2911,8 +3017,8 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 			// Устанавливаем настройки контейнера
 			doc.settings(settings);
 			// Выполняем подачу текста очередным путём
-			accepted[path] = ((path == 0) ? doc.parse(text) :
-			                 ((path == 1) ? doc.parse(text, callback) :
+			accepted[path] = ((path == 0) ? doc.parse(text, callback) :
+			                 ((path == 1) ? doc.parse(text) :
 			                 ((path == 2) ? doc.load(filename) : doc.read(filename, callback))));
 			// Запоминаем код отказа очередного пути
 			codes[path] = doc.error();
@@ -2973,6 +3079,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 		 *       все четыре пути одним и тем же НЕВЕРНЫМ кодом. Утверждения эти называют
 		 *       ожидаемый код прямо: у трёх правил строгого разбора коды РАЗНЫЕ, и
 		 *       негодный конец записи отделён от недопустимого знака в содержимом
+		 *
 		 */
 		{
 			// Контейнер таблицы для одинокого перевода строки
@@ -3002,6 +3109,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 			 *
 			 * @note Код здесь ИНОЙ, и в этом вся суть утверждений: правила строгого разбора
 			 *       свои причины различают
+			 *
 			 */
 			ASSERT_EQ(quote.error(), csv::error_t::UNESCAPED_QUOTE);
 		}
@@ -3069,11 +3177,14 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 	 * @note Написание «+42» изъято 16.09.2026: ведущий плюс дозволен договором XSD, каким
 	 *       меряется строгость у разметки, и таблица приведена к тому же. Взамен взята
 	 *       запись из одного лишь знака, числом не являющаяся ничем
+	 *
 	 */
 	const string text = "не число\r\n0x10\r\n1.2.3\r\nnan\r\ninf\r\n+\r\n1e\r\n";
 	// Выполняем разбор текста таблицы
 	document.parse(text);
-	// Выполняем перебор всех записей разобранной таблицы
+	/**
+	 * Выполняем перебор всех записей разобранной таблицы
+	 */
 	for(size_t i = 0; i < document.rows(); i++){
 		// Приёмник наименьшего целого вида с опознавательным значением
 		uint8_t small = 77;
@@ -3083,6 +3194,7 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 * Выполняем проверку сохранности приёмника наименьшего целого вида
 		 *
 		 * @note Вид этот отвергает ВСЕ записи: числом не является ни одна из них
+		 *
 		 */
 		EXPECT_FALSE(document.value <uint8_t> (small, i, 0));
 		// Выполняем проверку неприкосновенности приёмника при отказе
@@ -3097,6 +3209,7 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 * @note Логический вид берётся отдельной ветвью, прежде целых: язык причисляет
 		 *       его к целым, и без неё «true» отвергалось бы. Ветвь эта такой же путь
 		 *       отказа, как знаковая и беззнаковая, и покрыта быть обязана
+		 *
 		 */
 		EXPECT_FALSE(document.value <bool> (flag, i, 0));
 		// Выполняем проверку неприкосновенности приёмника при отказе
@@ -3114,6 +3227,7 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 * @note Вид со знаком берётся отдельной ветвью извлечения, и без него проверка
 		 *       слепа к половине путей отказа: проба зрячести 01.09.2026 записью в
 		 *       приёмник ВНУТРИ знаковой ветви оставалась зелёной
+		 *
 		 */
 		if(!document.value <int64_t> (signedBig, i, 0)){
 			// Выполняем проверку неприкосновенности приёмника при отказе
@@ -3260,6 +3374,9 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
 			#if defined(__aarch64__)
 				// Выполняем запись прежнего значения управляющего регистра
 				__asm__ __volatile__("msr fpcr, %0" :: "r"(this->restore));
+			/**
+			 * Для архитектуры x86_64 и i386
+			 */
 			#elif defined(__x86_64__) || defined(__i386__)
 				// Выполняем запись прежнего значения управляющего регистра
 				__asm__ __volatile__("ldmxcsr %0" :: "m"(this->restore));
@@ -3273,6 +3390,9 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
 			uint64_t control = 0;
 			// Значение управляющего регистра, бывшее до проверки
 			uint64_t restore = 0;
+		/**
+		 * Для архитектуры x86_64 и i386
+		 */
 		#elif defined(__x86_64__) || defined(__i386__)
 			// Значение управляющего регистра, проверкою установленное
 			uint32_t control = 0;
@@ -3287,6 +3407,7 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
 	 *
 	 * @note Отказом это не считается: правило проверяется там, где машину подделать
 	 *       возможно, а прочих наборов команд рамка не целит
+	 *
 	 */
 	if(!applied){
 		// Выполняем печать сообщения о невозможности замера
@@ -3338,6 +3459,7 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
  *       намеренно не берётся: у неё расхождение законно и закреплено отдельно
  *
  * @warning Проба ЗРЯЧЕСТИ стоит внутри перебора: режим, не легший, дал бы то же зелёное
+ *
  */
 TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
 	/**
@@ -3464,6 +3586,7 @@ TEST(CodecCsvDocument, EmptyFieldIsNotAnAbsentField) {
 	 *
 	 * @note Пустое поле лежит ВНУТРИ границы, а поле вне границ - за нею, и вопрос
 	 *       «есть ли поле» есть вопрос о номере его против числа полей записи
+	 *
 	 */
 	ASSERT_LT(static_cast <size_t> (0), doc.size(1));
 	// Выполняем проверку того, что поле вне границ лежит за границею записи
@@ -3473,6 +3596,7 @@ TEST(CodecCsvDocument, EmptyFieldIsNotAnAbsentField) {
 	 *
 	 * @note Пустое поле обязано уцелеть в записи: обратись оно в отсутствующее, число
 	 *       полей записи убыло бы, и круговой ход таблицы порвался бы молча
+	 *
 	 */
 	ASSERT_EQ(doc.dump(), "a,b\r\n,2\r\n");
 	// Объект контейнера таблицы, разбирающей записанное
@@ -3514,6 +3638,7 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
 	 *
 	 * @note Заголовок в счёт записей не входит: настройка «header» его не объявляла,
 	 *       и все три строки суть записи
+	 *
 	 */
 	ASSERT_EQ(doc.size(), static_cast <size_t> (3));
 	// Выполняем проверку определения кодировки исходного текста
@@ -3523,6 +3648,7 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
 	 *
 	 * @note Вид записи логического значения принадлежит договору: сборщик обязан
 	 *       писать «true» и «false» словами, а не числами, - таблица читается людьми
+	 *
 	 */
 	csv::builder_t builder;
 	// Выполняем подачу поля значением истины
@@ -3547,6 +3673,7 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
  *          Утверждения при нём стерегут перенос числа из разрядного вида в вид языка
  *
  * @note Замерено 07.09.2026 на двух системах составом библиотеки
+ *
  */
 TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	// Объект таблицы для разбора текста
@@ -3555,14 +3682,19 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	ASSERT_TRUE(document.parse("4096,-9223372036854775807,18446744073709551615,-128\r\n"));
 	// Приёмники видов языка, расходящихся между системами
 	long lesser = 0;
+	// Приёмник вида `long long`, заведомо шестьдесят четыре бита держащего
 	long long greater = 0;
+	// Беззнаковый приёмник вида `unsigned long` для наибольшего целого
 	unsigned long unsignedLesser = 0;
+	// Приёмник вида `size_t`, потребителю привычнее прочих
 	size_t sized = 0;
+	// Узкий знаковый приёмник вида `signed char` для наименьшего отрицательного
 	signed char narrow = 0;
 	/**
 	 * Выполняем приведение содержимого поля приёмником вида `size_t`
 	 *
 	 * @note Вид этот берётся первым оттого, что потребителю он привычнее прочих
+	 *
 	 */
 	ASSERT_TRUE(document.value <size_t> (sized, 0, 0));
 	// Выполняем проверку приведённого числа
@@ -3575,6 +3707,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 *       (`include/codec/numeric.hpp:82-104`). Под LP64 `long` шестьдесят четыре бита, и
 	 *       приведение не меняет числа; под LLP64 (Windows) в тридцать два бита остаётся `1` -
 	 *       ровно то, что кладёт в приёмник и кодек
+	 *
 	 */
 	ASSERT_TRUE(document.value <long> (lesser, 0, 1));
 	// Выполняем проверку приведённого числа
@@ -3589,6 +3722,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 * Выполняем проверку приведённого числа
 	 *
 	 * @note Тот же порядок и без знака: под LLP64 из шестидесяти четырёх бит остаётся 4294967295
+	 *
 	 */
 	ASSERT_EQ(unsignedLesser, static_cast <unsigned long> (18446744073709551615ULL));
 	// Выполняем приведение содержимого поля приёмником вида `signed char`
@@ -3606,6 +3740,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 *
 	 * @note Половина эта проверяет СБОРКУ, а не поведение: не будь порождения, отказал бы
 	 *       связыватель, и до прогона дело не дошло бы вовсе
+	 *
 	 */
 	{
 		// Объект таблицы с числом, вид `char` заведомо вмещающим
@@ -3617,6 +3752,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 		 *          решает система, и `-128` вместилось бы там, где `char` знаковый, а там,
 		 *          где беззнаковый, приведение отвечало бы отказом. Проверка краснела бы
 		 *          тогда на половине стендов - на ARM64 Linux в первую голову
+		 *
 		 */
 		ASSERT_TRUE(narrowed.parse("100\r\n"));
 		// Приёмник вида `char`, самостоятельного среди видов языка
@@ -3631,6 +3767,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 *
 	 * @warning Половина эта стережёт перенос: приведение через разрядный вид ставит
 	 *          приёмник ЛИШЬ при успехе
+	 *
 	 */
 	long keeper = 42;
 	// Выполняем проверку отказа приведения поля отсутствующего
@@ -3711,6 +3848,7 @@ TEST(CodecCsvDocument, AppendRefusesTheContentThatCannotBeWritten) {
 		 * @note Входов добавления ДВА - берущий записи и берущий виды, - и судья содержимого
 		 *       у них свой у каждого. Второй набором не проходился ни разу, и молчание его
 		 *       означало бы, что негодное содержимое уходит в таблицу мимо судьи
+		 *
 		 */
 		{
 			// Объект таблицы для подачи видами
@@ -4081,12 +4219,15 @@ TEST(CodecCsvDocument, RefusalOfTheFeedStopsTheFileReading){
  *          словом, приведение отвергало его само, и красноты не выходило. Случай обязан
  *          быть таков, чтобы верный ход и подменённый давали РАЗНЫЙ ответ - ныне подмена
  *          дала бы успех там, где ждётся отказ
+ *
  */
 TEST(CodecCsvDocument, TheFieldIsConvertedByTheNameOfItsColumn) {
 	// Объект контейнера таблицы
 	csv::document_t document;
+	// Выполняем установку настроек контейнера таблицы
+	document.settings(heading());
 	// Выполняем разбор текста таблицы с объявленным заголовком
-	ASSERT_TRUE(document.parse("цена,имя,годен\n42,а,true\n3.5,б,false\n", heading()));
+	ASSERT_TRUE(document.parse("цена,имя,годен\n42,а,true\n3.5,б,false\n"));
 	// Приёмник целого значения
 	int32_t whole = -1;
 	// Выполняем приведение содержимого поля по имени столбца
@@ -4110,6 +4251,7 @@ TEST(CodecCsvDocument, TheFieldIsConvertedByTheNameOfItsColumn) {
 	 *
 	 * @note Оба обязаны дать одно и то же: ход по имени есть розыск номера да зов хода
 	 *       по номеру, и расхождение здесь означало бы розыск, ведущий не в тот столбец
+	 *
 	 */
 	for(size_t row = 0; row < document.rows(); row++){
 		// Значение, извлечённое по имени столбца

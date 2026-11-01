@@ -31,6 +31,12 @@
 #include <alloc/cache.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "../../src/alloc/internal/classes.inc"
+#include "../../src/alloc/internal/cache.inc"
+
+/**
  * Подключаем заголовочный файл набора
  */
 #include "suite.hpp"

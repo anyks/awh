@@ -50,6 +50,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -88,12 +91,13 @@ namespace {
 }
 
 /**
- * @brief Метод сборки записи из дерева заданными настройками
+ * @brief Функция сборки записи из дерева заданными настройками
  *
  * @param value    дерево контейнера ABC
  * @param settings настройки записи событий
  * @param result   собранная запись системного журнала
  * @return         признак успешности сборки записи
+ *
  */
 static bool build(const abc::value_t & value, const syslog::writer_t::settings_t & settings, string & result) noexcept {
 	// Объект записи событий
@@ -386,6 +390,7 @@ TEST(CodecSysLogWriter, DateIsNeverRewritten) {
 	 * @note Перепись даты означала бы приведение её к местной зоне: зона отправителя
 	 *       терялась бы без всякой нужды, а журналы её несут именно затем, чтобы
 	 *       знать, где составлено сообщение
+	 *
 	 */
 	EXPECT_EQ(result, "<13>2003-10-11T22:14:15.003Z host");
 }
@@ -483,6 +488,7 @@ TEST(CodecSysLogWriter, Failures) {
 	 *
 	 * @note Знака пробела внутри поля запись выразить не может: поля разделяются им, а
 	 *       отмены знаков заголовок не знает вовсе - запись разбиралась бы двумя полями
+	 *
 	 */
 	three.place("/header/hostname") = abc::value_t(string("host name"));
 	// Выполняем проверку отказа сборки записи
@@ -538,6 +544,7 @@ TEST(CodecSysLogWriter, Nested) {
 	 *       отвечается отказом раньше, чем дело дойдёт до вложенного значения. Проверять
 	 *       вложенность надлежит на поле, обязательным НЕ являющемся, - иначе проверка
 	 *       мерила бы не обращение с вложенностью, а обязательность поля
+	 *
 	 */
 	tree.place("/header/hostname") = abc::value_t(string("host"));
 	// Ставим вложенное значение названием приложения в дерево события
@@ -590,6 +597,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 	 *          тогда при точке, восстановленной оснасткой, и глухота не проверялась бы
 	 *          вовсе. Замерено 08.09.2026: до заведения оснастки `de_DE.UTF-8` даёт «,»,
 	 *          после - «.»
+	 *
 	 */
 	awh::fmk::initialize();
 	// Страж возврата локали записи чисел
@@ -603,6 +611,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 	 *       ходит «de_DE.utf8», у MS Windows - «German_Germany». Локали «fa_IR» и
 	 *       «ar_SA» взяты особо: десятичным знаком там служит «٫» (U+066B), занимающий
 	 *       в UTF-8 два байта
+	 *
 	 */
 	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
 		// Если установить очередную локаль не удалось
@@ -637,6 +646,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 		 * @note Сторож этот и есть то, чем проверка отличается от собственной видимости:
 		 *       сбрось её кто-нибудь до записи числа - и точка в выдаче доказывала бы
 		 *       лишь то, что локаль была точкою, а вовсе не глухоту кодека
+		 *
 		 */
 		ASSERT_NE(::localeconv()->decimal_point[0], '.') << name << ": локаль сброшена до записи числа";
 		/**
@@ -653,6 +663,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 		 * @note Предмет проверки - глухота к локали, а не вид числа: запись с чужим
 		 *       десятичным знаком читается уже не числом, а запись длинная читается тем
 		 *       же значением
+		 *
 		 */
 		for(const pair <string, double> & expected : {make_pair(string("k"), 0.1), make_pair(string("m"), 2986.808299)}){
 			// Место начала значения очередного поля блока данных
@@ -675,6 +686,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 			 *          глухоты в проверку того же самого разряда локали с другой
 			 *          стороны. Установлено 08.09.2026: проверка падала на своей же
 			 *          машине, показывая 0 вместо 0.1
+			 *
 			 */
 			double parsed = 0.;
 			// Выполняем обратное чтение записанного значения без оглядки на локаль
@@ -752,6 +764,7 @@ TEST(CodecSysLogWriter, ValueKinds) {
 	 *
 	 * @note Сличается ДЕРЕВО, а не текст: значения блоков по описанию строковы, и
 	 *       обратный разбор отдаёт их знаками - тем же, какими они и записаны
+	 *
 	 */
 	{
 		// Объект события, собранную запись читающий
@@ -893,12 +906,13 @@ TEST(CodecSysLogWriter, UnsupportedValueKinds) {
 	/**
 	 * Ставим пустое значение полем блока структурированных данных
 	 *
-	 * @warning Пустое значение заводится ВИДОМ `kind_t::NUL`, а не конструктором без
+	 * @warning Пустое значение заводится ВИДОМ `kind_t::NIL`, а не конструктором без
 	 *          доводов: тот даёт `UNDEFINED` - «значения нет вовсе, ссылка
 	 *          недействительна», - и запись его законно отвергается как непредставимая.
 	 *          Первая редакция проверки на том и упала, обвинив кодек в своей же ошибке
+	 *
 	 */
-	tree.place("/structures/id@1/nul") = abc::value_t(abc::kind_t::NUL);
+	tree.place("/structures/id@1/nul") = abc::value_t(abc::kind_t::NIL);
 	// Настройки записи событий
 	syslog::writer_t::settings_t settings;
 	// Устанавливаем описание записи современным
@@ -917,6 +931,7 @@ TEST(CodecSysLogWriter, UnsupportedValueKinds) {
 	 *       даёт. Замерено 08.09.2026: первая редакция проверки брала его и падала,
 	 *       обвиняя кодек в своей же неверной догадке. Предмет проверки выбирается
 	 *       замером, а не рассуждением о том, какой вид «должен» быть непредставим
+	 *
 	 */
 	tree.place("/structures/id@1/time") = abc::value_t(abc::kind_t::TIME);
 	// Объект записи событий
@@ -927,6 +942,7 @@ TEST(CodecSysLogWriter, UnsupportedValueKinds) {
 	 * @note Настройка `nested` названа по вложенным значениям и их же касается: карты и
 	 *       перечня. Отметка времени вложенной не является, и отказ по ней остаётся
 	 *       отказом при ВСЯКОЙ настройке - проверено всеми тремя, а не одной
+	 *
 	 */
 	for(const syslog::nested_t nested : {syslog::nested_t::STRICT, syslog::nested_t::SKIP, syslog::nested_t::TEXT}){
 		// Устанавливаем очередную настройку обращения вложенных значений
@@ -1001,6 +1017,7 @@ TEST(CodecSysLogWriter, LegacyFailures) {
 	 *
 	 * @note Условие смотрит на значение: объявленное пустым имя ведёт к той же
 	 *       неразборчивой записи, что и вовсе отсутствующее, - отказ обязан остаться
+	 *
 	 */
 	three.place("/header/application") = abc::value_t(string(""));
 	// Выполняем проверку того, что пустое название приложения отказа не снимает
@@ -1083,6 +1100,7 @@ TEST(CodecSysLogWriter, PriorityFailures) {
 	 *       «/facility/nested» узла, уже несущего число, видом карты не делает, и
 	 *       источник остался бы числом - проверка мерила бы прежний опыт вторично и
 	 *       зеленела бы, что ни клади. Замерено 08.09.2026: сборка проходила успехом
+	 *
 	 */
 	abc::value_t five(abc::kind_t::MAP);
 	// Ставим источник сообщения вложенным значением в дерево события
@@ -1158,6 +1176,7 @@ TEST(CodecSysLogWriter, NestedHeaderFields) {
 	 *
 	 * @note Опознаватель работы стоит внутри метки приложения, и вложенным он выразим
 	 *       быть не может так же, как и прочие поля
+	 *
 	 */
 	for(const char * name : {"timestamp", "hostname", "application", "process"}){
 		// Дерево собираемого события устаревшего описания
@@ -1173,6 +1192,7 @@ TEST(CodecSysLogWriter, NestedHeaderFields) {
 		 *          знаки, видом карты его НЕ делает, и вложенное значение до дерева не
 		 *          дошло бы вовсе. Замерено 08.09.2026: сборка проходила успехом у трёх
 		 *          полей из четырёх, и проверка обвиняла кодек в своей же ошибке
+		 *
 		 */
 		tree.place(string("/header/") + name + "/nested") = abc::value_t(string("value"));
 		// Если очередным полем заголовка дата сообщения не является
@@ -1322,6 +1342,7 @@ TEST(CodecSysLogWriter, ModernVersionAndEmptyStructures) {
 	/**
 	 * @note Текст сообщения RFC 5424 предваряется меткой порядка байтов, оттого знак
 	 *       отсутствия блоков данных стоит перед нею, а не вплотную к тексту
+	 *
 	 */
 	// Выполняем проверку того, что пустые блоки данных выражены знаком отсутствия
 	EXPECT_NE(result.find(" - - - - - "), string::npos) << "запись: " << result;
@@ -1367,10 +1388,11 @@ TEST(CodecSysLogWriter, MessageBreakingTheRecord) {
 	// Собранная запись системного журнала
 	string result = "";
 	/**
-	 * @brief Метод сборки дерева события с заданным текстом сообщения
+	 * @brief Функция сборки дерева события с заданным текстом сообщения
 	 *
 	 * @param message текст сообщения события
 	 * @return        дерево собираемого события
+	 *
 	 */
 	const auto tree = [](const string & message) noexcept -> abc::value_t {
 		// Дерево собираемого события
@@ -1463,6 +1485,7 @@ TEST(CodecSysLogWriter, ByteOrderMarkOnlyForValidUtf8) {
 	 * @note Разница с поверкою границ чисел даты намеренна: модуль дат держит СМЕШАННЫЕ
 	 *       описания, и правка одной его части задевает прочие, отчего там кодек поверяет
 	 *       сам. См. `strictTimestamp` в `src/codec/syslog/reader.cpp`
+	 *
 	 */
 	// Настройки записи событий
 	syslog::writer_t::settings_t settings;
@@ -1471,10 +1494,11 @@ TEST(CodecSysLogWriter, ByteOrderMarkOnlyForValidUtf8) {
 	// Собранная запись системного журнала
 	string result = "";
 	/**
-	 * @brief Метод сборки дерева события с заданным текстом сообщения
+	 * @brief Функция сборки дерева события с заданным текстом сообщения
 	 *
 	 * @param message текст сообщения события
 	 * @return        дерево собираемого события
+	 *
 	 */
 	const auto tree = [](const string & message) noexcept -> abc::value_t {
 		// Дерево собираемого события
@@ -1525,6 +1549,7 @@ TEST(CodecSysLogWriter, ByteOrderMarkOnlyForValidUtf8) {
  * @note Найдено щупом вложенности 15.09.2026 по признаку, взятому у кодеков
  *       JSON: если то же значение при ИНОЙ настройке записывается, дело в настройке, а не
  *       в значении. Тот же дефект слово в слово лежал и в кодеке CEF
+ *
  */
 TEST(CodecSysLogWriter, NestedValueBecomesReadableText) {
 	// Вложенный перечень значений
@@ -1546,14 +1571,16 @@ TEST(CodecSysLogWriter, NestedValueBecomesReadableText) {
 	// Укладываем отображение в поле имени узла
 	ASSERT_TRUE(document.set("/header/hostname", map));
 	// Настройки записи событий
-	syslog::writer_t::settings_t settings;
+	syslog::document_t::settings_t settings;
 	// Устанавливаем обращение вложенного значения в знаки
-	settings.nested = syslog::nested_t::TEXT;
+	settings.writer.nested = syslog::nested_t::TEXT;
 	// Устанавливаем настройки записи событий
 	document.settings(settings);
 	// Получаем собранную запись системного журнала
 	string built = document.dump();
-	// Снимаем перевод строки, сборкою добавленный
+	/**
+	 * Снимаем перевод строки, сборкою добавленный
+	 */
 	while(!built.empty() && ((built.back() == '\n') || (built.back() == '\r')))
 		// Снимаем последний знак собранной записи
 		built.pop_back();
@@ -1564,6 +1591,7 @@ TEST(CodecSysLogWriter, NestedValueBecomesReadableText) {
 	 *
 	 * @note Поверка эта закрепляет главное: запись не несёт октетов двоичной записи
 	 *       контейнера, каких набор знаков описания не допускает вовсе
+	 *
 	 */
 	for(size_t i = 0; i < built.size(); i++){
 		// Получаем очередной знак собранной записи беззнаковым
@@ -1600,11 +1628,12 @@ TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused) {
 	// Устанавливаем запись приставки приоритета
 	settings.prefix = true;
 	/**
-	 * @brief Метод сборки дерева события заданными частями приоритета
+	 * @brief Функция сборки дерева события заданными частями приоритета
 	 *
 	 * @param facility источник сообщения либо пустота, если объявлять его не надлежит
 	 * @param severity важность сообщения либо пустота, если объявлять её не надлежит
 	 * @return         собранное дерево события
+	 *
 	 */
 	auto make = [](const string & facility, const string & severity) noexcept -> abc::value_t {
 		// Дерево события системного журнала
@@ -1641,6 +1670,7 @@ TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused) {
 	 *
 	 * @note Половина эта договора важнее первой: отказ, на всякое дерево с именами
 	 *       распространённый, сломал бы сборку приоритета из частей вовсе
+	 *
 	 */
 	ASSERT_TRUE(build(make("local0", "err"), settings, result));
 	// Выполняем проверку приставки приоритета, из частей собранной
@@ -1683,11 +1713,12 @@ TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused) {
  */
 TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet) {
 	/**
-	 * @brief Метод сборки записи с заданным опознавателем блока
+	 * @brief Функция сборки записи с заданным опознавателем блока
 	 *
 	 * @param id     опознаватель блока структурированных данных
 	 * @param result собранная запись системного журнала
 	 * @return       признак успешности сборки записи
+	 *
 	 */
 	auto build = [](const string & id, string & result) noexcept -> bool {
 		// Дерево события системного журнала
@@ -1709,6 +1740,7 @@ TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet) {
 		 *          «NOwKW0omSiy» с вложенным «Ll» вместо одного блока. Первая
 		 *          редакция этой проверки 16.09.2026 на том и споткнулась, показав
 		 *          отказ там, где кодек работал верно
+		 *
 		 */
 		abc::value_t params(abc::kind_t::MAP);
 		// Ставим поле блока структурированных данных
@@ -1741,6 +1773,7 @@ TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet) {
 	 *
 	 * @note Половина эта договора важнее первой: косая черта набору описания отвечает,
 	 *       и живые журналы её пишут - отказ ей сломал бы записи настоящих устройств
+	 *
 	 */
 	EXPECT_TRUE(build("NOwKW0omSiy/Ll", result));
 	// Обнуляем собранную запись системного журнала
@@ -1777,11 +1810,12 @@ TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet) {
  */
 TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused) {
 	/**
-	 * @brief Метод сборки записи с заданным источником сообщения
+	 * @brief Функция сборки записи с заданным источником сообщения
 	 *
 	 * @param facility источник сообщения именем
 	 * @param result   собранная запись системного журнала
 	 * @return         признак успешности сборки записи
+	 *
 	 */
 	auto assemble = [](const string & facility, string & result) noexcept -> bool {
 		// Настройки записи событий
@@ -1816,6 +1850,7 @@ TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused) {
 	 *
 	 * @note Половина эта договора важнее первой: службы журналов пишут правила отбора
 	 *       именами «error», «warn» и «panic» наравне с основными
+	 *
 	 */
 	ASSERT_TRUE(assemble("AUTHPRIV", result));
 	// Выполняем проверку приставки приоритета, именем прописными объявленной
@@ -1847,7 +1882,9 @@ TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused) {
 TEST(CodecSysLogWriter, HeaderFieldLengthLimitsAreEnforced) {
 	// Поля заголовка, пределы им назначенные, и знак наполнения
 	const struct {
+		// Путь свойства в дереве документа
 		const char * path;
+		// Предел длины свойства
 		size_t limit;
 	} FIELDS[] = {
 		{"/header/hostname", 255}, {"/header/application", 48},

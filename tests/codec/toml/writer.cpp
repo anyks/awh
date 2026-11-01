@@ -27,6 +27,7 @@
  *       подтягивают его попутно другими заголовками, а gcc 12 с glibc 2.36 - нет,
  *       и сборка валится с "isinf is not a member of std". Проверено на стенде
  *       Debian 12
+ *
  */
 #include <clocale>
 #include <cmath>
@@ -53,11 +54,17 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, помощники рамки дающее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён awh::codec, типы кодека toml несущее
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод сборки составного имени ключа
+ * @brief Функция сборки составного имени ключа
  *
  * @param names составные части собираемого имени ключа
  * @return      собранное составное имя ключа
@@ -107,7 +114,7 @@ struct Scalar {
 };
 
 /**
- * @brief Метод разбора собранного текста настроек
+ * @brief Функция разбора собранного текста настроек
  *
  * @details Служит договору о совпадении записанного с прочитанным обратно: собранный
  * текст обязан разбираться без ошибок, а прочитанные значения - совпадать с
@@ -199,6 +206,7 @@ TEST(CodecTomlWriter, DottedKeys) {
 	 *
 	 * @note Имя со знаком пробела к записи без кавычек непригодно и ограждается
 	 *       кавычками само по себе
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "[a.\"b c\"]\nx.y = true\n");
 }
@@ -225,7 +233,7 @@ TEST(CodecTomlWriter, UnicodeKeys) {
 	// Выполняем установку настроек записи текста настроек
 	writer.settings(settings);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа со знаками Юникода
 	ASSERT_TRUE(writer.key("ключ"));
 	// Выполняем запись целого числа
@@ -304,7 +312,7 @@ TEST(CodecTomlWriter, Promotion) {
 	// Выполняем установку настроек записи текста настроек
 	writer.settings(settings);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем проверку отказа записи строкового значения
@@ -337,6 +345,7 @@ TEST(CodecTomlWriter, Multiline) {
 	 *       значение растягивало запись на строку лишнюю, а перечень, такое значение
 	 *       несущий, при обратном чтении становился многострочным, хотя человек написал
 	 *       его одною строкой, - перезапись не сходилась сама с собою
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "basic = \"\"\"первая\nвторая\"\"\"\nliteral = '''\\путь\nвторая'''\n");
 	// Собранные события разбора значений
@@ -549,6 +558,7 @@ TEST(CodecTomlWriter, UnsignedBeyondSignedLimitIsRefused) {
 	// Выполняем проверку того, что отказ причину свою назвал
 	ASSERT_EQ(writer.error(), toml::error_t::NUMBER_OVERFLOW);
 }
+// Проверка записи нечисла со знаком минус, знак в тексте сохраняющего
 TEST(CodecTomlWriter, NegativeNotANumberKeepsSign) {
 	// Объект записи текста настроек
 	toml::writer_t writer;
@@ -589,6 +599,7 @@ TEST(CodecTomlWriter, LocaleNumbers) {
 	 *       «fa_IR» и «ar_SA» взяты особо: десятичным знаком там служит «٫»
 	 *       (U+066B), занимающий в UTF-8 два байта, - замена одного лишь первого
 	 *       байта оставляла бы от него обрубок
+	 *
 	 */
 	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
 		// Если установить очередную локаль не удалось
@@ -653,6 +664,7 @@ TEST(CodecTomlWriter, LocaleNumbers) {
 	 *          читалась провалом, тогда как отчёт говорил `SKIPPED 2`, `FAILED 0`, а
 	 *          исход прогона был нулевым. Пропуск проверкою НЕ ПРОЙДЕН, но и НЕ ПРОВАЛЕН:
 	 *          вычитать его из общего числа наравне с отказом нельзя
+	 *
 	 */
 	if(checked == 0)
 		// Выполняем пропуск проверки
@@ -944,7 +956,7 @@ TEST(CodecTomlWriter, TrailingRefusal) {
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::UNEXPECTED_CONTENT);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись значения пары
@@ -1089,13 +1101,13 @@ TEST(CodecTomlWriter, Limits) {
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::KEY_TOO_LONG);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку отказа записи имени ключа сверх предела количества частей
 	ASSERT_FALSE(writer.key(::path({"a", "b", "c"})));
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::PARTS_EXCEEDED);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("a"));
 	/**
@@ -1104,6 +1116,7 @@ TEST(CodecTomlWriter, Limits) {
 	 * @note Уровень пары глубиной не считается: разбор меряет глубину вложенностью
 	 *       перечней и встроенных таблиц друг в друга, и счёт уровня пары наравне с
 	 *       ними отвергал бы запись того, что разбор принимает
+	 *
 	 */
 	ASSERT_TRUE(writer.arrayOpen());
 	// Выполняем запись начала вложенного перечня значений
@@ -1224,12 +1237,13 @@ TEST(CodecTomlWriter, FoldedLineLimit) {
 	 *
 	 * @note Ни одна строка значения предела не превышает, а запись целиком его
 	 *       превышает - отвергается она так же, как её отверг бы разбор
+	 *
 	 */
 	ASSERT_FALSE(writer.text(string(20, 'a') + "\n" + string(20, 'b') + "\n" + string(20, 'c'), toml::string_t::MULTILINE_BASIC));
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::LINE_TOO_LONG);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись начала перечня значений несколькими строками
@@ -1324,6 +1338,7 @@ TEST(CodecTomlWriter, Rewrite) {
 	 * @note Пустая строка перед объявлением таблицы поставлена украшением записи, а
 	 *       ограда строки, система счисления числа и запись отметки времени взяты
 	 *       такими, какими их выбрал человек
+	 *
 	 */
 	ASSERT_EQ(writer.text(),
 	 "# заголовок\n"
@@ -1366,7 +1381,7 @@ TEST(CodecTomlWriter, CarriageReturn) {
 	// Выполняем установку настроек записи текста настроек
 	writer.settings(settings);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем проверку отказа записи возврата каретки дословной оградой
@@ -1628,6 +1643,7 @@ TEST(CodecTomlWriter, RefusalLocksWriter) {
 	 * @note Снятие всех двадцати одного сторожа роняет девять утверждений из двадцати
 	 *       двух: остальные отвергаются и своими условиями, сторожа не спрашивая.
 	 *       Замерено срывом
+	 *
 	 */
 	EXPECT_FALSE(writer.table(parts));
 	EXPECT_FALSE(writer.table("таблица"));
@@ -1656,7 +1672,7 @@ TEST(CodecTomlWriter, RefusalLocksWriter) {
 	// Выполняем проверку того, что собранный текст отказом не тронут
 	ASSERT_EQ(writer.text(), before);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что сброс код отказа отпускает
 	ASSERT_EQ(writer.error(), toml::error_t::NONE);
 	// Выполняем проверку того, что запись после сброса принимается
@@ -1692,6 +1708,7 @@ TEST(CodecTomlWriter, TornRefusal) {
 	 * Выполняем проверку отказа выдачи оборванного текста настроек
 	 *
 	 * @note Без проверки выдавался бы текст с открывающей скобкой на конце
+	 *
 	 */
 	ASSERT_TRUE(writer.text().empty());
 	/**
@@ -1701,6 +1718,7 @@ TEST(CodecTomlWriter, TornRefusal) {
 	 *       знак конца строки к оборванной: по одному лишь виду собранного текста
 	 *       рваность эта становилась неразличима. Ныне писатель дальнейших записей не
 	 *       принимает вовсе, и случай этот отпал
+	 *
 	 */
 	ASSERT_FALSE(writer.blank());
 	// Выполняем проверку того, что код отказа заклинившим писателем сохранён
@@ -1708,7 +1726,7 @@ TEST(CodecTomlWriter, TornRefusal) {
 	// Выполняем проверку того, что выдача текста остаётся пустой
 	ASSERT_TRUE(writer.text().empty());
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что сброс снимает и признак рваности, и заклинивание
 	ASSERT_TRUE(writer.key("ab") && writer.integer(1));
 	// Выполняем проверку выдачи собранного заново текста настроек
@@ -1846,6 +1864,7 @@ TEST(CodecTomlWriter, MultilineOpeningNewline) {
 		 *
 		 * @note Первый отбрасывается разбором, второй есть первый перевод содержимого:
 		 *       без постановки значение прочиталось бы обратно без него
+		 *
 		 */
 		ASSERT_EQ(writer.text(), "k = \"\"\"\n\nодна строка\"\"\"\n");
 	}
@@ -1854,6 +1873,7 @@ TEST(CodecTomlWriter, MultilineOpeningNewline) {
 	 *
 	 * @note Ровно это и ломалось: перечень, человеком написанный одною строкой,
 	 *       растягивался записью и при обратном чтении становился многострочным
+	 *
 	 */
 	{
 		// Собираемое дерево настроек
@@ -2015,6 +2035,7 @@ TEST(CodecTomlWriter, StampRefusesMalformed) {
 	 *
 	 * @note Половина эта обязательна: запись, отвергающая ВСЯКУЮ отметку, прошла бы все
 	 *       заходы выше, не записав ни одной
+	 *
 	 */
 	{
 		// Отметка времени, записи подлежащая
@@ -2162,7 +2183,9 @@ TEST(CodecTomlWriter, TrailingJudgesWrittenNotSettings) {
  *
  */
 TEST(CodecTomlWriter, LineRefusedOnPendingKey) {
-	// Выполняем перебор записываемых строк текста
+	/**
+	 * Выполняем перебор записываемых строк текста
+	 */
 	for(const auto & sample : { string("примечание"), string("дописка"), string("пустая строка") }){
 		// Объект записи текста настроек
 		toml::writer_t writer;
@@ -2191,6 +2214,7 @@ TEST(CodecTomlWriter, LineRefusedOnPendingKey) {
 		 *       текст выдавался целым, и тем доказывалось, что отказ его не испортил.
 		 *       Ныне писатель после отказа записей не принимает, и целость текста
 		 *       судится пустой его выдачей вместе с сохранённым кодом отказа
+		 *
 		 */
 		ASSERT_FALSE(writer.integer(1)) << sample;
 		// Выполняем проверку того, что код отказа заклинившим писателем сохранён
@@ -2393,6 +2417,7 @@ TEST(CodecTomlWriter, RefusalsNameTheirOwnCause) {
 	 *
 	 * @note Значение в тексте настроек всегда при имени: описание корнем текста полагает
 	 *       перечень пар, и голого значения в нём не бывает вовсе
+	 *
 	 */
 	{
 		// Объект потоковой записи текста настроек
@@ -2447,6 +2472,7 @@ TEST(CodecTomlWriter, RefusalsNameTheirOwnCause) {
 	 *
 	 * @note Причина здесь иная, чем у значения вне пары: закрытие лишнее означает не
 	 *       содержимое не в том месте, а построение, счёт которому разошёлся
+	 *
 	 */
 	{
 		// Объект потоковой записи текста настроек
@@ -2468,6 +2494,7 @@ TEST(CodecTomlWriter, RefusalsNameTheirOwnCause) {
 	 * Выполняем проверку отказа записи имени дважды подряд
 	 *
 	 * @note Причина здесь третья: имя, значения не дождавшееся, есть пара незавершённая
+	 *
 	 */
 	{
 		// Объект потоковой записи текста настроек
@@ -2542,6 +2569,7 @@ TEST(CodecTomlWriter, EveryLanguageIntegerRecordIsWritten) {
 	 *
 	 * @note Число берётся в пределах знакового: описание TOML отводит целому шестьдесят
 	 *       четыре разряда СО ЗНАКОМ, и число сверх того запись отвергает своим кодом
+	 *
 	 */
 	ASSERT_TRUE(writer.number("j", static_cast <unsigned long long> (9007199254740993ULL)));
 	// Выполняем проверку собранного текста
@@ -2568,6 +2596,7 @@ TEST(CodecTomlWriter, TheFirstCauseIsNotOverwrittenByItsConsequence) {
 	 * @note Правило выбирается ЯВНО, ибо предмет проверки есть переживание первопричины
 	 *       отказом, а умолчанием положена замена, отказа не дающая вовсе. Взять здесь
 	 *       иную подачу, отказ дающую, значило бы подменить предмет проверки
+	 *
 	 */
 	toml::writer_t::settings_t settings;
 	// Выполняем выбор правила отказа записи
@@ -2585,6 +2614,7 @@ TEST(CodecTomlWriter, TheFirstCauseIsNotOverwrittenByItsConsequence) {
 	/**
 	 * @note Потеря причины и подмена её - беды разной тяжести. Потеря видна: код `NONE` при
 	 *       отказе противоречив сам по себе. Подмена не видна вовсе - код правдоподобен
+	 *
 	 */
 	// Выполняем проверку того, что первопричина спрос текста ПЕРЕЖИЛА
 	ASSERT_EQ(writer.error(), toml::error_t::INVALID_ENCODING) << toml::message(writer.error());
@@ -2677,7 +2707,9 @@ TEST(CodecTomlWriter, UnclosedContextNamesItsKind) {
  *
  */
 TEST(CodecTomlWriter, OwnBufferStrings) {
-	// Проверяем короткий буфер и буфер с перевыделением памяти
+	/**
+	 * Проверяем короткий буфер и буфер с перевыделением памяти
+	 */
 	for(const size_t size : vector <size_t> {0, 4096}){
 		/**
 		 * Выполняем проверку имени ключа из самого выходного буфера
@@ -2685,12 +2717,14 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			toml::writer_t writer, reference;
+			// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 			ASSERT_TRUE(writer.key("first"));
 			ASSERT_TRUE(reference.key("first"));
 			ASSERT_TRUE(writer.value(string(size, 'x')));
 			ASSERT_TRUE(reference.value(string(size, 'x')));
 			// Снимки входа началом записанной строки
 			const string_view own = string_view(writer.text()).substr(0, 5);
+			// Снимаем у копии начало записанной строки, пять знаков имени ключа несущее
 			const string_view mirror = string_view(reference.text()).substr(0, 5);
 			// Выполняем запись имени ключа из самого выходного буфера
 			ASSERT_TRUE(writer.key(own));
@@ -2707,12 +2741,14 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			toml::writer_t writer, reference;
+			// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 			ASSERT_TRUE(writer.key("first"));
 			ASSERT_TRUE(reference.key("first"));
 			ASSERT_TRUE(writer.value(string(size, 'x')));
 			ASSERT_TRUE(reference.value(string(size, 'x')));
 			// Снимки входа началом записанной строки
 			const string_view own = string_view(writer.text()).substr(0, 4);
+			// Снимаем у копии начало записанной строки, четыре знака объявления таблицы несущее
 			const string_view mirror = string_view(reference.text()).substr(0, 4);
 			// Выполняем запись объявления таблицы из самого выходного буфера
 			ASSERT_TRUE(writer.table(own));
@@ -2726,12 +2762,14 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			toml::writer_t writer, reference;
+			// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 			ASSERT_TRUE(writer.key("first"));
 			ASSERT_TRUE(reference.key("first"));
 			ASSERT_TRUE(writer.value(string(size, 'x')));
 			ASSERT_TRUE(reference.value(string(size, 'x')));
 			// Снимки входа началом записанной строки
 			const string_view own = string_view(writer.text()).substr(0, 3);
+			// Снимаем у копии начало записанной строки, три знака объявления набора таблиц несущее
 			const string_view mirror = string_view(reference.text()).substr(0, 3);
 			// Выполняем запись объявления набора таблиц из самого выходного буфера
 			ASSERT_TRUE(writer.arrayTable(own));
@@ -2745,12 +2783,14 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			toml::writer_t writer, reference;
+			// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 			ASSERT_TRUE(writer.key("first"));
 			ASSERT_TRUE(reference.key("first"));
 			ASSERT_TRUE(writer.value(string(size, 'x')));
 			ASSERT_TRUE(reference.value(string(size, 'x')));
 			// Снимки входа
 			const string note = reference.text();
+			// Пишем примечанием писателя его же собранный текст, а копии — снимок note
 			ASSERT_TRUE(writer.comment(writer.text()));
 			ASSERT_TRUE(reference.comment(note));
 			// Выполняем проверку совпадения с записью независимой копии
@@ -2762,14 +2802,18 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			toml::writer_t writer, reference;
+			// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 			ASSERT_TRUE(writer.key("first"));
 			ASSERT_TRUE(reference.key("first"));
 			ASSERT_TRUE(writer.value(string(size, 'x')));
 			ASSERT_TRUE(reference.value(string(size, 'x')));
 			// Снимки входа без завершающего перевода строки
 			string_view own = writer.text();
+			// Снимаем текст копии, тот же завершающий перевод строки несущий
 			string_view mirror = reference.text();
+			// Снимаем у own завершающий перевод строки
 			own.remove_suffix(1);
+			// Снимаем у mirror завершающий перевод строки
 			mirror.remove_suffix(1);
 			// Выполняем дописку примечания из самого выходного буфера
 			ASSERT_TRUE(writer.trailing(own));
@@ -2789,19 +2833,24 @@ TEST(CodecTomlWriter, OwnBufferStrings) {
  *
  */
 TEST(CodecTomlWriter, OwnBufferParts) {
-	// Проверяем короткий буфер и буфер с перевыделением памяти
+	/**
+	 * Проверяем короткий буфер и буфер с перевыделением памяти
+	 */
 	for(const size_t size : vector <size_t> {0, 4096}){
 		// Сравниваем результат с записью независимой копии
 		toml::writer_t writer, reference;
+		// Пишем в писатель и копию пару «first» со строкою в size знаков «x»
 		ASSERT_TRUE(writer.key("first"));
 		ASSERT_TRUE(reference.key("first"));
 		ASSERT_TRUE(writer.value(string(size, 'x')));
 		ASSERT_TRUE(reference.value(string(size, 'x')));
 		// Снимки входа началом записанной строки
 		const string_view own = string_view(writer.text()).substr(0, 3);
+		// Снимаем у копии начало записанной строки, три знака имени ключа несущее
 		const string_view mirror = string_view(reference.text()).substr(0, 3);
 		// Составное имя из двух частей, обеими ссылающимися на выходной буфер
 		const vector <toml::part_t> parts = path({own, own});
+		// Собираем копию составного имени из тех же срезов mirror
 		const vector <toml::part_t> copies = path({mirror, mirror});
 		// Выполняем запись имени ключа составного имени
 		ASSERT_TRUE(writer.key(parts));

@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки владеющего значения бинарного контейнера ABC — сборка из ничего,
  *        обращение по пути, предел роста вместимого, сличение значений и разрушение
  *        глубокого дерева без возвратности
@@ -36,7 +42,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -46,6 +58,48 @@ using namespace awh::codec;
 namespace {
 };
 
+/**
+ * @brief Проверка копирования собственного потомка с сохранением его содержимого
+ *
+ */
+TEST(CodecAbcValue, CopyAssignmentPreservesOwnDescendant) {
+	// Корневое значение дерева
+	abc::value_t root;
+	// Выполняем заведение первого поля потомка
+	root["child"]["leaf"] = abc::value_t(string(128, 'a'));
+	// Выполняем заведение второго поля потомка
+	root["child"]["extra"] = abc::value_t("second");
+	// Ожидаемое содержимое после копирования
+	const abc::value_t expected(root["child"]);
+	// Выполняем копирование потомка на место корня
+	root = root["child"];
+	// Выполняем проверку сохранения всего поддерева
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку сохранения строкового поля
+	ASSERT_EQ(root["leaf"].text(), string(128, 'a'));
+}
+/**
+ * @brief Проверка переноса собственного потомка с сохранением его содержимого
+ *
+ */
+TEST(CodecAbcValue, MoveAssignmentPreservesOwnDescendant) {
+	// Корневое значение дерева
+	abc::value_t root;
+	// Выполняем заведение первого поля потомка
+	root["branch"]["child"]["leaf"] = abc::value_t(string(128, 'a'));
+	// Выполняем заведение второго поля потомка
+	root["branch"]["child"]["extra"] = abc::value_t("second");
+	// Ожидаемое содержимое после переноса
+	const abc::value_t expected(root["branch"]["child"]);
+	// Выполняем перенос потомка на место корня
+	root = ::std::move(root["branch"]["child"]);
+	// Выполняем проверку сохранения всего поддерева
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку сохранения строкового поля
+	ASSERT_EQ(root["leaf"].text(), string(128, 'a'));
+	// Выполняем проверку сохранения второго поля
+	ASSERT_EQ(root["extra"].text(), "second");
+}
 /**
  * @brief Проверка сборки значения из ничего и кругового обхода записи
  *
@@ -356,6 +410,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	 *       подменивший, прошёл бы его зелёным. Опора обязана лежать вне проверяемого,
 	 *       и здесь ею служит сама поданная величина. Найдено 31.08.2026 разбором
 	 *       набора признаком «откуда взято то, с чем сличается выход»
+	 *
 	 */
 	{
 		// Октеты величины, снятые работой извлечения цифр
@@ -586,7 +641,9 @@ TEST(CodecAbcValue, TruncationAndCorruption) {
 	ASSERT_LE(largest, record.size());
 	// Выполняем проверку того, что образцовая запись разбирается целой
 	abc::value_t value;
+	// Убеждаемся, что образцовая запись разбирается целой
 	ASSERT_TRUE(value.parse(record.data(), record.size()));
+	// Убеждаемся, что разобранное значение держит два элемента
 	ASSERT_EQ(value.size(), 2u);
 }
 
@@ -666,6 +723,7 @@ TEST(CodecAbcValue, MoveAssignment) {
 	abc::value_t value;
 	// Выполняем установку полей отображения
 	value["имя"] = abc::value_t(string("Юрий"));
+	// Заводим поле «лет» числом 42 без знака
 	value["лет"] = abc::value_t(static_cast <uint64_t> (42));
 	// Принимающее владеющее значение
 	abc::value_t target;
@@ -703,7 +761,7 @@ TEST(CodecAbcValue, BuilderAssembly) {
 	// Выполняем запись целого поля отображения
 	ASSERT_TRUE(builder.key("лет") && builder.value(static_cast <uint64_t> (42)));
 	// Выполняем запись пустого поля отображения
-	ASSERT_TRUE(builder.key("примечание") && builder.nul());
+	ASSERT_TRUE(builder.key("примечание") && builder.nil());
 	// Выполняем открытие вложенного перечня значений
 	ASSERT_TRUE(builder.key("метки") && builder.array());
 	// Выполняем проверку глубины открытых вместилищ
@@ -727,7 +785,7 @@ TEST(CodecAbcValue, BuilderAssembly) {
 	// Выполняем проверку извлечённого числа
 	ASSERT_EQ(number, 42u);
 	// Выполняем проверку вида пустого поля
-	ASSERT_TRUE(value["примечание"].is(abc::type_t::NUL));
+	ASSERT_TRUE(value["примечание"].is(abc::type_t::NIL));
 	// Выполняем проверку количества значений вложенного перечня
 	ASSERT_EQ(value["метки"].size(), 2u);
 	// Выполняем проверку содержимого вложенного перечня
@@ -752,6 +810,7 @@ TEST(CodecAbcValue, BuilderRefusals) {
 	 * @note Запись значения до открытия вместилища отказом БОЛЕЕ НЕ отвечает: одиночное
 	 *       значение вправе стоять корнем записи, и случай этот проверяется отдельно
 	 *       проверкой `BuilderScalarRoot`
+	 *
 	 */
 	ASSERT_FALSE(builder.key("имя"));
 	// Выполняем проверку отказа закрытия неоткрытого вместилища
@@ -916,11 +975,13 @@ TEST(CodecAbcValue, NameIndexConsistency) {
 	}
 	// Выполняем проверку сохранности поля, заведённого после указателя
 	ASSERT_TRUE(value["добавленное"].value(number));
+	// Убеждаемся, что заведённое после указателя поле держит число 777
 	ASSERT_EQ(number, 777u);
 	// Копия собранного отображения
 	const abc::value_t copy = value;
 	// Выполняем проверку того, что копия разыскивает поля своим указателем
 	ASSERT_TRUE(copy["поле5"].value(number));
+	// Убеждаемся, что копия отдаёт из поля «поле5» число 5
 	ASSERT_EQ(number, 5u);
 	// Выполняем проверку того, что удалённого поля нет и у копии
 	ASSERT_FALSE(copy.contains("поле0"));
@@ -1001,7 +1062,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	 * записи нет вовсе, и уложить её нечем. Укладка обращает её в пустое значение,
 	 * и обращение это односторонне - оговорено намеренно, дабы не искали дефекта
 	 */
-	ASSERT_TRUE(nothing.is(abc::type_t::NUL));
+	ASSERT_TRUE(nothing.is(abc::type_t::NIL));
 	// Выполняем проверку того, что исходное значение осталось неопределённым
 	ASSERT_FALSE(empty.valid());
 }
@@ -1263,7 +1324,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 	/**
 	 * Выполняем перебор всех видов значения дерева
 	 */
-	for(const abc::kind_t kind : {abc::kind_t::NUL, abc::kind_t::BOOL, abc::kind_t::NUMBER,
+	for(const abc::kind_t kind : {abc::kind_t::NIL, abc::kind_t::BOOL, abc::kind_t::NUMBER,
 	 abc::kind_t::STRING, abc::kind_t::BLOB, abc::kind_t::TIME, abc::kind_t::UUID,
 	 abc::kind_t::ARRAY, abc::kind_t::MAP}){
 		// Значение, заведённое одним лишь видом
@@ -1283,6 +1344,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 		 *
 		 * @details Поверка эта и есть довод: узел, уложить какой нечем, губит не себя, а
 		 * всё дерево, - и увидеть это можно лишь тогда, когда он лежит не корнем
+		 *
 		 */
 		{
 			// Собираемое отображение
@@ -1341,6 +1403,7 @@ TEST(CodecAbcValue, WholeRealMatchesInteger){
 	 *
 	 * @tparam T затребованный вид числа
 	 * @param  number сличаемое число
+	 *
 	 */
 	auto same = [](const auto number, const string & title) noexcept -> void {
 		// Значение, уложенное целым видом
@@ -1369,6 +1432,7 @@ TEST(CodecAbcValue, WholeRealMatchesInteger){
 	 *
 	 * @note Числа взяты и малые, и выходящие за узкие виды, и отрицательные: расхождение
 	 * прежнее вскрывалось ИМЕННО у тех, что в затребованный вид не влезают
+	 *
 	 */
 	same(static_cast <uint64_t> (0), "нуль");
 	same(static_cast <uint64_t> (7), "семь");
@@ -1394,6 +1458,7 @@ TEST(CodecAbcValue, WholeRealMatchesInteger){
 	 *
 	 * @note Половина вторая правила: дорога целого берётся лишь при нулевой дробной
 	 * части, а не всяким дробным числом разом
+	 *
 	 */
 	{
 		// Значение дробного вида с дробной частью
@@ -1410,6 +1475,7 @@ TEST(CodecAbcValue, WholeRealMatchesInteger){
 	 *
 	 * @note Дорога целого берётся, лишь покуда число укладывается в разрядность: шире
 	 * повторить перенос нечем, у самого языка приведение там неопределено
+	 *
 	 */
 	{
 		// Значение дробного вида за разрядностью целого без знака
@@ -1422,6 +1488,7 @@ TEST(CodecAbcValue, WholeRealMatchesInteger){
 		ASSERT_EQ(natural, numeric_limits <uint64_t>::max());
 	}
 }
+// Проверка договора извлечения значений каждого вида
 TEST(CodecAbcValue, ExtractionContract){
 	/**
 	 * Выполняем поверку договора извлечения логического значения
@@ -1531,6 +1598,7 @@ TEST(CodecAbcValue, ExtractionContract){
 		ASSERT_EQ(node.kind(), abc::kind_t::MAP);
 	}
 }
+// Проверка различения имён отображения по виду ключа
 TEST(CodecAbcValue, KeyIdentityByKind){
 	/**
 	 * Целое и дробное суть РАЗНЫЕ имена
@@ -1585,6 +1653,7 @@ TEST(CodecAbcValue, KeyIdentityByKind){
 		 * @note Имя там сужено разбором до наименьшей ширины, и это самая та проверка
 		 * терпимости: объявись сужённое имя другим, круговой ход записи заводил бы поле
 		 * дважды на всяком обороте
+		 *
 		 */
 		ASSERT_TRUE(back.insert(abc::value_t(static_cast <uint64_t> (42)), abc::value_t(string("третье"))));
 		// Выполняем проверку того, что поле осталось одно
@@ -1606,6 +1675,7 @@ TEST(CodecAbcValue, KeyIdentityByKind){
  * @note Предел общий на процесс, и проверка обязана вернуть его прежним: настройка,
  *       утёкшая из проверки, отзывается «плавающим» отказом у соседей по прогону.
  *       Оттого прежнее значение снимается первым же действием и возвращается последним
+ *
  */
 TEST(CodecAbcValue, ContainerGrowthLimit){
 	// Предел роста вместимого, стоявший до проверки
@@ -1651,6 +1721,7 @@ TEST(CodecAbcValue, ContainerGrowthLimit){
  *
  * @note Отказ сличается наравне с успехом: работа обязана ОЧИЩАТЬ буфер и при отказе,
  *       иначе потребитель прочтёт остаток от прежнего извлечения как величину
+ *
  */
 TEST(CodecAbcValue, ExtendedDigits){
 	// Октеты величины числа неограниченной ширины, старшим октетом вперёд
@@ -1750,7 +1821,6 @@ TEST(CodecAbcValue, DumpAcceptsWriterSettings) {
 	 * заводится всякой сборкой наново, и настройки в значении не оседают
 	 */
 	ASSERT_EQ(again, plain);
-
 }
 /**
  * @brief Проверка того, что перенос значения в дерево идёт умолчаниями
@@ -1799,13 +1869,13 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Без поверки кодировки запись обязана собираться
 	ASSERT_TRUE(value.dump(record, error, assembling)) << "код отказа: " << abc::message(error);
 	// Настройки разбора, пропускающие октеты как есть
-	abc::reader_t::settings_t parsing;
+	abc::document_t::settings_t parsing;
 	// Выполняем объявление пропуска негодных последовательностей
-	parsing.malformed = abc::malformed_t::PASS;
-	// Дерево документа, куда разбирается собранная запись
-	abc::document_t other;
+	parsing.reader.malformed = abc::malformed_t::PASS;
+	// Дерево документа с установленными настройками разбора
+	abc::document_t other(parsing);
 	// Дорогою из двух половин запись обязана разбираться
-	ASSERT_TRUE(other.parse(record.data(), record.size(), parsing))
+	ASSERT_TRUE(other.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(other.error());
 	// Извлечённая строка поля
 	string text;
@@ -2028,6 +2098,7 @@ TEST(CodecAbcValue, PathSegmentIsNameInsideAMapping) {
 	 *
 	 * @note Имя «1» встаёт на место 0, имя «0» - на место 1. Возьми обход номер вместо
 	 *       имени - и путь `m/1` отдаст поле «0»
+	 *
 	 */
 	ASSERT_TRUE(mapping.insert(abc::value_t(string("1")), abc::value_t(string("по-имени-1"))));
 	ASSERT_TRUE(mapping.insert(abc::value_t(string("0")), abc::value_t(string("по-имени-0"))));
@@ -2123,6 +2194,7 @@ TEST(CodecAbcValue, PathFollowsTheStandardOfThePointer) {
 	 *
 	 * @note Здесь и красится прежнее поведение: пропусти обход пустое звено - и придёт
 	 *       «соседнее» вместо «глубокого»
+	 *
 	 */
 	ASSERT_EQ(root.at("/a//b").text(), string("глубокое"));
 	// То же и без ведущей черты
@@ -2190,6 +2262,7 @@ TEST(CodecAbcValue, InsertionRefusesWhatTheKindForbids) {
 	 * @note Половина эта и делает проверку зрячей: сторож, глядящий лишь «вместилище ли
 	 *       это», пропустил бы имя в перечень и звено в отображение - оба вместилища,
 	 *       да не те
+	 *
 	 */
 	{
 		// Владеющее значение отображения
@@ -2251,6 +2324,7 @@ TEST(CodecAbcValue, UndefinedIsLaidAsNull) {
 	 * @note Метка сличается ЧИСЛОМ, а не именем: 0xC0 есть крупный вид одиночного
 	 *       значения с подробностью пустого. Сличение с именем было бы тождеством
 	 *       самому себе
+	 *
 	 */
 	ASSERT_EQ(record.size(), 1ul);
 	// Выполняем проверку самой метки уложенного значения
@@ -2267,16 +2341,18 @@ TEST(CodecAbcValue, UndefinedIsLaidAsNull) {
 	 * @warning Половина эта и делает проверку зрячей: без неё она была бы зелена и при
 	 * укладке, роняющей значение вовсе, - запись вышла бы пустой, а разбор отвечал бы
 	 * отказом, какого проверка по одной лишь длине не заметила бы
+	 *
 	 */
-	ASSERT_EQ(document.root().kind(), abc::kind_t::NUL);
+	ASSERT_EQ(document.root().kind(), abc::kind_t::NIL);
 	/**
 	 * Выполняем проверку того, что пустое значение кладётся ТЕМ ЖЕ
 	 *
 	 * @note Половина эта стережёт вторую сторону решения: неопределённое и пустое
 	 *       обязаны давать одну запись, иначе круговой обход их различал бы
+	 *
 	 */
 	// Пустое владеющее значение
-	const abc::value_t empty(abc::kind_t::NUL);
+	const abc::value_t empty(abc::kind_t::NIL);
 	// Собираемая двоичная запись пустого значения
 	vector <uint8_t> laid;
 	// Выполняем укладку пустого значения
@@ -2473,6 +2549,7 @@ TEST(CodecAbcValue, TheRefusalOfTheParsingIsReported){
 	 *          журнал у всякой проверки кодека, и полагаться на состояние, оставленное
 	 *          соседями, значило бы городить поверку, чей исход зависит от порядка
 	 *          запуска. Ровно на этом она прежде и падала в одиночку
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Разрешаем вывод журнала одним лишь откликом

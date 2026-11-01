@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки общих объявлений контейнера YAML — описания кодов отказов, названия
  *        видов и событий, разрешение вида скалярного значения действующей схемой и
  *        согласие выбора ограды с этим разрешением
@@ -34,7 +40,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Используем пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -54,6 +66,7 @@ TEST(CodecYamlCommon, Messages) {
 	 *          после его написания, - описания их никем не проверялись. Ныне перебор идёт
 	 *          по ПРЕДЕЛУ перечня, и всякий новый код попадает в него сам. Тем же складом
 	 *          устроены проверки кодеков INI и TOML
+	 *
 	 */
 	// Собрание уже встреченных описаний
 	unordered_set <string> descriptions;
@@ -77,6 +90,7 @@ TEST(CodecYamlCommon, Messages) {
 		 *          отказа» - описания перевели на английский, а сличение осталось русским,
 		 *          и утверждение это ОТКАЗАТЬ не могло вовсе: кодек такой строки не отдаёт
 		 *          ни при каком коде
+		 *
 		 */
 		ASSERT_STRNE(message, "unknown error");
 		/**
@@ -84,6 +98,7 @@ TEST(CodecYamlCommon, Messages) {
 		 *
 		 * @note Два кода с одним описанием неразличимы для того, кто читает журнал, и
 		 *       отказ, объяснённый чужим описанием, уводит поиск причины в сторону
+		 *
 		 */
 		ASSERT_TRUE(descriptions.emplace(message).second) << "описание повторяется: " << message;
 	}
@@ -99,6 +114,7 @@ TEST(CodecYamlCommon, Messages) {
 	 *       15.09.2026 на заведении `UNREPRESENTABLE_VALUE` и потребовал подвинуть предел
 	 *       в ту же правку; у соседа по мосту тем же приёмом вскрылись два кода, не
 	 *       проверявшихся вовсе. Здесь его недоставало
+	 *
 	 */
 	ASSERT_STREQ(yaml::message(static_cast <yaml::error_t> (
 	 static_cast <uint32_t> (yaml::error_t::SETTINGS_ALREADY_APPLIED) + 1)), "unknown error");
@@ -137,6 +153,7 @@ TEST(CodecYamlCommon, EncodingNames) {
 	 *
 	 * @note Договор един у INI, TOML, YAML, XML и JSON: член перечня имя имеет своё, а
 	 *       «unknown» достаётся значению, членом перечня не являющемуся
+	 *
 	 */
 	ASSERT_STRNE(yaml::name(yaml::encoding_t::NONE), yaml::name(static_cast <yaml::encoding_t> (200)));
 	// Выполняем проверку обратного разбора названия неопределённой кодировки
@@ -165,7 +182,7 @@ TEST(CodecYamlCommon, Names) {
 	 * Виды узлов документа
 	 */
 	const vector <yaml::kind_t> kinds = {
-		yaml::kind_t::NONE, yaml::kind_t::NUL, yaml::kind_t::BOOL, yaml::kind_t::NUMBER,
+		yaml::kind_t::NONE, yaml::kind_t::NIL, yaml::kind_t::BOOL, yaml::kind_t::NUMBER,
 		yaml::kind_t::STRING, yaml::kind_t::BINARY, yaml::kind_t::STAMP,
 		yaml::kind_t::SEQUENCE, yaml::kind_t::MAPPING
 	};
@@ -179,7 +196,7 @@ TEST(CodecYamlCommon, Names) {
 	 * Точные виды значений документа
 	 */
 	const vector <yaml::type_t> types = {
-		yaml::type_t::UNDEFINED, yaml::type_t::NUL, yaml::type_t::BOOL, yaml::type_t::STRING,
+		yaml::type_t::UNDEFINED, yaml::type_t::NIL, yaml::type_t::BOOL, yaml::type_t::STRING,
 		yaml::type_t::SEQUENCE, yaml::type_t::MAPPING, yaml::type_t::INT8, yaml::type_t::INT16,
 		yaml::type_t::INT32, yaml::type_t::INT64, yaml::type_t::UINT8, yaml::type_t::UINT16,
 		yaml::type_t::UINT32, yaml::type_t::UINT64, yaml::type_t::FLOAT, yaml::type_t::DOUBLE,
@@ -213,6 +230,7 @@ TEST(CodecYamlCommon, Names) {
 	 *
 	 * @note Названия эти совпадают с названиями `yaml-test-suite` дословно: сличение с
 	 *       ним ведётся строка в строку, и переименование здесь сломало бы его молча
+	 *
 	 */
 	ASSERT_STREQ(yaml::name(yaml::event_t::MAPPING_START), "MAPPING_START");
 	ASSERT_STREQ(yaml::name(yaml::event_t::SEQUENCE_END), "SEQUENCE_END");
@@ -235,7 +253,7 @@ TEST(CodecYamlCommon, Kinds) {
 	// Выполняем проверку огрубления строки
 	ASSERT_EQ(yaml::kind(yaml::type_t::STRING), yaml::kind_t::STRING);
 	// Выполняем проверку огрубления пустого значения
-	ASSERT_EQ(yaml::kind(yaml::type_t::NUL), yaml::kind_t::NUL);
+	ASSERT_EQ(yaml::kind(yaml::type_t::NIL), yaml::kind_t::NIL);
 	// Выполняем проверку огрубления отметки времени
 	ASSERT_EQ(yaml::kind(yaml::type_t::STAMP), yaml::kind_t::STAMP);
 	// Выполняем проверку огрубления двоичного содержимого
@@ -251,17 +269,18 @@ TEST(CodecYamlCommon, ResolveCore) {
 	// Действующая схема разрешения
 	const yaml::schema_t schema = yaml::schema_t::CORE;
 	// Выполняем проверку написаний пустого значения
-	ASSERT_EQ(yaml::resolve("~", schema), yaml::type_t::NUL);
+	ASSERT_EQ(yaml::resolve("~", schema), yaml::type_t::NIL);
 	// Выполняем проверку написания пустого значения строчными буквами
-	ASSERT_EQ(yaml::resolve("null", schema), yaml::type_t::NUL);
+	ASSERT_EQ(yaml::resolve("null", schema), yaml::type_t::NIL);
 	// Выполняем проверку написания пустого значения прописными буквами
-	ASSERT_EQ(yaml::resolve("NULL", schema), yaml::type_t::NUL);
+	ASSERT_EQ(yaml::resolve("NULL", schema), yaml::type_t::NIL);
 	// Выполняем проверку пустой записи
-	ASSERT_EQ(yaml::resolve("", schema), yaml::type_t::NUL);
+	ASSERT_EQ(yaml::resolve("", schema), yaml::type_t::NIL);
 	/**
 	 * Выполняем проверку написания, описанием не предусмотренного
 	 *
 	 * @note Описание дозволяет ровно три написания, а не всякое: `nULL` есть строка
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("nULL", schema), yaml::type_t::STRING);
 	// Выполняем проверку логического значения
@@ -273,6 +292,7 @@ TEST(CodecYamlCommon, ResolveCore) {
 	 *
 	 * @note Здесь и лежит беда, известная под именем норвежской: страна NO обязана
 	 *       остаться строкой
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("no", schema), yaml::type_t::STRING);
 	// Выполняем проверку написания NO прописными буквами
@@ -294,6 +314,7 @@ TEST(CodecYamlCommon, ResolveCore) {
 	 *
 	 * @note Ядровая схема ведущего нуля восьмеричной записью не считает: `017` есть
 	 *       обыкновенное десятичное семнадцать
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("017", schema), yaml::type_t::NUMBER);
 	// Выполняем проверку двоичной записи, ядровой схемою не признаваемой
@@ -320,6 +341,7 @@ TEST(CodecYamlCommon, ResolveCore) {
 	 * Выполняем проверку записи даты
 	 *
 	 * @note Отметок времени наречие 1.2 не знает вовсе, и дата есть там строка
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("2001-12-14", schema), yaml::type_t::STRING);
 }
@@ -355,6 +377,7 @@ TEST(CodecYamlCommon, ResolveLegacy) {
 	 *
 	 * @note Записи по основанию разбирает свой заход, отдельный от десятичной: дозволение
 	 *       подчёркивания у него своё, и проверка `1_000` его не задевает вовсе
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("0x1_F", schema), yaml::type_t::NUMBER);
 	/**
@@ -363,6 +386,7 @@ TEST(CodecYamlCommon, ResolveLegacy) {
 	 * @note Описание 1.1 указателя `0o` не имеет вовсе - восьмеричное пишется там ведущим
 	 *       нулём, `017`, - и запись `0o1_7` наречием тем есть строка. Прежде тут стояло
 	 *       утверждение обратное, и оно закрепляло чтение, описанию противное
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("0o1_7", schema), yaml::type_t::STRING);
 	// Выполняем проверку того, что восьмеричное наречия 1.1 пишется ведущим нулём
@@ -374,6 +398,7 @@ TEST(CodecYamlCommon, ResolveLegacy) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: приятие подчёркивания всякою схемой отвечало
 	 *       бы тем же ожиданиям, и порча дозволения осталась бы незамечена
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("0x1_F", yaml::schema_t::CORE), yaml::type_t::STRING);
 }
@@ -385,7 +410,7 @@ TEST(CodecYamlCommon, ResolveJson) {
 	// Действующая схема разрешения
 	const yaml::schema_t schema = yaml::schema_t::JSON;
 	// Выполняем проверку пустого значения
-	ASSERT_EQ(yaml::resolve("null", schema), yaml::type_t::NUL);
+	ASSERT_EQ(yaml::resolve("null", schema), yaml::type_t::NIL);
 	// Выполняем проверку написания пустого значения, правилам JSON не отвечающего
 	ASSERT_EQ(yaml::resolve("~", schema), yaml::type_t::STRING);
 	// Выполняем проверку написания логического значения с прописной буквы
@@ -439,8 +464,10 @@ TEST(CodecYamlCommon, Anchors) {
 	 * @note Проверялась прежде одна сторона границы - имя длиннее предела. Сторона
 	 *       принимающая держится теперь тоже: без неё сдвиг предела на единицу проверкою
 	 *       не ловится, что порчею и доказано
+	 *
 	 */
 	ASSERT_TRUE(yaml::anchored(string(yaml::MAX_ANCHOR, 'a')));
+	// Выполняем проверку отказа на имени метки длиною в MAX_ANCHOR + 1 знак
 	ASSERT_FALSE(yaml::anchored(string((yaml::MAX_ANCHOR + 1), 'a')));
 }
 /**
@@ -459,6 +486,7 @@ TEST(CodecYamlCommon, Quoting) {
 	 *
 	 * @note Двоеточие отделяет имя пары лишь тогда, когда за ним стоит пробельный знак:
 	 *       `a:b` есть значение целиком
+	 *
 	 */
 	ASSERT_EQ(yaml::quoting("a:b", schema, false), yaml::style_t::PLAIN);
 	// Выполняем проверку значения с двоеточием и пробелом за ним
@@ -467,6 +495,7 @@ TEST(CodecYamlCommon, Quoting) {
 	 * Выполняем проверку двоеточия внутри имени пары
 	 *
 	 * @note Имя пары строже значения: там двоеточие оборвало бы имя на себе
+	 *
 	 */
 	ASSERT_EQ(yaml::quoting("a:b", schema, true), yaml::style_t::SINGLE);
 	/**
@@ -474,6 +503,7 @@ TEST(CodecYamlCommon, Quoting) {
 	 *
 	 * @note Примечание открывается решёткой лишь за пробельным знаком либо в начале
 	 *       записи: `b#c` есть значение целиком
+	 *
 	 */
 	ASSERT_EQ(yaml::quoting("b#c", schema, false), yaml::style_t::PLAIN);
 	// Выполняем проверку знака примечания с пробелом перед ним
@@ -498,6 +528,7 @@ TEST(CodecYamlCommon, Quoting) {
 	 * Выполняем проверку значений, схемою разрешаемых не строкой
 	 *
 	 * @note Ограда здесь необходима: без неё строка `12` вернулась бы числом
+	 *
 	 */
 	ASSERT_EQ(yaml::quoting("12", schema, false), yaml::style_t::SINGLE);
 	// Выполняем проверку значения, разрешаемого логическим
@@ -646,6 +677,7 @@ TEST(CodecYamlCommon, Narrow) {
 		 *
 		 * @note Число такое хранится записью своей и выдаётся дробным приближением:
 		 *       отбросить его значило бы потерять содержимое, записанное текстом верно
+		 *
 		 */
 		ASSERT_EQ(yaml::narrow("99999999999999999999999999", yaml::schema_t::CORE, number), yaml::type_t::EXTENDED);
 		// Выполняем проверку дробного приближения числа
@@ -661,6 +693,7 @@ TEST(CodecYamlCommon, Narrow) {
 		 * Выполняем проверку разбора восьмеричной записи с ведущим нулём
 		 *
 		 * @note Ведущий нуль знаменует здесь восьмеричную запись, и `0777` есть 511
+		 *
 		 */
 		ASSERT_EQ(yaml::narrow("0777", yaml::schema_t::LEGACY, number), yaml::type_t::UINT16);
 		// Выполняем проверку разобранного восьмеричного числа
@@ -673,6 +706,7 @@ TEST(CodecYamlCommon, Narrow) {
 		 * Выполняем проверку разбора шестидесятиричной записи
 		 *
 		 * @note Записью этой пользуются для времени и углов: `12:30` есть 750
+		 *
 		 */
 		ASSERT_EQ(yaml::narrow("12:30", yaml::schema_t::LEGACY, number), yaml::type_t::UINT16);
 		// Выполняем проверку разобранного шестидесятиричного числа
@@ -685,6 +719,7 @@ TEST(CodecYamlCommon, Narrow) {
 		 * Выполняем проверку разбора записи со знаком подчёркивания
 		 *
 		 * @note Знак этот наречие 1.1 дозволяет между разрядами для удобочитаемости
+		 *
 		 */
 		ASSERT_EQ(yaml::narrow("1_000_000", yaml::schema_t::LEGACY, number), yaml::type_t::UINT32);
 		// Выполняем проверку разобранного числа со знаком подчёркивания
@@ -695,6 +730,7 @@ TEST(CodecYamlCommon, Narrow) {
 	 *
 	 * @note Разрешение стоит прежде разбора нарочно: своды правил у них разойтись не
 	 *       вправе, и разбор берётся лишь за то, что разрешение числом признало
+	 *
 	 */
 	{
 		// Разобранное число всеми видами его
@@ -707,6 +743,7 @@ TEST(CodecYamlCommon, Narrow) {
 		 * @note Запись эта числом остаётся и здесь, но числом иным: наречие 1.2 читает её
 		 *       десятичной и выдаёт 777, а наречие 1.1 - восьмеричной и выдаёт 511. Запрета
 		 *       ведущего нуля наречие 1.2 не знает вовсе, и тем оно от JSON расходится
+		 *
 		 */
 		ASSERT_EQ(yaml::narrow("0777", yaml::schema_t::CORE, number), yaml::type_t::UINT16);
 		// Выполняем проверку разобранного десятичного числа
@@ -808,6 +845,7 @@ TEST(CodecYamlCommon, NarrowRadixApproximation) {
 	 *       `[-+]?[0-9]+ | 0o[0-7]+ | 0x[0-9a-fA-F]+`, где знак стоит у одной лишь
 	 *       записи десятичной. Прежде тут стояла схема 1.2, и проверка закрепляла
 	 *       чтение, описанию противное
+	 *
 	 */
 	ASSERT_EQ(yaml::narrow("-0xFFFFFFFFFFFFFFFFFF", yaml::schema_t::LEGACY, number), yaml::type_t::EXTENDED);
 	// Выполняем проверку знака дробного приближения
@@ -874,11 +912,14 @@ TEST(CodecYamlCommon, MessagesAndUnknownNames) {
 		 * @note Договор един у девяти кодеков рамки: описания отказов даются одним языком.
 		 *       Кодек YAML был единственным, кто отвечал по-русски, - и отвечал вперемешку,
 		 *       ибо коды, заведённые позже, описания имели уже английские
+		 *
 		 */
 		for(uint16_t i = 0; i <= 0xFF; i++){
 			// Получаем описание очередного кода отказа
 			const string description(yaml::message(static_cast <yaml::error_t> (i)));
-			// Выполняем перебор всех знаков описания кода отказа
+			/**
+			 * Выполняем перебор всех знаков описания кода отказа
+			 */
 			for(const char letter : description)
 				// Выполняем проверку того, что знак описания принадлежит набору ASCII
 				ASSERT_LT(static_cast <uint8_t> (letter), 0x80) << i << ": " << description;
@@ -929,6 +970,7 @@ TEST(CodecYamlCommon, QuotingBrokenSequence) {
  * @note Прежде знак снимался разом для всех оснований, и запись `+0x10` читалась
  *       числом всякой схемою. Нашло это сличение записей с ведущим знаком по трём
  *       схемам разом - порознь ни одна схема порока не показывала
+ *
  */
 TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
 	/**
@@ -958,6 +1000,7 @@ TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
 	 *
 	 * @note Запись `0o` есть принадлежность наречия 1.2, и знака описание ей не даёт;
 	 *       наречие же 1.1 записи этой не знает вовсе, и знак ей не помощь
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("+0o17", yaml::schema_t::CORE), yaml::type_t::STRING);
 	// Выполняем проверку того, что запись восьмеричная без знака числом признаётся
@@ -966,6 +1009,7 @@ TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
 	 * Выполняем проверку того, что схема JSON ведущего плюса не терпит вовсе
 	 *
 	 * @note Описание JSON знака плюса числу не даёт, и запись `+10` там есть строка
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("+10", yaml::schema_t::JSON), yaml::type_t::STRING);
 	// Выполняем проверку того, что знак минуса схемою JSON дозволен
@@ -982,6 +1026,7 @@ TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
  * @note Оба порока держались на том, что заход признания записи не сверялся со схемою
  *       вовсе: `0X10` признавалось числом обеими схемами, а `0o17` - и наречием 1.1,
  *       записи этой не знающим. Порознь ни одна схема порока не показывала
+ *
  */
 TEST(CodecYamlCommon, TheRadixMarkerIsLowercaseAndBelongsToItsOwnDialect){
 	/**
@@ -1009,6 +1054,7 @@ TEST(CodecYamlCommon, TheRadixMarkerIsLowercaseAndBelongsToItsOwnDialect){
 	 *
 	 * @note Наречие 1.2 записи этой числом не признаёт: `017` есть там строка, и
 	 *       расхождение это стережёт проверка `ResolveCore`
+	 *
 	 */
 	ASSERT_EQ(yaml::resolve("017", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
 }

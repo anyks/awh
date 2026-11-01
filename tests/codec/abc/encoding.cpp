@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки проволочной укладки бинарного контейнера ABC — укладка и снятие
  *        элементарных единиц записи, независимость снятия от нарезки на куски и
  *        проверка строк на соответствие кодировке UTF-8
@@ -34,7 +40,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -55,6 +67,32 @@ namespace {
 	 */
 };
 
+/**
+ * @brief Проверка отказа ширине записи, превышающей разрядность целого числа
+ *
+ */
+TEST(CodecAbcEncoding, FixedWidthRejectsOversizedIntegers) {
+	// Буфер укладки числа с контрольным заполнением
+	vector <uint8_t> bytes(9, 0xA5);
+	// Исходное содержимое буфера
+	const vector <uint8_t> expected(bytes);
+	// Выполняем укладку с недопустимой шириной в готовый буфер
+	abc::fixed(bytes.data(), 1, 9);
+	// Выполняем проверку отсутствия частичной записи
+	ASSERT_EQ(bytes, expected);
+	// Выполняем дописывание числа с недопустимой шириной
+	abc::fixed(bytes, 1, 9);
+	// Выполняем проверку отсутствия дописанных октетов
+	ASSERT_EQ(bytes, expected);
+	// Выполняем проверку отказа чтению шире целого числа
+	ASSERT_EQ(abc::gather(bytes.data(), 9), 0u);
+	// Выполняем проверку отказа наибольшей объявляемой ширине
+	ASSERT_EQ(abc::gather(bytes.data(), 0xFF), 0u);
+	// Выполняем укладку числа допустимой ширины
+	abc::fixed(bytes.data(), 0x1122334455667788ull, 8);
+	// Выполняем проверку обратного чтения допустимого числа
+	ASSERT_EQ(abc::gather(bytes.data(), 8), 0x1122334455667788ull);
+}
 /**
  * @brief Проверка укладки целого числа установленной ширины
  *
@@ -269,7 +307,7 @@ TEST(CodecAbcEncoding, SingleValues) {
 	 * Разновидности одиночного значения
 	 */
 	const vector <abc::single_t> singles = {
-		abc::single_t::NUL, abc::single_t::NO, abc::single_t::YES,
+		abc::single_t::NIL, abc::single_t::NO, abc::single_t::YES,
 		abc::single_t::TIME, abc::single_t::UUID, abc::single_t::BREAK
 	};
 	/**
@@ -411,6 +449,7 @@ TEST(CodecAbcEncoding, IndefiniteLength) {
 	 * @details Строка и двоичные данные её допускают: собираются они кусками, когда
 	 *          длина наперёд неизвестна. Число же кусками не собирается - величина его
 	 *          цельна, и делить её на куски значило бы толковать запись двояко
+	 *
 	 */
 	const vector <abc::group_t> plains = {
 		abc::group_t::UNSIGNED, abc::group_t::NEGATIVE
@@ -544,6 +583,7 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 *
 	 * @param source исправляемые октеты строки
 	 * @return       исправленные октеты строки
+	 *
 	 */
 	auto patch = [](const vector <uint8_t> & source) noexcept -> vector <uint8_t> {
 		// Исправленные октеты строки
@@ -560,11 +600,14 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 *
 	 * @param parts части ожидаемой строки
 	 * @return      ожидаемые октеты строки
+	 *
 	 */
 	auto expect = [&mark](const vector <vector <uint8_t>> & parts) noexcept -> vector <uint8_t> {
 		// Ожидаемые октеты строки
 		vector <uint8_t> result;
-		// Выполняем обход всех частей ожидаемой строки
+		/**
+		 * Выполняем обход всех частей ожидаемой строки
+		 */
 		for(auto & part : parts)
 			// Выполняем перенос части в ожидаемую строку
 			result.insert(result.end(), (part.empty() ? mark.begin() : part.begin()),
@@ -586,6 +629,7 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 *
 	 * @details Усечённая четырёхоктетная точка `F1 80 80` есть ОДНА негодная
 	 * последовательность, а не три негодных октета, и знак замены ей положен один
+	 *
 	 */
 	{
 		// Ряд образца: 61 F1 80 80 E1 80 C2 62 80 63 80 BF 64
@@ -600,6 +644,7 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 *
 	 * @note Октет `C0` ведущим не является ВОВСЕ - он объявлял бы точку, какую надлежит
 	 * писать одним октетом, - оттого замен здесь две, а не одна: ведущему да продолжающему
+	 *
 	 */
 	{
 		// Косая черта, писанная двумя октетами вместо одного
@@ -614,6 +659,7 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 * и наибольшая осмысленная часть тем самым равна одному ведущему октету. Считай
 	 * поверка предел общим, часть эта вышла бы длиною в три октета, и один знак замены
 	 * проглотил бы два годных продолжающих
+	 *
 	 */
 	{
 		// Суррогат U+D800, кодировке недопустимый
@@ -634,6 +680,7 @@ TEST(CodecAbcEncoding, Utf8Repair){
 	 * Обрыв строки на середине точки даёт ОДИН знак замены
 	 *
 	 * @note Случай этот и есть ходовой: строка, усечённая по длине, теряет хвост точки
+	 *
 	 */
 	{
 		// Знак вне плоскости, усечённый на последнем октете
@@ -925,6 +972,24 @@ TEST(CodecAbcEncoding, TheCommonGearRefusesTheAbsentBuffer) {
  *       и работа, пропустившая негодное насквозь
  *
  */
+/**
+ * @brief Проверка исправления строки на месте
+ *
+ * @details Вход и выдача вправе совпадать: знак замены не должен перезаписывать
+ *          октеты, которые разбор ещё не прочитал
+ *
+ */
+TEST(CodecAbcEncoding, RepairWorksInPlace) {
+	// Исходная строка с двумя негодными октетами и годным хвостом
+	vector <uint8_t> result = {0xC0, 0xC0, static_cast <uint8_t> ('a')};
+	// Ожидаемая исправленная строка
+	const vector <uint8_t> expected = {0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, static_cast <uint8_t> ('a')};
+	// Выполняем исправление строки в собственном буфере
+	abc::repair(result.data(), result.size(), result);
+	// Выполняем проверку того, что хвост не перезаписан знаком замены
+	ASSERT_EQ(result, expected);
+}
+
 TEST(CodecAbcEncoding, RepairCatchesTheOverlongFormAndTheTruncatedTail) {
 	// Октеты знака замены U+FFFD, каким подменяется негодная последовательность
 	const vector <uint8_t> marker = {0xEF, 0xBF, 0xBD};

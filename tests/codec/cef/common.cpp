@@ -41,6 +41,7 @@
  * @details Подключается ЗДЕСЬ и единожды на кодек: слушатель заводится на процесс, и
  *          второй такой же ничего не прибавит. Часть «common» выбрана оттого, что она
  *          входит и в отдельный стенд кодека, где общего «tests/main.cpp» нет вовсе
+ *
  */
 #include "../silent.hpp"
 
@@ -53,6 +54,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -99,6 +103,7 @@ TEST(CodecCefCommon, Messages) {
 	 *          заведён, а граница перебора осталась именем FILE_NOT_OPENED, и новый код
 	 *          не поверялся вовсе. Выдала это лишь карта покрытия - `common.cpp` упал со
 	 *          100% до 97.22%, - а не разум и не прогон
+	 *
 	 */
 	EXPECT_STREQ(cef::message(static_cast <cef::error_t> (static_cast <uint32_t> (cef::error_t::MULTIPLE_RECORDS) + 1)), "unknown error");
 }

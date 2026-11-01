@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки владеющего значения YAML — сборка дерева из значений языка, обход,
  *        извлечение, мост от дерева документа и потоковая сборка
  *
@@ -18,8 +24,14 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
+/**
+ * Для операционной системы MS Windows
+ */
 #else
 	#include <process.h>
+	/**
+	 * Подменяем getpid версией MS Windows
+	 */
 	#define getpid _getpid
 #endif
 #include <cmath>
@@ -68,6 +80,7 @@ namespace {
 	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
+		// Обращение записи пути в широкий вид, ходом MS Windows требуемый
 		static ::std::wstring address(const ::std::string & path) noexcept {
 			/**
 			 * Обращение ведётся ходом рамки, а не своим перебором знаков
@@ -78,6 +91,7 @@ namespace {
 			 *          лишним ещё двое суток. Свой ход опасен не работою, а расхождением:
 			 *          починка рамки его не достигает, и проверка начинает мерить не тот
 			 *          путь, каким ходит кодек
+			 *
 			 */
 			return awh::fmk::convert(path);
 		}
@@ -85,6 +99,7 @@ namespace {
 	 * Для операционной системы, MS Windows не являющейся
 	 */
 	#else
+		// Обращение записи пути, для системы вне MS Windows излишнее
 		static ::std::string address(const ::std::string & path) noexcept {
 			// Выводим путь файловой системы без обращения
 			return path;
@@ -134,6 +149,7 @@ namespace {
 		 * @warning Розыск точки по всему имени негоден: у имени `./каталог/файл` точка
 		 *          начала пути была бы принята за расширение, и имя обратилось бы в
 		 *          `.-1234/каталог/файл` - путь в каталог несуществующий
+		 *
 		 */
 		const ::std::size_t slash = name.find_last_of("/\\");
 		// Разыскиваем место расширения имени
@@ -145,8 +161,7 @@ namespace {
 		// Выводим имя с номером процесса перед расширением
 		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
 	}
-	/**
-	 * \~russian
+		/**
 	 * @brief Ограда подписки на отчёты журнала
 	 *
 	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
@@ -160,10 +175,6 @@ namespace {
 	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
 	 *       же отчёте, поданном по выходе из области подписки
 	 *
-	 * \~english
-	 * @brief Guard of the subscription to the reports of the log
-	 *
-	 * \~
 	 */
 	class Subscription {
 		public:
@@ -192,7 +203,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Используем пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -395,7 +412,7 @@ TEST(CodecYamlValue, Extraction) {
 	// Выполняем проверку отказа извлечения записи вместилища
 	ASSERT_FALSE(value.value(text));
 	// Выполняем проверку вида пустого значения
-	ASSERT_EQ(value["nul"].kind(), yaml::kind_t::NUL);
+	ASSERT_EQ(value["nul"].kind(), yaml::kind_t::NIL);
 	// Выполняем проверку того, что пустота значением определённым является
 	ASSERT_TRUE(value["nul"].valid());
 	// Выполняем проверку того, что отсутствующее поле значением не является
@@ -443,6 +460,7 @@ TEST(CodecYamlValue, Rounding) {
 	 *       отдало бы здесь двойку, а увод половины от нуля даёт тройку. Расходятся две
 	 *       разновидности ровно на половинах, и без такой проверки подмена одной другою
 	 *       прошла бы незамеченной
+	 *
 	 */
 	ASSERT_TRUE(value["even"].value(integer));
 	// Выполняем проверку извлечённого числа
@@ -452,6 +470,7 @@ TEST(CodecYamlValue, Rounding) {
 	 *
 	 * @note Приведение такое стандарт зовёт неопределённым поведением, и предел выдаётся
 	 *       затем, чтобы неопределённого поведения в кодеке не было
+	 *
 	 */
 	ASSERT_TRUE(value["far"].value(integer));
 	// Выполняем проверку извлечённого числа
@@ -467,6 +486,7 @@ TEST(CodecYamlValue, Rounding) {
 	 *
 	 * @note Целое приводится к целому приведением языка, и неопределённого поведения в
 	 *       том нет: перенос разрядами язык обещает
+	 *
 	 */
 	ASSERT_TRUE(value.parse("port: 8080\n"));
 	// Выполняем проверку успешности извлечения числа
@@ -505,7 +525,7 @@ TEST(CodecYamlValue, Comparison) {
 	// Пустота, заведённая видом своим
 	yaml::value_t empty;
 	// Выполняем занесение пустоты полем значения
-	ASSERT_TRUE(empty.insert("value", yaml::value_t(yaml::kind_t::NUL)));
+	ASSERT_TRUE(empty.insert("value", yaml::value_t(yaml::kind_t::NIL)));
 	// Выполняем проверку совпадения пустот, записанных по-разному
 	ASSERT_TRUE(worded == empty);
 	// Значение целое, с дробным сличаемое
@@ -662,7 +682,7 @@ TEST(CodecYamlValue, Building) {
 	// Выполняем проверку количества значений собранного перечня
 	ASSERT_EQ(value["tags"].size(), 2u);
 	// Выполняем проверку вида собранной пустоты
-	ASSERT_EQ(value["empty"].kind(), yaml::kind_t::NUL);
+	ASSERT_EQ(value["empty"].kind(), yaml::kind_t::NIL);
 	// Прочитанное обратно значение
 	yaml::value_t parsed;
 	// Выполняем обратное чтение записанного текста
@@ -916,11 +936,11 @@ TEST(CodecYamlValue, Consistency) {
 		// Извлекаемое целое число без знака из узла дерева документа
 		uint64_t natural = 0;
 		// Извлекаемое целое число без знака из снятого значения
-		uint64_t unsigned_number = 1;
+		uint64_t unsignedNumber = 1;
 		// Выполняем проверку совпадения успешности извлечения целого числа без знака
-		ASSERT_EQ(node.value(natural), taken.value(unsigned_number)) << "запись " << records.at(i);
+		ASSERT_EQ(node.value(natural), taken.value(unsignedNumber)) << "запись " << records.at(i);
 		// Выполняем проверку совпадения извлечённых целых чисел без знака
-		ASSERT_EQ(natural, unsigned_number) << "запись " << records.at(i);
+		ASSERT_EQ(natural, unsignedNumber) << "запись " << records.at(i);
 		// Извлекаемое дробное число из узла дерева документа
 		double real = 0.;
 		// Извлекаемое дробное число из снятого значения
@@ -932,6 +952,7 @@ TEST(CodecYamlValue, Consistency) {
 		 *
 		 * @note Нечисло сличению обычным порядком не поддаётся: оно не равно даже самому
 		 *       себе, и сличать здесь надлежит признак нечисла у обоих
+		 *
 		 */
 		if(!::isnan(real) && !::isnan(fraction))
 			// Выполняем проверку совпадения извлечённых дробных чисел
@@ -991,6 +1012,7 @@ TEST(CodecYamlValue, Refused) {
 	 *
 	 * @note Усечённый текст нёс бы годное поле и половину негодного: разобрать его
 	 *       нельзя, а на глаз он выглядит целым документом
+	 *
 	 */
 	ASSERT_TRUE(refused.empty());
 }
@@ -1246,7 +1268,7 @@ TEST(CodecYamlValue, AppendRoundtrip) {
 	// Настройки разбора дерева с удержанием повторяющихся имён
 	yaml::document_t::settings_t settings;
 	// Устанавливаем удержание всех вхождений повторяющегося имени
-	settings.duplicates = yaml::duplicate_t::KEEP;
+	settings.reader.duplicates = yaml::duplicate_t::KEEP;
 	// Объект дерева документа
 	yaml::document_t doc(settings);
 	// Выполняем разбор текста с повторяющимися именами полей
@@ -1343,6 +1365,7 @@ TEST(CodecYamlValue, ExtendedNumbers) {
 	 *       оно выходит лишь тогда, когда машина его несёт, а иначе хранится записью.
 	 *       Расхождение это вскрыл стенд NetBSD/aarch64: `strtod` там обращает в нуль
 	 *       всякое поднормальное число
+	 *
 	 */
 	for(const char * path : {"/a", "/b"}){
 		// Собираемое дробное значение записи
@@ -1389,6 +1412,8 @@ TEST(CodecYamlValue, StreamRefusal) {
 	ASSERT_EQ(value.text(), "1");
 	// Выполняем проверку отказа снятия потока о двух документах
 	ASSERT_FALSE(value.parse("--- 1\n--- 2\n"));
+	// Выполняем проверку того, что код отказа назван
+	ASSERT_EQ(value.error(), yaml::error_t::UNEXPECTED_DOCUMENT);
 	// Выполняем проверку того, что отказ значения прежнего не оставил
 	ASSERT_FALSE(value.valid());
 	/**
@@ -1396,6 +1421,7 @@ TEST(CodecYamlValue, StreamRefusal) {
 	 *
 	 * @note Отказ этот есть свойство значения владеющего, а не разбора: дерево тот же
 	 *       поток держит целиком, и оба документа его достижимы
+	 *
 	 */
 	yaml::document_t doc;
 	// Выполняем проверку разбора потока о двух документах деревом
@@ -1435,6 +1461,7 @@ TEST(CodecYamlValue, NumericLink) {
 	 *
 	 * @note Здесь правило обратное намеренно: запись по номеру заведение значения
 	 *       и означает, а дыры заполняются значениями пустыми
+	 *
 	 */
 	value[4] = yaml::value_t("пятое");
 	// Выполняем проверку роста перечня до затребованного номера
@@ -1446,6 +1473,7 @@ TEST(CodecYamlValue, NumericLink) {
 	 *
 	 * @note Вид вместилища решает раньше вида записи: у отображения звено числовое
 	 *       именем поля является, а не номером значения
+	 *
 	 */
 	yaml::value_t mapping;
 	// Выполняем занесение поля с именем числовым
@@ -1462,6 +1490,7 @@ TEST(CodecYamlValue, NumericLink) {
 	 * @note Путь заводящий звеном числовым перечень заводит и наращивает, тогда как
 	 *       путь разыскивающий того не делает вовсе: разница здесь та же, что между
 	 *       обращением изменяемым и неизменяемым, и она намеренна
+	 *
 	 */
 	yaml::value_t placed;
 	// Выполняем заведение значения путём числовым
@@ -1505,6 +1534,7 @@ TEST(CodecYamlValue, NumericLink) {
 	 *          написания не имеет - чёрточный знак без содержимого есть значение
 	 *          пустое, и разбор читает его верно. Расхождение это законно и стоит
 	 *          здесь закреплённым нарочно, чтобы его не приняли впредь за потерю
+	 *
 	 */
 	yaml::value_t circle;
 	// Выполняем разбор собранного текста обратно в значение
@@ -1512,7 +1542,7 @@ TEST(CodecYamlValue, NumericLink) {
 	// Выполняем проверку длины перечня, круговым ходом полученного
 	ASSERT_EQ(circle.size(), value.size());
 	// Выполняем проверку того, что дыра круговым ходом удержана пустою
-	ASSERT_TRUE(circle[3].is(yaml::type_t::NUL));
+	ASSERT_TRUE(circle[3].is(yaml::type_t::NIL));
 	// Выполняем проверку того, что значение круговым ходом удержано
 	ASSERT_STREQ(circle[4].text().c_str(), "пятое");
 }
@@ -1533,6 +1563,7 @@ TEST(CodecYamlValue, GrowthLimit) {
 	 * @details Разбор беззнаковый заворачивается переполнением: запись
 	 * `18446744073709551617` обращалась бы единицей, и обращение по такому пути отдавало
 	 * бы соседнее значение молча. Ныне запись такая разыскивается именем поля
+	 *
 	 */
 	yaml::value_t wrapped;
 	// Выполняем обращение по пути с номером за пределом разрядности
@@ -1576,6 +1607,7 @@ TEST(CodecYamlValue, GrowthLimit) {
 	 *
 	 * @note Предел хранится переменной процесса, и проверка, его сменившая, обязана
 	 *       вернуть прежний: соседка иначе получила бы чужую настройку
+	 *
 	 */
 	yaml::value_t::limit(0x10000);
 	// Выполняем проверку возвращённого предела
@@ -1722,7 +1754,7 @@ TEST(CodecYamlValue, Grafting) {
 	// Выполняем установку логического значения отображения
 	value.place("/server/secure") = yaml::value_t(true);
 	// Выполняем установку пустого значения отображения
-	value.place("/server/proxy") = yaml::value_t(yaml::kind_t::NUL);
+	value.place("/server/proxy") = yaml::value_t(yaml::kind_t::NIL);
 	// Выполняем заведение перечня значений
 	value.place("/tags/0") = yaml::value_t("one");
 	// Выполняем добавление второго значения перечня
@@ -1750,12 +1782,13 @@ TEST(CodecYamlValue, Grafting) {
 	 *
 	 * @note Проверяется именно вид: ограда, числу поставленная, обратила бы его в
 	 *       строку, и чтением оно выдавалось бы прежним
+	 *
 	 */
 	ASSERT_EQ(document.root().at("/server/port").kind(), yaml::kind_t::NUMBER);
 	// Выполняем проверку вида перенесённого логического значения
 	ASSERT_EQ(document.root().at("/server/secure").kind(), yaml::kind_t::BOOL);
 	// Выполняем проверку вида перенесённого пустого значения
-	ASSERT_EQ(document.root().at("/server/proxy").kind(), yaml::kind_t::NUL);
+	ASSERT_EQ(document.root().at("/server/proxy").kind(), yaml::kind_t::NIL);
 	// Выполняем проверку вида перенесённого перечня значений
 	ASSERT_EQ(document.root().at("/tags").kind(), yaml::kind_t::SEQUENCE);
 	// Выполняем проверку количества значений перенесённого перечня
@@ -1769,6 +1802,7 @@ TEST(CodecYamlValue, Grafting) {
 	 *
 	 * @note Перенос поверх готового дерева перечня не наращивает: объявление кладёт
 	 *       вместилище заново, а не дописывает к прежнему
+	 *
 	 */
 	ASSERT_TRUE(value.graft(document));
 	// Выполняем проверку того, что перечень не наращён повторным переносом
@@ -1778,6 +1812,7 @@ TEST(CodecYamlValue, Grafting) {
 	 *
 	 * @note Проверяется именно запись: дерево, вид значения потерявшее, чтением
 	 *       выдавало бы то же самое, а в текст ушло бы значение иное
+	 *
 	 */
 	const string text = document.dump();
 	// Выполняем проверку записи целого числа без ограды
@@ -1834,6 +1869,7 @@ TEST(CodecYamlValue, GraftingRefusal) {
 		 *
 		 * @note Половина эта важнее первой: перенос, имя исказивший, тоже ответил бы
 		 *       успехом - и пара нашлась бы под именем `a~1b` вместо `a/b`
+		 *
 		 */
 		ASSERT_EQ(document.at("/a~1b").text(), "значение");
 		// Выполняем проверку того, что имя как есть путём не выражается
@@ -1860,7 +1896,7 @@ TEST(CodecYamlValue, GraftRoundTrip) {
 	// Выполняем установку логического значения
 	ASSERT_TRUE(value.insert("secure", yaml::value_t(true)));
 	// Выполняем установку пустого значения
-	ASSERT_TRUE(value.insert("proxy", yaml::value_t(yaml::kind_t::NUL)));
+	ASSERT_TRUE(value.insert("proxy", yaml::value_t(yaml::kind_t::NIL)));
 	// Выполняем заведение перечня значений
 	value.place("/tags/0") = yaml::value_t("one");
 	// Выполняем добавление второго значения перечня
@@ -1946,6 +1982,7 @@ TEST(CodecYamlValue, NameIndexRefill) {
 	 *
 	 * @note Рост такой заводит пары именами пустыми, а указатель о них не знает: проверка
 	 *       закрепляет, что розыск по имени от этого не сбивается
+	 *
 	 */
 	target[static_cast <size_t> (count + 8)] = yaml::value_t(static_cast <int64_t> (5));
 	// Выполняем проверку того, что розыск по имени рост по номеру пережил
@@ -2024,7 +2061,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Настройки разбора, схему защитную задающие
 	yaml::document_t::settings_t settings;
 	// Назначаем схему, признающую одни лишь строки
-	settings.schema = yaml::schema_t::FAILSAFE;
+	settings.reader.schema = yaml::schema_t::FAILSAFE;
 	// Дерево документа с парою без значения
 	yaml::document_t document;
 	// Выполняем назначение настроек разбора
@@ -2032,7 +2069,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Выполняем разбор текста с парою без значения
 	ASSERT_TRUE(document.parse("поле:\n"));
 	// Выполняем проверку того, что разбор выдал пустое значение
-	ASSERT_EQ(document.root().at("/поле").kind(), yaml::kind_t::NUL);
+	ASSERT_EQ(document.root().at("/поле").kind(), yaml::kind_t::NIL);
 	// Выполняем снятие владеющего значения с дерева документа
 	const yaml::value_t taken(document.root());
 	// Дерево документа, куда переносится значение
@@ -2044,7 +2081,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Выполняем перенос владеющего значения в дерево документа
 	ASSERT_TRUE(taken.graft(target));
 	// Выполняем проверку того, что перенесённое значение пустым осталось
-	ASSERT_EQ(target.root().at("/поле").kind(), yaml::kind_t::NUL);
+	ASSERT_EQ(target.root().at("/поле").kind(), yaml::kind_t::NIL);
 	// Выполняем снятие владеющего значения с дерева переноса
 	const yaml::value_t back(target.root());
 	// Выполняем сличение перенесённого значения с исходным
@@ -2110,6 +2147,7 @@ TEST(CodecYamlValue, GraftSurvivesRewrite) {
 	 *
 	 * @note Перенос в корень заменяет дерево целиком, оттого прежнее содержимое
 	 *       сохраняется лишь при переносе по пути в место, соседнее занятому
+	 *
 	 */
 	const Probe PROBES[] = {
 		{"в корень пустого дерева", "{}", "", false},
@@ -2142,6 +2180,7 @@ TEST(CodecYamlValue, GraftSurvivesRewrite) {
 		 *
 		 * @note Это единственное утверждение, отказом отвечающее при переносе
 		 *       бездействующем: прочие сойдутся сами с собою
+		 *
 		 */
 		ASSERT_EQ((text.find("старое") != string::npos), probe.kept) << probe.title;
 		// Дерево документа, перезаписью полученное
@@ -2213,21 +2252,27 @@ TEST(CodecYamlValue, WidthExtraction) {
 	{
 		// Выполняем проверку извлечения числа видом в два байта со знаком
 		ASSERT_TRUE(value["small"].value(second));
+		// Сличаем извлечённое в два байта со знаком second с ожидаемым 8080
 		ASSERT_EQ(second, 8080);
 		// Выполняем проверку извлечения числа видом в четыре байта со знаком
 		ASSERT_TRUE(value["small"].value(third));
+		// Сличаем извлечённое в четыре байта со знаком third с ожидаемым 8080
 		ASSERT_EQ(third, 8080);
 		// Выполняем проверку извлечения числа видом в восемь байтов со знаком
 		ASSERT_TRUE(value["small"].value(fourth));
+		// Сличаем извлечённое в восемь байтов со знаком fourth с ожидаемым 8080
 		ASSERT_EQ(fourth, 8080);
 		// Выполняем проверку извлечения числа видом в два байта без знака
 		ASSERT_TRUE(value["small"].value(sixth));
+		// Сличаем извлечённое в два байта без знака sixth с ожидаемым 8080u
 		ASSERT_EQ(sixth, 8080u);
 		// Выполняем проверку извлечения числа видом в четыре байта без знака
 		ASSERT_TRUE(value["small"].value(seventh));
+		// Сличаем извлечённое в четыре байта без знака seventh с ожидаемым 8080u
 		ASSERT_EQ(seventh, 8080u);
 		// Выполняем проверку извлечения числа видом в восемь байтов без знака
 		ASSERT_TRUE(value["small"].value(eighth));
+		// Сличаем извлечённое в восемь байтов без знака eighth с ожидаемым 8080u
 		ASSERT_EQ(eighth, 8080u);
 	}
 	/**
@@ -2236,21 +2281,27 @@ TEST(CodecYamlValue, WidthExtraction) {
 	{
 		// Выполняем проверку заворота числа видом в один байт без знака
 		ASSERT_TRUE(value["small"].value(fifth));
+		// Сличаем fifth с ожидаемым 8080, завёрнутым в uint8_t
 		ASSERT_EQ(fifth, static_cast <uint8_t> (8080));
 		// Выполняем проверку заворота числа видом в один байт со знаком
 		ASSERT_TRUE(value["small"].value(first));
+		// Сличаем first с ожидаемым 8080, завёрнутым в int8_t
 		ASSERT_EQ(first, static_cast <int8_t> (8080));
 		// Выполняем проверку заворота отрицательного числа видом без знака
 		ASSERT_TRUE(value["negative"].value(fifth));
+		// Сличаем fifth с ожидаемым -1, завёрнутым в uint8_t
 		ASSERT_EQ(fifth, static_cast <uint8_t> (-1));
 		// Выполняем проверку заворота отрицательного числа видом в два байта без знака
 		ASSERT_TRUE(value["negative"].value(sixth));
+		// Сличаем sixth с ожидаемым -1, завёрнутым в uint16_t
 		ASSERT_EQ(sixth, static_cast <uint16_t> (-1));
 		// Выполняем проверку заворота отрицательного числа видом в четыре байта без знака
 		ASSERT_TRUE(value["negative"].value(seventh));
+		// Сличаем seventh с ожидаемым -1, завёрнутым в uint32_t
 		ASSERT_EQ(seventh, static_cast <uint32_t> (-1));
 		// Выполняем проверку заворота отрицательного числа видом в восемь байтов без знака
 		ASSERT_TRUE(value["negative"].value(eighth));
+		// Сличаем eighth с ожидаемым -1, завёрнутым в uint64_t
 		ASSERT_EQ(eighth, static_cast <uint64_t> (-1));
 	}
 	/**
@@ -2259,9 +2310,11 @@ TEST(CodecYamlValue, WidthExtraction) {
 	{
 		// Выполняем проверку огранения дробного числа верхним пределом
 		ASSERT_TRUE(value["beyond"].value(third));
+		// Сличаем third с ожидаемым верхним пределом int32_t
 		ASSERT_EQ(third, ::std::numeric_limits <int32_t>::max());
 		// Выполняем проверку огранения дробного числа нижним пределом
 		ASSERT_TRUE(value["below"].value(third));
+		// Сличаем third с ожидаемым нижним пределом int32_t
 		ASSERT_EQ(third, ::std::numeric_limits <int32_t>::lowest());
 	}
 	/**
@@ -2270,9 +2323,11 @@ TEST(CodecYamlValue, WidthExtraction) {
 	{
 		// Выполняем проверку извлечения числа одинарной точности
 		ASSERT_TRUE(value["fraction"].value(ninth));
+		// Сличаем ninth с ожидаемым дробным 1.5f
 		ASSERT_FLOAT_EQ(ninth, 1.5f);
 		// Выполняем проверку извлечения числа двойной точности
 		ASSERT_TRUE(value["fraction"].value(tenth));
+		// Сличаем tenth с ожидаемым дробным 1.5
 		ASSERT_DOUBLE_EQ(tenth, 1.5);
 	}
 	/**
@@ -2281,6 +2336,7 @@ TEST(CodecYamlValue, WidthExtraction) {
 	 * @note Отказ обязан выдаваться ВСЯКИМ видом: расходись они, и потребитель,
 	 *       сменивший вид переменной, получил бы разную выдачу на одном и том же
 	 *       значении
+	 *
 	 */
 	{
 		// Выполняем проверку отказа извлечения из отображения видом в два байта со знаком
@@ -2424,6 +2480,7 @@ TEST(CodecYamlValue, ChompingRuleIsOne) {
 		 * @note Дерево собирается перезаписью построенного значения, а не текстом,
 		 *       написанным руками: так сличаются ровно два пути назначения правила, а
 		 *       не они же с третьим - написанием проверки
+		 *
 		 */
 		{
 			// Собираемое дерево документа
@@ -2475,6 +2532,7 @@ TEST(CodecYamlValue, RewriteMatchesDocument) {
 	 *
 	 * @note Настройка обязана быть слышна и значению: черта ставится ею, а не самим
 	 *       родом перезаписи
+	 *
 	 */
 	{
 		// Настройки записи текста с чертою начала документа
@@ -2643,6 +2701,7 @@ TEST(CodecYamlValue, GraftLeavesTreeIntact) {
 	 *
 	 * @note Негодным взято имя ПУСТОЕ, а не с косою чертой: имя с косою чертой ныне путём
 	 *       выражается отменяющей записью `~1` и переносу более не мешает
+	 *
 	 */
 	value[""] = yaml::value_t(static_cast <int64_t> (2));
 	// Дерево документа, куда переносится значение
@@ -2660,6 +2719,7 @@ TEST(CodecYamlValue, GraftLeavesTreeIntact) {
 	 *
 	 * @note Половина эта обязательна: перенос, отказывающий всегда, прошёл бы первую
 	 *       половину проверки, не перенеся ничего вовсе
+	 *
 	 */
 	{
 		// Собираемое владеющее значение
@@ -2737,6 +2797,7 @@ TEST(CodecYamlValue, BuilderCarriesAnchorAndTag) {
 	 *
 	 * @note Половина эта обязательна: якорь, лишь в дереве живущий, но записью
 	 *       теряемый, прошёл бы обе половины выше и остался бы незамеченным
+	 *
 	 */
 	{
 		// Объект потоковой сборки значения
@@ -2865,6 +2926,7 @@ TEST(CodecYamlValue, FileRoundTrip) {
 	 * @note Половина эта обязательна: круговой ход через разбор потери хвостового
 	 *       перевода строки НЕ замечает - разбор даёт то же значение, а запись перевод
 	 *       возвращает, - и усечение записи прошло бы сличение значений молча
+	 *
 	 */
 	{
 		// Поток чтения записанного файла значения
@@ -2965,6 +3027,7 @@ TEST(CodecYamlValue, MisuseRefusals) {
 	 *
 	 * @note Обращение по номеру вместилища требует, и значение скалярное обращается
 	 *       перечнем: иначе записать по номеру было бы некуда
+	 *
 	 */
 	{
 		// Собираемое владеющее значение
@@ -3072,6 +3135,7 @@ TEST(CodecYamlValue, SelfAssignmentAndSpecialNumbers) {
 	 *
 	 * @note Записи эти берутся описанием наречия: выдача библиотеки языка дала бы
 	 *       `nan` и `inf`, а описание требует `.nan` и `.inf`
+	 *
 	 */
 	{
 		// Извлекаемая запись значения
@@ -3102,7 +3166,7 @@ TEST(CodecYamlValue, SelfAssignmentAndSpecialNumbers) {
 		// Виды значений, заведению подлежащие, вместе с видами хранения их
 		const pair <yaml::kind_t, yaml::type_t> kinds[] = {
 			// Пустое значение заводится видом хранения пустого
-			{yaml::kind_t::NUL, yaml::type_t::NUL},
+			{yaml::kind_t::NIL, yaml::type_t::NIL},
 			// Логическое значение заводится видом хранения логического
 			{yaml::kind_t::BOOL, yaml::type_t::BOOL},
 			// Строковое значение заводится видом хранения строки
@@ -3379,6 +3443,7 @@ TEST(CodecYamlValue, NameIndexGrowsWithAppendAndInsert) {
 	 *
 	 * @note Вставка отличается от занесения перезаписью занятого имени: имя незанятое
 	 *       она заводит тем же порядком, и указатель вести обязана тоже
+	 *
 	 */
 	{
 		// Собираемое владеющее значение
@@ -3431,6 +3496,10 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		yaml::value_t value;
 		// Выполняем проверку отказа разбора текста негодного
 		ASSERT_FALSE(value.parse("a: !!int строка\n"));
+		// Выполняем проверку того, что код отказа назван
+		ASSERT_NE(value.error(), yaml::error_t::NONE);
+		// Выполняем проверку того, что отказ значения прежнего не оставил
+		ASSERT_FALSE(value.valid());
 	}
 	/**
 	 * Выполняем проверку отказа чтения файла, открыть какой нельзя
@@ -3446,6 +3515,7 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 	 *
 	 * @note Отказ этот от предыдущего отличается: файл открылся, а содержимое его
 	 *       разбору не поддалось
+	 *
 	 */
 	{
 		// Имя временного файла с содержимым негодным
@@ -3462,6 +3532,8 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		yaml::value_t value;
 		// Выполняем проверку отказа чтения файла с содержимым негодным
 		ASSERT_FALSE(value.load(filename));
+		// Выполняем проверку того, что код отказа назван
+		ASSERT_NE(value.error(), yaml::error_t::NONE);
 		// Выполняем снятие временного файла
 		dropFile(filename);
 	}
@@ -3510,6 +3582,7 @@ TEST(CodecYamlValue, BuilderRefusals) {
 	 * @note Завершает сборку ЗАКРЫТИЕ корня, а не выдача собранного: выдача значения
 	 *       сборку не запирает вовсе, и ожидание запирания ею оказалось моим, а не
 	 *       кодека
+	 *
 	 */
 	{
 		// Потоковая сборка владеющего значения
@@ -3616,6 +3689,7 @@ TEST(CodecYamlValue, BinaryTagAndIntegerWidth) {
  *          разбирает `strtoull` из libc, и ни одно из трёх тел кодека, обращающих
  *          букву в величину, в разборе его не участвует. Порча всех трёх проверку не
  *          роняла - установлено замером, а не разбором на глаз
+ *
  */
 TEST(CodecYamlValue, ExtendedNumberAndLowercaseHex) {
 	/**
@@ -3889,19 +3963,20 @@ TEST(CodecYamlValue, PlainIntegerSpellings) {
 		ASSERT_EQ(number, static_cast <int64_t> (3));
 	}
 	// Выполняем проверку заведения значения написанием целого без знака
-	yaml::value_t unsigned_value = 4294967295u;
+	yaml::value_t unsignedValue = 4294967295u;
 	/**
 	 * Выполняем проверку заведённого значения
 	 *
 	 * @note Число без знака уходит через `uint64_t`, а не через `int64_t`: обход
 	 *       через знаковый вид обращал бы его в отрицательное
+	 *
 	 */
 	// Выполняем проверку заведённого значения
 	{
 		// Полученное целое число значения
 		int64_t number = 0;
 		// Выполняем получение целого числа значения
-		ASSERT_TRUE(unsigned_value.value(number));
+		ASSERT_TRUE(unsignedValue.value(number));
 		// Выполняем проверку полученного целого числа значения
 		ASSERT_EQ(number, static_cast <int64_t> (4294967295));
 	}
@@ -3960,6 +4035,7 @@ TEST(CodecYamlValue, PlainIntegerSpellings) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: заводитель целого числа, логическое
 	 *       написание перехвативший, обратил бы `true` в число 1 молча
+	 *
 	 */
 	ASSERT_EQ(flag.kind(), yaml::kind_t::BOOL);
 	// Выполняем проверку заведения значения написанием дробным
@@ -4019,6 +4095,7 @@ TEST(CodecYamlValue, CharNameIsText) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: оператор знака без ограды делал бы это
 	 *       обращение двусмысленным, и сборка валилась бы у потребителя, а не здесь
+	 *
 	 */
 	ASSERT_EQ(fixedList[0].kind(), yaml::kind_t::NUMBER);
 	// Выполняем проверку обращения по номеру, размером записанному
@@ -4104,6 +4181,7 @@ TEST(CodecYamlValue, SaveRefusesUndefinedValue) {
 	 *
 	 * @note Поверка эта стоит прежде открытия файла: поток записи усекает цель при
 	 *       открытии, и значение, текста не дающее, сносило бы прежнее содержимое
+	 *
 	 */
 	ASSERT_FALSE(undefined.save(::unique("./awh_yaml_недействительное.yaml")));
 	// Выполняем проверку того, что отказ записи в журнал ушёл
@@ -4126,6 +4204,7 @@ TEST(CodecYamlValue, PathWithEmptyPart) {
 	 *
 	 * @note Часть пустая номером не является и заводит отображение пар: имя её пусто,
 	 *       и обращение по тому же пути отдаёт то же значение
+	 *
 	 */
 	ASSERT_EQ(value.at("/раздел//ключ").text(), "значение");
 	/**
@@ -4135,6 +4214,7 @@ TEST(CodecYamlValue, PathWithEmptyPart) {
 	 *       ею заводится ОТОБРАЖЕНИЕМ. Одно лишь обращение по тому же пути отвечало бы
 	 *       успехом и тогда, когда пустая часть сошла бы за номер, - перечень отдал бы
 	 *       то же значение нулевым своим местом
+	 *
 	 */
 	ASSERT_EQ(value.at("/раздел").kind(), yaml::kind_t::MAPPING);
 }
@@ -4150,6 +4230,7 @@ TEST(CodecYamlValue, DepthBeyondLimitRefused) {
 	 *
 	 * @note Значение собирается снизу вверх, а не путём: разбор пути свою поверку
 	 *       вложенности ведёт и до записи такое значение не допустил бы вовсе
+	 *
 	 */
 	for(size_t i = 0; i < static_cast <size_t> (yaml::MAX_DEPTH) + 8; i++){
 		// Заводимое вместилище очередного уровня вложенности
@@ -4170,6 +4251,7 @@ TEST(CodecYamlValue, DepthBeyondLimitRefused) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: перечень значений открывается своим вызовом,
 	 *       отдельным от отображения пар, и порча одного из двух осталась бы незамечена
+	 *
 	 */
 	{
 		// Собираемый перечень, предел вложенности превышающий
@@ -4321,6 +4403,7 @@ TEST(CodecYamlValue, NumberSpellingsAgreeUpToDoublePrecision) {
 		 *
 		 * @note Утрата принадлежит разбору дробного, а не приведению: `double` числа
 		 *       `9007199254740993` не представляет вовсе, и ближайшее к нему есть 2^53
+		 *
 		 */
 		ASSERT_EQ(fractional, limit);
 	}
@@ -4357,6 +4440,7 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	 *       ведущему нулю НЕОТЛИЧИМ от отказа по выходу за предел, и проверка была бы
 	 *       зелена по ложной причине. Прежняя её редакция брала два значения и потому
 	 *       живого отступления у узла дерева не ловила вовсе
+	 *
 	 */
 	ASSERT_TRUE(document.parse("- 0\n- 10\n- 20\n- 30\n- 40\n- 50\n- 60\n- 70\n- 80\n")) << yaml::message(document.error());
 	// Получаем владеющее значение дерева документа
@@ -4367,6 +4451,7 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	ASSERT_FALSE(value.at("/01").valid());
 	// Выполняем проверку того же на номере, перечнем ДОСТИЖИМОМ без ведущего нуля
 	ASSERT_TRUE(value.at("/7").valid());
+	// Выполняем проверку того, что номер /07 с ведущим нулём не разыскивается
 	ASSERT_FALSE(value.at("/07").valid());
 	ASSERT_FALSE(value.at("/007").valid());
 	/**
@@ -4374,8 +4459,10 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	 *
 	 * @note Близнецы эти несут СВОЙ разбор номера каждый, и правило у них разошлось:
 	 *       владеющее значение его соблюдало, узел дерева - нет. Одной половины мало
+	 *
 	 */
 	ASSERT_TRUE(yaml::value_t(document.at("/7")).valid());
+	// Выполняем проверку того, что узел дерева номер /07 с ведущим нулём не находит
 	ASSERT_FALSE(yaml::value_t(document.at("/07")).valid());
 	ASSERT_FALSE(yaml::value_t(document.at("/007")).valid());
 	/**
@@ -4385,6 +4472,7 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	 *       номеру, то есть лишь при обходе перечня. Имя поля `01` законно вполне, и
 	 *       починка, запрет на имена распространившая, сделала бы поле недостижимым
 	 *       МОЛЧА. Первая половина такой перестаравшейся починки не ловит вовсе
+	 *
 	 */
 	// Объект дерева документа, отображение разбирающий
 	yaml::document_t mapping;
@@ -4397,6 +4485,7 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	// Выполняем проверку того, что имя без ведущего нуля разыскивается
 	ASSERT_TRUE(named.at("/1").valid());
 }
+// Проверка извлечения числа из записей, видом на число похожих, обоими слоями
 TEST(CodecYamlValue, LayersExtractNumberAlike) {
 	/**
 	 * @brief Описание проверяемой записи числа
@@ -4457,7 +4546,7 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
 		// Настройки дерева документа
 		yaml::document_t::settings_t settings;
 		// Удерживаем все пары с повторяющимся именем
-		settings.duplicates = yaml::duplicate_t::KEEP;
+		settings.reader.duplicates = yaml::duplicate_t::KEEP;
 		// Дерево документа
 		yaml::document_t document;
 		// Выполняем установку настроек дерева документа
@@ -4488,6 +4577,7 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
 		 *
 		 * @note Прежде здесь стояло имя с косою чертой: ныне оно путём выражается
 		 *       отменяющей записью и переносу не мешает, а негодным осталось имя пустое
+		 *
 		 */
 		ASSERT_FALSE(yaml::value_t(document.root()).graft(target));
 		// Выполняем проверку того, что причина отказа названа
@@ -4518,6 +4608,7 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
  *
  * @note Причину поток записи ЗНАЛ и выбрасывал: сборка записи признака не отдаёт, а объект
  *       записи живёт внутри одного вызова. Найдено разбором, а не отказом
+ *
  */
 TEST(CodecYamlValue, RefusedWritingNamesItsCause){
 	// Владеющее значение, глубину записи превышающее
@@ -4544,6 +4635,7 @@ TEST(CodecYamlValue, RefusedWritingNamesItsCause){
 	 *
 	 * @note Код держится от последней работы, а не от последней неудачной: правило это
 	 *       одно у дерева и у значения
+	 *
 	 */
 	yaml::value_t plain(string("простое"));
 	// Выполняем проверку того, что запись простого значения удалась
@@ -4594,6 +4686,7 @@ TEST(CodecYamlValue, GrowthByIndexKeepsTheSearchTrue){
  *       снятая, возвращалась сокращением `!!y` - меткою ИНОЙ, описанием закреплённой
  *
  * @note Нашёл это ворошитель круговым ходом снятого значения
+ *
  */
 TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 	/**
@@ -4628,6 +4721,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 	 * Выполняем проверку метки, вручную назначенной
 	 *
 	 * @note Она сокращением и остаётся: местным вид её делает лишь снятие с дерева
+	 *
 	 */
 	{
 		// Владеющее значение с меткою, вручную назначенной
@@ -4647,6 +4741,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 	 * @note Признак происхождения обязан сняться установкою: значение помнит, что метка
 	 *       его была местною, и без снятия сокращение `!!str`, поверх поставленное,
 	 *       ушло бы в текст записью `!%21str` - меткою местною
+	 *
 	 */
 	{
 		// Дерево документа
@@ -4675,6 +4770,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
  * @note Замерено сличением снятого значения с деревом: дерево свойства эти держит, а
  *       снятое с него значение - нет, и круговой ход снятого расходился с круговым ходом
  *       дерева на тех же самых текстах
+ *
  */
 TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
 	/**
@@ -4694,6 +4790,7 @@ TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
 		 * @note Сличается именно с деревом, а не с исходным написанием: владеющее значение
 		 *       примечаний да пустых строк не держит вовсе, и требовать от него дословности
 		 *       исходного текста значило бы требовать невозможного
+		 *
 		 */
 		ASSERT_EQ(taken.dump(), document.dump()) << source;
 	}
@@ -4701,6 +4798,7 @@ TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
 	 * Выполняем проверку того, что метка местная у имени пары круга переживает
 	 *
 	 * @note Вид метки берётся признаком происхождения её ровно так же, как у метки значения
+	 *
 	 */
 	{
 		// Дерево документа
@@ -4727,6 +4825,7 @@ TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
  *
  * @note Метка `!!binary` оттого и была изъята из набора ворошителя - возвращена вместе с
  *       этой починкой
+ *
  */
 TEST(CodecYamlValue, GraftCarriesTheProperties){
 	/**
@@ -4755,13 +4854,14 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 *       верно, и установка свойств вида не правит вовсе. Расхождение видно лишь под
 	 *       схемами защитной да JSON, где содержимым вид не разрешить - там перенос и
 	 *       обращал число строкою
+	 *
 	 */
 	for(const yaml::schema_t schema : {yaml::schema_t::FAILSAFE, yaml::schema_t::JSON,
 	                                   yaml::schema_t::CORE, yaml::schema_t::LEGACY}){
 		// Настройки дерева документа
 		yaml::document_t::settings_t settings;
 		// Устанавливаем схему разрешения видов значений
-		settings.schema = schema;
+		settings.reader.schema = schema;
 		// Дерево документа, откуда ведётся перенос
 		yaml::document_t source(settings);
 		// Выполняем разбор написания
@@ -4782,6 +4882,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		 * @note Вид решается содержимым, а метка разрешение это пересиливает: установка
 		 *       свойств идёт ПОСЛЕ укладки значения, и вид, укладкою решённый, метки не
 		 *       видел - перенос клал строку, метку при ней несущую
+		 *
 		 */
 		ASSERT_EQ(target.root().at("z").kind(), source.root().at("value").kind())
 			<< probe.first << " схема " << static_cast <uint16_t> (schema) << " перенос: " << target.dump();
@@ -4791,6 +4892,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		 * @note Запись `0777` наречием 1.1 есть число восьмеричное, а схемою ядровой -
 		 *       десятичное: разбор помеченного числа схемою ядровой всюду обращал бы
 		 *       511 в 777 молча
+		 *
 		 */
 		if(source.root().at("value").is(yaml::type_t::NUMBER)){
 			// Извлекаемое дробное значение исходного дерева
@@ -4817,6 +4919,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 *
 	 * @note Метка узла ссылок за собою не тянет: перенос кладёт объявление её, а ссылки
 	 *       остаются в дереве исходном
+	 *
 	 */
 	{
 		// Дерево документа, откуда ведётся перенос
@@ -4838,6 +4941,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 * Выполняем проверку кругового хода двоичного содержимого
 	 *
 	 * @note Ровно это и терялось: без метки запись `12:30` наречием 1.1 читается числом
+	 *
 	 */
 	{
 		// Дерево документа, откуда ведётся перенос
@@ -4855,7 +4959,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		// Настройки дерева документа наречия 1.1
 		yaml::document_t::settings_t legacy;
 		// Устанавливаем схему разрешения видов наречия 1.1
-		legacy.schema = yaml::schema_t::LEGACY;
+		legacy.reader.schema = yaml::schema_t::LEGACY;
 		// Дерево документа, перезапись переноса читающее наречием 1.1
 		yaml::document_t back(legacy);
 		// Выполняем разбор перезаписи переноса
@@ -4939,13 +5043,14 @@ TEST(CodecYamlValue, GraftOfTheEmptyValueLaysTheVoid) {
 	 *       вместо этой ветви стоящий, кладёт пустую надпись, - а пустая надпись схемою
 	 *       защитной разрешается СТРОКОЮ, и пустота обратилась бы строкою пустой. Схемою
 	 *       ядровой расхождения не видно вовсе: порча ветви под нею проверки не роняет
+	 *
 	 */
 	for(const yaml::schema_t schema : {yaml::schema_t::FAILSAFE, yaml::schema_t::JSON,
 	                                   yaml::schema_t::CORE, yaml::schema_t::LEGACY}){
 		// Настройки дерева документа
 		yaml::document_t::settings_t settings;
 		// Устанавливаем схему разрешения видов значений
-		settings.schema = schema;
+		settings.reader.schema = schema;
 		// Дерево документа, куда ведётся перенос
 		yaml::document_t document(settings);
 		// Выполняем разбор дерева, переносу подлежащего
@@ -4957,7 +5062,7 @@ TEST(CodecYamlValue, GraftOfTheEmptyValueLaysTheVoid) {
 		// Выполняем перенос пустого значения в дерево документа
 		ASSERT_TRUE(document.set("/z", empty)) << yaml::message(document.error());
 		// Выполняем проверку того, что перенос лёг пустотою
-		ASSERT_TRUE(document.root().at("z").is(yaml::type_t::NUL))
+		ASSERT_TRUE(document.root().at("z").is(yaml::type_t::NIL))
 			<< "схема " << static_cast <uint16_t> (schema) << ": " << document.dump();
 	}
 }
@@ -4987,12 +5092,14 @@ TEST(CodecYamlValue, RefusedSaveLeavesNoTemporaryFile){
 	 *
 	 * @warning Уборка идёт ПЕРЕД заведением и сносит содержимое: заведение отвечает
 	 *          отказом на каталог уже сущий, а `::rmdir` берёт лишь каталог пустой
+	 *
 	 */
 	removeDirectory(folder);
 	// Выполняем заведение каталога, целью записи ставимого
 	ASSERT_TRUE(makeDirectory(folder));
 	// Собираемое владеющее значение
 	yaml::value_t value;
+	// Кладём во владеющее значение запись «ключ» = «значение», целью записи ставимую
 	value["ключ"] = yaml::value_t("значение");
 	// Выполняем проверку отказа записи значения в каталог
 	ASSERT_FALSE(value.save(folder));

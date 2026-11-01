@@ -279,6 +279,18 @@ TEST_F(AllocFixture, DescendantAllocatesAfterForkUnderLoad){
  *
  */
 TEST_F(AllocFixture, DescendantSurvivesForkWhileCallbacksChange){
+	/**
+	 * В снятой сборке откликов ветвления нет
+	 *
+	 * `pthread_atfork` заводит захват распределителя, а в снятой сборке его нет:
+	 * замок откликов, захваченный не пережившим ветвление потоком, остался бы в
+	 * потомке захваченным навсегда. Проверка сторожит договор включённого слоя
+	 * и в снятой сборке неприменима
+	 */
+	#if defined(AWH_ALLOC_DISABLED)
+		// Пропускаем проверку
+		GTEST_SKIP() << "распределитель снят ключом сборки: atfork и отклики не заводятся";
+	#endif
 	// Признак работы потока, переписывающего отклик
 	std::atomic <bool> running(true);
 	/**

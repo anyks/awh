@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Проверки владеющего значения CSV
- *
- * \~english
- * @brief Tests of the owning value of CSV
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -40,6 +34,7 @@
  *          libstdc++ на NetBSD - нет, и стенд там не собирался вовсе. Разряд беды тот же,
  *          что у `std::sort` без `<algorithm>`: у одной библиотеки собирается, у другой
  *          отказывает. Найдено раскладкою по восьми системам 09.09.2026
+ *
  */
 #include <cmath>
 #include <limits>
@@ -47,6 +42,7 @@
  * Подключаем заголовочный файл работы с локалью процесса
  *
  * @note Нужен проверке независимости разбора числа от локали
+ *
  */
 #include <clocale>
 #include <fstream>
@@ -55,6 +51,7 @@
  *
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора кодеков - проверки их собираются ОДНОЙ программой
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <csignal>
@@ -72,6 +69,7 @@
  * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
  *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
  *       два прогона разных процессов иначе пишут в один и тот же файл
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -121,16 +119,25 @@ namespace {
 		 *          `./имя-каталога` точку несёт в начале, и поиск по всей строке
 		 *          обращал бы её в `.-1234/имя-каталога` - путь в несуществующий
 		 *          каталог. Найдено 07.09.2026 красною строкою набора
+		 *
 		 */
 		const size_t slash = name.rfind('/');
+		// Отыскиваем последнюю точку в имени файла
 		const size_t found = name.rfind('.');
+		// Точка считается расширением, если она после разделителя пути или единственная
 		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
 		// Собираемое имя без расширения
 		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
 		// Дописываем номер процесса
 		result.append("-").append(std::to_string(static_cast <uint32_t> (
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 			::_getpid()
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
 #else
 			::getpid()
 #endif
@@ -152,8 +159,8 @@ namespace {
 	static awh::codec::csv::document_t make(const std::string & text) noexcept {
 		// Объект таблицы
 		awh::codec::csv::document_t result;
-		// Получаем настройки таблицы
-		auto settings = result.settings();
+		// Настройки таблицы
+		awh::codec::csv::document_t::settings_t settings;
 		// Выполняем указание на присутствие заголовка в первой записи
 		settings.reader.header = awh::codec::csv::header_t::PRESENT;
 		// Выполняем установку настроек таблицы
@@ -166,7 +173,13 @@ namespace {
 }
 
 using namespace std;
+/**
+ * Подписываемся на пространство имён фреймворка
+ */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -211,6 +224,7 @@ TEST(CodecCsvValue, Absorb) {
  * @warning Проверка НЕ сличает содержимое вида после роста: чтение чужой памяти есть
  * поведение неопределённое, и закреплять его значило бы требовать от порока
  * постоянства. Закрепляется лишь то, что значение осталось верным
+ *
  */
 TEST(CodecCsvValue, TakenValueSurvivesTheStorageMove) {
 	// Объект таблицы
@@ -254,18 +268,23 @@ TEST(CodecCsvValue, TakenValueSurvivesTheStorageMove) {
  * @note Найдено сличением с осью путей ABC, где замерено то же. У разметки XML
  *       записи эти не нужны и заводить их незачем: имя узла косой черты не допускает
  *       по самому стандарту XML
+ *
  */
 TEST(CodecCsvValue, EscapedPathSegmentsFollowThePointerStandard) {
 	// Владеющее значение таблицы
 	csv::value_t value;
-	// Объект таблицы для получения настроек разбора
+	// Объект таблицы для разбора текста с заголовком
 	csv::document_t document;
-	// Получаем настройки таблицы
-	csv::document_t::settings_t settings = document.settings();
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
 	// Выполняем указание на присутствие заголовка в первой записи
 	settings.reader.header = csv::header_t::PRESENT;
+	// Выполняем установку настроек таблицы
+	document.settings(settings);
 	// Выполняем разбор текста таблицы с именами столбцов особого вида
-	ASSERT_TRUE(value.parse("a~b,c/d,~01\r\nпервое,второе,третье\r\n", settings));
+	ASSERT_TRUE(document.parse("a~b,c/d,~01\r\nпервое,второе,третье\r\n"));
+	// Выполняем снятие значения с разобранной таблицы
+	ASSERT_TRUE(value.absorb(document));
 	// Выполняем проверку числа столбцов заголовка
 	ASSERT_EQ(value.header().size(), static_cast <size_t> (3));
 	/**
@@ -280,6 +299,7 @@ TEST(CodecCsvValue, EscapedPathSegmentsFollowThePointerStandard) {
 	 *
 	 * @note Половина эта и есть находка: без отменяющих записей звено рвалось надвое,
 	 *       и столбец был недостижим ни одним написанием пути
+	 *
 	 */
 	{
 		// Выполняем проверку розыска столбца отменяющей записью косой черты
@@ -293,6 +313,7 @@ TEST(CodecCsvValue, EscapedPathSegmentsFollowThePointerStandard) {
 	 * @note Имя столбца здесь есть `~1` дословно, и записывается оно как `~01`. Снятие
 	 *       `~0` прежде `~1` обратило бы записанное в косую черту, и столбец не нашёлся
 	 *       бы вовсе - половина эта одна и стережёт порядок
+	 *
 	 */
 	{
 		// Выполняем проверку розыска столбца, чьё имя есть отменяющая запись
@@ -321,6 +342,7 @@ TEST(CodecCsvValue, Path) {
 	 *       разметки не достаёт ничего, и у таблицы столбца с пустым именем не бывает
 	 *       вовсе. Первая редакция приравняла её к пустому пути, и одна и та же
 	 *       запись значила бы у кодеков разное
+	 *
 	 */
 	ASSERT_FALSE(value.at("/").valid());
 	// Выполняем проверку того, что путь к отсутствующему столбцу пуст
@@ -379,6 +401,7 @@ TEST(CodecCsvValue, Extraction) {
 		 * @note Отказ обязателен ИМЕННО здесь: разбор записи, оборванный на первом
 		 *       негодном знаке, выдал бы «42» из записи «42текст» и молчаливо
 		 *       потерял бы хвост
+		 *
 		 */
 		ASSERT_FALSE(value.at("/0/с").value(result));
 	}
@@ -394,6 +417,7 @@ TEST(CodecCsvValue, Extraction) {
 		 *
 		 * @note Разбор беззнакового числа обращает минус ПО КРУГУ молча, и «-1»
 		 *       выходило бы наибольшим числом вида вместо отказа
+		 *
 		 */
 		ASSERT_FALSE(taken.at("/0/ч").value(result));
 	}
@@ -424,6 +448,7 @@ TEST(CodecCsvValue, GraftAndRoundTrip) {
 	 * @note Уклад этот записан договором: значение есть таблица сама по себе, а
 	 *       слияние двух таблиц требовало бы правила сведения заголовков, которого
 	 *       у RFC 4180 нет
+	 *
 	 */
 	ASSERT_TRUE(value.graft(target));
 	// Выполняем проверку того, что записи не удвоились
@@ -437,14 +462,18 @@ TEST(CodecCsvValue, GraftAndRoundTrip) {
 TEST(CodecCsvValue, Parse) {
 	// Владеющее значение
 	csv::value_t value;
-	// Настройки разбора текста таблицы
+	// Объект таблицы для разбора текста с заголовком
 	csv::document_t document;
-	// Получаем настройки таблицы
-	auto settings = document.settings();
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
 	// Выполняем указание на присутствие заголовка в первой записи
 	settings.reader.header = csv::header_t::PRESENT;
-	// Выполняем проверку успешности разбора текста таблицы
-	ASSERT_TRUE(value.parse("имя,возраст\r\nАня,30\r\n", settings));
+	// Выполняем установку настроек таблицы
+	document.settings(settings);
+	// Выполняем разбор текста таблицы
+	ASSERT_TRUE(document.parse("имя,возраст\r\nАня,30\r\n"));
+	// Выполняем снятие значения с разобранной таблицы
+	ASSERT_TRUE(value.absorb(document));
 	// Выполняем проверку числа записей разобранного значения
 	ASSERT_EQ(value.size(), static_cast <size_t> (1));
 	// Выполняем проверку содержимого поля разобранного значения
@@ -454,10 +483,11 @@ TEST(CodecCsvValue, Parse) {
 	 *
 	 * @note Оставь мы прежнее содержимое, и потребитель, разбор которого отказал,
 	 *       читал бы ПРЕЖНИЙ текст, приняв его за новый - молча и без знака
+	 *
 	 */
 	string broken("имя\r\n\"незакрытая кавычка\r\n");
 	// Выполняем проверку отказа разбора испорченного текста таблицы
-	ASSERT_FALSE(value.parse(broken, settings));
+	ASSERT_FALSE(value.parse(broken));
 	// Выполняем проверку того, что прежнее содержимое снесено отказом
 	ASSERT_FALSE(value.valid());
 	// Выполняем проверку опустошения значения отказом разбора
@@ -479,6 +509,7 @@ TEST(CodecCsvValue, Editing) {
 	 * @note Отказ этот безусловен и настройкою не снимается: проверка здесь свободна
 	 *       от расхода на разбор, ради которого послабление и заводят. Уклад один с
 	 *       `Document::header`
+	 *
 	 */
 	ASSERT_FALSE(value.header(vector <string> {"имя", "имя"}));
 	// Собираемая запись таблицы
@@ -525,6 +556,7 @@ TEST(CodecCsvValue, Comparison) {
 	 *
 	 * @note Сличай мы одно содержимое записей, и таблицы с разными заголовками,
 	 *       но одинаковыми записями выходили бы равными - а текст у них разный
+	 *
 	 */
 	{
 		// Объект таблицы с иным именем столбца
@@ -552,6 +584,7 @@ TEST(CodecCsvValue, Load) {
 	 * @note Снос ведётся и ПЕРЕД записью: файл, переживший прогон упавший либо
 	 *       прерванный, читается проверкою следующего прогона как свой, и та
 	 *       зеленеет, ничего не записав
+	 *
 	 */
 	::remove(filename.c_str());
 	{
@@ -564,14 +597,18 @@ TEST(CodecCsvValue, Load) {
 	}
 	// Владеющее значение таблицы
 	csv::value_t value;
-	// Объект таблицы для получения настроек разбора
+	// Объект таблицы для чтения файла с заголовком
 	csv::document_t document;
-	// Получаем настройки таблицы
-	auto settings = document.settings();
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
 	// Выполняем указание на присутствие заголовка в первой записи
 	settings.reader.header = csv::header_t::PRESENT;
+	// Выполняем установку настроек таблицы
+	document.settings(settings);
 	// Выполняем проверку успешности чтения таблицы из файла
-	ASSERT_TRUE(value.load(filename, settings));
+	ASSERT_TRUE(document.load(filename));
+	// Выполняем снятие значения с прочитанной таблицы
+	ASSERT_TRUE(value.absorb(document));
 	// Выполняем проверку числа записей прочитанного значения
 	ASSERT_EQ(value.size(), static_cast <size_t> (1));
 	// Выполняем проверку содержимого поля прочитанного значения
@@ -579,7 +616,7 @@ TEST(CodecCsvValue, Load) {
 	/**
 	 * Выполняем проверку отказа чтения отсутствующего файла
 	 */
-	ASSERT_FALSE(value.load("./нет-такого-файла.csv", settings));
+	ASSERT_FALSE(value.load("./нет-такого-файла.csv"));
 	// Выполняем проверку того, что прежнее содержимое снесено отказом
 	ASSERT_FALSE(value.valid());
 }
@@ -616,6 +653,7 @@ TEST(CodecCsvValue, SaveRefusalIsAnnouncedInTheLog) {
 	 * @note Путь этот выбран простейшим намеренно: он не трогает ни файловой
 	 *       системы, ни настроек процесса, а потому не оставляет следа, способного
 	 *       пережить прогон, и не валит соседей по набору
+	 *
 	 */
 	ASSERT_FALSE(value.save(""));
 	// Выполняем проверку оглашения отказа в журнале
@@ -627,6 +665,7 @@ TEST(CodecCsvValue, SaveRefusalIsAnnouncedInTheLog) {
 	 *
 	 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
 	 *       звучащий судит по коду
+	 *
 	 */
 	ASSERT_EQ(value.error(), csv::error_t::FILE_NOT_OPENED);
 	/**
@@ -637,6 +676,7 @@ TEST(CodecCsvValue, SaveRefusalIsAnnouncedInTheLog) {
 	 *          а такое значение засоряло бы журнал потребителя успехами. Довод общий с
 	 *          проверкой опознавателя разметки, где принятие без отказа зеленело бы у
 	 *          разбора, принимающего всякий знак подряд
+	 *
 	 */
 	{
 		// Запоминаем число сообщений, собранных отказом
@@ -681,6 +721,7 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
 	/**
 	 * @note Снос ведётся и ПЕРЕД записью: файл, переживший прогон упавший либо
 	 *       прерванный, читается проверкою следующего прогона как свой
+	 *
 	 */
 	::remove(filename.c_str());
 	{
@@ -712,14 +753,18 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
 	{
 		// Владеющее значение таблицы
 		csv::value_t value;
-		// Объект таблицы для получения настроек разбора
+		// Объект таблицы для чтения файла с заголовком
 		csv::document_t document;
-		// Получаем настройки таблицы
-		auto settings = document.settings();
+		// Настройки таблицы
+		csv::document_t::settings_t settings;
 		// Выполняем указание на присутствие заголовка в первой записи
 		settings.reader.header = csv::header_t::PRESENT;
+		// Выполняем установку настроек таблицы
+		document.settings(settings);
 		// Выполняем проверку успешности чтения таблицы из файла
-		ASSERT_TRUE(value.load(filename, settings));
+		ASSERT_TRUE(document.load(filename));
+		// Выполняем снятие значения с прочитанной таблицы
+		ASSERT_TRUE(value.absorb(document));
 		// Выполняем проверку того, что первая запись досталась именами полей
 		ASSERT_EQ(value.size(), static_cast <size_t> (1));
 		// Выполняем проверку содержимого поля по имени из заголовка
@@ -751,6 +796,7 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
  *
  * @warning Сигнал `SIGXFSZ` глушится намеренно: без глушения превышение предела
  * валит весь набор проверок, а не отвечает отказом записи
+ *
  */
 TEST(CodecCsvValue, SavingKeepsThePreviousFileOnWriteFailure) {
 	/**
@@ -759,6 +805,9 @@ TEST(CodecCsvValue, SavingKeepsThePreviousFileOnWriteFailure) {
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем пропуск проверки на системах без пределов ресурсов
 		GTEST_SKIP() << "Пределы ресурсов процесса у этой системы отсутствуют";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
 		// Адрес временного файла проверки
 		const string filename = ::unique("./csv-value-save.csv");
@@ -813,6 +862,7 @@ TEST(CodecCsvValue, SavingKeepsThePreviousFileOnWriteFailure) {
 		 * @warning Утечка предела роняла бы СОСЕДНИЕ проверки: набор кодеков собран одной
 		 * программою, предел живёт у всего процесса, и отказ вышел бы вдали от места
 		 * своей причины
+		 *
 		 */
 		struct Limit {
 			// Прежний предел размера файла
@@ -858,6 +908,7 @@ TEST(CodecCsvValue, SavingKeepsThePreviousFileOnWriteFailure) {
 		 *       Отказ, назвавший причину неверно, отличить снаружи нельзя ничем - а
 		 *       звучащий по коду и судит, что делать: перезаписать, сменить путь или
 		 *       отступиться
+		 *
 		 */
 		ASSERT_EQ(value.error(), csv::error_t::FILE_NOT_WRITTEN);
 		// Читаемое содержимое целевого файла
@@ -919,6 +970,7 @@ TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 	 *
 	 * @note Причина здесь ИНАЯ, чем выше, а код тот же: имя указано, но открыть файл
 	 *       не удалось. Оба места живут порознь, и подмена кода у второго молчала
+	 *
 	 */
 	{
 		// Выполняем проверку отказа сохранения таблицы
@@ -951,6 +1003,7 @@ TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 	 *       частично собранный текст, здесь - пустой, а причина одна - итог записи не
 	 *       проверялся вовсе. Половина эта закрывает ту сторону выдачи, где отказ
 	 *       выносит не значение, а таблица под ним
+	 *
 	 */
 	{
 		// Владеющее значение таблицы
@@ -978,6 +1031,7 @@ TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 		 *       оставшийся от прогона прежнего, дал бы отказ вечный. Замерено на себе -
 		 *       первый же прогон до починки оставил файл, и проверка после починки
 		 *       краснела уже не по делу
+		 *
 		 */
 		::remove(filename.c_str());
 		// Выполняем проверку отказа сохранения таблицы в файл
@@ -1003,6 +1057,7 @@ TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 		 *       - и проверка закрепляла ложь: ни разбора, ни сбоя тут нет, а значение
 		 *       исправно. Найдено сличением шести кодеков рамки с INI, TOML и
 		 *       YAML 15.09.2026
+		 *
 		 */
 		ASSERT_EQ(field.error(), csv::error_t::UNREPRESENTABLE_VALUE);
 		// Выполняем проверку того, что описание причины кодек САМ КОДЕК не винит
@@ -1035,6 +1090,7 @@ TEST(CodecCsvValue, Lookup) {
 	 * @note Отсутствие отвечает величиною `SIZE_MAX`, а не нулём: нуль есть номер
 	 *       столбца первого, и отвечай отсутствие им, потребитель читал бы первый
 	 *       столбец на месте несуществующего - молча
+	 *
 	 */
 	ASSERT_EQ(value.column("нет-такого"), SIZE_MAX);
 	/**
@@ -1043,6 +1099,7 @@ TEST(CodecCsvValue, Lookup) {
 	 * @note Сличения одного лишь признака недостаточно: розыск, отвечающий истиной
 	 *       на имя, обращение по которому пусто, хуже отказа - он обещает то, чего
 	 *       достать нельзя
+	 *
 	 */
 	ASSERT_TRUE(value.at("/0/имя").valid());
 	// Выполняем проверку того, что обращение по отсутствующему имени пусто
@@ -1111,6 +1168,7 @@ TEST(CodecCsvValue, BuilderRefusals) {
 		/**
 		 * @note Записи, поданные прежде заголовка, столбцов не знали бы, и обращение
 		 *       по имени доставало бы у них пустоту
+		 *
 		 */
 		ASSERT_FALSE(builder.header(vector <string> {"имя"}));
 	}
@@ -1123,6 +1181,7 @@ TEST(CodecCsvValue, BuilderRefusals) {
 		/**
 		 * @note Пустая запись у наречия неотличима от записи с одним пустым полем,
 		 *       и ложись она в таблицу - круг разошёлся бы
+		 *
 		 */
 		ASSERT_FALSE(builder.close());
 	}
@@ -1138,6 +1197,7 @@ TEST(CodecCsvValue, BuilderRefusals) {
 		 * @note Закрой сборщик запись молча, и потеря вызова `close` у потребителя
 		 *       проходила бы незамеченной, а таблица выходила бы верной по виду с
 		 *       записью, полей недобравшей
+		 *
 		 */
 		ASSERT_FALSE(builder.finish().valid());
 	}
@@ -1159,6 +1219,7 @@ TEST(CodecCsvValue, BuilderRefusals) {
 		 * @note Сличения одного лишь счёта полей недостаточно: оставь сброс признак
 		 *       открытой записи поднятым, и завершение сборки отвечало бы отказом
 		 *       при пустом сборщике
+		 *
 		 */
 		ASSERT_TRUE(builder.finish().valid());
 	}
@@ -1249,6 +1310,7 @@ TEST(CodecCsvValue, ExtractionCoversEveryWidth) {
 	 *
 	 * @note Половина эта закрывает ветвь, набором не звавшуюся: истину проверки брали,
 	 *       а ложь - нет, и запись «false» могла бы читаться истиной незамеченно
+	 *
 	 */
 	bool flag = true;
 	// Выполняем проверку извлечения логического значения
@@ -1259,6 +1321,7 @@ TEST(CodecCsvValue, ExtractionCoversEveryWidth) {
 	 * Выполняем проверку доступа к полю по имени столбца
 	 *
 	 * @note Постоянный вид этого обращения набором не звался вовсе
+	 *
 	 */
 	const csv::value_t & record = value[static_cast <size_t> (0)];
 	// Выполняем проверку вида значения записи
@@ -1269,6 +1332,7 @@ TEST(CodecCsvValue, ExtractionCoversEveryWidth) {
 	 * @note Сличается с `NO_OFFSET`, а не с нулём: нуль есть ЗАКОННОЕ смещение самого
 	 *       начала текста, и признаком «отказа нет» служить не может. Ожидание нуля
 	 *       стояло здесь при написании половины и покраснело сразу же
+	 *
 	 */
 	ASSERT_EQ(record.errorLocation().offset, csv::NO_OFFSET);
 }
@@ -1296,12 +1360,14 @@ TEST(CodecCsvValue, ExtractionCoversEveryWidth) {
 TEST(CodecCsvValue, NumberExtractionDoesNotDependOnTheLocale) {
 	/**
 	 * @brief Страж, возвращающий локаль процесса обратно
+	 *
 	 */
 	struct Guard {
 		// Прежняя числовая локаль процесса
 		string previous;
 		/**
 		 * @brief Деструктор
+		 *
 		 */
 		~Guard() noexcept {
 			/**
@@ -1359,6 +1425,7 @@ TEST(CodecCsvValue, NumberExtractionDoesNotDependOnTheLocale) {
 	 *
 	 * @note Половина эта стережёт обратное: разбор не должен перенимать десятичный знак у
 	 *       локали ни в ту, ни в другую сторону
+	 *
 	 */
 	{
 		// Владеющее значение поля таблицы с запятою вместо точки
@@ -1375,9 +1442,12 @@ TEST(CodecCsvValue, NumberExtractionDoesNotDependOnTheLocale) {
 	 *       разбор доходит до знака, числу не принадлежащего, а здесь не начинается
 	 *       вовсе. Без этих подач половина остаётся непройденной, и послабление её
 	 *       обратилось бы извлечением нуля из всякого текста молча
+	 *
 	 */
 	{
-		// Выполняем перебор записей, числом не являющихся
+		/**
+		 * Выполняем перебор записей, числом не являющихся
+		 */
 		for(auto & text : {string("abc"), string(""), string("."), string("+")}){
 			// Владеющее значение поля таблицы
 			csv::value_t value(text);
@@ -1465,6 +1535,7 @@ TEST(CodecCsvValue, TypeMismatchIsRefusedByEveryExtraction) {
 	 * Извлечение содержимого у значений, полем не являющихся
 	 *
 	 * @note Спрашиваем у таблицы и у записи содержимое поля всеми тремя видами извлечения
+	 *
 	 */
 	{
 		// Признак истинности, извлекаемый из значения
@@ -1490,6 +1561,7 @@ TEST(CodecCsvValue, TypeMismatchIsRefusedByEveryExtraction) {
 	 * Обратное: у поля извлечение содержимого его вида проходит по-прежнему
 	 *
 	 * @note Без этой половины «отказ у чужого вида» достигался бы отказом у всякого вида
+	 *
 	 */
 	{
 		// Целое число без знака, извлекаемое из значения
@@ -1532,6 +1604,7 @@ TEST(CodecCsvValue, TypeMismatchIsRefusedByEveryExtraction) {
 	 *
 	 * @note Розыск обязан выдать значение НЕПРИГОДНОЕ, а не пустое поле: пустое поле
 	 *       неотличимо было бы от столбца, вправду пустого
+	 *
 	 */
 	{
 		// Выполняем проверку непригодности значения по неведомому имени столбца
@@ -1576,6 +1649,7 @@ TEST(CodecCsvValue, RefusalsOfExtractionAndComparison) {
 	 *
 	 * @note Пустое поле числом не является, и выдавать за него нуль нельзя: нуль неотличим
 	 *       был бы от поля, вправду нуль несущего
+	 *
 	 */
 	{
 		// Значение поля пустого
@@ -1638,6 +1712,7 @@ TEST(CodecCsvValue, FieldSizeNamedLookupAndRealNumberWriting) {
 	 * Размах у значения вида поля
 	 *
 	 * @note Размах поля есть длина содержимого в знаках, а не число вложенных значений
+	 *
 	 */
 	{
 		// Значение поля с содержимым из пяти знаков
@@ -1729,6 +1804,7 @@ TEST(CodecCsvValue, LookupOfAFieldByTheColumnName) {
 	 *
 	 * @note Порядок работ потребителю не предписан, и розыск не вправе зависеть от того,
 	 *       заведён заголовок до записей либо после них
+	 *
 	 */
 	{
 		// Значение вида таблицы

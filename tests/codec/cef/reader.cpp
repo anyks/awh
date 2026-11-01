@@ -45,10 +45,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод разбора записей в слепок потока событий
+ * @brief Функция разбора записей в слепок потока событий
  *
  * @details Слепок собирается строкой ради сличения целиком: сравнение потока событий
  * знак в знак ловит и лишнее событие, и его недостачу, чего проверка отдельных полей
@@ -152,8 +155,7 @@ TEST(CodecCefReader, Chunked) {
 	// Настройки разбора записей
 	const cef::reader_t::settings_t settings;
 	// Разбираемый текст записей
-	const string text = R"(Feb 17 15:30:15 host CEF:0|Vendor|Product|1.0|100|detected a \| in message|10|src=10.0.0.1 act=blocked a | msg=Detected.\nNo action. dst=1.1.1.1
-CEF:0|A|B|C|D|E|F|cs3= cs3Label=CVEID)" "\n";
+	const string text = R"(Feb 17 15:30:15 host CEF:0|Vendor|Product|1.0|100|detected a \| in message|10|src=10.0.0.1 act=blocked a | msg=Detected.\nNo action. dst=1.1.1.1)" "\n" R"(CEF:0|A|B|C|D|E|F|cs3= cs3Label=CVEID)" "\n";
 	// Получаем слепок разбора текста, поданного целиком
 	const string expected = ::dumpCef(text, settings);
 	/**
@@ -295,16 +297,19 @@ TEST(CodecCefReader, Failures) {
 	EXPECT_EQ(
 		::dumpCef("Feb 17 15:30:15 vnetids emerg src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::MISSING_SIGNATURE)) + "}"
+	// Сверяем слепок с кодом отказа MISSING_SIGNATURE
 	);
 	// Выполняем проверку отклонения записи с неполным заголовком
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INCOMPLETE_HEADER)) + "}"
+	// Сверяем слепок с кодом отказа INCOMPLETE_HEADER
 	);
 	// Выполняем проверку отклонения записи с ошибочным номером редакции
 	EXPECT_EQ(
 		::dumpCef("CEF:x|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_VERSION)) + "}"
+	// Сверяем слепок с кодом отказа INVALID_VERSION
 	);
 	// Отключаем признание приставки syslog перед словом «CEF:»
 	settings.syslog = false;
@@ -312,6 +317,7 @@ TEST(CodecCefReader, Failures) {
 	EXPECT_EQ(
 		::dumpCef("Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::MISSING_SIGNATURE)) + "}"
+	// Сверяем слепок с кодом отказа MISSING_SIGNATURE при выключенном признании приставки syslog
 	);
 }
 
@@ -441,6 +447,7 @@ TEST(CodecCefReader, FeedContract) {
 	 *
 	 * @note Знак конца строки ставится непременно: без него и без последнего куска
 	 *       запись завершённой не считается, и разбор её не начинается вовсе
+	 *
 	 */
 	constexpr string_view BROKEN = "НЕ CEF ВОВСЕ|security|threatmanager\n";
 	// Объект потокового чтения записей, отказом останавливаемый
@@ -466,6 +473,7 @@ TEST(CodecCefReader, FeedContract) {
 	 *       начало хранилища его не перерастёт: уплотнение снимает разобранное начало и
 	 *       сбрасывает смещение разбора в нуль. Проверка на малом объёме ветвь эту не
 	 *       заводит вовсе и зеленела бы, ничего не поверяя
+	 *
 	 */
 	for(size_t i = 0; i < 2048; i++){
 		// Выполняем подачу очередной записи событий безопасности
@@ -502,16 +510,19 @@ TEST(CodecCefReader, LimitFailures) {
 	EXPECT_EQ(
 		::dumpCef("CEF:|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_VERSION)) + "}"
+	// Сверяем слепок с кодом отказа INVALID_VERSION у записи пустым номером редакции
 	);
 	// Выполняем проверку отклонения записи неподдерживаемым номером редакции
 	EXPECT_EQ(
 		::dumpCef("CEF:2|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::UNSUPPORTED_VERSION)) + "}"
+	// Сверяем слепок с кодом отказа UNSUPPORTED_VERSION
 	);
 	/**
 	 * @note Важность события за пределом отвечается отказом лишь при строгом сличении:
 	 *       при вольном она сбрасывается нулём, а запись выдаётся, ибо описание ArcSight
 	 *       поле это словом тоже допускает
+	 *
 	 */
 	// Выполняем проверку выдачи записи с важностью события за пределом при вольном сличении
 	EXPECT_EQ(
@@ -529,6 +540,7 @@ TEST(CodecCefReader, LimitFailures) {
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|11|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_SEVERITY)) + "}"
+	// Сверяем слепок с кодом отказа INVALID_SEVERITY
 	);
 	// Возвращаем вольное сличение ключей расширения со словарём
 	settings.mode = cef::reader_t::settings_t().mode;
@@ -536,12 +548,14 @@ TEST(CodecCefReader, LimitFailures) {
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|1|=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::EMPTY_KEY)) + "}"
+	// Сверяем слепок с кодом отказа EMPTY_KEY
 	);
 	/**
 	 * @note Всякий предел проверяется ОБОИМИ краями: запись ровно на пределе годна, и
 	 *       лишь запись сверх него отвергается. Одного наблюдения мало - проверка «сверх
 	 *       предела отказ» проходит и при заслоне, срабатывающем на единицу раньше. Так
 	 *       09.09.2026 и вскрылась ошибка на единицу у предела числа пар расширения
+	 *
 	 */
 	// Выполняем проверку приёма записи с полем заголовка длиною ровно в предел
 	EXPECT_EQ(
@@ -552,16 +566,19 @@ TEST(CodecCefReader, LimitFailures) {
 	EXPECT_EQ(
 		::dumpCef("CEF:0|" + string(cef::MAX_HEADER_FIELD + 1, 'A') + "|B|C|D|E|1|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::FIELD_TOO_LONG)) + "}"
+	// Сверяем слепок с кодом отказа FIELD_TOO_LONG
 	);
 	// Выполняем проверку приёма записи с именем ключа длиною ровно в предел
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|1|" + string(cef::MAX_NAME, 'k') + "=1.2.3.4", settings),
 		"H{0}H{A}H{B}H{C}H{D}H{E}H{1}E{" + string(cef::MAX_NAME, 'k') + "=1.2.3.4}R;"
+	// Сверяем слепок с записью, именем ключа ровно в предел уложившейся
 	);
 	// Выполняем проверку отклонения записи превышением длины имени ключа расширения
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|1|" + string(cef::MAX_NAME + 1, 'k') + "=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::NAME_TOO_LONG)) + "}"
+	// Сверяем слепок с кодом отказа NAME_TOO_LONG
 	);
 	// Запись событий безопасности, длиною предел поверяющая
 	const string record = "CEF:0|A|B|C|D|E|1|src=1.2.3.4";
@@ -578,6 +595,7 @@ TEST(CodecCefReader, LimitFailures) {
 	EXPECT_EQ(
 		::dumpCef(record, settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::RECORD_TOO_LONG)) + "}"
+	// Сверяем слепок с кодом отказа RECORD_TOO_LONG
 	);
 }
 
@@ -599,6 +617,7 @@ TEST(CodecCefReader, ExtensionsLimit) {
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|1|src=1.2.3.4 dst=5.6.7.8 spt=1024", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::OVERFLOW_LIMIT)) + "}"
+	// Сверяем слепок с кодом отказа OVERFLOW_LIMIT
 	);
 }
 
@@ -622,6 +641,7 @@ TEST(CodecCefReader, NumberOverflowWrap) {
 	EXPECT_EQ(
 		::dumpCef("CEF:4294967297|A|B|C|D|E|1|src=1.2.3.4", defaults),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::UNSUPPORTED_VERSION)) + "}"
+	// Сверяем слепок с кодом отказа UNSUPPORTED_VERSION при переполнении номера редакции
 	);
 	// Настройки разбора записей со строгим сличением
 	cef::reader_t::settings_t settings;
@@ -631,12 +651,14 @@ TEST(CodecCefReader, NumberOverflowWrap) {
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|4294967298|src=1.2.3.4", settings),
 		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_SEVERITY)) + "}"
+	// Сверяем слепок с кодом отказа INVALID_SEVERITY при переполнении важности события
 	);
 	/**
 	 * Выполняем проверку записи важностью, за предел вышедшей, при мягком сличении
 	 *
 	 * @note Важность сбрасывается в нуль, как и при важности, записанной словом: числом
 	 *       она здесь не является, и трактовка их одинакова намеренно
+	 *
 	 */
 	EXPECT_EQ(
 		::dumpCef("CEF:0|A|B|C|D|E|4294967298|src=1.2.3.4", defaults),
@@ -671,13 +693,17 @@ TEST(CodecCefReader, UnboundedFeedIsRefused) {
 	const string chunk(settings.maxRecord, 'A');
 	// Выполняем подачу куска текста длиною ровно в предел
 	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
-	// Выполняем перебор событий разбора
+	/**
+	 * Выполняем перебор событий разбора
+	 */
 	while(reader.next()){}
 	// Выполняем проверку того, что кусок длиною ровно в предел отказа не навёл
 	EXPECT_EQ(reader.error(), cef::error_t::NONE);
 	// Выполняем подачу второго куска текста, предел превосходящего
 	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
-	// Выполняем перебор событий разбора
+	/**
+	 * Выполняем перебор событий разбора
+	 */
 	while(reader.next()){}
 	// Выполняем проверку того, что превышение предела отвечено отказом
 	EXPECT_EQ(reader.error(), cef::error_t::RECORD_TOO_LONG);
@@ -710,19 +736,20 @@ TEST(CodecCefReader, UnboundedFeedIsRefused) {
  */
 TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
 	/**
-	 * @brief Метод разбора записи заданным сличением
+	 * @brief Функция разбора записи заданным сличением
 	 *
 	 * @param severity важность события записи
 	 * @param mode     строгость сличения записи
 	 * @return         признак успешности разбора записи
+	 *
 	 */
 	auto parse = [](const string & severity, const cef::mode_t mode) noexcept -> bool {
 		// Объект документа записи CEF
 		cef::document_t document;
-		// Настройки разбора записи
-		cef::reader_t::settings_t settings;
+		// Настройки документа
+		cef::document_t::settings_t settings;
 		// Устанавливаем строгость сличения записи
-		settings.mode = mode;
+		settings.reader.mode = mode;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выводим признак успешности разбора записи
@@ -739,6 +766,7 @@ TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
 	 *
 	 * @note Половина эта договора важнее первой: описание дозволяет слово наравне с
 	 *       числом, и отказ ему сломал бы записи живых устройств
+	 *
 	 */
 	EXPECT_TRUE(parse("High", cef::mode_t::STRONG));
 	// Выполняем проверку того, что составное слово важности принимается
@@ -749,6 +777,7 @@ TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
 	 * Выполняем проверку отказа пустой важностью при СЛАБОМ сличении
 	 *
 	 * @note Отказ ведётся при всяком сличении, как и у шести прочих полей заголовка
+	 *
 	 */
 	EXPECT_FALSE(parse("", cef::mode_t::LOW));
 	/**
@@ -756,6 +785,7 @@ TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
 	 *
 	 * @note Настройка эта назначена тому, чтобы брать журнал как есть, и правило
 	 *       обязательности полей ей не указ
+	 *
 	 */
 	EXPECT_TRUE(parse("", cef::mode_t::NONE));
 }
@@ -783,19 +813,20 @@ TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
  */
 TEST(CodecCefReader, TimestampWithoutZoneIsAccepted) {
 	/**
-	 * @brief Метод разбора записи с заданной меткой времени
+	 * @brief Функция разбора записи с заданной меткой времени
 	 *
 	 * @param stamp метка времени поля «rt»
 	 * @param value разобранное значение метки времени
 	 * @return      признак успешности разбора записи
+	 *
 	 */
 	auto parse = [](const string & stamp, uint64_t & value) noexcept -> bool {
 		// Объект документа записи CEF
 		cef::document_t document;
-		// Настройки разбора записи
-		cef::reader_t::settings_t settings;
+		// Настройки документа
+		cef::document_t::settings_t settings;
 		// Устанавливаем строгое сличение записи
-		settings.mode = cef::mode_t::STRONG;
+		settings.reader.mode = cef::mode_t::STRONG;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Если разбор записи отказом завершился
@@ -822,6 +853,7 @@ TEST(CodecCefReader, TimestampWithoutZoneIsAccepted) {
 	 *
 	 * @note Половина эта договора важнее первой: приём записи без пояса не должен
 	 *       обращаться в приём чего угодно
+	 *
 	 */
 	EXPECT_FALSE(parse("не метка вовсе", value));
 	// Выполняем проверку того, что пустая метка отвергается
@@ -867,6 +899,7 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 	 * Сбор событий разбора подачей кусками заданного размера
 	 *
 	 * @note Размер куска, нулём заданный, означает подачу текста целиком
+	 *
 	 */
 	auto gather = [&text](const size_t chunk) noexcept -> vector <item_t> {
 		// Собранные события разбора
@@ -892,6 +925,7 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 			while(reader.next())
 				// Добавляем очередное событие разбора вместе с местом его записи
 				result.push_back({
+					// Кладём в слепок вид события и вид поля заголовка
 					static_cast <uint8_t> (reader.event()), static_cast <uint8_t> (reader.field()),
 					string(reader.key()), string(reader.value()), reader.position().offset,
 					reader.position().line, reader.position().column
@@ -910,6 +944,7 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 	 *
 	 * @warning Поверка эта стережёт сам измеритель: ход, нули отдающий, сличение кусков
 	 *          прошёл бы молча, ничего не доказав
+	 *
 	 */
 	{
 		// Места записей, событиями выданные
@@ -968,35 +1003,62 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 TEST(CodecCefReader, PositionsSurviveRepeatedCompaction) {
 	// Перед каждой записью находятся две пустые строки, окончания строк имеют вид CRLF
 	const string record = ("CEF:0|V|P|1|100|Event|5|msg=" + string(1024, 'x'));
+	// Повтор записи с пустыми строками перед ней и окончаниями строк CRLF
 	const string unit = ("\r\n \t\r\n" + record + "\r\n");
+	// Количество повторов записи в потоке
 	const size_t count = 160;
+	// Текст потока записей
 	string text;
+	/**
+	 * Собираем текст из повторов записи с разделителями
+	 */
 	for(size_t i = 0; i < count; i++)
+		// Дополняем текст очередным повтором записи с разделителями
 		text.append(unit);
 	// Поток достаточен для нескольких уплотнений при подаче частями
 	ASSERT_GT(text.size(), static_cast <size_t> (0x20000));
+	// Размеры кусков подачи текста
 	const vector <size_t> chunks = {1, 17, 4093, 65536, text.size()};
+	/**
+	 * Прогоняем подачу текста частями разного размера
+	 */
 	for(const size_t chunk : chunks){
+		// Объект потокового чтения записей
 		cef::reader_t reader;
+		// Счётчик записей, снятых с читателя
 		size_t records = 0;
+		/**
+		 * Подаём текст порциями выбранного размера
+		 */
 		for(size_t offset = 0; offset < text.size();){
 			// Подаём текст с разрывами внутри записи и между CR и LF
 			const size_t size = std::min(chunk, text.size() - offset);
+			// Подаём очередной кусок текста, последний кусок с признаком конца потока
 			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			// Сдвигаем смещение поданного текста
 			offset += size;
+			/**
+			 * Снимаем записи из читателя по мере их появления
+			 */
 			while(reader.next()){
 				// Окончание потока не является событием отдельной записи
 				if(reader.event() == cef::event_t::FINISH)
 					continue;
 				// Координаты выводятся из исходного текста независимо от читателя
 				ASSERT_LT(records, count);
+				// Сверяем смещение записи с расчётом от исходного текста
 				ASSERT_EQ(reader.position().offset, records * unit.size() + 6) << "chunk=" << chunk;
 				ASSERT_EQ(reader.position().line, records * 3 + 3) << "chunk=" << chunk;
 				ASSERT_EQ(reader.position().column, 1u) << "chunk=" << chunk;
+				// Сверяем общее имя места события с прежним
+				ASSERT_EQ(reader.location().offset, reader.position().offset);
+				// Отбираем события полной записи из потока разбора
 				if(reader.event() == cef::event_t::RECORD)
+					// Увеличиваем счётчик снятых записей
 					records++;
 			}
 		}
+		// Убеждаемся, что сняты все записи потока
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), cef::state_t::FINISHED);
 		EXPECT_EQ(reader.error(), cef::error_t::NONE);
@@ -1010,25 +1072,51 @@ TEST(CodecCefReader, PositionsSurviveRepeatedCompaction) {
 TEST(CodecCefReader, ErrorPositionsSurviveRepeatedCompaction) {
 	// Поток содержит длинные записи, пустые строки и повреждённый хвост
 	const string unit = ("\r\n \t\r\nCEF:0|V|P|1|100|Event|5|msg=" + string(1024, 'x') + "\r\n");
+	// Количество повторов длинной записи в потоке
 	const size_t count = 160;
+	// Текст потока записей
 	string text;
+	/**
+	 * Собираем текст из повторов длинной записи
+	 */
 	for(size_t i = 0; i < count; i++)
+		// Дополняем текст очередным повтором длинной записи
 		text.append(unit);
+	// Ожидаемое смещение ошибки в исходном потоке
 	const size_t expected = (text.size() + 6);
+	// Дополняем текст оборванной последней записью
 	text.append("CEF:0|broken");
+	// Размеры кусков подачи текста
 	const vector <size_t> chunks = {17, 65536, text.size()};
+	/**
+	 * Прогоняем подачу с оборванной последней записью частями разного размера
+	 */
 	for(const size_t chunk : chunks){
+		// Объект потокового чтения записей
 		cef::reader_t reader;
+		// Счётчик записей, отданных читателем
 		size_t records = 0;
+		/**
+		 * Подаём текст порциями выбранного размера
+		 */
 		for(size_t offset = 0; offset < text.size();){
+			// Вычисляем размер очередного куска подачи
 			const size_t size = std::min(chunk, text.size() - offset);
+			// Подаём очередной кусок текста, последний кусок с признаком конца потока
 			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			// Сдвигаем смещение поданного текста
 			offset += size;
+			/**
+			 * Считаем записи, отданные читателем
+			 */
 			while(reader.next()){
+				// Отбираем события полной записи из потока разбора
 				if(reader.event() == cef::event_t::RECORD)
+					// Увеличиваем счётчик снятых записей
 					records++;
 			}
 		}
+		// Убеждаемся, что сняты все записи до повреждённого хвоста
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), cef::state_t::FAILED);
 		EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
@@ -1045,40 +1133,63 @@ TEST(CodecCefReader, ErrorPositionsSurviveRepeatedCompaction) {
 TEST(CodecCefReader, ResetRestoresPositionsAfterCompaction) {
 	// Первая запись заканчивается на точной границе уплотнения
 	string prefix = "CEF:0|V|P|1|100|Event|5|msg=";
+	// Дополняем первую запись до точной границы уплотнения
 	prefix.append(0xFFFF - prefix.size(), 'x');
 	prefix.append(1, '\n');
+	// Объект потокового чтения записей
 	cef::reader_t reader;
+	// Подаём первую запись без признака конца потока
 	ASSERT_TRUE(reader.feed(prefix.data(), prefix.size(), false));
+	// Счётчик записей начальной подачи
 	size_t initial = 0;
+	/**
+	 * Считаем записи начальной подачи
+	 */
 	while(reader.next()){
+		// Отбираем события полной записи начальной подачи
 		if(reader.event() == cef::event_t::RECORD)
+			// Увеличиваем счётчик записей начальной подачи
 			initial++;
 	}
+	// Убеждаемся, что начальной подачей снята одна запись
 	ASSERT_EQ(initial, 1u);
 	ASSERT_EQ(reader.state(), cef::state_t::HUNGRY);
 	// Следующая подача удаляет первую запись из хранилища
 	ASSERT_TRUE(reader.feed("CEF:0|V|P|1|100|Event|5|msg=value\n"));
+	// Счётчик записей, снятых после докормки
 	size_t records = 0;
+	/**
+	 * Снимаем записи после докормки
+	 */
 	while(reader.next()){
+		// Отбираем события полной записи из потока разбора
 		if(reader.event() == cef::event_t::RECORD){
+			// Место докормленной записи идёт следом за первой записью
 			EXPECT_EQ(reader.position().offset, prefix.size());
 			EXPECT_EQ(reader.position().line, 2u);
+			// Увеличиваем счётчик снятых записей
 			records++;
 		}
 	}
+	// Убеждаемся, что после докормки снята ровно одна запись
 	ASSERT_EQ(records, 1u);
 	// После сброса координаты ошибки относятся только к новому тексту
 	reader.reset();
+	// Подаём оборванную запись после сброса читателя
 	ASSERT_TRUE(reader.feed("CEF:0|broken"));
+	// Убеждаемся, что события для оборванной записи не выдаются
 	EXPECT_FALSE(reader.next());
+	// Сверяем ошибку неполного заголовка у оборванной записи
 	EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
 	EXPECT_EQ(reader.errorLocation().offset, 6u);
 	EXPECT_EQ(reader.errorLocation().line, 1u);
 	EXPECT_EQ(reader.errorLocation().column, 7u);
 	// Повторный сброс после ошибки восстанавливает и координаты исправной записи
 	reader.reset();
+	// Подаём исправную запись после повторного сброса читателя
 	ASSERT_TRUE(reader.feed("CEF:0|V|P|1|100|Event|5|msg=value\n"));
 	ASSERT_TRUE(reader.next());
+	// Координаты исправной записи отсчитываются от начала нового текста
 	EXPECT_EQ(reader.position().offset, 0u);
 	EXPECT_EQ(reader.position().line, 1u);
 	EXPECT_EQ(reader.position().column, 1u);

@@ -34,6 +34,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/cef/cef.hpp>
+#include <sys/fs.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -120,6 +121,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -310,8 +314,8 @@ TEST(CodecCefDocument, Roundtrip) {
  *
  */
 TEST(CodecCefDocument, EmptyValue) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Выполняем разбор записи с пустым значением
@@ -319,7 +323,7 @@ TEST(CodecCefDocument, EmptyValue) {
 	// Выполняем проверку того, что пустое значение есть последовательность знаков
 	EXPECT_EQ(doc.at("/extension/cs3").type(), abc::type_t::STRING);
 	// Устанавливаем обращение пустого значения в логическую истину
-	settings.empty = cef::empty_t::BOOLEAN;
+	settings.reader.empty = cef::empty_t::BOOLEAN;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем разбор записи с пустым значением
@@ -327,7 +331,7 @@ TEST(CodecCefDocument, EmptyValue) {
 	// Выполняем проверку того, что пустое значение стало логическим
 	EXPECT_EQ(doc.at("/extension/cs3").type(), abc::type_t::BOOL);
 	// Устанавливаем пропуск пустого значения вовсе
-	settings.empty = cef::empty_t::SKIP;
+	settings.reader.empty = cef::empty_t::SKIP;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем разбор записи с пустым значением
@@ -348,12 +352,12 @@ TEST(CodecCefDocument, EmptyValue) {
  *
  */
 TEST(CodecCefDocument, Timestamps) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	/**
@@ -362,6 +366,7 @@ TEST(CodecCefDocument, Timestamps) {
 	 * @note Сличение ведётся ШТАМПОМ, а не записью местной зоны: запись зависит от
 	 *       настроек машины, и проверка, на неё опёртая, отказывала бы на всяком стенде
 	 *       с иною зоной - отказом окружения, а не кодека
+	 *
 	 */
 	const uint64_t expected = 1676658615734ull;
 	// Штамп времени, из дерева извлекаемый
@@ -389,7 +394,7 @@ TEST(CodecCefDocument, Timestamps) {
 	// Выполняем проверку того, что выдача метки записью пустой не выходит
 	EXPECT_FALSE(doc.timestamp("rt", "%d.%m.%Y").empty());
 	// Устанавливаем сличение имён ключей без проверки видов значений
-	settings.mode = cef::mode_t::LOW;
+	settings.reader.mode = cef::mode_t::LOW;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем разбор записи с меткой времени при слабом сличении
@@ -410,12 +415,12 @@ TEST(CodecCefDocument, Timestamps) {
  *
  */
 TEST(CodecCefDocument, TimestampRefusal) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем проверку отклонения метки времени, датою не являющейся
@@ -425,7 +430,7 @@ TEST(CodecCefDocument, TimestampRefusal) {
 	// Выполняем проверку принятия метки времени, датою являющейся
 	EXPECT_TRUE(doc.parse("CEF:0|A|B|C|D|E|1|rt=Feb 17 2023 23:30:15 YEKT"));
 	// Устанавливаем сличение имён ключей без проверки видов значений
-	settings.mode = cef::mode_t::LOW;
+	settings.reader.mode = cef::mode_t::LOW;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем проверку принятия непригодной метки при слабом сличении
@@ -447,12 +452,12 @@ TEST(CodecCefDocument, TimestampRefusal) {
  *
  */
 TEST(CodecCefDocument, TimestampFraction) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Штамп времени метки, долю секунды несущей
@@ -472,6 +477,7 @@ TEST(CodecCefDocument, TimestampFraction) {
 	 *
 	 * @note Расхождение при непокрытой доле секунды было бы величиною ЗОНЫ - пять
 	 *       часов у YEKT, - а не долей секунды: проверка ловит именно его
+	 *
 	 */
 	EXPECT_EQ((fractional - plain), 734ull);
 }
@@ -481,12 +487,12 @@ TEST(CodecCefDocument, TimestampFraction) {
  *
  */
 TEST(CodecCefDocument, Strictness) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем проверку отклонения ключа, словарю неизвестного
@@ -500,7 +506,7 @@ TEST(CodecCefDocument, Strictness) {
 	// Выполняем проверку кода отказа разбора
 	EXPECT_EQ(doc.error(), cef::error_t::INVALID_ADDRESS);
 	// Устанавливаем сличение имён ключей без проверки видов значений
-	settings.mode = cef::mode_t::LOW;
+	settings.reader.mode = cef::mode_t::LOW;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем проверку принятия ключа, словарю неизвестного, при слабом сличении
@@ -512,12 +518,12 @@ TEST(CodecCefDocument, Strictness) {
  *
  */
 TEST(CodecCefDocument, Numbers) {
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем сличение имён ключей и простых видов значений
-	settings.mode = cef::mode_t::MEDIUM;
+	settings.reader.mode = cef::mode_t::MEDIUM;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем разбор записи с числовыми значениями
@@ -529,7 +535,7 @@ TEST(CodecCefDocument, Numbers) {
 	// Выполняем проверку того, что текстовое значение осталось знаками
 	EXPECT_EQ(doc.at("/extension/msg").type(), abc::type_t::STRING);
 	// Выполняем проверку того, что при выключенном сличении числа остаются знаками
-	settings.mode = cef::mode_t::NONE;
+	settings.reader.mode = cef::mode_t::NONE;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем разбор записи с числовыми значениями
@@ -549,10 +555,10 @@ TEST(CodecCefDocument, Numbers) {
 TEST(CodecCefDocument, DeclaredRefusalsAreActuallyRaised) {
 	// Объект события CEF
 	cef::document_t doc;
-	// Настройки укладки записей в дерево
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Устанавливаем сличение имён ключей и всех видов значений
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки укладки записей в дерево
 	ASSERT_TRUE(doc.settings(settings));
 	/**
@@ -583,8 +589,9 @@ TEST(CodecCefDocument, DeclaredRefusalsAreActuallyRaised) {
 	 * @note Без сличения журнал берётся КАК ЕСТЬ: живые устройства пишут и пустые поля
 	 *       заголовка, и беспризорные метки, и отвергать такую запись было бы отказом
 	 *       в работе, ради которой настройка эта и заведена
+	 *
 	 */
-	settings.mode = cef::mode_t::NONE;
+	settings.reader.mode = cef::mode_t::NONE;
 	// Устанавливаем настройки укладки записей в дерево
 	ASSERT_TRUE(doc.settings(settings));
 	// Выполняем проверку приёма записи с пустым полем заголовка
@@ -697,6 +704,7 @@ TEST(CodecCefDocument, OversizedPathIndexIsRefused) {
 	 * @note Первый заворачивается нулём, второй - единицею, третий - произвольно: все
 	 *       три указывают на значения, в перечне СУЩЕСТВУЮЩИЕ, и потому молчаливое
 	 *       переполнение отвечало бы успехом
+	 *
 	 */
 	for(const char * path : {"/list/18446744073709551616", "/list/18446744073709551617", "/list/99999999999999999999999999"}){
 		// Выполняем проверку негодности значения по переполняющему номеру
@@ -707,6 +715,7 @@ TEST(CodecCefDocument, OversizedPathIndexIsRefused) {
 		 * @note Ход сноса несёт свой сторож, отдельный от сторожа выдачи: снос по
 		 *       завернувшемуся номеру убрал бы существующее значение перечня, о каком
 		 *       зовущий не просил вовсе
+		 *
 		 */
 		EXPECT_FALSE(document.erase(path)) << path;
 	}
@@ -778,6 +787,7 @@ TEST(CodecCefDocument, PathEdges) {
 	 *
 	 * @note Путь взят на звено ГЛУБЖЕ поля, знаками объявленного: обход идёт по звеньям,
 	 *       кроме последнего, и путь короче кончался бы раньше, чем дошёл до строки
+	 *
 	 */
 	EXPECT_FALSE(document.erase("/header/vendor/nested/deeper"));
 	/**
@@ -787,6 +797,7 @@ TEST(CodecCefDocument, PathEdges) {
 	 * МОЛЧА, и потребитель, успех получивший, о потере не узнал бы. Кодеки YAML и TOML
 	 * тот же случай отвергают с названной причиной, а ход сноса `erase` этого кодека
 	 * отвечал отказом всегда - договор сведён к одному лицу 09.09.2026
+	 *
 	 */
 	EXPECT_FALSE(document.set("/header/vendor/nested", abc::value_t(string("deep"))));
 	// Выполняем проверку того, что прежнее значение знаками уцелело
@@ -795,6 +806,7 @@ TEST(CodecCefDocument, PathEdges) {
 	 * Выполняем проверку достройки пути по звеньям, ОТСУТСТВУЮЩИМ вовсе
 	 *
 	 * @note Половина эта доказывает, что заслон выше не отнял назначения пути
+	 *
 	 */
 	ASSERT_TRUE(document.set("/custom/deep/nested", abc::value_t(string("deep"))));
 	/**
@@ -803,6 +815,7 @@ TEST(CodecCefDocument, PathEdges) {
 	 * @note Ветвь взята СВОЯ, а не «/extension»: проверка ниже считает ключи расширения
 	 *       числом, и достройка в ту же ветвь ломала бы её счёт. Замерено 09.09.2026 -
 	 *       проверка отказала, ожидая один ключ и получив два
+	 *
 	 */
 	EXPECT_EQ(document.at("/custom/deep/nested").text(), string("deep"));
 	// Ставим пару расширения в дерево события
@@ -844,10 +857,10 @@ TEST(CodecCefDocument, PathEdges) {
 TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	// Объект события CEF
 	cef::document_t document;
-	// Настройки укладки записей в дерево
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Устанавливаем сличение имён ключей и всех видов значений
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки укладки записей в дерево
 	ASSERT_TRUE(document.settings(settings));
 	// Выполняем разбор записи со значениями разных видов
@@ -872,6 +885,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	 *
 	 * @note Дерево заводится ЗАНОВО: разбор, отказом завершившийся, оставляет прежнее
 	 *       дерево, и проверка на старом объекте мерила бы не тот разбор
+	 *
 	 */
 	cef::document_t broken;
 	// Устанавливаем настройки укладки записей в дерево
@@ -894,6 +908,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	 * @note Половина эта доказывает, что строгое сличение задано НЕ НАПРАСНО: при
 	 *       умолчании та же запись читается успешно, а значения ложатся знаками. Без неё
 	 *       проверка зеленела бы и с выключенным сличением
+	 *
 	 */
 	cef::document_t weak;
 	// Выполняем проверку успешности разбора негодного значения при умолчании настроек
@@ -927,6 +942,7 @@ TEST(CodecCefDocument, FieldByFullName) {
 	 * Выполняем проверку выдачи значения по имени, словарю неизвестному
 	 *
 	 * @note Ключ этот описанием не задан вовсе, и спрос идёт у дерева как есть
+	 *
 	 */
 	EXPECT_EQ(document.field("ownKey").text(), string("собственное"));
 	// Выполняем проверку того, что имя, дереву неведомое, годного значения не даёт
@@ -954,8 +970,8 @@ TEST(CodecCefDocument, FailurePaths) {
 	EXPECT_FALSE(document.save("/nonexistent-directory-awh/cef.log"));
 	// Выполняем проверку отказа чтения события из отсутствующего файла
 	EXPECT_FALSE(document.load("/nonexistent-directory-awh/cef.log"));
-	// Настройки разбора записей
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	/**
 	 * Выполняем проверку УСПЕШНОСТИ смены настроек у дерева, запись прочтённое
 	 *
@@ -967,6 +983,7 @@ TEST(CodecCefDocument, FailurePaths) {
 	 * @note Здесь сброс стоял с самого начала, а у кодека syslog его не было, и тот
 	 *       отвечал отказом: один договор о двух лицах. Сведено 09.09.2026 в пользу
 	 *       ЭТОГО поведения, разобранного по существу, а не по старшинству
+	 *
 	 */
 	EXPECT_TRUE(document.settings(settings));
 	// Выполняем проверку того, что чтение следующей записи новыми настройками идёт
@@ -1051,23 +1068,30 @@ TEST(CodecCefDocument, EraseArrayItem) {
 }
 
 /**
- * @brief Проверка выдачи настроек разбора событий
+ * @brief Проверка соблюдения установленных настроек разбора событий
  *
- * @details Выдающий ход настроек проверками затронут не был вовсе, а он есть половина
- *          договора: поставленное обязано вернуться тем же
+ * @details Чтения настроек обратно API более не даёт, оттого соблюдение их поверяется
+ *          делом: с выключенным признанием приставки syslog запись, приставку несущая,
+ *          обязана быть отвергнутой, а с включённым - принятой
  *
  */
-TEST(CodecCefDocument, SettingsRoundtrip) {
+TEST(CodecCefDocument, SettingsAreHonoured) {
 	// Объект события CEF
 	cef::document_t document;
-	// Настройки разбора событий
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Отключаем разбор приставки syslog перед словом «CEF:»
-	settings.syslog = !settings.syslog;
+	settings.reader.syslog = false;
 	// Устанавливаем настройки разбора событий
 	ASSERT_TRUE(document.settings(settings));
-	// Выполняем проверку того, что поставленная настройка вернулась той же
-	EXPECT_EQ(document.settings().syslog, settings.syslog);
+	// Выполняем проверку того, что запись с приставкой syslog отвергнута
+	EXPECT_FALSE(document.parse("Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4"));
+	// Включаем разбор приставки syslog перед словом «CEF:»
+	settings.reader.syslog = true;
+	// Устанавливаем настройки разбора событий
+	ASSERT_TRUE(document.settings(settings));
+	// Выполняем проверку того, что та же запись с приставкой принята
+	EXPECT_TRUE(document.parse("Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4"));
 }
 
 /**
@@ -1128,6 +1152,25 @@ TEST(CodecCefDocument, FileRoundtrip) {
 }
 
 /**
+ * @brief Проверка сохранения записи при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecCefDocument, EmptyFilenamePreservesRecord) {
+	// Объект события
+	cef::document_t document;
+	// Выполняем разбор исходной записи
+	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected a threat|10|src=10.0.0.1"));
+	// Исходное дерево записи
+	const auto expected = document.root();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), cef::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения записи
+	ASSERT_EQ(document.root(), expected);
+}
+
+/**
  * @brief Проверка сохранения поверх файла, прежнего содержимого длиннее
  *
  * @details Ход записи `fs_t` файл НЕ УСЕКАЕТ у MS Windows - пишет по смещению, - тогда
@@ -1178,6 +1221,7 @@ TEST(CodecCefDocument, SaveOverLongerFile) {
 	 *          сноса прошла бы здесь тоже. Ловится порок ВЕЛИЧИНОЙ - хвост прежней
 	 *          записи оставляет файл длиннее собранного, - и заслон этот работает на
 	 *          всякой системе, а не на той лишь, где усечения нет
+	 *
 	 */
 	// Сведения о файле сохранения
 	struct stat info;
@@ -1233,6 +1277,9 @@ TEST(CodecCefDocument, UnreadableFileIsRefused) {
 		ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
 		// Выполняем снос временного файла проверки
 		::remove(filename.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1282,6 +1329,9 @@ TEST(CodecCefDocument, SymlinkIsReadAsFile) {
 		::remove(linkname.c_str());
 		// Выполняем снос файла записи
 		::remove(filename.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1314,6 +1364,9 @@ TEST(CodecCefDocument, SymlinkToDirectoryIsRefused) {
 		EXPECT_EQ(document.error(), cef::error_t::FILE_NOT_READ);
 		// Выполняем снос символьной ссылки
 		::remove(linkname.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1346,6 +1399,7 @@ TEST(CodecCefDocument, SaveFailureIsReported) {
 	 *
 	 * @note Сбор записи из пустого дерева отвечается пустотою, и сохранять тогда нечего:
 	 *       заведись файл, потребитель получил бы пустой файл вместо отказа
+	 *
 	 */
 	cef::document_t empty;
 	// Выполняем проверку отказа сохранения события, записи не несущего
@@ -1486,18 +1540,19 @@ TEST(CodecCefDocument, PathDepthIsBoundedByTheFormat) {
  *
  */
 TEST(CodecCefDocument, NumbersAreParsedWholly) {
-	// Настройки разбора записей со строгим сличением видов
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Устанавливаем строгое сличение со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	/**
-	 * @brief Метод разбора записи с заданной парой расширения
+	 * @brief Функция разбора записи с заданной парой расширения
 	 *
 	 * @param pair пара расширения записи
 	 * @param settings настройки разбора записей
 	 * @return     признак успешности разбора записи
+	 *
 	 */
-	const auto parse = [](const string & pair, const cef::reader_t::settings_t & settings) noexcept -> bool {
+	const auto parse = [](const string & pair, const cef::document_t::settings_t & settings) noexcept -> bool {
 		// Объект события CEF
 		cef::document_t document;
 		// Устанавливаем настройки разбора записей
@@ -1534,6 +1589,7 @@ TEST(CodecCefDocument, NumbersAreParsedWholly) {
  *       своей записи, а НЕ ЧИТАЛ ЕГО НИКТО - сведения были, а поверки не было. Признак
  *       разряда: код VALUE_TOO_LONG отсутствовал в перечне вовсе, тогда как NAME_TOO_LONG
  *       и FIELD_TOO_LONG наводились
+ *
  */
 TEST(CodecCefDocument, ValueLengthIsBoundedByTheDictionary) {
 	// Значение длиною ровно в предел поля сообщения, словарём назначенный
@@ -1542,10 +1598,10 @@ TEST(CodecCefDocument, ValueLengthIsBoundedByTheDictionary) {
 	const string over(1024, 'a');
 	// Объект документа события CEF при строгом сличении
 	cef::document_t strict;
-	// Получаем настройки разбора записей
-	cef::reader_t::settings_t settings = strict.settings();
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Устанавливаем строгое сличение значений со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(strict.settings(settings));
 	// Выполняем проверку того, что значение длиною ровно в предел принято
@@ -1561,7 +1617,7 @@ TEST(CodecCefDocument, ValueLengthIsBoundedByTheDictionary) {
 	// Объект документа события CEF при слабом сличении
 	cef::document_t tolerant;
 	// Устанавливаем сличение имён ключей без сличения видов значений
-	settings.mode = cef::mode_t::LOW;
+	settings.reader.mode = cef::mode_t::LOW;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(tolerant.settings(settings));
 	/**
@@ -1569,6 +1625,7 @@ TEST(CodecCefDocument, ValueLengthIsBoundedByTheDictionary) {
 	 *
 	 * @note Отказ здесь означал бы потерю событий живых устройств: пределы эти
 	 *       принадлежат строгому сличению
+	 *
 	 */
 	EXPECT_TRUE(tolerant.parse("CEF:0|A|B|1.0|100|name|5|msg=" + over));
 }
@@ -1589,6 +1646,7 @@ TEST(CodecCefDocument, ValueLengthIsBoundedByTheDictionary) {
  * @note Заведён 15.09.2026 по наблюдению за кодеками JSON: проверка с верным
  *       утверждением и слабым образцом слепа ровно так же, как проверка со слабым
  *       утверждением
+ *
  */
 TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
 	// Записи, на каких прежние дефекты и проявлялись
@@ -1614,54 +1672,57 @@ TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 *
 	 * @note Поправка взята у кодека JSON 15.09.2026: там ожидание числа
 	 *       было выведено рассуждением, а не замером, и разошлось с ним на три сочетания
+	 *
 	 */
 	size_t attempted = 0;
 	/**
 	 * Выполняем перебор всех сочетаний настроек разбора и записи
 	 */
 	for(uint8_t empty = 0; empty < 2; empty++){
-		// Выполняем перебор значений настройки приставки системного журнала
+		/**
+		 * Выполняем перебор значений настройки приставки системного журнала
+		 */
 		for(uint8_t prefix = 0; prefix < 2; prefix++){
-			// Выполняем перебор значений настройки постановки знака конца записи
+			/**
+			 * Выполняем перебор значений настройки постановки знака конца записи
+			 */
 			for(uint8_t terminate = 0; terminate < 2; terminate++){
-				// Выполняем перебор значений настройки отмены знаков
+				/**
+				 * Выполняем перебор значений настройки отмены знаков
+				 */
 				for(uint8_t escape = 0; escape < 2; escape++){
-					// Выполняем перебор всех записей образца
+					/**
+					 * Выполняем перебор всех записей образца
+					 */
 					for(auto & record : RECORDS){
 						// Наращиваем количество предпринятых оборотов
 						attempted++;
 						// Объект документа события CEF
 						cef::document_t one;
-						// Получаем настройки разбора записей
-						cef::reader_t::settings_t reading = one.settings();
+						// Настройки документа
+						cef::document_t::settings_t common;
 						// Устанавливаем правило обращения с пустым значением
-						reading.empty = static_cast <cef::empty_t> (empty);
+						common.reader.empty = static_cast <cef::empty_t> (empty);
 						// Устанавливаем разбор приставки системного журнала
-						reading.syslog = (prefix > 0);
+						common.reader.syslog = (prefix > 0);
 						// Устанавливаем снятие отмены знаков
-						reading.unescape = (escape > 0);
-						// Устанавливаем настройки разбора записей
-						ASSERT_TRUE(one.settings(reading));
-						// Настройки записи событий
-						cef::writer_t::settings_t writing;
+						common.reader.unescape = (escape > 0);
 						// Устанавливаем постановку приставки системного журнала
-						writing.syslog = (prefix > 0);
+						common.writer.syslog = (prefix > 0);
 						// Устанавливаем постановку знака конца записи
-						writing.terminate = (terminate > 0);
+						common.writer.terminate = (terminate > 0);
 						// Устанавливаем постановку отмены знаков
-						writing.escape = (escape > 0);
-						// Устанавливаем настройки записи событий
-						one.settings(writing);
+						common.writer.escape = (escape > 0);
+						// Устанавливаем настройки разбора и записи событий
+						ASSERT_TRUE(one.settings(common));
 						// Выполняем проверку того, что запись образца разобрана
 						ASSERT_TRUE(one.parse(record)) << "запись: " << record;
 						// Получаем собранную запись события CEF
 						const string built = one.dump();
 						// Объект документа события CEF для второго оборота
 						cef::document_t two;
-						// Устанавливаем те же настройки разбора записей
-						ASSERT_TRUE(two.settings(reading));
-						// Устанавливаем те же настройки записи событий
-						two.settings(writing);
+						// Устанавливаем те же настройки разбора и записи событий
+						ASSERT_TRUE(two.settings(common));
 						// Выполняем проверку того, что собранное читается обратно
 						ASSERT_TRUE(two.parse(built)) << "собрано: " << built;
 						/**
@@ -1671,6 +1732,7 @@ TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
 						 *       записью: сличение со словарём обращает значения в виды,
 						 *       словарём заданные, и обратимости знак в знак строгое
 						 *       сличение не обещает вовсе
+						 *
 						 */
 						EXPECT_EQ(two.dump(), built) << "запись: " << record;
 						// Наращиваем количество сличённых оборотов
@@ -1686,6 +1748,7 @@ TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 * @warning Поверка эта обязательна: без неё отказ разбора обратил бы перебор в
 	 *          молчаливый пропуск, и проверка осталась бы зелёной, не сличив НИ ОДНОГО
 	 *          оборота
+	 *
 	 */
 	// Выполняем проверку того, что всякая предпринятая попытка дала сличение
 	EXPECT_EQ(compared, attempted);
@@ -1694,6 +1757,7 @@ TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 *
 	 * @warning Без неё перебор, не сделавший ни единого оборота, оставил бы проверку
 	 *          зелёной: нуль равен нулю
+	 *
 	 */
 	EXPECT_GT(attempted, 0u);
 }
@@ -1713,6 +1777,7 @@ TEST(CodecCefDocument, RoundTripHoldsUnderEverySettingCombination) {
  * @note Разница с поверкой дат намеренна и объяснена устройством: модуль дат держит
  *       СМЕШАННЫЕ описания, и правка одной его части задевает прочие, отчего границы чисел
  *       даты кодек поверяет сам. Опознание же адреса смешения описаний не несёт
+ *
  */
 TEST(CodecCefDocument, MalformedAddressesAreRefusedWhenStrict) {
 	// Записи с негодными адресами сети
@@ -1730,6 +1795,7 @@ TEST(CodecCefDocument, MalformedAddressesAreRefusedWhenStrict) {
 	 *       IPv4 законна со времён `inet_aton`, где «10» означает 0.0.0.10, а «10.0.0» -
 	 *       10.0.0.0. Опознание их адресом есть поведение верное, и щуп 15.09.2026 сперва
 	 *       принял его за дефект - образец проверки был неверен, не код
+	 *
 	 */
 	const vector <string> ACCEPTED = {
 		"CEF:0|A|B|1.0|100|n|5|src=10.0.0.1",
@@ -1740,14 +1806,16 @@ TEST(CodecCefDocument, MalformedAddressesAreRefusedWhenStrict) {
 	};
 	// Количество сличённых записей
 	size_t compared = 0;
-	// Выполняем перебор записей с негодными адресами сети
+	/**
+	 * Выполняем перебор записей с негодными адресами сети
+	 */
 	for(auto & record : REFUSED){
 		// Объект документа события CEF
 		cef::document_t document;
-		// Получаем настройки разбора записей
-		cef::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		cef::document_t::settings_t settings;
 		// Устанавливаем строгое сличение значений со словарём
-		settings.mode = cef::mode_t::STRONG;
+		settings.reader.mode = cef::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись с негодным адресом отвергнута
@@ -1755,14 +1823,16 @@ TEST(CodecCefDocument, MalformedAddressesAreRefusedWhenStrict) {
 		// Наращиваем количество сличённых записей
 		compared++;
 	}
-	// Выполняем перебор записей с годными адресами сети
+	/**
+	 * Выполняем перебор записей с годными адресами сети
+	 */
 	for(auto & record : ACCEPTED){
 		// Объект документа события CEF
 		cef::document_t document;
-		// Получаем настройки разбора записей
-		cef::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		cef::document_t::settings_t settings;
 		// Устанавливаем строгое сличение значений со словарём
-		settings.mode = cef::mode_t::STRONG;
+		settings.reader.mode = cef::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись с годным адресом принята
@@ -1787,6 +1857,7 @@ TEST(CodecCefDocument, MalformedAddressesAreRefusedWhenStrict) {
  *          само по себе не закрепило бы главного - что журнал остаётся цел
  *
  * @note Поток записей читается `reader_t`, и путь этот отказом не закрывается
+ *
  */
 TEST(CodecCefDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	// Адрес временного файла журнала
@@ -1797,7 +1868,9 @@ TEST(CodecCefDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	{
 		// Собираемое содержимое журнала
 		string content = "";
-		// Выполняем сборку журнала из нескольких записей
+		/**
+		 * Выполняем сборку журнала из нескольких записей
+		 */
 		for(size_t i = 0; i < count; i++){
 			// Добавляем к журналу очередную запись
 			content.append("CEF:0|A|B|1.0|100|name|5|msg=запись ");
@@ -1816,6 +1889,7 @@ TEST(CodecCefDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	 *
 	 * @param filename адрес файла журнала
 	 * @return         количество непустых строк файла
+	 *
 	 */
 	auto lines = [](const string & filename) noexcept -> size_t {
 		// Объект работы с файловой системой
@@ -1826,7 +1900,9 @@ TEST(CodecCefDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 		fs.read(filename, content);
 		// Количество непустых строк файла журнала
 		size_t result = 0;
-		// Выполняем перебор всех знаков содержимого файла
+		/**
+		 * Выполняем перебор всех знаков содержимого файла
+		 */
 		for(size_t i = 0; i < content.size(); i++){
 			// Если знак содержимого концом строки является
 			if((content[i] == '\n') && (i > 0) && (content[i - 1] != '\n'))
@@ -1872,6 +1948,7 @@ TEST(CodecCefDocument, MultiRecordFileIsRefusedAndKeptWhole) {
  *       немедленно: переписанных записей стало 11823 вместо 12465 - 642 записи, кодеком
  *       же и прочитанные, обратно не собирались. Проверка эта закрепляет ОБЕ половины
  *       договора, и вторая половина важнее первой
+ *
  */
 TEST(CodecCefDocument, ValueKindIsCheckedOnlyForNonTextValues) {
 	// Незнаковые значения, видам словаря чуждые: запись обязана их отвергнуть
@@ -1892,7 +1969,9 @@ TEST(CodecCefDocument, ValueKindIsCheckedOnlyForNonTextValues) {
 	};
 	// Количество сличённых значений
 	size_t compared = 0;
-	// Выполняем перебор незнаковых значений, видам словаря чуждых
+	/**
+	 * Выполняем перебор незнаковых значений, видам словаря чуждых
+	 */
 	for(auto & item : REFUSED){
 		// Объект документа события CEF
 		cef::document_t document;
@@ -1907,7 +1986,9 @@ TEST(CodecCefDocument, ValueKindIsCheckedOnlyForNonTextValues) {
 		// Наращиваем количество сличённых значений
 		compared++;
 	}
-	// Выполняем перебор знаковых значений, видам словаря чуждых
+	/**
+	 * Выполняем перебор знаковых значений, видам словаря чуждых
+	 */
 	for(auto & item : ACCEPTED){
 		// Объект документа события CEF
 		cef::document_t document;
@@ -1922,6 +2003,7 @@ TEST(CodecCefDocument, ValueKindIsCheckedOnlyForNonTextValues) {
 		 *
 		 * @note Отказ здесь означал бы, что кодек не умеет собрать обратно то, что сам же
 		 *       прочёл при выключенном сличении
+		 *
 		 */
 		EXPECT_FALSE(built.empty()) << "ключ: " << item.first;
 		// Выполняем проверку того, что значение записано дословно
@@ -1965,6 +2047,7 @@ TEST(CodecCefDocument, FailedSaveKeepsThePreviousRecord) {
 		 *
 		 * @note Пропуск этот об окружении, а не о кодеке: суперпользователь пишет и в каталог, запись
 		 *       запрещающий, и отказа сохранения тут не добиться вовсе
+		 *
 		 */
 		if(::geteuid() == 0)
 			// Пропускаем проверку: отказа записи от имени суперпользователя не добиться
@@ -2029,6 +2112,7 @@ TEST(CodecCefDocument, FailedSaveKeepsThePreviousRecord) {
 		 *
 		 * @note Половина эта договора и есть главная: отказ, честно оглашённый, ничего не
 		 *       стоит, если данных потребителя уже нет
+		 *
 		 */
 		{
 			// Поток чтения файла
@@ -2046,6 +2130,9 @@ TEST(CodecCefDocument, FailedSaveKeepsThePreviousRecord) {
 			// Выполняем проверку того, что прежняя запись цела дословно
 			EXPECT_EQ(content, previous);
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -2141,6 +2228,7 @@ TEST(CodecCefDocument, SaveThroughSymlinkKeepsTheLink) {
 		 *
 		 * @note Половина эта договора неотделима от первой: ссылка, уцелевшая при
 		 *       неизменной цели, означала бы, что сохранение прошло мимо
+		 *
 		 */
 		{
 			// Поток чтения цели
@@ -2158,6 +2246,9 @@ TEST(CodecCefDocument, SaveThroughSymlinkKeepsTheLink) {
 			// Выполняем проверку того, что цель несёт НОВУЮ запись
 			EXPECT_NE(content.find("НОВАЯЗАПИСЬ"), string::npos) << "цель ссылки не обновлена: " << content;
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -2184,6 +2275,7 @@ TEST(CodecCefDocument, SaveThroughSymlinkKeepsTheLink) {
 TEST(CodecCefDocument, FailedReplaceLeavesNoLeftovers) {
 	// Каталог опыта и цель сохранения, каталогом являющаяся
 	const string directory = "./cef-replace-guard";
+	// Адрес цели сохранения, каталогом являющейся
 	const string target = (directory + "/journal.log");
 	// Адрес временного файла, подмену несущего
 	const string temporary = (target + ".awh-tmp");
@@ -2223,7 +2315,9 @@ TEST(CodecCefDocument, FailedReplaceLeavesNoLeftovers) {
 	EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (cef::error_t::NONE));
 	// Выполняем проверку того, что цель осталась каталогом, подменённой не будучи
 	struct stat info;
+	// Снимаем сведения о цели сохранения
 	ASSERT_EQ(::stat(target.c_str(), &info), 0) << "цель сохранения уничтожена отказавшей подменой";
+	// Убеждаемся, что цель по-прежнему каталог, а не файл
 	EXPECT_TRUE(S_ISDIR(info.st_mode)) << "цель сохранения перестала быть каталогом";
 	// Выполняем проверку того, что временный файл за собою не оставлен
 	EXPECT_NE(::stat(temporary.c_str(), &info), 0) << "временный файл оставлен в каталоге потребителя";
@@ -2246,6 +2340,7 @@ TEST(CodecCefDocument, FailedReplaceLeavesNoLeftovers) {
 TEST(CodecCefDocument, EmptyDocumentSaveTouchesNothing) {
 	// Каталог опыта и адрес файла записи
 	const string directory = "./cef-empty-save";
+	// Адрес файла записи
 	const string filename = (directory + "/journal.log");
 	// Прежнее содержимое файла записи
 	const string previous = "CEF:0|Vendor|Product|1.0|100|ЦЕННАЯ ЗАПИСЬ|5|src=10.0.0.1\n";
@@ -2293,6 +2388,7 @@ TEST(CodecCefDocument, EmptyDocumentSaveTouchesNothing) {
 	EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (cef::error_t::NONE));
 	// Выполняем проверку того, что временного файла подмены не заводилось вовсе
 	struct stat info;
+	// Убеждаемся, что файла с суффиксом .awh-tmp в каталоге нет
 	EXPECT_NE(::stat((filename + ".awh-tmp").c_str(), &info), 0) << "временный файл заведён отказавшим сохранением";
 	/**
 	 * Выполняем проверку того, что прежняя запись уцелела дословно
@@ -2329,6 +2425,7 @@ TEST(CodecCefDocument, SavePreservesAccessBits) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог проверки
 		save_directory_t guard("./cef-save-access");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Адрес целевого файла
 		const string filename = (guard.address + "/journal.log");
@@ -2336,6 +2433,7 @@ TEST(CodecCefDocument, SavePreservesAccessBits) {
 		ASSERT_TRUE(guard.fs.write(filename, string("PREVIOUS RECORD")));
 		// Формируем документ для сохранения
 		cef::document_t document;
+		// Разбираем запись NEW RECORD в документ
 		ASSERT_TRUE(document.parse("CEF:0|Vendor|Product|1.0|100|NEW RECORD|5|src=10.0.0.2"));
 		/**
 		 * Проверяем сохранение каждого набора битов доступа
@@ -2347,10 +2445,14 @@ TEST(CodecCefDocument, SavePreservesAccessBits) {
 			ASSERT_TRUE(document.save(filename));
 			// Получаем права заменённого файла
 			struct stat info{};
+			// Снимаем сведения о заменённом файле с диска
 			ASSERT_EQ(::stat(filename.c_str(), &info), 0);
 			// Проверяем точное совпадение битов доступа
 			EXPECT_EQ(static_cast <uint32_t> (info.st_mode & 0777), mode);
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// POSIX-биты доступа не являются контрактом Windows
 		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
@@ -2367,15 +2469,19 @@ TEST(CodecCefDocument, SavePreservesAccessBits) {
 TEST(CodecCefDocument, SaveKeepsUnrelatedSibling) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./cef-save-sibling");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Адреса цели и постороннего файла
 	const string filename = (guard.address + "/journal.log");
+	// Адрес постороннего файла, носящего имя нашего временного файла
 	const string sibling = (filename + ".awh-tmp");
 	// Содержимое постороннего файла
 	const string previous = "UNRELATED USER DATA";
+	// Кладём в посторонний файл его содержимое
 	ASSERT_TRUE(guard.fs.write(sibling, previous));
 	// Формируем документ для сохранения
 	cef::document_t document;
+	// Разбираем запись NEW RECORD в документ
 	ASSERT_TRUE(document.parse("CEF:0|Vendor|Product|1.0|100|NEW RECORD|5|src=10.0.0.2"));
 	// Сохраняем новую запись
 	ASSERT_TRUE(document.save(filename));
@@ -2393,13 +2499,17 @@ TEST(CodecCefDocument, SaveKeepsUnrelatedSibling) {
 TEST(CodecCefDocument, TemporaryFilesKeepIndependentHandles) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./cef-save-handles");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Адрес будущей цели и имена временных файлов
 	const string filename = (guard.address + "/journal.log");
+	// Имена двух временных файлов, которые получат разные суффиксы
 	string first, second;
 	// Создаём два открытых файла для одной цели
 	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	// Заводим второй временный файл рядом с первым
 	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
 	ASSERT_NE(two, nullptr);
 	ASSERT_NE(first, second);
@@ -2408,6 +2518,7 @@ TEST(CodecCefDocument, TemporaryFilesKeepIndependentHandles) {
 	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
 	// Закрываем файлы перед проверкой их содержимого
 	one.reset();
+	// Закрываем второй файл
 	two.reset();
 	// Проверяем независимость результатов и отсутствие целевого файла
 	EXPECT_EQ(guard.fs.read <string> (first), "FIRST");
@@ -2426,24 +2537,35 @@ TEST(CodecCefDocument, TemporaryFilesKeepIndependentHandles) {
 TEST(CodecCefDocument, TemporaryCollisionKeepsExistingFile) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./cef-save-collision");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Получаем первое имя и следующий номер последовательности
 	const string filename = (guard.address + "/journal.log");
+	// Имена двух временных файлов, которые получат разные суффиксы
 	string first, second;
+	// Создаём два открытых файла для одной цели
 	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
+	// Отделяем номер последовательности от первого имени
 	const size_t offset = first.rfind('.');
+	// Проверяем, что разделитель имени найден
 	ASSERT_NE(offset, string::npos);
+	// Составляем имя следующего номера, которое займём посторонним файлом
 	const string collision = (first.substr(0, offset + 1) + to_string(stoull(first.substr(offset + 1)) + 1));
 	// Занимаем следующее имя посторонним содержимым
 	ASSERT_TRUE(guard.fs.write(collision, string("UNRELATED")));
 	// Создаём второй файл и проверяем, что занятое имя пропущено
 	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	// Проверяем, что второй временный файл открыт
 	ASSERT_NE(two, nullptr);
+	// Проверяем, что занятое имя пропущено в пользу следующего
 	EXPECT_NE(second, collision);
+	// Пишем во второй файл через сохранённый дескриптор
 	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
 	// Закрываем открытые объекты до чтения и удаления каталога
 	one.reset();
+	// Закрываем второй файл
 	two.reset();
 	// Проверяем, что посторонний файл не открыт для записи и не изменён
 	EXPECT_EQ(guard.fs.read <string> (collision), "UNRELATED");
@@ -2460,19 +2582,29 @@ TEST(CodecCefDocument, NewSaveKeepsCreationPermissions) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог и обычный файл для сравнения прав
 		save_directory_t guard("./cef-save-new-mode");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
+		// Адрес эталонного файла, права которого даст обычное создание
 		const string reference = (guard.address + "/reference.log");
+		// Адрес целевого файла
 		const string filename = (guard.address + "/journal.log");
+		// Создаём эталонный файл обычным способом
 		ASSERT_TRUE(guard.fs.write(reference, string("REFERENCE")));
 		// Сохраняем документ по новому адресу
 		cef::document_t document;
+		// Разбираем запись Event в документ
 		ASSERT_TRUE(document.parse("CEF:0|V|P|1|100|Event|5|"));
 		ASSERT_TRUE(document.save(filename));
 		// Сличаем права с обычным созданием файла без изменения umask процесса
 		struct stat expected{}, actual{};
+		// Снимаем права эталонного файла
 		ASSERT_EQ(::stat(reference.c_str(), &expected), 0);
 		ASSERT_EQ(::stat(filename.c_str(), &actual), 0);
+		// Сличаем права сохранённого файла с эталонными
 		EXPECT_EQ(actual.st_mode & 0777, expected.st_mode & 0777);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// POSIX-биты доступа не являются контрактом Windows
 		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
@@ -2492,6 +2624,7 @@ TEST(CodecCefDocument, SaveSupportsMaximumFilename) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог проверки
 		save_directory_t guard("./cef-save-long-name");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Получаем предел для файловой системы каталога
 		const long length = ::pathconf(guard.address.c_str(), _PC_NAME_MAX);
@@ -2504,11 +2637,15 @@ TEST(CodecCefDocument, SaveSupportsMaximumFilename) {
 		const string filename = (guard.address + "/" + string(static_cast <size_t> (length), 'a'));
 		// Формируем и сохраняем документ
 		cef::document_t document;
+		// Разбираем запись Event в документ
 		ASSERT_TRUE(document.parse("CEF:0|V|P|1|100|Event|5|"));
 		ASSERT_TRUE(document.save(filename));
 		// Проверяем содержимое и отсутствие оставленного временного файла
 		EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
 		EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (1));
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Предел POSIX-имени не является контрактом Windows
 		GTEST_SKIP() << "POSIX NAME_MAX is unavailable on Windows";
@@ -2526,24 +2663,35 @@ TEST(CodecCefDocument, SaveThroughDanglingRelativeSymlink) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./cef-SaveThroughDanglingRelativeSymlink");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Разводим настоящий каталог цели и посторонний файл внутри каталога опыта
 		const string nested = (guard.address + "/nested");
+		// Адрес настоящего каталога цели, вложенного в каталог опыта
 		const string directory = (nested + "/" + guard.address);
+		// Адрес постороннего файла, сохранение трогать не должно
 		const string unrelated = (guard.address + "/journal.log");
+		// Адрес цели сохранения, каталогом являющейся
 		const string target = (directory + "/journal.log");
+		// Адрес ссылки, по которой пойдёт сохранение
 		const string link = (nested + "/link.log");
+		// Заводим настоящий каталог цели
 		ASSERT_TRUE(guard.fs.mkdir(directory));
 		ASSERT_TRUE(guard.fs.write(unrelated, string("UNRELATED")));
+		// Заводим ссылку на пока отсутствующую цель
 		ASSERT_EQ(::symlink(unrelated.c_str(), link.c_str()), 0);
 		// Сохраняем запись по ссылке на пока отсутствующую цель
 		cef::document_t document;
+		// Разбираем запись Event в документ
 		ASSERT_TRUE(document.parse("CEF:0|V|P|1|100|Event|5|"));
 		ASSERT_TRUE(document.save(link));
 		// Проверяем содержимое настоящей цели и сохранность постороннего файла
 		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
 		EXPECT_EQ(guard.fs.read <string> (unrelated), "UNRELATED");
 		EXPECT_EQ(guard.fs.type(link), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2561,25 +2709,34 @@ TEST(CodecCefDocument, SaveThroughDanglingSymlinkChain) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./cef-SaveThroughDanglingSymlinkChain");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Создаём цепочку с абсолютным первым и относительным вторым переходом
 		const string nested = (guard.address + "/nested");
+		// Адрес конечной цели, которую сохранение обязано создать
 		const string target = (nested + "/actual/journal.log");
+		// Адрес первого звена цепочки - абсолютной ссылки
 		const string first = (guard.address + "/first.log");
+		// Адрес второго звена цепочки - относительной ссылки
 		const string second = (nested + "/second.log");
 		// Ссылка каталога перед '..' должна разрешаться раньше перехода к родителю
 		ASSERT_TRUE(guard.fs.mkdir(nested + "/actual/deeper"));
+		// Заводим ссылку каталога, через которую пройдёт переход '..'
 		ASSERT_EQ(::symlink("actual/deeper", (nested + "/alias").c_str()), 0);
 		ASSERT_EQ(::symlink("alias/../journal.log", second.c_str()), 0);
 		ASSERT_EQ(::symlink(guard.fs.fullpath(second).c_str(), first.c_str()), 0);
 		// Сохраняем запись по первому звену цепочки
 		cef::document_t document;
+		// Разбираем запись Event в документ
 		ASSERT_TRUE(document.parse("CEF:0|V|P|1|100|Event|5|"));
 		ASSERT_TRUE(document.save(first));
 		// Проверяем конечную цель и оба промежуточных объекта
 		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
 		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
 		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2597,19 +2754,29 @@ TEST(CodecCefDocument, SaveThroughSymlinkCycleIsRefused) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./cef-SaveThroughSymlinkCycleIsRefused");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Замыкаем две ссылки друг на друга
 		const string first = (guard.address + "/first.log");
+		// Адрес второго звена цикла
 		const string second = (guard.address + "/second.log");
+		// Заводим первую ссылку на второе звено
 		ASSERT_EQ(::symlink("second.log", first.c_str()), 0);
 		ASSERT_EQ(::symlink("first.log", second.c_str()), 0);
 		// Сохранение должно отказать до подмены какого-либо звена
 		cef::document_t document;
+		// Разбираем запись Event в документ
 		ASSERT_TRUE(document.parse("CEF:0|V|P|1|100|Event|5|"));
+		// Пробуем сохранить запись по замкнутой цепочке ссылок
 		EXPECT_FALSE(document.save(first));
+		// Проверяем, что сохранение отказало с кодом отказа
 		EXPECT_NE(document.error(), cef::error_t::NONE);
+		// Проверяем, что первое звено осталось ссылкой
 		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
 		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2623,24 +2790,34 @@ TEST(CodecCefDocument, SaveThroughSymlinkCycleIsRefused) {
 TEST(CodecCefDocument, MalformedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./cef-MalformedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись журнала
 	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	// Содержимое файла: исправная запись и недопустимый хвост «CEF:0|broken»
 	const string content = (record + "CEF:0|broken\n");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	cef::document_t document;
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код отказа с ожидаемым INCOMPLETE_HEADER
 	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что файл уцелел после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код повторного отказа с ожидаемым INCOMPLETE_HEADER
 	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2648,6 +2825,7 @@ TEST(CodecCefDocument, MalformedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Проверяем, что после починки хвоста загрузка прошла без отказа
 	EXPECT_EQ(document.error(), cef::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }
@@ -2659,24 +2837,34 @@ TEST(CodecCefDocument, MalformedTailIsRefusedAndKeptWhole) {
 TEST(CodecCefDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./cef-UnterminatedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись журнала
 	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	// Содержимое файла: исправная запись и оборванный хвост без перевода строки
 	const string content = (record + "CEF:0|broken");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	cef::document_t document;
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код отказа с ожидаемым INCOMPLETE_HEADER
 	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что файл уцелел после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код повторного отказа с ожидаемым INCOMPLETE_HEADER
 	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2684,6 +2872,7 @@ TEST(CodecCefDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Проверяем, что после починки хвоста загрузка прошла без отказа
 	EXPECT_EQ(document.error(), cef::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }
@@ -2695,27 +2884,40 @@ TEST(CodecCefDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 TEST(CodecCefDocument, OversizedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./cef-OversizedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись журнала
 	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	// Содержимое файла: исправная запись и хвост, предел длины превышающий
 	const string content = (record + "CEF:0|V|P|1|100|Event|5|msg=" + string(128, 'x') + "\n");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	cef::document_t document;
-	cef::reader_t::settings_t settings;
-	settings.maxRecord = 64;
+	// Настройки документа
+	cef::document_t::settings_t settings;
+	// Опускаем предел длины записи до 64 байт, чтобы хвост его неоспоримо превысил
+	settings.reader.maxRecord = 64;
+	// Выполняем установку настроек разбора записей
 	ASSERT_TRUE(document.settings(settings));
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код отказа с ожидаемым RECORD_TOO_LONG
 	EXPECT_EQ(document.error(), cef::error_t::RECORD_TOO_LONG);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что файл уцелел после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Выполняем проверку того, что чтение многозаписного файла отвергнуто
 	EXPECT_FALSE(document.load(filename));
+	// Сверяем код повторного отказа с ожидаемым RECORD_TOO_LONG
 	EXPECT_EQ(document.error(), cef::error_t::RECORD_TOO_LONG);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2723,6 +2925,7 @@ TEST(CodecCefDocument, OversizedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Проверяем, что после урезки хвоста загрузка прошла без отказа
 	EXPECT_EQ(document.error(), cef::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }

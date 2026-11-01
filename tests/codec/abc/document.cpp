@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки дерева документа бинарного контейнера ABC — разбор записи в дерево,
  *        обход его, извлечение значений и обратная сборка записи
  *
@@ -23,6 +29,7 @@
  * @note Заголовок cmath нужен ради std::isnan. Собиратели посвежее подтягивают его
  *       попутно другими заголовками, а gcc 12 с glibc 2.36 и gcc у NetBSD 10 - нет,
  *       и сборка валится. Проверено на стендах Debian 12 и NetBSD 10.1
+ *
  */
 #include <cmath>
 #include <limits>
@@ -41,7 +48,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключение пространства имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключение пространства имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -87,7 +100,7 @@ namespace {
 		// Выполняем укладку имени поля вложенного отображения числом
 		ASSERT_TRUE(writer.number(static_cast <uint64_t> (42)));
 		// Выполняем укладку пустого значения
-		ASSERT_TRUE(writer.nul());
+		ASSERT_TRUE(writer.nil());
 		// Выполняем укладку конца вложенного отображения
 		ASSERT_TRUE(writer.mapEnd());
 		// Выполняем укладку конца отображения
@@ -162,7 +175,7 @@ TEST(CodecAbcDocument, ParseAndNavigate) {
 	// Выполняем проверку извлечённого имени поля
 	ASSERT_EQ(named, 42u);
 	// Выполняем проверку вида значения поля вложенного отображения
-	ASSERT_EQ(node.at(0).type(), abc::type_t::NUL);
+	ASSERT_EQ(node.at(0).type(), abc::type_t::NIL);
 	// Выполняем проверку недействительности ссылки на значение, какого нет
 	ASSERT_FALSE(root.at(9).valid());
 }
@@ -473,6 +486,7 @@ TEST(CodecAbcDocument, Extensions) {
 	 * @note Прежде сличались длина да октет нулевой, и читатель, переставивший октеты
 	 *       со второго, прошёл бы зелёным. Опора обязана лежать вне проверяемого, и
 	 *       здесь ею служит сама поданная величина. Найдено 31.08.2026 разбором набора
+	 *
 	 */
 	{
 		// Октеты величины, снятые с дерева документа
@@ -618,6 +632,7 @@ TEST(CodecAbcDocument, SegmentedValue) {
 	 *
 	 * @note Мерою здесь `nodes()`, а не `size()`: с 03.09.2026 `size()` выдаёт ДЕТЕЙ
 	 *       КОРНЯ, а стережётся тут именно то, что куски НЕ порождают лишних узлов арены
+	 *
 	 */
 	ASSERT_EQ(document.nodes(), 3ul);
 	// Корень же несёт ровно одну пару: имя поля со значением
@@ -851,15 +866,18 @@ TEST(CodecAbcDocument, DuplicateRules){
 	 * @param rule   правило обращения с повторяющимся именем поля
 	 * @param digest дерево документа, куда ложится разбор
 	 * @return       признак успешности разбора
+	 *
 	 */
 	auto parse = [](const vector <uint8_t> & record, const abc::duplicate_t rule,
 	 abc::document_t & digest) noexcept -> bool {
 		// Настройки разбора записи
-		abc::reader_t::settings_t settings;
+		abc::document_t::settings_t settings;
 		// Выполняем установку правила обращения с повтором имени поля
-		settings.duplicates = rule;
+		settings.reader.duplicates = rule;
+		// Выполняем установку настроек разбора записи
+		digest.settings(settings);
 		// Выводим признак успешности разбора записи в дерево документа
-		return digest.parse(record.data(), record.size(), settings);
+		return digest.parse(record.data(), record.size());
 	};
 	/**
 	 * Отображение из четырёх пар, где имя «b» объявлено дважды:
@@ -989,15 +1007,18 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 * @param rule   правило обращения с повторяющимся именем поля
 	 * @param digest дерево документа, куда ложится разбор
 	 * @return       признак успешности разбора
+	 *
 	 */
 	auto parse = [](const vector <uint8_t> & record, const abc::duplicate_t rule,
 	 abc::document_t & digest) noexcept -> bool {
 		// Настройки разбора записи
-		abc::reader_t::settings_t settings;
+		abc::document_t::settings_t settings;
 		// Выполняем установку правила обращения с повтором имени поля
-		settings.duplicates = rule;
+		settings.reader.duplicates = rule;
+		// Выполняем установку настроек разбора записи
+		digest.settings(settings);
 		// Выводим признак успешности разбора записи в дерево документа
-		return digest.parse(record.data(), record.size(), settings);
+		return digest.parse(record.data(), record.size());
 	};
 	/**
 	 * Отображение с ЧИСЛОВЫМИ именами полей, где имя «40» объявлено дважды:
@@ -1008,6 +1029,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 *
 	 * @note Числовое имя в хранилище октетов НЕ ложится - оно лежит разрядной записью
 	 * внутри узла, и сличается потому третьей дорогой
+	 *
 	 */
 	const vector <uint8_t> numbers = {
 		0xA4,
@@ -1046,6 +1068,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 * @note Поверка эта - вторая половина договора: сличение обязано находить не только
 	 * совпадение, но и различие. Сличение, отвечающее совпадением всегда, отсеяло бы
 	 * здесь две пары из трёх, а на записи выше вело бы себя ровно так же
+	 *
 	 */
 	const vector <uint8_t> distinct = {
 		0xA3,
@@ -1076,6 +1099,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 *
 	 * @note Без этой поверки они сошли бы за одно имя, и правило `FIRST` отсеяло бы
 	 * пару, повтором НЕ являющуюся, - потеря данных молча
+	 *
 	 */
 	const vector <uint8_t> words = {
 		0xA2,
@@ -1100,6 +1124,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 * @details Дорога сличения размахом поддерева в `Document::identical` оттого сегодня
 	 * недостижима: разбор отвергает такую запись прежде, чем дело дойдёт до сличения имён.
 	 * Поверка эта закрепляет ИМЕННО отказ - чтобы отступление от него не прошло молча
+	 *
 	 */
 	{
 		// Отображение, где именем поля стоит перечень: {[1]: 10}
@@ -1132,6 +1157,7 @@ TEST(CodecAbcDocument, KeyIdentityDivergesByLayer){
 	 *
 	 * @note Первое имя уместилось в саму метку, второе писано ведомым октетом. Запись
 	 * это годная вне строгого вида: строгий вид отверг бы её кодом `NON_MINIMAL_TAG`
+	 *
 	 */
 	const vector <uint8_t> record = {
 		0xA2,
@@ -1159,13 +1185,13 @@ TEST(CodecAbcDocument, KeyIdentityDivergesByLayer){
 	 */
 	{
 		// Настройки разбора записи
-		abc::reader_t::settings_t settings;
+		abc::document_t::settings_t settings;
 		// Выполняем установку правила выбора первого встреченного значения
-		settings.duplicates = abc::duplicate_t::FIRST;
-		// Дерево документа
-		abc::document_t document;
+		settings.reader.duplicates = abc::duplicate_t::FIRST;
+		// Дерево документа с установленными настройками разбора
+		abc::document_t document(settings);
 		// Выполняем разбор записи в дерево документа
-		ASSERT_TRUE(document.parse(record.data(), record.size(), settings))
+		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "код отказа: " << abc::message(document.error());
 		// Отображение обязано потерять пару: имена сличены равными
 		ASSERT_EQ(document.root().size(), 1u);
@@ -1204,6 +1230,7 @@ TEST(CodecAbcDocument, WholeRealMatchesInteger){
 	 * @param record разбираемая запись числа
 	 * @param title  название сличаемого случая
 	 * @param result извлечённое из записи число без знака
+	 *
 	 */
 	auto extract = [](const vector <uint8_t> & record, const string & title,
 	 uint64_t & result) noexcept -> void {
@@ -1246,6 +1273,7 @@ TEST(CodecAbcDocument, WholeRealMatchesInteger){
 	 * Число, дробная часть у какого есть НА ДЕЛЕ, идёт прежним путём
 	 *
 	 * @note Половина вторая правила: без неё `300.5` уехало бы дорогой целого молча
+	 *
 	 */
 	{
 		// Собираемая запись дробного числа с дробной частью
@@ -1275,6 +1303,7 @@ TEST(CodecAbcDocument, WholeRealMatchesInteger){
 		ASSERT_EQ(natural, numeric_limits <uint64_t>::max());
 	}
 }
+// Прогон правил повтора имени поля во вложенном отображении
 TEST(CodecAbcDocument, DuplicateRulesNested){
 	// Сборщик исходной бинарной записи
 	abc::writer_t writer;
@@ -1286,6 +1315,7 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
 	 *
 	 * @note Признак этот значит ОТКАЗ, а не дозволение: полярность его обратна
 	 * одноимённой настройке разбора, где `duplicates` есть правило обращения
+	 *
 	 */
 	assembly.duplicates = false;
 	// Выполняем установку настроек сборки записи
@@ -1323,13 +1353,13 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
 	// Выполняем укладку конца внешнего отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Настройки разбора записи
-	abc::reader_t::settings_t settings;
+	abc::document_t::settings_t settings;
 	// Выполняем установку правила оставления последнего значения
-	settings.duplicates = abc::duplicate_t::LAST;
-	// Дерево документа
-	abc::document_t document;
+	settings.reader.duplicates = abc::duplicate_t::LAST;
+	// Дерево документа с установленными настройками разбора
+	abc::document_t document(settings);
 	// Выполняем разбор записи в дерево документа
-	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size(), settings))
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
 	// Выполняем получение корня дерева документа
 	const abc::document_t::value_t root = document.root();
@@ -1385,6 +1415,7 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
  *
  * @note Тип объявлен в БЕЗЫМЯННОМ пространстве: проверки кодеков собираются одной
  *       программой, и тип файлового охвата дал бы порчу кучи вдали от места
+ *
  */
 namespace {
 	/**
@@ -1410,6 +1441,7 @@ namespace {
  *       расхождением на переполнении по первому же случаю, а оказалось расхождением
  *       грамматики числа целиком - пяти разных родов. Семи записей, на каких столбцы
  *       сходились прежде, не увидели бы и там: краевое поведение живёт у краёв
+ *
  */
 TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	/**
@@ -1417,6 +1449,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 *
 	 * @param record сличаемая запись числа
 	 * @param title  наименование сличаемой записи
+	 *
 	 */
 	auto same = [](const auto & source, const string & title) noexcept -> void {
 		// Запись, собранная из поданного числа
@@ -1437,6 +1470,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 		 * @note Признак выведен 31.08.2026: опора обязана лежать ВНЕ проверяемого. Тем
 		 *       же признаком пал доклад «разбор - сборка - разбор, расхождений ноль»,
 		 *       где опорою служило то же, что и проверялось
+		 *
 		 */
 		{
 			// Число, снятое обратно видом поданного
@@ -1450,6 +1484,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 		 * @brief Работа сличения слоёв одним затребованным видом
 		 *
 		 * @tparam T затребованный вид числа
+		 *
 		 */
 		auto alike = [&](auto probe) noexcept -> void {
 			// Число, извлечённое слоем дерева документа
@@ -1465,6 +1500,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 			 * равно самому себе по стандарту, и прямое сличение объявляло бы расхождение
 			 * слоёв там, где оба слоя отдали одно и то же. Ловушка эта поймала себя сама
 			 * на первом же прогоне
+			 *
 			 */
 			ASSERT_EQ(::testing::PrintToString(tree), ::testing::PrintToString(owned)) << title;
 		};
@@ -1486,6 +1522,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 * @brief Работа сборки записи дробного числа
 	 *
 	 * @param value укладываемое дробное число
+	 *
 	 */
 	auto fractional = [&record](const double value) noexcept -> Source <double> {
 		// Выполняем очистку буфера собираемой записи
@@ -1499,6 +1536,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 * @brief Работа сборки записи целого числа
 	 *
 	 * @param value укладываемое целое число
+	 *
 	 */
 	auto whole = [&record](const int64_t value) noexcept -> Source <int64_t> {
 		// Выполняем очистку буфера собираемой записи
@@ -1549,6 +1587,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 *       воспроизведена на своей же разрядом `FZ` (24-й) регистра `FPCR`, стенд ARM64
 	 *       не понадобился. Признак печатался рядом с итогом («поднормальные живы: да /
 	 *       НЕТ»), иначе мерилась бы пустота. В обоих случаях число снято ТОЧНО
+	 *
 	 */
 	same(fractional(numeric_limits <double>::denorm_min()), "наименьшее поднормальное");
 	/**
@@ -1614,7 +1653,7 @@ TEST(CodecAbcDocument, ErrorLocationReachesTheConsumer){
  *
  * @details Согласие договоров всех семи кодеков на уровне общего API затребовано
  * 02.09.2026. Поверка держит ту его часть, какая у ABC заведена ради согласия: `size`,
- * `empty`, `dump` двумя видами, `settings` парою и `errorLocation`. Без неё добавки эти
+ * `empty`, `dump`, `settings` и `errorLocation`. Без неё добавки эти
  * стояли бы незваными - набор их не трогал, а согласие проверялось бы чтением заголовков
  *
  * @note Поверяется РАБОТА добавок, а не наличие их: наличие блюдёт сам собиратель, а
@@ -1642,14 +1681,12 @@ TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	ASSERT_TRUE(document.empty());
 	// Узлов у свежего дерева быть не должно
 	ASSERT_EQ(document.size(), static_cast <size_t> (0));
-	// Настройки разбора с отказом на повтор имени поля
-	abc::reader_t::settings_t parsing;
+	// Настройки документа
+	abc::document_t::settings_t parsing;
 	// Выполняем объявление строгого вида записи
-	parsing.canonical = true;
+	parsing.reader.canonical = true;
 	// Выполняем установку настроек разбора деревом
 	document.settings(parsing);
-	// Хранимые настройки обязаны отвечать установленным
-	ASSERT_TRUE(document.settings().canonical);
 	// Запись обязана разбираться в дерево документа
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -1662,9 +1699,11 @@ TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	// Собранная деревом запись обязана совпасть с исходной октет в октет
 	ASSERT_EQ(document.dump(), record);
 	// Настройки сборки записи
-	abc::writer_t::settings_t assembling;
+	abc::document_t::settings_t assembling;
+	// Выполняем установку настроек сборки записи
+	document.settings(assembling);
 	// Собранная затребованными настройками запись обязана совпасть с исходной
-	ASSERT_EQ(document.dump(assembling), record);
+	ASSERT_EQ(document.dump(), record);
 	// Очистка обязана возвращать дерево к пустому виду
 	document.clear();
 	// Очищенное дерево обязано быть пустым
@@ -1673,9 +1712,11 @@ TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	ASSERT_EQ(document.size(), static_cast <size_t> (0));
 	/**
 	 * Настройки разбора очистка трогать НЕ должна: они принадлежат дереву, а не
-	 * разобранному в него содержимому
+	 * разобранному в него содержимому. Повторный разбор той же записи обязан пройти,
+	 * как проходил он и до очистки
 	 */
-	ASSERT_TRUE(document.settings().canonical);
+	ASSERT_TRUE(document.parse(record.data(), record.size()))
+		<< "код отказа: " << abc::message(document.error());
 }
 /**
  * @brief Проверка того, что отметка времени извлекается обоими целыми видами
@@ -1844,6 +1885,7 @@ TEST(CodecAbcDocument, StoredCountsAgreeWithTheWalk){
 	 *
 	 * @note Мерою здесь `nodes()`, а не `size()`: с 03.09.2026 `size()` выдаёт детей
 	 *       корня, а сличается тут длина АРЕНЫ с числом узлов, пройденных обходом
+	 *
 	 */
 	ASSERT_EQ(walked, document.nodes());
 	// Корень обязан нести ровно две пары
@@ -1970,6 +2012,7 @@ TEST(CodecAbcDocument, RepeatedParsingDoesNotGrowTheStorage){
 	 * Выполняем набор записи из восьми полей
 	 */
 	for(size_t i = 0; i < 8; i++)
+		// Укладываем в собираемое значение пару имени «поле-N» и строки «значение-N»
 		ASSERT_TRUE(root.insert(abc::value_t("поле-" + to_string(i)),
 		 abc::value_t(string("значение-") + to_string(i))));
 	// Выполняем сборку двоичной записи
@@ -2078,6 +2121,7 @@ TEST(CodecAbcDocument, LookupAgreesOnBothSidesOfTheIndexThreshold){
 			 * @note Сличается тождество, а не содержимое: поля здесь несут разные
 			 *       значения, но сличение содержимого прошло бы и у дороги, отдающей
 			 *       узел верный по случайности
+			 *
 			 */
 			ASSERT_TRUE(document.root().get(named).same(document.root().at(i)))
 				<< count << ": " << named;
@@ -2159,7 +2203,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
 	// Выполняем разбор собранной двоичной записи
 	ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 	/**
-	 * @brief Метод извлечения целого значения по пути
+	 * @brief Функция извлечения целого значения по пути
 	 *
 	 * @param path путь к извлекаемому значению
 	 * @return     извлечённое значение, ноль при отсутствии его
@@ -2191,6 +2235,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
 	 * @note Половина эта и делает проверку зрячей: без неё она была бы зелена и при
 	 *       разборе, берущем звено дословно, - `a~1b` тогда просто не нашлось бы, а
 	 *       `a/b` нашлось бы двумя звеньями
+	 *
 	 */
 	ASSERT_FALSE(document.has("/a/b"));
 	/**
@@ -2200,6 +2245,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
 	 * отвечает ложью и на исчерпание пути, и на недействительность его. Без различения
 	 * путь `/t~x` отдавал бы последнее дошедшее значение, то есть КОРЕНЬ дерева, - и
 	 * потребитель получал бы всё дерево на месте отсутствующего поля
+	 *
 	 */
 	ASSERT_FALSE(document.has("/t~x"));
 	// Выполняем проверку недействительности пути со знаком отмены на конце
@@ -2209,6 +2255,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
 	 *
 	 * @note Правила пути держит один посредник на четверых, и проверка сличает оба
 	 *       взгляда: разойдись они - разошлись бы молча
+	 *
 	 */
 	ASSERT_TRUE(root.at("/a~1b").valid());
 	// Выполняем проверку того, что дословная косая черта имени не даёт и владеющему
@@ -2316,6 +2363,7 @@ TEST(CodecAbcDocument, EqualityIsAskedByDifferentWordsInTwoViews) {
 	 * @warning Половина эта и есть весь договор: заведись у курсора оператор равенства -
 	 * и он значил бы тождество узла, тогда как у соседнего вида тот же знак значит
 	 * равенство содержимого. Читающий сличение не различил бы их ничем
+	 *
 	 */
 	ASSERT_FALSE(comparable(cursor));
 	// Выполняем проверку того, что тождество курсора спрашивается словом
@@ -2632,6 +2680,7 @@ TEST(CodecAbcDocument, TheRefusedParseReachesTheJournal) {
 	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
 	 *          а полагаться на состояние, оставленное соседями, значило бы городить
 	 *          поверку, чей исход зависит от порядка запуска
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Донесения, снятые с журнала подпискою
@@ -2695,14 +2744,17 @@ TEST(CodecAbcDocument, KeysOfDifferentKindsAreNotDuplicates){
 	 * @param record разбираемая запись
 	 * @param digest дерево документа, куда ложится разбор
 	 * @return       признак успешности разбора
+	 *
 	 */
 	auto parse = [](const vector <uint8_t> & record, abc::document_t & digest) noexcept -> bool {
 		// Настройки разбора записи
-		abc::reader_t::settings_t settings;
+		abc::document_t::settings_t settings;
 		// Выполняем установку правила оставления первого из повторяющихся значений
-		settings.duplicates = abc::duplicate_t::FIRST;
+		settings.reader.duplicates = abc::duplicate_t::FIRST;
+		// Выполняем установку настроек разбора записи
+		digest.settings(settings);
 		// Выводим признак успешности разбора записи в дерево документа
-		return digest.parse(record.data(), record.size(), settings);
+		return digest.parse(record.data(), record.size());
 	};
 	/**
 	 * Отображение о двух парах, имена каких сходятся содержимым, но разнятся видом:
@@ -2768,11 +2820,13 @@ TEST(CodecAbcDocument, TheRefusedBuildingYieldsAnEmptyRecord){
 	 */
 	{
 		// Настройки сборки записи строгого вида
-		abc::writer_t::settings_t settings;
+		abc::document_t::settings_t settings;
 		// Выполняем установку строгого вида записи
-		settings.canonical = true;
+		settings.writer.canonical = true;
+		// Выполняем установку настроек сборки записи
+		document.settings(settings);
 		// Выполняем сборку записи строгим видом
-		const vector <uint8_t> strict = document.dump(settings);
+		const vector <uint8_t> strict = document.dump();
 		// Запись обязана выйти пустой
 		ASSERT_TRUE(strict.empty()) << "отказавшая сборка отдала запись из "
 			<< strict.size() << " октетов";
@@ -2845,6 +2899,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		const abc::document_t::value_t mapping = document.root().at(0);
 		// Отображение обязано быть действительным и нести ровно одну пару
 		ASSERT_TRUE(mapping.valid());
+		// Проверяем, что отображение несёт ровно одну пару
 		ASSERT_EQ(mapping.size(), 1u);
 		// Имя первой пары обязано быть отдано
 		ASSERT_TRUE(mapping.key(0).valid()) << "имя первой пары не отдано";
@@ -2869,6 +2924,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		const abc::document_t::value_t empty = document.root().at(0);
 		// Пустой перечень обязан быть действительным и не нести ни одного значения
 		ASSERT_TRUE(empty.valid());
+		// Проверяем, что пустой перечень не несёт ни одного значения
 		ASSERT_EQ(empty.size(), 0u);
 		/**
 		 * Обход пустого вместимого обязан начинаться недействительным значением: за
@@ -2882,6 +2938,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 	 * @note Случай этот того же рода и оттого стоит здесь же: указатель имён полей
 	 * строится обходом пар «имя-значение», и перечень строк, пройденный тем же обходом,
 	 * дал бы имени `a` значением СОСЕДНЮЮ строку `b`
+	 *
 	 */
 	{
 		// Разбираемая запись
@@ -2895,6 +2952,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		const abc::document_t::value_t root = document.root();
 		// Корень обязан быть действительным перечнем о двух значениях
 		ASSERT_TRUE(root.valid());
+		// Проверяем, что корень несёт ровно два значения
 		ASSERT_EQ(root.size(), 2u);
 		// Спрос имени поля у перечня отдан быть не обязан
 		ASSERT_FALSE(root.get("a").valid()) << "перечень отдал значение по имени поля";

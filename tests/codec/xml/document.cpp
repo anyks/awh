@@ -32,6 +32,7 @@
  *
  * @note У MS Windows его нет вовсе, и подключение без заслона валило бы сборку всего
  *       набора разметки под этой системой
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -45,6 +46,7 @@
  * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
  *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
  *       два прогона разных процессов иначе пишут в один и тот же файл
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -99,16 +101,25 @@ namespace {
 		 *          `./имя-каталога` точку несёт в начале, и поиск по всей строке
 		 *          обращал бы её в `.-1234/имя-каталога` - путь в несуществующий
 		 *          каталог. Найдено 07.09.2026 красною строкою набора
+		 *
 		 */
 		const size_t slash = name.rfind('/');
+		// Находим положение последней точки во всём имени файла
 		const size_t found = name.rfind('.');
+		// Оставляем точку расширения, коли она стоит за последним разделителем пути
 		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
 		// Собираемое имя без расширения
 		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
 		// Дописываем номер процесса
 		result.append("-").append(std::to_string(static_cast <uint32_t> (
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 			::_getpid()
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
 #else
 			::getpid()
 #endif
@@ -126,6 +137,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -186,7 +200,7 @@ TEST(CodecXmlDocument, Soap) {
  */
 TEST(CodecXmlDocument, Bindings) {
 	/**
-	 * @brief Метод разбора текста разметки и обратной его записи
+	 * @brief Функция разбора текста разметки и обратной его записи
 	 *
 	 * @param text разбираемый текст разметки
 	 * @return     записанный обратно текст разметки
@@ -196,13 +210,15 @@ TEST(CodecXmlDocument, Bindings) {
 		// Объект дерева разметки
 		xml::document_t document;
 		// Настройки разбора текста разметки
-		xml::reader_t::settings_t settings;
+		xml::document_t::settings_t settings;
 		// Выполняем отключение выдачи примечаний отдельным событием
-		settings.emitComments = false;
+		settings.reader.emitComments = false;
 		// Выполняем отключение выдачи указаний обработчику отдельным событием
-		settings.emitProcessing = false;
+		settings.reader.emitProcessing = false;
+		// Выполняем установку настроек разбора текста разметки
+		document.settings(settings);
 		// Если разбор текста разметки выполнить не удалось, выводим отказ
-		if(!document.parse(text, settings)) return string("ОТКАЗ РАЗБОРА");
+		if(!document.parse(text)) return string("ОТКАЗ РАЗБОРА");
 		// Объект записи текста разметки
 		xml::writer_t writer;
 		// Если обратную запись дерева выполнить не удалось, выводим отказ
@@ -216,6 +232,7 @@ TEST(CodecXmlDocument, Bindings) {
 	 * @note Здесь собраны все виды объявления пространства имён: под префиксом, по
 	 *       умолчанию, с отменой объявления по умолчанию, с перекрытием префикса
 	 *       вложенным узлом и с двумя префиксами разом
+	 *
 	 */
 	static constexpr const char * TEXTS[] = {
 		"<s:Envelope xmlns:s=\"http://x/env\"><s:Body><u:Get xmlns:u=\"urn:svc\"><Arg>1</Arg></u:Get></s:Body></s:Envelope>",
@@ -246,6 +263,7 @@ TEST(CodecXmlDocument, Bindings) {
 	 *
 	 * @note Объявленное родителем действует и во вложенном узле, но принадлежит родителю:
 	 *       узел «b» своих объявлений не имеет, а узел «c» имеет единственное
+	 *
 	 */
 	ASSERT_TRUE(root.child("b", "u2").bindings().empty());
 	// Выполняем проверку количества объявлений вложенного узла
@@ -270,6 +288,7 @@ TEST(CodecXmlDocument, Interned) {
 	 * @note Узлов здесь заведомо больше порога, за которым дерево сводит повторяющиеся
 	 *       обозначения пространств имён к единственному размещению: проверяется, что
 	 *       сведение имён узлов не путает и обозначения выдаются каждому своё
+	 *
 	 */
 	string text("<r xmlns=\"urn:first\" xmlns:s=\"urn:second\">");
 	/**
@@ -415,6 +434,7 @@ TEST(CodecXmlDocument, Huge) {
 	 * @note Сличается именно арена: 20000 узлов разметки, столько же текстовых узлов
 	 *       содержимого их да корень. Число детей корня выдаётся ходом `size()` и
 	 *       сличается ниже - величины эти разные, и стеречь надо обе
+	 *
 	 */
 	ASSERT_EQ(document.nodes(), static_cast <size_t> ((20000 * 2) + 2));
 	// Выполняем проверку количества вложенных узлов корня разметки
@@ -475,6 +495,7 @@ TEST(CodecXmlDocument, Numeric) {
 	 *
 	 * @note Обвязка появляется сама собой при записи с отступами, поэтому
 	 *       отбрасывать её обязательно
+	 *
 	 */
 	ASSERT_TRUE(root.child("pad").value(port));
 	// Выполняем проверку разобранного целого числа
@@ -544,6 +565,7 @@ TEST(CodecXmlDocument, Numeric) {
 	 *
 	 * @note Числа ниже записаны литералами намеренно: они суть обещание наружу, а не
 	 *       пересчёт того же выражения, каким они получены в самом разборе
+	 *
 	 */
 	{
 		// Выполняем проверку заворачивания целого числа по кругу
@@ -562,6 +584,7 @@ TEST(CodecXmlDocument, Numeric) {
 		 * @note Отказом это тоже не считается: знак числа записи не противоречит, а
 		 *       перенос в вид без знака ведётся заворачиванием по кругу, ровно как
 		 *       его ведёт язык и кодек JSON. «-42» даёт 2^32 - 42
+		 *
 		 */
 		ASSERT_TRUE(root.child("sign").value(value));
 		// Выполняем проверку завёрнутого значения записи со знаком
@@ -623,11 +646,13 @@ TEST(CodecXmlDocument, SpaceNodes) {
 		// Объект дерева разметки
 		xml::document_t document;
 		// Настройки разбора текста разметки
-		xml::reader_t::settings_t settings;
+		xml::document_t::settings_t settings;
 		// Выполняем включение отделения незначимого пробельного содержимого
-		settings.separateSpaces = true;
+		settings.reader.separateSpaces = true;
+		// Выполняем установку настроек разбора текста разметки
+		document.settings(settings);
 		// Выполняем разбор текста разметки
-		ASSERT_TRUE(document.parse(text, settings));
+		ASSERT_TRUE(document.parse(text));
 		// Количество обнаруженных узлов пробельного содержимого
 		size_t spaces = 0;
 		/**
@@ -644,6 +669,7 @@ TEST(CodecXmlDocument, SpaceNodes) {
 		 *
 		 * @note Настройка разбора отбирает вид узла, а содержимое узла разметки
 		 *       обязано остаться тем же самым
+		 *
 		 */
 		ASSERT_EQ(document.root().first().text(), string("\n\tx\n\t y \n"));
 		/**
@@ -696,6 +722,7 @@ TEST(CodecXmlDocument, AttributeLookup) {
 	 *
 	 * @note Договор об именах прямо велит не распространять объявленное по умолчанию
 	 *       пространство имён на имена атрибутов
+	 *
 	 */
 	ASSERT_TRUE(node.has("m"));
 	// Выполняем проверку отсутствия незаписанного атрибута
@@ -703,9 +730,10 @@ TEST(CodecXmlDocument, AttributeLookup) {
 	// Выполняем проверку того, что непригодный узел атрибутов не имеет
 	ASSERT_FALSE(xml::node_t().has("m", ""));
 }
+// Проверяем дословное сохранение имён узлов и атрибутов при круговом ходе через дерево
 TEST(CodecXmlDocument, VerbatimNames) {
 	/**
-	 * @brief Метод кругового хода текста разметки через дерево
+	 * @brief Функция кругового хода текста разметки через дерево
 	 *
 	 * @param text разбираемый текст разметки
 	 * @param ns   признак разбора с учётом пространств имён
@@ -716,11 +744,13 @@ TEST(CodecXmlDocument, VerbatimNames) {
 		// Объект дерева разметки
 		xml::document_t document;
 		// Настройки разбора текста разметки
-		xml::reader_t::settings_t settings;
+		xml::document_t::settings_t settings;
 		// Устанавливаем признак разбора с учётом пространств имён
-		settings.namespaces = ns;
+		settings.reader.namespaces = ns;
+		// Выполняем установку настроек разбора текста разметки
+		document.settings(settings);
 		// Если разбор текста разметки выполнить не удалось, выводим признак отказа
-		if(!document.parse(text, settings)) return string("ОТКАЗ РАЗБОРА");
+		if(!document.parse(text)) return string("ОТКАЗ РАЗБОРА");
 		// Объект записи текста разметки
 		xml::writer_t writer;
 		// Если запись собранного дерева выполнить не удалось, выводим признак отказа
@@ -744,6 +774,7 @@ TEST(CodecXmlDocument, VerbatimNames) {
 		 *
 		 * @note Имена воспроизводятся знак в знак: делить их не на что, и запись
 		 *       выводит их такими, какими они в дереве и лежат
+		 *
 		 */
 		ASSERT_EQ(walk(text, false), string(text));
 	}
@@ -761,6 +792,7 @@ TEST(CodecXmlDocument, VerbatimNames) {
 		 * @note Разделитель в имени разбор с пространствами имён делит, и в дерево он
 		 *       не попадает вовсе; попавший туда иначе означал бы имя, договору о
 		 *       пространствах имён не отвечающее
+		 *
 		 */
 		ASSERT_EQ(walk("<a:b:c/>", true), string("ОТКАЗ РАЗБОРА"));
 	}
@@ -780,7 +812,7 @@ TEST(CodecXmlDocument, VerbatimNames) {
  */
 TEST(CodecXmlDocument, RewriteStability) {
 	/**
-	 * @brief Метод записи дерева разметки, собранного разбором текста
+	 * @brief Функция записи дерева разметки, собранного разбором текста
 	 *
 	 * @param text разбираемый текст разметки
 	 * @return     записанный текст разметки либо признак отказа
@@ -788,15 +820,15 @@ TEST(CodecXmlDocument, RewriteStability) {
 	 */
 	const auto rewrite = [](const string & text) noexcept -> string {
 		// Настройки разбора текста разметки
-		xml::reader_t::settings_t settings;
+		xml::document_t::settings_t settings;
 		// Выполняем включение подстановки ссылок на объявленные сущности
-		settings.entities = true;
+		settings.reader.entities = true;
 		// Выполняем склеивание подряд идущих кусков содержимого
-		settings.mergeText = true;
-		// Дерево разметки, собираемое разбором текста
-		xml::document_t document;
+		settings.reader.mergeText = true;
+		// Дерево разметки, собираемое разбором текста, с установленными настройками
+		xml::document_t document(settings);
 		// Если разбор текста разметки выполнить не удалось, выводим признак отказа
-		if(!document.parse(text, settings)) return "ОТКАЗ РАЗБОРА";
+		if(!document.parse(text)) return "ОТКАЗ РАЗБОРА";
 		// Настройки записи текста разметки
 		xml::writer_t::settings_t options;
 		// Выполняем установку плотного вида записи собираемого текста
@@ -895,6 +927,7 @@ TEST(CodecXmlDocument, Navigation) {
 	 * @note Обращения к нему обязаны отвечать пустым, а не рушить обход: узел
 	 *       непригодный получается всяким движением за край дерева, и проверять
 	 *       его пригодность перед каждым обращением обходящему несподручно
+	 *
 	 */
 	{
 		// Непригодный узел дерева разметки
@@ -977,10 +1010,12 @@ TEST(CodecXmlDocument, EncodingRefusalOnFeed) {
  * @note Отказ обязан доходить до дерева ЦЕЛИКОМ: с кодом ошибки и с местом её
  *       в исходном тексте. Дерево же после отказа остаётся пустым, а не содержащим
  *       половину разобранного
+ *
  * @warning Пустой текст отвечает отсутствием корневого узла, а НЕ отказом кодировки:
  *          определять кодировку у пустого текста нечего, но неопределённость её
  *          уводила отказ в жалобу на кодировку, какой у текста нет вовсе. Потребитель
  *          по такому отказу искал бы изъян не там
+ *
  */
 TEST(CodecXmlDocument, ParseFailure) {
 	/**
@@ -1018,6 +1053,7 @@ TEST(CodecXmlDocument, ParseFailure) {
 	 *
 	 * @note Поиск обходит дерево вглубь и обязан ВОЗВРАЩАТЬСЯ вверх, исчерпав ветвь:
 	 *       без возврата узел, стоящий за уже пройденной ветвью, найден бы не был
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -1038,9 +1074,11 @@ TEST(CodecXmlDocument, ParseFailure) {
  * @note Отказ выносится приведением кодировки, а не разбором разметки, и приходит он
  *       ДО первого события: подача такого текста отвергается целиком, дерево же
  *       остаётся пустым
+ *
  * @warning Коды отказов здесь РАЗНЫЕ и разными обязаны быть: неизвестная кодировка,
  *          негодная запись знаков и знак, разметке недопустимый, - три разные
  *          неисправности, и чинить их потребителю по-разному
+ *
  */
 TEST(CodecXmlDocument, EncodingFailures) {
 	/**
@@ -1055,6 +1093,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 		 * @note Прежде здесь стояла «windows-1251», и решение то ПЕРЕСМОТРЕНО 23.08.2026:
 		 *       всякая однобайтовая кодировка ныне берётся таблицею у `awh::charset`, и
 		 *       CP1251 читается. Отвергается лишь имя, кодировки не значащее вовсе
+		 *
 		 */
 		ASSERT_FALSE(document.parse("<?xml version=\"1.0\" encoding=\"выдуманная\"?><a/>"));
 		// Выполняем проверку кода ошибки разбора
@@ -1092,6 +1131,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 *          приходил оттого, что нули не годятся разметке, а не оттого, что кодировка
 	 *          не поддерживается. Разница видна звучащему: по коду знака он искал бы
 	 *          изъян в своём тексте, какого нет вовсе
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -1107,6 +1147,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 * Место ошибки записывается у всякого отказа
 	 *
 	 * @note Отказ без места отправляет потребителя искать неисправность перебором
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -1126,6 +1167,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
  * @note Отображение заводится не сразу: признаком широты родителя служит МЕСТО НАХОДКИ -
  *       узел, обнаруженный дальше порога, о широте родителя и свидетельствует. Оттого
  *       проверка обходит детей от первого к последнему, а не выборочно
+ *
  */
 TEST(CodecXmlDocument, WideParentLookup) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
@@ -1166,6 +1208,7 @@ TEST(CodecXmlDocument, WideParentLookup) {
 	 *
 	 * @note Обход повторяется намеренно: первый заводит отображение, второй отвечает уже
 	 *       по нему, и расходись они - расхождение видно лишь на втором
+	 *
 	 */
 	for(size_t i = 0; i < count; i++)
 		// Выполняем проверку содержимого разысканного вложенного узла
@@ -1177,6 +1220,7 @@ TEST(CodecXmlDocument, WideParentLookup) {
  * @details Одноимённые узлы у одного родителя - обычный вид разметки, и розыск отвечает
  *          ПЕРВЫМ из них. Отображению надлежит отвечать тем же: подмени наполнение его
  *          установкой по ключу вместо `emplace`, и розыск начал бы отвечать последним
+ *
  */
 TEST(CodecXmlDocument, WideParentRepeatedNames) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
@@ -1204,6 +1248,7 @@ TEST(CodecXmlDocument, WideParentRepeatedNames) {
 	 *
 	 * @note Обращения повторяются намеренно: заведись отображение по дороге - розыск
 	 *       обязан отвечать всё тем же первым вхождением имени
+	 *
 	 */
 	for(size_t i = 0; i < 4; i++)
 		// Выполняем проверку того, что розыск отвечает первым вхождением имени
@@ -1219,6 +1264,7 @@ TEST(CodecXmlDocument, WideParentRepeatedNames) {
  * @warning Проверка эта стережёт ПАМЯТЬ, а не одну лишь верность ответа: забытый сброс
  *          даёт обращение к освобождённой памяти, и отказ её виден лишь под санитайзером
  *          либо по случаю
+ *
  */
 TEST(CodecXmlDocument, WideParentGraft) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
@@ -1244,6 +1290,7 @@ TEST(CodecXmlDocument, WideParentGraft) {
 		 * Выполняем перебор всех вложенных узлов разметки
 		 *
 		 * @note Обход этот заводит отображение: без него прививке нечего было бы сбрасывать
+		 *
 		 */
 		for(size_t i = 0; i < count; i++)
 			// Выполняем проверку содержимого разысканного вложенного узла
@@ -1279,6 +1326,7 @@ TEST(CodecXmlDocument, WideParentGraft) {
  * @details Повторный разбор очищает арену узлов и общее хранилище знаков, и отображение,
  *          его пережившее, указывало бы ключами в освобождённую память, а значениями - на
  *          узлы прежнего дерева
+ *
  */
 TEST(CodecXmlDocument, WideParentReparse) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
@@ -1293,6 +1341,7 @@ TEST(CodecXmlDocument, WideParentReparse) {
 	 *          проходила насквозь: арена и хранилище укладывались вторым разбором точь-в-точь
 	 *          как первым, и устаревшее отображение отвечало верно ПО СЛУЧАЮ. Под разными же
 	 *          именами оно отвечает об отсутствии узла, какой в дереве есть
+	 *
 	 */
 	for(uint8_t round = 0; round < 2; round++){
 		// Приставка к именам узлов очередного круга
@@ -1344,6 +1393,7 @@ TEST(CodecXmlDocument, WideParentReparse) {
  * @warning Узлы текста между узлами разметки здесь ОБЯЗАТЕЛЬНЫ: дети узла разметки лежат
  *          вперемешку, а отображение хранит одни узлы разметки. Без них ветвь пропуска не
  *          проходилась бы ни разу
+ *
  */
 TEST(CodecXmlDocument, WideParentNamespaceFallback) {
 	// Количество вложенных узлов разных имён, заведомо превышающее порог заведения отображения
@@ -1372,6 +1422,7 @@ TEST(CodecXmlDocument, WideParentNamespaceFallback) {
 	 * @note Обращение это заводит отображение по пути, каким прочие проверки не ходят:
 	 *       розыск, ничего не обнаруживший, перебирает всех детей и число их знает точно.
 	 *       Наполнение отображения при этом пропускает узлы текста, вставленные выше
+	 *
 	 */
 	ASSERT_FALSE(root.child("отсутствует").valid());
 	// Выполняем проверку розыска узла первого пространства имён
@@ -1382,6 +1433,7 @@ TEST(CodecXmlDocument, WideParentNamespaceFallback) {
 	 * @note Отображение отвечает здесь узлом ПЕРВОГО пространства - иного местного имени
 	 *       оно не знает, - и розыск обязан откатиться к перебору. Заодно откат этот вновь
 	 *       обращается к заведению отображения, уже заведённого, и проходит его ранний выход
+	 *
 	 */
 	ASSERT_EQ(root.child("item", "urn:B").text(), "второй");
 	// Выполняем проверку розыска узла первого пространства имён повторно
@@ -1406,6 +1458,7 @@ TEST(CodecXmlDocument, WideParentNamespaceFallback) {
  * @note Проверка идёт в обе стороны: и при единственном совпавшем, и при многих. Второе
  *       обязательно - подмени счёт одноимённых единицей, и выдача отдавала бы один узел
  *       вместо всех, а перебором такого не увидеть
+ *
  */
 TEST(CodecXmlDocument, WideParentChildren) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
@@ -1439,6 +1492,7 @@ TEST(CodecXmlDocument, WideParentChildren) {
 	 *
 	 * @note Обход повторяется намеренно: первый заводит отображение, второй отвечает уже по
 	 *       нему, и расходись они - расхождение видно лишь на втором
+	 *
 	 */
 	for(uint8_t round = 0; round < 2; round++){
 		/**
@@ -1480,6 +1534,7 @@ TEST(CodecXmlDocument, WideParentChildren) {
  * @warning Сличать запись с записью недостаточно: потеря, случившаяся ОДИНАКОВО на обоих
  *          путях, обоими и не будет замечена. Оттого содержимое привитого узла сличается
  *          отдельно с тем, что в него клали
+ *
  */
 TEST(CodecXmlDocument, GraftSurvivesRewrite){
 	/**
@@ -1529,6 +1584,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		 * @brief Подсчёт числа вложенных узлов обходом
 		 *
 		 * @note Узел дерева числа детей своих не выдаёт, и счёт идёт обходом связей
+		 *
 		 */
 		auto count = [](const xml::node_t & node) noexcept -> size_t {
 			// Число насчитанных вложенных узлов
@@ -1555,6 +1611,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		 *
 		 * @note Сличение это отдельно от прочих: потеря, случившаяся одинаково и в дереве,
 		 *       и в перезаписи, сличением дерева с деревом не ловится никак
+		 *
 		 */
 		ASSERT_EQ(rewritten.child("target").text(), value.text()) << item.first << ": " << text;
 		// Выполняем проверку того, что заменённое поддерево наружу не выдано
@@ -1573,6 +1630,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
  *       и звался `<z>` - корнем нового дерева
  *
  * @note Дефект тот же и в кодеке JSON, найден сличением кодеков между собою
+ *
  */
 TEST(CodecXmlDocument, NodeDoesNotSurviveRebuild){
 	// Дерево разметки
@@ -1653,9 +1711,12 @@ TEST(CodecXmlDocument, ReceiverIsUntouchedOnEveryRefusal) {
 	 *       от 01.09.2026 выдаётся пределом вида, отказом более не отвечая. Взамен
 	 *       взяты записи, отвергаемые составом: незакрытый показатель, двойная точка
 	 *       и записи `nan` с `inf`, у кодеков рамки числами не считаемые
+	 *
 	 */
 	const char * texts[] = {"строка", "", "0x10", "1.2.3", "1e", "nan", "inf", "+"};
-	// Выполняем перебор всех проверяемых записей
+	/**
+	 * Выполняем перебор всех проверяемых записей
+	 */
 	for(const char * text : texts){
 		// Приёмник целого вида с опознавательным значением
 		uint64_t big = 12345;
@@ -1675,6 +1736,7 @@ TEST(CodecXmlDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 * @note Разбор расходится ветвями по знаковости вида, и без этого проверка
 		 *       слепа к половине путей отказа: проба зрячести 01.09.2026 записью в
 		 *       приёмник внутри знаковой ветви оставалась зелёной
+		 *
 		 */
 		EXPECT_FALSE(xml::numeric <int64_t> (text, signedBig));
 		// Выполняем проверку неприкосновенности приёмника при отказе
@@ -1685,6 +1747,7 @@ TEST(CodecXmlDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 * @note Логический вид берётся ТРЕТЬЕЙ ветвью, прежде целых: язык причисляет
 		 *       его к целым, и без отдельной ветви «true» отвергалось бы. Ветвь эта
 		 *       такой же путь отказа, как знаковая и беззнаковая
+		 *
 		 */
 		EXPECT_FALSE(xml::numeric <bool> (text, flag));
 		// Выполняем проверку неприкосновенности приёмника при отказе
@@ -1759,12 +1822,15 @@ TEST(CodecXmlDocument, BothDoorsAgreeOnEveryShapeOfANumber) {
 		 *       необязательным ведущим знаком - плюс дозволен наравне с минусом.
 		 *       Прежде плюс отвергался заслоном разбора, и запись `+42` числом не
 		 *       извлекалась вовсе, будучи по договору законной
+		 *
 		 */
 		{"+42", true, true, 42},
 		// Запись из одного лишь знака числом не является
 		{"+", false, false, 0}
 	};
-	// Выполняем перебор всех проверяемых записей
+	/**
+	 * Выполняем перебор всех проверяемых записей
+	 */
 	for(const expectation_t & expectation : expectations){
 		// Выполняем формирование текста разметки с проверяемой записью
 		const string text = (string("<a>") + expectation.text + "</a>");
@@ -1837,6 +1903,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 * @note Сличается второй проход с первым: запись нормализует связывания пространств
 	 *       имён и опускает объявление типа документа, оттого с исходным текстом
 	 *       записанный совпасть не обязан
+	 *
 	 */
 	{
 		// Объект дерева разметки второго прохода
@@ -1851,11 +1918,13 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 */
 	{
 		// Настройки записи текста разметки
-		xml::writer_t::settings_t settings;
+		xml::document_t::settings_t settings;
 		// Устанавливаем нарядный вид записи текста разметки
-		settings.format = xml::format_t::PRETTY;
+		settings.writer.format = xml::format_t::PRETTY;
+		// Выполняем установку настроек дерева разметки
+		doc.settings(settings);
 		// Получаем записанный нарядным видом текст разметки
-		const string pretty = doc.dump(settings);
+		const string pretty = doc.dump();
 		// Выполняем проверку того, что нарядная запись отличается от сжатой
 		ASSERT_NE(pretty, first);
 		// Объект дерева разметки нарядной записи
@@ -1869,6 +1938,8 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	{
 		// Получаем путь к временному файлу разметки
 		const string filename = temporary(unique("awh_xml_document.xml"));
+		// Возвращаем настройки записи текста разметки, установленные по умолчанию
+		doc.settings(xml::document_t::settings_t());
 		// Выполняем проверку записи дерева разметки в файл
 		ASSERT_TRUE(doc.save(filename)) << xml::message(doc.error());
 		// Объект дерева разметки, читаемого из файла
@@ -1896,6 +1967,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 * @note Каталогом берётся ТЕКУЩИЙ, а не `/tmp`: пути этого у MS Windows нет вовсе, и
 	 *       там он разворачивался в отсутствующий `\\tmp` текущего диска, отчего проверка
 	 *       падала не на том, что стерегла. Замерено на стенде Windows 11 ARM64
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -1962,6 +2034,7 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 	 *       вложенный узел всякого вида - и содержимое в том числе. Оттого `/root/a/b/0`
 	 *       ведёт к текстовому узлу внутри `b`, а не пустует. Правило это досталось
 	 *       розыску от прививки и закрепляется здесь, чтобы не быть переоткрытым
+	 *
 	 */
 	{
 		// Выполняем проверку наличия текстового узла содержимого по номеру
@@ -1988,6 +2061,7 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 	 * @note Путь этот изъят из перечня выше намеренно: к узлу он ВЕДЁТ, а прививка им
 	 *       корень заводит либо заменяет целиком. Косая же черта одинокая узлом не
 	 *       разыскивается вовсе - она означала бы звено с пустым именем
+	 *
 	 */
 	ASSERT_TRUE(doc.has(""));
 	// Выполняем проверку пригодности корневого узла разметки, извлечённого по пустому пути
@@ -2001,6 +2075,7 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 	 * узлом разметки не является, - зато прививка им заводит либо заменяет корневой узел
 	 * разметки. Расхождение это между розыском и прививкой ЕДИНСТВЕННОЕ и намеренное:
 	 * иначе дерево нельзя было бы построить вовсе, минуя разбор текста
+	 *
 	 */
 	const vector <string> unreachable = {"/", "/нет", "/root/нет", "/root/a/2", "/root/a/b/1"};
 	/**
@@ -2008,6 +2083,7 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 	 *
 	 * @note Сличаются оба довода прививки: путь, к узлу НЕ ведущий, обязан отвергаться
 	 *       ею ровно там же, где `has()` отвечает отсутствием
+	 *
 	 */
 	{
 		// Владеющее значение, прививаемое в дерево разметки
@@ -2037,12 +2113,11 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 /**
  * @brief Проверка настроек дерева разметки
  *
- * @details Настройки дерева заведены общим ходом у всех кодеков рамки: хранимые
- * действуют на ходы, довода настроек не принимающие, а поданные доводом - лишь на
- * свой заход
+ * @details Настройки дерева заведены общим ходом у всех кодеков рамки: поставленные
+ *          документу, они действуют на всякий его ход, довода настроек не принимающий
  *
  */
-TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
+TEST(CodecXmlDocument, StoredSettingsRuleTheCalls) {
 	// Объект дерева разметки
 	xml::document_t doc;
 	// Настройки дерева разметки
@@ -2051,8 +2126,6 @@ TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
 	settings.writer.format = xml::format_t::PRETTY;
 	// Выполняем установку настроек дерева разметки
 	doc.settings(settings);
-	// Выполняем проверку сохранения установленных настроек дерева
-	ASSERT_EQ(doc.settings().writer.format, xml::format_t::PRETTY);
 	// Выполняем разбор исходного текста разметки
 	ASSERT_TRUE(doc.parse("<root><a>значение</a></root>")) << xml::message(doc.error());
 	// Получаем записанный деревом текст разметки
@@ -2062,16 +2135,9 @@ TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
 	 *
 	 * @note Нарядная запись ставит перевод строки, а сжатая не ставит его вовсе:
 	 *       наличие его и доказывает, что хранимые настройки взяты
+	 *
 	 */
 	ASSERT_NE(adorned.find('\n'), string::npos) << adorned;
-	// Настройки записи текста разметки, подаваемые доводом
-	xml::writer_t::settings_t compact;
-	// Устанавливаем сжатый вид записи текста разметки
-	compact.format = xml::format_t::COMPACT;
-	// Выполняем проверку действия поданных доводом настроек
-	ASSERT_EQ(doc.dump(compact).find('\n'), string::npos);
-	// Выполняем проверку того, что поданные доводом настройки хранимых не изменили
-	ASSERT_EQ(doc.settings().writer.format, xml::format_t::PRETTY);
 	/**
 	 * Выполняем проверку действия хранимых настроек разбора
 	 */
@@ -2087,11 +2153,13 @@ TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
 		// Выполняем проверку отказа разбора разметки глубже предела
 		ASSERT_FALSE(shallow.parse("<a><b><c/></b></a>"));
 		// Настройки разбора текста разметки без предела вложенности
-		xml::reader_t::settings_t deep;
+		xml::document_t::settings_t deep;
 		// Снимаем предел вложенности разбора текста разметки
-		deep.maxDepth = 0;
-		// Выполняем проверку успешности разбора с настройками, поданными доводом
-		ASSERT_TRUE(shallow.parse("<a><b><c/></b></a>", deep)) << xml::message(shallow.error());
+		deep.reader.maxDepth = 0;
+		// Выполняем установку настроек разбора текста разметки взамен прежних
+		shallow.settings(deep);
+		// Выполняем проверку успешности разбора с вновь установленными настройками
+		ASSERT_TRUE(shallow.parse("<a><b><c/></b></a>")) << xml::message(shallow.error());
 	}
 }
 /**
@@ -2141,6 +2209,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 * @note Проверяются лишь пути к узлам ЕДИНСТВЕННЫМ: у `a` два узла `b` подряд, и
 	 *       путь `/root/a/b` после сноса первого ведёт ко второму - отсутствием он не
 	 *       ответит, и ждать его было бы неверно
+	 *
 	 */
 	for(const auto & path : {"/root/c", "/root/a"}){
 		// Объект дерева разметки
@@ -2185,6 +2254,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 *       цепочке детей, и подмена, снявшая правку ссылки на ПОСЛЕДНЕГО ребёнка,
 	 *       записи не меняет вовсе. Замер щупом: после сноса последнего узла запись
 	 *       выходила верной, а `last()` вёл к узлу СНЕСЁННОМУ
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -2219,6 +2289,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 *
 	 * @note Сличаются ЧЕТЫРЕ хода на одних и тех же путях: расхождение розысков
 	 *       невидимо изнутри всякого из них
+	 *
 	 */
 	{
 		// Пути, к узлам дерева не ведущие
@@ -2251,6 +2322,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 * @note Дерево это узлов арены не теряет вовсе - снесённые остаются в ней
 	 *       недостижимыми, - и потому пустым по их числу не выглядит. Запись обязана
 	 *       отвечать отказом об отсутствии корня, а не пустым текстом об успехе
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -2327,6 +2399,7 @@ TEST(CodecXmlDocument, NameIndexDoesNotSurviveTreeEditing) {
 		 *
 		 * @note Прогрев идёт розыском ОТСУТСТВУЮЩЕГО имени: он перебирает всех детей и
 		 *       число их знает точно, оттого отображение и заводит
+		 *
 		 */
 		ASSERT_FALSE(doc.element().child("нет").valid());
 		// Выполняем снос вложенного узла по пути
@@ -2491,6 +2564,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 	 *       него обрывается на половине. Предела `RLIMIT_FSIZE` у MS Windows нет вовсе,
 	 *       и там дорога эта проверкой не берётся - оттого блок и огорожен по системе,
 	 *       а не отступает молча
+	 *
 	 */
 	{
 		/**
@@ -2498,6 +2572,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		 *
 		 * @note Предел этот - настройка ПРОЦЕССА, и снимать её обязательно: оставленная,
 		 *       она валила бы соседние проверки, пишущие файлы
+		 *
 		 */
 		struct Guard {
 			// Прежний предел размера файла процесса
@@ -2569,12 +2644,14 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 	 *
 	 * @note Переименование файла поверх каталога отвергает сама система, а запись во
 	 *       временный файл при этом удаётся целиком: дорога эта от обрыва записи отдельна
+	 *
 	 */
 	{
 		// Адрес каталога, целевой путь занимающего
 		const string directory = ::unique("./xml-document-rename-dir");
 		/**
 		 * @brief Сторож временного каталога проверки
+		 *
 		 */
 		struct Guard {
 			// Адрес стерегомого каталога
@@ -2587,6 +2664,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
 		::removeDirectory(directory);
+		// Требуем от системы успешного заведения временного каталога
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево разметки
 		xml::document_t document;
@@ -2610,6 +2688,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		 *
 		 * @note Места эти у дерева и у значения РАЗНЫЕ, и подмена одного другого не
 		 *       красит: половины держатся порознь, как и сами дороги сохранения
+		 *
 		 */
 		{
 			// Владеющее значение разметки
@@ -2648,8 +2727,8 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	{
 		// Выполняем создание объекта документа разметки
 		xml::document_t doc;
-		// Получаем настройки документа разметки
-		xml::document_t::settings_t settings = doc.settings();
+		// Настройки документа разметки
+		xml::document_t::settings_t settings;
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.reader.encoding = xml::encoding_t::LATIN1;
 		// Выполняем установку настроек документа разметки
@@ -2661,6 +2740,7 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 		 *
 		 * @note Сличается сам знак, а не одна лишь успешность: разбор, кодировку
 		 *       принявший, но приведения не выполнивший, ответил бы успехом тоже
+		 *
 		 */
 		ASSERT_EQ(doc.dump(), "<a>\xC3\xA9</a>");
 	}
@@ -2670,8 +2750,8 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	{
 		// Выполняем создание объекта документа разметки
 		xml::document_t doc;
-		// Получаем настройки документа разметки
-		xml::document_t::settings_t settings = doc.settings();
+		// Настройки документа разметки
+		xml::document_t::settings_t settings;
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.reader.encoding = xml::encoding_t::ASCII;
 		// Выполняем установку настроек документа разметки
@@ -2686,12 +2766,13 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	 *
 	 * @note Половина эта отделяет работу настройки от умолчания: без неё довод, что
 	 *       отказ выше вызван именно US-ASCII, а не самим негодным байтом, не полон
+	 *
 	 */
 	{
 		// Выполняем создание объекта документа разметки
 		xml::document_t doc;
-		// Получаем настройки документа разметки
-		xml::document_t::settings_t settings = doc.settings();
+		// Настройки документа разметки
+		xml::document_t::settings_t settings;
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.reader.encoding = xml::encoding_t::UTF8;
 		// Выполняем установку настроек документа разметки
@@ -2720,13 +2801,18 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
  *
  * @note Замерено 07.09.2026 на двух системах составом библиотеки: сборка молчит, и
  *       дефект виден только `nm` с `c++filt`
+ *
  */
 TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	// Приёмники видов языка, расходящихся между системами
 	long lesser = 0;
+	// Приёмник вида long long
 	long long greater = 0;
+	// Приёмник вида unsigned long
 	unsigned long unsignedLesser = 0;
+	// Приёмник вида unsigned long long
 	unsigned long long unsignedGreater = 0;
+	// Приёмник вида size_t
 	size_t sized = 0;
 	/**
 	 * Выполняем извлечение числа приёмником вида `long`
@@ -2736,6 +2822,7 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	 *       (`include/codec/numeric.hpp:82-104`). Под LP64 `long` шестьдесят четыре бита, и
 	 *       приведение не меняет числа; под LLP64 (Windows) в тридцать два бита остаётся `1` -
 	 *       ровно то, что кладёт в приёмник и кодек
+	 *
 	 */
 	ASSERT_TRUE(xml::numeric <long> ("-9223372036854775807", lesser));
 	// Выполняем проверку извлечённого числа
@@ -2750,6 +2837,7 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	 * Выполняем проверку извлечённого числа
 	 *
 	 * @note Тот же порядок и без знака: под LLP64 из шестидесяти четырёх бит остаётся 4294967295
+	 *
 	 */
 	ASSERT_EQ(unsignedLesser, static_cast <unsigned long> (18446744073709551615ULL));
 	// Выполняем извлечение числа приёмником вида `unsigned long long`
@@ -2761,12 +2849,14 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	 *
 	 * @note Вид этот берётся отдельно оттого, что потребителю он привычнее прочих:
 	 *       им меряются длины, и извлечение размера из текста дело обиходное
+	 *
 	 */
 	ASSERT_TRUE(xml::numeric <size_t> ("4096", sized));
 	// Выполняем проверку извлечённого числа
 	ASSERT_EQ(sized, static_cast <size_t> (4096));
 	// Приёмники видов языка узких
 	signed char narrow = 0;
+	// Приёмник вида unsigned short
 	unsigned short middle = 0;
 	// Выполняем извлечение числа приёмником вида `signed char`
 	ASSERT_TRUE(xml::numeric <signed char> ("-128", narrow));
@@ -2786,6 +2876,7 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	 *
 	 * @note Половина эта проверяет СБОРКУ, а не поведение: не будь порождения, отказал бы
 	 *       связыватель, и до прогона дело не дошло бы вовсе
+	 *
 	 */
 	{
 		// Приёмник вида `char`, самостоятельного среди видов языка
@@ -2801,6 +2892,7 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	 * @warning Половина эта стережёт перенос: извлечение через разрядный вид ставит
 	 *          приёмник ЛИШЬ при успехе, и перенос безусловный портил бы прежнее его
 	 *          содержимое отказом
+	 *
 	 */
 	long keeper = 42;
 	// Выполняем проверку отказа извлечения числа из непригодного текста
@@ -2845,6 +2937,25 @@ TEST(CodecXmlDocument, DirectoryIsRefusedNotLoaded) {
 		// Выполняем проверку кода отказа загрузки
 		ASSERT_EQ(value.error(), xml::error_t::FILE_NOT_READ);
 	}
+}
+
+/**
+ * @brief Проверка сохранения дерева при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecXmlDocument, EmptyFilenamePreservesTree) {
+	// Дерево разметки
+	xml::document_t document;
+	// Выполняем разбор исходной разметки
+	ASSERT_TRUE(document.parse("<root><key>value</key></root>"));
+	// Исходная запись разметки
+	const string expected = document.dump();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), xml::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения дерева
+	ASSERT_EQ(document.dump(), expected);
 }
 
 /**
@@ -3037,6 +3148,7 @@ TEST(CodecXmlDocument, GraftingAcceptsDocumentValueWithProlog) {
 	 *
 	 * @note Без этой подачи отказ по недостаче корня остался бы незакреплён, и
 	 *       разворачивание, принимающее что попало, прошло бы незамеченным
+	 *
 	 */
 	{
 		// Значение вида документ, узла разметки не несущее
@@ -3049,6 +3161,7 @@ TEST(CodecXmlDocument, GraftingAcceptsDocumentValueWithProlog) {
 		ASSERT_EQ(document.error(), xml::error_t::MISSING_ROOT);
 	}
 }
+// Проверяем проходимость дерева после прививки значения в его корень
 TEST(CodecXmlDocument, GraftingIntoTheRootKeepsTheTreeWalkable) {
 	/**
 	 * Прививка в дерево пустое
@@ -3066,6 +3179,7 @@ TEST(CodecXmlDocument, GraftingIntoTheRootKeepsTheTreeWalkable) {
 		 * @note Путь прививки корня ПУСТ, а не «/»: по договору пустой путь заводит дерево
 		 *       с нуля либо заменяет корень целиком, а «/» есть путь розыска и в пустом
 		 *       дереве ведёт в никуда
+		 *
 		 */
 		ASSERT_TRUE(document.set("", value)) << xml::message(document.error());
 		// Выполняем проверку того, что привитый узел разыскивается по пути
@@ -3122,6 +3236,7 @@ TEST(CodecXmlDocument, ReplacingTheRootKeepsTheTopLevelNeighbours) {
 	 *
 	 * @note Примечания эти и есть соседи корня по верхнему уровню: первое даёт ветвь
 	 *       «предыдущий сосед есть», второе - ветвь «следующий сосед есть»
+	 *
 	 */
 	ASSERT_TRUE(document.parse("<!--до--><прежний/><!--после-->")) << xml::message(document.error());
 	// Прививаемое значение узла разметки
@@ -3226,6 +3341,7 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 * @warning Без последних проверка СЛЕПА к отмене знаков: первая её редакция несла лишь
 	 *          отменённую кавычку в атрибуте и пережила подмену `&amp;` на голый `&`, не
 	 *          покраснев. Замерено возвратом дефекта 15.09.2026
+	 *
 	 */
 	/**
 	 * Счёт сочетаний, оборот КОТОРЫХ ДЕЙСТВИТЕЛЬНО СЛИЧЁН
@@ -3234,10 +3350,12 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *          нет» был бы точно таким же, не сличись НИ ОДНОГО оборота. Молчаливый
 	 *          пропуск в проверке хуже молчаливой утраты в коде, ибо прячет её. Найдено
 	 *          у кодеков CEF и syslog 15.09.2026 в их же щупе
+	 *
 	 */
 	size_t compared = 0;
 	// Счёт сочетаний, опробованных всего
 	size_t attempted = 0;
+	// Исходный текст разметки с отменёнными знаками и пробельной обвязкой
 	const string source = "<корень атрибут=\"знач&quot;ение &amp; ещё\"><вложенный>текст ё &amp; знак &lt;меньше&gt;</вложенный><другой> обвязка </другой></корень>";
 	/**
 	 * Выполняем перебор всех видов укладки текста разметки
@@ -3262,15 +3380,17 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				// Выполняем разбор текста исходной разметки
 				ASSERT_TRUE(origin.parse(source)) << combination << " " << xml::message(origin.error());
 				// Настройки записи текста разметки
-				xml::writer_t::settings_t settings;
+				xml::document_t::settings_t settings;
 				// Устанавливаем вид укладки текста разметки
-				settings.format = format;
+				settings.writer.format = format;
 				// Устанавливаем сведение пробельной обвязки
-				settings.collapse = (collapse != 0);
+				settings.writer.collapse = (collapse != 0);
 				// Устанавливаем отмену знаков вне US-ASCII
-				settings.escapeNonAscii = (ascii != 0);
+				settings.writer.escapeNonAscii = (ascii != 0);
+				// Выполняем установку настроек дерева исходной разметки
+				origin.settings(settings);
 				// Выполняем сборку текста разметки установленными настройками
-				const string text = origin.dump(settings);
+				const string text = origin.dump();
 				// Выполняем проверку того, что текст разметки собран
 				ASSERT_FALSE(text.empty()) << combination << " " << xml::message(origin.error());
 				// Объект дерева полученной обратно разметки
@@ -3278,25 +3398,31 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				// Выполняем разбор текста, собранного исходным деревом
 				ASSERT_TRUE(result.parse(text)) << combination << " текст=[" << text << "] " << xml::message(result.error());
 				// Настройки сличения, приводящие оба дерева к одному виду
-				xml::writer_t::settings_t plain;
+				xml::document_t::settings_t plain;
 				// Устанавливаем плотную укладку для сличения
-				plain.format = xml::format_t::COMPACT;
+				plain.writer.format = xml::format_t::COMPACT;
 				/**
 				 * Устанавливаем сведение обвязки тем же, каким шла запись
 				 *
 				 * @note Сведение содержимое МЕНЯЕТ, и сличать надо со сведённым же
 				 *       образцом: настройкою это и заказано
+				 *
 				 */
-				plain.collapse = (collapse != 0);
+				plain.writer.collapse = (collapse != 0);
+				// Выполняем установку настроек сличения разбираемому дереву
+				result.settings(plain);
+				// Выполняем установку настроек сличения исходному дереву
+				origin.settings(plain);
 				/**
 				 * Если укладка текста разметки плотная
 				 *
 				 * @note С плотной укладки требуется оборот ДОСЛОВНЫЙ: она круг сохраняет
 				 *       всегда, и всякое расхождение здесь есть дефект
+				 *
 				 */
 				if(format == xml::format_t::COMPACT)
 					// Выполняем проверку того, что содержимое пережило оборот неизменным
-					ASSERT_EQ(result.dump(plain), origin.dump(plain)) << combination << " текст=[" << text << "]";
+					ASSERT_EQ(result.dump(), origin.dump()) << combination << " текст=[" << text << "]";
 				/**
 				 * Если укладка текста разметки нарядная
 				 *
@@ -3305,6 +3431,7 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				 *       целым: имя корня, атрибут с отменённой кавычкою и текст вложенных
 				 *       узлов. Ровно это и стережётся, ибо потеря их была бы дефектом
 				 *       настоящим, а лишние пробельные узлы - договором
+				 *
 				 */
 				else {
 					// Выполняем проверку сохранности имени корневого узла
@@ -3329,6 +3456,7 @@ TEST(CodecXmlDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *
 	 * @warning Сличается СВЯЗЬ, а не число: точное число рассыплется от первой же
 	 *          прибавленной настройки, ничего не сказав о существе
+	 *
 	 */
 	ASSERT_GT(attempted, static_cast <size_t> (0));
 	// Выполняем проверку того, что оборот сличён у всякого опробованного сочетания
@@ -3387,6 +3515,7 @@ TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 	 *
 	 * @note Атрибут «t» объявлен видом `NMTOKEN` и приведению подлежит, атрибут «c» объявлен
 	 *       видом `CDATA` и приведению не подлежит. Оба несут вереницу пробелов внутри
+	 *
 	 */
 	ASSERT_TRUE(document.parse(
 		"<!DOCTYPE a [<!ATTLIST a t NMTOKEN #IMPLIED c CDATA #IMPLIED>]>"
@@ -3414,6 +3543,7 @@ TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 	 *
 	 * @note Неописанный атрибут договором приравнен к `CDATA`: описание типа необязательно, и
 	 *       разметка без него читается вся, а приводить неописанное было бы отсебятиной
+	 *
 	 */
 	const string undeclared = string(node.attribute("n"));
 	// Выполняем проверку того, что неописанное осталось дословным
@@ -3430,6 +3560,7 @@ TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 	 *       `NMTOKEN` приводится, значение вида `CDATA` остаётся дословным. Разойдись эти два
 	 *       хода - одно и то же объявление читалось бы по-разному в зависимости от того,
 	 *       снято оно в перечень объявлений либо осталось атрибутом
+	 *
 	 */
 	{
 		// Дерево разметки с объявлением пространства имён
@@ -3569,6 +3700,7 @@ TEST(CodecXmlDocument, ErrorAnswersForLastOperation) {
 	 *
 	 * @note Отказ разбора кодом более не значится: работой последней была выдача, и
 	 *       отвечает код за неё
+	 *
 	 */
 	ASSERT_EQ(document.error(), xml::error_t::MISSING_ROOT);
 	// Выполняем проверку разбора годного текста разметки
@@ -3598,6 +3730,7 @@ TEST(CodecXmlDocument, ErrorAnswersForLastOperation) {
  *          и переполнись счётчик ширины при сборке отступа, текст вышел бы рваным. Ширина
  *          же нуля у разметки значит отсутствие отступа, а НЕ табуляцию - тем она и
  *          расходится с документом JSON, где ноль означает отступ табуляцией
+ *
  */
 TEST(CodecXmlDocument, EveryCombinationOfTheIndentationWritesAParsableText) {
 	// Исходный текст разметки с вложенностью в три уровня
@@ -3629,15 +3762,17 @@ TEST(CodecXmlDocument, EveryCombinationOfTheIndentationWritesAParsableText) {
 				// Выполняем разбор текста исходной разметки
 				ASSERT_TRUE(origin.parse(source)) << combination << " " << xml::message(origin.error());
 				// Настройки записи текста разметки
-				xml::writer_t::settings_t settings;
+				xml::document_t::settings_t settings;
 				// Устанавливаем вид укладки текста разметки
-				settings.format = format;
+				settings.writer.format = format;
 				// Устанавливаем знак отступа нарядной записи
-				settings.separator = separator;
+				settings.writer.separator = separator;
 				// Устанавливаем ширину отступа
-				settings.indent = indent;
+				settings.writer.indent = indent;
+				// Выполняем установку настроек дерева исходной разметки
+				origin.settings(settings);
 				// Выполняем сборку текста разметки установленными настройками
-				const string text = origin.dump(settings);
+				const string text = origin.dump();
 				// Выполняем проверку того, что текст разметки собран
 				ASSERT_FALSE(text.empty()) << combination << " " << xml::message(origin.error());
 				// Объект дерева полученной обратно разметки
@@ -3645,24 +3780,30 @@ TEST(CodecXmlDocument, EveryCombinationOfTheIndentationWritesAParsableText) {
 				// Выполняем проверку того, что собранный текст разбору подлежит
 				ASSERT_TRUE(result.parse(text)) << combination << " текст=[" << text << "] " << xml::message(result.error());
 				// Настройки сличения, приводящие оба дерева к одному виду
-				xml::writer_t::settings_t plain;
+				xml::document_t::settings_t plain;
 				// Устанавливаем плотную укладку для сличения
-				plain.format = xml::format_t::COMPACT;
+				plain.writer.format = xml::format_t::COMPACT;
+				// Выполняем установку настроек сличения разбираемому дереву
+				result.settings(plain);
+				// Выполняем установку настроек сличения исходному дереву
+				origin.settings(plain);
 				/**
 				 * Если укладка текста разметки плотная
 				 *
 				 * @note Отступ плотной укладкою не ставится вовсе, и круг обязан пройти
 				 *       дословно при ЛЮБОМ знаке отступа и любой его ширине: настройки эти
 				 *       плотной записи не касаются, и коснись они её - текст разошёлся бы
+				 *
 				 */
 				if(format == xml::format_t::COMPACT)
 					// Выполняем проверку того, что содержимое пережило оборот неизменным
-					ASSERT_EQ(result.dump(plain), origin.dump(plain)) << combination << " текст=[" << text << "]";
+					ASSERT_EQ(result.dump(), origin.dump()) << combination << " текст=[" << text << "]";
 				/**
 				 * Если укладка текста разметки нарядная
 				 *
 				 * @note Дословности здесь требовать нельзя - отступы ложатся в содержимое, -
 				 *       а вот значимое содержимое обязано дойти целым
+				 *
 				 */
 				else {
 					// Выполняем проверку сохранности имени корневого узла

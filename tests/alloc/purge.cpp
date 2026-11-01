@@ -39,6 +39,11 @@
 #include <alloc/profile.hpp>
 
 /**
+ * Подключаем внутренние тела встраиваемых методов модуля
+ */
+#include "../../src/alloc/internal/pages.inc"
+
+/**
  * Стандартные модули
  */
 #include <vector>
@@ -530,6 +535,13 @@ TEST_F(AllocFixture, PropertiesAreConsistent){
  *
  */
 TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
+	/**
+	 * Отдаём накопленное свободное прежде замера
+	 *
+	 * Возвращённые разрядами области вправе обслужить выдачу сверх разрядов без роста
+	 * кучи: без отдачи запас прошлых проверок откладывал бы упор в потолок
+	 */
+	awh::alloc::Allocator::purge();
 	// Получаем действующие настройки
 	awh::alloc::options_t options = awh::alloc::Allocator::options();
 	// Запоминаем взятое у системы прямо сейчас
@@ -547,12 +559,21 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 	std::vector <void *> alive;
 	// Признак состоявшегося отказа
 	bool refused = false;
+	// Размер одной выдачи сверх разрядов
+	constexpr size_t blockSize = (256u * 1024u);
+	/**
+	 * Число попыток покрывает весь возможный запас повторного использования
+	 *
+	 * Свободное не может превышать всё взятое у системы; прежние шестьдесят четыре
+	 * попытки добавляют запас над потолком, после которого отказ обязан состояться
+	 */
+	const size_t attempts = ((taken / blockSize) + 64);
 	/**
 	 * Выдаём блоки сверх разрядов, покуда не упрёмся в потолок
 	 */
-	for(size_t i = 0; i < 64; i++){
+	for(size_t i = 0; i < attempts; i++){
 		// Выдаём блок сверх разрядов
-		void * block = ::malloc(256u * 1024u);
+		void * block = ::malloc(blockSize);
 		// Если выдача ответила отказом
 		if(block == nullptr){
 			// Отмечаем состоявшийся отказ

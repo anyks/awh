@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки общих объявлений контейнера JSON — описания кодов отказов, названия
  *        видов узлов, проверка записи числа на соответствие стандарту и разбор
  *        необходимости экранирования
@@ -38,6 +44,7 @@
  * @note Глушитель вывода журнала подключается ОДНАЖДЫ на кодек, а не в каждом файле:
  *       слушатель заводится на процесс, и второй такой же ничего не прибавит. Файл
  *       заведён у кодеков CEF и syslog 13.09.2026
+ *
  */
 #include "../silent.hpp"
 
@@ -56,7 +63,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -78,9 +91,13 @@ TEST(CodecJsonCommon, Messages) {
 	 *          записан именем кода, а не концом перечня, и коды, дописанные ПОСЛЕ него,
 	 *          снова выпали из сличения. Правя перечень кодов, правь и предел здесь -
 	 *          сторожа у этого предела нет, кроме сличения «конец перечня» ниже
+	 *
 	 */
 	// Свод описаний кодов отказа для сличения их на различимость
 	set <string> distinct;
+	/**
+	 * Перебираем все коды отказов кодека
+	 */
 	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::UNWRITABLE_VALUE); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = json::message(static_cast <json::error_t> (code));
@@ -97,6 +114,7 @@ TEST(CodecJsonCommon, Messages) {
 		 *       «описание непусто» переживает кодек, отдающий одно и то же описание на
 		 *       все коды, а описка-двойник в перечне проходит молча. Наименьшее число,
 		 *       обращающее утверждение в ложь, есть здесь ДВА одинаковых описания
+		 *
 		 */
 		distinct.insert(string(message));
 	}
@@ -104,11 +122,13 @@ TEST(CodecJsonCommon, Messages) {
 	 * Выполняем проверку различимости описаний всех кодов отказа
 	 *
 	 * @note Замер 01.09.2026 по трём кодекам: 106 кодов и 106 различных описаний
+	 *
 	 */
 	/**
 	 * Выполняем проверку числа различимых описаний
 	 *
 	 * @note Число правлено 08.09.2026 с 37 на 40 - прибавилось три: код `ENCODING_ALREADY_CHOSEN` и два кода незакрытых скобок, прежде из перебора выпадавших; 15.09.2026 с 40 на 41 - прибавился `UNWRITABLE_VALUE`
+	 *
 	 */
 	ASSERT_EQ(distinct.size(), 41u);
 	/**
@@ -118,6 +138,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       без описания, оно пропускает - именно его отсутствие оно и сличает. Проверено
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
+	 *
 	 */
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::UNWRITABLE_VALUE) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
@@ -131,7 +152,7 @@ TEST(CodecJsonCommon, Names) {
 	// Выполняем проверку названия неопределённого узла
 	ASSERT_STREQ(json::name(json::kind_t::NONE), "none");
 	// Выполняем проверку названия пустого значения
-	ASSERT_STREQ(json::name(json::kind_t::NUL), "null");
+	ASSERT_STREQ(json::name(json::kind_t::NIL), "null");
 	// Выполняем проверку названия логического значения
 	ASSERT_STREQ(json::name(json::kind_t::BOOL), "boolean");
 	// Выполняем проверку названия числа
@@ -237,7 +258,7 @@ TEST(CodecJsonCommon, TypeNames) {
 		json::kind_t kind;
 	} items[] = {
 		{json::type_t::UNDEFINED, "undefined", json::kind_t::NONE},
-		{json::type_t::NUL,       "null",      json::kind_t::NUL},
+		{json::type_t::NIL,       "null",      json::kind_t::NIL},
 		{json::type_t::BOOL,      "boolean",   json::kind_t::BOOL},
 		{json::type_t::STRING,    "string",    json::kind_t::STRING},
 		{json::type_t::ARRAY,     "array",     json::kind_t::ARRAY},
@@ -320,6 +341,7 @@ TEST(CodecJsonCommon, EncodingNames){
  * @note Проверка сличает СТОРОНУ ОПАСНУЮ: судья разрешил перенос, а запись содержимое
  *       изменила. Обратная сторона - судья строже записи - допустима: она стоит лишь
  *       упущенного отрезка, и при обращении `PASS` с негодными байтами так и выходит
+ *
  */
 /**
  * @brief Пространство имён внешней опоры проверок
@@ -330,7 +352,7 @@ TEST(CodecJsonCommon, EncodingNames){
  */
 namespace {
 	/**
-	 * @brief Метод проверки годности последовательности UTF-8 внешним судьёй
+	 * @brief Функция проверки годности последовательности UTF-8 внешним судьёй
 	 *
 	 * @details Судья этот писан по описанию Юникода и кодеку не принадлежит НАРОЧНО.
 	 * Сличать приговор кодека с делом самого кодека нельзя: разбор последовательности
@@ -364,6 +386,7 @@ namespace {
 			 *
 			 * @note Пределы заданы описанием Юникода прямо: они отсекают переудлинённую
 			 *       запись, суррогаты и значения свыше U+10FFFF
+			 *
 			 */
 			if(letter < 0x80){
 				// Переходим к следующему знаку последовательности
@@ -440,6 +463,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithExternalJudge){
 		 *
 		 * @note Негодная последовательность экранирования требует всегда: дословно
 		 *       перенести её нельзя ни при каком правиле
+		 *
 		 */
 		if(malformed){
 			// Выполняем проверку того, что кодек негодность распознал
@@ -451,6 +475,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithExternalJudge){
 	 *
 	 * @note Половина обязательная: приговор «всё требует экранирования» прошёл бы
 	 *       половину первую целиком, ничего не проверив
+	 *
 	 */
 	{
 		// Выполняем проверку того, что годная последовательность переносится дословно
@@ -533,7 +558,9 @@ TEST(CodecJsonCommon, NumericAgreesWithTheParsing) {
 		"0", "-0", "300", "300.0", "1e3", "1E+3", "01", "+1", ".5", "5.",
 		"0x10", "1e999", "nan", "inf", "-1.5e-3", "1_000"
 	};
-	// Выполняем перебор всех проверяемых написаний
+	/**
+	 * Выполняем перебор всех проверяемых написаний
+	 */
 	for(const char * text : texts){
 		// Приговор открытого посредника годности написания
 		const bool verdict = json::numeric(text);
@@ -541,7 +568,9 @@ TEST(CodecJsonCommon, NumericAgreesWithTheParsing) {
 		json::reader_t reader;
 		// Выполняем подачу написания числа целиком
 		reader.feed(text, ::strlen(text), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Признак принятия написания самим разбором
 		const bool taken = (reader.error() == json::error_t::NONE);
@@ -575,7 +604,9 @@ TEST(CodecJsonCommon, EscapableAgreesWithTheWriter) {
 	const json::escape_t modes[] = {
 		json::escape_t::MINIMAL, json::escape_t::SOLIDUS, json::escape_t::ASCII
 	};
-	// Выполняем перебор всех укладов экранирования
+	/**
+	 * Выполняем перебор всех укладов экранирования
+	 */
 	for(const json::escape_t mode : modes){
 		// Количество сличённых знаков
 		size_t checked = 0;
@@ -587,6 +618,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithTheWriter) {
 			 * Если кодовое значение принадлежит суррогатной области
 			 *
 			 * @note Суррогаты знаками не являются и записаны быть не могут
+			 *
 			 */
 			if((code >= 0xD800) && (code <= 0xDFFF))
 				// Выполняем переход к следующему кодовому значению
@@ -598,6 +630,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithTheWriter) {
 			 *       знаки, кавычка, косая черта и обратная косая - всё, о чём уклады
 			 *       расходятся. Выше расхождений по устройству нет, и перебор разрежён
 			 *       ради времени прогона
+			 *
 			 */
 			if(((code > 0x2FFF) && (code < 0x10000) && ((code % 97) != 0)) ||
 			   ((code >= 0x10000) && ((code % 997) != 0)))
@@ -670,6 +703,7 @@ TEST(CodecJsonCommon, DefaultLimitsAreWrittenTwice) {
 		 *       номер поля, когда их нет, и потребитель сличает с ними. Закреплены
 		 *       литералами 08.09.2026 - прежде сличение шло бы именем с именем, а это
 		 *       тождество, ничего не проверяющее
+		 *
 		 */
 		ASSERT_EQ(json::NO_OFFSET, static_cast <uint64_t> (~0ull));
 		// Выполняем проверку обозначения отсутствующего номера
@@ -689,6 +723,7 @@ TEST(CodecJsonCommon, DefaultLimitsAreWrittenTwice) {
 		 *       подменою: подмена спрашивает «стережёт ли эту величину хоть кто-нибудь»,
 		 *       а сличение состава - «не забыта ли она вовсе», и перебирать подменою
 		 *       можно лишь то, что назвал. Приём этот пришёл от кодека ABC
+		 *
 		 */
 		ASSERT_EQ(json::INVALID_CODEPOINT, static_cast <uint32_t> (~0u));
 		/**
@@ -697,6 +732,7 @@ TEST(CodecJsonCommon, DefaultLimitsAreWrittenTwice) {
 		 * @note Величины эти открыты потребителю наравне с прочими: смещением
 		 *       отвечает место отказа, не имеющее места в тексте, а номером - розыск
 		 *       при отсутствии
+		 *
 		 */
 		ASSERT_EQ(json::NO_OFFSET, static_cast <uint64_t> (~0ull));
 		// Выполняем проверку признака отсутствия номера
@@ -719,6 +755,7 @@ TEST(CodecJsonCommon, DefaultLimitsAreWrittenTwice) {
 		 *
 		 * @note Это тот же договор: текст, стандарту отвечающий, разбирается без
 		 *       настроек, а отступления от стандарта требуют их непременно
+		 *
 		 */
 		ASSERT_FALSE(settings.allowComments);
 		// Выполняем проверку опущенного послабления запятой перед закрывающей скобкой
@@ -768,6 +805,7 @@ TEST(CodecJsonCommon, CompoundStorageKindsHaveNoNameOfTheirOwn) {
 	 *
 	 * @note Виды эти взяты одиночными представителями трёх семейств - признак истинности,
 	 *       запись и целое число со знаком одной разрядности
+	 *
 	 */
 	ASSERT_STRNE(json::name(json::type_t::BOOL), "unknown");
 	ASSERT_STRNE(json::name(json::type_t::STRING), "unknown");

@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки записи текста YAML — сборка блочных и поточных построений, ограда
  *        значений по действующей схеме и круговой ход записи с чтением
  *
@@ -42,7 +48,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Используем пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -175,6 +187,7 @@ TEST(CodecYamlWriter, Nesting) {
 	 *
 	 * @note Умолчанием взято написание без отступа: его пишет большинство и его же
 	 *       выдаёт большинство записывающих
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -228,6 +241,7 @@ TEST(CodecYamlWriter, Nesting) {
 	 *
 	 * @note Отображение, значением перечня стоящее, открывается сразу за чертой значения,
 	 *       и первая пара его стоит в той же строке
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -380,6 +394,7 @@ TEST(CodecYamlWriter, Blocks) {
 	 *       обратном чтении уменьшает пробег переводов на один, и строка на строку
 	 *       прочлась бы одною строкой через пробел. Запись `одна\nдве` строка на
 	 *       строку теряла бы перевод молча
+	 *
 	 */
 	ASSERT_EQ(writer.text(),
 		"текст: |\n  первая\n  вторая\n"
@@ -390,6 +405,7 @@ TEST(CodecYamlWriter, Blocks) {
 	 *
 	 * @note Содержимое обязано вернуться тем же самым: круговой ход есть единственная
 	 *       проверка, отделяющая запись верную от записи, читаемой обратно иначе
+	 *
 	 */
 	ASSERT_EQ(roundtrip(writer.text()),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
@@ -402,6 +418,7 @@ TEST(CodecYamlWriter, Blocks) {
 	 *
 	 * @note Блочное значение оканчивается отступом, а внутри скобок отступ не значит
 	 *       ничего: записать его там нечем
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -506,6 +523,7 @@ TEST(CodecYamlWriter, Anchors) {
 	 *
 	 * @note Метка описания, полным видом переданная, записывается сокращением:
 	 *       сокращение это описанием закреплено и понятно всякому читающему
+	 *
 	 */
 	writer.key("строкой");
 	// Выполняем запись метки типа описания полным видом её
@@ -539,6 +557,7 @@ TEST(CodecYamlWriter, Anchors) {
 	 *
 	 * @note Ссылка узлом не является - она указывает на узел, прежде объявленный, - и
 	 *       своих свойств иметь не вправе
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -639,6 +658,7 @@ TEST(CodecYamlWriter, Numbers) {
 	 *
 	 * @note Запись `1` схемою прочлась бы целым числом, а записывалось дробное: точка с
 	 *       нулём сохраняет вид числа при обратном чтении
+	 *
 	 */
 	writer.key("дробное");
 	// Выполняем запись дробного числа без дробной части
@@ -925,6 +945,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 * @note Строка, пробелом открытая, чтением принимается стоящею глубже отступа
 	 *       содержимого, и переводы вокруг неё сохраняются как есть: наращивание их
 	 *       выдало бы переводов больше записанного
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -944,6 +965,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 *
 	 * @note Правило усечения применяется после свёртки, и концевые переводы наращивания
 	 *       не требуют: записываются они тем же порядком, каким записывает их вид дословный
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -1059,6 +1081,7 @@ TEST(CodecYamlWriter, Malformed) {
 	 * @note Отвергается запись **ничего не записав**: отказ посреди записи оставил бы в
 	 *       тексте имя поля без значения, а это хуже негодного байта. Оставленный текст
 	 *       ни негодного байта нести не должен, ни знака замены
+	 *
 	 */
 	ASSERT_EQ(left.find('\xFF'), string::npos);
 	// Выполняем проверку того, что знака замены отказ не записал
@@ -1320,7 +1343,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку сохранности запятой записи дословной
 	ASSERT_NE(writer.text().find("tag:example.com,2000:"), string::npos);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем постановку метки типа, описанием заданной
 	ASSERT_TRUE(writer.tag("tag:yaml.org,2002:a b"));
 	// Выполняем запись значения, меткою помеченного
@@ -1328,7 +1351,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку долевой записи пробела в окончании сокращения
 	ASSERT_NE(writer.text().find("!!a%20b"), string::npos);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	/**
 	 * Выполняем постановку метки типа, поданной сокращением своим
 	 *
@@ -1337,6 +1360,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	 *       меткой `!а`, которую свой же читающий отвергал. Рукоять сокращения знаков
 	 *       своих не меняет, а окончание её - указатель, и знакам его отведён перечень
 	 *       `ns-tag-char`
+	 *
 	 */
 	ASSERT_TRUE(writer.tag("!\xd0\xb0"));
 	// Выполняем запись значения, меткою помеченного
@@ -1344,7 +1368,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку долевой записи знака указателя в сокращении
 	ASSERT_NE(writer.text().find("!%D0%B0"), string::npos);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	/**
 	 * Выполняем постановку метки типа со знаком ограды рукояти в указателе
 	 *
@@ -1358,6 +1382,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	 *       метка `!x%21y` хранится деревом как `!x!y`, и отказ разорвал бы круг.
 	 *       Нашёл ворошитель, как только в набор его добавлены были метки с
 	 *       долевыми записями знаков
+	 *
 	 */
 	ASSERT_TRUE(writer.tag("!e!\xd0\xb0"));
 	// Выполняем запись значения, меткою помеченного
@@ -1365,7 +1390,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку долевой записи знака ограды рукояти в указателе
 	ASSERT_NE(writer.text().find("!e%21%D0%B0"), string::npos);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем постановку метки типа, знаков долевой записи не требующей
 	ASSERT_TRUE(writer.tag("!local"));
 	// Выполняем запись значения, меткою помеченного
@@ -1373,7 +1398,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку сохранности метки, долевой записи не требующей
 	ASSERT_NE(writer.text().find("!local"), string::npos);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем постановку метки типа рукоятью вторичной, объявления не требующей
 	ASSERT_TRUE(writer.tag("!!\xd0\xb0"));
 	// Выполняем запись значения, меткою помеченного
@@ -1401,7 +1426,7 @@ TEST(CodecYamlWriter, RefusalReportsReason) {
 	// Выполняем проверку названной причины отказа
 	ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку сброса кода ошибки вместе с состоянием записи
 	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
 	// Выполняем закрытие вместилища, ни одного из них не открыв
@@ -1409,13 +1434,13 @@ TEST(CodecYamlWriter, RefusalReportsReason) {
 	// Выполняем проверку названной причины отказа
 	ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем постановку метки типа пустой
 	ASSERT_FALSE(writer.tag(""));
 	// Выполняем проверку названной причины отказа
 	ASSERT_EQ(writer.error(), yaml::error_t::INVALID_TAG);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем запись значения обыкновенного
 	ASSERT_TRUE(writer.value("baz"));
 	// Выполняем проверку того, что удача кода ошибки не ставит
@@ -1645,6 +1670,7 @@ TEST(CodecYamlWriter, QuotingRisesForLineBreak) {
 	 *
 	 * @note Половина эта обязательна: подъём ограды всегда прошёл бы первую половину
 	 *       проверки, отняв у потребителя ограду, им назначенную
+	 *
 	 */
 	{
 		// Поток записи текста
@@ -1684,6 +1710,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 *
 	 * @note Пустой перенос успехом объявляется нарочно: переносить нечего, и отказом
 	 *       он погнал бы держащего собирать заново пустое место
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -1730,6 +1757,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 *
 	 * @note Строки переносятся мельче, нежели стояли, а снять с них нечего: пришлось
 	 *       бы снимать содержимое, и перенос лёг бы вкривь
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -1744,6 +1772,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 *
 	 * @note Перебор строк оканчивается тогда не знаком конца, а исчерпанием текста -
 	 *       и ведётся выход этот дважды: сперва счётом отступов, потом записью
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -1842,6 +1871,7 @@ TEST(CodecYamlWriter, MalformedNamesAndEscapes) {
 	 *
 	 * @note Уклад пропуска велит нести байты как есть, а ограда двойная негодную
 	 *       последовательность несёт лишь отменённою: иначе текст перестал бы читаться
+	 *
 	 */
 	{
 		// Настройки записи текста
@@ -1925,6 +1955,7 @@ TEST(CodecYamlWriter, VersionDirective) {
 	 * Выполняем проверку того, что без настройки директивы не появляется
 	 *
 	 * @note Проверка держит границу: директива пишется по требованию, а не всегда
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -2011,6 +2042,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 	 *
 	 * @note Схема защитная пустоты не знает вовсе: слово `null` вернулось бы строкою из
 	 *       четырёх букв, и пустота пишется оградою пустою
+	 *
 	 */
 	{
 		// Настройки записи текста
@@ -2141,6 +2173,7 @@ TEST(CodecYamlWriter, TrailingNeedsLineAndSizeCounts) {
 	 *
 	 * @note Писатель заводится свой: отказ записи липкий, и записи следом за ним
 	 *       отвергались бы все
+	 *
 	 */
 	{
 		// Объект записи текста документа
@@ -2316,6 +2349,7 @@ TEST(CodecYamlWriter, RefusalLocksWriter) {
 	 * @note Снятие всех двадцати пяти сторожей роняет девятнадцать утверждений из
 	 *       двадцати пяти: остальные шесть отвергаются и своими условиями, сторожа не
 	 *       спрашивая. Замерено срывом
+	 *
 	 */
 	EXPECT_FALSE(writer.mapping());
 	EXPECT_FALSE(writer.mapping(yaml::layout_t::FLOW));
@@ -2347,7 +2381,7 @@ TEST(CodecYamlWriter, RefusalLocksWriter) {
 	// Выполняем проверку того, что собранный текст отвергнутым не задет
 	ASSERT_EQ(writer.text(), before);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что сброс код отказа отпускает
 	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
 	// Выполняем проверку того, что запись после сброса принимается
@@ -2369,6 +2403,7 @@ TEST(CodecYamlWriter, EscapedUnicodeCharacter) {
 	 *
 	 * @note Знак U+FFFF описанием печатным не признан, а в один байт не укладывается:
 	 *       записывается он последовательностью `\u` о четырёх разрядах
+	 *
 	 */
 	ASSERT_TRUE(writer.value(string("до\xEF\xBF\xBF" "после"), yaml::style_t::DOUBLE));
 	// Выполняем завершение записи текста
@@ -2388,6 +2423,7 @@ TEST(CodecYamlWriter, TrailingRefusedByMalformedEncoding) {
 	 *
 	 * @note Умолчанием негодная последовательность заменяется знаком замены, и отказа
 	 *       запись не даёт вовсе: без этой настройки проверка сторожила бы пустоту
+	 *
 	 */
 	settings.malformed = yaml::malformed_t::REFUSE;
 	// Объект потоковой записи текста
@@ -2407,6 +2443,7 @@ TEST(CodecYamlWriter, TrailingRefusedByMalformedEncoding) {
 	 *
 	 * @note Правило это общее у кодеков: текст без отвергнутой части от целого глазом
 	 *       неотличим, а разбору не поддаётся
+	 *
 	 */
 	ASSERT_TRUE(writer.take().empty());
 }
@@ -2444,6 +2481,7 @@ TEST(CodecYamlWriter, ReservedIndicatorsAreAlwaysQuoted) {
 		 *
 		 * @note Судится ограда, а не вид её: описание дозволяет и одинарную, и двойную,
 		 *       а негодной выходит запись без ограды вовсе
+		 *
 		 */
 		ASSERT_TRUE((written.find("'" + content + "'") != string::npos) ||
 		            (written.find("\"" + content + "\"") != string::npos)) << written;
@@ -2494,6 +2532,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 * Выполняем проверку отказа имени пары вне отображения
 	 *
 	 * @note Имя пары внутри перечня значений есть содержимое не на своём месте
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -2536,6 +2575,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 *
 	 * @note Здесь причина иная - не содержимое не на своём месте, а знак, описанием в
 	 *       имени метки запрещённый
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -2577,6 +2617,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 *
 	 * @note Причина здесь снова содержимое не на своём месте: ссылка узлом не является
 	 *       и своих свойств иметь не вправе
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -2607,6 +2648,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 *
 	 * @note Примечание оканчивает строку, а строку поточного построения оканчивать
 	 *       нечем - запись пошла бы вкривь
+	 *
 	 */
 	{
 		// Объект записи текста
@@ -2643,6 +2685,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
  * @note Замер покрытием показал, что заход этот не задет НИЧЕМ - ни набором проверок, ни
  *       ворошителем: тексты они строят непустые. Дыра в собственном коде розыска и
  *       закрывается здесь
+ *
  */
 TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 	/**
@@ -2677,6 +2720,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		 *       в начале текста записью отбрасывается, и текст остаётся пустым - розыск
 		 *       черты тогда не входит в перебор строк вовсе. Замерено: с пустою строкою
 		 *       порча захода проверки не роняет, с дословным переносом - роняет
+		 *
 		 */
 		ASSERT_TRUE(writer.verbatim("\n", 0));
 		// Выполняем завершение записи текста
@@ -2688,6 +2732,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		 *
 		 * @note Сверяется наличие черты, а не текст целиком: число пустых строк перед нею
 		 *       есть дело записи, а не правило
+		 *
 		 */
 		ASSERT_NE(text.find("..."), string::npos) << text;
 		// Объект дерева документа
@@ -2750,6 +2795,7 @@ TEST(CodecYamlWriter, KeyPropertiesAreWrittenByEveryForm) {
 		 *
 		 * @note Вид о трёх доводах передаёт вид метки `local = false`, и метка,
 		 *       сокращением не объявленная, уходит записью дословною `!<str>`
+		 *
 		 */
 		ASSERT_NE(result.find("!<str>"), string::npos) << result;
 	}
@@ -2866,6 +2912,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 	 *       «fa_IR» и «ar_SA» взяты особо: десятичным знаком там служит «٫»
 	 *       (U+066B), занимающий в UTF-8 два байта, - замена одного лишь первого
 	 *       байта оставляла бы от него обрубок
+	 *
 	 */
 	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
 		// Если установить очередную локаль не удалось
@@ -2894,6 +2941,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		 * @note Новое ожидание поверено КРУГОМ, а не выдачей: записанное читается обратно
 		 *       и даёт то же самое число двойной точности. Сверься оно с выданным
 		 *       текстом - зеленело бы при всякой выдаче, какую тело ни выдай
+		 *
 		 */
 		// Прочитанное обратно числовое значение записи
 		yaml::numeric_t circle;
@@ -2906,6 +2954,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		 *       при УСТАНОВКЕ значения, а не при сборке текста, и глухота к локали нужна
 		 *       обоим местам. Без неё правка давала `k: '0,10000000000000001.0'` - число
 		 *       обращалось в СТРОКУ, и круг рвался молча
+		 *
 		 */
 		// Дерево документа, куда ведётся правка
 		yaml::document_t document;
@@ -2918,6 +2967,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		/**
 		 * @note Заведение владеющего значения проверяется отдельно: сборка дробного у
 		 *       кодека стоит в ТРЁХ местах, и глухота нужна всем трём
+		 *
 		 */
 		// Владеющее значение, заводимое числом с плавающей точкой
 		const yaml::value_t value(0.25);
@@ -2927,6 +2977,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		 * @note Чтение числа поверяется наравне с записью: приведение `strtod` местности
 		 *       ПОДЧИНЕНО и под чужим десятичным знаком останавливается на точке. Без
 		 *       глухоты запись «0.25» читалась НУЛЁМ, и значение терялось молча
+		 *
 		 */
 		// Разобранное числовое значение
 		yaml::numeric_t numeric;
@@ -2952,6 +3003,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 	 * @warning Зелёный прогон там, где проверка пропускается, обещания глухоты НЕ НЕСЁТ:
 	 *          пропуск проверкою не пройден, но и не провален, и вычитать его из общего
 	 *          счёта наравне с отказом нельзя
+	 *
 	 */
 	if(checked == 0)
 		// Выполняем пропуск проверки
@@ -2971,6 +3023,7 @@ TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	 *       здесь стояло ожидание `знак: z`, и падало оно на двух машинах Sun: вид `int8_t`
 	 *       там объявлен КАК `char`, отчего `value(int8_t(-128))` уходил в запись знака, а
 	 *       байт `0x80` знаком UTF-8 не является и подменялся знаком `U+FFFD`
+	 *
 	 */
 	ASSERT_TRUE(writer.key("знак"));
 	// Выполняем запись знака значением пары
@@ -2981,6 +3034,7 @@ TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	 * @note Написание это и сторожит разряд: пиши кодек знак знаком - здесь вышел бы
 	 *       `U+FFFD` вместо `-128`, и вышел бы ЛИШЬ на тех машинах, где `int8_t` есть
 	 *       `char`. Проверка на прочих машинах о том молчала бы
+	 *
 	 */
 	ASSERT_TRUE(writer.key("знаковый"));
 	ASSERT_TRUE(writer.value(static_cast <signed char> (-128)));
@@ -2989,6 +3043,7 @@ TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	 *
 	 * @note Порядок видов значим: беззнаковый идёт сразу за знаковым той же ширины, и
 	 *       значение `-1`, в беззнаковом соседстве стоящее, обязано выйти пределом вида
+	 *
 	 */
 	ASSERT_TRUE(writer.key("i8"));
 	ASSERT_TRUE(writer.value(static_cast <int8_t> (-128)));
@@ -3008,6 +3063,7 @@ TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	 * @note Виды эти взяты нарочно: `size_t` у macOS arm64 есть `unsigned long`, а
 	 *       `uint64_t` есть `unsigned long long`, и порождение видами разрядными
 	 *       оставляло `size_t` без обозначения вовсе
+	 *
 	 */
 	ASSERT_TRUE(writer.key("простое"));
 	ASSERT_TRUE(writer.value(7));
@@ -3018,6 +3074,7 @@ TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	 *
 	 * @note Написание это и отделяет правило знаковости от обхода через один лишь
 	 *       `int64_t`: обход тот обратил бы предел `size_t` в минус единицу
+	 *
 	 */
 	ASSERT_TRUE(writer.key("предел"));
 	ASSERT_TRUE(writer.value(numeric_limits <size_t>::max()));
@@ -3049,6 +3106,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
 	 *       круговой ход не рвёт, `PASS` его отменяющей последовательностью обносит, и
 	 *       лишь `REFUSE` отвергает запись. Порознь они расходятся, и порча одного из
 	 *       трёх осталась бы незамечена
+	 *
 	 */
 	{
 		// Настройки записи с заменою негодной последовательности
@@ -3096,6 +3154,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
 		/**
 		 * @note Сырым байт НЕ выходит и при `PASS`: запись обносит его оградою и отменяющею
 		 *       последовательностью, и текст остаётся годным по кодировке
+		 *
 		 */
 		// Выполняем проверку того, что негодный байт обнесён отменяющей последовательностью
 		ASSERT_EQ(writer.take(), "\"\\x80\"\n");
@@ -3112,6 +3171,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
  * @note Проверка эта стережёт слово наравне с делом: прежде договор обещал, что «нуля
  *       ширина не принимает», - и звавший, слову поверивший, ждал бы признака неудачи,
  *       а получал молчаливую подмену
+ *
  */
 TEST(CodecYamlWriter, TheZeroIndentTurnsIntoTheDefaultOne){
 	// Объект дерева документа
@@ -3133,6 +3193,7 @@ TEST(CodecYamlWriter, TheZeroIndentTurnsIntoTheDefaultOne){
 	 *
 	 * @note Мерится именно разбор: беда нулевого отступа не в виде текста, а в том, что
 	 *       вложенность им не выражается вовсе, и текст выходит нечитаемым
+	 *
 	 */
 	{
 		// Собираемое дерево документа, читаемое обратно
@@ -3167,10 +3228,13 @@ TEST(CodecYamlWriter, TheZeroIndentTurnsIntoTheDefaultOne){
  *
  */
 TEST(CodecYamlWriter, OwnBufferStrings) {
-	// Проверяем короткий буфер и буфер с перевыделением памяти
+	/**
+	 * Проверяем короткий буфер и буфер с перевыделением памяти
+	 */
 	for(const size_t size : vector <size_t> {0, 4096}){
 		// Сравниваем результат с записью независимой копии
 		yaml::writer_t writer, reference;
+		// Открываем отображение писателя writer
 		ASSERT_TRUE(writer.mapping());
 		ASSERT_TRUE(reference.mapping());
 		ASSERT_TRUE(writer.key("first"));
@@ -3180,19 +3244,25 @@ TEST(CodecYamlWriter, OwnBufferStrings) {
 		// Значение берём из самого выходного буфера
 		ASSERT_TRUE(writer.key("second"));
 		ASSERT_TRUE(reference.key("second"));
+		// Берём у копии reference значение из её выходного буфера
 		const string value = reference.text();
+		// Пишем писателем writer значение, из его же выходного буфера взятое
 		ASSERT_TRUE(writer.value(writer.text()));
 		ASSERT_TRUE(reference.value(value));
 		// Значение оградою также берём из самого выходного буфера
 		ASSERT_TRUE(writer.key("third"));
 		ASSERT_TRUE(reference.key("third"));
+		// Берём у копии reference ограждаемое значение из её выходного буфера
 		const string fenced = reference.text();
+		// Пишем писателем writer значение оградою SINGLE, из его же выходного буфера взятое
 		ASSERT_TRUE(writer.value(writer.text(), yaml::style_t::SINGLE));
 		ASSERT_TRUE(reference.value(fenced, yaml::style_t::SINGLE));
 		// Дословное содержимое берём из самого выходного буфера
 		ASSERT_TRUE(writer.key("fourth"));
 		ASSERT_TRUE(reference.key("fourth"));
+		// Берём у копии reference дословное содержимое из её выходного буфера
 		const string verbatim = reference.text();
+		// Пишем писателем writer дословное содержимое, из его же выходного буфера взятое
 		ASSERT_TRUE(writer.raw(writer.text()));
 		ASSERT_TRUE(reference.raw(verbatim));
 		ASSERT_TRUE(writer.close());
@@ -3208,10 +3278,12 @@ TEST(CodecYamlWriter, OwnBufferStrings) {
 	{
 		// Сравниваем результат с записью независимой копии
 		yaml::writer_t writer, reference;
+		// Пишем писателем writer простое значение «строка»
 		ASSERT_TRUE(writer.value("строка"));
 		ASSERT_TRUE(reference.value("строка"));
 		// Дословный перенос берём из самого выходного буфера
 		const string lines = reference.text();
+		// Пишем писателем writer дословный перенос строк, из его же выходного буфера взятый
 		ASSERT_TRUE(writer.verbatim(writer.text(), 0));
 		ASSERT_TRUE(reference.verbatim(lines, 0));
 		// Выполняем проверку совпадения с записью независимой копии

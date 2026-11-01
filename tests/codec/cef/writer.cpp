@@ -92,6 +92,7 @@ namespace {
 	 * @note Тип лежит в БЕЗЫМЯННОМ пространстве имён, как и у набора syslog, где есть
 	 *       такой же: наборы кодеков собираются в одну программу, и два одноимённых типа
 	 *       со внешним связыванием дали бы порчу кучи вдали от места
+	 *
 	 */
 	typedef struct Locale_Guard {
 		/**
@@ -99,6 +100,7 @@ namespace {
 		 *
 		 * @note Вид назван ПОЛНЫМ именем: страж стоит выше строки «using namespace std»,
 		 *       и краткое имя разрешалось бы здесь в «awh::string»
+		 *
 		 */
 		::std::string previous;
 		/**
@@ -121,17 +123,20 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод сборки записи CEF из разобранной записи
+ * @brief Функция сборки записи CEF из разобранной записи
  *
  * @param text     разбираемая запись CEF
  * @param settings настройки записи событий
  * @return         собранная заново запись CEF
  *
  */
-static string rewriteCef(const string & text, const cef::writer_t::settings_t & settings = cef::writer_t::settings_t()) noexcept {
+static string rewriteCef(const string & text, const cef::document_t::settings_t & settings = cef::document_t::settings_t()) noexcept {
 	// Объект события CEF
 	cef::document_t doc;
 	// Устанавливаем настройки записи событий
@@ -181,21 +186,21 @@ TEST(CodecCefWriter, Escaping) {
  */
 TEST(CodecCefWriter, Syslog) {
 	// Настройки записи событий
-	cef::writer_t::settings_t settings;
+	cef::document_t::settings_t settings;
 	// Выполняем проверку сборки записи с приставкой syslog
 	EXPECT_EQ(
 		::rewriteCef("Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4\n"
 	);
 	// Отключаем запись приставки syslog перед словом «CEF:»
-	settings.syslog = false;
+	settings.writer.syslog = false;
 	// Выполняем проверку сборки записи без приставки syslog
 	EXPECT_EQ(
 		::rewriteCef("Feb 17 15:30:15 host CEF:0|A|B|C|D|E|1|src=1.2.3.4", settings),
 		"CEF:0|A|B|C|D|E|1|src=1.2.3.4\n"
 	);
 	// Отключаем запись знака конца строки за записью
-	settings.terminate = false;
+	settings.writer.terminate = false;
 	// Выполняем проверку сборки записи без знака конца строки
 	EXPECT_EQ(
 		::rewriteCef("CEF:0|A|B|C|D|E|1|src=1.2.3.4", settings),
@@ -330,6 +335,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 	 * @warning Без этого проверка зелена ЛОЖНО: `fmk_t` ставит свою локаль в
 	 *          конструкторе, а объект оснастки здесь заводится при первом обращении -
 	 *          то есть уже после установки чужой локали
+	 *
 	 */
 	(void) ::writerEnvironment();
 	// Страж возврата локали записи чисел
@@ -343,6 +349,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 	 *       ходит «de_DE.utf8», у MS Windows - «German_Germany». Локали «fa_IR» и
 	 *       «ar_SA» взяты особо: десятичным знаком там служит «٫» (U+066B), занимающий
 	 *       в UTF-8 два байта
+	 *
 	 */
 	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
 		// Если установить очередную локаль не удалось
@@ -360,6 +367,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 		 *       заголовка задаёт сам кодек, и собранное на глаз дерево дало бы отказ
 		 *       записи вместо проверки глухоты. Замерено 09.09.2026: руками собранное
 		 *       дерево выдавало запись без единого расширения
+		 *
 		 */
 		cef::document_t document;
 		// Выполняем разбор годной записи событий безопасности
@@ -372,6 +380,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 		 *          писатель смотрит только первую. Постановка при том отвечает УСПЕХОМ,
 		 *          и спрос значение отдаёт - в запись оно просто не попадает. Замерено
 		 *          09.09.2026 щупом, и на эту же букву я наступал вторично
+		 *
 		 */
 		ASSERT_TRUE(document.set("/extension/cfp1", abc::value_t(0.1))) << name;
 		// Ставим дробное значение с большим количеством разрядов в дерево события
@@ -386,6 +395,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 		 * @note Сторож этот и есть то, чем проверка отличается от собственной видимости:
 		 *       сбрось её кто-нибудь до записи числа - и точка в выдаче доказывала бы
 		 *       лишь то, что локаль была точкою, а вовсе не глухоту кодека
+		 *
 		 */
 		ASSERT_NE(::localeconv()->decimal_point[0], '.') << name << ": локаль сброшена до записи числа";
 		/**
@@ -394,6 +404,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 		 * @warning Сличать здесь ВИД записи нельзя, лишь значение: кратчайшее
 		 *          представление числа держится не всюду. Предмет проверки - глухота к
 		 *          локали, а не вид числа
+		 *
 		 */
 		for(const pair <string, double> & expected : {make_pair(string("cfp1"), 0.1), make_pair(string("cfp2"), 2986.808299)}){
 			// Место начала значения очередного ключа расширения
@@ -416,6 +427,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 			 * @warning Читается оно `lexical_t`, а НЕ `strtod`: тот сам локали подвластен
 			 *          и под немецкой читает «0.1» нулём, обращая проверку глухоты в
 			 *          проверку того же разряда локали с другой стороны
+			 *
 			 */
 			double parsed = 0.;
 			// Выполняем обратное чтение записанного значения без оглядки на локаль
@@ -489,12 +501,13 @@ TEST(CodecCefWriter, ValueKinds) {
 	 *
 	 * @note Проверяется отдельно: пустая запись значения в общий перебор не ложится -
 	 *       розыск «cs1=» нашёл бы её и у всякого иного вида
+	 *
 	 */
 	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Ставим пустое значение парой расширения
-	ASSERT_TRUE(document.set("/extension/cs1", abc::value_t(abc::kind_t::NUL)));
+	ASSERT_TRUE(document.set("/extension/cs1", abc::value_t(abc::kind_t::NIL)));
 	// Собранная запись событий безопасности
 	const string result = document.dump();
 	// Выполняем проверку успешности сборки записи
@@ -521,9 +534,15 @@ TEST(CodecCefWriter, EscapingDisabled) {
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Настройки записи событий без постановки отмены знаков
-	cef::writer_t::settings_t settings;
-	// Выключаем постановку отмены знаков
-	settings.escape = false;
+	cef::document_t::settings_t settings;
+	/**
+	 * Выключаем снятие отмены знаков
+	 *
+	 * @note Настройка записи этой пары выводится документом из настройки разбора: пара
+	 *       «постановка отмены - снятие её» сводится документом, а не потребителем
+	 *
+	 */
+	settings.reader.unescape = false;
 	// Устанавливаем настройки записи событий
 	document.settings(settings);
 	// Ставим значение со знаком равенства парой расширения
@@ -804,12 +823,13 @@ TEST(CodecCefWriter, ValueBreakingTheRecord) {
 	// Собранная запись CEF
 	string result = "";
 	/**
-	 * @brief Метод сборки дерева события с заданным значением поставщика
+	 * @brief Функция сборки дерева события с заданным значением поставщика
 	 *
 	 * @param vendor значение поля поставщика
 	 * @param prefix приставка syslog записи
 	 * @param value  значение пары расширения
 	 * @return       дерево собираемого события
+	 *
 	 */
 	const auto tree = [](const string & vendor, const string & prefix, const string & value) noexcept -> abc::value_t {
 		// Дерево собираемого события
@@ -872,10 +892,11 @@ TEST(CodecCefWriter, WrittenRecordsAreAlwaysReadable) {
 	// Собранная запись CEF
 	string result = "";
 	/**
-	 * @brief Метод сборки дерева события с заданным дробным значением
+	 * @brief Функция сборки дерева события с заданным дробным значением
 	 *
 	 * @param value дробное значение пары расширения
 	 * @return      дерево собираемого события
+	 *
 	 */
 	const auto tree = [](const double value) noexcept -> abc::value_t {
 		// Дерево собираемого события
@@ -899,10 +920,10 @@ TEST(CodecCefWriter, WrittenRecordsAreAlwaysReadable) {
 		// Выводим дерево собираемого события
 		return root;
 	};
-	// Настройки разбора записей со строгим сличением видов
-	cef::reader_t::settings_t settings;
+	// Настройки документа
+	cef::document_t::settings_t settings;
 	// Устанавливаем строгое сличение со словарём
-	settings.mode = cef::mode_t::STRONG;
+	settings.reader.mode = cef::mode_t::STRONG;
 	// Выполняем проверку отказа записи бесконечностью
 	EXPECT_FALSE(writer.write(tree(::std::numeric_limits <double>::infinity()), result));
 	// Выполняем проверку отказа записи значением, числом не являющимся
@@ -937,6 +958,7 @@ TEST(CodecCefWriter, WrittenRecordsAreAlwaysReadable) {
  * @note Найдено щупом вложенности 15.09.2026 по признаку, взятому у кодеков
  *       JSON: если то же значение при ИНОЙ настройке записывается, дело в настройке, а не
  *       в значении. Тот же дефект слово в слово лежал и в кодеке syslog
+ *
  */
 TEST(CodecCefWriter, NestedValueBecomesReadableText) {
 	// Вложенный перечень значений
@@ -958,14 +980,16 @@ TEST(CodecCefWriter, NestedValueBecomesReadableText) {
 	// Укладываем отображение в поле сообщения расширения
 	ASSERT_TRUE(document.set("/extension/msg", map));
 	// Настройки записи событий
-	cef::writer_t::settings_t settings;
+	cef::document_t::settings_t settings;
 	// Устанавливаем обращение вложенного значения в знаки
-	settings.nested = cef::nested_t::TEXT;
+	settings.writer.nested = cef::nested_t::TEXT;
 	// Устанавливаем настройки записи событий
 	document.settings(settings);
 	// Получаем собранную запись события CEF
 	string built = document.dump();
-	// Снимаем перевод строки, сборкою добавленный
+	/**
+	 * Снимаем перевод строки, сборкою добавленный
+	 */
 	while(!built.empty() && ((built.back() == '\n') || (built.back() == '\r')))
 		// Снимаем последний знак собранной записи
 		built.pop_back();
@@ -974,6 +998,7 @@ TEST(CodecCefWriter, NestedValueBecomesReadableText) {
 	 *
 	 * @note Знак равенства внутри значения отменён обратной косой: область расширения
 	 *       того требует, и без отмены запись разобралась бы иными парами
+	 *
 	 */
 	EXPECT_NE(built.find("one\\=1,two\\=x,y"), string::npos) << "собрано: " << built;
 	/**
@@ -981,6 +1006,7 @@ TEST(CodecCefWriter, NestedValueBecomesReadableText) {
 	 *
 	 * @note Поверка эта закрепляет главное: запись не несёт октетов двоичной записи
 	 *       контейнера, каких запись события выразить не может вовсе
+	 *
 	 */
 	for(size_t i = 0; i < built.size(); i++){
 		// Получаем очередной знак собранной записи беззнаковым
@@ -1009,6 +1035,7 @@ TEST(CodecCefWriter, NestedValueBecomesReadableText) {
  *
  * @note Поверка ставится ВСЕГДА, а не при строгом сличении: запись, своим чтением не
  *       читаемая, негодна при всяком сличении - принимающая сторона вольна читать строго
+ *
  */
 TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
 	// Краевые значения, полю знакового вида назначаемые
@@ -1020,7 +1047,9 @@ TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
 	};
 	// Количество сличённых значений
 	size_t compared = 0;
-	// Выполняем перебор всех краевых значений
+	/**
+	 * Выполняем перебор всех краевых значений
+	 */
 	for(auto & item : CASES){
 		// Объект документа события CEF
 		cef::document_t document;
@@ -1036,10 +1065,10 @@ TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
 		if(!built.empty()){
 			// Объект документа события CEF для поверки чтения
 			cef::document_t back;
-			// Получаем настройки разбора записей
-			cef::reader_t::settings_t settings = back.settings();
+			// Настройки документа
+			cef::document_t::settings_t settings;
 			// Устанавливаем строгое сличение значений со словарём
-			settings.mode = cef::mode_t::STRONG;
+			settings.reader.mode = cef::mode_t::STRONG;
 			// Устанавливаем настройки разбора записей
 			ASSERT_TRUE(back.settings(settings));
 			/**
@@ -1047,6 +1076,7 @@ TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
 			 *
 			 * @note Поверка эта и есть главная: отказ записи сам по себе ничего не
 			 *       доказывает, доказывает лишь пара «записано - прочтено»
+			 *
 			 */
 			EXPECT_TRUE(back.parse(built)) << "собрано: " << built;
 		// Если запись отвергнута, поверяем названность отказа
@@ -1078,11 +1108,12 @@ TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
  */
 TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals) {
 	/**
-	 * @brief Метод сборки записи с заданным именем ключа расширения
+	 * @brief Функция сборки записи с заданным именем ключа расширения
 	 *
 	 * @param key    имя ключа пары расширения
 	 * @param result собранная запись CEF
 	 * @return       признак успешности сборки записи
+	 *
 	 */
 	auto build = [](const string & key, string & result) noexcept -> bool {
 		// Дерево события записи CEF
@@ -1108,6 +1139,7 @@ TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals) {
 		 *
 		 * @warning Ключ ставится ИМЕНЕМ через `insert`, а НЕ ходом `place`: тот
 		 *          разбирает довод строковым путём
+		 *
 		 */
 		abc::value_t extension(abc::kind_t::MAP);
 		// Ставим пару расширения именем ключа
@@ -1132,6 +1164,7 @@ TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals) {
 	 *
 	 * @note Половина эта договора важнее первой: косая черта в имени отменяется, и
 	 *       оборот её проходит дословно - отказ ей был бы правкою сверх нужного
+	 *
 	 */
 	ASSERT_TRUE(build("a\\b", result));
 	// Выполняем проверку того, что косая черта в имени отменена
@@ -1170,11 +1203,12 @@ TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals) {
  */
 TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature) {
 	/**
-	 * @brief Метод сборки записи с заданной приставкой журнала
+	 * @brief Функция сборки записи с заданной приставкой журнала
 	 *
 	 * @param prefix приставка системного журнала
 	 * @param result собранная запись CEF
 	 * @return       признак успешности сборки записи
+	 *
 	 */
 	auto build = [](const string & prefix, string & result) noexcept -> bool {
 		// Дерево события записи CEF
@@ -1215,6 +1249,7 @@ TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature) {
 	 *
 	 * @note Половина эта договора важнее первой: приставка есть обычай живых журналов,
 	 *       и отказ ей сломал бы записи настоящих устройств
+	 *
 	 */
 	ASSERT_TRUE(build("<165>1 2026-09-15T00:00:00Z host app - -", result));
 	// Объект документа записи CEF для поверки оборота
@@ -1234,6 +1269,7 @@ TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature) {
 	 *
 	 * @note Прямая черта разделяет поля ЗАГОЛОВКА, а приставка стоит прежде него, и
 	 *       черта в ней законна
+	 *
 	 */
 	EXPECT_TRUE(build("a|b|c", result));
 	// Обнуляем собранную запись CEF
@@ -1324,6 +1360,9 @@ TEST(CodecCefWriter, RecordLimitsCloseTheRoundTrip) {
 		// Выполняем проверку того, что важность на пределе записана
 		EXPECT_FALSE(document.dump().empty()) << "важность, пределу ровно отвечающая, отвергнута";
 	}
+	/**
+	 * Пробуем важность, предел превышающую
+	 */
 	for(uint32_t severity : {11u, 99u, 4294967295u}){
 		// Объект документа события CEF
 		cef::document_t document;

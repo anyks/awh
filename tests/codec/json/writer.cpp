@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки записи текста JSON — оформление с отступами и без, способы
  *        экранирования, стережение строения документа, кратчайшая запись чисел,
  *        потоковое изъятие собранного и круговой проход записанного через разбор
@@ -35,6 +41,7 @@
  * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
  *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
  *       два прогона разных процессов иначе пишут в один и тот же файл
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -89,8 +96,14 @@ namespace {
 		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
 		// Дописываем номер процесса
 		result.append("-").append(std::to_string(static_cast <uint32_t> (
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 			::_getpid()
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
 #else
 			::getpid()
 #endif
@@ -157,7 +170,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -172,25 +191,25 @@ TEST(CodecJsonWriter, Scalars) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "null");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку записи истины
 	ASSERT_TRUE(writer.value(true));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "true");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку записи целого числа со знаком
 	ASSERT_TRUE(writer.value(static_cast <int64_t> (-42)));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "-42");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку записи беззнакового целого числа
 	ASSERT_TRUE(writer.value(static_cast <uint64_t> (18446744073709551615ull)));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "18446744073709551615");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку записи строкового значения
 	ASSERT_TRUE(writer.value(string("текст")));
 	// Выполняем проверку собранного текста
@@ -210,7 +229,7 @@ TEST(CodecJsonWriter, Containers) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "[]");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись объекта с полями
 	ASSERT_TRUE(writer.object());
 	// Выполняем запись имени первого поля объекта
@@ -269,7 +288,7 @@ TEST(CodecJsonWriter, Structure) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "{\"a\":true}");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем открытие массива
 	ASSERT_TRUE(writer.array());
 	// Выполняем проверку отклонения имени поля объекта внутри массива
@@ -315,6 +334,7 @@ TEST(CodecJsonWriter, Pretty) {
 	 *
 	 * @note Пустое вместилище закрывается вплотную намеренно: перевод строки внутри
 	 *       него ничего не разделяет, а место занимает
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "{\n  \"a\": 1,\n  \"b\": [\n    true\n  ],\n  \"c\": {}\n}");
 	// Устанавливаем отступ знаком табуляции
@@ -322,7 +342,7 @@ TEST(CodecJsonWriter, Pretty) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись массива со значением
 	writer.array();
 	// Выполняем запись значения массива
@@ -336,7 +356,7 @@ TEST(CodecJsonWriter, Pretty) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись массива со значением
 	writer.array();
 	// Выполняем запись значения массива
@@ -358,13 +378,13 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем проверку записи знаков сокращёнными записями
 	ASSERT_EQ(writer.text(), "\"\\\"\\\\\\b\\f\\n\\r\\t\"");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись строки с управляющим знаком без сокращённой записи
 	ASSERT_TRUE(writer.value(string(1, '\x01')));
 	// Выполняем проверку записи управляющего знака кодовым значением
 	ASSERT_EQ(writer.text(), "\"\\u0001\"");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись строки с косой чертой
 	ASSERT_TRUE(writer.value(string("a/b")));
 	// Выполняем проверку записи косой черты как есть по умолчанию
@@ -376,7 +396,7 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись строки с косой чертой
 	ASSERT_TRUE(writer.value(string("a/b")));
 	// Выполняем проверку экранирования косой черты
@@ -386,13 +406,13 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем запись строки со знаками вне US-ASCII
 	ASSERT_TRUE(writer.value(string("é€")));
 	// Выполняем проверку записи знаков кодовыми значениями
 	ASSERT_EQ(writer.text(), "\"\\u00e9\\u20ac\"");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	/**
 	 * Выполняем запись знака за пределами одного слова
 	 */
@@ -488,7 +508,7 @@ TEST(CodecJsonWriter, Raw) {
 	// Выполняем проверку сохранности точности записи числа
 	ASSERT_EQ(writer.text(), "9007199254740993");
 	// Выполняем сброс состояния записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку отклонения записи с ведущим нулём
 	ASSERT_FALSE(writer.raw("01"));
 	// Выполняем проверку отклонения записи, числом не являющейся
@@ -669,10 +689,16 @@ TEST(CodecJsonWriter, RoundTrip) {
 	ASSERT_TRUE(doc.parse(compact)) << json::message(doc.error());
 	// Выполняем проверку совпадения перезаписанного текста с собранным
 	ASSERT_EQ(doc.dump(), compact);
+	// Настройки записи текста документа
+	json::document_t::settings_t writing;
+	// Устанавливаем нарядный вид записи текста документа
+	writing.writer.format = json::format_t::PRETTY;
+	// Выполняем установку настроек документа
+	doc.settings(writing);
 	// Объект документа для разбора текста с отступами
 	json::document_t pretty;
 	// Выполняем разбор текста, оформленного отступами
-	ASSERT_TRUE(pretty.parse(doc.dump(json::format_t::PRETTY))) << json::message(pretty.error());
+	ASSERT_TRUE(pretty.parse(doc.dump())) << json::message(pretty.error());
 	// Выполняем проверку совпадения документов при разном оформлении текста
 	ASSERT_EQ(pretty.dump(), compact);
 }
@@ -700,7 +726,7 @@ TEST(CodecJsonWriter, Literals) {
 	// Выполняем проверку того, что записан именно строковый литерал
 	ASSERT_EQ(writer.text(), "\"да\"");
 	// Выполняем сброс записи текста документа
-	writer.clear();
+	writer.reset();
 	// Выполняем запись строки языка Си, поданной указанием
 	const char * text = "строка";
 	// Выполняем запись строкового значения
@@ -708,24 +734,25 @@ TEST(CodecJsonWriter, Literals) {
 	// Выполняем проверку записанного строкового значения
 	ASSERT_EQ(writer.text(), "\"строка\"");
 	// Выполняем сброс записи текста документа
-	writer.clear();
+	writer.reset();
 	/**
 	 * Выполняем запись пустого указания
 	 *
 	 * @note Строки языка Си пустого указания не имеют, и означает оно отсутствие
 	 *       значения, а не пустую строку
+	 *
 	 */
 	ASSERT_TRUE(writer.value(static_cast <const char *> (nullptr)));
 	// Выполняем проверку записанного пустого значения
 	ASSERT_EQ(writer.text(), "null");
 	// Выполняем сброс записи текста документа
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что запись логического значения способа не сменила
 	ASSERT_TRUE(writer.value(true));
 	// Выполняем проверку записанного логического значения
 	ASSERT_EQ(writer.text(), "true");
 	// Выполняем сброс записи текста документа
-	writer.clear();
+	writer.reset();
 	// Выполняем запись имени поля объекта строковым литералом
 	ASSERT_TRUE(writer.object());
 	// Выполняем запись имени поля объекта
@@ -755,6 +782,7 @@ TEST(CodecJsonWriter, Malformed) {
 	 *
 	 * @note Взяты все правила отказа: ведущий байт, ведущим не являющийся; обрыв;
 	 *       суррогат; запись длиннее необходимого обеих длин; точка свыше U+10FFFF
+	 *
 	 */
 	const vector <string> samples = {
 		string("\xFF\xFE", 2), string("\xC3", 1), string("\xED\xA0\x80", 3),
@@ -790,6 +818,7 @@ TEST(CodecJsonWriter, Malformed) {
 			 * Выполняем проверку того, что выданный текст разбирается нашим же разбором
 			 *
 			 * @note Умолчанием стоит замена знаком U+FFFD, и текст оттого остаётся годным
+			 *
 			 */
 			ASSERT_TRUE(document.parse(writer.text())) << json::message(document.error());
 		}
@@ -819,6 +848,7 @@ TEST(CodecJsonWriter, MalformedRefuse) {
 	 * @note Сличается именно КОД, а не один признак отказа: признак говорит лишь
 	 *       «не вышло», и подмена кода на любой другой прошла бы незамеченной,
 	 *       оставив звучащего без средства отличить негодный байт от прочих причин
+	 *
 	 */
 	ASSERT_EQ(writer.error(), json::error_t::INVALID_ENCODING);
 	// Выполняем запись годного имени поля объекта
@@ -831,6 +861,7 @@ TEST(CodecJsonWriter, MalformedRefuse) {
 	 * Выполняем запись годного значения на место отвергнутого
 	 *
 	 * @note Отказ ничего не записывает вовсе, оттого имя поля и остаётся ждать значения
+	 *
 	 */
 	ASSERT_TRUE(writer.value("годное"));
 	// Выполняем закрытие объекта
@@ -925,9 +956,11 @@ TEST(CodecJsonWriter, MalformedIntact) {
  *
  * @note Собраны прикрытия записи: предел глубины вложенности, предел длины числа,
  *       записанного дословно, и отказ от чисел, договором не предусмотренных
+ *
  * @warning Дословная запись числа НЕ ДОВЕРЯЕТ поданному тексту: он попадает в вывод
  *          как есть, и запись негодного числа дала бы текст, разбором не
  *          восстановимый. Оттого он осматривается наравне с разбираемым
+ *
  */
 TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	/**
@@ -935,6 +968,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	 *
 	 * @note Предел записи равен пределу разбора нарочно: запись, вложенность
 	 *       превзошедшая, дала бы текст, собственным же разбором не принимаемый
+	 *
 	 */
 	{
 		// Поток записи текста документа
@@ -991,6 +1025,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 		 *
 		 * @note Договор велит числу начинаться цифрой либо знаком минуса: запись
 		 *       «.5» числом по нему не является, сколь бы привычной ни выглядела
+		 *
 		 */
 		ASSERT_FALSE(writer.raw(".5"));
 		// Выполняем проверку отклонения отрицательного числа без целой части
@@ -1008,6 +1043,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 		 *
 		 * @note Проверка эта существеннее самих отказов: отказ, оставивший половину
 		 *       записанного в тексте, испортил бы документ молча
+		 *
 		 */
 		ASSERT_EQ(writer.text(), "[]");
 	}
@@ -1017,6 +1053,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	 * @note Нечисло и бесконечности записи не подлежат: договор их не знает, и
 	 *       запись их обратилась бы в текст, разбором не принимаемый. Это расхождение
 	 *       с языком закреплено щупом договора
+	 *
 	 */
 	{
 		// Поток записи текста документа
@@ -1046,6 +1083,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 		 *       ARM64 обращает их нулём, и запись «5e-324» там законно выходит нулём.
 		 *       Закрепить её видом значило бы завести проверку, отказывающую по
 		 *       свойству машины, а не по дефекту кодека
+		 *
 		 */
 		{
 			// Поток записи текста документа
@@ -1069,11 +1107,13 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
  * @note Значение верхнего уровня записывается однажды: второе образовало бы два
  *       документа в одном тексте. Дозволено это лишь потоком, где документы
  *       отделяются переводом строки
+ *
  * @warning Прикрытие второго документа стоит ВТОРЫМ по счёту, за прикрытием
  *          «значение уже записано», и достижимо лишь после завершения документа:
  *          завершение сбрасывает признак записанного, и до прикрытия доходит
  *          лишь тот, кто документ закрыл. Порядок этот существенен, менять его
  *          нельзя, не поменяв доводов обоих
+ *
  */
 TEST(CodecJsonWriter, StreamAndMalformed) {
 	/**
@@ -1104,6 +1144,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 *
 	 * @note Отказ обязателен: два документа подряд без отделителя склеились бы в
 	 *       одну последовательность знаков, и разбор распался бы на границе
+	 *
 	 */
 	{
 		// Поток записи текста документа
@@ -1120,6 +1161,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 *
 	 * @note Проверяются ВСЕ виды значений: отделение записывается своим обращением
 	 *       у каждого из них, и общего прикрытия у них нет
+	 *
 	 */
 	{
 		// Поток записи текста документа
@@ -1152,6 +1194,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 *       ЗАМЕНЯЕТСЯ знаком замены, а не отвергается. Замена выбрана умолчанием
 	 *       нарочно - запись обязана довести дерево до текста даже тогда, когда в
 	 *       дерево попали байты из ненадёжного источника
+	 *
 	 */
 	{
 		// Поток записи текста документа
@@ -1225,7 +1268,9 @@ TEST(CodecJsonWriter, InfinityAfterTopLevelValue) {
 	 * Первым значением те же числа записываются
 	 */
 	{
-		// Выполняем перебор чисел с их записью словами
+		/**
+		 * Выполняем перебор чисел с их записью словами
+		 */
 		for(auto & item : vector <pair <double, string>> {
 			// Нечисло
 			{NAN, "NaN"},
@@ -1269,7 +1314,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		// Выполняем проверку кода отказа записи
 		ASSERT_EQ(writer.error(), json::error_t::NO_CONTAINER_OPEN);
 		// Выполняем сброс состояния записи
-		writer.clear();
+		writer.reset();
 		// Выполняем проверку снятия кода отказа сбросом
 		ASSERT_EQ(writer.error(), json::error_t::NONE);
 	}
@@ -1306,6 +1351,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		 * @note Код отказа - `EXPECTED_VALUE`: повторено ничего не было, недостаёт
 		 *       значения. Прежде здесь стоял `DUPLICATE_KEY`, договором отведённый
 		 *       повторённому ИМЕНИ поля
+		 *
 		 */
 		ASSERT_FALSE(writer.key("второе"));
 		// Выполняем проверку кода отказа записи
@@ -1332,6 +1378,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		 * @note Отказ этот о НАСТРОЙКЕ, а не о данных: с поднятым дозволением то же самое
 		 *       значение пишется исправно. Прежде отвечалось `INVALID_NUMBER` - суждение
 		 *       ложное, уводившее зовущего искать изъян в своих данных
+		 *
 		 */
 		ASSERT_EQ(writer.error(), json::error_t::UNWRITABLE_VALUE);
 		// Выполняем проверку описания кода отказа записи
@@ -1343,6 +1390,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 	 * @note Код тот же, что и у имени поля вне вместилища, но место иное: заслон
 	 *       живёт в `close()` своим условием, и подмена кода в нём проверкой имени
 	 *       поля не ловится вовсе
+	 *
 	 */
 	{
 		// Запись документа
@@ -1371,6 +1419,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 	 * @note Оба заслона стерегутся порознь: длина записи проверяется ПОСЛЕ вида её,
 	 *       и число, негодное и по виду и по длине, отчиталось бы видом. Оттого
 	 *       длинная запись берётся заведомо годной по виду - из одних цифр
+	 *
 	 */
 	{
 		// Запись документа
@@ -1391,6 +1440,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 	 *
 	 * @note Предел стережётся ОБОИМ вместилищам порознь: заслоны у массива и у
 	 *       объекта живут своими условиями, и подмена кода в одном другим не ловится
+	 *
 	 */
 	{
 		// Запись документа
@@ -1418,6 +1468,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
  * код отказа должен возвращаться к `NONE`. Иначе `error()` называет причиной
  * давнишний отказ, а не состояние последней операции, и зовущий, проверивший код
  * лишь после окончания записи, увидит ложную неисправность
+ *
  */
 TEST(CodecJsonWriter, LocalRefusalDoesNotPersist){
 	{
@@ -1469,6 +1520,7 @@ TEST(CodecJsonWriter, LocalRefusalDoesNotPersist){
  * повторённому имени поля, и разбор выставляет его именно в этом смысле: один код на два
  * разных случая лишил бы звучащего возможности отличить порчу данных от своей же ошибки
  * обращения к сборщику
+ *
  */
 TEST(CodecJsonWriter, MissingValueIsNotDuplicateKey){
 	/**
@@ -1588,6 +1640,7 @@ TEST(CodecJsonWriter, DuplicateKeyPassesWritingButNotParsing){
  * какого распадается на границе между ними
  *
  * @note Замер до правки: `{"a":1}{` при успехе записи и пустом коде отказа
+ *
  */
 TEST(CodecJsonWriter, StreamSeparatorJudgedByWhatWasWritten){
 	/**
@@ -1635,6 +1688,7 @@ TEST(CodecJsonWriter, StreamSeparatorJudgedByWhatWasWritten){
 		 * @note Разделитель пишется завершением первого документа, а к тому мигу поток
 		 *       включён не был: писать второй документ некуда, и отказ здесь честнее
 		 *       склейки
+		 *
 		 */
 		ASSERT_FALSE(writer.object());
 		// Выполняем проверку кода отказа записи
@@ -1722,6 +1776,7 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 		 * @warning Живость проверяется АРИФМЕТИКОЮ через «volatile», а не сличением
 		 *          постоянной с нулём: постоянную собиратель свернёт, и условие выйдет
 		 *          истинным всегда - проверка вернулась бы к прежнему закреплению молча
+		 *
 		 */
 		{
 			// Проверяемое поднормальное число
@@ -1734,6 +1789,7 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 				ASSERT_TRUE(roundtrip(std::numeric_limits <double>::denorm_min()));
 			}
 		}
+		// Прогоняем оборот машинного эпсилона у единицы
 		ASSERT_TRUE(roundtrip(std::numeric_limits <double>::epsilon()));
 		// Выполняем проверку оборота у предела точного представления целых
 		ASSERT_TRUE(roundtrip(9007199254740992.));
@@ -1770,7 +1826,7 @@ TEST(CodecJsonWriter, ThreeMalformedModesGiveThreeOutcomes) {
 	// Записываемое значение с усечённой четырёхоктетной последовательностью меж двух букв
 	const string malformed = string("а") + "\xF0\x9F\x98" + "б";
 	/**
-	 * @brief Метод записи значения по затребованному укладу
+	 * @brief Функция записи значения по затребованному укладу
 	 *
 	 * @param rule   уклад обращения с негодной последовательностью
 	 * @param result записанный текст документа
@@ -1827,6 +1883,7 @@ TEST(CodecJsonWriter, ThreeMalformedModesGiveThreeOutcomes) {
 	 *
 	 * @note Сличение это стоит здесь отдельно: уклад, съехавший в соседний, дал бы
 	 *       совпадение двух исходов при верности каждого из них по отдельности
+	 *
 	 */
 	{
 		// Выполняем проверку различия длин у отказа и пропуска
@@ -1877,9 +1934,13 @@ TEST(CodecJsonWriter, ByteOrderMarkIsNeverEmitted) {
 	 * Выполняем перебор всех сочетаний настроек записи
 	 */
 	for(const json::escape_t escape : escapes){
-		// Выполняем перебор всех видов оформления текста
+		/**
+		 * Выполняем перебор всех видов оформления текста
+		 */
 		for(const json::format_t format : formats){
-			// Выполняем перебор всех правил обращения с негодной последовательностью
+			/**
+			 * Выполняем перебор всех правил обращения с негодной последовательностью
+			 */
 			for(const json::malformed_t rule : rules){
 				// Настройки записи текста документа
 				json::writer_t::settings_t settings;
@@ -1919,6 +1980,7 @@ TEST(CodecJsonWriter, ByteOrderMarkIsNeverEmitted) {
 	 *
 	 * @note Дверь эта сличается отдельно: обещание дано записи целиком, а не выдаче в
 	 *       строку, и запись в файл идёт своим путём
+	 *
 	 */
 	{
 		// Значение документа для записи в файл
@@ -1958,6 +2020,7 @@ TEST(CodecJsonWriter, ByteOrderMarkIsNeverEmitted) {
  *          означает «не воспроизвелось», а не «дефекта нет». Держится она ради того, что
  *          воспроизведение это было ПОКАЗАНО, и обратная правка краснит её на рабочей
  *          машине
+ *
  */
 TEST(CodecJsonWriter, NumberShapeIsDeafToTheStackFrameGarbage) {
 	/**
@@ -2020,6 +2083,7 @@ TEST(CodecJsonWriter, NumberShapeIsDeafToTheStackFrameGarbage) {
 	 *
 	 * @note Половина обязательная: правка, отбросившая перезапись вовсе, дала бы развёрнутый
 	 *       вид ВСЕМУ и первую половину прошла бы
+	 *
 	 */
 	{
 		// Выполняем загрязнение кадра стека
@@ -2062,6 +2126,7 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	 *       отказ связывания, какой набор без такого вызова не заметит. Замерено картой
 	 *       охвата 07.09.2026 - половина эта звала четыре вида из десяти, и шесть
 	 *       порождённых оставались непроверенными
+	 *
 	 */
 	ASSERT_TRUE(writer.value(static_cast <unsigned short> (4)));
 	// Выполняем запись числа видом беззнакового целого языка
@@ -2091,6 +2156,7 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	 *          система, и `char(-128)` записалось бы как `-128` там, где `char` знаковый, и
 	 *          как `128` там, где беззнаковый. Сличение записи с постоянною строкою краснело
 	 *          бы тогда на половине стендов - на ARM64 Linux в первую голову
+	 *
 	 */
 	ASSERT_TRUE(writer.value(static_cast <char> (100)));
 	/**
@@ -2098,6 +2164,7 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	 *
 	 * @note Значение это и отделяет знаковую дорогу от беззнаковой: проведённое через
 	 *       целое со знаком, оно вышло бы минус единицей
+	 *
 	 */
 	ASSERT_TRUE(writer.value(static_cast <size_t> (18446744073709551615ull)));
 	// Выполняем запись дробного числа
@@ -2186,10 +2253,13 @@ TEST(CodecJsonWriter, EveryWordOfInfinityAndNotANumberIsWritten){
  *
  */
 TEST(CodecJsonWriter, OwnBufferStrings) {
-	// Проверяем короткий буфер и буфер с перевыделением памяти
+	/**
+	 * Проверяем короткий буфер и буфер с перевыделением памяти
+	 */
 	for(const size_t size : vector <size_t> {0, 4096}){
 		// Сравниваем результат с записью независимой копии
 		json::writer_t writer, reference;
+		// Открываем объект в проверяемом писателе
 		ASSERT_TRUE(writer.object());
 		ASSERT_TRUE(reference.object());
 		ASSERT_TRUE(writer.key("first"));
@@ -2198,19 +2268,23 @@ TEST(CodecJsonWriter, OwnBufferStrings) {
 		ASSERT_TRUE(reference.value(string(size, 'x')));
 		// Имя берём из самого выходного буфера
 		const string name = reference.text();
+		// Задаём имя ключа текстом из собственного буфера писателя
 		ASSERT_TRUE(writer.key(writer.text()));
 		ASSERT_TRUE(reference.key(name));
 		// Значение также берём из самого выходного буфера
 		const string value = reference.text();
+		// Пишем значение текстом из собственного буфера писателя
 		ASSERT_TRUE(writer.value(writer.text()));
 		ASSERT_TRUE(reference.value(value));
 		ASSERT_TRUE(writer.close());
 		ASSERT_TRUE(reference.close());
 		ASSERT_TRUE(writer.finish());
 		ASSERT_TRUE(reference.finish());
+		// Сличаем итоговый текст писателя с текстом независимой копии
 		ASSERT_EQ(writer.text(), reference.text());
 		// Проверяем пригодность полученного текста для разбора
 		json::document_t document;
+		// Убеждаемся, что собранный текст разбирается без отказа
 		ASSERT_TRUE(document.parse(writer.text()));
 	}
 }
@@ -2219,13 +2293,18 @@ TEST(CodecJsonWriter, OwnBufferStrings) {
  *
  */
 TEST(CodecJsonWriter, OwnBufferRawAfterTake) {
+	// Писатель текста документа, изъятию записи подвергаемый
 	json::writer_t writer;
+	// Открываем массив в проверяемом писателе
 	ASSERT_TRUE(writer.array());
+	// Изымаем начальную запись массива, куда разделитель попасть не должен
 	const string first = writer.take();
+	// Пишем в массив готовое число 7
 	ASSERT_TRUE(writer.value(7));
 	// Разделитель не должен попасть в исходную запись числа
 	ASSERT_TRUE(writer.raw(writer.text()));
 	ASSERT_TRUE(writer.close());
 	ASSERT_TRUE(writer.finish());
+	// Сличаем изъятое с дозаписанным против ожидаемого текста «[7,7]»
 	ASSERT_EQ(first + writer.text(), "[7,7]");
 }

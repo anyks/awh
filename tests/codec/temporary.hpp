@@ -39,6 +39,7 @@
  *       заголовка ради средств системы, зовомых напрямую. С переводом заведения и сноса
  *       каталога на `fs_t` ни одно из тех средств здесь более не зовётся, и заголовки
  *       сняты вместе с ними
+ *
  */
 #include <sys/fs.hpp>
 
@@ -83,6 +84,7 @@ inline std::string temporary(const std::string & name) noexcept {
 	 *
 	 * @note Разделителем берётся косая черта: MS Windows принимает её наравне с
 	 *       обратной во всякой работе с файлами, и различать их незачем
+	 *
 	 */
 	if(!result.empty() && (result.back() != '/') && (result.back() != '\\'))
 		// Выполняем дописывание разделителя каталога
@@ -120,9 +122,28 @@ inline std::string temporary(const std::string & name) noexcept {
  *
  * \~english
  * @brief Function of the creation of a directory, portable between the systems
+ *
  * @details The work is conducted by the `fs_t` handle rather than by the means of the system
  *          directly: the path arrives written in UTF-8, while the narrow call at MS Windows
- *          interprets its octets by the code page of the system
+ *          interprets its octets by the code page of the system. The directory at that is
+ *          created SUCCESSFULLY, but under another name, and no refusal occurs at all -
+ *          neither a code, nor a message
+ *
+ * @warning This discrepancy felled two checks of each of the three codecs - INI, TOML and
+ *          YAML: the codecs approach the file system by the `fs_t` handle, addressing the
+ *          path wide, while the helper addressed it narrow. The "writing into the directory
+ *          is forbidden" check reddened because a directory under THAT name, which was
+ *          given to the codec, was absent on the disk. Measured on 13.09.2026 at the stand
+ *          of Windows 11 MSYS2/MinGW64: two names of one intention lay side by side -
+ *          `цель-значения-ini` of the codec and the garbage of the helper
+ *
+ * @note The rule from here is general: a check must approach the file system by THE SAME
+ *       handle, by which the checked one approaches it. Otherwise the redness means not a
+ *       fault of the codec, but a discrepancy of the check with it
+ *
+ * @note The work is declared `inline` and has no unnamed namespace by the same argument as
+ *       `temporary()` above: a copy in every file would give rise to a discrepancy
+ *
  * @param path path to the directory being created
  * @return     sign of the successful creation of the directory
  *
@@ -154,6 +175,21 @@ inline bool makeDirectory(const std::string & path) noexcept {
  *
  * \~english
  * @brief Function of the removal of a directory TOGETHER WITH ITS CONTENT
+ *
+ * @details The `fs_t::unlink` handle walks the directory by itself and removes it together
+ *          with the content, while addressing the path wide on par with the creation. Both
+ *          halves are obliged to walk by ONE handle: fix the creation alone - and the
+ *          directory would be created under a correct name, yet removed under a distorted
+ *          one, and the remainder would pile up at the stand on every run
+ *
+ * @warning The cleanup is needed not for the sake of tidiness: a remainder of a previous run
+ *          fells the write refusal checks. Measured by the induced corruption on 07.09.2026
+ *          at the three codecs at once. A run, killed between the creation of the directory
+ *          and its cleanup, leaves exactly such a remainder
+ *
+ * @note The absence of the directory counts as a success on par with the removal: the question
+ *       is about THE GOAL, and not about the action, and an absent directory satisfies the goal
+ *
  * @param path path to the directory being removed
  * @return     sign that the directory at this path no longer exists
  *

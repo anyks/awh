@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки правки бинарного контейнера ABC на месте — дописывание, правка и снос
  *        записей, фиксация накопленного, откат к прежнему поколению и способы фиксации
  *
@@ -35,7 +41,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён AWH для обращений вида awh::log
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека ABC для обращений вида abc::editor_t
+ */
 using namespace awh::codec;
 
 /**
@@ -84,6 +96,7 @@ namespace {
 				 *
 				 * @note Учёт этот нужен поверке сторожей длины кадра: сторож ловится не
 				 * кодом отказа, а тем, СКОЛЬКО правка затребует у источника прежде отказа
+				 *
 				 */
 				if(size > this->largest)
 					// Выполняем запоминание наибольшего затребованного размера
@@ -97,6 +110,7 @@ namespace {
 				 *
 				 * @note Предел этот нужен поверке отката: отказ чтения обязан приходиться
 				 * на середину работы, а не на первое же обращение её к носителю
+				 *
 				 */
 				if((this->sight >= 0) && (this->reads >= this->sight))
 					// Выводим признак неудачного чтения октетов
@@ -175,7 +189,9 @@ namespace {
 			void build(Medium & medium, const vector <string> & records) noexcept {
 				// Сборщик контейнера
 				abc::assembler_t assembler;
-				// Выполняем перебор всех собираемых записей контейнера
+				/**
+				 * Укладываем каждую собираемую запись через abc::value_t в её октеты
+				 */
 				for(const string & text : records){
 					// Выполняем сборку очередной записи
 					const vector <uint8_t> item = abc::value_t(text).dump();
@@ -236,6 +252,73 @@ namespace {
 	};
 };
 
+/**
+ * @brief Проверка сохранения накопленной правки при отсутствии работ повторного открытия
+ *
+ */
+TEST_F(EditorFixture, MissingOpenCallbacksPreservePendingEdits) {
+	// Носитель контейнера
+	Medium medium;
+	// Выполняем сборку исходного контейнера
+	this->build(medium, {"first"});
+	// Правщик контейнера
+	abc::editor_t editor;
+	// Выполняем открытие исходного контейнера
+	ASSERT_TRUE(this->open(editor, medium));
+	// Запись для отложенного добавления
+	const auto item = abc::value_t("second").dump();
+	// Выполняем накопление правки
+	ASSERT_TRUE(editor.append(item.data(), item.size(), abc::payload_t::TEXT));
+	// Количество накопленных правок
+	const size_t pending = editor.pending();
+	// Выполняем проверку наличия отложенной работы
+	ASSERT_GT(pending, 0u);
+	// Выполняем повторное открытие без работ чтения и записи
+	EXPECT_FALSE(editor.open(nullptr, nullptr, medium.data.size()));
+	// Выполняем проверку причины отказа
+	EXPECT_EQ(editor.error(), abc::error_t::INTERNAL);
+	// Выполняем проверку сохранения накопленных правок
+	EXPECT_EQ(editor.pending(), pending);
+	// Выполняем проверку сохранения числа записей
+	EXPECT_EQ(editor.records(), 2u);
+	// Выполняем фиксацию ранее накопленной правки
+	ASSERT_TRUE(editor.commit());
+	// Содержимое выбранной записи
+	vector <uint8_t> result;
+	// Причина отказа выборки
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем выборку сохранённой записи с носителя
+	ASSERT_TRUE(this->pick(medium, 1, result, error));
+	// Выполняем проверку содержимого записи
+	ASSERT_EQ(result, item);
+}
+/**
+ * @brief Проверка сохранения источника выборки при отсутствии новой работы чтения
+ *
+ */
+TEST_F(EditorFixture, MissingFetcherSourcePreservesOpenContainer) {
+	// Носитель контейнера
+	Medium medium;
+	// Выполняем сборку исходного контейнера
+	this->build(medium, {"first"});
+	// Выборщик записей
+	abc::fetcher_t fetcher;
+	// Выполняем открытие источника записей
+	ASSERT_TRUE(fetcher.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+		// Выполняем чтение из исходного носителя
+		return medium.read(offset, size, result);
+	}, medium.data.size()));
+	// Выполняем повторное открытие без источника
+	EXPECT_FALSE(fetcher.open(nullptr, medium.data.size()));
+	// Выполняем проверку причины отказа
+	EXPECT_EQ(fetcher.error(), abc::error_t::INTERNAL);
+	// Содержимое выбранной записи
+	vector <uint8_t> result;
+	// Выполняем выборку из прежнего источника после отказа
+	ASSERT_TRUE(fetcher.record(0, result));
+	// Выполняем проверку содержимого записи
+	ASSERT_EQ(result, abc::value_t("first").dump());
+}
 /**
  * @brief Проверка дописывания записей в конец контейнера
  *
@@ -552,7 +635,9 @@ TEST_F(EditorFixture, WasteSkipped) {
 	abc::chunk_t chunk;
 	// Количество снятых кадров
 	size_t count = 0;
-	// Выполняем вычитывание всех кадров правленного контейнера
+	/**
+	 * Вычитываем кадры правленного контейнера, пока выборщик их отдаёт
+	 */
 	while(loader.next(chunked, chunk)){
 		// Выполняем увеличение количества снятых кадров
 		count++;
@@ -767,6 +852,7 @@ TEST_F(EditorFixture, CommitRollbackOnReadFailure) {
 	 * на носитель, и круги следом звали её у правщика чистого, где отказывать нечему.
 	 * Выглядел он полным, а накрывал лишь начало отрезка - непокрытыми оставались
 	 * ИМЕННО глубокие чтения фиксации, ради каких перебор и заведён
+	 *
 	 */
 	for(int sight = 0; sight < 24; sight++){
 		// Носитель, несущий правимый контейнер этого круга
@@ -787,6 +873,7 @@ TEST_F(EditorFixture, CommitRollbackOnReadFailure) {
 		 * внесение его в дерево свёрток мусором - идут лишь у контейнера УЖЕ
 		 * подписанного, а первая фиксация подпись только кладёт. Без этого круга
 		 * перебор накрывал начало отрезка и до откатов глубоких не доходил вовсе
+		 *
 		 */
 		ASSERT_TRUE(retried.erase(1)) << "предел чтений: " << sight;
 		// Первая фиксация обязана лечь на носитель беспрепятственно
@@ -819,6 +906,7 @@ TEST_F(EditorFixture, CommitRollbackOnReadFailure) {
 	 * наново (носитель на тот миг ещё отказывал чтением), снимает подписанта намеренно -
 	 * подписывать по наполовину собранному дереву нельзя. Поверка подписи после отказа
 	 * чтения ловила бы это намеренное решение, а не двойной учёт
+	 *
 	 */
 	// Выборщик записей правленого контейнера
 	abc::fetcher_t fetcher;
@@ -886,6 +974,7 @@ TEST_F(EditorFixture, PayloadKindSplitsChunk) {
 	 * вида записи прочитались бы исправно всё равно - вид кадра выбирает лишь способ
 	 * сжатия, а не разбор, - и проверка на целость проходила бы при снятой укладке,
 	 * поверяя ровно ничего. Разными кадрами их делает ИМЕННО она
+	 *
 	 */
 	// Строки оглавления правленого контейнера
 	const vector <abc::entry_t> & entries = editor.index().entries();
@@ -922,6 +1011,7 @@ TEST_F(EditorFixture, PayloadKindSplitsChunk) {
 	 *
 	 * @note Записи легли РАЗНЫМИ кадрами, и целость её тем и доказывается: лягши в один
 	 * кадр с текстом, она читалась бы видом, объявленным не о ней
+	 *
 	 */
 	ASSERT_EQ(picked, raw);
 }
@@ -1053,15 +1143,19 @@ TEST_F(EditorFixture, ModulesReachPacker) {
 	 *
 	 * @note Длина эта ведётся записью и опросом при открытии, а не пересчётом: поверка
 	 * её сличением с носителем и стережёт ведение это
+	 *
 	 */
 	ASSERT_EQ(editor.length(), static_cast <uint64_t> (medium.data.size()));
 }
+// Проверяем оберег ширины смещения при уборке контейнера в кадр на 4096 октетов
 TEST_F(EditorFixture, CompactOffsetWidthGuard) {
 	// Носитель, несущий правимый контейнер
 	Medium medium;
 	// Собираемые записи правимого контейнера
 	vector <string> items;
-	// Выполняем сборку двух десятков записей по сорок октетов
+	/**
+	 * Собираем двадцать записей по сорок октетов: в каждом октете 'a' + (i % 26)
+	 */
 	for(size_t i = 0; i < 20; i++)
 		// Выполняем внесение очередной собранной записи
 		items.push_back(string(40, static_cast <char> ('a' + (i % 26))));
@@ -1109,6 +1203,7 @@ TEST_F(EditorFixture, CompactOffsetWidthGuard) {
 		ASSERT_EQ(picked, item) << "запись: " << i;
 	}
 }
+// Проверяем, что уборка контейнера не снимает подпись поколения
 TEST_F(EditorFixture, CompactKeepsSignature) {
 	// Выполняем заведение ключа владельца контейнера
 	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
@@ -1168,6 +1263,7 @@ TEST_F(EditorFixture, CompactKeepsSignature) {
 	 *       от унаследованного значения неотличима. Закрепляет его
 	 *       `EditorFixture.CompactionStoresTheFingerprintOfTheCurrentSigner`, где уборка
 	 *       идёт ключом ИНЫМ, нежели подписан прежний контейнер
+	 *
 	 */
 	{
 		// Буфер отпечатка открытого ключа владельца
@@ -1317,6 +1413,7 @@ TEST_F(EditorFixture, CommitRollbackKeepsPreviousGeneration) {
 		 *       ничего. Обход же обрывает запись на РАЗНЫХ шагах, оттого одно и то же
 		 *       место назвать нельзя - зато можно потребовать, чтобы причина
 		 *       принадлежала записи и была объявлена непременно
+		 *
 		 */
 		if(!editor.commit()){
 			// Выполняем учёт отказавшей фиксации
@@ -1967,6 +2064,7 @@ TEST_F(EditorFixture, ChunkLengthGuard) {
 	 *
 	 * @note Первый кадр лежит сразу за заголовком опознания, а длина содержимого его -
 	 * четырьмя октетами со смещения 4 в заголовке кадра
+	 *
 	 */
 	abc::fixed(medium.data.data() + abc::HEADER_LENGTH + 4, 0xFFFFFFFFull, 4);
 	// Правщик контейнера
@@ -1987,6 +2085,7 @@ TEST_F(EditorFixture, ChunkLengthGuard) {
 	 * @note Предел взят длиною самого контейнера: правка вправе вычитать из него что
 	 * угодно, но затребовать БОЛЬШЕ, чем контейнер весит, ей неоткуда - разве что по
 	 * длине, подделанной в самом контейнере
+	 *
 	 */
 	ASSERT_LE(medium.largest, medium.data.size())
 		<< "затребовано у источника: " << medium.largest << " при контейнере в " << medium.data.size();
@@ -2369,6 +2468,7 @@ TEST_F(EditorFixture, RefusedAddLeavesNothingToCommit) {
 	 *
 	 * @note Половина эта была зелёной и при дефекте: откат списка правок и накопленных
 	 *       октетов работал верно, утекал один лишь признак незакреплённых правок
+	 *
 	 */
 	ASSERT_EQ(editor.pending(), static_cast <size_t> (0));
 	// Выполняем проверку того, что количество записей контейнера не изменилось
@@ -2378,6 +2478,7 @@ TEST_F(EditorFixture, RefusedAddLeavesNothingToCommit) {
 	 *
 	 * @note Без этого фиксация упала бы по той же причине, её собственный откат вернул бы
 	 *       всё, и цена утёкшего признака осталась бы невидимой
+	 *
 	 */
 	packing.encrypt = false;
 	// Выполняем установку настроек укладчика кадров
@@ -2386,6 +2487,7 @@ TEST_F(EditorFixture, RefusedAddLeavesNothingToCommit) {
 	 * Выполняем фиксацию, какой закреплять нечего
 	 *
 	 * @note Успехом она отвечала и при дефекте: работа шла удачно, просто была не нужна
+	 *
 	 */
 	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
 	// Мусора на носителе прибавиться не должно: фиксации нечего было закреплять
@@ -2439,6 +2541,7 @@ TEST_F(EditorFixture, ForgedIndexLengthAsksNothingHuge) {
 	 *
 	 * @note Заголовок укладывается ЗАНОВО, оттого контрольная сумма его пересчитывается
 	 *       сама - ровно так поступил бы и подделыватель
+	 *
 	 */
 	header.extent = 0xFFFFFFFFu;
 	// Октеты подделанного заголовка опознания
@@ -2581,6 +2684,7 @@ TEST_F(EditorFixture, AddNamesItsRefusals) {
 		 *
 		 * @note Причина здесь ИНАЯ, чем у неоткрытого контейнера: там правка невозможна
 		 *       вовсе, здесь же контейнер открыт, а спрошено у него несуществующее
+		 *
 		 */
 		ASSERT_FALSE(editor.record(999, picked));
 		// Выполняем проверку названной причины отказа
@@ -2779,6 +2883,7 @@ TEST_F(EditorFixture, TheCauseCrossesTheBoundaryOfTheLayers) {
 	 *
 	 * @note Портится СОДЕРЖИМОЕ, а не заголовок кадра: длина и вид остаются годными, и
 	 *       отказ приходит именно по контрольной сумме, а не по разбору полей
+	 *
 	 */
 	medium.data.at(abc::HEADER_LENGTH + abc::CHUNK_HEADER) ^= 0xFF;
 	// Правщик контейнера
@@ -2880,6 +2985,7 @@ TEST_F(EditorFixture, ChunkBeyondTheBodyIsRefused) {
  * @note Место это щупы числили слепым: набор оснастку по ходу работы не менял вовсе.
  *       Отказ здесь не заводит своей причины, а ПЕРЕНОСИТ причину укладчика - тем и
  *       закрепляется переход причины через границу слоёв (05.09.2026)
+ *
  */
 TEST_F(EditorFixture, PendingUnpackFailureCarriesThePackerCause) {
 	// Носитель, несущий правимый контейнер
@@ -2943,6 +3049,7 @@ TEST_F(EditorFixture, PendingUnpackFailureCarriesThePackerCause) {
  *
  * @note Устье-близнец тому, что у выборщика записей, и закрывается тем же доводом.
  *       Числилось незакреплённым до 05.09.2026
+ *
  */
 TEST_F(EditorFixture, OpeningCompressedWithoutTheCompressorCarriesThePackerCause) {
 	// Носитель, несущий правимый контейнер
@@ -3001,6 +3108,7 @@ TEST_F(EditorFixture, OpeningCompressedWithoutTheCompressorCarriesThePackerCause
  * @note Заказ ставится ПОСЛЕ накопления: закажи его раньше - отказом ответится укладка
  *       накопленного, и до оглавления дело не дойдёт. Тем и разводятся устья, до
  *       05.09.2026 незакреплённые
+ *
  */
 TEST_F(EditorFixture, PackFailureCarriesThePackerCause) {
 	// Собираемая дописываемая запись контейнера
@@ -3082,6 +3190,7 @@ TEST_F(EditorFixture, PackFailureCarriesThePackerCause) {
 	 * @note Уборка перекладывает всякую уцелевшую запись, и укладка их идёт ПРЕЖДЕ укладки
 	 *       оглавления: опередить её можно, лишь снеся все записи до единой. Тогда
 	 *       перекладывать нечего, и первой укладкой уборки выходит оглавление
+	 *
 	 */
 	{
 		// Носитель, несущий правимый контейнер
@@ -3164,6 +3273,7 @@ TEST_F(EditorFixture, PackFailureCarriesThePackerCause) {
  *
  * @note Проверяется и ОБРАТНОЕ: при снятом пределе всякая работа проходит. Без того
  *       обход прошёл бы и на работе, отказывающей всегда
+ *
  */
 TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 	// Выполняем установку соли шифрования
@@ -3192,15 +3302,16 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 	 *       первой подписи. Оттого обход ведётся по контейнеру, подпись уже несущему:
 	 *       три устья чтения были слепы именно потому, что подпись в обходе была первой
 	 *       (замерено 05.09.2026)
+	 *
 	 */
-	Medium signed_medium;
+	Medium signedMedium;
 	{
 		// Выполняем сборку контейнера о трёх записях
-		this->build(signed_medium, {"первая", "вторая", "третья"});
+		this->build(signedMedium, {"первая", "вторая", "третья"});
 		// Правщик контейнера
 		abc::editor_t editor;
 		// Выполняем открытие контейнера правщиком
-		ASSERT_TRUE(this->open(editor, signed_medium)) << "код отказа: " << abc::message(editor.error());
+		ASSERT_TRUE(this->open(editor, signedMedium)) << "код отказа: " << abc::message(editor.error());
 		// Выполняем объявление подписи контейнера
 		ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "код отказа: " << abc::message(editor.error());
 		// Выполняем фиксацию подписи на носителе
@@ -3214,12 +3325,13 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 	 *       одного поколения такого расположения ещё нет. Три устья чтения прежней подписи
 	 *       оттого и стояли слепыми: обход вёлся по контейнеру, подписанному впервые
 	 *       (замерено 05.09.2026)
+	 *
 	 */
 	for(int round = 0; round < 2; round++){
 		// Правщик контейнера круга
 		abc::editor_t editor;
 		// Выполняем открытие контейнера правщиком
-		ASSERT_TRUE(this->open(editor, signed_medium)) << "круг: " << round;
+		ASSERT_TRUE(this->open(editor, signedMedium)) << "круг: " << round;
 		// Выполняем объявление подписи контейнера
 		ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "круг: " << round;
 		// Собираемая дописываемая запись контейнера
@@ -3236,7 +3348,7 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 		// Носитель круга, несущий подписанный контейнер
 		Medium medium;
 		// Выполняем снятие снимка подписанного контейнера на носитель круга
-		medium.data = signed_medium.data;
+		medium.data = signedMedium.data;
 		// Выполняем установку предела удавшихся чтений носителя
 		medium.sight = sight;
 		// Правщик контейнера круга
@@ -3260,6 +3372,9 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 				<< "предел чтений подписанного: " << sight << ", причина: " << abc::message(editor.error());
 		}
 	}
+	/**
+	 * Прогоняем правку на каждом пределе удавшихся чтений носителя от 0 до 31
+	 */
 	for(int sight = 0; sight < 32; sight++){
 		// Носитель круга, несущий правимый контейнер
 		Medium medium;
@@ -3329,6 +3444,7 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
 	 *       без предела: одним числом на оба носителя отказ фиксации опережал уборку, и
 	 *       до записи убранного дело не доходило вовсе. Разведено щупом 05.09.2026,
 	 *       назвавшим пять устий уборки слепыми при проходящей проверке
+	 *
 	 */
 	for(int allow = 0; allow < 32; allow++){
 		// Носитель круга, несущий правимый контейнер
@@ -3419,6 +3535,7 @@ TEST_F(EditorFixture, MediumRefusalNamesItsKind) {
  *       стерегли, у правщика он стоял слепым до 05.09.2026. Оглавление кладётся без
  *       сжатия нарочно - иначе правка строки легла бы в сжатое содержимое, и отказ пришёл
  *       бы вовсе не по той причине
+ *
  */
 TEST_F(EditorFixture, EntryBeyondChunkIsRefused) {
 	// Носитель, несущий правимый контейнер
@@ -3506,6 +3623,7 @@ TEST_F(EditorFixture, EntryBeyondChunkIsRefused) {
  * @note Щель эта привязана к раскладке контейнера. Обеднеет она - проверка станет
  *       пустой, оттого сверх причины поверяется и ИСЧЕРПАНИЕ предела: без него откат до
  *       носителя не дошёл бы, и стеречь было бы нечего
+ *
  */
 TEST_F(EditorFixture, TheCauseSurvivesTheRollback) {
 	// Выполняем установку соли шифрования
@@ -3606,12 +3724,14 @@ TEST_F(EditorFixture, TheCauseSurvivesTheRollback) {
  *       того отказом ответится само открытие. Близнец
  *       `IndexFixture.DeclaredIndexLengthIsCheckedAgainstTheHeader`, у правщика оба
  *       устья стояли слепыми до 05.09.2026
+ *
  */
 TEST_F(EditorFixture, DeclaredIndexLengthIsCheckedAgainstTheHeader) {
 	/**
 	 * @brief Функция порчи объявленной длины содержимого кадра оглавления
 	 *
 	 * @param data октеты правимой записи контейнера
+	 *
 	 */
 	const auto spoil = [](vector <uint8_t> & data) noexcept -> void {
 		// Снятый заголовок опознания контейнера
@@ -3708,6 +3828,7 @@ TEST_F(EditorFixture, DeclaredIndexLengthIsCheckedAgainstTheHeader) {
  * @note Место стояло слепым до 05.09.2026: подделку строки оглавления у правщика не
  *       наводил никто. Оглавление кладётся без сжатия нарочно - иначе правка строки легла
  *       бы в сжатое содержимое
+ *
  */
 TEST_F(EditorFixture, ChunkOffsetBeyondTheBodyIsRefused) {
 	// Носитель, несущий правимый контейнер
@@ -3787,6 +3908,7 @@ TEST_F(EditorFixture, ChunkOffsetBeyondTheBodyIsRefused) {
  *
  * @note Место стояло слепым до 05.09.2026: подделку длины кадра ТЕЛА при подписании не
  *       наводил никто. Сумма кадра пересчитывается, иначе отказ придёт по ней
+ *
  */
 TEST_F(EditorFixture, ChunkLengthBeyondTheBodyIsRefusedWhileHarvesting) {
 	// Выполняем установку соли шифрования
@@ -3828,6 +3950,7 @@ TEST_F(EditorFixture, ChunkLengthBeyondTheBodyIsRefusedWhileHarvesting) {
 		 *
 		 * @note Сумма берётся по ОБЪЯВЛЕННОЙ длине, а та ныне непомерна, - оттого сумма
 		 *       считается по заголовку кадра, а сторож стоит прежде чтения содержимого
+		 *
 		 */
 		abc::fixed(medium.data.data() + place + abc::CHUNK_DIGEST,
 		 abc::digest(medium.data.data() + place, abc::CHUNK_HEADER), 8);
@@ -3849,6 +3972,7 @@ TEST_F(EditorFixture, ChunkLengthBeyondTheBodyIsRefusedWhileHarvesting) {
  *          работать не с чем, и отказ объявляется внутренним
  *
  * @note Место стояло слепым до 05.09.2026: уборку до открытия не звал никто
+ *
  */
 TEST_F(EditorFixture, CompactingRefusesWithoutItsGear) {
 	// Полная длина убранного контейнера
@@ -3913,6 +4037,7 @@ TEST_F(EditorFixture, CompactingRefusesWithoutItsGear) {
  *
  * @note Заслон, стоящий ДО правки состояния, тем и поверяется, что состояние после отказа
  *       осталось прежним: то и утверждается ниже
+ *
  */
 TEST_F(EditorFixture, DeclaredRecordLengthBeyondTheEntryFieldIsRefused) {
 	// Носитель, несущий правимый контейнер
@@ -4089,6 +4214,7 @@ TEST_F(EditorFixture, RefusedChunkOffsetNeverReachesTheMedium) {
 	 *       отчего никакой сторож МЕСТА заслона не различает. Заворот и есть то, чем
 	 *       место опасно: без заслона правщик читает не за краем, а НЕ ТАМ, оставаясь
 	 *       с виду в границах, и отказ приходит соседом по той же причине
+	 *
 	 */
 	ASSERT_EQ(reads, 0ul) << "правщик обратился к носителю " << reads
 		<< " раз по строке с поддельным смещением";
@@ -4263,6 +4389,7 @@ TEST_F(EditorFixture, IndexLengthDisagreeingWithTheHeaderIsRefused) {
 	 *       снятия оглавления, и то отвергает её само, назвав ту же причину. Своё у
 	 *       заслона одно - отказать, НЕ ВЫЧИТЫВАЯ тела по недоверенной длине; это
 	 *       единственное, чего соседи не дают
+	 *
 	 */
 	ASSERT_FALSE(body) << "правщик вычитал тело оглавления по несогласной длине";
 }
@@ -4468,6 +4595,7 @@ TEST_F(EditorFixture, WastedChunkIsCountedOnReopening) {
 	 * @warning Закрепляется расхождение ЧИСЛОМ намеренно: объявленное словом свойство
 	 * проверкою прежде не поверялось, и занижение могло вырасти молча. Замер 07.09.2026:
 	 * 117 при фиксации против 104 по переоткрытии, разница ровно в длину прежней записи
+	 *
 	 */
 	ASSERT_EQ(committed, reopened.garbage() + abc::value_t(string{"вторая"}).dump().size())
 		<< "фиксация насчитала " << committed << ", переоткрытие " << reopened.garbage();
@@ -5089,6 +5217,7 @@ TEST_F(EditorFixture, TheRefusalFunnelReportsItsCauseToTheJournal) {
 	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
 	 *          а полагаться на состояние, оставленное соседями, значило бы городить
 	 *          поверку, чей исход зависит от порядка запуска
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Носитель, несущий правимый контейнер
@@ -5148,6 +5277,7 @@ TEST_F(EditorFixture, TheRefusalFunnelReportsItsCauseToTheJournal) {
 
 /**
  * @brief Проверяем снимки носителя при прерывании каждого отдельного октета записи
+ *
  */
 TEST_F(EditorFixture, InterruptedWritesKeepACompleteGeneration){
 	// Заводим ключ для подписанной половины матрицы
@@ -5160,25 +5290,35 @@ TEST_F(EditorFixture, InterruptedWritesKeepACompleteGeneration){
 	for(const bool signedContainer : {false, true}){
 		// Готовим прежнее поколение
 		Medium medium;
+		// Собираем прежнее поколение тремя записями: first, second, third
 		this->build(medium, {"first", "second", "third"});
+		// Заранее подписываем прежнее поколение, если контейнеру нужна подпись
 		if(signedContainer){
+			// Правщик прежнего поколения
 			abc::editor_t signer;
+			// Открываем правщиком носитель прежнего поколения
 			ASSERT_TRUE(this->open(signer, medium));
 			ASSERT_TRUE(signer.sign(this->_crypto.get(), "owner"));
 			ASSERT_TRUE(signer.commit());
 		}
 		// Снимки прерванного носителя и описание точки прерывания
 		vector <vector <uint8_t>> snapshots;
+		// Описания точек прерывания вида «запись:смещение:доля»
 		vector <string> labels;
+		// Счётчик завершённых записей носителя
 		size_t writes = 0;
 		// Открываем правщик с записью промежуточных состояний носителя
 		abc::editor_t editor;
+		// Передаём правщику устье чтения носителя и устье перехвата каждой записи
 		ASSERT_TRUE(editor.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Передаём чтение носителю
 			return medium.read(offset, size, result);
 		}, [&medium, &snapshots, &labels, &writes](const uint64_t offset, const void * buffer, const size_t size) noexcept -> bool {
 			// Сохраняем носитель до каждого возможного обрыва внутри текущей записи
 			const uint8_t * bytes = reinterpret_cast <const uint8_t *> (buffer);
+			/**
+			 * Снимаем носитель после каждой возможной точки обрыва: от нуля до size октетов
+			 */
 			for(size_t count = 0; count <= size; count++){
 				// Создаём снимок после записи первых count октетов
 				auto snapshot = medium.data;
@@ -5194,37 +5334,61 @@ TEST_F(EditorFixture, InterruptedWritesKeepACompleteGeneration){
 			writes++;
 			return medium.write(offset, buffer, size);
 		}, medium.data.size()));
+		// Запоминаем поколение контейнера до накопления правок
 		const uint64_t oldGeneration = editor.header().generation;
+		// Объявляем подпись владельца, если контейнер подписан
 		if(signedContainer)
+			// Подписываем правящийся контейнер ключом владельца
 			ASSERT_TRUE(editor.sign(this->_crypto.get(), "owner"));
 		// Одновременно заменяем прежнюю запись и дописываем новую
 		const auto replacement = abc::value_t(string("replaced")).dump();
+		// Укладываем дописываемую «fourth» в тот вид, каким она уйдёт в контейнер
 		const auto appended = abc::value_t(string("fourth")).dump();
+		// Заменяем нулевую запись на «replaced»
 		ASSERT_TRUE(editor.replace(0, replacement.data(), replacement.size(), abc::payload_t::TEXT));
 		ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
 		ASSERT_TRUE(editor.commit());
+		// Убеждаемся, что правка легла на носитель более чем тремя записями
 		ASSERT_GT(writes, 3u);
 		/**
 		 * Повторное открытие не получает возможности выполнить откат оборванного правщика
 		 */
 		for(size_t i = 0; i < snapshots.size(); i++){
+			// Помечаем трассу номером контейнера и точкой прерывания «запись:смещение:доля»
 			SCOPED_TRACE(string("signed=") + std::to_string(signedContainer) + ", write:offset:prefix=" + labels.at(i));
+			// Носитель, восстановленный по снимку очередной точки обрыва
 			Medium interrupted;
+			// Наливаем в носитель октеты снимка точки обрыва
 			interrupted.data = snapshots.at(i);
+			// Правщик, открывающий оборванный носитель
 			abc::editor_t recovered;
+			// Открываем правщиком оборванный носитель
 			ASSERT_TRUE(this->open(recovered, interrupted)) << abc::message(recovered.error());
+			// Отмечаем, выбрал ли правщик новое поколение с заменой и допиской
 			const bool current = (recovered.header().generation == (oldGeneration + 1));
+			// Требуем, чтобы правщик оставил либо новое поколение, либо прежнее
 			ASSERT_TRUE(current || (recovered.header().generation == oldGeneration));
+			// Сверяем число записей: четыре в новом поколении, три в прежнем
 			ASSERT_EQ(recovered.records(), (current ? 4u : 3u));
+			// Буфер содержимого выбираемых записей
 			vector <uint8_t> content;
+			// Выбираем нулевую запись восстановленного контейнера
 			ASSERT_TRUE(recovered.record(0, content));
+			// Нулевая запись обязана нести «replaced» в новом поколении и «first» — в прежнем
 			ASSERT_EQ(content, (current ? replacement : abc::value_t(string("first")).dump()));
+			// Выбираем первую запись восстановленного контейнера
 			ASSERT_TRUE(recovered.record(1, content));
+			// Первая запись обязана отвечать неизменённой «second»
 			ASSERT_EQ(content, abc::value_t(string("second")).dump());
+			// Выбираем вторую запись восстановленного контейнера
 			ASSERT_TRUE(recovered.record(2, content));
+			// Вторая запись обязана отвечать неизменённой «third»
 			ASSERT_EQ(content, abc::value_t(string("third")).dump());
+			// Сверяем дописанную запись лишь в выбранном новом поколении
 			if(current){
+				// Выбираем дописанную третью запись
 				ASSERT_TRUE(recovered.record(3, content));
+				// Дописанная запись обязана отвечать «fourth»
 				ASSERT_EQ(content, appended);
 			}
 			/**
@@ -5232,6 +5396,7 @@ TEST_F(EditorFixture, InterruptedWritesKeepACompleteGeneration){
 			 *
 			 * @details Головной заголовок мог оборваться. Для проверки подписи подставляем
 			 *          выбранный правщиком заголовок в копию; тело и запись подписи не меняем
+			 *
 			 */
 			if(signedContainer){
 				// Копия носителя с заголовком выбранного поколения

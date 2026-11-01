@@ -24,6 +24,7 @@
  * Подключаем стандартные модули
  */
 #include <cinttypes>
+#include <alloc/alloc.hpp>
 /**
  * Подключаем заголовок опроса состава файловой системы
  *
@@ -53,6 +54,14 @@
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
 	#include <sys/macro/win32.hpp>
+	/**
+	 * Подключаем отчёт о памяти процесса
+	 *
+	 * @note Урезание состава windows.h снимает и этот заголовок, а выдержке
+	 *       нужен пик рабочего множества процесса
+	 *
+	 */
+	#include <psapi.h>
 /**
  * Для всех остальных операционных систем
  */
@@ -103,6 +112,17 @@
 	 *       можно единственно разницей перечней - до заведения события и после
 	 */
 	#include <fcntl.h>
+	/**
+	 * @note Сведения процесса нужны ряду памяти выдержки у Solaris и illumos:
+	 *       их `getrusage` не заполняет `ru_maxrss` вовсе, и размер резидентного
+	 *       множества снимается оттуда. Включение несёт именно пользовательский
+	 *       заголовок: системный `sys/procfs.h` держит современные структуры за
+	 *       пометкой `_STRUCTURED_PROC`, и без неё имени `psinfo_t` просто нет
+	 *
+	 */
+	#if defined(sun) || defined(__sun)
+		#include <procfs.h>
+	#endif
 #endif
 
 /**
@@ -7439,6 +7459,124 @@ TEST_F(IoFixture, IoUDSTest){
 	}
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
+}
+/**
+ * @brief Тест обмена через абстрактный сокет домена UNIX
+ *
+ * @details Запись «@имя» означает абстрактное имя: файла нет, имя живёт
+ *          в пространстве ядра за нулевым первым октетом пути. Проверяется
+ *          обмен клиент-сервер по такой записи и отсутствие файла с собакой
+ *          в имени: прежде строка копировалась в путь дословно и рождала
+ *          файловый сокет с литеральной собакой
+ *
+ * @note Абстрактное пространство имён несёт ядро Linux; MS Windows несёт его
+ *       изображением - именованным каналом, выведенным из имени за собакой.
+ *       BSD, macOS и Sun ни того ни другого не несут, и там проверка
+ *       пропускается
+ *
+ */
+TEST_F(IoFixture, IoUDSAbstractTest){
+	/**
+	 * Если система не несёт абстрактного имени ни ядром, ни изображением
+	 */
+	#if !(defined(__linux__) || defined(_WIN32) || defined(_WIN64))
+		// Пропускаем проверку: абстрактного пространства имён у системы нет
+		GTEST_SKIP() << "абстрактное пространство имён домена UNIX - принадлежность Linux и Windows";
+	/**
+	 * Для Linux и MS Windows
+	 */
+	#else
+		// Абстрактное имя сокета
+		const std::string name("@awh.abstract.test");
+		// Флаг остановки теста
+		bool stop = false;
+		// Заводим событие клиента UDS
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+		// Заводим событие сервера UDS
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+		// Проверяем, что оба идентификатора события созданы успешно
+		ASSERT_GT(cid, 0) << "Событие клиента не создано";
+		ASSERT_GT(sid, 0) << "Событие сервера не создано";
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		/**
+		 * Выставляем опции и параметры для каждого события
+		 */
+		for(const awh::event::id_t eid : {cid, sid})
+			// Устанавливаем опции событий
+			ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		/**
+		 * Серверное событие
+		 */
+		{
+			// Устанавливаем абстрактный адрес сервера
+			ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, name));
+			// Устанавливаем функцию обратного вызова на принятие события
+			this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this]([[maybe_unused]] const awh::event::id_t seid, const awh::event::id_t accepted) noexcept -> void {
+				// Устанавливаем опции принятого события
+				EXPECT_TRUE(this->_io->setOptions(accepted, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+				// Устанавливаем функцию обратного вызова на чтение из события
+				this->_io->on(accepted, static_cast <awh::engine::callback::read_t> ([this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					// Отвечаем принятые данные обратно отправителю
+					this->_io->send(eid, data, size);
+				}));
+			}));
+			// Выполняем фиксацию настроек события сервера
+			ASSERT_TRUE(this->_io->commit(sid));
+			// Переводим событие сервера в прослушивание
+			ASSERT_TRUE(this->_io->listen(sid, 100));
+			// Включаем приём подключений
+			ASSERT_TRUE(this->_io->launch(sid));
+		}
+		/**
+		 * Клиентское событие
+		 */
+		{
+			// Устанавливаем абстрактный адрес цели
+			ASSERT_TRUE(this->_io->setTarget(cid, name));
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(cid, static_cast <awh::engine::callback::read_t> ([&stop]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+				// Останавливаем проверку откликом
+				stop = true;
+			}));
+			// Устанавливаем таймаут события на чтение
+			this->_io->setTimeout(cid, awh::event::action_t::READ, 3000);
+			// Устанавливаем таймаут события на подключение
+			this->_io->setTimeout(cid, awh::event::action_t::CONNECT, 5000);
+			// Выполняем фиксацию настроек события клиента
+			ASSERT_TRUE(this->_io->commit(cid));
+			// Выполняем подключение к серверу
+			ASSERT_TRUE(this->_io->connect(cid));
+			// Запускаем событие клиента
+			ASSERT_TRUE(this->_io->launch(cid));
+		}
+		// Структура статистики файла
+		struct stat info;
+		// Текст исходящего сообщения
+		const std::string message("Hello from abstract client!");
+		/**
+		 * Запускаем опрос событий, отправляя сообщение каждый оборот до отклика
+		 */
+		{
+			// Срок, за который ожидаемое событие обязано прийти
+			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+			/**
+			 * Выполняем опрос активных событий
+			 */
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__)){
+				// Отправляем сообщение серверу
+				this->_io->send(cid, message.c_str(), message.size());
+			}
+			// Если срок вышел, событие через устройство так и не пришло
+			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
+			// Отклик обязан был прийти: обмен через абстрактное имя работает
+			EXPECT_TRUE(stop) << "ответ по абстрактному сокету домена UNIX не получен";
+		}
+		// Файла с собакой в имени появиться не должно: имя живёт в ядре
+		ASSERT_NE(::stat(name.c_str(), &info), 0) << "абстрактное имя обратилось файлом в каталоге прогона";
+		// Опускаем движок после обмена
+		ASSERT_TRUE(this->_io->deinitialize());
+	#endif
 }
 
 /**
@@ -17830,6 +17968,110 @@ TEST_F(IoFixture, IoDTLSTest){
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
 		// Уничтожаем все события после получения ответа
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Тест слияния списка подключения в одну многодомную заявку SCTP
+	 *
+	 * @details Договор у connect() со списком один: заявка подаётся ЕДИНАЯ, и адреса
+	 *          всех узлов списка ложатся в неё рядом - в этом и состоит многодомность
+	 *          SCTP. Проверка снимает число уложенных адресов геттером спутника: у
+	 *          владельца заявки оно обязано равняться числу узлов списка, а узел, чей
+	 *          адрес вошёл в чужую заявку, собственной заявки не подаёт (замер
+	 *          23.10.2026). Число пишется самим вызовом заявки, потому ожидания
+	 *          опроса ей не нужны
+	 *
+	 * @warning Чёрным ящиком это число не снять: после рукопожатия ядро подменяет
+	 *          список заявки адресами, рекламированными партнёром (замер 23.10.2026
+	 *          по /proc/net/sctp/remaddr), потому проверка читает служебное число
+	 *          движка. Прежняя проверка подсчётом принятых ассоциаций не различала
+	 *          состояний и была изъята - к ней не возвращаться без нового наблюдателя
+	 *
+	 * @note Опыт с заведомой неисправностью обязателен: при выключенной укладке
+	 *       адресов остальных узлов списка проверка обязана покраснеть, вернув
+	 *       единицу вместо двух. У систем Sun многодомного подключения нет вовсе
+	 *       (illumos не несёт sctp_connectx), связь идёт по первому адресу, и там
+	 *       эта проверка обязана давать единицу - см. запись при коде ports
+	 *
+	 */
+	TEST_F(IoFixture, IoSCTPMultiHomeListMergesTest){
+		// Если ядро машины к работе по SCTP не готово
+		if(!::sctpReady())
+			// Пропускаем проверку
+			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
+		// Выполняем генерацию порта
+		const uint16_t port = ::port();
+		// Добавляем новое событие клиента и сервера SCTP Stream
+		const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+		// Заводим второй клиент на другой адрес того же узла - в этом и многодомность
+		const awh::event::id_t second = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+		// Проверяем, что все идентификаторы события созданы успешно
+		ASSERT_GT(events[0], 0);
+		ASSERT_GT(events[1], 0);
+		ASSERT_GT(second, 0);
+		// Устанавливаем порт события сервера
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		// Опции сокетов событий
+		const uint16_t opts = awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC;
+		/**
+		 * Серверное событие слушает все адреса петли
+		 */
+		{
+			// Устанавливаем опции события сервера
+			ASSERT_TRUE(this->_io->setOptions(events[1], opts));
+			// Устанавливаем адрес события сервера
+			ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "0.0.0.0"));
+			// Выполняем фиксацию настроек события сервера
+			ASSERT_TRUE(this->_io->commit(events[1]));
+			// Переводим событие сервера в слушание
+			ASSERT_TRUE(this->_io->listen(events[1], 10));
+			// Запускаем событие сервера
+			ASSERT_TRUE(this->_io->launch(events[1]));
+		}
+		/**
+		 * Клиентские события целятся в два адреса одного узла
+		 */
+		{
+			// Устанавливаем опции первого клиента
+			ASSERT_TRUE(this->_io->setOptions(events[0], opts));
+			// Устанавливаем собственный адрес первого клиента
+			ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+			// Устанавливаем адрес назначения первого клиента
+			ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+			// Устанавливаем порт назначения первого клиента
+			ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+			// Выполняем фиксацию настроек первого клиента
+			ASSERT_TRUE(this->_io->commit(events[0]));
+			// Устанавливаем опции второго клиента
+			ASSERT_TRUE(this->_io->setOptions(second, opts));
+			// Устанавливаем собственный адрес второго клиента
+			ASSERT_TRUE(this->_io->setAddress(second, awh::event::address_t::IPV4, "0.0.0.0"));
+			// Устанавливаем адрес назначения второго клиента
+			ASSERT_TRUE(this->_io->setTarget(second, "127.0.0.2"));
+			// Устанавливаем порт назначения второго клиента
+			ASSERT_TRUE(this->_io->setTargetPort(second, port));
+			// Выполняем фиксацию настроек второго клиента
+			ASSERT_TRUE(this->_io->commit(second));
+		}
+		// Подаём заявку списком из двух узлов
+		ASSERT_TRUE(this->_io->connect({events[0], second}));
+		#if defined(__illumos__)
+			// У illumos многодомного подключения нет: связь идёт по первому адресу
+			// списка, и владелец заявки несёт один адрес
+			ASSERT_EQ(static_cast <uint8_t> (1), this->_sctp->addresses(events[0]))
+			 << "у illumos связь обязана идти по первому адресу списка";
+		#else
+			// Число адресов заявки обязано стать двумя: список слился в одну заявку
+			ASSERT_EQ(static_cast <uint8_t> (2), this->_sctp->addresses(events[0]))
+			 << "список подключения не слился в одну многодомную заявку: уложен один адрес";
+			// Узел, чей адрес вошёл в чужую заявку, собственной заявки не подаёт
+			ASSERT_EQ(static_cast <uint8_t> (0), this->_sctp->addresses(second))
+			 << "узел, вошедший в чужую заявку списком, подал собственную заявку подключения";
+		#endif
+		// Сворачиваем движок
 		ASSERT_TRUE(this->_io->deinitialize());
 	}
 
@@ -29685,20 +29927,24 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @details Замерено щупом 08.09.2026: `setsockopt(IP_TTL, 0)` у macOS проходит,
 		 *          у Linux отвергается с `EINVAL`. Замерено там же 09.09.2026: **Solaris
 		 *          отвергает его тем же `EINVAL`**, и разделение по одному лишь Linux
-		 *          было поэтому уже, чем свойство. Разряд «петля» выражается пределом
-		 *          жизни 0, и у отвергающих систем выразить его этим путём нельзя вовсе -
-		 *          пакет с нулевым пределом ядро отправлять отказывается
+		 *          было поэтому уже, чем свойство. Замерено тем же щупом 19.10.2026:
+		 *          **OpenBSD отвергает нуль тем же `EINVAL`** (при том единицу он
+		 *          принимает), потому и он входит в ветвь отказа. Разряд «петля»
+		 *          выражается пределом жизни 0, и у отвергающих систем выразить его
+		 *          этим путём нельзя вовсе - пакет с нулевым пределом ядро отправлять
+		 *          отказывается
 		 *
 		 * @warning Утверждение здесь не снято, а РАЗВЁРНУТО по системам: там, где ядро
 		 *          нуль принимает, разряд обязан стать «петлёй»; там, где отвергает,
 		 *          отказ обязан быть ЧЕСТНЫМ - движку не позволено ни солгать согласием,
 		 *          ни подменить нуль единицей. Молчаливая подмена и была бы дефектом
+		 *
 		 */
 		if(rank.first == 0){
 			/**
-			 * Для систем, отвергающих нулевой предел жизни: Linux и системы Sun
+			 * Для систем, отвергающих нулевой предел жизни: Linux, системы Sun и OpenBSD
 			 */
-			#if defined(__linux__) || defined(__sun) || defined(__sun__)
+			#if defined(__linux__) || defined(__sun) || defined(__sun__) || defined(__OpenBSD__)
 				// Ядро обязано отказать, а движок - доложить об отказе
 				ASSERT_FALSE(this->_io->setCountHops(events[1], rank.first))
 				 << "нуль принят, хотя ядро системы его отвергает: движок солгал согласием";
@@ -33592,6 +33838,411 @@ TEST_F(IoFixture, IoEngineRecreateCyclesTest){
 	ASSERT_TRUE(leaked.empty())
 	 << "После " << rounds << " кругов перезаведения движка осталось описателей: " << leaked.size();
 }
+#endif
+/**
+ * @brief Тест долгой выдержки движка под нагрузкой
+ *
+ * @details Ступень 3.1 плана по движкам: непрерывный обмен с периодическим заводом
+ *          и сносом короткоживущих клиентов, а три ряда - открытые описатели, пик
+ *          памяти и число узлов движка - обязаны выйти на полку, а не расти.
+ *          Набор гоняет короткую выдержку (умолчание - минуту), суточная задаётся
+ *          окружением `AWH_SOAK_SECONDS` на стенде
+ *
+ * @note Ряд памяти снимается ПИКОМ процесса: у стандарта нет текущего значения.
+ *          Пик монотонен, оттого полка по нему ловит всякий рост. Чтобы пик чужой
+ *          проверки не прячет роста этой, суточная выдержка гоняется отдельным
+ *          процессом с фильтром проверки
+ *
+ * @note Приговор выносится сличением последней четверти ряда с первой: рост в
+ *       пределах разминки законен, рост после неё - утечка. Допуск в четыре
+ *       описателя и четыре узла покрывает оборот короткоживущего клиента, снятый
+ *       в полёте
+ *
+ */
+TEST_F(IoFixture, IoSoakPlateauTest){
+	/**
+	 * @brief Функция снятия числа открытых описателей процесса
+	 *
+	 * @return число открытых описателей процесса
+	 *
+	 */
+	auto descriptors = []() noexcept -> size_t {
+		// Результат работы функции
+		size_t result = 0;
+		/**
+		 * Для систем, отличных от Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			/**
+			 * Перебираем описатели процесса
+			 */
+			for(int32_t fd = 0; fd < 1024; fd++){
+				// Если описатель открыт, считаем его
+				if(::fcntl(fd, F_GETFD) != -1)
+					// Увеличиваем счёт открытых описателей
+					result++;
+			}
+		/**
+		 * Для Windows
+		 */
+		#else
+			/**
+			 * Описатели движка у Windows - описатели ядра, и перечня их у процесса
+			 * нет: число снимается счётом обращения к ядру
+			 */
+			DWORD handles = 0;
+			// Если счёт описателей получить не удалось, ряд не снимается
+			if(::GetProcessHandleCount(::GetCurrentProcess(), &handles) != FALSE)
+				// Запоминаем счёт описателей ядра процесса
+				result = static_cast <size_t> (handles);
+		#endif
+		// Выводим число открытых описателей
+		return result;
+	};
+	/**
+	 * @brief Функция снятия пика занятой процессом памяти в октетах
+	 *
+	 * @details Пик монотонен у всякой системы: у POSIX его несёт `ru_maxrss`,
+	 *          у MS Windows - пик рабочего множества обращением к ядру.
+	 *          У Solaris и illumos `ru_maxrss` не заполняется вовсе, и ряд
+	 *          несёт текущее резидентное множество из сведений процесса ядра
+	 *
+	 * @return пик занятой памяти либо 0, если учёт не поддерживается
+	 *
+	 */
+	auto peak = []() noexcept -> size_t {
+		/**
+		 * Для систем, отличных от Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Учёт ресурсов процесса
+			struct rusage usage{};
+			// Если учёт получить не удалось
+			if(::getrusage(RUSAGE_SELF, &usage) != 0)
+				// Выводим отсутствие учёта
+				return 0;
+			/**
+			 * У macOS пик выдаётся в октетах, у прочих систем - в килобайтах
+			 */
+			#if defined(__APPLE__)
+				// Выводим пик в октетах
+				return static_cast <size_t> (usage.ru_maxrss);
+			/**
+			 * Для Solaris и illumos
+			 *
+			 * @details Пик у них `getrusage` не заполняет вовсе - поле отвечает
+			 *          нулём (замер суточной выдержкой 24.10.2026), и ряд
+			 *          снимается текущим размером резидентного множества из
+			 *          сведений процесса ядра: приговор сравнивает худшие доли
+			 *          ряда, и периодический съём текущего значения ловит рост
+			 *          утечки так же, как и съём пика
+			 *
+			 * @note Размер в сведениях несётся килобайтами
+			 *
+			 */
+			#elif defined(sun) || defined(__sun)
+				// Сведения о процессе ядра
+				psinfo_t info{};
+				// Описатель сведений собственного процесса
+				const int32_t ps = ::open("/proc/self/psinfo", O_RDONLY);
+				// Если сведения открыть не удалось, ряд не снимается
+				if(ps < 0)
+					// Выводим отсутствие учёта
+					return 0;
+				// Читаем сведения о собственном процессе
+				const ssize_t size = ::read(ps, &info, sizeof(info));
+				// Закрываем описатель сведений
+				::close(ps);
+				// Если сведения прочитаны не целиком, ряд не снимается
+				if(size != static_cast <ssize_t> (sizeof(info)))
+					// Выводим отсутствие учёта
+					return 0;
+				// Выводим размер резидентного множества в октетах
+				return (static_cast <size_t> (info.pr_rssize) * 1024);
+			/**
+			 * Для прочих систем
+			 */
+			#else
+				// Выводим пик в октетах
+				return (static_cast <size_t> (usage.ru_maxrss) * 1024);
+			#endif
+		/**
+		 * Для Windows
+		 */
+		#else
+			/**
+			 * Пик рабочего множества несётся счётом процесса ядра
+			 */
+			PROCESS_MEMORY_COUNTERS counters{};
+			// Если счёт памяти получить не удалось, ряд не снимается
+			if(::GetProcessMemoryInfo(::GetCurrentProcess(), &counters, sizeof(counters)) == FALSE)
+				// Выводим отсутствие учёта
+				return 0;
+			// Выводим пик рабочего множества в октетах
+			return static_cast <size_t> (counters.PeakWorkingSetSize);
+		#endif
+	};
+	// Срок выдержки из окружения: набор гоняет минуту, стенд - сутки
+	const char * const soakEnv = ::getenv("AWH_SOAK_SECONDS");
+	// Срок выдержки в секундах
+	const size_t soak = ((soakEnv != nullptr) && (* soakEnv != '\0')) ? static_cast <size_t> (std::strtoull(soakEnv, nullptr, 10)) : 60;
+	// Шаг снятия рядов: двадцать долей выдержки, но не чаще минуты и не реже секунды
+	const size_t step = (((soak / 20) < 1) ? 1 : (((soak / 20) > 60) ? 60 : (soak / 20)));
+	// Число долгоживущих клиентов-носителей обмена
+	const uint8_t carriers = 0x06;
+	// Выполняем генерацию порта
+	const uint16_t listenPort = ::port();
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие слушающего сервера
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события сервера создан
+	ASSERT_GT(server, 0) << "Событие сервера не создано";
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адрес привязки события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, listenPort));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server)) << "Настройки события сервера не приняты";
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(this->_io->listen(server, 64)) << "Прослушивание не включено";
+	// Устанавливаем функцию обратного вызова на принятие события
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([this]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		// Устанавливаем опции принятого события
+		EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(cid, static_cast <awh::engine::callback::read_t> ([this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Отвечаем принятые данные обратно отправителю
+			this->_io->send(eid, data, size);
+		}));
+	}));
+	// Включаем приём подключений
+	ASSERT_TRUE(this->_io->launch(server)) << "Приём подключений не включен";
+	// Тело запроса носителей обмена
+	uint8_t request[0x100];
+	/**
+	 * Заполняем тело запроса образцом
+	 */
+	for(size_t i = 0; i < sizeof(request); i++)
+		// Заполняем октет образца
+		request[i] = static_cast <uint8_t> (i & 0xFF);
+	// Число полученных откликов
+	size_t echoes = 0;
+	/**
+	 * @brief Функция заведения клиента с подсчётом откликов
+	 *
+	 * @return идентификатор события клиента либо 0 при отказе заведения
+	 *
+	 */
+	auto spawn = [this, listenPort, &echoes]() noexcept -> awh::event::id_t {
+		// Заводим событие клиента
+		const awh::event::id_t id = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Если событие клиента не создано, выводим отказ
+		if(id <= 0)
+			// Выводим отказ заведения
+			return 0;
+		// Устанавливаем опции события клиента
+		if(!this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC))
+			// Выводим отказ заведения
+			return 0;
+		// Устанавливаем адрес цели события клиента
+		if(!this->_io->setTarget(id, "127.0.0.1"))
+			// Выводим отказ заведения
+			return 0;
+		// Устанавливаем порт цели события клиента
+		if(!this->_io->setTargetPort(id, listenPort))
+			// Выводим отказ заведения
+			return 0;
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(id, static_cast <awh::engine::callback::read_t> ([&echoes]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Подсчитываем полученный отклик
+			echoes++;
+		}));
+		// Выполняем фиксацию настроек события клиента
+		if(!this->_io->commit(id))
+			// Выводим отказ заведения
+			return 0;
+		// Выполняем подключение к серверу
+		if(!this->_io->connect(id))
+			// Выводим отказ заведения
+			return 0;
+		// Запускаем событие клиента
+		if(!this->_io->launch(id))
+			// Выводим отказ заведения
+			return 0;
+		// Выводим идентификатор заведённого клиента
+		return id;
+	};
+	// Идентификаторы долгоживущих клиентов-носителей
+	std::vector <awh::event::id_t> holders;
+	/**
+	 * Заводим носители обмена
+	 */
+	for(uint8_t i = 0; i < carriers; i++){
+		// Заводим носитель обмена
+		const awh::event::id_t id = spawn();
+		// Проверяем, что носитель заведён
+		ASSERT_GT(id, 0) << "Носитель обмена " << static_cast <uint32_t> (i) << " не заведён";
+		// Запоминаем носитель обмена
+		holders.push_back(id);
+	}
+	// Идентификатор действующего короткоживущего клиента
+	awh::event::id_t churn = 0;
+	// Момент начала выдержки
+	const auto start = std::chrono::steady_clock::now();
+	// Момент следующего обмена носителей
+	auto nextSend = start;
+	// Момент следующего оборота короткоживущего клиента
+	auto nextChurn = start + std::chrono::seconds(2);
+	// Момент следующего снятия рядов
+	auto nextSample = start + std::chrono::seconds(static_cast <int64_t> (step));
+	// Конец выдержки
+	const auto deadline = start + std::chrono::seconds(static_cast <int64_t> (soak));
+	// Ряд открытых описателей
+	std::vector <size_t> fds;
+	// Ряд пика памяти
+	std::vector <size_t> rss;
+	// Ряд числа узлов движка
+	std::vector <size_t> nodes;
+	/**
+	 * Ведём обмен до конца выдержки
+	 */
+	while(std::chrono::steady_clock::now() < deadline){
+		// Выполняем оборот опроса событий
+		if(!this->_io->poll(__AWH_TEST_POLL_SLICE__))
+			// Прерываем выдержку: опрос отказал, ряды далее не снялись бы честно
+			break;
+		// Текущий момент оборота
+		const auto now = std::chrono::steady_clock::now();
+		// Если пришло время обмена носителей
+		if(now >= nextSend){
+			/**
+			 * Отправляем запрос каждым носителем
+			 */
+			for(auto & id : holders)
+				// Отправляем тело запроса носителем
+				this->_io->send(id, request, sizeof(request));
+			// Назначаем следующий обмен носителей
+			nextSend = now + std::chrono::milliseconds(500);
+		}
+		// Если пришло время оборота короткоживущего клиента
+		if(now >= nextChurn){
+			// Сносим прежнего короткоживущего клиента
+			if(churn != 0)
+				// Сносим действующего короткоживущего клиента
+				this->_io->destroy(churn);
+			// Заводим нового короткоживущего клиента
+			churn = spawn();
+			// Назначаем следующий оборот короткоживущего клиента
+			nextChurn = now + std::chrono::seconds(2);
+		}
+		// Если пришло время снятия рядов
+		if(now >= nextSample){
+			// Снимаем ряд открытых описателей
+			fds.push_back(descriptors());
+			// Снимаем ряд пика памяти
+			rss.push_back(peak());
+			// Снимаем ряд числа узлов движка
+			nodes.push_back(this->_io->eventsCount());
+			// Записываем в журнал снятую тройку рядов
+			awh::log::print(
+			 "Soak sample: elapsed=%zu, fds=%zu, rss=%zu, nodes=%zu", awh::log::flag_t::INFO,
+			 static_cast <size_t> (std::chrono::duration_cast <std::chrono::seconds> (now - start).count()),
+			 fds.back(), rss.back(), nodes.back()
+			);
+			// Назначаем следующее снятие рядов
+			nextSample = now + std::chrono::seconds(static_cast <int64_t> (step));
+		}
+	}
+	// Выдержка обязана пройти весь срок: ранний выход значит отказ опроса
+	EXPECT_GE(std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count(), static_cast <int64_t> (soak) - static_cast <int64_t> (step))
+	 << "опрос завершился раньше срока выдержки";
+	// Сносим последнего короткоживущего клиента
+	if(churn != 0)
+		// Сносим действующего короткоживущего клиента
+		this->_io->destroy(churn);
+	// Обмен обязан был идти: без откликов выдержка пуста
+	EXPECT_GE(echoes, static_cast <size_t> (carriers)) << "за время выдержки не получено ни одного отклика";
+	// Рядов должно хватить на приговор
+	ASSERT_GE(fds.size(), static_cast <size_t> (4)) << "рядов снято меньше четырёх";
+	// Граница разминки: четверть ряда
+	const size_t quarter = (fds.size() / 4);
+	// Худшее значение ряда описателей в разминке
+	size_t fdsWarm = 0;
+	// Худшее значение ряда памяти в разминке
+	size_t rssWarm = 0;
+	// Худшее значение ряда узлов в разминке
+	size_t nodesWarm = 0;
+	/**
+	 * Снимаем худшие значения разминки
+	 */
+	for(size_t i = 0; i < quarter; i++){
+		// Поднимаем худшее значение ряда описателей
+		if(fds[i] > fdsWarm) fdsWarm = fds[i];
+		// Поднимаем худшее значение ряда памяти
+		if(rss[i] > rssWarm) rssWarm = rss[i];
+		// Поднимаем худшее значение ряда узлов
+		if(nodes[i] > nodesWarm) nodesWarm = nodes[i];
+	}
+	// Худшее значение ряда описателей на полке
+	size_t fdsTail = 0;
+	// Худшее значение ряда памяти на полке
+	size_t rssTail = 0;
+	// Худшее значение ряда узлов на полке
+	size_t nodesTail = 0;
+	/**
+	 * Снимаем худшие значения полки - последней четверти ряда
+	 */
+	for(size_t i = (fds.size() - quarter); i < fds.size(); i++){
+		// Поднимаем худшее значение ряда описателей
+		if(fds[i] > fdsTail) fdsTail = fds[i];
+		// Поднимаем худшее значение ряда памяти
+		if(rss[i] > rssTail) rssTail = rss[i];
+		// Поднимаем худшее значение ряда узлов
+		if(nodes[i] > nodesTail) nodesTail = nodes[i];
+	}
+	// Описатели обязаны выйти на полку: допуск покрывает оборот клиента в полёте
+	EXPECT_LE(fdsTail, (fdsWarm + 4)) << "ряд описателей растёт: полка не достигнута (" << fdsWarm << " -> " << fdsTail << ")";
+	// Узлы движка обязаны выйти на полку тем же допуском
+	EXPECT_LE(nodesTail, (nodesWarm + 4)) << "ряд узлов растёт: полка не достигнута (" << nodesWarm << " -> " << nodesTail << ")";
+	/**
+	 * Память обязана выйти на полку с допуском на шум распределителя
+	 *
+	 * @details Допуск расширен с пяти процентов и полмибибайта до десяти и одного
+	 *          мебибайта по слову владельца 01.11.2026: суточная выдержка .177
+	 *          (31.10→01.11) закрыла рост полностью - полка держалась вторую половину
+	 *          суток, live плоско, heap +4,19 МБ разово против +33,8 МБ/сутки раньше, -
+	 *          но разовый разогрев к полке занял 16,34 МБ при старом допуске 16,06 МБ,
+	 *          и проверка была красной на 278 КБ роста, которого нет. Разогрев
+	 *          распределителя - не течь, и ужимать бюджет кэшей ради старого допуска
+	 *          запрещено словом владельца от 01.11.2026
+	 *
+	 */
+	if(rssWarm > 0)
+		// Проверяем полку ряда памяти: десять процентов и один мебибайт шума
+		EXPECT_LE(rssTail, (rssWarm + (rssWarm / 10) + (1u << 20))) << "ряд памяти растёт: полка не достигнута (" << rssWarm << " -> " << rssTail << ")";
+	// Опускаем движок после выдержки
+	ASSERT_TRUE(this->_io->deinitialize());
+	/**
+	 * Печатаем свидетеля перехвата выдач распределителем
+	 *
+	 * @details Счётчики распределителя снаружи процесса не прочтёт никто, а
+	 *          приёмная точка выдержки требует живого перехвата при зелёном
+	 *          вердикте: положительное «занято» при большом «взято у системы»
+	 *          доказывает перехват в самом прогоне
+	 *
+	 */
+	awh::log::print("Soak alloc: live=%zu, heap=%zu", awh::log::flag_t::INFO,
+		awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED),
+		awh::alloc::Allocator::property(awh::alloc::property_t::HEAP));
+}
+/**
+ * Опыт исчерпания ведётся дочерним процессом с пределом `RLIMIT_NOFILE` -
+ * средств этих у Windows нет, и проверка там не собирается вовсе
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
 /**
  * @brief Тест поведения движка при исчерпании описателей
  *

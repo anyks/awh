@@ -48,11 +48,17 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, кодек CSV в себе несущее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека, открывающее краткое имя csv
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод разбора текста таблицы записями
+ * @brief Функция разбора текста таблицы записями
  *
  * @param text     разбираемый текст таблицы
  * @param settings настройки разбора текста
@@ -178,6 +184,7 @@ TEST(CodecCsvWriter, QuotingNone) {
 	 * @note Без кавычек знак разрывающий укрыть можно лишь знаком отмены, и способ
 	 *       записи кавычки обязан ему отвечать: удвоение отмену эту при обратном
 	 *       чтении не снимет, и запись такое поле отвергает
+	 *
 	 */
 	settings.escape = csv::escape_t::BACKSLASH;
 	// Объект записи текста таблицы
@@ -521,7 +528,7 @@ TEST(CodecCsvWriter, Clear) {
 	// Выполняем запись очередного поля записи
 	writer.field("a");
 	// Выполняем очистку собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что собранный текст очищен
 	ASSERT_EQ(writer.size(), 0u);
 	// Выполняем запись целой записи полем за полем
@@ -543,6 +550,7 @@ TEST(CodecCsvWriter, Clear) {
 	 *
 	 * @warning Сличать надо и отказ ДО очистки: проверка одного лишь `NONE` после неё
 	 *          прошла бы и у писателя, который отказа не заметил вовсе
+	 *
 	 */
 	{
 		// Настройки записи текста с непригодным знаком-разделителем полей
@@ -556,7 +564,7 @@ TEST(CodecCsvWriter, Clear) {
 		// Выполняем проверку того, что код отказа записи выставлен
 		ASSERT_EQ(refused.error(), csv::error_t::SEPARATOR_CONFLICT);
 		// Выполняем очистку собранного текста
-		refused.clear();
+		refused.reset();
 		// Выполняем проверку того, что код отказа записи очисткой снят
 		ASSERT_EQ(refused.error(), csv::error_t::NONE);
 	}
@@ -588,6 +596,7 @@ TEST(CodecCsvWriter, SignatureField) {
 	 *       правило это проверяется наравне с прочими. Способ записи кавычки при том
 	 *       берётся знаком отмены - иначе укрыть метку без кавычек вправду нечем, и
 	 *       запись такое поле отвергает
+	 *
 	 */
 	for(uint8_t quoting = 0; quoting <= static_cast <uint8_t> (csv::quoting_t::NONE); quoting++){
 		// Настройки записи текста таблицы
@@ -622,6 +631,7 @@ TEST(CodecCsvWriter, SignatureField) {
 		ASSERT_EQ(document.get(0, size_t(0)), "\xEF\xBB\xBF") << uint32_t(quoting);
 	}
 }
+// Прогоняем опасные поля через запись и обратный разбор
 TEST(CodecCsvWriter, RoundTrip) {
 	/**
 	 * Проверяемая таблица с опасным содержимым полей
@@ -644,6 +654,7 @@ TEST(CodecCsvWriter, RoundTrip) {
 		 * @note Предел взят по длине перечня, а не по числу, вписанному рукой: прежде
 		 *       он стоял на двух при трёх членах, и `escape_t::BOTH` не проверялся
 		 *       вовсе - а перечень обещает, что при записи он берёт удвоение
+		 *
 		 */
 		for(uint8_t escape = 0; escape <= static_cast <uint8_t> (csv::escape_t::BOTH); escape++){
 			/**
@@ -785,11 +796,14 @@ TEST(CodecCsvWriter, UnquotedEscapingSurvivesRoundTrip) {
 		 * @note Способ этот у записи и у чтения ОБЯЗАН совпадать: прежде проверка
 		 *       читала знаком отмены, а писала удвоением, и круговой ход проходил лишь
 		 *       оттого, что запись способ свой не блюла вовсе
+		 *
 		 */
 		ws.escape = csv::escape_t::BACKSLASH;
 		// Запись таблицы
 		csv::writer_t writer(ws);
-		// Выполняем запись всех полей записи
+		/**
+		 * Выполняем запись всех полей записи
+		 */
 		for(const string & field : fields) EXPECT_TRUE(writer.field(field));
 		// Выполняем завершение записи
 		writer.record();
@@ -965,6 +979,7 @@ TEST(CodecCsvWriter, SettingsApplyFromNextField) {
 	 *
 	 * @note Первая запись оканчивается прежним знаком, вторая - новым: настройка
 	 *       вступает в силу с ближайшего, а записанное прежде не переписывается
+	 *
 	 */
 	ASSERT_EQ(string(writer.text()), "а,б\nв,г\r\n");
 	/**
@@ -1077,7 +1092,7 @@ TEST(CodecCsvWriter, SignatureReturnsAfterClear){
 	// Выполняем проверку наличия метки порядка байтов у первого текста
 	ASSERT_EQ(first.compare(0, 3, "\xEF\xBB\xBF"), 0);
 	// Выполняем очистку собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем запись второй записи
 	ASSERT_TRUE(writer.record(vector <string> {"б"}));
 	// Изымаем собранный текст
@@ -1242,6 +1257,7 @@ TEST(CodecCsvWriter, UnwritableFieldRefusedByEveryPath){
 	 * @warning Настройки здесь берутся УМОЛЧАНИЕМ, а не запретом кавычек: негодный знак
 	 *          непредставим при всяких настройках, и запрет кавычек увёл бы отказ к
 	 *          первой причине, оставив вторую непроверенной снова
+	 *
 	 */
 	{
 		// Объект записи текста при настройках по умолчанию
@@ -1275,6 +1291,7 @@ TEST(CodecCsvWriter, UnwritableFieldRefusedByEveryPath){
  *
  * @note Найдено сличением с записью разметки XML, где отказ терминален, - здесь же
  *       договор иной, местный, и держаться он обязан откатом
+ *
  */
 TEST(CodecCsvWriter, RefusalIsAtomic){
 	// Настройки записи текста
@@ -1392,8 +1409,11 @@ TEST(CodecCsvWriter, GrammarSettingsHeldMidText){
 	ASSERT_TRUE(writer.record(vector <string> {"a", "b"}));
 	// Меняем грамматику текста посреди уже начатой сборки
 	settings.separator = ';';
+	// Подменяем кавычку полей одинарной
 	settings.quote = '\'';
+	// Подменяем знак примечания решёткой
 	settings.comment = '#';
+	// Подменяем способ записи кавычки внутри поля знаком отмены
 	settings.escape = csv::escape_t::BACKSLASH;
 	// Меняем заодно и настройку, грамматике текста не принадлежащую
 	settings.quoting = csv::quoting_t::ALL;
@@ -1424,7 +1444,7 @@ TEST(CodecCsvWriter, GrammarSettingsHeldMidText){
 	ASSERT_EQ(record.at(0), "c");
 	ASSERT_EQ(record.at(1), "d");
 	// Выполняем очистку собранного текста таблицы
-	writer.clear();
+	writer.reset();
 	// Меняем грамматику текста, сборка которого более не начата
 	settings.separator = ';';
 	// Выполняем установку настроек записи текста
@@ -1434,6 +1454,7 @@ TEST(CodecCsvWriter, GrammarSettingsHeldMidText){
 	 *
 	 * @note Иначе объект записи, единожды собравший текст, был бы прибит к первой своей
 	 *       грамматике навсегда, и переиспользовать его стало бы нельзя
+	 *
 	 */
 	ASSERT_EQ(writer.settings().separator, ';');
 }
@@ -1446,6 +1467,7 @@ TEST(CodecCsvWriter, GrammarSettingsHeldMidText){
  * НЕЛЬЗЯ ничем: круговой ход рвался молча, обе стороны отвечая успехом
  *
  * @note Пригодность судится той же открытой `suitable()`, какой судит и разбор
+ *
  */
 TEST(CodecCsvWriter, UnsuitableSettingsRefused){
 	/**
@@ -1474,6 +1496,7 @@ TEST(CodecCsvWriter, UnsuitableSettingsRefused){
 		 *       всяком коде отказа, да и при отсутствии заслона вовсе. Замерено щупом
 		 *       по местам отказа 04.09.2026 - подмена кода в этом месте не красила
 		 *       НИЧЕГО, и заслон, запись без полей стерегущий, держался ни на чём
+		 *
 		 */
 		ASSERT_EQ(writer.error(), csv::error_t::SEPARATOR_CONFLICT) << static_cast <int32_t> (separator);
 	}
@@ -1498,6 +1521,7 @@ TEST(CodecCsvWriter, UnsuitableSettingsRefused){
  * знак-разделитель. Совпав со знаком примечания, он обращал всю запись в примечание, и
  * разбор терял её целиком - молча и без отказа: щуп давал успех разбора при НУЛЕ
  * собранных записей
+ *
  */
 TEST(CodecCsvWriter, EmptyLeadingFieldSurvivesCommentSeparator){
 	// Настройки записи текста
@@ -1542,6 +1566,7 @@ TEST(CodecCsvWriter, EmptyLeadingFieldSurvivesCommentSeparator){
  *
  * @note Найдено круговым ходом корпуса из 6290 таблиц при укладе «без кавычек, отмена
  *       знаком отмены»: 453 таблицы теряли записи, и ни одна не узнала об этом
+ *
  */
 TEST(CodecCsvWriter, EmptyRecordRefusedWithoutQuoting){
 	// Настройки записи текста
@@ -1611,6 +1636,7 @@ TEST(CodecCsvWriter, EmptyRecordRefusedWithoutQuoting){
  *
  * @note Чтение таблицы держится того же правила с иной стороны: навязанная посреди
  *       текста кодировка снимается из настроек, а не хранится в них
+ *
  */
 TEST(CodecCsvWriter, SignatureRequestedLateIsNotKept){
 	// Запись текста таблицы
@@ -1731,8 +1757,8 @@ TEST(CodecCsvWriter, UnreadableContentRefused){
 			ASSERT_TRUE(writeField(payload, output)) << payload;
 			// Объект таблицы для обратного разбора
 			csv::document_t document;
-			// Получаем настройки таблицы
-			csv::document_t::settings_t settings = document.settings();
+			// Настройки таблицы
+			csv::document_t::settings_t settings;
 			// Отменяем ожидание заголовка: записано одно поле
 			settings.reader.header = csv::header_t::NONE;
 			// Выполняем установку настроек таблицы
@@ -1766,7 +1792,7 @@ TEST(CodecCsvWriter, StrictReadingAcceptsOnlyContractNewline) {
 		{"", " с пробелами ", "обычное"}
 	};
 	/**
-	 * @brief Метод чтения собранного текста обратно в поля
+	 * @brief Функция чтения собранного текста обратно в поля
 	 *
 	 * @param text   читаемый текст таблицы
 	 * @param strict признак строгого разбора текста
@@ -1787,14 +1813,19 @@ TEST(CodecCsvWriter, StrictReadingAcceptsOnlyContractNewline) {
 		reader.feed(text.data(), text.size(), true);
 		// Собираемая запись таблицы
 		vector <string> current;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если событием является поле записи
 			if(reader.event() == csv::event_t::FIELD)
+				// Причитываем значение поля в собираемую запись
 				current.push_back(string(reader.field().value));
 			// Если событием является конец записи
 			else if(reader.event() == csv::event_t::RECORD) {
+				// Складываем готовую запись в вычитанный перечень
 				result.push_back(current);
+				// Очищаем собираемую запись под следующую
 				current.clear();
 			}
 		}
@@ -1813,8 +1844,11 @@ TEST(CodecCsvWriter, StrictReadingAcceptsOnlyContractNewline) {
 		settings.newline = newline;
 		// Запись текста таблицы
 		csv::writer_t writer(settings);
-		// Выполняем запись всех записей таблицы
+		/**
+		 * Выполняем запись всех записей таблицы
+		 */
 		for(const auto & record : source)
+			// Прогоняем запись очередной исходной записи выбранным видом конца строки
 			ASSERT_TRUE(writer.record(record)) << static_cast <uint16_t> (newline);
 		/**
 		 * Выполняем проверку дословного чтения собранного нестрогим разбором
@@ -1865,7 +1899,7 @@ TEST(CodecCsvWriter, StrictReadingAcceptsOnlyContractNewline) {
  */
 TEST(CodecCsvWriter, MinimalQuotingHasSixCauses) {
 	/**
-	 * @brief Метод проверки обрамления записанного поля
+	 * @brief Функция проверки обрамления записанного поля
 	 *
 	 * @param field     записываемое содержимое поля
 	 * @param comment   знак начала строки примечания
@@ -1920,6 +1954,7 @@ TEST(CodecCsvWriter, MinimalQuotingHasSixCauses) {
 		 *
 		 * @note Причина эта самая опасная: поле, записанное голым, прочлось бы обратно
 		 *       примечанием, унеся с собою всю запись
+		 *
 		 */
 		ASSERT_TRUE(quoted("#а", '#', false));
 		// Выполняем проверку того, что при выключенных примечаниях причина отпадает
@@ -1930,6 +1965,7 @@ TEST(CodecCsvWriter, MinimalQuotingHasSixCauses) {
 		 * @note Уклад здесь обратен ожиданию: обрамляется поле тогда, когда запись
 		 *       метки ВЫКЛЮЧЕНА. Включённой метка принадлежит самому тексту, а
 		 *       выключенной пришла бы из содержимого и была бы снята чтением
+		 *
 		 */
 		ASSERT_TRUE(quoted("\xEF\xBB\xBF" "а", '\0', false));
 		// Выполняем проверку того, что при включённой метке причина отпадает
@@ -1940,6 +1976,7 @@ TEST(CodecCsvWriter, MinimalQuotingHasSixCauses) {
 	 *
 	 * @note Половина обязательная: правило, обрамляющее всё подряд, прошло бы половины
 	 *       выше целиком, ничего не проверив
+	 *
 	 */
 	{
 		// Выполняем проверку того, что обычное поле обрамления не требует
@@ -1955,11 +1992,13 @@ TEST(CodecCsvWriter, MinimalQuotingHasSixCauses) {
 	 * @details Посреднику передаётся текст поля и ничего более, и две причины,
 	 * зависящие от места, он вывести не может. Расхождение это не дефект, а область, и
 	 * закрепляется оно затем, чтобы область эту не приняли за упущение и не «исправили»
+	 *
 	 */
 	{
 		// Выполняем проверку согласия посредника с записью по содержимому поля
 		ASSERT_TRUE(csv::quotable("а,б", ',', '"', csv::quoting_t::MINIMAL));
 		ASSERT_TRUE(csv::quotable(" а", ',', '"', csv::quoting_t::MINIMAL));
+		// Проверяем, что поле без опасного содержимого посредник свободным от обрамления признаёт
 		ASSERT_FALSE(csv::quotable("обычное", ',', '"', csv::quoting_t::MINIMAL));
 		/**
 		 * Выполняем проверку неведения посредника о причинах, зависящих от места
@@ -2066,6 +2105,7 @@ TEST(CodecCsvWriter, NumberWritingCoversEveryWidth) {
 	 *
 	 * @note Сличается весь текст целиком, а не одно лишь число полей: усечение старших
 	 *       разрядов даёт текст верного строения с неверными числами
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "-128,255,-32768,65535,4294967295,-9223372036854775808,1.5\r\n");
 }
@@ -2142,6 +2182,7 @@ TEST(CodecCsvWriter, MissingQuoteCharacterRefusesInsteadOfWritingNulBytes) {
 	 *
 	 * @note Половина эта отделяет отказ по нужде от отказа огульного: поле, ограды не
 	 *       требующее, пишется и при незаданном знаке кавычек
+	 *
 	 */
 	{
 		// Настройки записи текста таблицы
@@ -2311,6 +2352,7 @@ TEST(CodecCsvWriter, RefusalOfTheRecordRevertsTheWriter) {
 	 * @note Завершение записи ответа не возвращает вовсе - `record()` объявлен `void`, - и
 	 *       отказ его виден ЛИШЬ кодом. Оттого он и опаснее прочих: вызывающий, за кодом не
 	 *       следящий, о неудаче не узнаёт ничем
+	 *
 	 */
 	writer.record();
 	// Выполняем проверку того, что отказ назван кодом
@@ -2327,6 +2369,7 @@ TEST(CodecCsvWriter, RefusalOfTheRecordRevertsTheWriter) {
 	 * @note Разряд этот встречен за день пятый раз: порождения числовых видов, обращение по
 	 *       знаку, добавление записи к таблице, заведение значения узкими видами - и вот
 	 *       запись целой записи. Всюду проверялась одна перегрузка из двух
+	 *
 	 */
 	for(uint8_t attempt = 0; attempt < 2; attempt++){
 		// Объект записи текста таблицы
@@ -2340,6 +2383,7 @@ TEST(CodecCsvWriter, RefusalOfTheRecordRevertsTheWriter) {
 		 *
 		 * @note Ход первый берёт записи, второй - виды: содержимое у обоих одно, а тела
 		 *       разные, и возврат сборщика стоит в каждом свой
+		 *
 		 */
 		if(attempt == 0)
 			// Выполняем проверку отказа записи, берущей записи
@@ -2512,6 +2556,7 @@ TEST(CodecCsvWriter, TheFirstRefusalCodeSurvivesTheNextRecord){
 	 *
 	 * @note Блок этот и есть доказательство того, что дело в ПОВТОРЕ кода, а не в самой
 	 *       записи: один и тот же вызов у двух писателей отвечал по-разному
+	 *
 	 */
 	{
 		// Объект записи текста, отказов ещё не знавший
@@ -2527,6 +2572,7 @@ TEST(CodecCsvWriter, TheFirstRefusalCodeSurvivesTheNextRecord){
 	 * @note Поле такое записывается успешно, а отказывает ЗАВЕРШЕНИЕ записи: пометить
 	 *       её при запрещённых кавычках нечем. Дорога эта единственная: поле, отказавшее
 	 *       само, возвращает сборщика раньше, и до выбора кода дело не доходит вовсе
+	 *
 	 */
 	ASSERT_FALSE(writer.record(vector <string> {""}));
 	// Выполняем проверку того, что код первого отказа сохранён
@@ -2537,22 +2583,36 @@ TEST(CodecCsvWriter, TheFirstRefusalCodeSurvivesTheNextRecord){
  *
  */
 TEST(CodecCsvWriter, OwnBufferFields) {
-	// Проверяем оба способа экранирования кавычек
+	/**
+	 * Проверяем оба способа экранирования кавычек
+	 */
 	for(const csv::escape_t escape : {csv::escape_t::DOUBLE, csv::escape_t::BACKSLASH}){
+		// Пара писателей под одной грамматикой: проверяемый и эталонный
 		csv::writer_t writer, reference;
+		// Общие обоим писателям настройки записи
 		csv::writer_t::settings_t settings = writer.settings();
+		// Заключаем каждое поле в кавычки
 		settings.quoting = csv::quoting_t::ALL;
+		// Задаём проверяемый способ экранирования кавычек
 		settings.escape = escape;
+		// Применяем грамматику к проверяемому писателю
 		writer.settings(settings);
+		// Применяем ту же грамматику к эталону
 		reference.settings(settings);
+		// Заполняем буфер проверяемого писателя полем в 4096 знаков
 		ASSERT_TRUE(writer.field(string(4096, 'x')));
 		ASSERT_TRUE(reference.field(string(4096, 'x')));
 		// Поле содержит весь буфер вместе с уже записанными кавычками
 		const string before = reference.text();
+		// Подаём писателю его собственный буфер следующим полем
 		ASSERT_TRUE(writer.field(writer.text()));
+		// Подаём эталону тот же текст, заранее снятый с его буфера
 		ASSERT_TRUE(reference.field(before));
+		// Завершаем запись проверяемого писателя
 		writer.record();
+		// Завершаем запись эталона
 		reference.record();
+		// Проверяем, что собственный буфер не изменил собранный текст
 		ASSERT_EQ(writer.text(), reference.text());
 	}
 }
@@ -2561,23 +2621,35 @@ TEST(CodecCsvWriter, OwnBufferFields) {
  *
  */
 TEST(CodecCsvWriter, OwnBufferRecordSlices) {
+	// Пара писателей: проверяемый на срезах и эталонный на строках
 	csv::writer_t writer, reference;
+	// Начинаем запись проверяемого писателя полем в 4096 знаков
 	ASSERT_TRUE(writer.field(string(4096, 'x')));
 	ASSERT_TRUE(reference.field(string(4096, 'x')));
+	// Завершаем первую запись проверяемого писателя
 	writer.record();
+	// Завершаем первую запись эталона
 	reference.record();
 	// Первое поле вызывает перевыделение, последующие ссылаются на прежний буфер
 	const string before = reference.text();
+	// Длинная строка в 16384 знака, перевыделение буфера вызывающая
 	const string large(16384, 'z');
+	// Перечень срезов входных полей, на прежний буфер писателя указывающих
 	vector <string_view> fields {large, string_view(writer.text()).substr(1, 2048), writer.text()};
+	// Прогоняем запись по срезам, прежний буфер писателя захватывающим
 	ASSERT_TRUE(writer.record(fields));
 	ASSERT_TRUE(reference.record(vector <string> {large, before.substr(1, 2048), before}));
+	// Проверяем, что запись по срезам сошлась с эталонной записью по строкам
 	ASSERT_EQ(writer.text(), reference.text());
 	// Проверяем откат всей записи при негодном последнем поле
 	const string saved = writer.text();
+	// Негодное поле из одного нулевого знака
 	const string invalid(1, '\0');
+	// Обновляем срезы: прежний буфер писателя и негодное поле в конце
 	fields = {writer.text(), invalid};
+	// Прогоняем отказ записи с негодным последним полем
 	ASSERT_FALSE(writer.record(fields));
+	// Проверяем, что откат вернул текст, снятый до отказа
 	ASSERT_EQ(writer.text(), saved);
 	ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
 }
@@ -2590,18 +2662,27 @@ TEST(CodecCsvWriter, OwnBufferRecordSlices) {
  *
  */
 static void refuseCommentField(const csv::writer_t::settings_t & settings, const string & value) {
-	// Проверяем восстановление состояния с меткой порядка байтов и без неё
+	/**
+	 * Проверяем восстановление состояния с меткой порядка байтов и без неё
+	 */
 	for(const bool signature : {false, true}){
-		// Проверяем отдельное поле, обе перегрузки записи и целую таблицу
+		/**
+		 * Проверяем отдельное поле, обе перегрузки записи и целую таблицу
+		 */
 		for(uint8_t mode = 0; mode < 4; mode++){
 			// Настраиваем начальную метку порядка байтов
 			csv::writer_t::settings_t options = settings;
+			// Задаём проверяемое состояние начальной метки порядка байтов
 			options.signature = signature;
 			// Создаём сборщик с проверяемой грамматикой
 			csv::writer_t writer(options);
-			// Повторный отказ должен обнаруживаться и при прежнем коде ошибки
+			/**
+			 * Повторный отказ должен обнаруживаться и при прежнем коде ошибки
+			 */
 			for(uint8_t attempt = 0; attempt < 2; attempt++){
-				// Выбираем способ записи непредставимого поля
+				/**
+				 * Выбираем способ записи непредставимого поля
+				 */
 				switch(mode){
 					// Проверяем отдельное поле
 					case 0: ASSERT_FALSE(writer.field(value)); break;
@@ -2614,33 +2695,46 @@ static void refuseCommentField(const csv::writer_t::settings_t & settings, const
 				}
 				// Проверяем причину отказа и отсутствие оставленных байтов
 				ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
+				// Проверяем, что после отказа в буфере не осталось ни байта
 				ASSERT_TRUE(writer.text().empty());
 			}
 			// После полного отката настройки грамматики ещё доступны изменению
 			options.signature = !signature;
+			// Применяем изменённые настройки к пережившему отказ писателю
 			writer.settings(options);
+			// Проверяем, что настройка метки после отката изменилась
 			ASSERT_EQ(writer.settings().signature, !signature);
 			// То же содержимое допустимо во втором поле записи
 			ASSERT_TRUE(writer.field("safe"));
 			ASSERT_TRUE(writer.field(value));
+			// Завершаем запись, значение вторым полем несущую
 			writer.record();
 			// Извлекаем запись и проверяем восстановление признака метки
 			const string text = writer.take();
+			// Проверяем, что метка порядка байтов присутствует ровно по взведённой настройке
 			ASSERT_EQ(text.compare(0, 3, "\xEF\xBB\xBF") == 0, !signature);
 			// Читаем с той же грамматикой и проверяем оба значения
 			csv::document_t::settings_t reading;
+			// Переносим разделитель в настройки чтения
 			reading.reader.separator = options.separator;
+			// Переносим кавычку в настройки чтения
 			reading.reader.quote = options.quote;
+			// Переносим знак примечания в настройки чтения
 			reading.reader.comment = options.comment;
+			// Переносим способ экранирования в настройки чтения
 			reading.reader.escape = options.escape;
+			// Контейнер таблицы, той же грамматикой читающий
 			csv::document_t document(reading);
+			// Прогоняем разбор записанного текста
 			ASSERT_TRUE(document.parse(text));
+			// Проверяем, что в разобранной таблице одна запись
 			ASSERT_EQ(document.rows(), static_cast <size_t> (1));
 			ASSERT_EQ(document.row(0).size(), static_cast <size_t> (2));
 			ASSERT_EQ(document.get(0, 0), "safe");
 			ASSERT_EQ(document.get(0, 1), value);
 			// Продолжение после изъятия не должно повторять метку порядка байтов
 			ASSERT_TRUE(writer.record(vector <string> {"next"}));
+			// Проверяем, что продолжение выдано без повторной метки порядка байтов
 			ASSERT_EQ(writer.take(), "next\r\n");
 		}
 	}
@@ -2653,13 +2747,19 @@ static void refuseCommentField(const csv::writer_t::settings_t & settings, const
 TEST(CodecCsvWriter, CommentQuoteRefusalPreservesState) {
 	// Кавычка остаётся допустимой внутри записи, но не в её начале
 	csv::writer_t::settings_t settings;
+	// Совмещаем знак примечания с кавычкой
 	settings.comment = settings.quote;
+	// Прогоняем отказ поля с разделителем, кавычку требующего
 	refuseCommentField(settings, "a,b");
 	// Обязательное заключение в кавычки не должно обходить отказ
 	settings.quoting = csv::quoting_t::ALL;
+	// Создаём писателя с обязательным заключением в кавычки
 	csv::writer_t writer(settings);
+	// Прогоняем отказ даже обычного поля под обязательным заключением
 	ASSERT_FALSE(writer.field("plain"));
+	// Проверяем код отказа непредставимого поля
 	ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
+	// Проверяем, что буфер писателя остался пуст
 	ASSERT_TRUE(writer.text().empty());
 }
 
@@ -2670,16 +2770,25 @@ TEST(CodecCsvWriter, CommentQuoteRefusalPreservesState) {
 TEST(CodecCsvWriter, CommentEscapeRefusalPreservesState) {
 	// Все варианты первого знака требуют записи обратной косой черты
 	csv::writer_t::settings_t settings;
+	// Совмещаем знак примечания с обратной косой чертой
 	settings.comment = '\\';
+	// Задаём экранирование обратной косой чертой
 	settings.escape = csv::escape_t::BACKSLASH;
+	// Запрещаем кавычки вовсе: остаётся одна отмена знаком
 	settings.quoting = csv::quoting_t::NONE;
+	/**
+	 * Прогоняем отказ поля, начинающегося с опасных знаков
+	 */
 	for(const string & value : {"\\head", ",head", "\"head", "\rhead", "\nhead"})
 		// Проверяем исходную косую черту и косую черту, добавляемую экранированием
 		refuseCommentField(settings, value);
 	// Защита метки порядка байтов также не должна начинать примечание
 	csv::writer_t writer(settings);
+	// Прогоняем отказ метки порядка байтов, отмену впереди себя получающей
 	ASSERT_FALSE(writer.field("\xEF\xBB\xBF"));
+	// Проверяем код отказа непредставимого поля
 	ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
+	// Проверяем, что буфер писателя остался пуст
 	ASSERT_TRUE(writer.text().empty());
 }
 
@@ -2690,10 +2799,15 @@ TEST(CodecCsvWriter, CommentEscapeRefusalPreservesState) {
 TEST(CodecCsvWriter, EmptyFirstCommentSeparatorIsRefused) {
 	// Без кавычек границу первого пустого поля сохранить невозможно
 	csv::writer_t::settings_t settings;
+	// Совмещаем разделитель полей с решёткой
 	settings.separator = '#';
+	// Совмещаем знак примечания с той же решёткой
 	settings.comment = '#';
+	// Задаём экранирование обратной косой чертой
 	settings.escape = csv::escape_t::BACKSLASH;
+	// Запрещаем кавычки, границу пустого поля держать могущие
 	settings.quoting = csv::quoting_t::NONE;
+	// Прогоняем отказ первого пустого поля перед разделителем-примечанием
 	refuseCommentField(settings, "");
 }
 
@@ -2702,28 +2816,46 @@ TEST(CodecCsvWriter, EmptyFirstCommentSeparatorIsRefused) {
  *
  */
 TEST(CodecCsvWriter, CommentCharacterIsEscapedOnce) {
-	// Проверяем разделитель, кавычку и обычный знак примечания
+	/**
+	 * Проверяем разделитель, кавычку и обычный знак примечания
+	 */
 	for(const char comment : {'#', '"', '!'}){
 		// Одинаковая грамматика записи и чтения
 		csv::writer_t::settings_t settings;
+		// Совмещаем разделитель полей с решёткой
 		settings.separator = '#';
+		// Назначаем проверяемый знак примечания
 		settings.comment = comment;
+		// Задаём экранирование обратной косой чертой
 		settings.escape = csv::escape_t::BACKSLASH;
+		// Запрещаем кавычки, одним знаком отмены обойдясь
 		settings.quoting = csv::quoting_t::NONE;
+		// Настройки чтения, грамматике записи под стать
 		csv::document_t::settings_t reading;
+		// Переносим разделитель в настройки чтения
 		reading.reader.separator = settings.separator;
+		// Переносим знак примечания в настройки чтения
 		reading.reader.comment = comment;
+		// Переносим способ экранирования в настройки чтения
 		reading.reader.escape = settings.escape;
 		// Первый знак должен защищаться независимо от его остальных назначений
 		const string value = string(1, comment) + "head";
+		/**
+		 * Прогоняем все способы передачи полей
+		 */
 		for(uint8_t mode = 0; mode < 4; mode++){
 			// Выбираем способ передачи полей
 			csv::writer_t writer(settings);
+			/**
+			 * Передаём поля выбранным способом
+			 */
 			switch(mode){
 				// Записываем поля отдельно
 				case 0: {
+					// Подаем первое поле с опасным знаком впереди
 					ASSERT_TRUE(writer.field(value));
 					ASSERT_TRUE(writer.field("tail"));
+					// Завершаем запись из двух полей
 					writer.record();
 				} break;
 				// Записываем массив строк
@@ -2738,7 +2870,9 @@ TEST(CodecCsvWriter, CommentCharacterIsEscapedOnce) {
 			ASSERT_EQ(writer.text(), "\\" + value + "#tail\r\n");
 			// Проверяем сохранение числа полей и их содержимого
 			csv::document_t document(reading);
+			// Прогоняем разбор записанного текста
 			ASSERT_TRUE(document.parse(writer.text()));
+			// Проверяем, что в разобранной таблице одна запись
 			ASSERT_EQ(document.rows(), static_cast <size_t> (1));
 			ASSERT_EQ(document.row(0).size(), static_cast <size_t> (2));
 			ASSERT_EQ(document.get(0, 0), value);
@@ -2752,19 +2886,31 @@ TEST(CodecCsvWriter, CommentCharacterIsEscapedOnce) {
  *
  */
 TEST(CodecCsvWriter, EmptyRecordCannotBecomeComment) {
-	// Пустое поле получает кавычки лишь при завершении записи
+	/**
+	 * Пустое поле получает кавычки лишь при завершении записи
+	 */
 	for(uint8_t mode = 0; mode < 4; mode++){
+		// Настройки записи, кавычку с примечанием совмещающие
 		csv::writer_t::settings_t settings;
+		// Совмещаем знак примечания с кавычкой
 		settings.comment = settings.quote;
+		// Создаём писателя, пустое поле кавычками завершающего
 		csv::writer_t writer(settings);
 		// Ранее завершённая запись должна пережить каждый отказ
 		ASSERT_TRUE(writer.record(vector <string> {"before"}));
+		/**
+		 * Прогоняем оба круга отказов завершения записи
+		 */
 		for(uint8_t attempt = 0; attempt < 2; attempt++){
-			// Проверяем все способы завершения пустой записи
+			/**
+			 * Проверяем все способы завершения пустой записи
+			 */
 			switch(mode){
 				// Завершаем отдельно поданное поле
 				case 0: {
+					// Подаем отдельное пустое поле
 					ASSERT_TRUE(writer.field(""));
+					// Прогоняем завершение записи, кавычки пустому полю дающее
 					writer.record();
 				} break;
 				// Завершаем массив строк
@@ -2774,11 +2920,13 @@ TEST(CodecCsvWriter, EmptyRecordCannotBecomeComment) {
 				// Проверяем откат всей таблицы вместе с успешно записанной частью
 				case 3: ASSERT_FALSE(writer.write(vector <vector <string>> {{"discard"}, {""}})); break;
 			}
+			// Проверяем код отказа завершения записи
 			ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
 			ASSERT_EQ(writer.text(), "before\r\n");
 		}
 		// Отказ не должен оставлять открытое поле
 		ASSERT_TRUE(writer.record(vector <string> {"after"}));
+		// Проверяем, что обе записи выданы без помех от пережитых отказов
 		ASSERT_EQ(writer.take(), "before\r\nafter\r\n");
 	}
 }

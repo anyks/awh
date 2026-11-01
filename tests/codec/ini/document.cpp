@@ -25,8 +25,14 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
+/**
+ * Для операционной системы MS Windows
+ */
 #else
 	#include <process.h>
+	/**
+	 * Подменяем getpid версией MS Windows
+	 */
 	#define getpid _getpid
 #endif
 #include <tuple>
@@ -41,6 +47,7 @@
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора кодеков - собираются они одной программой, и брешь одного файла
  *       уносила с собою проверки всех прочих
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -58,6 +65,7 @@
  *       один лишь путь, и прямой вызов сборку там валит. Указано это у кодека CEF:
  *       проверки кодеков собираются ОДНОЙ программой, и три моих вызова
  *       остановили сборку всего набора, включая чужие проверки
+ *
  */
 #include "../temporary.hpp"
 
@@ -94,6 +102,7 @@ namespace {
 	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
+		// Обращение пути в широкий вид для систем MS Windows
 		static ::std::wstring address(const ::std::string & path) noexcept {
 			/**
 			 * Обращение ведётся ходом рамки, а не своим перебором знаков
@@ -104,6 +113,7 @@ namespace {
 			 *          лишним ещё двое суток. Свой ход опасен не работою, а расхождением:
 			 *          починка рамки его не достигает, и проверка начинает мерить не тот
 			 *          путь, каким ходит кодек
+			 *
 			 */
 			return awh::fmk::convert(path);
 		}
@@ -111,6 +121,7 @@ namespace {
 	 * Для операционной системы, MS Windows не являющейся
 	 */
 	#else
+		// Обращение пути без перекодировки для прочих систем
 		static ::std::string address(const ::std::string & path) noexcept {
 			// Выводим путь файловой системы без обращения
 			return path;
@@ -160,6 +171,7 @@ namespace {
 		 * @warning Розыск точки по всему имени негоден: у имени `./каталог/файл` точка
 		 *          начала пути была бы принята за расширение, и имя обратилось бы в
 		 *          `.-1234/каталог/файл` - путь в каталог несуществующий
+		 *
 		 */
 		const ::std::size_t slash = name.find_last_of("/\\");
 		// Разыскиваем место расширения имени
@@ -171,8 +183,7 @@ namespace {
 		// Выводим имя с номером процесса перед расширением
 		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
 	}
-	/**
-	 * \~russian
+		/**
 	 * @brief Ограда подписки на отчёты журнала
 	 *
 	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
@@ -186,10 +197,6 @@ namespace {
 	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
 	 *       же отчёте, поданном по выходе из области подписки
 	 *
-	 * \~english
-	 * @brief Guard of the subscription to the reports of the log
-	 *
-	 * \~
 	 */
 	class Subscription {
 		public:
@@ -218,6 +225,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -286,6 +296,7 @@ TEST(CodecIniDocument, EncodingIsReportedByTheReader){
 	// Выполняем проверку того, что после разбора кодировка опознана
 	ASSERT_EQ(document.encoding(), ini::encoding_t::UTF8);
 }
+// Проверка кругового хода записи и чтения настроек через файл
 TEST(CodecIniDocument, LoadAndSaveRoundTrip){
 	// Путь до временного файла настроек
 	const string filename = string(::testing::TempDir()) + ::unique("ini-roundtrip.conf");
@@ -312,6 +323,25 @@ TEST(CodecIniDocument, LoadAndSaveRoundTrip){
 	// Выполняем снятие временного файла настроек
 	dropFile(filename);
 }
+/**
+ * @brief Проверка сохранения дерева при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecIniDocument, EmptyFilenamePreservesTree){
+	// Объект дерева настроек
+	ini::document_t document;
+	// Выполняем разбор исходных настроек
+	ASSERT_TRUE(document.parse("key = value\n")) << ini::message(document.error());
+	// Исходная запись настроек
+	const string expected = document.dump();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), ini::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения дерева
+	ASSERT_EQ(document.dump(), expected);
+}
+// Проверка счёта детей корня вместо всех узлов дерева
 TEST(CodecIniDocument, SizeCountsChildrenOfTheRoot){
 	// Объект дерева документа, текст разбирающий
 	ini::document_t document;
@@ -324,6 +354,7 @@ TEST(CodecIniDocument, SizeCountsChildrenOfTheRoot){
 	// Выполняем проверку того, что прежний счёт никуда не делся, а лишь переехал
 	ASSERT_NE(document.sections().size(), 0u);
 }
+// Проверка постановки владеющего значения по пути
 TEST(CodecIniDocument, SettingOwningValueByPath){
 	// Объект дерева настроек, текст разбирающий
 	ini::document_t document;
@@ -346,6 +377,7 @@ TEST(CodecIniDocument, SettingOwningValueByPath){
 	// Выполняем проверку содержимого значения, строкою поставленного
 	ASSERT_EQ(text, "8080");
 }
+// Проверка разбора текста настроек в дерево
 TEST(CodecIniDocument, Parse) {
 	// Дерево настроек
 	ini::document_t document;
@@ -415,7 +447,10 @@ TEST(CodecIniDocument, Duplicates) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n"));
 		// Выполняем проверку выдачи первого объявления свойства
 		ASSERT_EQ(document.get("k", "a"), "первое");
 	}{
@@ -426,7 +461,10 @@ TEST(CodecIniDocument, Duplicates) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n"));
 		// Выполняем проверку выдачи последнего объявления свойства
 		ASSERT_EQ(document.get("k", "a"), "второе");
 	}{
@@ -462,6 +500,7 @@ TEST(CodecIniDocument, Continued) {
 	 *
 	 * @note Повторное объявление раздела заводит не новый раздел, а продолжение
 	 *       прежнего: свойства обоих объявлений принадлежат одному разделу
+	 *
 	 */
 	ASSERT_EQ(document.get("second", "a"), "2");
 }
@@ -478,7 +517,10 @@ TEST(CodecIniDocument, References) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[paths]\nroot = /opt/awh\nlogs = ${root}/logs\n[run]\npid = ${paths:root}/run.pid\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[paths]\nroot = /opt/awh\nlogs = ${root}/logs\n[run]\npid = ${paths:root}/run.pid\n"));
 		// Выполняем проверку подстановки обращения к значению своего раздела
 		ASSERT_EQ(document.get("logs", "paths"), "/opt/awh/logs");
 		// Выполняем проверку подстановки обращения к значению чужого раздела
@@ -491,7 +533,10 @@ TEST(CodecIniDocument, References) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)s\nescaped = 50%%\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)s\nescaped = 50%%\n"));
 		// Выполняем проверку подстановки обращения к значению
 		ASSERT_EQ(document.get("greeting", "a"), "привет, awh");
 		// Выполняем проверку записи знака обращения удвоением
@@ -504,11 +549,17 @@ TEST(CodecIniDocument, References) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку отклонения круговой ссылки
-		ASSERT_FALSE(document.parse("[a]\nfirst = ${second}\nsecond = ${first}\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nfirst = ${second}\nsecond = ${first}\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::RECURSIVE_REFERENCE);
 		// Выполняем проверку отклонения обращения к необъявленному значению
-		ASSERT_FALSE(document.parse("[a]\nk = ${missing}\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nk = ${missing}\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
 	}{
@@ -540,8 +591,12 @@ TEST(CodecIniDocument, Expansion) {
 	 *
 	 * @note Каждое следующее значение удваивает предыдущее: пять таких шагов
 	 *       наращивают объём в тридцать два раза, и предел прекращает разбор
+	 *
 	 */
-	ASSERT_FALSE(document.parse("[a]\nb0 = ЗначениеЗначение\nb1 = ${b0}${b0}\nb2 = ${b1}${b1}\nb3 = ${b2}${b2}\nb4 = ${b3}${b3}\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_FALSE(document.parse("[a]\nb0 = ЗначениеЗначение\nb1 = ${b0}${b0}\nb2 = ${b1}${b1}\nb3 = ${b2}${b2}\nb4 = ${b3}${b3}\n"));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), ini::error_t::EXPANSION_EXCEEDED);
 }
@@ -589,15 +644,24 @@ TEST(CodecIniDocument, RoundtripInline) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку значения свойства
 	ASSERT_EQ(document.get("path", "core"), "value");
 	// Собираемые настройки записи текста настроек
 	ini::writer_t::settings_t options = ini::writer_t::settings_t::git();
 	// Устанавливаем знак начала примечания
 	options.marker = ';';
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect = settings;
+	// Устанавливаем собранные настройки записи текста документа
+	dialect.writer = options;
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Выполняем проверку совпадения записанного текста с исходным
-	ASSERT_EQ(document.dump(options), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка сохранения обращения к значению при обратной записи
@@ -617,7 +681,10 @@ TEST(CodecIniDocument, RoundtripReferences) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку подстановки обращения при чтении значения
 	ASSERT_EQ(document.get("logs", "paths"), "/opt/awh/logs");
 	// Выполняем проверку сохранения обращения при обратной записи
@@ -639,6 +706,7 @@ TEST(CodecIniDocument, RoundtripMarkers) {
 	 *
 	 * @note Знак берётся из исходного текста, а не из настроек записи: выбрал
 	 *       его тот, кто файл настроек писал
+	 *
 	 */
 	ASSERT_EQ(document.dump(), text);
 }
@@ -739,6 +807,7 @@ TEST(CodecIniDocument, Assembly) {
 	 *
 	 * @note Записи прочих разделов при такой вставке сдвигаются, и указатели
 	 *       поиска обязаны быть перестроены целиком
+	 *
 	 */
 	ASSERT_TRUE(document.set("second", "2", "a"));
 	// Выполняем проверку записи добавленного свойства в конец своего раздела
@@ -756,6 +825,7 @@ TEST(CodecIniDocument, Assembly) {
 	 *
 	 * @note Указатель свойства при удалении изъят, и заведение обязано пройти
 	 *       путём нового свойства, а не правки записи, снятой пометкой удаления
+	 *
 	 */
 	ASSERT_TRUE(document.set("first", "10", "a"));
 	// Выполняем проверку заведённого значения свойства
@@ -764,7 +834,9 @@ TEST(CodecIniDocument, Assembly) {
 	ASSERT_EQ(document.keys("a"), (vector <string_view> {"second", "first"}));
 	// Выполняем проверку записи дерева после правок
 	ASSERT_EQ(document.dump(), "[a]\nsecond = 2\nfirst = 10\n\n[b]\nthird = 3\n");
-	// Выполняем сборку раздела вызовами установки значения
+	/**
+	 * Выполняем сборку раздела вызовами установки значения
+	 */
 	for(uint32_t i = 0; i < 64; i++)
 		// Выполняем добавление свойства в заводимый раздел
 		ASSERT_TRUE(document.set(("key" + std::to_string(i)), std::to_string(i), "bulk"));
@@ -796,7 +868,10 @@ TEST(CodecIniDocument, ReferenceDuplicates) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\nref = ${x}\nx = первое\nx = последнее\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nref = ${x}\nx = первое\nx = последнее\n"));
 	// Выполняем проверку выдачи последнего объявления свойства
 	ASSERT_EQ(document.get("x", "a"), "последнее");
 	// Выполняем проверку разрешения обращения тем же объявлением
@@ -821,6 +896,7 @@ TEST(CodecIniDocument, WriteFailure) {
 	 *
 	 * @note Запись управляющих последовательностей по умолчанию снята, и знак
 	 *       конца строки внутри значения записать нечем
+	 *
 	 */
 	ASSERT_TRUE(document.dump().empty());
 	// Выполняем проверку кода ошибки записи
@@ -829,8 +905,14 @@ TEST(CodecIniDocument, WriteFailure) {
 	ini::writer_t::settings_t settings;
 	// Устанавливаем запись управляющих последовательностей в значении
 	settings.escapes = true;
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect;
+	// Устанавливаем собранные настройки записи текста документа
+	dialect.writer = settings;
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Выполняем проверку прохождения записи с управляющими последовательностями
-	ASSERT_FALSE(document.dump(settings).empty());
+	ASSERT_FALSE(document.dump().empty());
 }
 /**
  * @brief Проверка сохранности точки с запятой в значении наречия Git
@@ -847,15 +929,27 @@ TEST(CodecIniDocument, RoundtripGitMarkers) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n"));
 	// Выполняем установку значения со знаком примечания внутри
 	ASSERT_TRUE(document.set("k", "one ; two", "a"));
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect = settings;
+	// Устанавливаем наречие записи текста документа
+	dialect.writer = ini::writer_t::settings_t::git();
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Получаем записанный текст настроек
-	const string text = document.dump(ini::writer_t::settings_t::git());
+	const string text = document.dump();
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем разбор записанного текста настроек
-	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(text));
 	// Выполняем проверку сохранности значения при обороте «запись - чтение»
 	ASSERT_EQ(again.get("k", "a"), "one ; two");
 }
@@ -871,7 +965,10 @@ TEST(CodecIniDocument, RoundtripArrays) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\nk[] = one\nk[] = two\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk[] = one\nk[] = two\n"));
 	// Выполняем проверку количества значений свойства
 	ASSERT_EQ(document.values("k", "a").size(), 2u);
 	// Выполняем проверку сохранности записи добавления к перечню
@@ -900,7 +997,10 @@ TEST(CodecIniDocument, ExpansionBudget) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем проверку отклонения разбора по превышению предела
-	ASSERT_FALSE(document.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_FALSE(document.parse(text));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), ini::error_t::EXPANSION_EXCEEDED);
 }
@@ -935,12 +1035,16 @@ TEST(CodecIniDocument, SensitiveSections) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n"));
 		/**
 		 * Выполняем проверку раздельного учёта разделов
 		 *
 		 * @note Имена разделов это наречие сличает как записаны, а имена свойств
 		 *       приводит к нижнему регистру
+		 *
 		 */
 		ASSERT_EQ(document.size(), 2u);
 		// Выполняем проверку значения свойства первого раздела
@@ -970,19 +1074,31 @@ TEST(CodecIniDocument, RoundtripControls) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек с незримыми знаками
-	ASSERT_TRUE(document.parse("[a]\nk = one\\btwo\\fthree\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk = one\\btwo\\fthree\n"));
 	// Собираемые настройки записи текста настроек
 	ini::writer_t::settings_t writing;
 	// Устанавливаем запись управляющих последовательностей в значении
 	writing.escapes = true;
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect = settings;
+	// Устанавливаем собранные настройки записи текста документа
+	dialect.writer = writing;
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Получаем записанный текст настроек
-	const string text = document.dump(writing);
+	const string text = document.dump();
 	// Выполняем проверку прохождения записи
 	ASSERT_FALSE(text.empty());
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
-	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(text));
 	// Выполняем проверку сохранности значения при обороте
 	ASSERT_EQ(again.get("k", "a"), document.get("k", "a"));
 }
@@ -1052,12 +1168,16 @@ TEST(CodecIniDocument, ReferenceSubsection) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host/repo\n[core]\n\tmirror = ${remote.origin:url}\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host/repo\n[core]\n\tmirror = ${remote.origin:url}\n"));
 	/**
 	 * Выполняем проверку подстановки значения чужого подраздела
 	 *
 	 * @note Имя подраздела отделяется тем же знаком, каким оно отделяется в
 	 *       объявлении раздела при построении разделителем
+	 *
 	 */
 	ASSERT_EQ(document.get("mirror", "core"), "https://host/repo");
 }
@@ -1078,6 +1198,7 @@ TEST(CodecIniDocument, NamesMatchWriter) {
 	 *
 	 * @note Знак этот значащ лишь первым знаком строки: там он обращает всю строку
 	 *       в примечание, а внутри имени читается наравне с прочими
+	 *
 	 */
 	ASSERT_TRUE(document.set("a;b", "1", "sec"));
 	// Выполняем проверку отклонения знака примечания первым знаком имени
@@ -1098,12 +1219,16 @@ TEST(CodecIniDocument, NamesMatchWriter) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a]\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\n"));
 		/**
 		 * Выполняем проверку отклонения знака-разделителя в имени раздела
 		 *
 		 * @note Читающий режет имя по первому его появлению, и раздел «a.b»
 		 *       прочитался бы разделом «a» с подразделом «b»
+		 *
 		 */
 		ASSERT_FALSE(document.create("a.b"));
 		// Выполняем проверку допустимости знака-разделителя в имени подраздела
@@ -1143,7 +1268,10 @@ TEST(CodecIniDocument, InvalidHexEscape) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку отклонения одиночного байта вне набора US-ASCII
-		ASSERT_FALSE(document.parse("[a]\nk = one\\xFFtwo\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nk = one\\xFFtwo\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_ENCODING);
 	}{
@@ -1154,8 +1282,12 @@ TEST(CodecIniDocument, InvalidHexEscape) {
 		 *
 		 * @note Знак вне набора US-ASCII записывается в кодировке UTF-8 несколькими
 		 *       байтами, и каждый из них вправе быть записан своей последовательностью
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[a]\nk = \\xc3\\xa9\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = \\xc3\\xa9\n"));
 		// Выполняем проверку собранного значения свойства
 		ASSERT_EQ(document.get("k", "a"), "é");
 	}
@@ -1194,7 +1326,10 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a.b]\nk = v\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a.b]\nk = v\n"));
 		// Выполняем проверку обратной записи без явных настроек
 		ASSERT_EQ(document.dump(), "[a.b]\nk = v\n");
 	}{
@@ -1205,7 +1340,10 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host\n"));
 		// Получаем записанный текст настроек
 		const string text = document.dump();
 		// Выполняем проверку прохождения обратной записи
@@ -1213,7 +1351,10 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Дерево настроек обратного чтения
 		ini::document_t again;
 		// Выполняем разбор записанного текста настроек
-		ASSERT_TRUE(again.parse(text, settings));
+		// Выполняем установку настроек дерева настроек
+		again.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(again.parse(text));
 		// Выполняем проверку сохранности значения подраздела при обороте
 		ASSERT_EQ(again.get("url", "remote", "origin"), "https://host");
 	}
@@ -1248,7 +1389,10 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с кавычками внутри значения
-		ASSERT_TRUE(document.parse("[a]\nk = \"x\"\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = \"x\"\n"));
 		// Выполняем проверку того, что кавычки остались частью значения
 		ASSERT_EQ(document.get("k", "a"), "\"x\"");
 		// Выполняем проверку сохранности значения при обратной записи
@@ -1257,7 +1401,10 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("[a]\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\n"));
 		// Выполняем установку значения с пробельной обвязкой
 		ASSERT_TRUE(document.set("k", " v ", "a"));
 		/**
@@ -1265,6 +1412,7 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		 *
 		 * @note Значение это записать нечем: обвязку читающий отбросит, а оградить её
 		 *       кавычками нельзя - кавычки достанутся ему частью значения
+		 *
 		 */
 		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку кода ошибки записи
@@ -1287,8 +1435,12 @@ TEST(CodecIniDocument, MarkersByDialect) {
 	 *
 	 * @note Наречие это примечанием признаёт лишь точку с запятой, и строка эта -
 	 *       обыкновенное свойство
+	 *
 	 */
-	ASSERT_TRUE(document.parse("[a]\n#path = c:\\bin\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n#path = c:\\bin\n"));
 	// Выполняем проверку прочитанного имени свойства
 	ASSERT_TRUE(document.has("#path", "a"));
 	// Выполняем проверку принятия того же имени правкой
@@ -1313,7 +1465,10 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек с квадратной скобкой в имени подраздела
-	ASSERT_TRUE(document.parse("[remote \"a]b\"]\n\turl = x\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[remote \"a]b\"]\n\turl = x\n"));
 	// Выполняем проверку значения свойства подраздела
 	ASSERT_EQ(document.get("url", "remote", "a]b"), "x");
 	// Выполняем удаление раздела с подразделом
@@ -1327,7 +1482,10 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
-	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(text));
 	// Выполняем проверку сохранности имени подраздела с кавычкой
 	ASSERT_TRUE(again.section("remote", "a\"b"));
 }
@@ -1379,13 +1537,17 @@ TEST(CodecIniDocument, SetDropsAppend) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\nk[] = 1\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk[] = 1\n"));
 	// Выполняем установку значения объявленного свойства
 	ASSERT_TRUE(document.set("k", "2", "a"));
 	/**
 	 * Выполняем проверку записи свойства обычной записью
 	 *
 	 * @note Установка значения заменяет прежнее, а не добавляет к перечню
+	 *
 	 */
 	ASSERT_EQ(document.dump(), "[a]\nk = 2\n");
 }
@@ -1406,7 +1568,10 @@ TEST(CodecIniDocument, DepthOnCreate) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n"));
 	// Выполняем проверку отклонения подраздела предельной глубины
 	ASSERT_FALSE(document.create("a", "b.c"));
 	// Выполняем проверку кода ошибки правки
@@ -1416,7 +1581,10 @@ TEST(CodecIniDocument, DepthOnCreate) {
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
-	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(text));
 }
 /**
  * @brief Проверка обращения к разделу, чьё имя несёт знак-разделитель
@@ -1435,8 +1603,12 @@ TEST(CodecIniDocument, ReferenceDelimited) {
 	 * Выполняем разбор текста настроек
 	 *
 	 * @note Разбор режет имя по первому разделителю: раздел «a», подраздел «b.c»
+	 *
 	 */
-	ASSERT_TRUE(document.parse("[a.b.c]\nk = v\n[z]\nr = ${a.b.c:k}\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a.b.c]\nk = v\n[z]\nr = ${a.b.c:k}\n"));
 	// Выполняем проверку подстановки значения раздела с подразделом
 	ASSERT_EQ(document.get("r", "z"), "v");
 }
@@ -1455,6 +1627,7 @@ TEST(CodecIniDocument, CreateSpacing) {
 	 * Выполняем проверку записи объявленного раздела
 	 *
 	 * @note Пустая строка перед объявлением ставится лишь тогда, когда её ещё нет
+	 *
 	 */
 	ASSERT_EQ(document.dump(), "[a]\nk = v\n\n[b]\n");
 }
@@ -1481,6 +1654,7 @@ TEST(CodecIniDocument, RoundtripQuotes) {
 	 *
 	 * @note Кавычки сохраняются у значения, прочитанного в них; значение,
 	 *       установленное правкой, в них не нуждается
+	 *
 	 */
 	ASSERT_EQ(document.dump(), "[a]\nk = z\nplain = y\n");
 }
@@ -1520,11 +1694,15 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек
-	ASSERT_TRUE(document.parse("[a]\nk = one ; хвост\n  two\nm = 2\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk = one ; хвост\n  two\nm = 2\n"));
 	/**
 	 * Выполняем проверку собранного значения свойства
 	 *
 	 * @note Значение это в точности то, какое даёт configparser
+	 *
 	 */
 	ASSERT_EQ(document.get("k", "a"), "one\ntwo");
 	// Выполняем проверку значения следующего свойства
@@ -1536,7 +1714,10 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
-	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(text));
 	// Выполняем проверку сохранности значения при обороте
 	ASSERT_EQ(again.get("k", "a"), "one\ntwo");
 	// Выполняем проверку устойчивости записи при повторном обороте
@@ -1554,7 +1735,10 @@ TEST(CodecIniDocument, Malformed) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем проверку отклонения повторного объявления свойства
-	ASSERT_FALSE(document.parse("[a]\nk=1\nk=2\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_FALSE(document.parse("[a]\nk=1\nk=2\n"));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), ini::error_t::DUPLICATE_KEY);
 	// Выполняем проверку номера строки обнаруженной ошибки
@@ -1594,8 +1778,6 @@ TEST(CodecIniDocument, Values) {
 	settings.reader = ini::reader_t::settings_t::windows();
 	// Объект дерева настроек
 	ini::document_t document(settings);
-	// Выполняем проверку сохранения переданных настроек
-	ASSERT_EQ(document.settings().reader.quotes, settings.reader.quotes);
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(
 		"[s]\na = yes\nb = -128\nc = 255\nd = -32768\ne = 65535\n"
@@ -1706,6 +1888,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 *
 		 * @note Ради этого пересчёт и заведён: дерево, чьё чтение расходится с чтением
 		 *       собственной записи, выдаёт потребителю то одно, то другое
+		 *
 		 */
 		ini::document_t back(options);
 		// Выполняем проверку того, что разбор записанного дерева удался
@@ -1717,6 +1900,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 *
 		 * @note В файл настроек уходит обращение, а не подставленное значение: оно на
 		 *       то и записано, чтобы разрешаться заново при каждом чтении файла
+		 *
 		 */
 		ASSERT_NE(document.dump().find("${a:b}"), string::npos) << document.dump();
 	}
@@ -1737,6 +1921,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 * Выполняем проверку правки при отключённой подстановке
 	 *
 	 * @note Обращение остаётся записанным как есть: подстановка настройками отменена
+	 *
 	 */
 	{
 		// Настройки дерева настроек без подстановки обращений
@@ -1758,6 +1943,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 * @note Правка вправе оставить дерево в состоянии, где обращение разрешить не по
 	 *       чему, и объявлять её неудавшейся за это нельзя: значение остаётся таким,
 	 *       каким записано, и разрешится само, едва источник появится снова
+	 *
 	 */
 	{
 		// Объект дерева настроек
@@ -1773,6 +1959,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 *
 		 * @note Разбор такой текст с включённой подстановкой не примет, и выдать его
 		 *       значило бы отдать потребителю заведомо негодный файл настроек
+		 *
 		 */
 		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку кода ошибки отказа записи
@@ -1904,6 +2091,7 @@ TEST(CodecIniDocument, PushFromOwnView) {
 	 *
 	 * @note Перечень записи INI есть последовательность одноимённых свойств, и
 	 *       записаться иначе он не вправе
+	 *
 	 */
 	ASSERT_NE(document.dump().find("перечень = второе"), string::npos);
 }
@@ -1932,8 +2120,12 @@ TEST(CodecIniDocument, GitDialectMatchesTool) {
 		 * Выполняем разбор текста настроек с примечанием без пробельного знака
 		 *
 		 * @note Средство выдаёт «s.key=a»: знак примечания режет значение где угодно
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n"));
 		// Выполняем проверку того, что значение обрезано по знаку примечания
 		ASSERT_EQ(document.get("key", "s"), "a");
 	}{
@@ -1943,8 +2135,12 @@ TEST(CodecIniDocument, GitDialectMatchesTool) {
 		 * Выполняем разбор текста настроек со свойством до первого раздела
 		 *
 		 * @note Средство выдаёт «loose=1» и «s.k=v»: свойство без раздела оно принимает
+		 *
 		 */
-		ASSERT_TRUE(document.parse("loose = 1\n[s]\nk = v\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("loose = 1\n[s]\nk = v\n"));
 		// Выполняем проверку того, что свойство до первого раздела принято
 		ASSERT_EQ(document.get("loose"), "1");
 		// Выполняем проверку того, что свойство раздела принято тоже
@@ -1957,8 +2153,12 @@ TEST(CodecIniDocument, GitDialectMatchesTool) {
 		 *
 		 * @note Средство выдаёт «a.b.key=value»: запись эту оно принимает наравне с
 		 *       записью кавычками
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[a.b]\nkey = value\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a.b]\nkey = value\n"));
 		// Выполняем проверку того, что подраздел выделен
 		ASSERT_TRUE(document.section("a", "b"));
 		// Выполняем проверку значения свойства подраздела
@@ -1970,8 +2170,12 @@ TEST(CodecIniDocument, GitDialectMatchesTool) {
 		 * Выполняем разбор текста настроек с подразделом, кавычками взятым
 		 *
 		 * @note Признание обоих построений разом кавычек не отменяет
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[remote \"origin\"]\nurl = https://host\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[remote \"origin\"]\nurl = https://host\n"));
 		// Выполняем проверку того, что подраздел выделен
 		ASSERT_TRUE(document.section("remote", "origin"));
 		// Выполняем проверку значения свойства подраздела
@@ -1984,8 +2188,12 @@ TEST(CodecIniDocument, GitDialectMatchesTool) {
 		 *
 		 * @note Ровно это правка и ломала: поиск разделителя уходил внутрь кавычек и рвал
 		 *       имя надвое, выдавая раздел «remote "a» с подразделом «b"»
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[remote \"a.b\"]\nkey = value\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[remote \"a.b\"]\nkey = value\n"));
 		// Выполняем проверку того, что имя подраздела осталось целым
 		ASSERT_TRUE(document.section("remote", "a.b"));
 		// Выполняем проверку значения свойства подраздела
@@ -2010,14 +2218,20 @@ TEST(CodecIniDocument, SpacedCommentsSetting) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с примечанием без пробельного знака
-		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n"));
 		// Выполняем проверку того, что значение осталось целым
 		ASSERT_EQ(document.get("key", "s"), "a#b");
 	}{
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с примечанием за пробельным знаком
-		ASSERT_TRUE(document.parse("[s]\nkey = a #b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[s]\nkey = a #b\n"));
 		// Выполняем проверку того, что значение обрезано по знаку примечания
 		ASSERT_EQ(document.get("key", "s"), "a");
 	}{
@@ -2026,7 +2240,10 @@ TEST(CodecIniDocument, SpacedCommentsSetting) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с примечанием без пробельного знака
-		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n"));
 		// Выполняем проверку того, что значение обрезано по знаку примечания
 		ASSERT_EQ(document.get("key", "s"), "a");
 	}
@@ -2053,7 +2270,10 @@ TEST(CodecIniDocument, PythonDialectSectionNames) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с квадратными скобками в имени раздела
-		ASSERT_TRUE(document.parse("[x[]]\nkey = value\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[x[]]\nkey = value\n"));
 		// Выполняем проверку того, что имя раздела взято до последней скобки
 		ASSERT_TRUE(document.section("x[]"));
 		// Выполняем проверку значения свойства раздела
@@ -2062,7 +2282,10 @@ TEST(CodecIniDocument, PythonDialectSectionNames) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек с пробельной обвязкой имени раздела
-		ASSERT_TRUE(document.parse("[ section ]\nkey = value\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[ section ]\nkey = value\n"));
 		// Выполняем проверку того, что обвязка имени раздела сохранена
 		ASSERT_TRUE(document.section(" section "));
 		// Выполняем проверку значения свойства раздела
@@ -2077,8 +2300,12 @@ TEST(CodecIniDocument, PythonDialectSectionNames) {
 		 *
 		 * @note Умолчание обвязку отбрасывает и берёт первую скобку: свойства эти
 		 *       принадлежат наречию, а не записи INI вообще
+		 *
 		 */
-		ASSERT_TRUE(document.parse("[ section ]\nkey = value\n", plain));
+		// Выполняем установку настроек дерева настроек
+		document.settings(plain);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[ section ]\nkey = value\n"));
 		// Выполняем проверку того, что обвязка имени раздела отброшена
 		ASSERT_TRUE(document.section("section"));
 	}
@@ -2113,7 +2340,10 @@ TEST(CodecIniDocument, HeaderCommentKeepsSpace) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек с примечанием за объявлением раздела
-	ASSERT_TRUE(document.parse("[c] ; хвост [не раздел]\nkey = value\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[c] ; хвост [не раздел]\nkey = value\n"));
 	// Выполняем первую перезапись дерева настроек
 	const string first = document.dump();
 	/**
@@ -2121,17 +2351,22 @@ TEST(CodecIniDocument, HeaderCommentKeepsSpace) {
 	 *
 	 * @note Знак примечания берётся не тот, каким оно записано в исходном тексте, а тот,
 	 *       каким пишет наречие: читающий признаёт оба, а пишущий - один свой
+	 *
 	 */
 	ASSERT_NE(first.find("] ;"), string::npos);
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем разбор первой перезаписи
-	ASSERT_TRUE(again.parse(first, settings));
+	// Выполняем установку настроек дерева настроек
+	again.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(again.parse(first));
 	/**
 	 * Выполняем проверку того, что имя раздела при обороте сохранилось
 	 *
 	 * @note Без пробела перед примечанием имя вышло бы «c] ; хвост [не раздел»: поиск
 	 *       закрывающей скобки, примечания не признав, дошёл бы до последней в строке
+	 *
 	 */
 	ASSERT_TRUE(again.section("c"));
 	// Выполняем проверку устойчивости перезаписи
@@ -2160,8 +2395,12 @@ TEST(CodecIniDocument, MalformedReferenceDiffersFromUnknown) {
 		 *
 		 * @note Свойство «root» объявлено тут же: отказ принадлежит построению
 		 *       обращения, а не отсутствию имени
+		 *
 		 */
-		ASSERT_FALSE(document.parse("[a]\nroot = /opt\nlogs = ${root/logs\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nroot = /opt\nlogs = ${root/logs\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_REFERENCE);
 	}{
@@ -2172,7 +2411,10 @@ TEST(CodecIniDocument, MalformedReferenceDiffersFromUnknown) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку отказа разбора обращения без завершающего признака
-		ASSERT_FALSE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_REFERENCE);
 	}{
@@ -2183,7 +2425,10 @@ TEST(CodecIniDocument, MalformedReferenceDiffersFromUnknown) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку сохранения кода обращения к необъявленному значению
-		ASSERT_FALSE(document.parse("[a]\nk = ${missing}\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nk = ${missing}\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
 	}
@@ -2223,6 +2468,7 @@ TEST(CodecIniDocument, UnknownNameReportsReason) {
 	 * Выполняем проверку того, что опрос кодом ошибки не метится
 	 *
 	 * @note Опрос наличия отсутствием отвечает законно, и отказом это не является
+	 *
 	 */
 	ASSERT_FALSE(document.has("missing", "a"));
 	// Выполняем проверку сохранения дерева в целости
@@ -2246,17 +2492,26 @@ TEST(CodecIniDocument, ReferenceDepthDiffersFromSubsectionDepth) {
 	// Выполняем запрет подразделов вовсе признаком читающего
 	settings.reader.nesting = false;
 	// Выполняем разбор текста настроек с подразделом
-	ASSERT_FALSE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_FALSE(document.parse("[раздел.подраздел]\nkey = value\n"));
 	// Выполняем дозволение подразделов признаком читающего
 	settings.reader.nesting = true;
 	// Устанавливаем предел глубины вложенности подразделов читающего
 	settings.reader.maxDepth = 4;
 	// Выполняем разбор того же текста настроек
-	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n"));
 	// Выполняем запрет вложенности обращений пределом дерева
 	settings.maxReferenceDepth = 0;
 	// Выполняем разбор того же текста настроек, обращений не несущего
-	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n"));
 	// Значения свойства, из документа снятые
 	const vector <string_view> values = document.values("key", "раздел", "подраздел");
 	// Выполняем проверку количества снятых значений
@@ -2329,6 +2584,7 @@ TEST(CodecIniDocument, ReferenceBombGuards) {
 	 * @note Всякое звено здесь удваивает объём предыдущего: двадцать четыре звена от
 	 *       шестидесяти четырёх знаков дают около гигабайта, и заслон обязан оборвать
 	 *       подстановку задолго до того
+	 *
 	 */
 	{
 		// Собираемый текст настроек со ссылочной бомбой
@@ -2497,7 +2753,10 @@ TEST(CodecIniDocument, SourcesYieldRecordsBeforeSubstitution) {
 	// Дерево настроек
 	ini::document_t document;
 	// Выполняем разбор текста настроек с обращениями
-	ASSERT_TRUE(document.parse("[paths]\nroot = /opt/awh\nlogs = ${root}/logs\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[paths]\nroot = /opt/awh\nlogs = ${root}/logs\n"));
 	// Выполняем проверку того, что выдача обычная подстановку и провела
 	ASSERT_EQ(document.get("logs", "paths"), "/opt/awh/logs");
 	// Получаем значения свойства до подстановки обращений
@@ -2511,6 +2770,7 @@ TEST(CodecIniDocument, SourcesYieldRecordsBeforeSubstitution) {
 	 *
 	 * @note Значение без обращений подстановки не знает вовсе, и выдача до подстановки
 	 *       совпадает с выдачей обычной: проверка держит границу
+	 *
 	 */
 	{
 		// Получаем значения свойства, обращений не несущего
@@ -2565,8 +2825,12 @@ TEST(CodecIniDocument, ExpansionBudgetOnLoneMarker) {
 		 * @note Знак обращения стоит последним нарочно: стой за ним ещё знак, предел
 		 *       исчерпался бы на нём же ходом соседним, и порча этого хода проверкою не
 		 *       ловилась бы вовсе - отказ приходил бы всё равно, только знаком позже
+		 *
 		 */
-		ASSERT_FALSE(document.parse("[a]\nk = a$\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("[a]\nk = a$\n"));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::EXPANSION_EXCEEDED);
 	}
@@ -2575,6 +2839,7 @@ TEST(CodecIniDocument, ExpansionBudgetOnLoneMarker) {
 	 *
 	 * @note Проверка держит границу: то же написание при пределе, знакам его отвечающем,
 	 *       принимается и знак обращения одинокий сохраняет
+	 *
 	 */
 	{
 		// Собираемые настройки дерева настроек
@@ -2586,7 +2851,10 @@ TEST(CodecIniDocument, ExpansionBudgetOnLoneMarker) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку успешности разбора значения, в предел укладывающегося
-		ASSERT_TRUE(document.parse("[a]\nk = a$\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = a$\n"));
 		// Выполняем проверку того, что знак обращения одинокий сохранён
 		ASSERT_EQ(document.get("k", "a"), "a$");
 	}
@@ -2625,7 +2893,10 @@ TEST(CodecIniDocument, UnsetReaderSettingsFields) {
 	// Разбор текста при изменённой настройке
 	ini::document_t tuned;
 	// Выполняем проверку успешности разбора текста изменённой настройкой
-	ASSERT_TRUE(tuned.parse(text, settings));
+	// Выполняем установку настроек дерева настроек
+	tuned.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(tuned.parse(text));
 	/**
 	 * @brief Функция снятия отпечатка разобранного дерева
 	 *
@@ -2729,6 +3000,7 @@ TEST(CodecIniDocument, ErrorAnswersForLastOperation) {
 	 * Выполняем проверку того, что положение прежнего разбора отказом работы снято
 	 *
 	 * @note Без сброса донесение указывало бы в текст, которого более нет
+	 *
 	 */
 	ASSERT_EQ(document.errorLocation().line, static_cast <uint32_t> (0));
 	// Выполняем проверку того, что положение прежнего разбора снято и по столбцу
@@ -2757,6 +3029,7 @@ TEST(CodecIniDocument, RefusalsOnTreeOperations) {
 	 * Выполняем разбор текста, свойство до первого объявления несущего
 	 *
 	 * @note Свойство это ложится в раздел безымянный, и раздел тот в дереве заводится
+	 *
 	 */
 	ASSERT_TRUE(document.parse("вне = раздела\n[a]\nk=v\n"));
 	// Выполняем проверку того, что свойство безымянного раздела читается
@@ -2772,6 +3045,7 @@ TEST(CodecIniDocument, RefusalsOnTreeOperations) {
 	 * @note Разбор здесь стоит ПРЕЖДЕ проверки нарочно: у дерева пустого поиск не нашёл
 	 *       бы раздела и без сторожа, и порча его осталась бы незамечена - замерено
 	 *       срывом
+	 *
 	 */
 	ASSERT_FALSE(document.section("", ""));
 	// Выполняем проверку отказа долива свойства с пустым именем
@@ -2787,6 +3061,7 @@ TEST(CodecIniDocument, RefusalsOnTreeOperations) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякий долив, отвечал
 	 *       бы тем же ожиданиям, и порча поверок осталась бы незамечена
+	 *
 	 */
 	ASSERT_TRUE(document.push("second", "w", "a"));
 }
@@ -2821,6 +3096,7 @@ TEST(CodecIniDocument, ReferenceFlagOnMiddleInsert) {
 	 *
 	 * @note Без взведения признака дерево считалось бы обращений не несущим, и значение
 	 *       осталось бы записью обращения как есть
+	 *
 	 */
 	ASSERT_EQ(document.get("second", "a"), "n");
 }
@@ -2860,6 +3136,7 @@ TEST(CodecIniDocument, NumericExtractionEdges) {
 		 *
 		 * @note Ноль выдаётся УСПЕХОМ, а не отказом, и это решение кодека: без него
 		 *       итог зависел бы от устройства машины
+		 *
 		 */
 		ASSERT_EQ(value, static_cast <int64_t> (0));
 	}
@@ -2876,6 +3153,7 @@ TEST(CodecIniDocument, NumericExtractionEdges) {
 		 *
 		 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякую запись,
 		 *       отвечал бы тому же ожиданию
+		 *
 		 */
 		ASSERT_TRUE(document.value(value, "дробное", "a"));
 		// Выполняем проверку извлечённого дробного значения
@@ -2978,7 +3256,10 @@ TEST(CodecIniDocument, BracketedKeyEditWithoutArrays) {
 	// Дерево настроек, перечни признающее
 	ini::document_t arrayed;
 	// Выполняем разбор пустого текста настроек с признанием перечней
-	ASSERT_TRUE(arrayed.parse("", settings));
+	// Выполняем установку настроек дерева настроек
+	arrayed.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(arrayed.parse(""));
 	// Выполняем проверку того, что правка имени со скобками отвергается
 	ASSERT_FALSE(arrayed.set("m[]", "b"));
 }
@@ -3011,7 +3292,10 @@ TEST(CodecIniDocument, ZeroConventionOfNumericLimits) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку успешности разбора текста настроек
-		ASSERT_TRUE(document.parse("[a]\nk = v\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[a]\nk = v\n"));
 		// Выполняем проверку того, что правка снятым пределом проходит
 		ASSERT_TRUE(document.set("m", "w", "a"));
 		// Выполняем проверку того, что правленое свойство на месте
@@ -3026,7 +3310,10 @@ TEST(CodecIniDocument, ZeroConventionOfNumericLimits) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку того, что снятый предел длину строки не поверяет
-		ASSERT_TRUE(document.parse("k = " + string(100000, 'x') + "\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("k = " + string(100000, 'x') + "\n"));
 	}{
 		// Настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -3037,9 +3324,12 @@ TEST(CodecIniDocument, ZeroConventionOfNumericLimits) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем проверку того, что нуль продолжение отвергает, а не снимает предел
-		ASSERT_FALSE(document.parse("k = a\\\nb\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_FALSE(document.parse("k = a\\\nb\n"));
 		// Выполняем проверку того, что запись без продолжения тем же нулём принимается
-		ASSERT_TRUE(ini::document_t().parse("k = a\n", settings));
+		ASSERT_TRUE(document.parse("k = a\n"));
 	}{
 		// Настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -3047,20 +3337,27 @@ TEST(CodecIniDocument, ZeroConventionOfNumericLimits) {
 		settings.reader.subsections = ini::subsection_t::DELIMITED;
 		// Снимаем предел вложенности подразделов нулём
 		settings.reader.maxDepth = 0;
+		// Дерево настроек
+		ini::document_t document;
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
 		/**
 		 * Выполняем проверку того, что нуль предел СНИМАЕТ, а не запрещает вложенность
 		 *
 		 * @note Уклад этот сведён к общему у всех кодеков рамки: прежде нуль подразделы
 		 *       запрещал, и настройка, перенесённая с иного кодека, срабатывала наоборот и
 		 *       молча. Запрет получил своё выражение - признак `nesting`
+		 *
 		 */
-		ASSERT_TRUE(ini::document_t().parse("[a.b.c.d]\nk = v\n", settings));
+		ASSERT_TRUE(document.parse("[a.b.c.d]\nk = v\n"));
 		// Запрещаем подразделы вовсе признаком, а не пределом
 		settings.reader.nesting = false;
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
 		// Выполняем проверку того, что снятый признак подраздел отвергает
-		ASSERT_FALSE(ini::document_t().parse("[a.b]\nk = v\n", settings));
+		ASSERT_FALSE(document.parse("[a.b]\nk = v\n"));
 		// Выполняем проверку того, что раздел без подраздела тем же признаком принимается
-		ASSERT_TRUE(ini::document_t().parse("[a]\nk = v\n", settings));
+		ASSERT_TRUE(document.parse("[a]\nk = v\n"));
 	}
 }
 /**
@@ -3098,13 +3395,19 @@ TEST(CodecIniCommon, PredicateScopeAgainstCodec) {
 		// Дерево настроек
 		ini::document_t document;
 		// Выполняем разбор текста настроек
-		ASSERT_TRUE(document.parse("k = a;b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("k = a;b\n"));
 		// Выполняем проверку того, что знак без отделения примечанием не служит
 		ASSERT_EQ(document.get("k"), "a;b");
 		// Дерево настроек со знаком, пробелом отделённым
 		ini::document_t spaced;
 		// Выполняем разбор текста настроек со знаком, пробелом отделённым
-		ASSERT_TRUE(spaced.parse("k = a ;b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		spaced.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(spaced.parse("k = a ;b\n"));
 		// Выполняем проверку того, что отделённый знак примечанием служит
 		ASSERT_EQ(spaced.get("k"), "a");
 		// Снимаем требование пробела перед началом примечания
@@ -3112,7 +3415,10 @@ TEST(CodecIniCommon, PredicateScopeAgainstCodec) {
 		// Дерево настроек без требования пробела
 		ini::document_t tight;
 		// Выполняем разбор текста настроек без требования пробела
-		ASSERT_TRUE(tight.parse("k = a;b\n", settings));
+		// Выполняем установку настроек дерева настроек
+		tight.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(tight.parse("k = a;b\n"));
 		// Выполняем проверку того, что знак посреди значения примечанием служит
 		ASSERT_EQ(tight.get("k"), "a");
 	}{
@@ -3144,6 +3450,7 @@ TEST(CodecIniDocument, PathTokenCarriesEscapesOfTheStandard){
 	 * Выполняем проверку достижимости имени с косою чертою отменяющей записью
 	 *
 	 * @note Половина эта и есть починка: прежде имя это было недостижимо ничем
+	 *
 	 */
 	ASSERT_TRUE(document.at("/раз/a~1b").valid());
 	// Выполняем проверку того, что записанное звено ведёт к тому самому имени
@@ -3154,6 +3461,7 @@ TEST(CodecIniDocument, PathTokenCarriesEscapesOfTheStandard){
 	 * @note Половина эта важнее первой: разбирайся звено как есть - путь `/раз/a/b` вёл бы
 	 *       к свойству `b` подраздела `a`, какого в дереве нет вовсе, и обход ушёл бы в
 	 *       никуда молча
+	 *
 	 */
 	ASSERT_FALSE(document.at("/раз/a/b").valid());
 	// Выполняем проверку достижимости имени со знаком отмены отменяющей записью
@@ -3165,6 +3473,7 @@ TEST(CodecIniDocument, PathTokenCarriesEscapesOfTheStandard){
 	 *
 	 * @note Отказ намеренный: возьми мы `~x` дословно - у одного места вышло бы два
 	 *       написания, и обход перестал бы быть замкнутым
+	 *
 	 */
 	ASSERT_FALSE(document.at("/раз/тильда~тут").valid());
 	// Выполняем проверку того, что имя отменяющих записей не требующее достижимо просто
@@ -3194,6 +3503,7 @@ TEST(CodecIniDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 		 * @warning Без него проверка мерила бы ПУСТОТУ: по умолчанию подразделы не
 		 *          выделяются вовсе, имя раздела берётся целиком, и глубина не считается
 		 *          ни разу - проверка зеленела бы и при снятом огранении
+		 *
 		 */
 		settings.reader.subsections = ini::subsection_t::DELIMITED;
 		// Поднимаем предел вложенности много выше потолка допустимого
@@ -3214,6 +3524,7 @@ TEST(CodecIniDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 		 * Выполняем проверку отказа разбора по превышению глубины вложенности
 		 *
 		 * @note Отказ этот и есть починка: прежде настройка потолок обходила молча
+		 *
 		 */
 		ASSERT_FALSE(document.parse(name));
 		// Выполняем проверку того, что отказано именно по глубине вложенности
@@ -3236,6 +3547,7 @@ TEST(CodecIniDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 		 * @note Половина эта стережёт запрет признаком: огранение потолком его не
 		 *       касается вовсе, ибо признак не число. Прежде запрет выражался нулём
 		 *       предела, и огранение обращало его в дозволение молча
+		 *
 		 */
 		ASSERT_FALSE(document.parse("[р.п]\nk = 1\n"));
 		// Выполняем проверку того, что раздел без подразделов при том разбирается
@@ -3268,6 +3580,7 @@ TEST(CodecIniDocument, SettingEmptyValueByPath){
 	 *
 	 * @note Половина эта и есть весь смысл хода: снятие свойства дало бы недействительное
 	 *       значение, и отличить одно от другого можно лишь этой проверкою
+	 *
 	 */
 	ASSERT_TRUE(document.at("/р/k").valid());
 	// Выполняем проверку того, что значения при свойстве не осталось
@@ -3279,6 +3592,7 @@ TEST(CodecIniDocument, SettingEmptyValueByPath){
 	 *
 	 * @note Половина эта стережёт запись: пустое значение, записанное неверно, обратным
 	 *       чтением обратилось бы либо в отказ, либо в свойство пропавшее
+	 *
 	 */
 	{
 		// Получаем перезапись правленого дерева настроек
@@ -3297,6 +3611,7 @@ TEST(CodecIniDocument, SettingEmptyValueByPath){
 	 *
 	 * @note Сличение это ловит подмену хода: сделай `reset()` то же, что `prune()`, - обе
 	 *       половины выше прошли бы у отсутствующего свойства ровно так же
+	 *
 	 */
 	ASSERT_TRUE(document.erase("сосед", "р"));
 	// Выполняем проверку того, что снятое свойство недействительно
@@ -3340,12 +3655,15 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 * @note Заголовок `sys/resource.h` огорожен по той же причине: подключение его
 	 *       без заслона валило сборку ВСЕГО набора кодеков - собираются они одной
 	 *       программой. Указано это у кодека CEF, где сборка от того и была потеряна
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем пропуск проверки за отсутствием предела размера файла
 		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
-
 	// Путь к записываемому файлу
 	const string filename(::unique("/tmp/awh-ini-failed-save.txt"));
 	// Прежнее содержимое записываемого файла
@@ -3366,6 +3684,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 *       третий и последний путь отказа сохранения, и достаётся он одним лишь
 	 *       пределом размера файла. Проверка `EveryFailedSaveIsAnnounced` берёт два
 	 *       прочих - открытие да подмену цели, - а этот доказать может лишь здесь
+	 *
 	 */
 	// Собранные отчёты журнала
 	vector <string> reports;
@@ -3387,6 +3706,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 		 *
 		 * @note Одна длинная строка отвергается разбором по пределу длины её, и проверка
 		 *       падала бы на собственной подготовке, до записи не дойдя вовсе
+		 *
 		 */
 		for(size_t i = 0; i < 20000; i++)
 			// Выполняем добавление очередной записи настроек
@@ -3456,6 +3776,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 *          пуст - потребитель не узнавал ни места отказа, ни рода его. Молчали
 	 *          так все три кодека разом, тогда как JSON, XML и CSV оглашают всякий
 	 *          свой отказ записи
+	 *
 	 */
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что оглашение отказ называет
@@ -3477,6 +3798,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 *
 	 * @note Половина эта и есть весь смысл: отказом запись отвечала и прежде, а вот файл
 	 *       после него оставался порченым
+	 *
 	 */
 	ASSERT_EQ(current, previous);
 	/**
@@ -3484,6 +3806,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 *
 	 * @note Половина эта стережёт уборку: временный файл, отказом брошенный, копился бы
 	 *       рядом с целью при всякой неудаче
+	 *
 	 */
 	{
 		// Поток чтения временного файла
@@ -3498,6 +3821,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	 *          общего не имеющий: мест записи в кодеке два, и проверка, поставленная на
 	 *          одно лишь дерево, второе пропустила бы молча. Указано это по кодекам JSON,
 	 *          XML и CSV, где найден тот же пробел
+	 *
 	 */
 	{
 		{
@@ -3515,6 +3839,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 		 *
 		 * @note Без того отказ записи ЗНАЧЕНИЯ поверялся бы одним признаком, а оглашение
 		 *       его - ничем: ход записи у значения свой, и журнал ему ставится отдельно
+		 *
 		 */
 		// Признак успешности сохранения владеющего значения в файл
 		bool stored = true;
@@ -3532,22 +3857,23 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 		 * @warning Ход записи у владеющего значения СВОЙ, кодом с записью дерева общего
 		 *          не имеющий, и оглашение его поверяется отдельно: проверка, на одно
 		 *          лишь дерево поставленная, молчание значения пропустила бы
+		 *
 		 */
 		// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
 		// нижний слой, и наш отчёт уже не первый и не последний
 		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("value failed") != string::npos) return true; return false; }()) << reports.back();
 		// Содержимое файла после отказавшего сохранения
-		string kept_text;
+		string keptText;
 		{
 			// Поток чтения содержимого файла
 			ifstream file(address(filename).c_str(), ios::binary);
 			// Выполняем проверку того, что файл открылся
 			ASSERT_TRUE(file.is_open());
 			// Выполняем чтение содержимого файла целиком
-			kept_text.assign((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
+			keptText.assign((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
 		}
 		// Выполняем проверку того, что прежнее содержимое уцелело
-		ASSERT_EQ(kept_text, previous);
+		ASSERT_EQ(keptText, previous);
 		// Поток чтения временного файла
 		ifstream leftover(filename + ".awh-tmp", ios::binary);
 		// Выполняем проверку того, что временного файла не осталось
@@ -3584,6 +3910,7 @@ TEST(CodecIniDocument, EditingByAnEscapedTokenReachesThatVeryProperty){
 	 *
 	 * @note Половина эта и есть весь порок: прежде тут заводилось свойство, буквально
 	 *       названное `~0`, а свойство `~` оставалось нетронутым
+	 *
 	 */
 	ASSERT_EQ(document.at("/р").size(), static_cast <size_t> (3));
 	// Выполняем правку свойства по записанному звену косой черты
@@ -3617,6 +3944,7 @@ TEST(CodecIniDocument, EditingByAnEscapedTokenReachesThatVeryProperty){
  *       противоречат друг другу: `get()` выдаёт объявление действующее, политикой
  *       назначенное, а `at()` выдаёт все объявления перечнем, ничего не теряя. Правка,
  *       сводившая снятие с политикой, была отменена именно по этой причине
+ *
  */
 TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
 	// Виды обращения с повторным объявлением свойства, обход сохраняющие
@@ -3634,13 +3962,17 @@ TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
 		// Назначаем очередной вид обращения с повторным объявлением свойства
 		settings.reader.duplicates = mode;
 		// Выполняем разбор текста настроек с повторным объявлением свойства
-		ASSERT_TRUE(document.parse("[net]\nport = 80\nport = 443\n", settings)) << ini::message(document.error());
+		// Выполняем установку настроек дерева настроек
+		document.settings(settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[net]\nport = 80\nport = 443\n")) << ini::message(document.error());
 		// Перечень имён свойств раздела
 		const vector <string_view> keys = document.keys("net");
 		/**
 		 * Выполняем проверку того, что повтор выдан именем ОДНАЖДЫ
 		 *
 		 * @note Выдача имени дважды была бы ложью: потомок там один
+		 *
 		 */
 		ASSERT_EQ(keys.size(), static_cast <size_t> (1));
 		// Выполняем проверку выданного имени свойства раздела
@@ -3665,8 +3997,12 @@ TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
 	 *
 	 * @note Вид этот обход не размыкает по той причине, что узлов повтора при нём не
 	 *       заводится вовсе: разбор прекращается на самом повторе
+	 *
 	 */
-	ASSERT_FALSE(document.parse("[net]\nport = 80\nport = 443\n", settings));
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем разбор текста настроек
+	ASSERT_FALSE(document.parse("[net]\nport = 80\nport = 443\n"));
 	// Объект дерева настроек, обещания ходов разводящего
 	ini::document_t plain;
 	// Выполняем разбор текста настроек с повторным объявлением свойства
@@ -3675,6 +4011,7 @@ TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
 	 * Выполняем проверку того, что плоский ход выдаёт объявление действующее
 	 *
 	 * @note Умолчание есть `LAST`, и действующим объявлением им назначено последнее
+	 *
 	 */
 	ASSERT_EQ(plain.get("port", "net"), "443");
 	/**
@@ -3682,6 +4019,7 @@ TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
 	 *
 	 * @note Расхождение это НЕ есть противоречие: ходы несут разные обещания, и
 	 *       владеющее значение держит запись без потерь намеренно
+	 *
 	 */
 	ASSERT_EQ(plain.at("/net/port").size(), static_cast <size_t> (2));
 }
@@ -3692,6 +4030,7 @@ TEST(CodecIniDocument, RepeatedPropertyKeepsTraversalClosed){
  * @details Перечень звеньев вместе с розыском обязан давать ЗАМКНУТЫЙ обход: всякое
  *          выданное звено годно для розыска, и обойденных узлов ровно столько, сколько
  *          их в дереве. Замкнутость держится отменяющими записями RFC 6901
+ *
  */
 TEST(CodecIniDocument, EnumerationAndLookupFormAClosedTraversal){
 	// Объект дерева настроек, текст разбирающего
@@ -3708,7 +4047,7 @@ TEST(CodecIniDocument, EnumerationAndLookupFormAClosedTraversal){
 	// Количество разысканных обходом узлов дерева настроек
 	size_t walked = 0;
 	/**
-	 * @brief Метод обхода дерева настроек вглубь по звеньям
+	 * @brief Функция обхода дерева настроек вглубь по звеньям
 	 *
 	 * @param self ссылка на себя для возвратного зова
 	 * @param path путь к обходимому узлу дерева
@@ -3736,6 +4075,7 @@ TEST(CodecIniDocument, EnumerationAndLookupFormAClosedTraversal){
 	 *
 	 * @note Счёт берётся с корнем: четыре пары корня, перечень повтора с двумя
 	 *       значениями его да сам корень - восемь
+	 *
 	 */
 	ASSERT_EQ(walked, static_cast <size_t> (8));
 	// Перечень звеньев пути к детям корня дерева настроек
@@ -3746,6 +4086,7 @@ TEST(CodecIniDocument, EnumerationAndLookupFormAClosedTraversal){
 	 * Выполняем проверку записи косой черты отменяющей записью
 	 *
 	 * @note Имя выдаётся ЗАПИСАННЫМ, а не как есть: иначе звено это разобралось бы на три
+	 *
 	 */
 	ASSERT_EQ(keys.at(1), "имя~1с~1чертой");
 	// Выполняем проверку записи знака отмены отменяющей записью
@@ -3767,6 +4108,7 @@ TEST(CodecIniDocument, EnumerationAndLookupFormAClosedTraversal){
  * @warning Проверка сторожит ЦЕНУ заставы наравне с её пользой: литерал уходит в ход
  *          прежний, и запись `keys("/net")` означает раздел с таким именем, а не путь, -
  *          в отличие от YAML и TOML, где литерал означает путь
+ *
  */
 TEST(CodecIniDocument, PathEnumerationTakesOnlyTheStringType){
 	// Объект дерева настроек, текст разбирающего
@@ -3777,6 +4119,7 @@ TEST(CodecIniDocument, PathEnumerationTakesOnlyTheStringType){
 	 * Выполняем проверку того, что литерал уходит в ход ПРЕЖНИЙ
 	 *
 	 * @note Вид возврата и есть доказательство: у прежнего хода он `string_view`
+	 *
 	 */
 	static_assert(std::is_same <decltype(document.keys("net")), vector <string_view>>::value, "литерал ушёл в общий ход");
 	// Выполняем проверку того, что вызов без довода ушёл в ход прежний
@@ -3810,6 +4153,7 @@ TEST(CodecIniDocument, PathEnumerationTakesOnlyTheStringType){
  *
  * @note Половина последняя закрепляет замкнутость: всякое звено, перечнем выданное,
  *       спрос проходит
+ *
  */
 TEST(CodecIniDocument, PresenceByPath){
 	// Объект дерева настроек, текст разбирающего
@@ -3821,6 +4165,7 @@ TEST(CodecIniDocument, PresenceByPath){
 	 *
 	 * @note Вид довода и есть доказательство: прежний ход спрашивает свойство в разделе,
 	 *       и `has("port")` означает свойство `port` раздела без имени, а не путь `port`
+	 *
 	 */
 	ASSERT_FALSE(document.has("port"));
 	// Выполняем проверку прежнего спроса свойства в разделе именованном
@@ -3851,6 +4196,7 @@ TEST(CodecIniDocument, PresenceByPath){
  *
  * @note Числовое звено принимается наравне с именем: повтор имени ложится перечнем, и
  *       не прими снос номера - обход был бы замкнут для чтения и разомкнут для правки
+ *
  */
 TEST(CodecIniDocument, RemovalByPath){
 	// Объект дерева настроек, текст разбирающего
@@ -3874,6 +4220,7 @@ TEST(CodecIniDocument, RemovalByPath){
 	 *
 	 * @note Половина эта и есть замкнутость правки: звено выдано перечнем звеньев, и оно
 	 *       же принимается сносом
+	 *
 	 */
 	ASSERT_TRUE(document.erase(string("/net/port/0"))) << ini::message(document.error());
 	// Выполняем проверку того, что у перечня осталось одно значение
@@ -3883,6 +4230,7 @@ TEST(CodecIniDocument, RemovalByPath){
 	 *
 	 * @note Хвост пути проходит снятие отменяющих записей: возьми его сырым - и снос бил
 	 *       бы мимо, молча и правдоподобно
+	 *
 	 */
 	ASSERT_TRUE(document.erase(string("/net/имя~1с~1чертой"))) << ini::message(document.error());
 	// Выполняем проверку того, что свойство с трудным именем снято
@@ -3894,6 +4242,7 @@ TEST(CodecIniDocument, RemovalByPath){
 	 *
 	 * @note Пустой путь по описанию RFC 6901 означает ВЕСЬ документ, и пустой файл
 	 *       настроек INI законен вполне
+	 *
 	 */
 	ASSERT_TRUE(document.erase(string())) << ini::message(document.error());
 	// Выполняем проверку того, что дерево опустело
@@ -3916,6 +4265,7 @@ TEST(CodecIniDocument, RemovalByPath){
  * @note Половина последняя закрепляет, что звенья пути, кроме последнего, обязаны быть
  *       налицо: вместилищ по дороге не заводится, ибо опечатка в пути обращалась бы в
  *       новую ветвь дерева молча
+ *
  */
 TEST(CodecIniDocument, SettingByPathCreatesTheMissingProperty){
 	// Объект дерева настроек, текст разбирающего
@@ -3966,6 +4316,7 @@ TEST(CodecIniDocument, SettingByPathCreatesTheMissingProperty){
  *          же имени суть ОДИН ребёнок корня, а не два, - снятие сводит их вместе. Простой
  *          счёт свойств и разделов давал бы здесь два, и это единственное построение из
  *          одиннадцати, где счёты расходились
+ *
  */
 TEST(CodecIniDocument, SizeCountsChildrenWithoutBuildingTheTree){
 	// Построения, на которых счёты могли бы разойтись
@@ -4042,6 +4393,7 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Цель-каталог отказывает ПОДМЕНЕ, а не открытию: временный файл ложится
 	 *       рядом с нею именем своим, и открытие его проходит
+	 *
 	 */
 	const string folder = ::unique("./цель-записи-каталог-ini");
 	/**
@@ -4049,6 +4401,7 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Зовётся посредник переносимый, а не `::mkdir()` прямо: у MinGW под
 	 *       MS Windows тот берёт один лишь путь, без прав доступа
+	 *
 	 */
 	/**
 	 * Выполняем уборку каталога, прежним прогоном оставленного
@@ -4059,8 +4412,10 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 	 *          `::rmdir` берёт лишь каталог пустой, а внутри остатка может лежать и файл.
 	 *          Замерено наведённой порчею 07.09.2026 - остаток валит проверку у всех трёх
 	 *          кодеков. Указан разряд этот по кодекам JSON, XML и CSV
+	 *
 	 */
 	removeDirectory(folder);
+	// Заводим каталог целью записи и удостоверяемся в успехе
 	ASSERT_TRUE(makeDirectory(folder));
 	// Путь в каталоге несуществующем
 	const string missing = "./нет-такого-каталога-ini/цель.ini";
@@ -4082,10 +4437,12 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 		 * Выполняем проверку того, что отказ записи дерева оглашён
 		 *
 		 * @note Ровно это и молчало: запись отвечала ложью, а журнал оставался пуст
+		 *
 		 */
 		/**
 		 * @warning Сличение «БОЛЬШЕ», а не «РОВНО ОДИН»: с переходом на `sys/fs` отчёт
 		 *          даёт и сам ход файловой системы, и отчётов на один отказ выходит два
+		 *
 		 */
 		ASSERT_GT(reports.size(), before) << refusal.second;
 		// Выполняем проверку того, что оглашение отказ называет
@@ -4108,6 +4465,7 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Половина эта стережёт уборку: временный файл, отказом брошенный, копился
 	 *       бы рядом с целью при всякой неудаче
+	 *
 	 */
 	{
 		// Поток чтения временного файла
@@ -4156,6 +4514,7 @@ TEST(CodecIniDocument, TheRefusalOfTheParsingReachesTheLog){
 	 *
 	 * @note Ровно это и есть предмет проверки: без оглашения отчёт ушёл бы в никуда,
 	 *       а разбор всё так же отвечал бы ложью
+	 *
 	 */
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что отчёт отказ называет
@@ -4206,6 +4565,7 @@ TEST(CodecIniDocument, HugeIndexInThePathIsRefusedNotFatal){
 		 * Выполняем проверку того, что снятие по такому пути ОТВЕРГНУТО
 		 *
 		 * @note Ровно здесь и падало: до отказа дело не доходило вовсе
+		 *
 		 */
 		ASSERT_FALSE(document.prune(path)) << path;
 		// Выполняем проверку того, что перенос по такому пути отвергнут
@@ -4218,6 +4578,7 @@ TEST(CodecIniDocument, HugeIndexInThePathIsRefusedNotFatal){
 	 *
 	 * @note Половина эта стережёт целость: правка, до отказа успевшая тронуть дерево,
 	 *       оставила бы его урезанным
+	 *
 	 */
 	ASSERT_EQ(document.dump(), before);
 	/**
@@ -4225,6 +4586,7 @@ TEST(CodecIniDocument, HugeIndexInThePathIsRefusedNotFatal){
 	 *
 	 * @note Половина эта стережёт ширину отказа: разбор, всякий номер отвергающий,
 	 *       прошёл бы перебор выше целиком
+	 *
 	 */
 	ASSERT_TRUE(document.at("/раздел/ключ/0").valid());
 }
@@ -4259,6 +4621,7 @@ TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 *       `REPLACE` и `PASS`. Отказ тем самым переехал с правки на запись, и проверка
 	 *       эта сторожит, чтобы он там не ОНЕМЕЛ: отказ без кода есть беда тяжелее самого
 	 *       отказа - потребитель, спросивший причину, получил бы `NONE` при отказе
+	 *
 	 */
 	ini::document_t document;
 	// Выполняем разбор текста настроек
@@ -4271,8 +4634,14 @@ TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	ini::writer_t::settings_t settings;
 	// Назначаем отказ на негодную последовательность
 	settings.malformed = ini::malformed_t::REFUSE;
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect;
+	// Устанавливаем собранные настройки записи текста документа
+	dialect.writer = settings;
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Выполняем проверку того, что запись отвергнута пустотою
-	ASSERT_TRUE(document.dump(settings).empty());
+	ASSERT_TRUE(document.dump().empty());
 	// Выполняем проверку того, что отказ записи причину назвал
 	ASSERT_EQ(document.error(), ini::error_t::INVALID_ENCODING) << ini::message(document.error());
 	/**
@@ -4280,7 +4649,13 @@ TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 *
 	 * @note Половина эта сторожит заслон с другой стороны: отвергни он при всяком правиле -
 	 *       и настройка перестала бы значить что-либо
+	 *
 	 */
+	// Возвращаем настройки записи, установленные по умолчанию
+	dialect.writer = ini::writer_t::settings_t();
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
+	// Выполняем проверку того, что запись не пуста
 	ASSERT_FALSE(document.dump().empty());
 	// Выполняем проверку того, что запись умолчанием кода отказа не поставила
 	ASSERT_EQ(document.error(), ini::error_t::NONE) << ini::message(document.error());
@@ -4298,6 +4673,7 @@ TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	 *          отвергнутый, и порча снятия проверки не валит вовсе. С этим же именем
 	 *          дословный путь НАХОДИТ свойство, и разница становится видна. Замерено
 	 *          порчею: без имени порча значения давала 0 отказов, с ним - 3
+	 *
 	 */
 	ASSERT_TRUE(document.parse("[раздел]\nа~x = 1\n~ = 2\nа = 3\n")) << ini::message(document.error());
 	// Записанный текст дерева до всяких отказов
@@ -4328,6 +4704,7 @@ TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	 *
 	 * @note Половина эта стережёт целость: обрезка, до отказа успевшая снять свойство,
 	 *       оставила бы дерево урезанным
+	 *
 	 */
 	ASSERT_EQ(document.dump(), before);
 	/**
@@ -4335,6 +4712,7 @@ TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	 *
 	 * @note Половина эта стережёт ширину отказа: поверка, тильду отвергающая без
 	 *       разбора, прошла бы перебор выше целиком
+	 *
 	 */
 	ASSERT_TRUE(document.at("/раздел/~0").valid());
 	// Владеющее значение, тот же текст разбирающее
@@ -4345,6 +4723,7 @@ TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	 * Выполняем перебор всех негодных звеньев пути у владеющего значения
 	 *
 	 * @warning Ход у значения СВОЙ, кодом с ходом дерева общего не имеющий
+	 *
 	 */
 	for(auto & path : broken)
 		// Выполняем проверку того, что розыск владеющего значения отвергнут
@@ -4357,6 +4736,7 @@ TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	 * @details Имя `а~x` выдаётся обходом ЗАПИСАННЫМ - `а~0x`, - и путь тот к нему и
 	 *          ведёт, а путь дословный отвергается. Тем обход и замкнут: у места одно
 	 *          написание, а не два
+	 *
 	 */
 	ASSERT_TRUE(document.at("/раздел/а~0x").valid());
 	ASSERT_TRUE(value.at("/раздел/а~0x").valid());
@@ -4400,6 +4780,7 @@ TEST(CodecIniDocument, SetsByArrayIndexWithinBounds){
 	 *
 	 * @note Половина эта отделяет правку по номеру от правки по имени: постановка,
 	 *       номер за имя принявшая, завела бы третье объявление либо затёрла оба
+	 *
 	 */
 	ASSERT_EQ(document.dump(), "[раздел]\nключ = новое\nключ = 2\n");
 	// Записанный текст дерева до отказов
@@ -4460,6 +4841,7 @@ TEST(CodecIniDocument, ReferenceDepthLimitIsObeyed) {
 		 *       жило незамеченным: цепь из трёх обращений требовала предела четыре, а
 		 *       поле зовётся «наибольшей глубиной вложенности обращений». Границу берёт
 		 *       ровно этот заход, и без него соседние двa лишь охватывают её с боков
+		 *
 		 */
 		{3,  3, true},
 		// Предел, на единицу цепи не достающий
@@ -4591,6 +4973,7 @@ TEST(CodecIniDocument, DelimiterAndGlobalReachTheTreeWork) {
 		 *
 		 * @note Закрепляется и СОХРАННОСТЬ дерева: отвергнутая правка обязана оставить
 		 *       прежнее содержимое нетронутым и записываемым
+		 *
 		 */
 		{
 			// Настройки дерева настроек
@@ -4694,6 +5077,7 @@ TEST(CodecIniDocument, TrimFlagReachesTheWriter) {
 		 *
 		 * @note Отказ верен: обвязку читающий отбросит, оградить её нечем - молчаливая
 		 *       запись потеряла бы пробел
+		 *
 		 */
 		ASSERT_TRUE(document.dump().empty()) << document.dump();
 	}
@@ -4925,6 +5309,7 @@ TEST(CodecIniDocument, TheCyrillicFileNameLandsOnTheDiskAsIntended) {
 		 * @note Спрос ведётся ШИРОКИМ ходом `_wstat`, а не Win32 напрямую: подключение
 		 *       `windows.h` принесло бы макросы `ERROR`, `DELETE` и `TEXT`, о чём и
 		 *       предупреждает заголовок `codec/replace.hpp`
+		 *
 		 */
 		ASSERT_EQ(::_wstat(address(filename).c_str(), & info), 0) << filename;
 	/**

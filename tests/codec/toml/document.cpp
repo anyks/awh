@@ -26,11 +26,18 @@
  * @note Заголовок алгоритмов подключается прямо: подсчёт знаков конца строки идёт
  *       через std::count, а достаётся он не всякой стандартной библиотекой исподволь
  *       - у Solaris сборка отвечала «count was not declared in this scope»
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
+/**
+ * Для операционной системы MS Windows
+ */
 #else
 	#include <process.h>
+	/**
+	 * Подменяем getpid версией MS Windows
+	 */
 	#define getpid _getpid
 #endif
 #include <algorithm>
@@ -42,6 +49,7 @@
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора кодеков - собираются они одной программой, и брешь одного файла
  *       уносила с собою проверки всех прочих
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -60,6 +68,7 @@
  *       один лишь путь, и прямой вызов сборку там валит. Указано это у кодека CEF:
  *       проверки кодеков собираются ОДНОЙ программой, и три моих вызова
  *       остановили сборку всего набора, включая чужие проверки
+ *
  */
 #include "../temporary.hpp"
 #include <sys/log.hpp>
@@ -91,6 +100,7 @@ namespace {
 	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
+		// Обращение пути файловой системы в широкий вид, MS Windows нужный
 		static ::std::wstring address(const ::std::string & path) noexcept {
 			/**
 			 * Обращение ведётся ходом рамки, а не своим перебором знаков
@@ -101,6 +111,7 @@ namespace {
 			 *          лишним ещё двое суток. Свой ход опасен не работою, а расхождением:
 			 *          починка рамки его не достигает, и проверка начинает мерить не тот
 			 *          путь, каким ходит кодек
+			 *
 			 */
 			return awh::fmk::convert(path);
 		}
@@ -108,6 +119,7 @@ namespace {
 	 * Для операционной системы, MS Windows не являющейся
 	 */
 	#else
+		// Обращение пути файловой системы для системы, MS Windows не являющейся
 		static ::std::string address(const ::std::string & path) noexcept {
 			// Выводим путь файловой системы без обращения
 			return path;
@@ -157,6 +169,7 @@ namespace {
 		 * @warning Розыск точки по всему имени негоден: у имени `./каталог/файл` точка
 		 *          начала пути была бы принята за расширение, и имя обратилось бы в
 		 *          `.-1234/каталог/файл` - путь в каталог несуществующий
+		 *
 		 */
 		const ::std::size_t slash = name.find_last_of("/\\");
 		// Разыскиваем место расширения имени
@@ -168,8 +181,7 @@ namespace {
 		// Выводим имя с номером процесса перед расширением
 		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
 	}
-	/**
-	 * \~russian
+		/**
 	 * @brief Ограда подписки на отчёты журнала
 	 *
 	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
@@ -183,10 +195,6 @@ namespace {
 	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
 	 *       же отчёте, поданном по выходе из области подписки
 	 *
-	 * \~english
-	 * @brief Guard of the subscription to the reports of the log
-	 *
-	 * \~
 	 */
 	class Subscription {
 		public:
@@ -215,7 +223,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, помощники рамки дающее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён awh::codec, типы кодека toml несущее
+ */
 using namespace awh::codec;
 
 /**
@@ -227,24 +241,24 @@ using namespace awh::codec;
  *
  */
 static const char * SAMPLE =
- "# настройки сервера\n"
- "title = \"пример\"\n"
- "\n"
- "[server]\n"
- "host = 'локальный' # хозяин\n"
- "port = 8080\n"
- "ratio = 0.25\n"
- "flags = [true, false]\n"
- "point = { x = 1, y = 2 }\n"
- "\n"
- "[server.limits]\n"
- "depth = 0x10\n"
- "\n"
- "[[products]]\n"
- "name = \"гвоздь\"\n"
- "\n"
- "[[products]]\n"
- "name = \"молоток\"\n";
+	"# настройки сервера\n"
+	"title = \"пример\"\n"
+	"\n"
+	"[server]\n"
+	"host = 'локальный' # хозяин\n"
+	"port = 8080\n"
+	"ratio = 0.25\n"
+	"flags = [true, false]\n"
+	"point = { x = 1, y = 2 }\n"
+	"\n"
+	"[server.limits]\n"
+	"depth = 0x10\n"
+	"\n"
+	"[[products]]\n"
+	"name = \"гвоздь\"\n"
+	"\n"
+	"[[products]]\n"
+	"name = \"молоток\"\n";
 
 /**
  * @brief Проверка чтения значений по составному имени
@@ -323,6 +337,7 @@ TEST(CodecTomlDocument, EncodingIsReportedByTheReader){
 	// Выполняем проверку того, что после разбора кодировка опознана
 	ASSERT_EQ(document.encoding(), toml::encoding_t::UTF8);
 }
+// Проверка кругового хода настроек: запись в файл и чтение его назад
 TEST(CodecTomlDocument, LoadAndSaveRoundTrip){
 	// Путь до временного файла настроек
 	const string filename = string(::testing::TempDir()) + ::unique("toml-roundtrip.conf");
@@ -349,6 +364,25 @@ TEST(CodecTomlDocument, LoadAndSaveRoundTrip){
 	// Выполняем снятие временного файла настроек
 	dropFile(filename);
 }
+/**
+ * @brief Проверка сохранения дерева при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecTomlDocument, EmptyFilenamePreservesTree){
+	// Объект дерева настроек
+	toml::document_t document;
+	// Выполняем разбор исходных настроек
+	ASSERT_TRUE(document.parse("key = 'value'\n")) << toml::message(document.error());
+	// Исходная запись настроек
+	const string expected = document.dump();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), toml::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения дерева
+	ASSERT_EQ(document.dump(), expected);
+}
+// Проверка снятия значения по пути, пустой же путь весь документ сносящий
 TEST(CodecTomlDocument, RemovingValueByPath){
 	// Объект дерева настроек, текст разбирающий
 	toml::document_t document;
@@ -374,10 +408,12 @@ TEST(CodecTomlDocument, RemovingValueByPath){
 	 * @note Прежде здесь стоял отказ, и примечание при нём ссылалось на согласие
 	 *       прочих кодеков - согласия, какого не было: сговорено было обратное.
 	 *       Нашлось сличением erase("") по пяти кодекам разом
+	 *
 	 */
 	ASSERT_TRUE(document.erase("")) << toml::message(document.error());
 	// Выполняем проверку того, что снос пустым путём опустошил настройки целиком
 	ASSERT_TRUE(document.empty());
+	// Сверяем размер документа с нулём: детей корня после сноса не осталось
 	ASSERT_EQ(document.size(), 0u);
 	// Выполняем разбор текста настроек заново для проверки прежнего хода
 	ASSERT_TRUE(document.parse("[r]\nb = 2\n")) << toml::message(document.error());
@@ -386,6 +422,7 @@ TEST(CodecTomlDocument, RemovingValueByPath){
 	// Выполняем проверку того, что пара, перечнем снятая, из дерева ушла
 	ASSERT_FALSE(document.has("/r/b"));
 }
+// Проверка счёта детей корня, размером документа показываемого
 TEST(CodecTomlDocument, SizeCountsChildrenOfTheRoot){
 	// Объект дерева документа, текст разбирающий
 	toml::document_t document;
@@ -398,6 +435,7 @@ TEST(CodecTomlDocument, SizeCountsChildrenOfTheRoot){
 	// Выполняем проверку того, что прежний счёт никуда не делся, а лишь переехал
 	ASSERT_NE(document.tables().size(), 0u);
 }
+// Проверка согласия постановки значения концом документа и концом значения
 TEST(CodecTomlDocument, SettingByBothEndsAgrees) {
 	// Объект дерева документа, концом документа правимый
 	toml::document_t first;
@@ -415,6 +453,7 @@ TEST(CodecTomlDocument, SettingByBothEndsAgrees) {
 	// Выполняем проверку того, что оба конца дали один и тот же текст
 	ASSERT_EQ(first.dump(), second.dump());
 }
+// Проверка чтения настроек из текста SAMPLE, значения верхнего уровня и таблицы
 TEST(CodecTomlDocument, Reading) {
 	// Объект дерева настроек
 	toml::document_t document;
@@ -474,6 +513,7 @@ TEST(CodecTomlDocument, Typed) {
 	 *
 	 * @note Запись «0.25» округляется к нулю: половины в ней нет, и увод её от нуля к
 	 *       делу не относится
+	 *
 	 */
 	ASSERT_EQ(integer, 0);
 	/**
@@ -483,6 +523,7 @@ TEST(CodecTomlDocument, Typed) {
 	 *       отдало бы здесь двойку, а увод половины от нуля даёт тройку. Расходятся две
 	 *       разновидности ровно на половинах, и без такой проверки подмена одной другою
 	 *       прошла бы незамеченной
+	 *
 	 */
 	{
 		// Объект дерева настроек половинной записи
@@ -511,6 +552,7 @@ TEST(CodecTomlDocument, Typed) {
 	 *
 	 * @note Запись «8080» переносится младшими разрядами: младший байт её есть `0x90`,
 	 *       а знаковым однобайтовым видом он читается как `-112`
+	 *
 	 */
 	ASSERT_EQ(narrow, -112);
 	// Число с плавающей точкой значения пары
@@ -519,6 +561,7 @@ TEST(CodecTomlDocument, Typed) {
 	 * Выполняем проверку чтения целого числа с плавающей точкой
 	 *
 	 * @note Приведение это значения не искажает, и оно дозволено
+	 *
 	 */
 	ASSERT_TRUE(document.value(real, {"server", "port"}));
 	// Выполняем проверку прочитанного числа
@@ -615,6 +658,7 @@ TEST(CodecTomlDocument, Structure) {
 	 *
 	 * @note Вложенная таблица дочерним именем своей объемлющей и является: имя
 	 *       «limits» идёт наравне с именами пар
+	 *
 	 */
 	ASSERT_EQ(keys.size(), 6u);
 	// Выполняем проверку первого дочернего имени таблицы
@@ -692,6 +736,7 @@ TEST(CodecTomlDocument, MultilineArray) {
 	 *
 	 * @note Расстановка эта выбрана человеком, и разбор о ней не сообщает: узнаётся
 	 *       она по местам событий начала и конца перечня
+	 *
 	 */
 	ASSERT_EQ(document.dump(), text);
 }
@@ -751,6 +796,7 @@ TEST(CodecTomlDocument, Appending) {
 	 *
 	 * @note Пара верхнего уровня записана до первого объявления таблицы: за ним она
 	 *       принадлежала бы уже той таблице
+	 *
 	 */
 	ASSERT_NE(result.find("version = \"1.0\"\n"), string::npos);
 	// Выполняем проверку того, что пара верхнего уровня записана до объявления таблицы
@@ -810,6 +856,7 @@ TEST(CodecTomlDocument, Erasing) {
 	 *
 	 * @note Примечание это писано к удалённой паре: оставить его значило бы оставить
 	 *       пояснение к тому, чего в файле более нет
+	 *
 	 */
 	ASSERT_EQ(result.find("хозяин"), string::npos);
 	// Выполняем проверку сохранения примечания отдельной строкой
@@ -837,6 +884,7 @@ TEST(CodecTomlDocument, Removing) {
 	 *
 	 * @note Вложенная таблица объявлена своей записью, и удаление объемлющей её не
 	 *       касается: удаляются записи до следующего объявления
+	 *
 	 */
 	ASSERT_TRUE(document.table({"server", "limits"}));
 	// Получаем собранный текст настроек
@@ -850,6 +898,7 @@ TEST(CodecTomlDocument, Removing) {
 	 *
 	 * @note Отказ отвечает кодом отсутствия таблицы, а не ошибочного построения её
 	 *       объявления: имя составлено верно, таблицы с ним в дереве нет
+	 *
 	 */
 	ASSERT_FALSE(document.remove({"missing"}));
 	// Выполняем проверку кода ошибки правки дерева
@@ -907,6 +956,7 @@ TEST(CodecTomlDocument, Values) {
 	 *
 	 * @note Строковое значение, записанное прямо в месте вызова, установлено
 	 *       строкою, а не логическим значением
+	 *
 	 */
 	ASSERT_EQ(document.dump(),
 	 "text = \"значение\"\n"
@@ -1048,6 +1098,7 @@ TEST(CodecTomlDocument, EmptyKey) {
 	 *
 	 * @note Верхний уровень выдал бы здесь собственные дочерние имена, и обход
 	 *       дерева пошёл бы по кругу
+	 *
 	 */
 	const vector <string_view> keys = document.keys({""});
 	// Выполняем проверку отсутствия дочерних имён у пары с пустым именем ключа
@@ -1107,6 +1158,7 @@ TEST(CodecTomlDocument, Redefine) {
 	 *
 	 * @note Набор таблиц адресуется порядковым номером, и всякое иное имя за ним
 	 *       завело бы пару поверх набора
+	 *
 	 */
 	ASSERT_FALSE(document.set({"products", "name"}, "гвоздь"));
 	// Выполняем проверку кода ошибки правки дерева
@@ -1321,6 +1373,7 @@ TEST(CodecTomlDocument, EditFootprint) {
 	 * @note Запас взят восьмикратным против исходного: уплотнение приходит по
 	 *       накоплении мусора вровень с живым, и объём дерева гуляет между уплотнениями,
 	 *       а рост неограниченный дал бы здесь не разы, а тысячи
+	 *
 	 */
 	ASSERT_LT(document.footprint(), (footprint * 8))
 	 << "до правок " << footprint << " октетов, после восьмидесяти тысяч правок " << document.footprint();
@@ -1540,6 +1593,7 @@ TEST(CodecTomlDocument, LeadingZeroOrdinal) {
 	 *
 	 * @note Без проверки правка выдавала бы текст с парой «products.01.name»,
 	 *       который разбор отвергает
+	 *
 	 */
 	ASSERT_TRUE(reread.parse(text)) << toml::message(reread.error());
 	// Получаемое значение правленой пары
@@ -1573,6 +1627,7 @@ TEST(CodecTomlDocument, ClearedTraversal) {
 	 *
 	 * @note Без сброса состояния обхода имя «a» считалось бы уже объявленным, и
 	 *       перечень дочерних имён остался бы пустым
+	 *
 	 */
 	ASSERT_EQ(document.keys(vector <string_view> {}).size(), 1u);
 	// Выполняем проверку правки заново собранного дерева
@@ -1597,6 +1652,7 @@ TEST(CodecTomlDocument, ArrayBuilding) {
 	 *
 	 * @note Отказ намеренный: долив наполняет перечень, а не заводит его, и завести
 	 *       его молча значило бы стереть значение, у места стоявшее
+	 *
 	 */
 	content.type = toml::type_t::INTEGER;
 	// Запоминаем добавляемое целое число
@@ -1620,6 +1676,7 @@ TEST(CodecTomlDocument, ArrayBuilding) {
 	 *
 	 * @note Пара кладётся во встроенную таблицу, и перечень её принять не вправе:
 	 *       имени у значения перечня нет вовсе
+	 *
 	 */
 	ASSERT_FALSE(document.put({"numbers"}, {"name"}, content));
 	// Выполняем объявление вложенной встроенной таблицы доливом пустого значения
@@ -1641,6 +1698,7 @@ TEST(CodecTomlDocument, ArrayBuilding) {
 	 *
 	 * @note Объявление кладёт перечень заново: дописывать к прежнему значило бы
 	 *       лишить потребителя способа перечень заменить
+	 *
 	 */
 	ASSERT_TRUE(document.arrange({"numbers"}));
 	// Выполняем проверку того, что перечень объявлен пустым заново
@@ -1724,6 +1782,7 @@ TEST(CodecTomlDocument, UnknownNameDiffersFromMalformed) {
 	 * Выполняем проверку сохранения кода ошибочного построения имени
 	 *
 	 * @note Управляющий знак в имени - изъян самого имени, и код его прежним остаётся
+	 *
 	 */
 	ASSERT_FALSE(document.set({string_view("имя\nключа")}, static_cast <int64_t> (1)));
 	// Выполняем проверку кода ошибки правки дерева
@@ -1764,6 +1823,7 @@ TEST(CodecTomlDocument, BooleanExtraction) {
 	 *
 	 * @note Половина эта обязательна: извлечение, всякое значение истиной выдающее,
 	 *       прошло бы обе половины выше
+	 *
 	 */
 	ASSERT_FALSE(document.value(third, {"num"}));
 	// Извлекаемое целое число из признака истины
@@ -1837,6 +1897,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 	 * @note Застава эта стояла непроверенной: поверки даты да вида проверены были обе,
 	 *       а поверка времени, третьей рядом с ними стоящая, не задета ни разу.
 	 *       Открыло пробел объединённое покрытие набора с ворошителем
+	 *
 	 */
 	{
 		// Дерево настроек, отметку разбирающее
@@ -1848,6 +1909,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 		 *
 		 * @note Секунда шестидесятая сюда НЕ входит: описанием она дозволена - ею
 		 *       записывается секунда координации, - и отвергать её нельзя
+		 *
 		 */
 		const vector <array <uint32_t, 4>> beyond = {
 			{{24, 0, 0, 0}}, {{0, 60, 0, 0}}, {{0, 0, 61, 0}}, {{0, 0, 0, 1000000000}}
@@ -1891,6 +1953,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 	 * @note Отрезок берётся тот же, каким поверяет смещение писатель: 23 часа 59 минут
 	 *       в обе стороны. Величина NO_TIMEZONE отрезком не поверяется - ею обозначено
 	 *       отсутствие смещения
+	 *
 	 */
 	{
 		// Дерево настроек, отметку разбирающее
@@ -1928,6 +1991,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 			 *
 			 * @warning Половина эта и есть самая суть находки: прежде запись отдавала
 			 *          НУЛЬ БАЙТОВ, и терялось всё дерево целиком, а не один узел
+			 *
 			 */
 			ASSERT_EQ(document.dump(), text) << offset;
 		}
@@ -1936,6 +2000,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 		 *
 		 * @note Половина эта стережёт ширину отказа: застава, всякое смещение
 		 *       отвергающая, прошла бы перебор выше целиком
+		 *
 		 */
 		{
 			// Отметка времени, правкою назначаемая
@@ -1963,6 +2028,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 	 *
 	 * @note Половина эта обязательна: правка, отвергающая всякую отметку, прошла бы обе
 	 *       половины выше, не переписав ничего вовсе
+	 *
 	 */
 	{
 		// Дерево настроек, отметку разбирающее
@@ -2055,6 +2121,7 @@ TEST(CodecTomlDocument, AccessRefusesUnknownPathAndForeignType) {
 	 *
 	 * @note Правка путь недостающий ЗАВОДИТ, а не отвергает: это договор её, и
 	 *       ожидание отказа тут было бы ошибкою читающего - замерено
+	 *
 	 */
 	ASSERT_TRUE(document.set({"нет"}, true));
 	// Выполняем проверку того, что заведённая пара стоит в тексте
@@ -2100,6 +2167,7 @@ TEST(CodecTomlDocument, ErrorAnswersForLastOperation) {
 	 * Выполняем проверку того, что положение прежнего разбора отказом работы снято
 	 *
 	 * @note Без сброса донесение указывало бы в текст, которого более нет
+	 *
 	 */
 	ASSERT_EQ(document.errorLocation().line, static_cast <uint32_t> (0));
 	// Выполняем проверку того, что положение прежнего разбора снято и по столбцу
@@ -2196,17 +2264,28 @@ TEST(CodecTomlDocument, DumpRefusalPropagates) {
 		toml::writer_t::settings_t settings = writing;
 		// Запоминаем предел глубины вложенности записываемого текста настроек
 		settings.maxDepth = probe.depth;
+		// Настройки записи текста документа
+		toml::document_t::settings_t dialect;
+		// Устанавливаем собранные настройки записи текста документа
+		dialect.writer = settings;
+		// Выполняем установку настроек записи документа
+		document.settings(dialect);
 		// Выполняем проверку того, что снятое дерево пусто
-		EXPECT_TRUE(document.dump(settings).empty()) << probe.note;
+		EXPECT_TRUE(document.dump().empty()) << probe.note;
 		// Выполняем проверку выданного кода ошибки записи дерева
 		EXPECT_EQ(document.error(), toml::error_t::DEPTH_EXCEEDED) << probe.note;
+		// Возвращаем прежние настройки записи текста документа
+		dialect.writer = writing;
+		// Выполняем установку настроек записи документа
+		document.settings(dialect);
 		/**
 		 * Выполняем проверку того, что дерево настройками своими снимается по-прежнему
 		 *
 		 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякое снятие,
 		 *       отвечал бы тому же ожиданию, и порча снятия осталась бы незамечена
+		 *
 		 */
-		EXPECT_FALSE(document.dump(writing).empty()) << probe.note;
+		EXPECT_FALSE(document.dump().empty()) << probe.note;
 	}
 	/**
 	 * Выполняем проверку передачи отказа имени ключа пары встроенной таблицы
@@ -2220,8 +2299,14 @@ TEST(CodecTomlDocument, DumpRefusalPropagates) {
 		toml::writer_t::settings_t settings = document.writing();
 		// Запоминаем предел длины имени ключа, имени верхнего уровня отвечающий
 		settings.maxKey = 1;
+		// Настройки записи текста документа
+		toml::document_t::settings_t dialect;
+		// Устанавливаем собранные настройки записи текста документа
+		dialect.writer = settings;
+		// Выполняем установку настроек записи документа
+		document.settings(dialect);
 		// Выполняем проверку того, что снятое дерево пусто
-		ASSERT_TRUE(document.dump(settings).empty());
+		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку выданного кода ошибки записи дерева
 		ASSERT_EQ(document.error(), toml::error_t::KEY_TOO_LONG);
 	}
@@ -2266,6 +2351,7 @@ TEST(CodecTomlDocument, CompactionKeepsContent) {
 	 *
 	 * @note Пробелы внутри встроенной таблицы ставит запись по настройке своей:
 	 *       снятое дерево сличается с ожиданием, а не с исходным текстом
+	 *
 	 */
 	ASSERT_EQ(document.dump(), string(
 		"array = [\n\t1, # первое\n\t# своей строкой\n\t2\n]\n"
@@ -2282,6 +2368,7 @@ TEST(CodecTomlDocument, CompactionKeepsContent) {
 	 *
 	 * @note Заведение ведёт своим путём, отличным от правки: уплотнение оно спрашивает
 	 *       у себя, и путь этот покрытием не задевался - наборы правили уже заведённое
+	 *
 	 */
 	ASSERT_TRUE(document.set({"fresh", "pair"}, static_cast <int64_t> (5)));
 	// Выполняем проверку значения заведённой пары
@@ -2345,6 +2432,7 @@ TEST(CodecTomlDocument, EditRefusalsNotCoveredBefore) {
 	 * @warning Путь берётся ГОДНЫЙ намеренно: путь негодный отвергается сам по себе, и
 	 *          проверка проходила бы и с поверкою имени снесённой - срывом замерено,
 	 *          что пустое имя принимается тогда молча
+	 *
 	 */
 	EXPECT_FALSE(document.put({"inline"}, {}, content));
 	/**
@@ -2352,6 +2440,7 @@ TEST(CodecTomlDocument, EditRefusalsNotCoveredBefore) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякое заведение,
 	 *       отвечал бы тому же ожиданию, и порча поверки имени осталась бы незамечена
+	 *
 	 */
 	EXPECT_TRUE(document.put({"inline"}, {"added"}, content));
 	/**
@@ -2359,6 +2448,7 @@ TEST(CodecTomlDocument, EditRefusalsNotCoveredBefore) {
 	 *
 	 * @note Порядковый номер разбирается из звена пути, и запись его вправе быть
 	 *       любой длины: число, хранилищу не по мерке, отвергается разбором звена
+	 *
 	 */
 	EXPECT_FALSE(document.has({"array", "99999999999999999999999999"}));
 	// Выполняем проверку того, что порядковый номер годный распознаётся
@@ -2427,6 +2517,7 @@ TEST(CodecTomlDocument, InlineTableKeys) {
 	 *       расходится лишь тогда, когда длины их равны, а звенья разнятся -
 	 *       имена разной длины отсеиваются заходом выше, и путь расхождения
 	 *       оставался нетронутым
+	 *
 	 */
 	const vector <string_view> other = document.keys({"inline", "other"});
 	// Выполняем проверку количества полученных имён второго составного имени
@@ -2439,6 +2530,7 @@ TEST(CodecTomlDocument, InlineTableKeys) {
 	 * @warning Звенья вторых частей взяты РАЗНЫМИ намеренно: при одинаковых сличение
 	 *          звеньев ничего не решает - выдача совпадает и с поверкой снесённой.
 	 *          Замерено срывом: с «other.deep» порча сличения проверки не роняла
+	 *
 	 */
 	ASSERT_EQ(nested.at(0), "deep");
 	// Получаем имена пар по имени, встроенной таблице не принадлежащему
@@ -2448,6 +2540,7 @@ TEST(CodecTomlDocument, InlineTableKeys) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: перебор, выдающий имена на всякий путь,
 	 *       отвечал бы тем же ожиданиям на путях годных
+	 *
 	 */
 	ASSERT_TRUE(foreign.empty());
 }
@@ -2510,9 +2603,10 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		 *       может. Прежде здесь поднимался он у одной записи, и проверка тем закрепляла
 		 *       разлад, от какого запись при признаке и предостерегает. Ныне разлад этот
 		 *       судится кодом `CONFLICTING_SETTINGS`
+		 *
 		 */
 		// Настройки дерева настроек
-		toml::document_t::settings_t common = document.settings();
+		toml::document_t::settings_t common;
 		// Дозволяем знаки письменностей мира в имени ключа читающему
 		common.reader.unicode = true;
 		// Выполняем установку настроек дерева настроек
@@ -2521,8 +2615,12 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		toml::writer_t::settings_t settings;
 		// Дозволяем знаки письменностей мира в имени ключа
 		settings.unicode = true;
+		// Устанавливаем собранные настройки записи текста документа
+		common.writer = settings;
+		// Выполняем установку настроек дерева настроек
+		document.settings(common);
 		// Записанный текст настроек с дозволением знаков письменностей
-		const string text = document.dump(settings);
+		const string text = document.dump();
 		// Выполняем проверку того, что дозволением имя записано голым
 		ASSERT_NE(text.find("ключ = "), string::npos);
 		// Выполняем проверку того, что кавычек у имени не осталось
@@ -2554,6 +2652,7 @@ TEST(CodecTomlDocument, PathTokenCarriesEscapesOfTheStandard){
 	 * Выполняем проверку достижимости имени с косою чертою отменяющей записью
 	 *
 	 * @note Половина эта и есть починка: прежде имя это было недостижимо ничем
+	 *
 	 */
 	ASSERT_TRUE(document.present("/a~1b"));
 	// Выполняем извлечение значения по записанному звену
@@ -2565,6 +2664,7 @@ TEST(CodecTomlDocument, PathTokenCarriesEscapesOfTheStandard){
 	 *
 	 * @note Половина эта важнее первой: разбирайся звено как есть - путь `/a/b` вёл бы к
 	 *       паре `b` таблицы `a`, какой в дереве нет вовсе, и обход ушёл бы в никуда молча
+	 *
 	 */
 	ASSERT_FALSE(document.present("/a/b"));
 	// Выполняем проверку достижимости имени со знаком отмены отменяющей записью
@@ -2578,6 +2678,7 @@ TEST(CodecTomlDocument, PathTokenCarriesEscapesOfTheStandard){
 	 *
 	 * @note Отказ намеренный: возьми мы `~x` дословно - у одного места вышло бы два
 	 *       написания, и обход перестал бы быть замкнутым
+	 *
 	 */
 	ASSERT_FALSE(document.present("/тильда~тут"));
 	// Выполняем проверку того, что имя отменяющих записей не требующее достижимо просто
@@ -2604,7 +2705,7 @@ TEST(CodecTomlDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 	// Объект дерева настроек, текст разбирающего
 	toml::document_t document;
 	// Получаем настройки дерева настроек
-	toml::document_t::settings_t settings = document.settings();
+	toml::document_t::settings_t settings;
 	// Поднимаем предел вложенности много выше потолка допустимого
 	settings.reader.maxDepth = 200000;
 	// Выполняем установку настроек дерева настроек
@@ -2619,6 +2720,7 @@ TEST(CodecTomlDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 	 * Выполняем проверку отказа разбора по превышению глубины вложенности
 	 *
 	 * @note Отказ этот и есть починка: прежде настройка потолок обходила молча
+	 *
 	 */
 	ASSERT_FALSE(document.parse(text));
 	// Выполняем проверку того, что отказано именно по глубине вложенности
@@ -2628,6 +2730,7 @@ TEST(CodecTomlDocument, RaisedDepthLimitIsBoundedByTheCeiling){
 	 *
 	 * @note Половина эта важнее первой: огранение, поставленное слишком низко, отвергало
 	 *       бы и то, что стандартом дозволено, и отказ был бы неотличим от починки
+	 *
 	 */
 	{
 		// Собираемый текст настроек со вложенностью в пределах потолка
@@ -2657,7 +2760,7 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
 		// Объект дерева настроек, текст разбирающего
 		toml::document_t document;
 		// Получаем настройки дерева настроек
-		toml::document_t::settings_t settings = document.settings();
+		toml::document_t::settings_t settings;
 		// Снимаем предел вложенности значений нулём
 		settings.reader.maxDepth = 0;
 		// Выполняем установку настроек дерева настроек
@@ -2666,6 +2769,7 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
 		 * Выполняем проверку того, что нуль предел СНИМАЕТ
 		 *
 		 * @note Прежде тот же текст отвергался: нуль запрещал вложенность вовсе
+		 *
 		 */
 		ASSERT_TRUE(document.parse("a = [[[[1]]]]\n")) << toml::message(document.error());
 		/**
@@ -2673,6 +2777,7 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
 		 *
 		 * @note Ноль огранивается наравне с числом завышенным: дерево без предела срывает
 		 *       стек, а отказ приходит с местом в тексте
+		 *
 		 */
 		{
 			// Собираемый текст настроек с глубокой вложенностью перечней
@@ -2691,7 +2796,7 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
 		// Объект дерева настроек, текст разбирающего
 		toml::document_t document;
 		// Получаем настройки дерева настроек
-		toml::document_t::settings_t settings = document.settings();
+		toml::document_t::settings_t settings;
 		// Запрещаем вложенные значения признаком дозволения
 		settings.reader.nesting = false;
 		// Выполняем установку настроек дерева настроек
@@ -2707,6 +2812,7 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
 		 *
 		 * @note Половина эта важнее первой: запрет, отвергающий всё подряд, прошёл бы обе
 		 *       половины выше, а смысл его именно в том, чтобы простое оставить
+		 *
 		 */
 		ASSERT_TRUE(document.parse("a = 1\nb = \"текст\"\n")) << toml::message(document.error());
 	}
@@ -2747,12 +2853,15 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 * @note Заголовок `sys/resource.h` огорожен по той же причине: подключение его
 	 *       без заслона валило сборку ВСЕГО набора кодеков - собираются они одной
 	 *       программой. Указано это у кодека CEF, где сборка от того и была потеряна
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем пропуск проверки за отсутствием предела размера файла
 		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
-
 	// Путь к записываемому файлу
 	const string filename(::unique("/tmp/awh-toml-failed-save.txt"));
 	// Прежнее содержимое записываемого файла
@@ -2773,6 +2882,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 *       третий и последний путь отказа сохранения, и достаётся он одним лишь
 	 *       пределом размера файла. Проверка `EveryFailedSaveIsAnnounced` берёт два
 	 *       прочих - открытие да подмену цели, - а этот доказать может лишь здесь
+	 *
 	 */
 	// Собранные отчёты журнала
 	vector <string> reports;
@@ -2794,6 +2904,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 		 *
 		 * @note Одна длинная строка отвергается разбором по пределу длины её, и проверка
 		 *       падала бы на собственной подготовке, до записи не дойдя вовсе
+		 *
 		 */
 		for(size_t i = 0; i < 20000; i++)
 			// Выполняем добавление очередной пары настроек
@@ -2863,6 +2974,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 *          пуст - потребитель не узнавал ни места отказа, ни рода его. Молчали
 	 *          так все три кодека разом, тогда как JSON, XML и CSV оглашают всякий
 	 *          свой отказ записи
+	 *
 	 */
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что оглашение отказ называет
@@ -2884,6 +2996,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 *
 	 * @note Половина эта и есть весь смысл: отказом запись отвечала и прежде, а вот файл
 	 *       после него оставался порченым
+	 *
 	 */
 	ASSERT_EQ(current, previous);
 	/**
@@ -2891,6 +3004,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 *
 	 * @note Половина эта стережёт уборку: временный файл, отказом брошенный, копился бы
 	 *       рядом с целью при всякой неудаче
+	 *
 	 */
 	{
 		// Поток чтения временного файла
@@ -2905,6 +3019,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	 *          общего не имеющий: мест записи в кодеке два, и проверка, поставленная на
 	 *          одно лишь дерево, второе пропустила бы молча. Указано это по кодекам JSON,
 	 *          XML и CSV, где найден тот же пробел
+	 *
 	 */
 	{
 		{
@@ -2922,6 +3037,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 		 *
 		 * @note Без того отказ записи ЗНАЧЕНИЯ поверялся бы одним признаком, а оглашение
 		 *       его - ничем: ход записи у значения свой, и журнал ему ставится отдельно
+		 *
 		 */
 		// Признак успешности сохранения владеющего значения в файл
 		bool stored = true;
@@ -2939,22 +3055,23 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 		 * @warning Ход записи у владеющего значения СВОЙ, кодом с записью дерева общего
 		 *          не имеющий, и оглашение его поверяется отдельно: проверка, на одно
 		 *          лишь дерево поставленная, молчание значения пропустила бы
+		 *
 		 */
 		// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
 		// нижний слой, и наш отчёт уже не первый и не последний
 		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("value failed") != string::npos) return true; return false; }()) << reports.back();
 		// Содержимое файла после отказавшего сохранения
-		string kept_text;
+		string keptText;
 		{
 			// Поток чтения содержимого файла
 			ifstream file(address(filename).c_str(), ios::binary);
 			// Выполняем проверку того, что файл открылся
 			ASSERT_TRUE(file.is_open());
 			// Выполняем чтение содержимого файла целиком
-			kept_text.assign((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
+			keptText.assign((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
 		}
 		// Выполняем проверку того, что прежнее содержимое уцелело
-		ASSERT_EQ(kept_text, previous);
+		ASSERT_EQ(keptText, previous);
 		// Поток чтения временного файла
 		ifstream leftover(filename + ".awh-tmp", ios::binary);
 		// Выполняем проверку того, что временного файла не осталось
@@ -2999,6 +3116,7 @@ TEST(CodecTomlDocument, EditingByAnEscapedTokenReachesThatVeryField){
 	 *
 	 * @note Половина эта и есть весь порок: прежде тут заводилась пара, буквально
 	 *       названная `~0`, а пара `~` оставалась нетронутой
+	 *
 	 */
 	ASSERT_EQ(document.size(), static_cast <size_t> (3));
 	// Выполняем правку пары по записанному звену косой черты
@@ -3048,6 +3166,7 @@ TEST(CodecTomlDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 *       `REPLACE` и `PASS`. Отказ тем самым переехал с правки на запись, и проверка
 	 *       эта сторожит, чтобы он там не ОНЕМЕЛ: отказ без кода есть беда тяжелее самого
 	 *       отказа - потребитель, спросивший причину, получил бы `NONE` при отказе
+	 *
 	 */
 	toml::document_t document;
 	// Выполняем разбор текста настроек
@@ -3060,8 +3179,14 @@ TEST(CodecTomlDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	toml::writer_t::settings_t settings;
 	// Назначаем отказ на негодную последовательность
 	settings.malformed = toml::malformed_t::REFUSE;
+	// Настройки записи текста документа
+	toml::document_t::settings_t dialect;
+	// Устанавливаем собранные настройки записи текста документа
+	dialect.writer = settings;
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	// Выполняем проверку того, что запись отвергнута пустотою
-	ASSERT_TRUE(document.dump(settings).empty());
+	ASSERT_TRUE(document.dump().empty());
 	// Выполняем проверку того, что отказ записи причину назвал
 	ASSERT_EQ(document.error(), toml::error_t::INVALID_ENCODING) << toml::message(document.error());
 	/**
@@ -3069,7 +3194,13 @@ TEST(CodecTomlDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 *
 	 * @note Половина эта сторожит заслон с другой стороны: отвергни он при всяком правиле -
 	 *       и настройка перестала бы значить что-либо
+	 *
 	 */
+	// Возвращаем настройки записи, установленные по умолчанию
+	dialect.writer = toml::writer_t::settings_t();
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
+	// Выполняем проверку того, что запись не пуста
 	ASSERT_FALSE(document.dump().empty());
 	// Выполняем проверку того, что запись умолчанием кода отказа не поставила
 	ASSERT_EQ(document.error(), toml::error_t::NONE) << toml::message(document.error());
@@ -3098,6 +3229,7 @@ TEST(CodecTomlDocument, MalformedEscapeInThePathIsRefused){
 	 *
 	 * @note Половина эта стережёт ширину отказа: поверка, тильду отвергающая
 	 *       без разбора, прошла бы перебор выше целиком
+	 *
 	 */
 	ASSERT_TRUE(document.present("/~0"));
 	ASSERT_TRUE(document.present("/a~1b"));
@@ -3121,6 +3253,7 @@ TEST(CodecTomlDocument, MalformedEscapeInThePathIsRefused){
 	 *          `at()` с `present()`: те двое идут снятием владеющего значения, и
 	 *          поверка, ими одними ведомая, снятие дерева не задевала вовсе.
 	 *          Доказано порчею: отказ, у дерева снятый, перебора выше не валит
+	 *
 	 */
 	for(auto & path : broken){
 		// Выполняем проверку того, что обрезка по негодному звену отвергнута
@@ -3137,6 +3270,7 @@ TEST(CodecTomlDocument, MalformedEscapeInThePathIsRefused){
 	 *
 	 * @note Половина эта стережёт целость: обрезка, до отказа успевшая снять пару,
 	 *       оставила бы дерево урезанным
+	 *
 	 */
 	ASSERT_EQ(document.size(), static_cast <size_t> (3));
 }
@@ -3157,6 +3291,7 @@ TEST(CodecTomlDocument, MalformedEscapeInThePathIsRefused){
  *       является - числом таблиц ведает свой ход `count()`. Пустота эта потому не есть
  *       порок, и чинить её нечего; общий же вид перечня звеньев, когда имя это
  *       освободится, обязан будет выдавать здесь звенья ЧИСЛОВЫЕ
+ *
  */
 TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
 	// Объект дерева документа, текст разбирающего
@@ -3175,6 +3310,7 @@ TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
 	 * Выполняем проверку того, что набор таблиц выдан именем ОДНАЖДЫ
 	 *
 	 * @note Выдача имени дважды была бы ложью: потомок там один - сам набор
+	 *
 	 */
 	ASSERT_EQ(keys.size(), static_cast <size_t> (1));
 	// Выполняем проверку выданного имени набора таблиц
@@ -3196,6 +3332,7 @@ TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
 	 *
 	 * @note Половина эта отделяет пустоту ЗАКОННУЮ от немоты: спроси перечень таблицу, а
 	 *       не набор - и имена он выдаёт
+	 *
 	 */
 	const vector <string_view> inner = document.keys(vector <string_view> {"fruit", "0"});
 	// Выполняем проверку количества дочерних имён первой таблицы набора
@@ -3214,6 +3351,7 @@ TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
 	 *          таблицею, ни перечнем не является, и перечень звеньев выходит пустым и
 	 *          без него. Доказано порчею на копии дерева и щупом по трём путям.
 	 *          Записано затем, чтобы читающий не принял одно за другое
+	 *
 	 */
 	for(auto & path : {"/нет-такого", "/fruit/9", "/fruit/0/нет", "/fruit/0/name/глубже"}){
 		// Выполняем проверку того, что перечень детей по такому пути пуст
@@ -3224,6 +3362,7 @@ TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
 	 *
 	 * @note Половина эта стережёт ширину: перечень, всякий путь теряющий, прошёл бы
 	 *       перебор выше целиком
+	 *
 	 */
 	ASSERT_FALSE(document.keys(string("/fruit/0")).empty());
 }
@@ -3239,6 +3378,7 @@ TEST(CodecTomlDocument, ArrayOfTablesKeepsTraversalClosed){
  * @note Ход поставлен ПЕРЕГРУЗКОЙ рядом с прежним перечнем дочерних имён таблицы:
  *       половина вторая проверки закрепляет, что прежний ход правкою не подменён и
  *       обещание своё несёт по-прежнему
+ *
  */
 TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
 	// Объект дерева документа, текст разбирающего
@@ -3259,7 +3399,7 @@ TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
 	// Количество разысканных обходом узлов дерева документа
 	size_t walked = 0;
 	/**
-	 * @brief Метод обхода дерева документа вглубь по звеньям
+	 * @brief Функция обхода дерева документа вглубь по звеньям
 	 *
 	 * @param self ссылка на себя для возвратного зова
 	 * @param path путь к обходимому узлу дерева
@@ -3288,6 +3428,7 @@ TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
 	 * @note Счёт берётся с корнем: шесть пар корня, два значения перечня, одна пара
 	 *       вложенной таблицы, две таблицы набора с парою в каждой да сам корень -
 	 *       четырнадцать
+	 *
 	 */
 	ASSERT_EQ(walked, static_cast <size_t> (14));
 	// Перечень звеньев пути к детям корня дерева документа
@@ -3298,6 +3439,7 @@ TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
 	 * Выполняем проверку записи косой черты отменяющей записью
 	 *
 	 * @note Имя выдаётся ЗАПИСАННЫМ, а не как есть: иначе звено это разобралось бы на три
+	 *
 	 */
 	ASSERT_EQ(keys.at(2), "имя~1с~1чертой");
 	// Выполняем проверку записи знака отмены отменяющей записью
@@ -3311,6 +3453,7 @@ TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
 	 *
 	 * @note Ходы стоят перегрузкою и несут РАЗНЫЕ обещания: прежний берёт составное имя
 	 *       перечнем кусков и выдаёт одни лишь имена детей таблицы, ничего не записывая
+	 *
 	 */
 	const vector <string_view> named = document.keys(vector <string_view> {"вложенное"});
 	// Выполняем проверку количества дочерних имён вложенной таблицы
@@ -3330,6 +3473,7 @@ TEST(CodecTomlDocument, EnumerationAndLookupFormAClosedTraversal){
  *
  * @note Пустотою наречию служит пустая СТРОКА: своего вида пустоты описание TOML не знает
  *       вовсе, и всякая пара обязана нести значение
+ *
  */
 TEST(CodecTomlDocument, SettingEmptyValueByPath){
 	// Объект дерева документа, текст разбирающего
@@ -3343,6 +3487,7 @@ TEST(CodecTomlDocument, SettingEmptyValueByPath){
 	 *
 	 * @note Половина эта и отделяет пустое значение от снятия узла: снятый узел спрос
 	 *       наличия не прошёл бы вовсе
+	 *
 	 */
 	ASSERT_TRUE(document.has("/a"));
 	// Выполняем проверку того, что значения при паре нет
@@ -3376,6 +3521,7 @@ TEST(CodecTomlDocument, SettingEmptyValueByPath){
 	 * @note Проверка закрепляет ЗДЕШНЮЮ правду, а не желаемую: перепиши поведение по
 	 *       соседям без общего решения - и потребитель, на заведении стоящий, получил
 	 *       бы отказ молча
+	 *
 	 */
 	ASSERT_TRUE(document.reset("/нет/внутри")) << toml::message(document.error());
 	// Выполняем проверку достижимости заведённого пути
@@ -3397,6 +3543,7 @@ TEST(CodecTomlDocument, SettingEmptyValueByPath){
  *       сносили, а наречие это отвечало отказом. Ворошителю он недоступен: тот сносит
  *       пути, деревом выданные, но исход сноса судит по ответу, а ответ был честным
  *       отказом
+ *
  */
 TEST(CodecTomlDocument, RemovalByNumericLink){
 	// Объект дерева документа, текст разбирающего
@@ -3454,6 +3601,7 @@ TEST(CodecTomlDocument, RemovalByNumericLink){
  *       каждом круге, и порог его не проходился никогда - мерился не ход правки, а спрос
  *       размера. Порог, ни разу не проходившийся, читается по диагонали ровно так же,
  *       как проходящийся всегда
+ *
  */
 TEST(CodecTomlDocument, SizeCountsChildrenWithoutBuildingTheTree){
 	// Построения, на которых счёты могли бы разойтись
@@ -3484,6 +3632,7 @@ TEST(CodecTomlDocument, SizeCountsChildrenWithoutBuildingTheTree){
 		 *
 		 * @note Половина эта и сторожит смысл: дешёвый счёт обязан давать ровно то же,
 		 *       что даёт снятие владеющего значения, - иначе он дешевле, но неверен
+		 *
 		 */
 		ASSERT_EQ(document.size(), toml::value_t(document).size()) << one.first;
 	}
@@ -3534,6 +3683,7 @@ TEST(CodecTomlDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Цель-каталог отказывает ПОДМЕНЕ, а не открытию: временный файл ложится
 	 *       рядом с нею именем своим, и открытие его проходит
+	 *
 	 */
 	const string folder = ::unique("./цель-записи-каталог-toml");
 	/**
@@ -3541,6 +3691,7 @@ TEST(CodecTomlDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Зовётся посредник переносимый, а не `::mkdir()` прямо: у MinGW под
 	 *       MS Windows тот берёт один лишь путь, без прав доступа
+	 *
 	 */
 	/**
 	 * Выполняем уборку каталога, прежним прогоном оставленного
@@ -3551,8 +3702,10 @@ TEST(CodecTomlDocument, EveryFailedSaveIsAnnounced){
 	 *          `::rmdir` берёт лишь каталог пустой, а внутри остатка может лежать и файл.
 	 *          Замерено наведённой порчею 07.09.2026 - остаток валит проверку у всех трёх
 	 *          кодеков. Указан разряд этот по кодекам JSON, XML и CSV
+	 *
 	 */
 	removeDirectory(folder);
+	// Заводим каталог folder, целью записи служивший
 	ASSERT_TRUE(makeDirectory(folder));
 	// Путь в каталоге несуществующем
 	const string missing = "./нет-такого-каталога-toml/цель.toml";
@@ -3574,10 +3727,12 @@ TEST(CodecTomlDocument, EveryFailedSaveIsAnnounced){
 		 * Выполняем проверку того, что отказ записи дерева оглашён
 		 *
 		 * @note Ровно это и молчало: запись отвечала ложью, а журнал оставался пуст
+		 *
 		 */
 		/**
 		 * @warning Сличение «БОЛЬШЕ», а не «РОВНО ОДИН»: с переходом на `sys/fs` отчёт
 		 *          даёт и сам ход файловой системы, и отчётов на один отказ выходит два
+		 *
 		 */
 		ASSERT_GT(reports.size(), before) << refusal.second;
 		// Выполняем проверку того, что оглашение отказ называет
@@ -3600,6 +3755,7 @@ TEST(CodecTomlDocument, EveryFailedSaveIsAnnounced){
 	 *
 	 * @note Половина эта стережёт уборку: временный файл, отказом брошенный, копился
 	 *       бы рядом с целью при всякой неудаче
+	 *
 	 */
 	{
 		// Поток чтения временного файла
@@ -3648,6 +3804,7 @@ TEST(CodecTomlDocument, TheRefusalOfTheParsingReachesTheLog){
 	 *
 	 * @note Ровно это и есть предмет проверки: без оглашения отчёт ушёл бы в никуда,
 	 *       а разбор всё так же отвечал бы ложью
+	 *
 	 */
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что отчёт отказ называет
@@ -3698,6 +3855,7 @@ TEST(CodecTomlDocument, HugeIndexInThePathIsRefusedNotFatal){
 		 * Выполняем проверку того, что снятие по такому пути ОТВЕРГНУТО
 		 *
 		 * @note Ровно здесь и падало: до отказа дело не доходило вовсе
+		 *
 		 */
 		ASSERT_FALSE(document.prune(path)) << path;
 		// Выполняем проверку того, что перенос по такому пути отвергнут
@@ -3710,6 +3868,7 @@ TEST(CodecTomlDocument, HugeIndexInThePathIsRefusedNotFatal){
 	 *
 	 * @note Половина эта стережёт целость: правка, до отказа успевшая тронуть дерево,
 	 *       оставила бы его урезанным
+	 *
 	 */
 	ASSERT_EQ(document.dump(), before);
 	/**
@@ -3717,6 +3876,7 @@ TEST(CodecTomlDocument, HugeIndexInThePathIsRefusedNotFatal){
 	 *
 	 * @note Половина эта стережёт ширину отказа: разбор, всякий номер отвергающий,
 	 *       прошёл бы перебор выше целиком
+	 *
 	 */
 	ASSERT_TRUE(document.at("/fruit/0").valid());
 }
@@ -3851,6 +4011,7 @@ TEST(CodecTomlDocument, PathLimitsAreObeyedByTheEditing) {
 	 * Выполняем проверку предела числа звеньев у разбора текста
 	 *
 	 * @note Предел этот стоит у чтения своим стражем: замер нашёл не задетым и его
+	 *
 	 */
 	{
 		// Настройки дерева настроек
@@ -3933,6 +4094,7 @@ TEST(CodecTomlDocument, WritingSettingsReachTheWriter) {
 		 * Выполняем проверку того, что запись отвергнута пределом длины строки
 		 *
 		 * @note Текст, отказом задетый, выдачи не даёт: правило это общее у кодеков рамки
+		 *
 		 */
 		ASSERT_TRUE(document.dump().empty());
 		/**
@@ -4087,25 +4249,44 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	toml::writer_t::settings_t settings;
 	// Дозволяем знаки письменностей мира в имени ключа записи
 	settings.unicode = true;
+	// Настройки дерева настроек
+	toml::document_t::settings_t common;
+	// Устанавливаем собранные настройки записи текста документа
+	common.writer = settings;
+	// Выполняем установку настроек дерева настроек
+	document.settings(common);
 	// Выполняем проверку того, что запись при несогласном чтении отвергнута
-	ASSERT_TRUE(document.dump(settings).empty());
+	ASSERT_TRUE(document.dump().empty());
 	// Выполняем проверку того, что разлад назван поимённо
 	ASSERT_EQ(document.error(), toml::error_t::CONFLICTING_SETTINGS) << toml::message(document.error());
 	/**
 	 * @warning Обратное сочетание разладом НЕ является: чтение Юникод признаёт, запись нет,
 	 *          - имя обносится оградою и читается тем же чтением вполне. Судить надлежит
 	 *          одну лишь пару, круг рвущую
+	 *
 	 */
-	// Настройки дерева настроек
-	toml::document_t::settings_t common = document.settings();
 	// Дозволяем знаки письменностей мира в имени ключа читающему
 	common.reader.unicode = true;
 	// Выполняем установку настроек дерева настроек
 	document.settings(common);
 	// Настройки записи, Юникода в голом имени не дозволяющие
 	toml::writer_t::settings_t narrow;
+	/**
+	 * Отличаем эти настройки от установленных по умолчанию одним полем
+	 *
+	 * @note Заданными настройки записи считаются лишь тогда, когда хоть одно поле их от
+	 *       умолчания отличается: наречие записи дерево выводит из наречия разбора,
+	 *       покуда своего ему не поставили. Поле это на дело не влияет - речь здесь о
+	 *       знаках Юникода в имени
+	 *
+	 */
+	narrow.spaces = false;
+	// Устанавливаем собранные настройки записи текста документа
+	common.writer = narrow;
+	// Выполняем установку настроек дерева настроек
+	document.settings(common);
 	// Записанный текст настроек при чтении, Юникод признающем
-	const string text = document.dump(narrow);
+	const string text = document.dump();
 	// Выполняем проверку того, что запись при том не отвергнута
 	ASSERT_FALSE(text.empty()) << toml::message(document.error());
 	// Выполняем проверку того, что имя обнесено оградою
@@ -4113,11 +4294,16 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	/**
 	 * @note Согласные настройки поверяются рядом: без того закрепился бы отказ, а не суд, -
 	 *       и запись, отвергающая ВСЯКОЕ сочетание, зеленела бы исправно
+	 *
 	 */
+	// Возвращаем настройки записи, Юникод в голом имени дозволяющие
+	common.writer = settings;
+	// Выполняем установку настроек дерева настроек
+	document.settings(common);
 	// Выполняем проверку того, что согласные настройки принимаются
-	ASSERT_FALSE(document.dump(settings).empty()) << toml::message(document.error());
+	ASSERT_FALSE(document.dump().empty()) << toml::message(document.error());
 	// Выполняем проверку того, что при согласии имя записано голым
-	ASSERT_NE(document.dump(settings).find("ключ = "), string::npos) << document.dump(settings);
+	ASSERT_NE(document.dump().find("ключ = "), string::npos) << document.dump();
 }
 
 /**
@@ -4136,6 +4322,7 @@ TEST(CodecTomlDocument, MissingLinksOfThePathAreCreatedAsAChain) {
 	 *
 	 * @note Имя ключа ограждено кавычками намеренно: голое имя ключа TOML дозволяет
 	 *       лишь из ASCII, и кириллица без ограды разбору не подлежит вовсе
+	 *
 	 */
 	ASSERT_TRUE(document.parse("\"есть\" = 1\n")) << toml::message(document.error());
 	// Выполняем проверку постановки значения по пути, звеньев не имеющему вовсе
@@ -4186,6 +4373,7 @@ TEST(CodecTomlDocument, TheCyrillicFileNameLandsOnTheDiskAsIntended) {
 		 * @note Спрос ведётся ШИРОКИМ ходом `_wstat`, а не Win32 напрямую: подключение
 		 *       `windows.h` принесло бы макросы `ERROR`, `DELETE` и `TEXT`, о чём и
 		 *       предупреждает заголовок `codec/replace.hpp`
+		 *
 		 */
 		ASSERT_EQ(::_wstat(address(filename).c_str(), & info), 0) << filename;
 	/**

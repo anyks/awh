@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки оглавления бинарного контейнера ABC — круговой обход строк, выборка
  *        записи по номеру из большого контейнера и удержание снятого кадра
  *
@@ -34,7 +40,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -616,6 +628,7 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 		 * @note Правка кадра НА МЕСТЕ обязана обновить сумму его, иначе снятие кадра
 		 *       ответит отказом суммы, а проверка эта поверяет не сумму, а строку
 		 *       оглавления, указывающую за кадр
+		 *
 		 */
 		{
 			// Выполняем получение смещения кадра оглавления в записи контейнера
@@ -734,6 +747,7 @@ TEST_F(IndexFixture, ChunkLengthAllocation) {
 	 * @param size   размер читаемых октетов
 	 * @param result буфер, куда следует положить прочитанное
 	 * @return       признак успешности чтения
+	 *
 	 */
 	const auto source = [&data, &peak](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Выполняем очистку буфера прочитанных октетов
@@ -907,6 +921,7 @@ TEST_F(IndexFixture, TruncationServesTheRollback) {
 	 *       то же ЧИСЛО строк, и проверка по одному лишь счёту была бы зелена. Откат же
 	 *       обязан вернуть оглавление к тому, чем оно было ДО фиксации, то есть уцелеть
 	 *       должно начало
+	 *
 	 */
 	ASSERT_EQ(index.entries().front().chunk, 0x100ull);
 	// Выполняем проверку смещения записи уцелевшей строки
@@ -917,6 +932,7 @@ TEST_F(IndexFixture, TruncationServesTheRollback) {
 	 * @note Правило это записано доводом при работе, а стерегомо не было: усечение,
 	 *       заводящее строки из ничего либо очищающее оглавление при избыточном
 	 *       количестве, прошло бы незамеченным
+	 *
 	 */
 	index.truncate(16);
 	// Выполняем проверку неизменности количества строк оглавления
@@ -973,6 +989,7 @@ TEST_F(IndexFixture, UnpackRefusesTheAbsentBuffer) {
  *
  * @note Заслон этот щуп пути числил слепым: подделка внутри кадра оглавления ни одной
  *       проверке набора не встречалась. Место опознано 05.09.2026 и закрыто здесь
+ *
  */
 TEST_F(IndexFixture, DeclaredIndexLengthIsCheckedAgainstTheHeader) {
 	// Октеты собранного контейнера
@@ -1000,6 +1017,7 @@ TEST_F(IndexFixture, DeclaredIndexLengthIsCheckedAgainstTheHeader) {
 	 * @param size   размер читаемых октетов
 	 * @param result буфер, куда следует положить прочитанное
 	 * @return       признак успешности чтения
+	 *
 	 */
 	const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Выполняем очистку буфера прочитанных октетов
@@ -1090,6 +1108,7 @@ TEST_F(IndexFixture, DeclaredIndexLengthIsCheckedAgainstTheHeader) {
  *       четырёх записях сжимается и валит само ОТКРЫТИЕ, а оглавление об одной коротко,
  *       сжатия не берёт, открытие проходит, и отказ настигает ВЫБОРКУ. Замерено щупом
  *       05.09.2026: до него оба устья числились незакреплёнными
+ *
  */
 TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
 	/**
@@ -1097,6 +1116,7 @@ TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
 	 *
 	 * @param count число собираемых записей контейнера
 	 * @param data  буфер собираемых октетов контейнера
+	 *
 	 */
 	const auto build = [this](const size_t count, vector <uint8_t> & data) noexcept -> void {
 		// Сборщик контейнера
@@ -1131,6 +1151,7 @@ TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
 		 * @param size   размер читаемых октетов
 		 * @param result буфер, куда следует положить прочитанное
 		 * @return       признак успешности чтения
+		 *
 		 */
 		const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем очистку буфера прочитанных октетов
@@ -1185,6 +1206,7 @@ TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
 		 * @param size   размер читаемых октетов
 		 * @param result буфер, куда следует положить прочитанное
 		 * @return       признак успешности чтения
+		 *
 		 */
 		const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем очистку буфера прочитанных октетов
@@ -1232,6 +1254,7 @@ TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
  *
  * @note Проверяется и обратное: при снятом пределе выборка проходит. Без того обход
  *       прошёл бы и на выборщике, отказывающем всегда
+ *
  */
 TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
 	// Октеты собранного контейнера
@@ -1267,6 +1290,7 @@ TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
 		 * @param size   размер читаемых октетов
 		 * @param result буфер, куда следует положить прочитанное
 		 * @return       признак успешности чтения
+		 *
 		 */
 		const auto source = [&data, &reads, sight](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем очистку буфера прочитанных октетов
@@ -1319,6 +1343,7 @@ TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
 		 * @param size   размер читаемых октетов
 		 * @param result буфер, куда следует положить прочитанное
 		 * @return       признак успешности чтения
+		 *
 		 */
 		const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем очистку буфера прочитанных октетов
@@ -1357,6 +1382,7 @@ TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
  *       не тревожил никто, второе - потому что подделку строки оглавления у выборщика не
  *       наводили. Близнец второго у правщика:
  *       `EditorFixture.ChunkOffsetBeyondTheBodyIsRefused`
+ *
  */
 TEST_F(IndexFixture, RefusalsOfTheFetcher) {
 	/**
@@ -1397,6 +1423,7 @@ TEST_F(IndexFixture, RefusalsOfTheFetcher) {
 	 * @param size   размер читаемых октетов
 	 * @param result буфер, куда следует положить прочитанное
 	 * @return       признак успешности чтения
+	 *
 	 */
 	const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Выполняем очистку буфера прочитанных октетов
@@ -1470,6 +1497,7 @@ TEST_F(IndexFixture, RefusalsOfTheFetcher) {
  *          девятнадцать мест правщика и сборщика объявлены последними руками. Довод
  *          опирался на чтение кода, а сам заслон не звался никем: щуп нужности 07.09.2026
  *          обесточил его, и не покраснело ничего. Опора довода закрепляется здесь
+ *
  */
 TEST_F(IndexFixture, ReplaceRefusesTheNumberBeyondTheIndex) {
 	// Оглавление контейнера
@@ -1521,6 +1549,7 @@ TEST_F(IndexFixture, ReplaceRefusesTheNumberBeyondTheIndex) {
  *          обрыв либо порчу. Заслон этот стоит ПРЕЖДЕ отведения памяти под строки: без
  *          него деление дало бы неполное число строк, а чтение последней ушло бы за
  *          поданное. Место щуп нужности 07.09.2026 назвал не ловившим ничего
+ *
  */
 TEST_F(IndexFixture, IndexLengthNotAMultipleOfTheEntryIsRefused) {
 	// Оглавление контейнера
@@ -1536,6 +1565,7 @@ TEST_F(IndexFixture, IndexLengthNotAMultipleOfTheEntryIsRefused) {
 	 *          проверка устояла бы и без заслона. С излишком же обесточенный заслон снял
 	 *          бы одну целую строку УСПЕХОМ, лишний октет отбросив молча. Замерено щупом
 	 *          нужности 07.09.2026: первый вид проверки его молчания не менял
+	 *
 	 */
 	abc::index_t single;
 	// Заводимая строка подлинного оглавления
@@ -1571,6 +1601,7 @@ TEST_F(IndexFixture, IndexLengthNotAMultipleOfTheEntryIsRefused) {
 	 *       половины проверки отвечали бы отказом, и кратность длины не поверялась бы
 	 *       вовсе. Замерено 07.09.2026: череда нулей давала отказ «строка оглавления
 	 *       повреждена», а не успех
+	 *
 	 */
 	abc::index_t source;
 	// Заводимая строка подлинного оглавления
@@ -1593,6 +1624,7 @@ TEST_F(IndexFixture, IndexLengthNotAMultipleOfTheEntryIsRefused) {
 	source.pack(whole);
 	// Выполняем проверку того, что длина уложенного кратна строке
 	ASSERT_EQ(whole.size() % abc::ENTRY_LENGTH, 0ul) << "уложенное оглавление некратно строке";
+	// Убеждаемся, что оглавление снимается с уложенных октетов без отказа
 	ASSERT_TRUE(index.unpack(whole.data(), whole.size(), error)) << abc::message(error);
 	// Выполняем проверку того, что строк снялось ровно две
 	ASSERT_EQ(index.entries().size(), 2ul);
@@ -1605,6 +1637,7 @@ TEST_F(IndexFixture, IndexLengthNotAMultipleOfTheEntryIsRefused) {
  *          предела разрядной сетки завернулось бы и подало источнику октетов смещение
  *          малое вместо непомерного. Место щуп нужности 07.09.2026 назвал не ловившим
  *          ничего: строку с непомерным смещением кадра не подделывал никто
+ *
  */
 TEST_F(IndexFixture, EntryChunkBeyondTheBodyIsRefused) {
 	// Октеты собранного контейнера
@@ -1674,6 +1707,7 @@ TEST_F(IndexFixture, EntryChunkBeyondTheBodyIsRefused) {
 		 * @note Открытие читает оглавление, и чтения его к делу не идут. Считаются лишь
 		 *       чтения САМОЙ ВЫБОРКИ: заслон стоит прежде чтения кадра, и потому выборка,
 		 *       отказавшая по нему, не читает НИ РАЗУ
+		 *
 		 */
 		if(reads != nullptr) (*reads) = 0;
 		// Буфер выбранной записи контейнера
@@ -1690,6 +1724,7 @@ TEST_F(IndexFixture, EntryChunkBeyondTheBodyIsRefused) {
 	 * проверка прошла бы и у выборщика, отвергающего всякую выборку вовсе
 	 */
 	size_t honest = 0;
+	// Убеждаемся в успехе выборки записи из нетронутого контейнера
 	ASSERT_TRUE(fetch(pristine, error, &honest)) << "код отказа: " << abc::message(error);
 	/**
 	 * Выполняем проверку того, что выборка из целого контейнера источник ЧИТАЛА: без
@@ -1713,6 +1748,7 @@ TEST_F(IndexFixture, EntryChunkBeyondTheBodyIsRefused) {
 	 *       кадра отвечает отказом СУММЫ, и заслон смещения не достигается вовсе.
 	 *       Замерено 07.09.2026 - первый заход проверки дал причину «сумма заголовка
 	 *       не сошлась» вместо ожидаемой, и это был отказ соседа, а не искомого
+	 *
 	 */
 	{
 		// Выполняем получение смещения кадра оглавления в записи контейнера
@@ -1740,6 +1776,7 @@ TEST_F(IndexFixture, EntryChunkBeyondTheBodyIsRefused) {
 	 *       у выборки из целого контейнера, - и это тоже не различало: без заслона чтений
 	 *       выходит меньше полного успеха всё равно, ибо разбор обрывается на негодном
 	 *       кадре. Щуп нужности молчал и на такой проверке (07.09.2026)
+	 *
 	 */
 	size_t reads = 0;
 	// Выполняем проверку того, что выборка по поддельной строке отвергается
@@ -1774,6 +1811,7 @@ TEST_F(IndexFixture, TheFetcherFunnelReportsItsCauseToTheJournal) {
 	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
 	 *          а полагаться на состояние, оставленное соседями, значило бы городить
 	 *          поверку, чей исход зависит от порядка запуска
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Донесения, снятые с журнала подпискою

@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки общих объявлений бинарного контейнера ABC — описания кодов отказов,
  *        названия видов узлов и значений, сборка и разбор ведущего октета проволочной
  *        записи и выбор наименьшей записи значения
@@ -52,6 +58,7 @@
  *          `awh::log::level(awh::log::level_t::ALL)` и `awh::log::mode({...})` у себя в
  *          начале. Глушитель работает в `OnTestStart`, то есть ДО тела проверки, и
  *          заявленное телом остаётся за нею
+ *
  */
 #include "../silent.hpp"
 
@@ -59,7 +66,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -107,7 +120,7 @@ TEST(CodecAbcCommon, Messages) {
 		// Выполняем проверку, что описание кода отказа выдано
 		ASSERT_NE(message, nullptr) << "код отказа: " << code;
 		// Выполняем проверку, что описание кода отказа не пусто
-		EXPECT_NE(strlen(message), 0u) << "код отказа: " << code;
+		EXPECT_NE(::strlen(message), 0u) << "код отказа: " << code;
 		// Выполняем проверку, что объявленный код не выдаёт описания неизвестного
 		EXPECT_STRNE(message, "unknown error") << "код отказа: " << code;
 		// Выполняем проверку, что описание кода отказа не повторяется
@@ -121,6 +134,7 @@ TEST(CodecAbcCommon, Messages) {
 	 * @note Утверждение это стережёт САМУ ПРОВЕРКУ: заведи перечень новый код за
 	 *       `NON_MINIMAL_TAG` - и перебор выше его не достанет, ибо граница названа
 	 *       именем. Сличать границу глазом дороже, чем одним сличением числа
+	 *
 	 */
 	ASSERT_STREQ(abc::message(static_cast <abc::error_t> (
 	 static_cast <uint16_t> (abc::error_t::NON_MINIMAL_TAG) + 1)), "unknown error");
@@ -134,7 +148,7 @@ TEST(CodecAbcCommon, KindNames) {
 	 * Виды узлов документа
 	 */
 	const vector <abc::kind_t> kinds = {
-		abc::kind_t::NONE, abc::kind_t::NUL, abc::kind_t::BOOL, abc::kind_t::NUMBER,
+		abc::kind_t::NONE, abc::kind_t::NIL, abc::kind_t::BOOL, abc::kind_t::NUMBER,
 		abc::kind_t::STRING, abc::kind_t::BLOB, abc::kind_t::TIME, abc::kind_t::UUID,
 		abc::kind_t::ARRAY, abc::kind_t::MAP
 	};
@@ -149,7 +163,7 @@ TEST(CodecAbcCommon, KindNames) {
 		// Выполняем проверку, что название вида узла выдано
 		ASSERT_NE(name, nullptr) << "вид узла: " << static_cast <uint32_t> (kind);
 		// Выполняем проверку, что название вида узла не пусто
-		ASSERT_NE(strlen(name), 0u) << "вид узла: " << static_cast <uint32_t> (kind);
+		ASSERT_NE(::strlen(name), 0u) << "вид узла: " << static_cast <uint32_t> (kind);
 		// Выполняем проверку, что название вида узла не повторяется
 		ASSERT_TRUE(seen.emplace(name).second) << "название повторяется: " << name;
 	}
@@ -166,7 +180,7 @@ TEST(CodecAbcCommon, TypeNames) {
 	 * Точные виды значений документа
 	 */
 	const vector <abc::type_t> types = {
-		abc::type_t::UNDEFINED, abc::type_t::NUL, abc::type_t::BOOL, abc::type_t::STRING,
+		abc::type_t::UNDEFINED, abc::type_t::NIL, abc::type_t::BOOL, abc::type_t::STRING,
 		abc::type_t::BLOB, abc::type_t::ARRAY, abc::type_t::MAP, abc::type_t::TIME,
 		abc::type_t::UUID, abc::type_t::INT8, abc::type_t::INT16, abc::type_t::INT32,
 		abc::type_t::INT64, abc::type_t::UINT8, abc::type_t::UINT16, abc::type_t::UINT32,
@@ -184,7 +198,7 @@ TEST(CodecAbcCommon, TypeNames) {
 		// Выполняем проверку, что название вида значения выдано
 		ASSERT_NE(name, nullptr) << "вид значения: " << static_cast <uint32_t> (type);
 		// Выполняем проверку, что название вида значения не пусто
-		ASSERT_NE(strlen(name), 0u) << "вид значения: " << static_cast <uint32_t> (type);
+		ASSERT_NE(::strlen(name), 0u) << "вид значения: " << static_cast <uint32_t> (type);
 		// Выполняем проверку, что название вида значения не повторяется
 		ASSERT_TRUE(seen.emplace(name).second) << "название повторяется: " << name;
 	}
@@ -201,7 +215,7 @@ TEST(CodecAbcCommon, TypeBits) {
 	 * Точные виды значений документа, кроме отсутствующего
 	 */
 	const vector <abc::type_t> types = {
-		abc::type_t::NUL, abc::type_t::BOOL, abc::type_t::STRING, abc::type_t::BLOB,
+		abc::type_t::NIL, abc::type_t::BOOL, abc::type_t::STRING, abc::type_t::BLOB,
 		abc::type_t::ARRAY, abc::type_t::MAP, abc::type_t::TIME, abc::type_t::UUID,
 		abc::type_t::INT8, abc::type_t::INT16, abc::type_t::INT32, abc::type_t::INT64,
 		abc::type_t::UINT8, abc::type_t::UINT16, abc::type_t::UINT32, abc::type_t::UINT64,
@@ -269,7 +283,7 @@ TEST(CodecAbcCommon, KindOfType) {
 		// Выполняем проверку, что числовой вид огрубляется до узла числа
 		ASSERT_EQ(abc::kind(type), abc::kind_t::NUMBER) << "вид значения: " << abc::name(type);
 	// Выполняем проверку огрубления пустого значения
-	ASSERT_EQ(abc::kind(abc::type_t::NUL), abc::kind_t::NUL);
+	ASSERT_EQ(abc::kind(abc::type_t::NIL), abc::kind_t::NIL);
 	// Выполняем проверку огрубления логического значения
 	ASSERT_EQ(abc::kind(abc::type_t::BOOL), abc::kind_t::BOOL);
 	// Выполняем проверку огрубления строки
@@ -528,7 +542,7 @@ TEST(CodecAbcCommon, WireConstants) {
 	// Крупный вид записи расширения
 	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::EXTEND), 0x07);
 	// Подробность записи пустого значения
-	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NUL), 0x00);
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NIL), 0x00);
 	// Подробность записи лжи
 	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NO), 0x01);
 	// Подробность записи истины
@@ -655,6 +669,7 @@ TEST(CodecAbcCommon, EveryCauseCarriesItsOwnExplanation) {
 		 *
 		 * @note Общее «unknown error» означает забытую ветвь перечня: причина названа
 		 *       видом записи, а объяснения ей не отведено
+		 *
 		 */
 		ASSERT_NE(explanation, "unknown error") << static_cast <uint32_t> (cause);
 		// Выполняем проверку того, что объяснение это прежде не встречалось
@@ -667,6 +682,7 @@ TEST(CodecAbcCommon, EveryCauseCarriesItsOwnExplanation) {
 	 * @warning Половина эта стережёт САМУ ПРОВЕРКУ: причина, добавленная видом записи и
 	 * забытая здесь, осталась бы неперебранной, и проверка прошла бы зелёной, ничего о
 	 * ней не сказав. Число сличается с числом ветвей перечня объяснений
+	 *
 	 */
 	ASSERT_EQ(causes.size(), static_cast <size_t> (46));
 	/**
@@ -684,6 +700,7 @@ TEST(CodecAbcCommon, EveryCauseCarriesItsOwnExplanation) {
 	 *          у какого тот же сторож с тем же `0xFF` пропустил новый код и вскрылся
 	 *          лишь падением карты покрытия со 100 до 97.22. Правило здесь такое:
 	 *          перебрал до границы - следующий за нею обязан быть безымянным
+	 *
 	 */
 	ASSERT_EQ(string(abc::message(static_cast <abc::error_t> (
 	 static_cast <uint16_t> (abc::error_t::NON_MINIMAL_TAG) + 1))), "unknown error");

@@ -1916,13 +1916,15 @@ TEST(Regex, InterfaceCapture) {
 	/**
 	 * Выполняем проверку невыполненного захвата именованной группой
 	 *
-	 * @details Невыполненный захват от захвата пустого текста отличается тем,
-	 *          что выводимый вид на текст сопоставления не ссылается.
+	 * @details Невыполненный захват выводится пустым видом, как и захват
+	 *          пустого текста; участие группы в совпадении показывают границы.
 	 *
 	 */
-	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "tail").data(), nullptr);
+	EXPECT_TRUE(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "tail").empty());
+	// Выполняем проверку границ невыполненного захвата именованной группы
+	EXPECT_EQ(bounds.at(3).first, std::string_view::npos);
 	// Выполняем проверку отсутствия неизвестной именованной группы
-	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "path").data(), nullptr);
+	EXPECT_TRUE(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "path").empty());
 	// Выполняем проверку соответствия имён групп наборам их номеров
 	EXPECT_EQ(regexp.groups(expression).size(), static_cast <size_t> (3));
 }
@@ -2406,6 +2408,7 @@ TEST(Regex, InterfaceBadUtf8Subject) {
 	 * @details Проверка проходит текст целиком, и проход по тексту повторными
 	 *          вызовами от очередной позиции обходится квадратично, поэтому
 	 *          там, где текст проверен единожды снаружи, проверка снимается.
+	 *
 	 */
 	const auto unchecked = regexp.build("\\w+|.", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP, regexp_t::flag_t::UNCHECKED});
 	// Выполняем проверку сборки выражения
@@ -2638,6 +2641,7 @@ TEST(Regex, InterfaceProgramLimit) {
 		 *          к пределу вплотную, и отказ случается уже внутри сборки
 		 *          разветвления, повторения, проверки либо группы атомарной -
 		 *          то есть на пути своём у всякого вида узла.
+		 *
 		 */
 		{"разветвление у предела", string(FILLER) + "(?:x|y|z)"},
 		{"повторение у предела", string(FILLER) + "(?:xy)+"},

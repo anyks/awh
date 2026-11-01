@@ -19,6 +19,7 @@
  *
  */
 #include <codec/syslog/syslog.hpp>
+#include <sys/fs.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -48,6 +49,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -109,7 +113,7 @@ namespace {
 }
 
 /**
- * @brief Метод сбора дерева в двоичную запись ради сличения целиком
+ * @brief Функция сбора дерева в двоичную запись ради сличения целиком
  *
  * @details Сличаются ДЕРЕВЬЯ, а не тексты: дословного совпадения оборот не обещает,
  * обещает значение. Сличение же двоичной записи ловит и лишнее поле, и его недостачу,
@@ -117,6 +121,7 @@ namespace {
  *
  * @param value сличаемое дерево
  * @return      двоичная запись дерева
+ *
  */
 static string flatten(const abc::value_t & value) noexcept {
 	// Выполняем сбор двоичной записи дерева
@@ -314,6 +319,7 @@ TEST(CodecSysLogDocument, Timestamps) {
 	 * @note Дата берётся без зоны намеренно: разбор ведётся местным временем, и выдача
 	 *       им же. Дата, зону несущую, проверка сличала бы с местной зоной МАШИНЫ, а не
 	 *       с работой кодека, - и на стенде, живущем по UTC, отказывала бы
+	 *
 	 */
 	ASSERT_TRUE(document.parse("<45>2024-10-04 13:29:47 host app: Message"));
 	// Выполняем проверку выдачи даты сообщения заданным видом
@@ -327,6 +333,7 @@ TEST(CodecSysLogDocument, Timestamps) {
 	 *
 	 * @note Год теряется молча: вид BSD его не несёт, и разбор, начатый с него,
 	 *       подставил бы текущий - оттого виды, год несущие, пробуются раньше
+	 *
 	 */
 	EXPECT_EQ(document.timestamp("%Y-%m-%d %H:%M:%S"), "2011-01-08 20:07:41");
 	/**
@@ -340,6 +347,7 @@ TEST(CodecSysLogDocument, Timestamps) {
 	 *
 	 * @note Дефект чужого модуля, доложен по месту. Обходить его здесь нельзя: обход
 	 *       в кодеке скрыл бы дефект от прочих его потребителей
+	 *
 	 */
 }
 
@@ -353,10 +361,10 @@ TEST(CodecSysLogDocument, Timestamps) {
 TEST(CodecSysLogDocument, TimestampRefusal) {
 	// Объект события, удерживаемого целиком
 	syslog::document_t document;
-	// Настройки разбора записей без сличения
-	syslog::reader_t::settings_t settings;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	// Выключаем сличение разбираемой записи с описанием
-	settings.mode = syslog::mode_t::NONE;
+	settings.reader.mode = syslog::mode_t::NONE;
 	// Выполняем установку настроек разбора записей
 	ASSERT_TRUE(document.settings(settings));
 	// Выполняем проверку успешности разбора записи с датой неведомого вида
@@ -425,10 +433,10 @@ TEST(CodecSysLogDocument, PriorityIsNotInvented) {
 TEST(CodecSysLogDocument, SettingsPairing) {
 	// Объект события, удерживаемого целиком
 	syslog::document_t document;
-	// Настройки разбора записей без снятия отмены знаков
-	syslog::reader_t::settings_t settings;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	// Выключаем снятие отмены знаков со значений структурированных данных
-	settings.unescape = false;
+	settings.reader.unescape = false;
 	// Выполняем установку настроек разбора записей
 	ASSERT_TRUE(document.settings(settings));
 	// Разбираемая запись с отменой знаков в значении блока данных
@@ -450,6 +458,7 @@ TEST(CodecSysLogDocument, SettingsPairing) {
 	 *
 	 * @note Расхождение это накапливается: всякий оборот добавлял бы по косой, и
 	 *       заметно оно стало бы лишь на третьем-четвёртом
+	 *
 	 */
 	EXPECT_EQ(flatten(document.root()), flatten(two.root())) << "собранная: " << built;
 }
@@ -482,10 +491,10 @@ TEST(CodecSysLogDocument, Clear) {
 TEST(CodecSysLogDocument, Failure) {
 	// Объект события, удерживаемого целиком
 	syslog::document_t document;
-	// Настройки разбора записей строгим сличением
-	syslog::reader_t::settings_t settings;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	// Устанавливаем строгое сличение разбираемой записи с описанием
-	settings.mode = syslog::mode_t::STRONG;
+	settings.reader.mode = syslog::mode_t::STRONG;
 	// Выполняем установку настроек разбора записей
 	ASSERT_TRUE(document.settings(settings));
 	// Выполняем проверку отказа разбора записи с приоритетом, за предел выходящим
@@ -541,6 +550,7 @@ TEST(CodecSysLogDocument, OversizedPathIndexIsRefused) {
 	 *
 	 * @note Первый заворачивается нулём, второй - единицею, третий - произвольно:
 	 *       все три указывают на значения, в перечне СУЩЕСТВУЮЩИЕ
+	 *
 	 */
 	for(const char * path : {"/list/18446744073709551616", "/list/18446744073709551617", "/list/99999999999999999999999999"})
 		// Выполняем проверку негодности значения по переполняющему номеру
@@ -621,24 +631,16 @@ TEST(CodecSysLogDocument, EscapedStructureIdentifiers) {
 TEST(CodecSysLogDocument, SettingsOverloads) {
 	// Объект события, удерживаемого целиком
 	syslog::document_t document;
-	// Настройки чтения записей, документу устанавливаемые
-	syslog::reader_t::settings_t reader;
+	// Настройки документа
+	syslog::document_t::settings_t common;
 	// Устанавливаем описание записи современным
-	reader.standard = syslog::standard_t::RFC5424;
+	common.reader.standard = syslog::standard_t::RFC5424;
 	// Устанавливаем снятие отмены знаков блоков данных
-	reader.unescape = false;
-	// Выполняем проверку успешности установки настроек чтения
-	ASSERT_TRUE(document.settings(reader));
-	// Выполняем проверку того, что настройки чтения вернулись теми же
-	EXPECT_EQ(document.settings().standard, syslog::standard_t::RFC5424);
-	// Выполняем проверку того, что снятие отмены знаков сохранено
-	EXPECT_FALSE(document.settings().unescape);
-	// Настройки записи событий, документу устанавливаемые
-	syslog::writer_t::settings_t writer;
+	common.reader.unescape = false;
 	// Устанавливаем отказ от приставки приоритета
-	writer.prefix = false;
-	// Выполняем установку настроек записи событий
-	document.settings(writer);
+	common.writer.prefix = false;
+	// Выполняем установку настроек чтения и записи
+	ASSERT_TRUE(document.settings(common));
 	// Выполняем проверку успешности разбора записи современного описания
 	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15.003Z host app - - - текст"));
 	// Выполняем проверку того, что описание записи опознано и выдаётся ходом описания
@@ -679,6 +681,25 @@ TEST(CodecSysLogDocument, FileRoundtrip) {
 	EXPECT_FALSE(target.load(filename));
 	// Выполняем проверку того, что отказ назван кодом открытия файла
 	EXPECT_EQ(target.error(), syslog::error_t::FILE_NOT_OPENED);
+}
+
+/**
+ * @brief Проверка сохранения записи при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecSysLogDocument, EmptyFilenamePreservesRecord) {
+	// Объект события
+	syslog::document_t document;
+	// Выполняем разбор исходной записи
+	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
+	// Исходное дерево записи
+	const auto expected = document.root();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), syslog::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения записи
+	ASSERT_EQ(document.root(), expected);
 }
 
 /**
@@ -755,6 +776,7 @@ TEST(CodecSysLogDocument, PathEdges) {
 	 *
 	 * @note Достройка пути при том цела: звено ОТСУТСТВУЮЩЕЕ заводится вместилищем
 	 *       по-прежнему, и половина проверки ниже это стережёт
+	 *
 	 */
 	EXPECT_FALSE(document.set("/header/hostname/nested", abc::value_t(string("deep"))));
 	// Выполняем проверку кода отказа постановки значения
@@ -766,6 +788,7 @@ TEST(CodecSysLogDocument, PathEdges) {
 	 *
 	 * @note Половина эта доказывает, что заслон выше не отнял назначения пути: дерево
 	 *       по отсутствующим звеньям достраивается, и цепочкою
+	 *
 	 */
 	ASSERT_TRUE(document.set("/structures/id@1/param", abc::value_t(string("deep"))));
 	// Выполняем проверку того, что вместилища по пути заведены цепочкою
@@ -811,6 +834,7 @@ TEST(CodecSysLogDocument, FailurePaths) {
 	 *       звено ГЛУБЖЕ: обход идёт по звеньям, кроме последнего, и путь «…/nested»
 	 *       кончался бы раньше, чем дошёл до строки, - отказ приходил бы концом хода,
 	 *       без кода ошибки вовсе. Замерено 08.09.2026: код отвечался пустым
+	 *
 	 */
 	EXPECT_FALSE(document.erase("/header/hostname/nested/deeper"));
 	// Выполняем проверку кода отказа сноса значения
@@ -820,6 +844,7 @@ TEST(CodecSysLogDocument, FailurePaths) {
 	 *
 	 * @note Знак «~» с цифрой «9» за ним записью отмены не является, и оба знака берутся
 	 *       именем как есть
+	 *
 	 */
 	ASSERT_TRUE(document.set("/structures/id@1/a~9b", abc::value_t(string("value"))));
 	// Выполняем проверку того, что имя со знаком отмены прочитано как есть
@@ -828,8 +853,8 @@ TEST(CodecSysLogDocument, FailurePaths) {
 	EXPECT_FALSE(document.save("/nonexistent-directory-awh/syslog.log"));
 	// Выполняем чтение записи системного журнала деревом события
 	ASSERT_TRUE(document.parse("<165>Oct 22 10:52:01 host app: Message"));
-	// Настройки разбора записей
-	syslog::reader_t::settings_t settings;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	/**
 	 * Выполняем проверку УСПЕШНОСТИ смены настроек у дерева, запись прочтённое
 	 *
@@ -844,6 +869,7 @@ TEST(CodecSysLogDocument, FailurePaths) {
 	 *          кодеком CEF, где сброс стоял с самого начала. Проверка, написанная вслед
 	 *          за поведением, закрепляет и дефект его - предмет свой надлежит выводить из
 	 *          договора, а не из того, что код делает нынче
+	 *
 	 */
 	EXPECT_TRUE(document.settings(settings));
 	// Выполняем проверку того, что чтение следующей записи новыми настройками идёт
@@ -1003,6 +1029,7 @@ TEST(CodecSysLogDocument, DuplicateNames) {
 	 * @note Поле ПЕРВОГО блока при этом теряется: повторный опознаватель заводит
 	 *       вместилище заново, а не доливает в стоящее. Слияние двух блоков с одним
 	 *       опознавателем означало бы утверждение, какого отправитель не делал
+	 *
 	 */
 	// Выполняем проверку того, что поле первого блока в дереве не осталось
 	EXPECT_FALSE(document.at("/structures/a@1/k").valid());
@@ -1106,6 +1133,7 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
 	 *          сноса прошла бы здесь тоже. Ловится порок ВЕЛИЧИНОЙ - хвост прежней
 	 *          записи оставляет файл длиннее собранного, - и заслон этот работает на
 	 *          всякой системе, а не на той лишь, где усечения нет
+	 *
 	 */
 	// Сведения о файле сохранения
 	struct stat info;
@@ -1160,6 +1188,9 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
 		ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
 		// Выполняем снос временного файла проверки
 		::remove(filename.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1209,6 +1240,9 @@ TEST(CodecSysLogDocument, SymlinkIsReadAsFile) {
 		::remove(linkname.c_str());
 		// Выполняем снос файла записи
 		::remove(filename.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1241,6 +1275,9 @@ TEST(CodecSysLogDocument, SymlinkToDirectoryIsRefused) {
 		EXPECT_EQ(document.error(), syslog::error_t::FILE_NOT_READ);
 		// Выполняем снос символьной ссылки
 		::remove(linkname.c_str());
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1273,6 +1310,7 @@ TEST(CodecSysLogDocument, SaveFailureIsReported) {
 	 *
 	 * @note Сбор записи из пустого дерева отвечается пустотою, и сохранять тогда нечего:
 	 *       заведись файл, потребитель получил бы пустой файл вместо отказа
+	 *
 	 */
 	syslog::document_t empty;
 	// Выполняем проверку отказа сохранения события, записи не несущего
@@ -1352,6 +1390,7 @@ TEST(CodecSysLogDocument, PathDepthIsBoundedByTheFormat) {
  * @note Заведён 15.09.2026 по разряду, взятому у кодеков JSON: «поле заполнено,
  *       а чтений нет». Все настройки на тот день были живы, и сторож этот стережёт не
  *       нынешнее состояние, а будущее - настройку, заведённую и забытую
+ *
  */
 TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	// Запись, все поверяемые настройки задевающая
@@ -1360,10 +1399,10 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	{
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем описание записи нынешним
-		settings.standard = syslog::standard_t::RFC5424;
+		settings.reader.standard = syslog::standard_t::RFC5424;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись устаревшего описания отвергнута
@@ -1373,10 +1412,10 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	{
 		// Объект документа системного журнала при строгом сличении
 		syslog::document_t strict;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = strict.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(strict.settings(settings));
 		// Выполняем проверку того, что строгое сличение запись отвергло
@@ -1384,7 +1423,7 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 		// Объект документа системного журнала при отключённом сличении
 		syslog::document_t loose;
 		// Устанавливаем сличение отключённым вовсе
-		settings.mode = syslog::mode_t::NONE;
+		settings.reader.mode = syslog::mode_t::NONE;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(loose.settings(settings));
 		// Выполняем проверку того, что отключённое сличение запись приняло
@@ -1398,14 +1437,16 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 		};
 		// Признаки объявленности поля работы при тех же трёх правилах
 		const vector <bool> DECLARED = {false, true, true};
-		// Выполняем перебор всех правил обращения с отсутствующим значением
+		/**
+		 * Выполняем перебор всех правил обращения с отсутствующим значением
+		 */
 		for(size_t i = 0; i < RULES.size(); i++){
 			// Объект документа системного журнала
 			syslog::document_t document;
-			// Получаем настройки разбора записей
-			syslog::reader_t::settings_t settings = document.settings();
+			// Настройки документа
+			syslog::document_t::settings_t settings;
 			// Устанавливаем очередное правило обращения с отсутствующим значением
-			settings.nil = RULES[i].first;
+			settings.reader.nil = RULES[i].first;
 			// Устанавливаем настройки разбора записей
 			ASSERT_TRUE(document.settings(settings));
 			// Выполняем разбор записи с отсутствующим полем работы
@@ -1420,14 +1461,23 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	}
 	// Настройка постановки метки порядка байтов
 	{
-		// Выполняем перебор обоих значений настройки постановки метки
+		/**
+		 * Выполняем перебор обоих значений настройки постановки метки
+		 */
 		for(size_t i = 0; i < 2; i++){
 			// Объект документа системного журнала
 			syslog::document_t document;
-			// Настройки записи событий
-			syslog::writer_t::settings_t settings;
-			// Устанавливаем постановку метки порядка байтов
-			settings.bom = (i > 0);
+			// Настройки документа
+			syslog::document_t::settings_t settings;
+			/**
+			 * Устанавливаем снятие метки порядка байтов
+			 *
+			 * @note Настройка записи этой метки выводится документом из настройки разбора:
+			 *       постановка её без снятия наращивала бы метку при всяком обороте
+			 *       «чтение - запись», а снятие без постановки теряло бы её
+			 *
+			 */
+			settings.reader.bom = (i > 0);
 			// Устанавливаем настройки записи событий
 			document.settings(settings);
 			// Выполняем разбор записи с текстом, знаками ASCII не исчерпывающимся
@@ -1438,14 +1488,16 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	}
 	// Настройка постановки приставки приоритета
 	{
-		// Выполняем перебор обоих значений настройки постановки приставки
+		/**
+		 * Выполняем перебор обоих значений настройки постановки приставки
+		 */
 		for(size_t i = 0; i < 2; i++){
 			// Объект документа системного журнала
 			syslog::document_t document;
-			// Настройки записи событий
-			syslog::writer_t::settings_t settings;
+			// Настройки документа
+			syslog::document_t::settings_t settings;
 			// Устанавливаем постановку приставки приоритета
-			settings.prefix = (i > 0);
+			settings.writer.prefix = (i > 0);
 			// Устанавливаем настройки записи событий
 			document.settings(settings);
 			// Выполняем разбор годной записи системного журнала
@@ -1456,14 +1508,16 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	}
 	// Настройка постановки знака конца записи
 	{
-		// Выполняем перебор обоих значений настройки постановки знака конца
+		/**
+		 * Выполняем перебор обоих значений настройки постановки знака конца
+		 */
 		for(size_t i = 0; i < 2; i++){
 			// Объект документа системного журнала
 			syslog::document_t document;
-			// Настройки записи событий
-			syslog::writer_t::settings_t settings;
+			// Настройки документа
+			syslog::document_t::settings_t settings;
 			// Устанавливаем постановку знака конца записи
-			settings.terminate = (i > 0);
+			settings.writer.terminate = (i > 0);
 			// Устанавливаем настройки записи событий
 			document.settings(settings);
 			// Выполняем разбор годной записи системного журнала
@@ -1480,10 +1534,12 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 	{
 		// Объект документа системного журнала для предела числа блоков
 		syslog::document_t structures;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = structures.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
+		// Запоминаем прежний предел числа блоков данных
+		const uint32_t structureLimit = settings.reader.maxStructures;
 		// Устанавливаем предел числа блоков данных единицею
-		settings.maxStructures = 1;
+		settings.reader.maxStructures = 1;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(structures.settings(settings));
 		// Выполняем проверку того, что запись с двумя блоками отвергнута
@@ -1493,9 +1549,9 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
 		// Объект документа системного журнала для предела числа полей блока
 		syslog::document_t params;
 		// Возвращаем предел числа блоков данных прежним
-		settings.maxStructures = structures.settings().maxStructures;
+		settings.reader.maxStructures = structureLimit;
 		// Устанавливаем предел числа полей блока единицею
-		settings.maxParams = 1;
+		settings.reader.maxParams = 1;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(params.settings(settings));
 		// Выполняем проверку того, что запись с двумя полями блока отвергнута
@@ -1524,6 +1580,7 @@ TEST(CodecSysLogDocument, EverySettingChangesTheOutcome) {
  * @note Заведён 15.09.2026 по наблюдению за кодеками JSON: проверка с верным
  *       утверждением и слабым образцом слепа ровно так же, как проверка со слабым
  *       утверждением
+ *
  */
 TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
 	// Записи, на каких прежние дефекты и проявлялись
@@ -1551,58 +1608,63 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 *
 	 * @note Поправка взята у кодека JSON 15.09.2026: там ожидание числа
 	 *       было выведено рассуждением, а не замером, и разошлось с ним на три сочетания
+	 *
 	 */
 	size_t attempted = 0;
 	/**
 	 * Выполняем перебор всех сочетаний настроек разбора и записи
 	 */
 	for(uint8_t nil = 0; nil < 3; nil++){
-		// Выполняем перебор значений настройки постановки метки порядка байтов
+		/**
+		 * Выполняем перебор значений настройки постановки метки порядка байтов
+		 */
 		for(uint8_t bom = 0; bom < 2; bom++){
-			// Выполняем перебор значений настройки постановки приставки приоритета
+			/**
+			 * Выполняем перебор значений настройки постановки приставки приоритета
+			 */
 			for(uint8_t prefix = 0; prefix < 2; prefix++){
-				// Выполняем перебор значений настройки постановки знака конца записи
+				/**
+				 * Выполняем перебор значений настройки постановки знака конца записи
+				 */
 				for(uint8_t terminate = 0; terminate < 2; terminate++){
-					// Выполняем перебор значений настройки снятия отмены знаков
+					/**
+					 * Выполняем перебор значений настройки снятия отмены знаков
+					 */
 					for(uint8_t unescape = 0; unescape < 2; unescape++){
-						// Выполняем перебор всех записей образца
+						/**
+						 * Выполняем перебор всех записей образца
+						 */
 						for(auto & record : RECORDS){
 							// Наращиваем количество предпринятых оборотов
 							attempted++;
 							// Объект документа системного журнала
 							syslog::document_t one;
-							// Получаем настройки разбора записей
-							syslog::reader_t::settings_t reading = one.settings();
+							// Настройки документа
+							syslog::document_t::settings_t common;
 							// Устанавливаем правило обращения с отсутствующим значением
-							reading.nil = static_cast <syslog::nil_t> (nil);
+							common.reader.nil = static_cast <syslog::nil_t> (nil);
 							// Устанавливаем снятие метки порядка байтов
-							reading.bom = (bom > 0);
+							common.reader.bom = (bom > 0);
 							// Устанавливаем снятие отмены знаков
-							reading.unescape = (unescape > 0);
-							// Устанавливаем настройки разбора записей
-							ASSERT_TRUE(one.settings(reading));
-							// Настройки записи событий
-							syslog::writer_t::settings_t writing;
+							common.reader.unescape = (unescape > 0);
 							// Устанавливаем постановку метки порядка байтов
-							writing.bom = (bom > 0);
+							common.writer.bom = (bom > 0);
 							// Устанавливаем постановку приставки приоритета
-							writing.prefix = (prefix > 0);
+							common.writer.prefix = (prefix > 0);
 							// Устанавливаем постановку знака конца записи
-							writing.terminate = (terminate > 0);
+							common.writer.terminate = (terminate > 0);
 							// Устанавливаем постановку отмены знаков
-							writing.escape = (unescape > 0);
-							// Устанавливаем настройки записи событий
-							one.settings(writing);
+							common.writer.escape = (unescape > 0);
+							// Устанавливаем настройки разбора и записи событий
+							ASSERT_TRUE(one.settings(common));
 							// Выполняем проверку того, что запись образца разобрана
 							ASSERT_TRUE(one.parse(record)) << "запись: " << record;
 							// Получаем собранную запись системного журнала
 							const string built = one.dump();
 							// Объект документа системного журнала для второго оборота
 							syslog::document_t two;
-							// Устанавливаем те же настройки разбора записей
-							ASSERT_TRUE(two.settings(reading));
-							// Устанавливаем те же настройки записи событий
-							two.settings(writing);
+							// Устанавливаем те же настройки разбора и записи событий
+							ASSERT_TRUE(two.settings(common));
 							// Выполняем проверку того, что собранное читается обратно
 							ASSERT_TRUE(two.parse(built)) << "собрано: " << built;
 							/**
@@ -1612,6 +1674,7 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
 							 *       исходною записью: исходная запись могла быть подана
 							 *       в ином виде, дозволенном описанием, и требовать от
 							 *       неё дословности значило бы запрещать приведение
+							 *
 							 */
 							EXPECT_EQ(two.dump(), built) << "запись: " << record;
 							// Наращиваем количество сличённых оборотов
@@ -1629,6 +1692,7 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 *          молчаливый пропуск, и проверка осталась бы зелёной, не сличив НИ ОДНОГО
 	 *          оборота. Замерено 15.09.2026 на щупе, где счёт попыток и счёт сличений
 	 *          разошлись бы незаметно
+	 *
 	 */
 	// Выполняем проверку того, что всякая предпринятая попытка дала сличение
 	EXPECT_EQ(compared, attempted);
@@ -1637,6 +1701,7 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
 	 *
 	 * @warning Без неё перебор, не сделавший ни единого оборота, оставил бы проверку
 	 *          зелёной: нуль равен нулю
+	 *
 	 */
 	EXPECT_GT(attempted, 0u);
 }
@@ -1656,6 +1721,7 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
  *
  * @note Поток записей читается `reader_t`, и путь этот отказом не закрывается: отвергается
  *       лишь чтение потока ДОКУМЕНТОМ, каким он не является
+ *
  */
 TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	// Адрес временного файла журнала
@@ -1666,7 +1732,9 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	{
 		// Собираемое содержимое журнала
 		string content = "";
-		// Выполняем сборку журнала из нескольких записей
+		/**
+		 * Выполняем сборку журнала из нескольких записей
+		 */
 		for(size_t i = 0; i < count; i++){
 			// Добавляем к журналу очередную запись
 			content.append("<34>1 2003-10-11T22:14:15Z host app - - - запись ");
@@ -1685,6 +1753,7 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	 *
 	 * @param filename адрес файла журнала
 	 * @return         количество непустых строк файла
+	 *
 	 */
 	auto lines = [](const string & filename) noexcept -> size_t {
 		// Объект работы с файловой системой
@@ -1695,7 +1764,9 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 		fs.read(filename, content);
 		// Количество непустых строк файла журнала
 		size_t result = 0;
-		// Выполняем перебор всех знаков содержимого файла
+		/**
+		 * Выполняем перебор всех знаков содержимого файла
+		 */
 		for(size_t i = 0; i < content.size(); i++){
 			// Если знак содержимого концом строки является
 			if((content[i] == '\n') && (i > 0) && (content[i - 1] != '\n'))
@@ -1719,6 +1790,7 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	 * Выполняем проверку того, что журнал остался цел
 	 *
 	 * @warning Поверка эта и есть главная: прежде здесь оставалась ОДНА запись из десяти
+	 *
 	 */
 	EXPECT_EQ(lines(filename), count);
 	// Объект работы с файловой системой
@@ -1759,6 +1831,7 @@ TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord) {
 		 *
 		 * @note Пропуск этот об окружении, а не о кодеке: суперпользователь пишет и в каталог, запись
 		 *       запрещающий, и отказа сохранения тут не добиться вовсе
+		 *
 		 */
 		if(::geteuid() == 0)
 			// Пропускаем проверку: отказа записи от имени суперпользователя не добиться
@@ -1823,6 +1896,7 @@ TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord) {
 		 *
 		 * @note Половина эта договора и есть главная: отказ, честно оглашённый, ничего не
 		 *       стоит, если данных потребителя уже нет
+		 *
 		 */
 		{
 			// Поток чтения файла
@@ -1840,6 +1914,9 @@ TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord) {
 			// Выполняем проверку того, что прежняя запись цела дословно
 			EXPECT_EQ(content, previous);
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1935,6 +2012,7 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink) {
 		 *
 		 * @note Половина эта договора неотделима от первой: ссылка, уцелевшая при
 		 *       неизменной цели, означала бы, что сохранение прошло мимо
+		 *
 		 */
 		{
 			// Поток чтения цели
@@ -1952,6 +2030,9 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink) {
 			// Выполняем проверку того, что цель несёт НОВУЮ запись
 			EXPECT_NE(content.find("НОВАЯЗАПИСЬ"), string::npos) << "цель ссылки не обновлена: " << content;
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт прав и ссылок
 		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
@@ -1978,6 +2059,7 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink) {
 TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers) {
 	// Каталог опыта и цель сохранения, каталогом являющаяся
 	const string directory = "./syslog-replace-guard";
+	// Адрес цели сохранения, каталогом являющейся
 	const string target = (directory + "/journal.log");
 	// Адрес временного файла, подмену несущего
 	const string temporary = (target + ".awh-tmp");
@@ -2017,7 +2099,9 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers) {
 	EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (syslog::error_t::NONE));
 	// Выполняем проверку того, что цель осталась каталогом, подменённой не будучи
 	struct stat info;
+	// Снимаем сведения о цели сохранения
 	ASSERT_EQ(::stat(target.c_str(), &info), 0) << "цель сохранения уничтожена отказавшей подменой";
+	// Убеждаемся, что цель по-прежнему каталог, а не файл
 	EXPECT_TRUE(S_ISDIR(info.st_mode)) << "цель сохранения перестала быть каталогом";
 	// Выполняем проверку того, что временный файл за собою не оставлен
 	EXPECT_NE(::stat(temporary.c_str(), &info), 0) << "временный файл оставлен в каталоге потребителя";
@@ -2040,6 +2124,7 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers) {
 TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing) {
 	// Каталог опыта и адрес файла записи
 	const string directory = "./syslog-empty-save";
+	// Адрес файла записи внутри каталога опыта
 	const string filename = (directory + "/journal.log");
 	// Прежнее содержимое файла записи
 	const string previous = "<165>1 2026-09-15T00:00:00Z host app 1 - - ЦЕННАЯ ЗАПИСЬ\n";
@@ -2087,6 +2172,7 @@ TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing) {
 	EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (syslog::error_t::NONE));
 	// Выполняем проверку того, что временного файла подмены не заводилось вовсе
 	struct stat info;
+	// Убеждаемся, что файла с суффиксом .awh-tmp в каталоге нет
 	EXPECT_NE(::stat((filename + ".awh-tmp").c_str(), &info), 0) << "временный файл заведён отказавшим сохранением";
 	/**
 	 * Выполняем проверку того, что прежняя запись уцелела дословно
@@ -2123,6 +2209,7 @@ TEST(CodecSysLogDocument, SavePreservesAccessBits) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог проверки
 		save_directory_t guard("./syslog-save-access");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Адрес целевого файла
 		const string filename = (guard.address + "/journal.log");
@@ -2130,6 +2217,7 @@ TEST(CodecSysLogDocument, SavePreservesAccessBits) {
 		ASSERT_TRUE(guard.fs.write(filename, string("PREVIOUS RECORD")));
 		// Формируем документ для сохранения
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 		/**
 		 * Проверяем сохранение каждого набора битов доступа
@@ -2141,10 +2229,14 @@ TEST(CodecSysLogDocument, SavePreservesAccessBits) {
 			ASSERT_TRUE(document.save(filename));
 			// Получаем права заменённого файла
 			struct stat info{};
+			// Снимаем сведения о заменённом файле с диска
 			ASSERT_EQ(::stat(filename.c_str(), &info), 0);
 			// Проверяем точное совпадение битов доступа
 			EXPECT_EQ(static_cast <uint32_t> (info.st_mode & 0777), mode);
 		}
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// POSIX-биты доступа не являются контрактом Windows
 		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
@@ -2161,15 +2253,19 @@ TEST(CodecSysLogDocument, SavePreservesAccessBits) {
 TEST(CodecSysLogDocument, SaveKeepsUnrelatedSibling) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./syslog-save-sibling");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Адреса цели и постороннего файла
 	const string filename = (guard.address + "/journal.log");
+	// Адрес постороннего файла, носящего имя нашего временного файла
 	const string sibling = (filename + ".awh-tmp");
 	// Содержимое постороннего файла
 	const string previous = "UNRELATED USER DATA";
+	// Кладём в посторонний файл его содержимое
 	ASSERT_TRUE(guard.fs.write(sibling, previous));
 	// Формируем документ для сохранения
 	syslog::document_t document;
+	// Разбираем запись, которую предстоит сохранить рядом с посторонним файлом
 	ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 	// Сохраняем новую запись
 	ASSERT_TRUE(document.save(filename));
@@ -2187,13 +2283,17 @@ TEST(CodecSysLogDocument, SaveKeepsUnrelatedSibling) {
 TEST(CodecSysLogDocument, TemporaryFilesKeepIndependentHandles) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./syslog-save-handles");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Адрес будущей цели и имена временных файлов
 	const string filename = (guard.address + "/journal.log");
+	// Имена двух временных файлов, которые получат разные суффиксы
 	string first, second;
 	// Создаём два открытых файла для одной цели
 	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	// Заводим второй временный файл рядом с первым
 	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
 	ASSERT_NE(two, nullptr);
 	ASSERT_NE(first, second);
@@ -2202,6 +2302,7 @@ TEST(CodecSysLogDocument, TemporaryFilesKeepIndependentHandles) {
 	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
 	// Закрываем файлы перед проверкой их содержимого
 	one.reset();
+	// Закрываем второй файл
 	two.reset();
 	// Проверяем независимость результатов и отсутствие целевого файла
 	EXPECT_EQ(guard.fs.read <string> (first), "FIRST");
@@ -2220,24 +2321,35 @@ TEST(CodecSysLogDocument, TemporaryFilesKeepIndependentHandles) {
 TEST(CodecSysLogDocument, TemporaryCollisionKeepsExistingFile) {
 	// Создаём отдельный каталог проверки
 	save_directory_t guard("./syslog-save-collision");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Получаем первое имя и следующий номер последовательности
 	const string filename = (guard.address + "/journal.log");
+	// Имена временных файлов для первой и второй попыток
 	string first, second;
+	// Заводим первый временный файл и запоминаем его имя
 	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
+	// Отделяем номер последовательности от первого имени
 	const size_t offset = first.rfind('.');
+	// Проверяем, что разделитель имени найден
 	ASSERT_NE(offset, string::npos);
+	// Составляем имя следующего номера, которое займём посторонним файлом
 	const string collision = (first.substr(0, offset + 1) + to_string(stoull(first.substr(offset + 1)) + 1));
 	// Занимаем следующее имя посторонним содержимым
 	ASSERT_TRUE(guard.fs.write(collision, string("UNRELATED")));
 	// Создаём второй файл и проверяем, что занятое имя пропущено
 	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	// Проверяем, что второй временный файл открыт
 	ASSERT_NE(two, nullptr);
+	// Проверяем, что занятое имя пропущено в пользу следующего
 	EXPECT_NE(second, collision);
+	// Пишем во второй файл через сохранённый дескриптор
 	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
 	// Закрываем открытые объекты до чтения и удаления каталога
 	one.reset();
+	// Закрываем второй файл
 	two.reset();
 	// Проверяем, что посторонний файл не открыт для записи и не изменён
 	EXPECT_EQ(guard.fs.read <string> (collision), "UNRELATED");
@@ -2254,19 +2366,29 @@ TEST(CodecSysLogDocument, NewSaveKeepsCreationPermissions) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог и обычный файл для сравнения прав
 		save_directory_t guard("./syslog-save-new-mode");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
+		// Адрес эталонного файла, права которого даст обычное создание
 		const string reference = (guard.address + "/reference.log");
+		// Адрес файла записи, права которого сличаем с эталоном
 		const string filename = (guard.address + "/journal.log");
+		// Создаём эталонный файл обычным способом
 		ASSERT_TRUE(guard.fs.write(reference, string("REFERENCE")));
 		// Сохраняем документ по новому адресу
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - Event"));
 		ASSERT_TRUE(document.save(filename));
 		// Сличаем права с обычным созданием файла без изменения umask процесса
 		struct stat expected{}, actual{};
+		// Снимаем права эталонного файла
 		ASSERT_EQ(::stat(reference.c_str(), &expected), 0);
 		ASSERT_EQ(::stat(filename.c_str(), &actual), 0);
+		// Сличаем права сохранённого файла с эталонными
 		EXPECT_EQ(actual.st_mode & 0777, expected.st_mode & 0777);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// POSIX-биты доступа не являются контрактом Windows
 		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
@@ -2286,6 +2408,7 @@ TEST(CodecSysLogDocument, SaveSupportsMaximumFilename) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог проверки
 		save_directory_t guard("./syslog-save-long-name");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Получаем предел для файловой системы каталога
 		const long length = ::pathconf(guard.address.c_str(), _PC_NAME_MAX);
@@ -2298,11 +2421,15 @@ TEST(CodecSysLogDocument, SaveSupportsMaximumFilename) {
 		const string filename = (guard.address + "/" + string(static_cast <size_t> (length), 'a'));
 		// Формируем и сохраняем документ
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить под длинным именем
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - Event"));
 		ASSERT_TRUE(document.save(filename));
 		// Проверяем содержимое и отсутствие оставленного временного файла
 		EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
 		EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (1));
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Предел POSIX-имени не является контрактом Windows
 		GTEST_SKIP() << "POSIX NAME_MAX is unavailable on Windows";
@@ -2320,24 +2447,35 @@ TEST(CodecSysLogDocument, SaveThroughDanglingRelativeSymlink) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./syslog-SaveThroughDanglingRelativeSymlink");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Разводим настоящий каталог цели и посторонний файл внутри каталога опыта
 		const string nested = (guard.address + "/nested");
+		// Адрес настоящего каталога цели, вложенного в каталог опыта
 		const string directory = (nested + "/" + guard.address);
+		// Адрес постороннего файла, сохранение трогать не должно
 		const string unrelated = (guard.address + "/journal.log");
+		// Адрес настоящей цели сохранения
 		const string target = (directory + "/journal.log");
+		// Адрес ссылки, по которой пойдёт сохранение
 		const string link = (nested + "/link.log");
+		// Заводим настоящий каталог цели
 		ASSERT_TRUE(guard.fs.mkdir(directory));
 		ASSERT_TRUE(guard.fs.write(unrelated, string("UNRELATED")));
+		// Заводим ссылку на пока отсутствующую цель
 		ASSERT_EQ(::symlink(unrelated.c_str(), link.c_str()), 0);
 		// Сохраняем запись по ссылке на пока отсутствующую цель
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить по ссылке
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 		ASSERT_TRUE(document.save(link));
 		// Проверяем содержимое настоящей цели и сохранность постороннего файла
 		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
 		EXPECT_EQ(guard.fs.read <string> (unrelated), "UNRELATED");
 		EXPECT_EQ(guard.fs.type(link), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2355,25 +2493,34 @@ TEST(CodecSysLogDocument, SaveThroughDanglingSymlinkChain) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./syslog-SaveThroughDanglingSymlinkChain");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Создаём цепочку с абсолютным первым и относительным вторым переходом
 		const string nested = (guard.address + "/nested");
+		// Адрес конечной цели, которую сохранение обязано создать
 		const string target = (nested + "/actual/journal.log");
+		// Адрес первого звена цепочки - абсолютной ссылки
 		const string first = (guard.address + "/first.log");
+		// Адрес второго звена цепочки - относительной ссылки
 		const string second = (nested + "/second.log");
 		// Ссылка каталога перед '..' должна разрешаться раньше перехода к родителю
 		ASSERT_TRUE(guard.fs.mkdir(nested + "/actual/deeper"));
+		// Заводим ссылку каталога, через которую пройдёт переход '..'
 		ASSERT_EQ(::symlink("actual/deeper", (nested + "/alias").c_str()), 0);
 		ASSERT_EQ(::symlink("alias/../journal.log", second.c_str()), 0);
 		ASSERT_EQ(::symlink(guard.fs.fullpath(second).c_str(), first.c_str()), 0);
 		// Сохраняем запись по первому звену цепочки
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить через цепочку
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 		ASSERT_TRUE(document.save(first));
 		// Проверяем конечную цель и оба промежуточных объекта
 		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
 		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
 		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2391,19 +2538,29 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkCycleIsRefused) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, очищаемый после проверки
 		save_directory_t guard("./syslog-SaveThroughSymlinkCycleIsRefused");
+		// Проверяем, что каталог опыта заведён
 		ASSERT_TRUE(guard.created);
 		// Замыкаем две ссылки друг на друга
 		const string first = (guard.address + "/first.log");
+		// Адрес второго звена цикла
 		const string second = (guard.address + "/second.log");
+		// Заводим первую ссылку на второе звено
 		ASSERT_EQ(::symlink("second.log", first.c_str()), 0);
 		ASSERT_EQ(::symlink("first.log", second.c_str()), 0);
 		// Сохранение должно отказать до подмены какого-либо звена
 		syslog::document_t document;
+		// Разбираем запись, которую предстоит сохранить по замкнутой цепочке
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+		// Пробуем сохранить запись по замкнутой цепочке ссылок
 		EXPECT_FALSE(document.save(first));
+		// Проверяем, что отказ назвал причину
 		EXPECT_NE(document.error(), syslog::error_t::NONE);
+		// Проверяем, что первое звено осталось ссылкой
 		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
 		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -2417,24 +2574,34 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkCycleIsRefused) {
 TEST(CodecSysLogDocument, MalformedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./syslog-MalformedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись, загрузке не мешающая
 	const string record = "<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD\n";
+	// Содержимое файла: исправная запись и хвост с переводом строки
 	const string content = (record + "<bad>\n");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
+	// Пробуем загрузить файл с недопустимым хвостом
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что отказ назван ошибкой приоритета в хвосте
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что файл уцелел после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Повторяем загрузку и убеждаемся, что отказ устойчив
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что повторный отказ назван тем же кодом приоритета
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2442,6 +2609,7 @@ TEST(CodecSysLogDocument, MalformedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }
@@ -2453,24 +2621,34 @@ TEST(CodecSysLogDocument, MalformedTailIsRefusedAndKeptWhole) {
 TEST(CodecSysLogDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./syslog-UnterminatedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись, загрузке не мешающая
 	const string record = "<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD\n";
+	// Содержимое файла: исправная запись и хвост без перевода строки
 	const string content = (record + "<bad>");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
+	// Пробуем загрузить файл с недопустимым хвостом
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что отказ назван ошибкой приоритета в хвосте
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что файл уцелел после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Повторяем загрузку и убеждаемся, что отказ устойчив
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что повторный отказ назван тем же кодом приоритета
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2478,6 +2656,7 @@ TEST(CodecSysLogDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }
@@ -2489,27 +2668,40 @@ TEST(CodecSysLogDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 TEST(CodecSysLogDocument, OversizedTailIsRefusedAndKeptWhole) {
 	// Создаём отдельный каталог, очищаемый после проверки
 	save_directory_t guard("./syslog-OversizedTailIsRefusedAndKeptWhole");
+	// Проверяем, что каталог опыта успешно заведён
 	ASSERT_TRUE(guard.created);
 	// Записываем исправную запись и недопустимый хвост
 	const string filename = (guard.address + "/journal.log");
+	// Исправная запись, загрузке не мешающая
 	const string record = "<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD\n";
+	// Содержимое файла: исправная запись и хвост в 128 символов, предел вдвое превышающий
 	const string content = (record + "<165>1 2026-09-15T00:00:00Z host app 1 - - " + string(128, 'x') + "\n");
+	// Кладём в файл исправную запись и недопустимый хвост
 	ASSERT_TRUE(guard.fs.write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
-	syslog::reader_t::settings_t settings;
-	settings.maxRecord = 64;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
+	// Опускаем предел длины записи до 64 байт, чтобы хвост его неоспоримо превысил
+	settings.reader.maxRecord = 64;
+	// Применяем настройки к документу
 	ASSERT_TRUE(document.settings(settings));
+	// Пробуем загрузить файл, чей хвост предел превышает
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что отказ назван превышением предела записи
 	EXPECT_EQ(document.error(), syslog::error_t::RECORD_TOO_LONG);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
+	// Проверяем, что содержимое файла уцелело после отказа пустого сохранения
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
+	// Запоминаем дословный вид документа до повторной загрузки
 	const string before = document.dump();
+	// Повторяем загрузку и убеждаемся, что отказ устойчив
 	EXPECT_FALSE(document.load(filename));
+	// Проверяем, что повторный отказ назван тем же кодом превышения предела
 	EXPECT_EQ(document.error(), syslog::error_t::RECORD_TOO_LONG);
 	EXPECT_EQ(document.dump(), before);
 	EXPECT_EQ(guard.fs.read <string> (filename), content);
@@ -2517,6 +2709,7 @@ TEST(CodecSysLogDocument, OversizedTailIsRefusedAndKeptWhole) {
 	ASSERT_TRUE(guard.fs.unlink(filename));
 	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
+	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);
 	EXPECT_EQ(document.dump(), before);
 }

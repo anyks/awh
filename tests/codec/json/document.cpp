@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки документа JSON — сборка дерева, обход его по имени, по номеру и по
  *        соседям, извлечение значений затребованными видами, указатель JSON Pointer,
  *        правила обращения с повторяющимся именем поля, перезапись в текст и чтение
@@ -36,6 +42,7 @@
  *
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора JSON - под этой системой не шла ни одна его проверка
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -52,6 +59,7 @@
  * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
  *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
  *       два прогона разных процессов иначе пишут в один и тот же файл
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -101,16 +109,25 @@ namespace {
 		 *          `./имя-каталога` точку несёт в начале, и поиск по всей строке
 		 *          обращал бы её в `.-1234/имя-каталога` - путь в несуществующий
 		 *          каталог. Найдено 07.09.2026 красною строкою набора
+		 *
 		 */
 		const size_t slash = name.rfind('/');
+		// Отыскиваем последнюю точку в имени файла
 		const size_t found = name.rfind('.');
+		// Оставляем точку, стоящую после последнего разделителя пути
 		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
 		// Собираемое имя без расширения
 		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
 		// Дописываем номер процесса
 		result.append("-").append(std::to_string(static_cast <uint32_t> (
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 			::_getpid()
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
 #else
 			::getpid()
 #endif
@@ -177,7 +194,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -229,7 +252,7 @@ TEST(CodecJsonDocument, Access) {
 	// Выполняем проверку вида поля с логическим значением
 	ASSERT_EQ(doc["да"].kind(), json::kind_t::BOOL);
 	// Выполняем проверку вида поля с пустым значением
-	ASSERT_EQ(doc["пусто"].kind(), json::kind_t::NUL);
+	ASSERT_EQ(doc["пусто"].kind(), json::kind_t::NIL);
 	// Выполняем проверку вида поля с числом
 	ASSERT_EQ(doc["целое"].kind(), json::kind_t::NUMBER);
 	// Выполняем проверку вида поля с массивом
@@ -354,21 +377,23 @@ TEST(CodecJsonDocument, Unsigned) {
 	 *       тогда как `-1.0` даёт нуль. Расхождение это замерено 30.08.2026 и вынесено
 	 *       на решение вопросом: оно следует из правила «отвечать языку», а не из
 	 *       недосмотра, но само правило двух записей одного числа не разводит
+	 *
 	 */
 	ASSERT_TRUE(doc[static_cast <size_t> (1)].value(number));
 	// Выполняем проверку приведения отрицательного числа к беззнаковому виду
 	ASSERT_EQ(number, static_cast <uint64_t> (static_cast <int64_t> (-1)));
 	// Извлекаемое целое число
-	int64_t signed_number = 0;
+	int64_t signedNumber = 0;
 	/**
 	 * Выполняем проверку извлечения дробного числа целым видом
 	 *
 	 * @note Дробная часть ОКРУГЛЯЕТСЯ по правилам математики с уводом половины от нуля,
 	 *       а не отбрасывается: «1.5» даёт «2». Договор этот общий на все кодеки рамки
+	 *
 	 */
-	ASSERT_TRUE(doc[static_cast <size_t> (2)].value(signed_number));
+	ASSERT_TRUE(doc[static_cast <size_t> (2)].value(signedNumber));
 	// Выполняем проверку округления дробной части числа
-	ASSERT_EQ(signed_number, static_cast <int64_t> (2));
+	ASSERT_EQ(signedNumber, static_cast <int64_t> (2));
 	// Извлекаемое число с плавающей запятой
 	double real = 0.;
 	// Выполняем проверку извлечения дробного числа видом с плавающей запятой
@@ -465,6 +490,7 @@ TEST(CodecJsonDocument, Pointer) {
 	 *
 	 * @note Порядок предписан стандартом: снятие `~0` прежде `~1` обратило бы
 	 *       записанное `~01` в косую черту вместо записи `~1`
+	 *
 	 */
 	ASSERT_EQ(escaped.at("/~01").raw(), "3");
 	// Выполняем проверку обращения к полю с пустым именем
@@ -607,8 +633,8 @@ TEST(CodecJsonDocument, Duplicates) {
 	ASSERT_FALSE(doc.parse("{\"a\":1,\"a\":2}"));
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(doc.error(), json::error_t::DUPLICATE_KEY);
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Устанавливаем удержание первого поля объекта
 	settings.duplicates = json::duplicate_t::FIRST;
 	// Выполняем установку настроек документа
@@ -643,8 +669,8 @@ TEST(CodecJsonDocument, Duplicates) {
 TEST(CodecJsonDocument, Numbers) {
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Выполняем проверку разбора числа, не представимого видом с плавающей запятой
 	ASSERT_TRUE(doc.parse("[1e400]")) << json::message(doc.error());
 	// Выполняем проверку сохранности записи числа при отложенном преобразовании
@@ -666,6 +692,7 @@ TEST(CodecJsonDocument, Numbers) {
 	 *       его служит конец текста, и событие его выдаётся уже разбором конца текста.
 	 *       Отказ сборки дерева на этом событии прекращает разбор так же, как и на
 	 *       всяком другом, - без проверки разбор отчитался бы успехом о пустом дереве
+	 *
 	 */
 	ASSERT_FALSE(doc.parse("1e400"));
 	// Выполняем проверку кода отказа разбора
@@ -679,6 +706,7 @@ TEST(CodecJsonDocument, Numbers) {
 	 *
 	 * @note Правило `NATIVE` непредставимое число не отвергает: оно получает вид
 	 *       `EXTENDED` и хранится записью своей, оттого точность его не теряется
+	 *
 	 */
 	ASSERT_TRUE(doc.parse("1e400")) << json::message(doc.error());
 	// Выполняем проверку вида непредставимого числа
@@ -700,8 +728,8 @@ TEST(CodecJsonDocument, Numbers) {
 TEST(CodecJsonDocument, Specials) {
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбору записи NaN и бесконечности
 	settings.reader.allowInfinityAndNan = true;
 	// Выполняем установку настроек документа
@@ -734,8 +762,14 @@ TEST(CodecJsonDocument, Dump) {
 	ASSERT_EQ(back.dump(), compact);
 	// Выполняем проверку совпадения количества узлов после оборота
 	ASSERT_EQ(back.size(), doc.size());
+	// Настройки записи текста документа
+	json::document_t::settings_t writing;
+	// Устанавливаем нарядный вид записи текста документа
+	writing.writer.format = json::format_t::PRETTY;
+	// Выполняем установку настроек документа
+	doc.settings(writing);
 	// Получаем текст документа, оформленный отступами
-	const string pretty = doc.dump(json::format_t::PRETTY);
+	const string pretty = doc.dump();
 	// Выполняем проверку наличия переводов строк в оформленном тексте
 	ASSERT_NE(pretty.find('\n'), string::npos);
 	// Объект документа для разбора оформленного текста
@@ -777,8 +811,8 @@ TEST(CodecJsonDocument, Failure) {
 TEST(CodecJsonDocument, Streaming) {
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбор потока документов
 	settings.reader.stream = true;
 	// Выполняем установку настроек документа
@@ -812,6 +846,7 @@ TEST(CodecJsonDocument, Streaming) {
 	 *       «довольно» было неотличимо от отказа неведомой причины. Таблица CSV на то же
 	 *       действие отвечала успехом и описывала это договором, а разнобой замерен на
 	 *       одном и том же действии обоих кодеков
+	 *
 	 */
 	ASSERT_TRUE(doc.parse("{\"a\":1}\n[2,3]\n\"хвост\"", [&count](const json::document_t::value_t &) noexcept -> bool {
 		// Увеличиваем количество выданных корневых значений
@@ -833,15 +868,23 @@ TEST(CodecJsonDocument, File) {
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Адрес файла документа
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("codec_json_document_test.json");
+	const Scratch scratchFilename("codec_json_document_test.json");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
+	// Настройки записи текста документа
+	json::document_t::settings_t writing;
+	// Устанавливаем нарядный вид записи текста документа
+	writing.writer.format = json::format_t::PRETTY;
+	// Выполняем установку настроек документа
+	doc.settings(writing);
 	// Выполняем запись документа в файл
-	ASSERT_TRUE(doc.save(filename, json::format_t::PRETTY));
+	ASSERT_TRUE(doc.save(filename));
 	// Объект документа для чтения записанного файла
 	json::document_t loaded;
 	// Выполняем чтение документа из файла
 	ASSERT_TRUE(loaded.load(filename)) << json::message(loaded.error());
+	// Возвращаем настройки записи, установленные по умолчанию
+	doc.settings(json::document_t::settings_t());
 	// Выполняем проверку совпадения прочитанного документа с записанным
 	ASSERT_EQ(loaded.dump(), doc.dump());
 	// Выполняем удаление файла документа
@@ -880,9 +923,9 @@ TEST(CodecJsonDocument, Chunks) {
 	ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 	// Адрес файла документа
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("codec_json_document_chunks.json");
+	const Scratch scratchFilename("codec_json_document_chunks.json");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 	// Открываем файл документа для записи
 	ofstream file(filename, ios::binary | ios::trunc);
 	// Выполняем проверку открытия файла документа
@@ -919,8 +962,8 @@ TEST(CodecJsonDocument, NumberKinds) {
 	for(const json::number_t rule : {json::number_t::NATIVE, json::number_t::CHECK}){
 		// Объект документа
 		json::document_t doc;
-		// Получаем настройки документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки документа
+		json::document_t::settings_t settings;
 		// Устанавливаем правило преобразования чисел
 		settings.numbers = rule;
 		// Выполняем установку настроек документа
@@ -1045,6 +1088,7 @@ TEST(CodecJsonDocument, ValueTypes) {
 	 *
 	 * @note Сличается тут круговой обход: запись, разобранная и выданная заново,
 	 *       обязана совпасть с исходной знак в знак у КАЖДОЙ границы вида
+	 *
 	 */
 	for(const auto & sample : samples){
 		/**
@@ -1101,6 +1145,7 @@ TEST(CodecJsonDocument, ExtendedIsDecidedByMagnitudeNotByLength) {
 	 *
 	 * @note Ожидаемая выдача записана литералом: она есть кратчайшая запись того же
 	 *       значения двойной точности, и лишние разряды подачи в ней отсутствуют
+	 *
 	 */
 	const vector <pair <string, string>> shortened = {
 		{"0.30000000000000004440892098500626", "0.30000000000000004"},
@@ -1157,7 +1202,7 @@ TEST(CodecJsonDocument, ValueGroups) {
 	// Выполняем проверку непринадлежности строки к числам
 	ASSERT_FALSE(doc["t"].is(json::type_t::NUMBER));
 	// Выполняем проверку вида пустого значения
-	ASSERT_TRUE(doc["n"].is(json::type_t::NUL));
+	ASSERT_TRUE(doc["n"].is(json::type_t::NIL));
 	// Выполняем проверку вида логического значения
 	ASSERT_TRUE(doc["b"].is(json::type_t::BOOL));
 	// Выполняем проверку вида массива
@@ -1169,6 +1214,7 @@ TEST(CodecJsonDocument, ValueGroups) {
 	 *
 	 * @note Отсутствие значения разряда своего не имеет вовсе, и проверка его идёт
 	 *       сличением, а не наложением разрядов
+	 *
 	 */
 	ASSERT_TRUE(doc["отсутствует"].is(json::type_t::UNDEFINED));
 	// Выполняем проверку непринадлежности отсутствующего значения к прочим видам
@@ -1217,6 +1263,7 @@ TEST(CodecJsonDocument, ValueConversions) {
 	 * Выполняем проверку извлечения дробного числа целым видом в два байта
 	 *
 	 * @note Число `3502.3453` в два байта помещается: усекается лишь дробная часть
+	 *
 	 */
 	ASSERT_TRUE(doc[static_cast <size_t> (2)].value(medium));
 	// Выполняем проверку усечения дробной части числа
@@ -1228,6 +1275,7 @@ TEST(CodecJsonDocument, ValueConversions) {
 	 *
 	 * @note Стандарт зовёт такое приведение неопределённым поведением, а мы выдаём
 	 *       предел затребованного вида: неопределённого поведения в кодеке не будет
+	 *
 	 */
 	ASSERT_TRUE(doc[static_cast <size_t> (3)].value(wide));
 	// Выполняем проверку насыщения пределом затребованного вида
@@ -1293,8 +1341,8 @@ TEST(CodecJsonDocument, NumberCheckRule) {
 	for(const auto & sample : samples){
 		// Объект документа
 		json::document_t doc;
-		// Получаем настройки документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки документа
+		json::document_t::settings_t settings;
 		// Устанавливаем правило отклонения чисел, родным видом не представимых
 		settings.numbers = json::number_t::CHECK;
 		// Выполняем установку настроек документа
@@ -1324,8 +1372,8 @@ TEST(CodecJsonDocument, NumberCheckRule) {
 	for(const auto & sample : allowed){
 		// Объект документа
 		json::document_t doc;
-		// Получаем настройки документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки документа
+		json::document_t::settings_t settings;
 		// Устанавливаем правило отклонения чисел, родным видом не представимых
 		settings.numbers = json::number_t::CHECK;
 		// Выполняем установку настроек документа
@@ -1388,7 +1436,7 @@ TEST(CodecJsonDocument, ExtendedExtraction) {
  */
 TEST(CodecJsonDocument, TreeDepthLimit) {
 	/**
-	 * @brief Метод разбора текста заданной глубины вложенности
+	 * @brief Функция разбора текста заданной глубины вложенности
 	 *
 	 * @param depth глубина вложенности разбираемого текста
 	 * @param error код отказа разбора
@@ -1398,8 +1446,8 @@ TEST(CodecJsonDocument, TreeDepthLimit) {
 	auto nested = [](const size_t depth, json::error_t & error) noexcept -> bool {
 		// Объект документа
 		json::document_t doc;
-		// Получаем настройки документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки документа
+		json::document_t::settings_t settings;
 		// Снимаем предел глубины у чтения, оставляя предел дерева
 		settings.reader.maxDepth = 0;
 		// Устанавливаем настройки документа
@@ -1428,6 +1476,7 @@ TEST(CodecJsonDocument, TreeDepthLimit) {
 	 * @warning Число обязано расходиться с постоянной при её правке: в том и смысл.
 	 *          Правка потолка должна краснить эту проверку и заставлять переписать
 	 *          число здесь ОСОЗНАННО, а не уезжать вместе с ним
+	 *
 	 */
 	constexpr size_t CEILING = 1024;
 	// Код отказа разбора текста документа
@@ -1503,6 +1552,7 @@ TEST(CodecJsonDocument, NarrowUnsigned) {
 	 *       подставляется лишь там, где у языка ответ неопределён, - у дробного за
 	 *       пределом целого вида. Расхождение записей `300` и `300.0` замерено
 	 *       30.08.2026 и вынесено на решение вопросом
+	 *
 	 */
 	ASSERT_TRUE(doc[static_cast <size_t> (1)].value(byte));
 	// Выполняем проверку заворота непомещающегося числа
@@ -1532,8 +1582,8 @@ TEST(CodecJsonDocument, NarrowUnsigned) {
 TEST(CodecJsonDocument, StreamWithoutHandler) {
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбор потока документов
 	settings.reader.stream = true;
 	// Устанавливаем настройки документа
@@ -1553,6 +1603,7 @@ TEST(CodecJsonDocument, StreamWithoutHandler) {
 	 *
 	 * @note Обработчик получает всякий документ целым, и ни один из них не теряется:
 	 *       ровно тем он и отличается от разбора без него
+	 *
 	 */
 	ASSERT_TRUE(doc.parse("{\"a\":1}\n{\"b\":2}\n", [&taken](const json::document_t::value_t & value) noexcept -> bool {
 		// Выполняем запоминание имени первого поля очередного документа потока
@@ -1573,9 +1624,11 @@ TEST(CodecJsonDocument, StreamWithoutHandler) {
  * @note Значение, добытое негодным путём, недействительно - и всякое обращение к
  *       нему обязано отвечать пустотой, а не падать и не выдавать чужое. Проверяются
  *       все три способа обращения: извлечение числа, выдача строки и признак годности
+ *
  * @warning Дерево после отказа разбора остаётся ПУСТЫМ, а не содержащим половину
  *          разобранного: половина дерева выглядит как целое, и потребитель, не
  *          сличивший признак отказа, работал бы с обрубком, о том не зная
+ *
  */
 TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 	/**
@@ -1601,6 +1654,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 		 *
 		 * @note Отвечает пустотой и вместилище: строки у него нет, а выдумывать
 		 *       её из содержимого значило бы отдавать не то, о чём спросили
+		 *
 		 */
 		ASSERT_TRUE(document.at("/a").text().empty());
 		// Выполняем проверку того, что дерево осталось нетронутым
@@ -1626,6 +1680,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 	 *
 	 * @note Примечание становится узлом дерева наравне с прочими: тому, кто дерево
 	 *       переносит в новый текст, примечания терять нельзя
+	 *
 	 */
 	{
 		// Объект дерева документа
@@ -1646,6 +1701,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 		 * @note Сличается именно хранилище: примечание, выдачею событий затребованное,
 		 *       узлом в нём становится наравне с объектом. Число значений в корне
 		 *       выдаётся ходом `size()` и сличается ниже
+		 *
 		 */
 		ASSERT_EQ(document.nodes(), static_cast <size_t> (2));
 		// Выполняем проверку количества значений в корне документа
@@ -1671,6 +1727,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 	 * @note Обрыв этот - устройство, а не отказ: цепочка обращений вправе идти дальше, и
 	 *       недействительная ссылка отвечает недействительными же ссылками на всё, о чём её
 	 *       ни спроси. Оттого проверять исход каждого звена вызывающему не приходится
+	 *
 	 */
 	{
 		// Объект дерева документа
@@ -1705,6 +1762,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 	 * @warning Дорога чтения из файла ОТДЕЛЬНА от дороги разбора из строки: текст подаётся
 	 *          разбору кусками по мере чтения, и отказ прекращает чтение на полпути. Оттого
 	 *          отказы её проверяются порознь
+	 *
 	 */
 	{
 		// Имя файла с негодным текстом документа
@@ -1840,6 +1898,7 @@ TEST(CodecJsonDocument, NotANumberToInteger) {
  * @warning Прививается ЗНАЧЕНИЕ, а не поле, и имя поля объекта прививкой сохраняется -
  *          это сличается отдельно, ибо запись, потерявшая имя, разбирается обратно
  *          без всякого отказа
+ *
  */
 TEST(CodecJsonDocument, GraftSurvivesRewrite){
 	/**
@@ -1897,6 +1956,7 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
 		 *
 		 * @note Сличение это отдельно от записи с записью: потеря, случившаяся одинаково
 		 *       на обоих путях, сличением их между собою не ловится никак
+		 *
 		 */
 		ASSERT_NE(text.find("\"target\":" + value.dump()), string::npos) << item.first << ": " << text;
 		/**
@@ -1934,6 +1994,25 @@ TEST(CodecJsonDocument, MissingFileIsNotInternal) {
 	ASSERT_FALSE(document.load("/несуществующий/каталог/документ.json"));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
+}
+
+/**
+ * @brief Проверка сохранения дерева при отсутствии адреса читаемого файла
+ *
+ */
+TEST(CodecJsonDocument, EmptyFilenamePreservesTree) {
+	// Дерево значений документа
+	json::document_t document;
+	// Выполняем разбор исходного документа
+	ASSERT_TRUE(document.parse("{\"key\":\"value\"}"));
+	// Исходная запись документа
+	const string expected = document.dump();
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(document.load(""));
+	// Выполняем проверку кода отказа
+	ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
+	// Выполняем проверку сохранения дерева
+	ASSERT_EQ(document.dump(), expected);
 }
 
 /**
@@ -2017,9 +2096,9 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	} guard;
 	// Адрес файла, в который ведётся запись документа
 	// Сторож временного файла проверки
-	const Scratch scratch_filename("awh-codec-json-write-failure.json");
+	const Scratch scratchFilename("awh-codec-json-write-failure.json");
 	// Путь к временному файлу проверки
-	const string & filename = scratch_filename.path();
+	const string & filename = scratchFilename.path();
 /**
  * Для операционной системы MS Windows
  */
@@ -2036,6 +2115,7 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	 * @warning Проверяется при этом ИНОЙ путь отказа: у POSIX запись начинается и
 	 *          обрывается пределом, здесь же не удаётся само заведение файла. Общим
 	 *          остаётся требуемое - отказ обязан быть оглашён, а не проглочен
+	 *
 	 */
 	const string filename = "./awh-nonexistent-directory/write-failure.json";
 #endif
@@ -2054,6 +2134,7 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	 *       непригодным путём, и не удаётся само заведение файла - FILE_NOT_OPENED.
 	 *       Требуемое же у обеих систем одно и то же и проверяется одинаково строго:
 	 *       отказ обязан быть ОГЛАШЁН, а не проглочен молча
+	 *
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем проверку упоминания причины обрыва записи
@@ -2063,8 +2144,12 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 		 *
 		 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
 		 *       звучащий судит по коду. Замерено щупом по местам отказа 04.09.2026
+		 *
 		 */
 		ASSERT_EQ(document.error(), json::error_t::FILE_NOT_WRITTEN);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Выполняем проверку упоминания причины невозможности завести файл
 		ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
@@ -2073,6 +2158,7 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 		 *
 		 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
 		 *       звучащий судит по коду. Замерено щупом по местам отказа 04.09.2026
+		 *
 		 */
 		ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
 	#endif
@@ -2095,7 +2181,7 @@ TEST(CodecJsonDocument, KeptDuplicatesNeedMatchingRule) {
 	// Дерево значений документа, удерживающее повторы
 	json::document_t keeping;
 	// Настройки разбора с удержанием повторов
-	json::document_t::settings_t settings = keeping.settings();
+	json::document_t::settings_t settings;
 	// Устанавливаем правило удержания повторяющихся имён
 	settings.duplicates = json::duplicate_t::KEEP;
 	// Выполняем установку настроек разбора
@@ -2171,7 +2257,7 @@ TEST(CodecJsonDocument, NumberCheckJudgesMagnitudeNotPrecision) {
 		// Дерево значений документа
 		json::document_t document;
 		// Настройки разбора с отказом числам, в родной вид не вместимым
-		json::document_t::settings_t settings = document.settings();
+		json::document_t::settings_t settings;
 		// Устанавливаем правило отказа числам, в родной вид не вместимым
 		settings.numbers = json::number_t::CHECK;
 		// Выполняем установку настроек разбора
@@ -2235,6 +2321,7 @@ TEST(CodecJsonDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *
 	 * @note Здесь собраны разом: кавычка, обратная косая, прямая косая, управляющий знак,
 	 *       знак вне US-ASCII и пара суррогатов - знак за пределом основной плоскости
+	 *
 	 */
 	/**
 	 * Счёт сочетаний, оборот КОТОРЫХ ДЕЙСТВИТЕЛЬНО СЛИЧЁН
@@ -2243,10 +2330,12 @@ TEST(CodecJsonDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *          нет» был бы точно таким же, не сличись НИ ОДНОГО оборота. Молчаливый
 	 *          пропуск в проверке хуже молчаливой утраты в коде, ибо прячет её. Найдено
 	 *          у кодеков CEF и syslog 15.09.2026 в их же щупе
+	 *
 	 */
 	size_t compared = 0;
 	// Счёт сочетаний, опробованных всего
 	size_t attempted = 0;
+	// Образец текста документа с кавычкой, косой чертой, управляющим знаком, юникодом и эмодзи
 	const string source = "{\"имя\":\"кавычка \\\" косая \\\\ прямая / управляющий \\u0001 юникод ё эмодзи \\ud83d\\ude00\"}";
 	/**
 	 * Выполняем перебор всех видов укладки текста документа
@@ -2287,6 +2376,7 @@ TEST(CodecJsonDocument, RoundTripSurvivesEverySettingOfTheWriting){
 			 * @note Сличаются не тексты, а СОДЕРЖИМОЕ: вид текста настройкою и меняется,
 			 *       а вот значение обязано пережить оборот неизменным. Сличение через
 			 *       плотную укладку обоих приводит их к одному виду
+			 *
 			 */
 			json::document_t::settings_t plain;
 			// Устанавливаем плотную укладку для сличения
@@ -2311,6 +2401,7 @@ TEST(CodecJsonDocument, RoundTripSurvivesEverySettingOfTheWriting){
 	 *
 	 * @warning Сличается СВЯЗЬ, а не число: точное число рассыплется от первой же
 	 *          прибавленной настройки, ничего не сказав о существе
+	 *
 	 */
 	ASSERT_GT(attempted, static_cast <size_t> (0));
 	// Выполняем проверку того, что оборот сличён у всякого опробованного сочетания
@@ -2355,6 +2446,7 @@ TEST(CodecJsonDocument, FailureReachesTheProcessWideJournal) {
 		 *
 		 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
 		 *       звучащий судит по коду. Замерено щупом по местам отказа 04.09.2026
+		 *
 		 */
 		ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
 	}
@@ -2457,6 +2549,7 @@ TEST(CodecJsonDocument, NestingLimitBoundedBeforeParsing){
 	 *
 	 * @note Ноль значит отсутствие предела, а число завышенное - предел выше допустимого:
 	 *       оба огранятся `MAX_DEPTH`, и поведение у них обязано совпасть
+	 *
 	 */
 	for(const uint32_t limit : {uint32_t(0), uint32_t(json::MAX_DEPTH * 4)}){
 		// Объект документа
@@ -2495,29 +2588,33 @@ TEST(CodecJsonDocument, FormatTakenFromSettings){
 	ASSERT_TRUE(doc.parse(string("{\"а\":1}"))) << json::message(doc.error());
 	// Выполняем проверку того, что умолчанием оформление сжатое
 	ASSERT_EQ(doc.dump().find('\n'), string::npos);
-	// Получаем настройки контейнера для правки
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки контейнера для правки
+	json::document_t::settings_t settings;
 	// Устанавливаем нарядное оформление собираемого текста
 	settings.writer.format = json::format_t::PRETTY;
 	// Выполняем установку настроек контейнера
 	doc.settings(settings);
 	// Выполняем проверку того, что выдача без довода настройку соблюдает
 	ASSERT_NE(doc.dump().find('\n'), string::npos);
-	// Выполняем проверку того, что довод настройку перекрывает
-	ASSERT_EQ(doc.dump(json::format_t::COMPACT).find('\n'), string::npos);
 	// Адрес файла, в какой записывается документ
 	// Сторож временного файла проверки
-	const Scratch scratch_output("awh_json_format_settings.json");
+	const Scratch scratchOutput("awh_json_format_settings.json");
 	// Путь к временному файлу проверки
-	const string & output = scratch_output.path();
+	const string & output = scratchOutput.path();
 	// Выполняем проверку сохранения документа в файл
 	ASSERT_TRUE(doc.save(output));
 	// Объект документа, прочитанного обратно
 	json::document_t back;
 	// Выполняем чтение записанного документа
 	ASSERT_TRUE(back.load(output)) << json::message(back.error());
-	// Выполняем проверку того, что сохранение настройку соблюдает
-	ASSERT_NE(back.dump(json::format_t::PRETTY).find('\n'), string::npos);
+	// Поток чтения записанного файла
+	ifstream saved(output, ios::binary);
+	// Строка записанного файла
+	string line;
+	// Выполняем чтение первой строки записанного файла
+	ASSERT_TRUE(static_cast <bool> (getline(saved, line)));
+	// Выполняем проверку того, что сохранение настройку соблюдает: нарядный текст несёт перевод строки
+	ASSERT_TRUE(static_cast <bool> (getline(saved, line)));
 	// Выполняем снос оставленного файла
 	::remove(output.c_str());
 }
@@ -2527,6 +2624,7 @@ TEST(CodecJsonDocument, FormatTakenFromSettings){
  * @details Каталог открывается потоком успешно, а читается признаками конца и отказа -
  * теми же, какими отзывается файл пустой. Прежде разбор отвечал на него `EMPTY_TEXT`,
  * отправляя искать изъян в содержимом файла вместо изъяна доступа к нему
+ *
  */
 TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
 	// Объект контейнера документа
@@ -2551,6 +2649,7 @@ TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
 	 *       `FILE_NOT_OPENED`. Требуемое же у обеих систем одно и то же и утверждается
 	 *       одинаково строго: каталог за пустой файл не выдаётся, а причина отказа
 	 *       называется точным кодом, а не «одним из двух»
+	 *
 	 */
 	// Выполняем проверку кода отказа чтения каталога
 	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_READ);
@@ -2561,6 +2660,7 @@ TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
 	 *
 	 * @note У POSIX код этот ОТЛИЧЕН от кода отказа чтения каталога, и в том вся суть
 	 *       проверки; у MS Windows он тот же, и различения там нет - довод выше
+	 *
 	 */
 	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_OPENED);
 }
@@ -2575,12 +2675,13 @@ TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
  *
  * @note Проверка бьёт по той самой ветви: со сторожем, сличающим положение события вместо
  *       конца имени поля, поток рвётся на втором документе отказом `STORAGE_EXHAUSTED`
+ *
  */
 TEST(CodecJsonDocument, StreamOfKeylessContainers){
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбор потока документов
 	settings.reader.stream = true;
 	// Выполняем установку настроек документа
@@ -2620,6 +2721,7 @@ TEST(CodecJsonDocument, StreamOfKeylessContainers){
  *
  * @note Поток намеренно длиннее куска подачи в 64 КиБ и с пустыми строками между
  *       документами: лишь тогда разбор выбрасывает свои знаки и счёт их растёт
+ *
  */
 TEST(CodecJsonDocument, ClearFromStreamHandler){
 	// Разбираемый текст потока
@@ -2632,8 +2734,8 @@ TEST(CodecJsonDocument, ClearFromStreamHandler){
 		text.append("{\"ключ\":\"значение\",\"ещё\":[1,2,3]}\n\n  \n");
 	// Объект документа
 	json::document_t doc;
-	// Получаем настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	// Настройки документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбор потока документов
 	settings.reader.stream = true;
 	// Выполняем установку настроек документа
@@ -2698,6 +2800,7 @@ TEST(CodecJsonDocument, WritingRefusalNamesFirstCause){
 	ASSERT_EQ(doc.error(), json::error_t::UNWRITABLE_VALUE);
 	// Выполняем проверку того, что владеющее значение называет ту же причину
 	ASSERT_TRUE(value.dump().empty());
+	// Сличаем код отказа владеющего значения с ожидаемым UNWRITABLE_VALUE
 	ASSERT_EQ(value.error(), json::error_t::UNWRITABLE_VALUE);
 	// Выполняем проверку того, что положение отказа записи пусто
 	ASSERT_EQ(doc.errorLocation().line, static_cast <size_t> (0));
@@ -2745,6 +2848,7 @@ TEST(CodecJsonDocument, GraftAnswersForItself){
 		 *
 		 * @note Своего кода у него нет вовсе, и код прежней работы он обязан отпустить:
 		 *       иначе звучащий принял бы чужую причину за причину этого отказа
+		 *
 		 */
 		ASSERT_EQ(doc.error(), json::error_t::NONE);
 	}
@@ -2763,7 +2867,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
 	// Объект документа
 	json::document_t doc;
 	// Настройки документа
-	json::document_t::settings_t settings = doc.settings();
+	json::document_t::settings_t settings;
 	// Включаем разбор потока документов
 	settings.reader.stream = true;
 	// Выполняем установку настроек документа
@@ -2796,6 +2900,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
 	 *       разбора звучит по-прежнему: признак прекращения его не глушит. Щуп мой сперва
 	 *       прекращал выдачу первым же документом - до негодного разбор тогда не доходил
 	 *       вовсе, и проверка мерила не то
+	 *
 	 */
 	{
 		// Количество выданных обработчику документов
@@ -2826,6 +2931,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
  *
  * @note Плата измерена: обход с извлечением строк - 84 мс против 80 у дерева
  *       неклеймёного
+ *
  */
 TEST(CodecJsonDocument, ReferenceDoesNotSurviveRebuild){
 	// Документ разбора
@@ -2900,6 +3006,7 @@ TEST(CodecJsonDocument, ReferenceDoesNotSurviveRebuild){
  *       выдаётся как `3.141592653589793`
  *
  * @note Дерево и владеющее значение отвечают ОДИНАКОВО - проверено на семи записях
+ *
  */
 TEST(CodecJsonDocument, VerbatimNumbersAreAsymmetric){
 	/**
@@ -2956,7 +3063,9 @@ TEST(CodecJsonDocument, ReceiverIsUntouchedOnEveryRefusal) {
 	json::document_t document;
 	// Выполняем разбор текста со значениями, числами не являющимися
 	document.parse("[\"строка\", true, null, {}, []]");
-	// Выполняем перебор всех значений разобранного массива
+	/**
+	 * Выполняем перебор всех значений разобранного массива
+	 */
 	for(size_t i = 0; i < 5; i++){
 		// Приёмник целого вида с опознавательным значением
 		uint64_t big = 12345;
@@ -2969,6 +3078,7 @@ TEST(CodecJsonDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *
 		 * @note Второе значение массива есть «true», и извлечение логическим видом там
 		 *       УДАЁТСЯ: логическая ветвь путём отказа для него не является
+		 *
 		 */
 		if(i != 1){
 			// Выполняем проверку отказа извлечения логическим видом
@@ -2987,6 +3097,7 @@ TEST(CodecJsonDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *
 		 * @note Извлечение расходится ветвями по знаковости вида, и без этого проверка
 		 *       слепа к половине путей отказа
+		 *
 		 */
 		EXPECT_FALSE(document[i].value(signedBig));
 		// Выполняем проверку неприкосновенности приёмника при отказе
@@ -3032,7 +3143,7 @@ TEST(CodecJsonDocument, ReceiverIsUntouchedOnEveryRefusal) {
  */
 TEST(CodecJsonDocument, TwoNumberKindsDivergeOnUnfittableNumbers) {
 	/**
-	 * @brief Метод разбора текста по затребованному укладу обращения с числом
+	 * @brief Функция разбора текста по затребованному укладу обращения с числом
 	 *
 	 * @param text   разбираемый текст документа
 	 * @param rule   уклад обращения с невместимым числом
@@ -3064,7 +3175,9 @@ TEST(CodecJsonDocument, TwoNumberKindsDivergeOnUnfittableNumbers) {
 		const char * unfittable[] = {
 			"[1e999]", "[-1e999]", "[1e-999]", "[99999999999999999999999999]"
 		};
-		// Выполняем перебор всех невместимых написаний
+		/**
+		 * Выполняем перебор всех невместимых написаний
+		 */
 		for(const char * text : unfittable){
 			// Снятая обратно запись документа
 			string dump;
@@ -3086,11 +3199,14 @@ TEST(CodecJsonDocument, TwoNumberKindsDivergeOnUnfittableNumbers) {
 	 * @note Сличение это стоит здесь затем, чтобы отказ уклада `CHECK` не расползся на
 	 *       числа, в родные виды вмещающиеся: «9007199254740993» есть два в пятьдесят
 	 *       третьей и единица - целым видом оно точно, и отвергать его нечем
+	 *
 	 */
 	{
 		// Написания чисел, в родные виды вмещающихся
 		const char * fittable[] = {"[9007199254740993]", "[3.14]"};
-		// Выполняем перебор всех вместимых написаний
+		/**
+		 * Выполняем перебор всех вместимых написаний
+		 */
 		for(const char * text : fittable){
 			// Снятые обратно записи документа по обоим укладам
 			string native, check;
@@ -3236,6 +3352,7 @@ TEST(CodecJsonDocument, RawRecordIsDeafToTheSettings) {
  *          то же зелёное, ничего не измерив. Контрольное число «1e-50» видом одинарной
  *          точности при округлении ВВЕРХ уцелевает, а при прочих режимах исчезает, - им
  *          и доказывается, что настройка легла
+ *
  */
 TEST(CodecJsonDocument, NumberRoundTripIsDeafToTheRoundingMode) {
 	/**
@@ -3326,6 +3443,7 @@ TEST(CodecJsonDocument, NumberRoundTripIsDeafToTheRoundingMode) {
  *
  * @warning Сличается с ЛИТЕРАЛОМ, а не с итогом второго разбора: сличение оборота с самим
  *          собою прошло бы и у дерева, испорченного одинаково на обоих концах
+ *
  */
 TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	/**
@@ -3339,8 +3457,8 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	const auto rewrite = [](const string & text, const json::duplicate_t rule) noexcept -> string {
 		// Документ дерева для разбора текста
 		json::document_t document;
-		// Получаем настройки документа
-		auto settings = document.settings();
+		// Настройки документа
+		json::document_t::settings_t settings;
 		// Устанавливаем правило обращения с повторяющимся именем поля
 		settings.duplicates = rule;
 		// Устанавливаем настройки документа
@@ -3369,6 +3487,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	 * @note Половина существенная: снос идёт у внутреннего объекта, а размах внешнего
 	 *       выставляется ПОСЛЕ него, и завышение его вылезло бы полем «b», из записи
 	 *       пропавшим либо задвоенным
+	 *
 	 */
 	{
 		// Выполняем проверку удержания первого поля вложенного объекта
@@ -3390,6 +3509,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	 *
 	 * @note Глубина здесь и проверяется: размах правится у одного предка, а выставляется
 	 *       у двух, и ошибка на одном уровне вылезла бы полем «c»
+	 *
 	 */
 	{
 		// Выполняем проверку удержания первого поля объекта на глубине двух вместилищ
@@ -3411,6 +3531,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	 *
 	 * @note Снос идёт с конца перечня к началу, и размах правится на каждом шаге; ошибка
 	 *       накопления вылезла бы лишь при более чем одном сносе
+	 *
 	 */
 	{
 		// Выполняем проверку удержания первого поля объекта при трёх повторах
@@ -3423,6 +3544,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	 *
 	 * @note Размах сносимого поддерева здесь больше единицы, и уменьшение размаха родителя
 	 *       на единицу вместо размаха вылезло бы именно тут
+	 *
 	 */
 	{
 		/**
@@ -3431,6 +3553,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 		 *          Первая редакция проверки держала массив и сносила скаляр обоими
 		 *          правилами, и щуп, уменьшавший размах на единицу вместо размаха
 		 *          поддерева, не покрасил НИЧЕГО из шестнадцати сличений
+		 *
 		 */
 		// Выполняем проверку сноса поля-вместилища при удержании первого поля
 		EXPECT_EQ(rewrite("{\"a\":{\"x\":9,\"x\":[1,2,3]},\"b\":5}", json::duplicate_t::FIRST), "{\"a\":{\"x\":9},\"b\":5}");
@@ -3490,6 +3613,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 		 *       счёту, и подмена, снявшая убавление счёта при сносе, записи не меняет
 		 *       вовсе. Замер щупом: массив о двух значениях отчитывался тремя, а объект
 		 *       о нуле полей - одним, тогда как запись обоих была верна
+		 *
 		 */
 		ASSERT_EQ(doc.root().size(), (sample.first.find('/', 1) == string::npos) ? (before - 1) : before) << sample.first;
 	}
@@ -3498,6 +3622,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 *
 	 * @note Убавляется счёт лишь у НЕПОСРЕДСТВЕННОГО родителя: у предков дальше по
 	 *       цепочке число детей не меняется, а размах меняется у всех
+	 *
 	 */
 	{
 		// Объект документа
@@ -3543,6 +3668,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 *
 	 * @note Снос корня отвергается, а сброс его дозволен: дерево без корня значением не
 	 *       является вовсе, тогда как `null` - значение законное. Различие это намеренное
+	 *
 	 */
 	{
 		// Объект документа
@@ -3559,6 +3685,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 *
 	 * @note Сличаются ТРИ хода на одних и тех же указателях: расхождение розысков
 	 *       невидимо изнутри всякого из них, и увидеть его можно лишь сличением
+	 *
 	 */
 	{
 		// Указатели, к значениям документа не ведущие
@@ -3613,6 +3740,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 *
 	 * @note Имя `graft` оставлено ради потребителей, написанных прежде согласования
 	 *       кодеков рамки между собой, и обязано вести к той же самой работе
+	 *
 	 */
 	{
 		// Объект документа, правимого устаревшим именем
@@ -3682,6 +3810,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 		 *
 		 * @note Прогрев обязателен: отображение заводится лишь первым розыском по имени,
 		 *       и без него сбрасывать было бы нечего
+		 *
 		 */
 		ASSERT_TRUE(doc.root()["k7"].valid());
 		// Выполняем снос поля объекта по указателю
@@ -3712,6 +3841,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 		 *       поддерева не меняет, номера узлов за ним остаются прежними, и
 		 *       отображение имён переживает такую правку без вреда. Замер щупом:
 		 *       подмена сброса отображения при правке числом на число НЕ ловилась
+		 *
 		 */
 		json::value_t value;
 		// Выполняем разбор текста устанавливаемого значения
@@ -3723,6 +3853,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 		 *
 		 * @note Сличаются поля ЗА правленым: правка сдвинула номера узлов ровно им, и
 		 *       пережившее её отображение отвечало бы номером чужого узла
+		 *
 		 */
 		for(uint32_t i = 8; i < 20; i++){
 			// Получаем имя очередного поля объекта
@@ -3768,7 +3899,9 @@ TEST(CodecJsonDocument, EditingInvalidatesTheValuesTakenBefore) {
 		const json::document_t::value_t value = doc.at("/a");
 		// Выполняем проверку пригодности снятого значения до правки
 		ASSERT_TRUE(value.valid()) << static_cast <uint32_t> (operation);
-		// Выполняем правку дерева документа выбранным ходом
+		/**
+		 * Выполняем правку дерева документа выбранным ходом
+		 */
 		switch(operation){
 			/**
 			 * Выполняем правку значения по указателю
@@ -3826,12 +3959,14 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 	 * @note Переименование файла поверх каталога отвергает сама система, а запись во
 	 *       временный файл при этом удаётся целиком: дорога эта и есть третья, от обрыва
 	 *       записи отдельная
+	 *
 	 */
 	{
 		// Адрес каталога, целевой путь занимающего
 		const string directory = ::unique("./json-document-rename-dir");
 		/**
 		 * @brief Сторож временного каталога проверки
+		 *
 		 */
 		struct Guard {
 			// Адрес стерегомого каталога
@@ -3844,6 +3979,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
 		::removeDirectory(directory);
+		// Создаём каталог по целевому пути, вместо которого сохранить файл нельзя
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево значений документа
 		json::document_t document;
@@ -3867,6 +4003,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 		 *
 		 * @note Места эти у документа и у значения РАЗНЫЕ, и подмена одного другого не
 		 *       красит: половины держатся порознь, как и сами дороги сохранения
+		 *
 		 */
 		{
 			// Владеющее значение документа
@@ -4131,6 +4268,7 @@ TEST(CodecJsonDocument, LookupByASingleCharacterNameMatchesTheStringLookup) {
 	 * @note Тел таких ДВА - у дерева и у его значения, - и позвать надо оба: первая редакция
 	 *       этой проверки звала лишь дерево, и второе тело осталось непокрытым. Порождение
 	 *       без зова есть обещание, ничем не проверенное
+	 *
 	 */
 	{
 		// Дерево документа с вложенным объектом
@@ -4205,6 +4343,7 @@ TEST(CodecJsonDocument, DepthLimitIsAlwaysBoundedAndRemovalFromAnEmptyTreeIsRefu
 	 * @note Загрузка есть отдельная дорога со своим огранением, и набором она не проходилась:
 	 *       проверялся один лишь разбор из записи. Дороги эти правят одну и ту же настройку
 	 *       порознь, и разойдись они - предел, снятый звучащим, имел бы силу у одной из двух
+	 *
 	 */
 	{
 		// Имя файла документа, в какой ведётся сохранение
@@ -4294,6 +4433,7 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 		 *       одним лишь возвратом `false` - кода такому отказу не отведено. Замерил это
 		 *       щупом, приняв поначалу за немой отказ: договор записан при самой прививке и
 		 *       един у JSON, XML и CSV
+		 *
 		 */
 		json::value_t root(json::kind_t::OBJECT);
 		// Выполняем заведение поля с содержимым, записи не подлежащим
@@ -4307,16 +4447,22 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 		// Выполняем проверку того, что отказ назван кодом
 		ASSERT_NE(document.error(), json::error_t::NONE);
 		/**
-		 * Выполняем проверку выдачи текста ВТОРЫМ входом, уклад берущим
+		 * Выполняем проверку выдачи текста нарядным укладом
 		 *
-		 * @note Входов выдачи ДВА - без уклада и с укладом, - и донесение отказа стоит у
+		 * @note Укладов выдачи ДВА - сжатый и нарядный, - и донесение отказа стоит у
 		 *       каждого своё. Проверка одного ничего не говорит о другом: карта показала
 		 *       непокрытым именно второй, тогда как первый проходился
 		 *
 		 * @note Разряд этот встречен за день шестой раз, и всякий раз одинаково: тел
 		 *       несколько, а позвано одно
+		 *
 		 */
-		const string formatted = document.dump(json::format_t::PRETTY);
+		// Устанавливаем нарядный вид записи текста документа
+		settings.writer.format = json::format_t::PRETTY;
+		// Выполняем установку настроек документа
+		document.settings(settings);
+		// Выполняем выдачу текста нарядным укладом
+		const string formatted = document.dump();
 		// Выполняем проверку того, что выданный укладом текст тоже пуст
 		ASSERT_TRUE(formatted.empty());
 		// Выполняем проверку того, что отказ назван кодом и вторым входом
@@ -4329,6 +4475,7 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 	 *       какой ветвь отказа и заведена: пустой текст при отказе записи и пустой текст при
 	 *       пустом дереве различаются ИМЕННО кодом, а не самим текстом. Первая редакция этой
 	 *       половины ждала здесь `NONE` и была неверна - замерено 08.09.2026
+	 *
 	 */
 	{
 		// Дерево документа, ничем не заполненное

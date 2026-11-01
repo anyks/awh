@@ -56,10 +56,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
- * @brief Метод приведения текста к кодировке UTF-8 с подачей кусками заданного размера
+ * @brief Функция приведения текста к кодировке UTF-8 с подачей кусками заданного размера
  *
  * @param input  приводимый исходный текст
  * @param step   размер куска подаваемого текста
@@ -108,7 +111,7 @@ static bool convert(const string & input, const size_t step, string & result, xm
 	return true;
 }
 /**
- * @brief Метод сборки текста в кодировке UTF-16
+ * @brief Функция сборки текста в кодировке UTF-16
  *
  * @param text    собираемый текст в кодировке US-ASCII
  * @param reverse признак обратного порядка байтов
@@ -336,6 +339,7 @@ TEST(CodecXmlEncoding, Unsupported) {
 	 *       однобайтовая кодировка ныне берётся таблицею у `awh::charset`, и KOI8-R
 	 *       читается. Отвергается лишь то, чего не знает и общий модуль, - имя, кодировки
 	 *       не значащее вовсе
+	 *
 	 */
 	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"выдуманная\"?><a/>"), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
@@ -347,6 +351,7 @@ TEST(CodecXmlEncoding, Unsupported) {
 	 *
 	 * @warning Отвергать её обязательно: таблицы байта в знак у неё нет, и разбор её
 	 *          однобайтовым способом выдал бы вместо текста мусор
+	 *
 	 */
 	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"UTF-32\"?><a/>"), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
@@ -569,6 +574,7 @@ TEST(CodecXmlEncoding, MalformedEncodings) {
 	 *
 	 * @note За старшей половиной стоит обычный знак: договор о всеобщей кодировке
 	 *       требует именно младшей половины, и всякое иное значение построение рушит
+	 *
 	 */
 	ASSERT_FALSE(convert(string("\xFF\xFE\x3D\xD8\x41\x00", 6), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
@@ -586,6 +592,7 @@ TEST(CodecXmlEncoding, MalformedEncodings) {
 	 *
 	 * @note Половина кодового значения удерживается до следующего куска, и конец
 	 *       текста на ней означает оборванный знак, а не конец разметки
+	 *
 	 */
 	ASSERT_FALSE(convert(string("\xFF\xFE\x41\x00\x42", 5), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
@@ -619,7 +626,7 @@ TEST(CodecXmlEncoding, MalformedEncodings) {
  */
 TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
 	/**
-	 * @brief Метод приведения текста разметки из UTF-8 в UTF-16
+	 * @brief Функция приведения текста разметки из UTF-8 в UTF-16
 	 *
 	 * @param source приводимый текст разметки в кодировке UTF-8
 	 * @param big    признак прямого порядка байтов в приведённом тексте
@@ -690,7 +697,7 @@ TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
 		return result;
 	};
 	/**
-	 * @brief Метод сборки слепка выдачи разбора текста разметки
+	 * @brief Функция сборки слепка выдачи разбора текста разметки
 	 *
 	 * @param text  разбираемый текст разметки
 	 * @param chunk размер куска подачи текста разметки
@@ -759,6 +766,7 @@ TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
 		 *
 		 * @note Однобайтовый кусок разрывает всякое шестнадцатибитное значение, а
 		 *       трёхбайтовый - ещё и всякую суррогатную пару, не совпадая с её длиной
+		 *
 		 */
 		for(const size_t chunk : {wide.size(), static_cast <size_t> (1), static_cast <size_t> (3)})
 			// Выполняем проверку совпадения выдачи разбора с выдачей по кодировке UTF-8
@@ -804,6 +812,7 @@ TEST(CodecXmlEncoding, TruncatedCharacter) {
 	 *
 	 * @note Отказ выносится не подачей, а разбором: подача лишь принимает байты, тогда
 	 *       как кодировка сличается при выдаче события
+	 *
 	 */
 	while(reader.next());
 	// Выполняем проверку того, что отказ вынесен именно по кодировке
@@ -861,7 +870,9 @@ TEST(CodecXmlEncoding, ByteOrderMarkAgreement) {
 		xml::reader_t reader;
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next());
 		// Выводим код отказа разбора
 		return reader.error();
@@ -905,6 +916,7 @@ TEST(CodecXmlEncoding, DeclarationDisagreement) {
 	 *
 	 * @note Отказ обязан выноситься при всяком размере куска: объявление разметки
 	 *       границей куска разрывается, и накопление его ведётся отдельно
+	 *
 	 */
 	for(size_t step = 1; step < 8; step++){
 		// Выполняем проверку отказа объявления двухбайтовой кодировки при однобайтовой записи
@@ -923,8 +935,10 @@ TEST(CodecXmlEncoding, DeclarationDisagreement) {
  * @note Негодная запись знаков подаётся ЧЕРЕЗ ЧТЕНИЕ, а не приведению напрямую:
  *       так проходится дорога, какой пользуется всякий разбор, и разорванные
  *       границей куска последовательности удерживаются между подачами
+ *
  * @warning Годная половина важнее негодной: ошибка на этой дороге отвергала бы
  *          законные тексты, разбираемые прямо из буфера потребителя
+ *
  */
 TEST(CodecXmlEncoding, ReaderRefusals) {
 	/**
@@ -933,6 +947,7 @@ TEST(CodecXmlEncoding, ReaderRefusals) {
 	 * @param text разбираемый текст разметки
 	 * @param step размер куска подаваемого текста
 	 * @return     код ошибки разбора
+	 *
 	 */
 	auto feed = [](const string & text, const size_t step) noexcept -> xml::error_t {
 		// Объект потокового чтения текста разметки
@@ -990,6 +1005,7 @@ TEST(CodecXmlEncoding, ReaderRefusals) {
 		 * @note Подача по байту разрывает всякую последовательность знака: отказ
 		 *       обязан выноситься тот же самый, иначе нарезка текста на куски меняла
 		 *       бы исход разбора
+		 *
 		 */
 		ASSERT_EQ(feed(text, 1), xml::error_t::INVALID_ENCODING);
 	}
@@ -1001,6 +1017,7 @@ TEST(CodecXmlEncoding, ReaderRefusals) {
 	 * @note Кодировка опознаётся по самому объявлению разметки: знаки «<?» в записи
 	 *       UTF-16 дают приметную пару байтов с нулём, и по ней порядок байтов
 	 *       определяется без всякой метки
+	 *
 	 */
 	{
 		// Собираемый текст разметки в кодировке UTF-16 с младшим байтом впереди
@@ -1078,6 +1095,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 *
 	 * @note Оборванная НЕ на конце отказа не даёт: остаток её вправе прийти следующим
 	 *       куском, и решение откладывается до признака последнего куска
+	 *
 	 */
 	{
 		// Объект приведения кодировки исходного текста
@@ -1095,7 +1113,9 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 * Знак, разметке недопустимый, отвергается при всякой кодировке
 	 */
 	{
-		// Выполняем перебор кодировок и недопустимых знаков в них
+		/**
+		 * Выполняем перебор кодировок и недопустимых знаков в них
+		 */
 		for(uint32_t kind = 0; kind < 4; kind++){
 			// Объект приведения кодировки исходного текста
 			xml::decoder_t decoder;
@@ -1111,17 +1131,23 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 				case 0: chunk.assign("a\xEF\xBF\xBE", 4); break;
 				// Кодировка UTF-16 с обратным порядком байтов
 				case 1: {
+					// Проверяем, что приведение переключилось на UTF-16 с обратным порядком байтов
 					ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF16LE));
+					// Готовим кусок: знак «a» и управляющий знак U+0001 в UTF-16LE
 					chunk.assign("a\x00\x01\x00", 4);
 				} break;
 				// Кодировка ISO-8859-1 с управляющим знаком
 				case 2: {
+					// Проверяем, что приведение переключилось на ISO-8859-1
 					ASSERT_TRUE(decoder.encoding(xml::encoding_t::LATIN1));
+					// Готовим кусок: знак «a» и управляющий знак 0x01 в ISO-8859-1
 					chunk.assign("a\x01", 2);
 				} break;
 				// Кодировка US-ASCII с управляющим знаком
 				case 3: {
+					// Проверяем, что приведение переключилось на US-ASCII
 					ASSERT_TRUE(decoder.encoding(xml::encoding_t::ASCII));
+					// Готовим кусок: знак «a» и управляющий знак 0x01 в US-ASCII
 					chunk.assign("a\x01", 2);
 				} break;
 			}
@@ -1150,6 +1176,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 * @note Объявление разметки разбирается поиском слова, и найденное вхождение обязано
 	 *       быть полем: без сличения со знаком равенства слово, стоящее в объявлении само
 	 *       по себе, приняли бы за поле кодировки и разбирали бы то, чего там нет
+	 *
 	 */
 	{
 		// Объект приведения кодировки исходного текста
@@ -1192,9 +1219,11 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
  * @note Прежде разметка с объявлением `windows-1251` либо `koi8-r` отвергалась наотрез,
  *       хотя таблицы для неё лежали в дереве готовые. Решение пересмотрено 23.08.2026,
  *       и запись о нём стоит в шапке `common.hpp`
+ *
  * @warning Проверяются ОБЕ половины: опознанное имя обязано читаться, а неопознанное -
  *          отвергаться. Набор из одной лишь первой половины прошёл бы и у разбора,
  *          принимающего что угодно и читающего текст вслепую как US-ASCII
+ *
  */
 TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 	/**
@@ -1202,6 +1231,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 	 *
 	 * @note Содержимое у всех одно и то же слово «Привет», записанное каждой кодировкой
 	 *       по-своему: сличается именно ПРОЧТЁННОЕ, а не одно лишь отсутствие отказа
+	 *
 	 */
 	for(auto & item : vector <pair <string, string>> {
 		{"windows-1251", "\xCF\xF0\xE8\xE2\xE5\xF2"},
@@ -1232,6 +1262,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		 * @note Пробел вскрыт сличением состава перечня `encoding_t` с тем, что
 		 *       поминается проверками: вид этот единственный из семи не поминался
 		 *       нигде, при том что ставится он исправно
+		 *
 		 */
 		ASSERT_EQ(document.encoding(), xml::encoding_t::SINGLE) << item.first;
 	}
@@ -1246,6 +1277,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		 *
 		 * @note Отвергать её обязательно: таблицы байта в знак у неё нет, и разбор её
 		 *       однобайтовым способом выдал бы вместо текста мусор
+		 *
 		 */
 		"UTF-32"
 	}) {
@@ -1273,7 +1305,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
  */
 namespace {
 	/**
-	 * @brief Метод чтения кодового значения внешним судьёй
+	 * @brief Функция чтения кодового значения внешним судьёй
 	 *
 	 * @details Судья писан по описанию Юникода и ни одному кодеку не принадлежит.
 	 * Кратчайшесть записи, суррогаты и предел U+10FFFF отсекаются пределами первого
@@ -1314,6 +1346,7 @@ namespace {
 		 *       `C0` и `C1`, договором отведённые вовсе. Иного оно не меняет, и число
 		 *       расхождений от него ПРЕДСКАЗУЕМО: по 64 продолжающих байта на каждый из
 		 *       двух ведущих, итого 128 при исчерпывающем переборе двух байтов
+		 *
 		 */
 		} else if(blind && ((letter == 0xC0) || (letter == 0xC1))){ count = 1; code = (letter & 0x1F); }
 		else if((letter >= 0xC2) && (letter <= 0xDF)){ count = 1; code = (letter & 0x1F); }
@@ -1379,7 +1412,7 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 	// Количество расхождений приговора, кодового значения и длины
 	size_t verdicts = 0, codes = 0, lengths = 0;
 	/**
-	 * @brief Метод сличения приговора кодеков с приговором судьи
+	 * @brief Функция сличения приговора кодеков с приговором судьи
 	 *
 	 * @param buffer сличаемая последовательность байтов
 	 * @param size   размер сличаемой последовательности
@@ -1421,6 +1454,7 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 	 * @note Приём взят у кодека ABC: там стенд портит судью сам
 	 *       и требует точного числа прежде, чем отчитаться. Ручная порча доказывает
 	 *       зрячесть однажды, встроенная - каждым прогоном
+	 *
 	 */
 	{
 		// Количество расхождений ослеплённого судьи с кодеком
@@ -1429,8 +1463,13 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 		 * Выполняем исчерпывающий перебор всех последовательностей двух байтов
 		 */
 		for(uint32_t first = 0; first < 256; first++){
+			// Кладём перебираемый первый октет в буфер сличения
 			buffer[0] = static_cast <unsigned char> (first);
+			/**
+			 * Перебираем второй октет последовательности
+			 */
 			for(uint32_t second = 0; second < 256; second++){
+				// Дописываем второй октет к перебираемому первому
 				buffer[1] = static_cast <unsigned char> (second);
 				// Длина годной последовательности по приговору ослеплённого судьи
 				size_t length = 0;
@@ -1451,10 +1490,17 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 	 * Выполняем исчерпывающий перебор всех последовательностей одного и двух байтов
 	 */
 	for(uint32_t first = 0; first < 256; first++){
+		// Кладём перебираемый октет в начало сличаемой последовательности
 		buffer[0] = static_cast <unsigned char> (first);
+		// Сличаем одиночный перебираемый байт с приговорами судьи и кодека
 		compare(buffer, 1);
+		/**
+		 * Перебираем второй октет последовательности
+		 */
 		for(uint32_t second = 0; second < 256; second++){
+			// Дописываем перебираемый второй октет к ведущему байту
 			buffer[1] = static_cast <unsigned char> (second);
+			// Сличаем двухбайтовую последовательность с приговорами судьи и кодека
 			compare(buffer, 2);
 		}
 	}
@@ -1464,19 +1510,32 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 	 * @note Ведущие байты подобраны по границам описания: `C0`/`C1` - переудлинённая
 	 *       запись, `E0` - её же трёхбайтовый случай, `ED` - суррогаты, `F0` - её же
 	 *       четырёхбайтовый случай, `F4` - предел U+10FFFF, `F5` - за пределом
+	 *
 	 */
 	for(const unsigned char leading : {0xC0, 0xC1, 0xE0, 0xE1, 0xED, 0xEE, 0xF0, 0xF1, 0xF4, 0xF5}){
+		// Кладём граничный ведущий байт в начало последовательности
 		buffer[0] = leading;
 		/**
 		 * Выполняем исчерпывающий перебор продолжающих байтов у граничных ведущих
 		 */
 		for(uint32_t second = 0; second < 256; second++){
+			// Кладём перебираемый второй октет после граничного ведущего
 			buffer[1] = static_cast <unsigned char> (second);
+			/**
+			 * Перебираем пограничные значения третьего октета
+			 */
 			for(const unsigned char third : {0x00, 0x7F, 0x80, 0x8F, 0x90, 0x9F, 0xA0, 0xBF, 0xC0, 0xFF}){
+				// Дописываем пограничный третий октет к первым двум
 				buffer[2] = third;
+				// Сличаем трёхбайтовую последовательность с приговорами судьи и кодека
 				compare(buffer, 3);
+				/**
+				 * Перебираем пограничные значения четвёртого октета
+				 */
 				for(const unsigned char fourth : {0x00, 0x80, 0xBF, 0xC0, 0xFF}){
+					// Дописываем пограничный четвёртый октет к первым трём
 					buffer[3] = fourth;
+					// Сличаем четырёхбайтовую последовательность с приговорами судьи и кодека
 					compare(buffer, 4);
 				}
 			}
@@ -1494,6 +1553,7 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 	 * @note Судья, всё подряд отвергающий, прошёл бы проверку выше лишь при кодеках,
 	 *       делающих то же, - но проверка стоит здесь затем, что молчащий судья
 	 *       неотличим от согласия
+	 *
 	 */
 	{
 		// Длина годной последовательности по приговору судьи
@@ -1501,9 +1561,11 @@ TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
 		// Выполняем проверку отвержения суррогата судьёю
 		const unsigned char surrogate[3] = {0xED, 0xA0, 0x80};
 		::judge(surrogate, 3, length);
+		// Проверяем, что судья не счёл годным ни одного байта суррогата ED A0 80
 		ASSERT_EQ(length, static_cast <size_t> (0));
 		// Выполняем проверку принятия годной последовательности судьёю
 		const unsigned char letter[2] = {0xD0, 0x91};
+		// Проверяем, что судья выдал для «Б» (D0 91) кодовое значение 0x411
 		ASSERT_EQ(::judge(letter, 2, length), static_cast <uint32_t> (0x411));
 		ASSERT_EQ(length, static_cast <size_t> (2));
 	}
@@ -1547,6 +1609,7 @@ TEST(CodecXmlEncoding, NameableAgreesWithTheWriter) {
 	 *          вместо двенадцатого, подменив проверяемое. Оттого склейка обведена
 	 *          скобками - способом, какой советует сам собиратель: намерение он видит,
 	 *          а состав списка от скобок не меняется вовсе
+	 *
 	 */
 	const char * names[] = {
 		"а", "a", "a-b", "a.b", "a:b", "1a", "-a", "a b", "", "xml", "a_b", ("a\xC2\xA0" "b")
@@ -1557,9 +1620,12 @@ TEST(CodecXmlEncoding, NameableAgreesWithTheWriter) {
 	 * @note Число это записано литералом затем, чтобы склейка последних двух литералов,
 	 *       разделённая запятою по совету собирателя, краснела здесь: список вырос бы до
 	 *       тринадцати имён, а проверяемое имя подменилось бы двумя чужими
+	 *
 	 */
 	ASSERT_EQ(sizeof(names) / sizeof(names[0]), static_cast <size_t> (12));
-	// Выполняем перебор всех проверяемых имён
+	/**
+	 * Выполняем перебор всех проверяемых имён
+	 */
 	for(const char * name : names){
 		// Приговор открытого посредника годности имени
 		const bool verdict = xml::nameable(name);
@@ -1629,10 +1695,13 @@ TEST(CodecXmlEncoding, BothHalvesAgreeOnNameValidity) {
 		 * @note Приговор совпадает, а причина иная, и потому коды здесь свои: разбор
 		 *       толкует эти построения атрибутом, префиксом и меткой, до сличения имени
 		 *       не доходя
+		 *
 		 */
 		{"a b", false, 0x11}, {"a:b", false, 0x23}, {"a\xEF\xB7\x90", false, 0x09}
 	};
-	// Выполняем перебор всех проверяемых имён
+	/**
+	 * Выполняем перебор всех проверяемых имён
+	 */
 	for(const auto & probe : probes){
 		// Приговор открытого посредника годности имени
 		const bool judge = xml::nameable(probe.name);
@@ -1642,7 +1711,9 @@ TEST(CodecXmlEncoding, BothHalvesAgreeOnNameValidity) {
 		const string text = string("<") + probe.name + "/>";
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Признак принятия имени разбором
 		const bool read = (reader.error() == xml::error_t::NONE);
@@ -1687,7 +1758,7 @@ TEST(CodecXmlEncoding, BothHalvesAgreeOnNameValidity) {
  */
 TEST(CodecXmlEncoding, FastNameTableAgreesWithTheSlowJudge) {
 	/**
-	 * @brief Метод разбора имени узла с выдачей признака вхождения знака в имя
+	 * @brief Функция разбора имени узла с выдачей признака вхождения знака в имя
 	 *
 	 * @param text     разбираемый текст разметки
 	 * @param expected ожидаемое местное имя узла
@@ -1701,7 +1772,9 @@ TEST(CodecXmlEncoding, FastNameTableAgreesWithTheSlowJudge) {
 		reader.feed(text.data(), text.size(), true);
 		// Местное имя разобранного узла разметки
 		string name;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если получено событие начала узла разметки
 			if(reader.event() == xml::event_t::ELEMENT_OPEN)
@@ -1733,6 +1806,7 @@ TEST(CodecXmlEncoding, FastNameTableAgreesWithTheSlowJudge) {
 		 * @note Двоеточие есть единственное намеренное расхождение судей, и оно
 		 *       сличается своим утверждением: медленный судья зовёт его годным, а
 		 *       быстрый путь делит им имя, и в местное имя оно не входит
+		 *
 		 */
 		if(code == 0x3A){
 			// Выполняем проверку годности двоеточия у медленного судьи

@@ -37,6 +37,7 @@
  * @note У MS Windows его нет вовсе, а проверки кодеков собираются ОДНОЙ программой:
  *       подключение без заслона валит цель целиком, вместе с проверками всех прочих
  *       кодеков. Вскрыто 06.09.2026 на стенде MSYS2 MinGW64
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/resource.h>
@@ -47,6 +48,7 @@
  *
  * @note У POSIX `getpid` живёт в `<unistd.h>`, уже подключённом выше, а у MS Windows -
  *       `_getpid` в `<process.h>`. Номер этот нужен именам временных файлов
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <process.h>
@@ -70,7 +72,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключение пространства имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключение пространства имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -79,7 +87,7 @@ using namespace awh::codec;
  */
 namespace {
 	/**
-	 * @brief Метод уточнения названия временного файла номером процесса
+	 * @brief Функция уточнения названия временного файла номером процесса
 	 *
 	 * @details Имя без номера процесса делает проверки НЕПРИГОДНЫМИ к одновременным
 	 * прогонам: два процесса пишут в один файл, и проверка, сохранность содержимого
@@ -109,8 +117,13 @@ namespace {
 		 * Выполняем сборку хвоста, несущего номер процесса
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
+			// Хвост имени, несущий номер процесса MS Windows зовом _getpid
 			const string tail = ("-" + std::to_string(static_cast <long> (::_getpid())));
+		/**
+		 * Для операционной системы MS Windows
+		 */
 		#else
+			// Хвост имени, несущий номер процесса POSIX-систем зовом getpid
 			const string tail = ("-" + std::to_string(static_cast <long> (::getpid())));
 		#endif
 		// Если расширения у названия нет, дописываем номер процесса в конец
@@ -166,6 +179,7 @@ namespace {
 				 *          за собою, но не за прогоном, прерванным отказом утверждения либо
 				 *          снятым процессом извне. Ровно такой файл и обращает проверку
 				 *          записи в ложное зелёное
+				 *
 				 */
 				(void) ::remove(this->_filename.c_str());
 			}
@@ -414,6 +428,7 @@ TEST(CodecAbcStorage, Refusals){
 	 *       относительным. Файл с таким именем, оставленный в каталоге запуска, обращал
 	 *       проверку в ложное КРАСНОЕ - отказ, зависящий от каталога и от чужого мусора,
 	 *       а не от кодека. Замер 01.09.2026: подложенный файл валит `Refusals`
+	 *
 	 */
 	const Temporary absent("missing-file");
 	// Хранилище контейнера в файле
@@ -434,6 +449,7 @@ TEST(CodecAbcStorage, Refusals){
 	 * @note Дверей у привязки две - правщиком и выборкой, - а заслон у них один и тот же:
 	 *       файл не открыт, читать нечего. Дверь выборки до 05.09.2026 не стерёг НИКТО, и
 	 *       нашлась она сплошным щупом по местам отказа
+	 *
 	 */
 	abc::fetcher_t fetcher;
 	// Выполняем проверку отказа открытия контейнера закрытого файла выборкой записей
@@ -563,6 +579,44 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	ASSERT_EQ(empty.length(), 0ull);
 }
 /**
+ * @brief Проверка сохранения открытого файла при отказах пустого адреса
+ *
+ */
+TEST(CodecAbcStorage, EmptyFilenamePreservesOpenedStorage){
+	// Временный файл проверки
+	Temporary file("empty-filename");
+	// Хранилище контейнера в файле
+	abc::storage_t storage;
+	// Выполняем заведение файла контейнера
+	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
+	// Выполняем проверку отказа повторного открытия без адреса
+	ASSERT_FALSE(storage.open(""));
+	// Выполняем проверку сохранения прежней привязки
+	ASSERT_TRUE(storage.opened());
+	// Выполняем проверку сохранения названия файла
+	ASSERT_EQ(storage.filename(), file.filename());
+	// Выполняем проверку отказа заведения файла без адреса
+	ASSERT_FALSE(storage.create(""));
+	// Выполняем проверку сохранения прежней привязки после второго отказа
+	ASSERT_TRUE(storage.opened());
+	// Выполняем проверку сохранения названия файла после второго отказа
+	ASSERT_EQ(storage.filename(), file.filename());
+	// Буфер вычитанных октетов
+	vector <uint8_t> result(4, 0x5A);
+	// Выполняем проверку отказа чтения без адреса
+	ASSERT_FALSE(storage.fetch("", result));
+	// Выполняем проверку сохранения выходного буфера
+	ASSERT_EQ(result, vector <uint8_t> (4, 0x5A));
+	// Выполняем проверку сохранения прежней привязки после отказа чтения
+	ASSERT_TRUE(storage.opened());
+	// Выполняем проверку отказа записи без адреса
+	ASSERT_FALSE(storage.store("", result.data(), result.size()));
+	// Выполняем проверку сохранения прежней привязки после отказа записи
+	ASSERT_TRUE(storage.opened());
+	// Выполняем проверку сохранения названия файла после всех отказов
+	ASSERT_EQ(storage.filename(), file.filename());
+}
+/**
  * @brief Проверка отказов работ чтения и записи закрытого хранилища
  *
  * @details Работы эти выдаются наружу и переживают закрытие файла: потребитель
@@ -662,6 +716,7 @@ TEST(CodecAbcStorage, BoundedWorks){
 	 *
 	 * @note Порог взят с двухсоткратным запасом к доброму пути и десятикратным к худому:
 	 * времени тут мерить нечего вовсе, отказ обязан прийти немедля
+	 *
 	 */
 	// Миг начала поверки сторожа границ чтения
 	const auto started = chrono::steady_clock::now();
@@ -692,6 +747,7 @@ TEST(CodecAbcStorage, BoundedWorks){
 	// Прочитанные октеты обязаны отвечать записанным
 	ASSERT_EQ(buffer, sample);
 }
+// Прогон уборки мусора переносом содержимого в новый файл контейнера
 TEST(CodecAbcStorage, CompactToFile){
 	// Временный файл правимого контейнера
 	Temporary origin("compact-origin");
@@ -774,6 +830,7 @@ TEST(CodecAbcStorage, CompactToFile){
  * @note Пути, требующие ОТКАЗА самой записи на носитель (переполнение раздела, отказ
  *       `fwrite`), сюда не входят: воспроизвести их без чужой оснастки нечем, и
  *       проверка на них вышла бы либо ненадёжной, либо непереносимой
+ *
  */
 TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	/**
@@ -782,6 +839,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 * @note Подача переводит поток файла в начало первым же делом, и у незаведённого
 	 * перевод этот отвечает отказом. Дорога взята подачею, а не переводом напрямую:
 	 * перевод есть работа внутренняя, и проверке до неё дела нет
+	 *
 	 */
 	{
 		// Хранилище контейнера на носителе
@@ -827,6 +885,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 * @note Поверка буфера стоит ПРЕЖДЕ заведения файла, и это существенно: заведи
 	 * работа файл прежде поверки - на носителе оставался бы пустой файл от вызова,
 	 * отвергнутого заведомо
+	 *
 	 */
 	{
 		// Хранилище контейнера на носителе
@@ -968,6 +1027,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	 *
 	 * @note Выдача обязана остаться ПУСТОЙ: потребителю, признака не проверившему,
 	 *       прежнее содержимое выдачи неотличимо от вычитанного
+	 *
 	 */
 	{
 		// Выдача, наполненная прежде чтения
@@ -984,6 +1044,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	 *
 	 * @warning Предел сличается ДО отведения памяти: отведи работа память по объявленной
 	 *          длине - и файл, поданный извне, задавал бы расход памяти сам
+	 *
 	 */
 	{
 		// Вычитываемые октеты файла
@@ -996,6 +1057,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		 * @note Причину эту до 05.09.2026 не сличал никто: сплошной щуп по местам отказа
 		 *       показал, что подмена её здесь не красит ничего, - проверка стерегла лишь
 		 *       ложь работы, а не то, о чём работа отчитывается потребителю
+		 *
 		 */
 		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		// Выполняем проверку пустоты выдачи при отказе по пределу
@@ -1011,6 +1073,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		 *          настройках разбора, - и разойдись он здесь, потребитель, подавший
 		 *          нуль в значении «ни октета», получил бы обратное. Проверка стережёт
 		 *          именно СОГЛАСИЕ уговоров, а не работу самого чтения
+		 *
 		 */
 		vector <uint8_t> unbounded;
 		// Выполняем чтение файла пределом, равным нулю
@@ -1024,6 +1087,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	 * @note Путь этот отличен от отсутствующего файла: там `fopen` отвечает отказом
 	 *       сразу, здесь же каталог у ряда систем ОТКРЫВАЕТСЯ, а чтение из него
 	 *       отказывает - то есть отказ настигает работу ПОЗЖЕ, на ином её шаге
+	 *
 	 */
 	{
 		// Выдача, наполненная прежде чтения
@@ -1041,6 +1105,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	 * @note Пустой файл отдаётся УСПЕХОМ с пустою выдачей, а не отказом: пуст он
 	 *       законно, а годность вычитанного судит уже разбор - он же и объявит запись
 	 *       пустой негодной документом. Отказывать здесь значило бы решать за разбор
+	 *
 	 */
 	{
 		// Временный файл нулевой длины
@@ -1081,6 +1146,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 *
 	 * @note Каталог заводится СВОЙ, а не берётся временный каталог целиком: половина
 	 *       первая правит права каталога, и править их у чужого нельзя
+	 *
 	 */
 	const string directory = temporary(unique("abc-atomic-store"));
 	/**
@@ -1089,6 +1155,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 * @warning Каталог сносится ПОСЛЕ содержимого его: снос каталога непустого отвечает
 	 * отказом, и прогон второй падал бы не на том, что проверяет, а на уборке первого.
 	 * Замечено на втором же прогоне 04.09.2026
+	 *
 	 */
 	/**
 	 * Выполняем ВОЗВРАТ ПРАВ каталогу прежде всякой уборки
@@ -1106,6 +1173,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 *       соседним набором кодеков: краснота всплывала у соседа, а порождалась здесь
 	 *
 	 * @note Отдача не сличается: каталога может не быть вовсе, и это обычный случай
+	 *
 	 */
 	(void) ::chmod(directory.c_str(), 0755);
 	/**
@@ -1114,9 +1182,12 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 * @note У MS Windows отказ добывается запретом записи в САМУ ЦЕЛЬ, а не в каталог,
 	 *       и убитый там прогон оставляет файл с правами 0444. Снести такой файл `remove`
 	 *       у MS Windows отказывается, и круг замыкается тем же образом
+	 *
 	 */
 	(void) ::chmod((directory + "/контейнер.abc").c_str(), 0644);
+	// Сносим файл контейнера, оставшийся от убитого прошлого прогона
 	(void) ::remove((directory + "/контейнер.abc").c_str());
+	// Сносим хвост .part недописанной фиксации прошлого прогона
 	(void) ::remove((directory + "/контейнер.abc.part").c_str());
 	/**
 	 * Выполняем снос следов половины третьей, каталогом назначения занимавшейся
@@ -1126,9 +1197,12 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 * берёт. Следующий прогон падал тогда на `mkdir` - то есть не на том, что проверяет,
 	 * а на уборке предыдущего. Замечено 05.09.2026, вторым таким случаем в этой же
 	 * проверке
+	 *
 	 */
 	(void) ::remove((directory + "/занято/жилец").c_str());
+	// Сносим хвост .part, оставшийся у каталога назначения прошлым прогоном
 	(void) ::remove((directory + "/занято.part").c_str());
+	// Сносим сам каталог назначения «занято», оставшийся прошлым прогоном
 	(void) ::rmdir((directory + "/занято").c_str());
 	// Выполняем снос каталога, оставшегося от прошлого прогона
 	(void) ::rmdir(directory.c_str());
@@ -1140,6 +1214,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 *       на все наборы - `makeDirectory` в `tests/codec/temporary.hpp`. Свой такой же
 	 *       здесь заводился и снят: две одноимённые работы о разной подписи и разной
 	 *       отдаче в одном наборе суть мина, а то, что они собирались, - худший исход
+	 *
 	 */
 	ASSERT_TRUE(makeDirectory(directory)) << directory;
 	// Название файла контейнера
@@ -1147,7 +1222,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	// Прежнее содержимое файла контейнера
 	const string previous = "ПРЕЖНИЙ ЦЕЛЫЙ КОНТЕЙНЕР";
 	/**
-	 * @brief Метод чтения содержимого файла целиком
+	 * @brief Функция чтения содержимого файла целиком
 	 *
 	 * @param name название читаемого файла
 	 * @return     содержимое читаемого файла
@@ -1206,10 +1281,14 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		 *       прогоном под Windows 07.09.2026, способ замены найден замером, и
 		 *       им же 07.09.2026 проверено на стенде: набор кодеков под Windows дал ноль
 		 *       отказов, проверка эта зелена
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем запрет записи в сам файл контейнера
 			ASSERT_EQ(::chmod(filename.c_str(), 0444), 0) << filename;
+		/**
+		 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+		 */
 		#else
 			// Выполняем запрет записи в каталог файла контейнера
 			ASSERT_EQ(::chmod(directory.c_str(), 0555), 0) << directory;
@@ -1222,6 +1301,9 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем возврат прав файлу контейнера
 			ASSERT_EQ(::chmod(filename.c_str(), 0644), 0) << filename;
+		/**
+		 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+		 */
 		#else
 			// Выполняем возврат прав каталога файла контейнера
 			ASSERT_EQ(::chmod(directory.c_str(), 0755), 0) << directory;
@@ -1246,6 +1328,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		 *
 		 * @note Хвост этот - тот самый след, по какому отличается запись рядом от записи
 		 *       прямо в назначенный файл: остаться он не должен ни при успехе, ни при отказе
+		 *
 		 */
 		ASSERT_TRUE(content(filename + ".part").empty());
 	}
@@ -1339,6 +1422,7 @@ TEST(CodecAbcStorage, ResourceOwnersForbidCopying) {
 	 * @note Половина эта и делает проверку зрячей: без неё она была бы зелена и при
 	 *       запрете копирования у ВСЕГО подряд, а владеющее дерево копироваться обязано -
 	 *       на том стоят прививка и слепок
+	 *
 	 */
 	static_assert(std::is_copy_constructible <abc::value_t>::value,
 	 "владеющее значение обязано копироваться");
@@ -1358,6 +1442,7 @@ TEST(CodecAbcStorage, ResourceOwnersForbidCopying) {
  *
  * @note Прежняя проверка `CodecAbcStorage.RefusalsWithoutMedium` обходила лишь подачу да
  *       заведение, а прочие входы стояли слепыми до 05.09.2026
+ *
  */
 TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
 	// Выполняем отключение вывода журнала на приставку
@@ -1427,6 +1512,7 @@ TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
  *          НОМЕРОМ записи, а он есть ПРЕДЕЛ допустимой длины файла. Отказ выходил верный,
  *          да не о том: «файл длиннее семи октетов». Сличение с тем же контейнером В
  *          ПАМЯТИ показало, что записи читаются, - и ошибка оказалась моею, а не кодека
+ *
  */
 TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 	// Выполняем отключение вывода журнала на приставку
@@ -1489,6 +1575,7 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 		vector <uint8_t> item;
 		// Признак успешно выбранной записи усечённого контейнера
 		const bool taken = (bound && fetcher.record(7, item));
+		// Проверяем, что усечённый файл не отдал запись под номером семь
 		ASSERT_FALSE(taken) << "усечённый файл отдал запись";
 		/**
 		 * Выполняем проверку того, что причина названа невозможностью чтения: усечение
@@ -1517,44 +1604,72 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
  *       открытие на запись отвечается `ENXIO`, а открытие на чтение ждёт писателя
  *
  * @note Под Windows именованных каналов вида POSIX нет, и проверка там не собирается
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+// Прогон отказа хранилища от неперематываемого потока
 TEST(CodecAbcStorage, UnseekableStreamIsRefused){
+	// Глушим журнал на приставке, дабы намеренные отказы не засоряли вывод
 	awh::log::mode({});
+	// Путь именованного канала проверки, уточнённый номером процесса
 	const string path = unique("./abc-storage-fifo");
 	// Сторож, сносящий канал и до проверки, и после неё - в том числе на пути отказа
 	const Remover guard(path);
+	// Заводим именованный канал с правами 0600 - без него неперематываемого потока нет
 	ASSERT_EQ(::mkfifo(path.c_str(), 0600), 0) << "завести именованный канал не удалось";
+	// Читатель именованного канала, открытый неблокирующим режимом
 	const int reader = ::open(path.c_str(), O_RDONLY | O_NONBLOCK);
+	// Проверяем, что читатель канала открыт без отказа
 	ASSERT_GE(reader, 0) << "открыть читателя канала не удалось";
+	// Писатель именованного канала, открытый неблокирующим режимом
 	const int writer = ::open(path.c_str(), O_WRONLY | O_NONBLOCK);
+	// Проверяем, что писатель канала открыт без отказа
 	ASSERT_GE(writer, 0) << "открыть писателя канала не удалось";
 	{
+		// Хранилище, коему неперематываемый поток предстоит отвергнуть
 		abc::storage_t storage;
+		// Проверяем, что хранилище отказалось открывать именованный канал
 		ASSERT_FALSE(storage.open(path)) << "хранилище открыло неперематываемый поток";
+		// Проверяем, что отказ назван невозможностью чтения источника
 		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
+		// Проверяем, что после отказа хранилище не осталось открытым
 		ASSERT_FALSE(storage.opened());
 	}
+	// Закрываем писателя канала, дабы читатель увидел конец потока
 	::close(writer);
+	// Закрываем читателя канала, более не нужного проверке
 	::close(reader);
+	// Снимаем именованный канал со стороны проверки
 	::remove(path.c_str());
 	{
+		// Путь перематываемого файла-близнеца, уточнённый номером процесса
 		const string filename = unique("./abc-storage-seekable.abc");
 		// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
 		const Remover guard(filename);
+		// Октеты собираемого контейнера перематываемого файла
 		vector <uint8_t> data;
 		{
+			// Сборщик контейнера из единственной записи
 			abc::assembler_t assembler;
+			// Октеты записи «запись контейнера», какие сборщику предстоит принять
 			const vector <uint8_t> item = abc::value_t(string{"запись контейнера"}).dump();
+			// Вносим запись в сборщик с признаком текстового поля
 			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT));
+			// Завершаем сборку контейнера, кладя октеты в data
 			ASSERT_TRUE(assembler.complete(data));
 		}
+		// Хранилище перематываемого файла-близнеца
 		abc::storage_t storage;
+		// Кладём собранный контейнер в перематываемый файл
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());
+		// Закрываем файл после укладки контейнера
 		storage.close();
+		// Открываем тот же файл заново - здесь перемотка к концу обязана пройти
 		ASSERT_TRUE(storage.open(filename)) << "код отказа: " << abc::message(storage.error());
+		// Проверяем, что снятая длина равна длине записанного контейнера
 		ASSERT_EQ(storage.length(), static_cast <uint64_t> (data.size()));
+		// Закрываем перематываемый файл по завершении поверки
 		storage.close();
 	}
 }
@@ -1567,6 +1682,7 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
  *          перенос завела - но закреплён он был лишь у близнеца-выборщика, а у правщика
  *          не стерёгся никем: щуп переноса 06.09.2026 подменил причину постоянной, и не
  *          покраснело ничего
+ *
  */
 TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 	// Выполняем отключение вывода журнала на приставку
@@ -1580,7 +1696,9 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 	{
 		// Сборщик контейнера
 		abc::assembler_t assembler;
-		// Выполняем внесение череды записей, чтобы контейнер вышел длиннее заголовка
+		/**
+		 * Выполняем внесение череды записей, чтобы контейнер вышел длиннее заголовка
+		 */
 		for(size_t i = 0; i < 8; i++){
 			// Собираемая очередная запись контейнера
 			const vector <uint8_t> item = abc::value_t(string{"запись номер "} + to_string(i)).dump();
@@ -1626,6 +1744,7 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 		 * причины эти РАВНЫ: перенос обязан донести причину правщика, а не подменить её
 		 */
 		ASSERT_NE(editor.error(), abc::error_t::NONE) << "правщик отказал безмолвно";
+		// Проверяем, что причина хранилища равна причине правщика, а не подменена переносом
 		ASSERT_EQ(storage.error(), editor.error())
 			<< "хранилище назвало " << abc::message(storage.error())
 			<< ", а правщик " << abc::message(editor.error());
@@ -1648,8 +1767,12 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
  *
  * @note Знак `SIGXFSZ` глушится: ядро шлёт его прежде отказа вызова, и без глушения
  *       набор проверок умер бы вместо отказа записи
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+/**
+ * Внутренние опоры проверки обрыва записи пределом размера файла
+ */
 namespace {
 	/**
 	 * @brief Предел размера файла, снимаемый разрушителем
@@ -1708,6 +1831,7 @@ namespace {
  *          наводится пределом размера файла: контейнер берётся заведомо крупнее буфера
  *          библиотеки ввода-вывода, и потому запись доходит до ядра прямо в теле `fwrite`,
  *          а не откладывается до сброса
+ *
  */
 TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 	/**
@@ -1724,10 +1848,14 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 	 *         нечем, договор его не отдаёт.
 	 *       Оттого пропуск, а не слепая зелёная проверка. Довод этот измерен и потому
 	 *       перепроверяем: явится способ - место найдётся здесь
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем пропуск проверки за отсутствием предела размера файла
 		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
 	// Выполняем отключение вывода журнала на приставку
 	awh::log::mode({});
@@ -1798,6 +1926,7 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
  * @note Разделение это и есть весь смысл проверки: два места стерегут одно и то же
  *       событие носителя на разных его рубежах, и различает их РАЗМЕР содержимого,
  *       а не сила отказа
+ *
  */
 TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	/**
@@ -1814,10 +1943,14 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	 *         нечем, договор его не отдаёт.
 	 *       Оттого пропуск, а не слепая зелёная проверка. Довод этот измерен и потому
 	 *       перепроверяем: явится способ - место найдётся здесь
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем пропуск проверки за отсутствием предела размера файла
 		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
 	// Выполняем отключение вывода журнала на приставку
 	awh::log::mode({});
@@ -1842,6 +1975,7 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	 * ставимого предела: иначе отказ пришёлся бы не туда, куда проверка целится
 	 */
 	ASSERT_GT(data.size(), static_cast <size_t> (64)) << "контейнер вышел мельче предела";
+	// Проверяем, что контейнер мельче буфера ввода-вывода - иначе виновником отказа был бы буфер
 	ASSERT_LT(data.size(), static_cast <size_t> (BUFSIZ)) << "контейнер вышел крупнее буфера";
 	{
 		// Хранилище контейнера при пределе размера файла в 64 октета
@@ -1971,6 +2105,7 @@ TEST(CodecAbcStorage, TheSourceWorkGuardsItsOwnBounds){
 	 *
 	 * @note Смещение здесь законно, а длина - нет: сличение ведётся ВЫЧИТАНИЕМ от полной
 	 *       длины, и сложение смещения с длиною завернулось бы, пройдя сторож насквозь
+	 *
 	 */
 	ASSERT_FALSE(source(storage.length() - 1, 2, result))
 		<< "чтение сверх конца контейнера отвечено успехом";
@@ -2145,81 +2280,140 @@ TEST(CodecAbcStorage, TheSourceWorkCatchesTheTruncationUnderfoot){
  *
  */
 TEST(CodecAbcStorage, PartialCommitKeepsOldGenerationAndCanRetry){
+	/**
+	 * Проверку ведём лишь там, где доступен предел размера файла
+	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Предел размера файла доступен лишь на POSIX
 		GTEST_SKIP() << "Проверка требует RLIMIT_FSIZE";
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
 	#else
 		// Гасим журнал на время намеренных отказов файловой системы
 		awh::log::mode({});
+		// Путь файла контейнера проверки, уточнённый номером процесса
 		const string filename = unique("./abc-partial-commit.abc");
+		// Сторож, сносящий файл контейнера и до проверки, и после неё - в том числе на пути отказа
 		const Remover guard(filename);
+		// Сторож, сносящий хвост .part недописанной фиксации и до проверки, и после неё
 		const Remover partial(filename + ".part");
 		// Готовим небольшое исходное поколение
 		abc::assembler_t assembler;
+		// Октеты первой записи "original", несущей исходное поколение
 		const auto original = abc::value_t(string("original")).dump();
+		// Октеты второй записи на 16 384 знака 'q', коей суждено не дойти до конца
 		const auto appended = abc::value_t(string(16384, 'q')).dump();
+		// Вносим в сборщик лишь первую запись — из неё выйдет исходное поколение
 		ASSERT_TRUE(assembler.append(original.data(), original.size(), abc::payload_t::TEXT));
+		// Октеты исходного поколения контейнера
 		vector <uint8_t> baseline;
+		// Завершаем сборку исходного поколения, кладя октеты в baseline
 		ASSERT_TRUE(assembler.complete(baseline));
 		// Измеряем размер полностью записанного нового поколения
 		uint64_t complete = 0;
 		{
+			// Хранилище, коему поручаем запись замеряемого поколения
 			abc::storage_t storage;
+			// Кладём исходное поколение на носитель, дабы отмерить полное
 			ASSERT_TRUE(storage.store(filename, baseline.data(), baseline.size()));
+			// Правщик, добавляющий вторую запись к исходному поколению
 			abc::editor_t editor;
+			// Отдаём контейнер правщику ради добавления второй записи
 			ASSERT_TRUE(storage.bind(editor));
+			// Вносим в правку вторую запись, из коей выйдет полное новое поколение
 			ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
+			// Фиксируем правку целиком, никаким пределом не ограниченную
 			ASSERT_TRUE(editor.commit());
+			// Сведения файловой системы о записанном контейнере
 			struct stat info = {};
+			// Снимаем с файловой системы длину записанного контейнера
 			ASSERT_EQ(::stat(filename.c_str(), &info), 0);
+			// Запоминаем полную длину записанного нового поколения в complete
 			complete = static_cast <uint64_t> (info.st_size);
 		}
+		// Проверяем, что новое поколение крупнее исходного более чем на 16 384 октета
 		ASSERT_GT(complete, baseline.size() + 16384);
 		// Ограничиваем запись в начале нового кадра, его середине и возле конца фиксации
 		const vector <uint64_t> limits = {baseline.size(), baseline.size() + 1, baseline.size() + 64,
 		 baseline.size() + 4096, baseline.size() + 8192, complete - abc::HEADER_LENGTH - 1,
 		 complete - abc::HEADER_LENGTH, complete - 1};
+		/**
+		 * Прогоняем обрыв записи на каждом из пределов
+		 */
 		for(const uint64_t ceiling : limits){
+			// Помечаем круг обрыва его пределом ceiling — иначе отказ не отличить от чужого
 			SCOPED_TRACE(ceiling);
+			// Хранилище очередного круга обрыва записи пределом
 			abc::storage_t storage;
+			// Кладём исходное поколение на носитель заново перед очередным обрывом
 			ASSERT_TRUE(storage.store(filename, baseline.data(), baseline.size()));
+			// Правщик исходного поколения, коему доверяем обрываемую фиксацию
 			abc::editor_t editor;
+			// Привязываем правщика к контейнеру исходного поколения
 			ASSERT_TRUE(storage.bind(editor));
+			// Вносим в правку ту же вторую запись, коей не суждено дойти до конца
 			ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
 			{
 				// Наводим отказ в настоящем системном вызове записи
 				const FileSizeLimit limit(ceiling);
+				// Действующий предел размера файла, снимаемый обратно с ядра
 				struct rlimit actual = {};
+				// Снимаем с ядра действующий предел размера файла и ждём согласия
 				ASSERT_EQ(::getrlimit(RLIMIT_FSIZE, &actual), 0);
+				// Проверяем, что ядро подтвердило предел ровно в ceiling из перечня
 				ASSERT_EQ(actual.rlim_cur, ceiling);
+				// Проверяем, что фиксация ломается на поставленном пределе записи
 				ASSERT_FALSE(editor.commit());
+				// Проверяем, что причина обрыва названа невозможностью записи в приёмник
 				ASSERT_EQ(editor.error(), abc::error_t::UNWRITABLE_SINK);
 			}
 			// Новый читатель должен восстановить прежнее полное поколение
 			{
+				// Хранилище, заново открывающее контейнер посреди обрыва записи
 				abc::storage_t reopened;
+				// Открываем контейнер заново, не снимая поставленного предела
 				ASSERT_TRUE(reopened.open(filename));
+				// Правщик, коему доверяем поверку уцелевшего прежнего поколения
 				abc::editor_t recovered;
+				// Привязываем правщика к контейнеру с оборванной фиксацией
 				ASSERT_TRUE(reopened.bind(recovered)) << abc::message(recovered.error());
+				// Проверяем, что оборванной фиксацией поколение уцелело нулевым
 				ASSERT_EQ(recovered.header().generation, 0u);
+				// Проверяем, что в контейнере уцелела одна запись прежнего поколения
 				ASSERT_EQ(recovered.records(), 1u);
+				// Буфер выбираемой записи прежнего поколения
 				vector <uint8_t> output;
+				// Выбираем первую запись контейнера, коей место и прежде было
 				ASSERT_TRUE(recovered.record(0, output));
+				// Сличаем выбранную запись с исходной "original", коей место и прежде было
 				ASSERT_EQ(output, original);
 			}
 			// После снятия ограничения повторяем ту же фиксацию
 			ASSERT_TRUE(editor.commit()) << abc::message(editor.error());
+			// Закрываем хранилище, дабы увидеть контейнер глазами нового читателя
 			storage.close();
+			// Хранилище, заново открывающее контейнер после удавшейся фиксации
 			abc::storage_t reopened;
+			// Открываем контейнер заново после удавшейся повторной фиксации
 			ASSERT_TRUE(reopened.open(filename));
+			// Правщик, коему доверяем поверку поколения и записей контейнера
 			abc::editor_t recovered;
+			// Привязываем правщика к контейнеру, переписанному повторной фиксацией
 			ASSERT_TRUE(reopened.bind(recovered));
+			// Проверяем, что поколение контейнера выросло до единицы
 			ASSERT_EQ(recovered.header().generation, 1u);
+			// Проверяем, что повторной фиксацией контейнер несёт уже две записи
 			ASSERT_EQ(recovered.records(), 2u);
+			// Буфер выбираемых записей контейнера
 			vector <uint8_t> output;
+			// Выбираем первую запись переписанного контейнера
 			ASSERT_TRUE(recovered.record(0, output));
+			// Сличаем первую запись с исходной "original", коей место и прежде было
 			ASSERT_EQ(output, original);
+			// Выбираем вторую запись, добавленную удавшейся повторной фиксацией
 			ASSERT_TRUE(recovered.record(1, output));
+			// Сличаем вторую запись с добавленной правкой на 16 384 знака 'q'
 			ASSERT_EQ(output, appended);
 		}
 	#endif

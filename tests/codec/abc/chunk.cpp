@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки кадра бинарного контейнера ABC — круговой обход укладки, сжатие с
  *        подбором метода, шифрование поодиночке и стойкость снятия к порче
  *
@@ -34,7 +40,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -158,6 +170,30 @@ TEST_F(ChunkFixture, PlainRoundtrip) {
 	ASSERT_FALSE(chunk.encrypted);
 	// Выполняем проверку длины исходного содержимого кадра
 	ASSERT_EQ(chunk.origin, payload.size());
+}
+/**
+ * @brief Проверка снятия кадра в тот же буфер, где он лежал
+ *
+ */
+TEST_F(ChunkFixture, UnpackWorksInPlace) {
+	// Укладчик кадров
+	abc::packer_t packer;
+	// Укладываемое содержимое кадра
+	const string payload = "содержимое кадра";
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 7, 3, record))
+		<< "код отказа: " << abc::message(packer.error());
+	// Смещение снятия кадра
+	size_t offset = 0;
+	// Снятые сведения о кадре
+	abc::chunk_t chunk;
+	// Выполняем снятие кадра в его собственный буфер
+	ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, record, chunk))
+		<< "код отказа: " << abc::message(packer.error());
+	// Выполняем проверку снятого содержимого кадра
+	ASSERT_EQ(string(record.begin(), record.end()), payload);
 }
 /**
  * @brief Проверка укладки пустого содержимого кадра
@@ -495,7 +531,6 @@ TEST_F(ChunkFixture, Failures) {
 		abc::fixed(data.data() + abc::CHUNK_DIGEST,
 		 abc::digest(data.data(), abc::CHUNK_HEADER + length), 8);
 	};
-
 	// Укладчик кадров
 	abc::packer_t packer;
 	// Укладываемое содержимое кадра
@@ -603,7 +638,6 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		abc::fixed(data.data() + abc::CHUNK_DIGEST,
 		 abc::digest(data.data(), abc::CHUNK_HEADER + length), 8);
 	};
-
 	// Укладчик кадров
 	abc::packer_t packer;
 	// Выполняем установку модуля сжатия
@@ -697,6 +731,7 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		 *       на нём законен. Проверке важен не сам отказ, а его ПРИЧИНА - её и
 		 *       утверждает строка ниже. Оттого исход забирается и помечается, а не
 		 *       отбрасывается молча: отброшенный он неотличим от забытого
+		 *
 		 */
 		[[maybe_unused]] const bool unpacked = plain.unpack(damaged.data(), damaged.size(), offset, content, chunk);
 		// Выполняем проверку того, что кадр не отвечен отказом опознания
@@ -768,6 +803,7 @@ TEST_F(ChunkFixture, EnvelopeWraps) {
 	// Выполняем проверку кода отказа снятия порченого кадра
 	ASSERT_EQ(packer.error(), abc::error_t::INVALID_CHECKSUM);
 }
+// Проверка того, что контрольная сумма ловит порчу всякого октета кадра тремя способами
 TEST_F(ChunkFixture, ChecksumRefusal) {
 	// Укладчик кадра
 	abc::packer_t packer;
@@ -1059,6 +1095,7 @@ TEST_F(ChunkFixture, PackingNamesItsRefusals) {
  * @note Это НЕ отказ подсистемы сжатия, каким место числилось прежде: подсистема здесь
  *       исправна, её просто НЕТ. Отказ подсистемы требовал бы поддельного разжимателя,
  *       разлад же оснастки воспроизводится прямо (05.09.2026)
+ *
  */
 TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
 	// Буфер уложенного кадра
@@ -1131,6 +1168,7 @@ TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
  *
  * @note Место числилось отказом самой подсистемы шифрования и оттого слепым. Подсистема
  *       же здесь исправна: расходятся КЛЮЧИ, и наводится это прямо (05.09.2026)
+ *
  */
 TEST_F(ChunkFixture, DecryptionWithAForeignKeyIsRefused) {
 	// Укладываемое содержимое кадра
@@ -1201,6 +1239,7 @@ TEST_F(ChunkFixture, DecryptionWithAForeignKeyIsRefused) {
  * @note Место числилось отказом самой подсистемы шифрования и оттого слепым. Подсистема
  *       здесь исправна, ей просто нечем работать: настройка модуля - забота зовущего, и
  *       забыть её он волен (05.09.2026)
+ *
  */
 TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
 	// Укладываемое содержимое кадра
@@ -1270,6 +1309,7 @@ TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
  *
  * @note Сумма кадра пересчитывается: без того отказ придёт по ней, не дойдя до разжатия,
  *       и проверка стерегла бы вовсе не то место. До 05.09.2026 место стояло слепым
+ *
  */
 TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
 	// Укладчик кадров
@@ -1343,6 +1383,7 @@ TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
  * @note Проверка ЗРЯЧА по коду отказа: без передачи предела разжатие проходит целиком,
  *       и тот же кадр отвергается уже сличением длины после разжатия - кодом
  *       INVALID_CHUNK, а не COMPRESSION_FAILED. Разница в памяти этим и отражена
+ *
  */
 TEST_F(ChunkFixture, ContentLongerThanDeclaredIsRefusedByTheLimit) {
 	// Укладчик кадров
@@ -1390,6 +1431,7 @@ TEST_F(ChunkFixture, ContentLongerThanDeclaredIsRefusedByTheLimit) {
  *
  * @note Исходом заслон НЕ ЗРЯЧ: без него тот же кадр отвергается сличением длины тем же
  *       кодом INVALID_CHUNK. Проверка закрепляет отказ, а не место его
+ *
  */
 TEST_F(ChunkFixture, CompressedChunkDeclaringNoOriginIsRefused) {
 	// Укладчик кадров
@@ -1449,6 +1491,7 @@ TEST_F(ChunkFixture, ThePackerFunnelReportsItsCauseToTheJournal) {
 	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
 	 *          а полагаться на состояние, оставленное соседями, значило бы городить
 	 *          поверку, чей исход зависит от порядка запуска
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Донесения, снятые с журнала подпискою

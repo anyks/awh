@@ -224,7 +224,7 @@ TEST(ArgsArgs, Derivation) {
 	// Выполняем проверку сохранности записи с ведущим нулём
 	ASSERT_EQ(args.get <string> ("zero"), "007");
 	// Выполняем проверку выведения пустого значения
-	ASSERT_TRUE(args.root().at("empty").is(codec::abc::type_t::NUL));
+	ASSERT_TRUE(args.root().at("empty").is(codec::abc::type_t::NIL));
 }
 
 /**

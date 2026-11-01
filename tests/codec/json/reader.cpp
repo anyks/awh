@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки разбора текста JSON — выдача событий значение за значением, снятие
  *        экранирования, разбор чисел, отказы по каждому виду негодного текста, пределы
  *        разбора и независимость выдачи от нарезки текста на куски
@@ -47,7 +53,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -76,7 +88,7 @@ typedef struct Event {
 } event_t;
 
 /**
- * @brief Метод разбора текста документа кусками заданного размера
+ * @brief Функция разбора текста документа кусками заданного размера
  *
  * @param text     разбираемый текст документа
  * @param chunk    размер куска, каким подаётся текст документа, ноль - текст целиком
@@ -134,14 +146,14 @@ static vector <event_t> parse(const string & text, const size_t chunk = 0, const
 	return result;
 }
 /**
- * @brief Метод сведения событий разбора в одну запись
+ * @brief Функция сведения событий разбора в одну запись
  *
  * @param events сводимые события разбора
  * @return       запись сведённых событий разбора
  *
  */
 /**
- * @brief Метод сборки ПОДРОБНОЙ записи событий разбора
+ * @brief Функция сборки ПОДРОБНОЙ записи событий разбора
  *
  * @details Запись эта несёт положение всякого события в тексте - строку и столбец, - а
  * `join` печатает лишь вид события и его содержимое. Договор о независимости разбора от
@@ -176,6 +188,7 @@ static string detail(const vector <event_t> & events) noexcept {
 	// Выводим собранную подробную запись событий разбора
 	return result;
 }
+// Сведение видов событий разбора в строку с разделителем-пробелом
 static string join(const vector <event_t> & events) noexcept {
 	// Запись сведённых событий разбора
 	string result;
@@ -199,7 +212,7 @@ static string join(const vector <event_t> & events) noexcept {
 				result.append("KEY(").append(item.text).append(1, ')');
 			break;
 			// Если событие является пустым значением
-			case static_cast <uint8_t> (json::event_t::NUL):
+			case static_cast <uint8_t> (json::event_t::NIL):
 				// Записываем пустое значение
 				result.append("NULL");
 			break;
@@ -259,7 +272,7 @@ static string join(const vector <event_t> & events) noexcept {
 	return result;
 }
 /**
- * @brief Метод извлечения кода отказа разбора текста документа
+ * @brief Функция извлечения кода отказа разбора текста документа
  *
  * @param text     разбираемый текст документа
  * @param settings настройки разбора текста
@@ -374,6 +387,7 @@ TEST(CodecJsonReader, Numbers) {
 	 *
 	 * @note Число это не представимо видом с плавающей запятой двойной точности, и
 	 *       преобразование при разборе потеряло бы младший разряд его
+	 *
 	 */
 	ASSERT_EQ(::join(::parse("9007199254740993")), "NUM(9007199254740993) DOC END");
 }
@@ -401,6 +415,7 @@ TEST(CodecJsonReader, NumberFailures) {
 	 *
 	 * @note Отказ здесь иной: запись числа могла бы продолжиться следующим куском
 	 *       текста, и негодной её делает именно обрыв, а не сама запись
+	 *
 	 */
 	ASSERT_EQ(::failure("1."), json::error_t::UNEXPECTED_EOF);
 	// Выполняем проверку отклонения записи NaN при строгом разборе
@@ -580,6 +595,7 @@ TEST(CodecJsonReader, Depth) {
 	 *
 	 * @note Первые четыре байта текста разбор удерживает до определения кодировки по
 	 *       метке порядка байтов, и глубина вложенности до того остаётся нулевой
+	 *
 	 */
 	ASSERT_TRUE(reader.feed("[[{ ", 4, false));
 	// Выполняем проверку глубины вложенности посреди разбора
@@ -701,6 +717,7 @@ TEST(CodecJsonReader, ChunkIndependence) {
 			 *
 			 * @note Положение прежде сличалось лишь у отказа, а событие успешное несёт
 			 *       его тоже: строка и столбец обязаны совпадать при всякой нарезке
+			 *
 			 */
 			ASSERT_EQ(::detail(pieces), standard)
 				<< "текст «" << text << "» кусками по " << chunk << " знаков";
@@ -883,6 +900,7 @@ TEST(CodecJsonReader, StringFailures) {
 	 * @note Договор о пределе задан байтами намеренно: предел стережёт память, а не
 	 *       длину записи для человека. Два знака кириллицы весят четыре байта и в
 	 *       предел укладываются, три весят шесть и его превышают
+	 *
 	 */
 	ASSERT_EQ(::join(::parse("[\"аб\"]", 0, narrow)), "[ STR(аб) ] DOC END");
 	// Выполняем проверку отклонения строки из трёх знаков кириллицы
@@ -908,7 +926,7 @@ TEST(CodecJsonReader, StringFailures) {
  */
 TEST(CodecJsonReader, DirectVerification) {
 	/**
-	 * @brief Метод подачи текста чтению кусками заданного размера
+	 * @brief Функция подачи текста чтению кусками заданного размера
 	 *
 	 * @param text  подаваемый текст документа
 	 * @param chunk размер подаваемого куска
@@ -929,7 +947,9 @@ TEST(CodecJsonReader, DirectVerification) {
 				// Выводим код отказа разбора
 				return reader.error();
 		}
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next());
 		// Выводим код отказа разбора
 		return reader.error();
@@ -973,8 +993,10 @@ TEST(CodecJsonReader, DirectVerification) {
  * @note Примечания разрешаются одной настройкой, а выдаются событием - другой:
  *       разрешить их и пропустить молча есть обычное дело у файлов настроек,
  *       а событие нужно тому, кто примечания переносит в новый текст
+ *
  * @warning Настройки эти РАЗДЕЛЬНЫ нарочно: выдача событий при запрещённых
  *          примечаниях означала бы, что запрет не запрещает
+ *
  */
 TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 	// Код ошибки разбора
@@ -985,6 +1007,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 	 * @note Суррогат обязан идти парой: одинокий знаком не является вовсе, и три
 	 *       вида его окончания - конец строки, обычный знак и вторая замена -
 	 *       обязаны отвергаться одинаково
+	 *
 	 */
 	for(auto & text : vector <string> {"[\"\\uD800\"]", "[\"\\uD800x\"]", "[\"\\uD800\\n\"]"}){
 		// Выполняем разбор текста документа
@@ -1002,6 +1025,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 	 * @note Отказ здесь «ожидалось значение», а НЕ «знак недопустим»: на этом месте
 	 *       разбор ждёт начала значения, и знак управления значением не начинается.
 	 *       Отказ по недопустимости знака выносится там, где знак попал ВНУТРЬ строки
+	 *
 	 */
 	error = ::failure(string("[\x01]"));
 	// Выполняем проверку кода ошибки разбора
@@ -1012,6 +1036,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 	 * @note Отказ здесь третий, отличный от обоих прежних: знак управления внутри
 	 *       строки записи не подлежит дословно, его положено записывать заменой.
 	 *       Три места - три разных кода, и сводить их к одному нельзя
+	 *
 	 */
 	error = ::failure(string("[\"a\x01b\"]"));
 	// Выполняем проверку кода ошибки разбора
@@ -1061,6 +1086,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 		 *
 		 * @note Разрешение примечаний при этом НЕ выдаётся: выдача событий сама
 		 *       по себе примечаний не разрешает, и текст обязан отвергаться
+		 *
 		 */
 		settings.emitComments = true;
 		// Выполняем разбор текста документа с примечанием
@@ -1133,6 +1159,7 @@ TEST(CodecJsonReader, CommentEmission) {
 		 * @warning Подача кусками здесь существенна: примечание вправе разорваться границей
 		 *          куска в любом месте - хоть посреди закрывающей скобки, - и собранное
 		 *          содержимое от размера куска зависеть не должно
+		 *
 		 */
 		for(auto & chunk : vector <size_t> {0, 1, 2, 3, 7}){
 			// Код отказа разбора
@@ -1317,6 +1344,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 	 * @warning Примечание до конца строки, не закрытое переводом строки, дочитывается на
 	 *          завершении подачи - разбору подаётся перевод строки, какого в тексте нет. И
 	 *          прекращение разбора обязано дойти до вызывающего с этой дороги тоже
+	 *
 	 */
 	{
 		// Объект разбора текста документа
@@ -1344,6 +1372,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 	 *
 	 * @note Отказ и прекращение потребителем - две разные причины, и заслон у подачи на
 	 *       каждую свой: первый судит по коду отказа, второй по признаку прекращения
+	 *
 	 */
 	{
 		// Объект разбора текста документа
@@ -1413,7 +1442,9 @@ TEST(CodecJsonReader, StreamOfDocuments) {
 	 * Знак, документа не открывающий, отвергает поток
 	 */
 	{
-		// Выполняем перебор потоков с негодным началом второго документа
+		/**
+		 * Выполняем перебор потоков с негодным началом второго документа
+		 */
 		for(auto & text : vector <string> {"{}\nx\n", "{}\n]\n", "{}\n,\n"}){
 			// Код отказа разбора
 			json::error_t error = json::error_t::NONE;
@@ -1454,6 +1485,7 @@ TEST(CodecJsonReader, StreamOfDocuments) {
  *          отсчитанное от текущего хранилища, - это ровно тот разряд договора, что
  *          нарезкою и ломается, а на подаче текста целиком расхождение не всплывает
  *          вовсе
+ *
  */
 TEST(CodecJsonReader, StorageContract){
 	// Разбираемый текст JSON
@@ -1464,6 +1496,7 @@ TEST(CodecJsonReader, StorageContract){
 	 * @param chunk размер куска подачи
 	 * @param keep  признак удержания хранилища знаков
 	 * @return      перечень пар «целое место - содержимое»
+	 *
 	 */
 	auto collect = [&text](const size_t chunk, const bool keep) noexcept -> vector <pair <uint64_t, string>> {
 		// Снимаемый перечень содержимого событий
@@ -1514,11 +1547,13 @@ TEST(CodecJsonReader, StorageContract){
 	 *
 	 * @note Опора эта независимая, и она обязательна: сличение нарезок между собою
 	 *       СОГЛАСОВАННО съехавшего содержимого не ловит никак
+	 *
 	 * @warning Смещение отсчитывается по ХРАНИЛИЩУ, а не по разбираемому тексту: знаки
 	 *          ложатся в него уже раскодированными и уплотнёнными, без обвязки и
 	 *          разделителей, и место в тексте ему не равно. Сличать снятое с исходным
 	 *          текстом по этому смещению нельзя - ключ `имя` стоит в хранилище нулевым,
 	 *          а в тексте вторым
+	 *
 	 */
 	{
 		// Перечень ожидаемого содержимого событий
@@ -1538,6 +1573,7 @@ TEST(CodecJsonReader, StorageContract){
 		 *
 		 * @note Хранилище есть поток знаков, и всякое следующее содержимое ложится за
 		 *       предыдущим: место, назад шагнувшее, есть съехавшее смещение
+		 *
 		 */
 		for(size_t i = 1; i < sample.size(); i++)
 			// Выполняем сличение места содержимого с местом предыдущего
@@ -1587,6 +1623,7 @@ TEST(CodecJsonReader, StorageContract){
 		 *
 		 * @note Признак удержания тем и отличается, что число выброшенных байтов остаётся
 		 *       нулём, и смещение события есть целое место его без всякого сведения
+		 *
 		 */
 		ASSERT_EQ(reader.origin(), static_cast <uint64_t> (0));
 		// Объём удержанного хранилища знаков
@@ -1618,7 +1655,9 @@ TEST(CodecJsonReader, FeedAfterLastChunkRefused) {
 	json::reader_t reader;
 	// Выполняем проверку приёма текста документа целиком
 	ASSERT_TRUE(reader.feed("[1]", 3, true));
-	// Выполняем перебор всех событий разбора
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
 	while(reader.next());
 	// Выполняем проверку того, что разбор дошёл до конца без отказа
 	ASSERT_EQ(reader.error(), json::error_t::NONE);
@@ -1626,6 +1665,7 @@ TEST(CodecJsonReader, FeedAfterLastChunkRefused) {
 	 * Выполняем проверку того, что пустая подача отказом не является
 	 *
 	 * @note Она ничего к тексту не добавляет, и повторить объявление конца вызывающий вправе
+	 *
 	 */
 	ASSERT_TRUE(reader.feed("", 0, true));
 	// Выполняем проверку того, что отказа пустая подача не навела
@@ -1638,7 +1678,9 @@ TEST(CodecJsonReader, FeedAfterLastChunkRefused) {
 	reader.reset();
 	// Выполняем проверку того, что после сброса подача принимается вновь
 	ASSERT_TRUE(reader.feed("[2]", 3, true));
-	// Выполняем перебор всех событий разбора
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
 	while(reader.next());
 	// Выполняем проверку того, что разбор дошёл до конца без отказа
 	ASSERT_EQ(reader.error(), json::error_t::NONE);
@@ -1703,6 +1745,7 @@ TEST(CodecJsonReader, ErrorLocationSurvivesEventDraining) {
  * возврат подачи
  *
  * @note Замер: текст `{"a":@1}` - подача отвечает ложью и кодом сразу
+ *
  */
 TEST(CodecJsonReader, RefusalSurfacesOnFeed){
 	// Чтение текста документа
@@ -1715,7 +1758,9 @@ TEST(CodecJsonReader, RefusalSurfacesOnFeed){
 	ASSERT_NE(reader.error(), json::error_t::NONE);
 	// Код отказа, выданный подачей
 	const json::error_t error = reader.error();
-	// Выполняем перебор всех событий разбора
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
 	while(reader.next()){}
 	// Выполняем проверку того, что перебор код отказа не изменил
 	ASSERT_EQ(reader.error(), error);
@@ -1750,8 +1795,8 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	const auto doParse = [](const string & text, const bool strict) noexcept -> bool {
 		// Объект контейнера документа
 		json::document_t doc;
-		// Получаем настройки контейнера документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки контейнера документа
+		json::document_t::settings_t settings;
 		// Выполняем подъём всех послаблений разбора
 		settings.reader.allowComments = true;
 		// Выполняем подъём послабления запятой перед закрывающей скобкой
@@ -1799,8 +1844,8 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	{
 		// Объект контейнера документа
 		json::document_t doc;
-		// Получаем настройки контейнера документа
-		json::document_t::settings_t settings = doc.settings();
+		// Настройки контейнера документа
+		json::document_t::settings_t settings;
 		// Выполняем подъём послабления примечаний
 		settings.reader.allowComments = true;
 		// Выполняем установку признака строгого разбора
@@ -1817,6 +1862,7 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 		 * @note Прежде сличалось лишь послабление примечаний, и гашение прочих трёх
 		 *       держалось ничем: рубильник, переставший гасить одно из них, прошёл бы
 		 *       молча. Замер 01.09.2026: гаснут все четыре
+		 *
 		 */
 		ASSERT_FALSE(reader.settings().allowComments);
 		// Выполняем проверку гашения послабления запятой перед закрывающей скобкой
@@ -1856,7 +1902,7 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
  */
 TEST(CodecJsonReader, LimitsAreExactAndCountBytes) {
 	/**
-	 * @brief Метод проверки принятия текста при заданных настройках
+	 * @brief Функция проверки принятия текста при заданных настройках
 	 *
 	 * @param text     разбираемый текст документа
 	 * @param settings настройки разбора текста
@@ -1870,7 +1916,9 @@ TEST(CodecJsonReader, LimitsAreExactAndCountBytes) {
 		reader.settings(settings);
 		// Выполняем подачу текста документа целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим признак отсутствия отказа разбора
 		return (reader.error() == json::error_t::NONE);
@@ -1912,7 +1960,7 @@ TEST(CodecJsonReader, LimitsAreExactAndCountBytes) {
 		// Выполняем указание предела глубины вложения
 		settings.maxDepth = limit;
 		/**
-		 * @brief Метод сборки документа заданной глубины вложения
+		 * @brief Функция сборки документа заданной глубины вложения
 		 *
 		 * @param depth глубина вложения собираемого документа
 		 * @return      собранный текст документа
@@ -1921,11 +1969,15 @@ TEST(CodecJsonReader, LimitsAreExactAndCountBytes) {
 		const auto nest = [](const uint32_t depth) noexcept -> string {
 			// Собираемый текст документа
 			string result;
-			// Выполняем открытие всех массивов вложения
+			/**
+			 * Выполняем открытие всех массивов вложения
+			 */
 			for(uint32_t i = 0; i < depth; i++) result.append("[");
 			// Выполняем добавление значения в самом нутре
 			result.append("1");
-			// Выполняем закрытие всех массивов вложения
+			/**
+			 * Выполняем закрытие всех массивов вложения
+			 */
 			for(uint32_t i = 0; i < depth; i++) result.append("]");
 			// Выводим собранный текст документа
 			return result;
@@ -1976,12 +2028,15 @@ TEST(CodecJsonReader, RefusalSurvivesFeedingAndLocationFollowsTheText) {
 	const string first = "[1, 2, 3, 4, 5, x]";
 	// Выполняем подачу первого текста документа
 	reader.feed(first.data(), first.size(), true);
-	// Выполняем снятие всех событий, собранных до отказа
+	/**
+	 * Выполняем снятие всех событий, собранных до отказа
+	 */
 	while(reader.next()) ;
 	// Выполняем проверку наступления первого отказа
 	ASSERT_NE(reader.error(), json::error_t::NONE);
 	// Запоминаем код и место первого отказа
 	const json::error_t code = reader.error();
+	// Отмечаем смещение первого отказа, от которого меряем близость второго
 	const uint64_t offset = reader.errorLocation().offset;
 	/**
 	 * Выполняем проверку того, что подача после отказа разбор не возобновляет
@@ -1993,7 +2048,9 @@ TEST(CodecJsonReader, RefusalSurvivesFeedingAndLocationFollowsTheText) {
 		reader.feed(more.data(), more.size(), true);
 		// Количество событий, выданных после отказа
 		size_t events = 0;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) events++;
 		// Выполняем проверку того, что событий после отказа не выдано
 		ASSERT_EQ(events, static_cast <size_t> (0));
@@ -2010,7 +2067,9 @@ TEST(CodecJsonReader, RefusalSurvivesFeedingAndLocationFollowsTheText) {
 		const string second = "[x]";
 		// Выполняем подачу второго текста документа
 		reader.feed(second.data(), second.size(), true);
-		// Выполняем снятие всех событий, собранных до отказа
+		/**
+		 * Выполняем снятие всех событий, собранных до отказа
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку наступления второго отказа
 		ASSERT_NE(reader.error(), json::error_t::NONE);
@@ -2029,26 +2088,43 @@ TEST(CodecJsonReader, RefusalSurvivesFeedingAndLocationFollowsTheText) {
  *
  */
 TEST(CodecJsonReader, LimitsRaiseTheirOwnCodes) {
+	// Съёмка кода отказа для текста, поданного при заданных пределах разбора
 	const auto code = [](const string & text, const json::reader_t::settings_t & settings) noexcept -> uint32_t {
+		// Читатель документа, подаче подвергаемый
 		json::reader_t reader;
+		// Налаживаем на читателе полученные пределы разбора
 		reader.settings(settings);
+		// Подаём разбираемый текст целиком с признаком конца подачи
 		reader.feed(text.data(), text.size(), true);
+		/**
+		 * Прочёсываем читатель до конца, чтобы увидеть код отказа
+		 */
 		while(reader.next()) ;
+		// Отдаём числовой код отказа, наступившего при разборе
 		return static_cast <uint32_t> (reader.error());
 	};
 	{
+		// Настройки разбора, длина строки в которых ограничена четырьмя символами
 		json::reader_t::settings_t s;
+		// Ставим предел длины строки равным четырём символам
 		s.maxString = 4;
+		// Сличаем код отказа с ожидаемым STRING_TOO_LONG на строке длиной в девять символов
 		ASSERT_EQ(code("\"ааааааааа\"", s), static_cast <uint32_t> (json::error_t::STRING_TOO_LONG));
 	}
 	{
+		// Настройки разбора, длина числа в которых ограничена четырьмя знаками
 		json::reader_t::settings_t s;
+		// Ставим предел длины числа равным четырём знакам
 		s.maxNumber = 4;
+		// Сличаем код отказа с ожидаемым NUMBER_TOO_LONG на числе длиной в девять знаков
 		ASSERT_EQ(code("123456789", s), static_cast <uint32_t> (json::error_t::NUMBER_TOO_LONG));
 	}
 	{
+		// Настройки разбора, глубина вложенности которых ограничена двумя уровнями
 		json::reader_t::settings_t s;
+		// Ставим предел глубины вложенности равным двум уровням
 		s.maxDepth = 2;
+		// Сличаем код отказа с ожидаемым DEPTH_EXCEEDED на третьем уровне вложенности
 		ASSERT_EQ(code("[[[[1]]]]", s), static_cast <uint32_t> (json::error_t::DEPTH_EXCEEDED));
 	}
 }
@@ -2067,7 +2143,7 @@ TEST(CodecJsonReader, LimitsRaiseTheirOwnCodes) {
  */
 TEST(CodecJsonReader, ErrorLocationIsIndependentOfChunking) {
 	/**
-	 * @brief Метод разбора текста с выдачей места отказа
+	 * @brief Функция разбора текста с выдачей места отказа
 	 *
 	 * @param text разбираемый текст документа
 	 * @param step размер куска подачи, ноль - подача целиком
@@ -2083,17 +2159,23 @@ TEST(CodecJsonReader, ErrorLocationIsIndependentOfChunking) {
 			reader.feed(text.data(), text.size(), true);
 		// Если подача идёт кусками
 		else {
-			// Выполняем перебор всех кусков подаваемого текста
+			/**
+			 * Выполняем перебор всех кусков подаваемого текста
+			 */
 			for(size_t i = 0; i < text.size(); i += step){
 				// Размер подаваемого куска текста
 				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
 				// Выполняем подачу очередного куска текста
 				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
-				// Выполняем перебор всех событий разбора
+				/**
+				 * Выполняем перебор всех событий разбора
+				 */
 				while(reader.next()) ;
 			}
 		}
-		// Выполняем перебор всех оставшихся событий разбора
+		/**
+		 * Выполняем перебор всех оставшихся событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим место обнаружения отказа разбора
 		return reader.errorLocation();
@@ -2106,7 +2188,9 @@ TEST(CodecJsonReader, ErrorLocationIsIndependentOfChunking) {
 		const struct { const char * text; uint64_t offset; } probes[] = {
 			{"{\"а\":1,}", 8}, {"[1,2,@]", 5}, {"\"аб", 5}, {"{\"а\" 1}", 6}, {"[1,2]\n\nx", 7}
 		};
-		// Выполняем перебор всех проверяемых текстов
+		/**
+		 * Выполняем перебор всех проверяемых текстов
+		 */
 		for(const auto & probe : probes){
 			// Место отказа при подаче текста целиком
 			const json::location_t whole = locate(probe.text, 0);
@@ -2148,7 +2232,7 @@ TEST(CodecJsonReader, ErrorLocationIsIndependentOfChunking) {
  */
 TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 	/**
-	 * @brief Метод разбора текста с выдачей видов и смещений событий
+	 * @brief Функция разбора текста с выдачей видов и смещений событий
 	 *
 	 * @param text разбираемый текст документа
 	 * @param step размер куска подачи, ноль - подача целиком
@@ -2168,19 +2252,25 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 			reader.feed(text.data(), text.size(), true);
 		// Если подача идёт кусками
 		else {
-			// Выполняем перебор всех кусков подаваемого текста
+			/**
+			 * Выполняем перебор всех кусков подаваемого текста
+			 */
 			for(size_t i = 0; i < text.size(); i += step){
 				// Размер подаваемого куска текста
 				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
 				// Выполняем подачу очередного куска текста
 				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
-				// Выполняем перебор всех событий разбора
+				/**
+				 * Выполняем перебор всех событий разбора
+				 */
 				while(reader.next())
 					// Добавляем вид и смещение события к перечню
 					result.emplace_back(static_cast <uint8_t> (reader.event()), reader.location().offset);
 			}
 		}
-		// Выполняем перебор всех оставшихся событий разбора
+		/**
+		 * Выполняем перебор всех оставшихся событий разбора
+		 */
 		while(reader.next())
 			// Добавляем вид и смещение события к перечню
 			result.emplace_back(static_cast <uint8_t> (reader.event()), reader.location().offset);
@@ -2202,7 +2292,9 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 			{static_cast <uint8_t> (json::event_t::DOCUMENT), 7},
 			{static_cast <uint8_t> (json::event_t::FINISH), 7}
 		};
-		// Выполняем перебор подачи текста целиком и по одному байту
+		/**
+		 * Выполняем перебор подачи текста целиком и по одному байту
+		 */
 		for(const size_t step : {static_cast <size_t> (0), static_cast <size_t> (1)})
 			// Выполняем проверку видов и смещений событий разбора
 			EXPECT_EQ(places("[[],[]]", step), expected) << step;
@@ -2213,9 +2305,13 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 	{
 		// Проверяемые тексты документов без хвостовых пробельных знаков
 		const char * const texts[] = {"{}", "[]", "[[[]]]", "{\"a\":\"b\"}", "\"abc\"", "true", "123"};
-		// Выполняем перебор проверяемых текстов
+		/**
+		 * Выполняем перебор проверяемых текстов
+		 */
 		for(const char * const text : texts){
-			// Выполняем перебор подачи текста целиком и по одному байту
+			/**
+			 * Выполняем перебор подачи текста целиком и по одному байту
+			 */
 			for(const size_t step : {static_cast <size_t> (0), static_cast <size_t> (1)}){
 				// Собранные события разбора текста документа
 				const auto events = places(text, step);
@@ -2227,7 +2323,7 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 		}
 	}
 	/**
-	 * @brief Метод разбора текста с выдачей места отказа
+	 * @brief Функция разбора текста с выдачей места отказа
 	 *
 	 * @param text разбираемый текст документа
 	 * @param step размер куска подачи, ноль - подача целиком
@@ -2243,17 +2339,23 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 			reader.feed(text.data(), text.size(), true);
 		// Если подача идёт кусками
 		else {
-			// Выполняем перебор всех кусков подаваемого текста
+			/**
+			 * Выполняем перебор всех кусков подаваемого текста
+			 */
 			for(size_t i = 0; i < text.size(); i += step){
 				// Размер подаваемого куска текста
 				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
 				// Выполняем подачу очередного куска текста
 				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
-				// Выполняем перебор всех событий разбора
+				/**
+				 * Выполняем перебор всех событий разбора
+				 */
 				while(reader.next()) ;
 			}
 		}
-		// Выполняем перебор всех оставшихся событий разбора
+		/**
+		 * Выполняем перебор всех оставшихся событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим место обнаружения отказа разбора
 		return reader.errorLocation();
@@ -2266,7 +2368,9 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
 		const struct { const char * text; uint64_t offset; } probes[] = {
 			{"{}\n\nx", 4}, {"[\"a\"]x", 5}, {"[\"a\"]\n\nx", 7}, {"{\"a\":\"b\"}x", 9}, {"[[1]]x", 5}, {"[[],[]]x", 7}
 		};
-		// Выполняем перебор проверяемых текстов
+		/**
+		 * Выполняем перебор проверяемых текстов
+		 */
 		for(const auto & probe : probes){
 			// Место отказа при подаче текста целиком
 			const json::location_t whole = locate(probe.text, 0);
@@ -2296,7 +2400,7 @@ TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
  */
 TEST(CodecJsonReader, StrictRefusesWithTheSameCodesAsTheAllowancesDown) {
 	/**
-	 * @brief Метод разбора текста при заданных строгости и послаблении
+	 * @brief Функция разбора текста при заданных строгости и послаблении
 	 *
 	 * @param text   разбираемый текст документа
 	 * @param index  номер проверяемого послабления
@@ -2335,7 +2439,9 @@ TEST(CodecJsonReader, StrictRefusesWithTheSameCodesAsTheAllowancesDown) {
 		reader.settings(settings);
 		// Выполняем подачу текста документа целиком
 		reader.feed(text, ::strlen(text), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим код отказа разбора текста
 		return reader.error();
@@ -2357,6 +2463,7 @@ TEST(CodecJsonReader, StrictRefusesWithTheSameCodesAsTheAllowancesDown) {
 		 *       проверка это опровергла. Разбор доходит до места, где ждёт начала
 		 *       значения, и ни `I`, ни апостроф началом значения по стандарту не бывают -
 		 *       записью негодной они не считаются вовсе, ибо записью не начались
+		 *
 		 */
 		{"[Infinity]", json::error_t::EXPECTED_VALUE},
 		{"['а']", json::error_t::EXPECTED_VALUE}
@@ -2376,6 +2483,7 @@ TEST(CodecJsonReader, StrictRefusesWithTheSameCodesAsTheAllowancesDown) {
 		 *
 		 * @note Сличение это и есть суть проверки: рубильник обязан вернуть разбор ровно
 		 *       в то состояние, в каком послабление опущено, а не отказать иначе
+		 *
 		 */
 		EXPECT_EQ(code(probes[index].text, index, true, true), probes[index].error) << probes[index].text;
 	}
@@ -2396,7 +2504,7 @@ TEST(CodecJsonReader, StrictRefusesWithTheSameCodesAsTheAllowancesDown) {
  */
 TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	/**
-	 * @brief Метод разбора текста с выдачей кода отказа
+	 * @brief Функция разбора текста с выдачей кода отказа
 	 *
 	 * @param text разбираемый текст документа
 	 * @return     код отказа разбора текста
@@ -2407,7 +2515,9 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 		json::reader_t reader;
 		// Выполняем подачу текста документа целиком
 		reader.feed(text, ::strlen(text), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим код отказа разбора текста
 		return reader.error();
@@ -2419,6 +2529,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 *       закрывающей скобки. Довод: нуль есть ЗАКОНЧЕННОЕ число, разбор его принимает и
 	 *       переходит к ожиданию продолжения массива, а знак «x» продолжением не бывает.
 	 *       Числом негодным запись не считается - число там уже разобрано целиком
+	 *
 	 */
 	EXPECT_EQ(code("[0x10]"), json::error_t::EXPECTED_COMMA);
 	/**
@@ -2427,6 +2538,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 * @note Чутьё ждёт «негодной записи», а разбор отвечает ожиданием значения. Довод:
 	 *       ни знак «+», ни точка, ни заглавная «T» началом значения по стандарту не
 	 *       бывают - разбор до записи не доходит вовсе, и негодной ей стать нечем
+	 *
 	 */
 	EXPECT_EQ(code("[+1]"), json::error_t::EXPECTED_VALUE);
 	// Выполняем проверку записи, начатой точкой
@@ -2439,6 +2551,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 * @note Сличение это стоит рядом нарочно: те же на вид записи, но начатые верно,
 	 *       отвергаются уже как негодное ЧИСЛО. Граница проходит по первому знаку, и
 	 *       без этих трёх утверждений довод выше нечем отличить от совпадения
+	 *
 	 */
 	EXPECT_EQ(code("[01]"), json::error_t::INVALID_NUMBER);
 	// Выполняем проверку числа, оканчивающегося точкой
@@ -2451,6 +2564,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 * @note Коды эти заведены решением от 01.09.2026: прежде оба вместилища
 	 *       отвечали общим концом текста, и потребитель, ввод чинящий, из кода не
 	 *       узнавал, чем дописывать текст, - строка свой код имела, а они нет
+	 *
 	 */
 	EXPECT_EQ(code("["), json::error_t::UNCLOSED_ARRAY);
 	// Выполняем проверку незакрытого объекта
@@ -2462,6 +2576,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 *
 	 * @note Называется вид ВЕРХА стека вложенности, а не корня: закрыть потребителю
 	 *       прежде прочих надлежит именно последнее открытое вместилище
+	 *
 	 */
 	EXPECT_EQ(code("[{\"a\":"), json::error_t::UNCLOSED_OBJECT);
 	// Выполняем проверку незакрытого массива, вложенного в объект
@@ -2471,6 +2586,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 *
 	 * @note Половина обязательная: коды заведены для ОБРЫВА текста, и закрытие
 	 *       вместилища скобкой чужого вида к обрыву отношения не имеет вовсе
+	 *
 	 */
 	EXPECT_EQ(code("[1,2}"), json::error_t::EXPECTED_COMMA);
 	/**
@@ -2479,6 +2595,7 @@ TEST(CodecJsonReader, CounterIntuitiveCodesHaveTheirReasons) {
 	 * @note У строки код СВОЙ, в отличие от вместилищ, и расхождение это намеренно:
 	 *       строка знает свой конец по кавычке, а вместилище - по скобке, и незакрытая
 	 *       строка отличима от оборванного текста, тогда как незакрытое вместилище - нет
+	 *
 	 */
 	EXPECT_EQ(code("\""), json::error_t::UNTERMINATED_STRING);
 }
@@ -2512,20 +2629,25 @@ TEST(CodecJsonReader, StateFollowsTheSharedContract) {
 		json::reader_t reader;
 		// Выполняем подачу куска исходного текста, последним не объявленного
 		ASSERT_TRUE(reader.feed("{\"a\":1,\"b\":[2,3", 15, false));
-		// Выполняем выборку всех собранных событий разбора
+		/**
+		 * Выполняем выборку всех собранных событий разбора
+		 */
 		while(reader.next());
 		/**
 		 * Выполняем проверку голода по исчерпании событий незавершённого текста
 		 *
 		 * @note Голод здесь и есть ответ на вопрос «просить ли следующий кусок»,
 		 *       ради какого состояние заводится
+		 *
 		 */
 		ASSERT_EQ(reader.state(), json::state_t::HUNGRY);
 		// Выполняем проверку отсутствия отказа при незавершённом тексте
 		ASSERT_EQ(reader.error(), json::error_t::NONE);
 		// Выполняем подачу оставшегося куска исходного текста
 		ASSERT_TRUE(reader.feed("]}", 2, true));
-		// Выполняем выборку всех собранных событий разбора
+		/**
+		 * Выполняем выборку всех собранных событий разбора
+		 */
 		while(reader.next());
 		// Выполняем проверку прихода разбора к концу текста
 		ASSERT_EQ(reader.state(), json::state_t::FINISHED);
@@ -2549,13 +2671,16 @@ TEST(CodecJsonReader, StateFollowsTheSharedContract) {
 		json::reader_t reader;
 		// Выполняем подачу негодного исходного текста
 		reader.feed("{\"a\":@}");
-		// Выполняем выборку всех собранных событий разбора
+		/**
+		 * Выполняем выборку всех собранных событий разбора
+		 */
 		while(reader.next());
 		/**
 		 * Выполняем проверку прихода разбора к отказу
 		 *
 		 * @note Отказ старше прочего: очередь может нести события, собранные ДО него,
 		 *       и наличие их состоянием доступности заслонило бы отказ от потребителя
+		 *
 		 */
 		ASSERT_EQ(reader.state(), json::state_t::FAILED);
 		// Выполняем проверку названности причины отказа
@@ -2695,7 +2820,9 @@ TEST(CodecJsonReader, EveryRefusalIsReportedOnce) {
 		json::reader_t reader;
 		// Выполняем подачу проверяемого текста целиком
 		reader.feed(text, ::strlen(text), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку того, что разбор текста отказал
 		ASSERT_NE(reader.error(), json::error_t::NONE) << text;

@@ -49,6 +49,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -85,6 +88,7 @@ namespace {
 	 * @param settings настройки разбора записей
 	 * @param events   собранные события разбора
 	 * @return         состояние чтения по окончании разбора
+	 *
 	 */
 	syslog::state_t collect(const string & text, const size_t chunk,
 	                        const syslog::reader_t::settings_t & settings, vector <event_t> & events) noexcept {
@@ -131,11 +135,12 @@ namespace {
 	}
 
 	/**
-	 * @brief Метод извлечения значения поля заголовка из собранных событий
+	 * @brief Функция извлечения значения поля заголовка из собранных событий
 	 *
 	 * @param events собранные события разбора
 	 * @param field  разыскиваемое поле заголовка
 	 * @return       значение поля заголовка либо пустота
+	 *
 	 */
 	string field(const vector <event_t> & events, const syslog::field_t field) noexcept {
 		/**
@@ -198,6 +203,7 @@ TEST(CodecSysLogReader, DateBoundaries) {
 		 *       имя узла, оттого слово из четырёх цифр есть год лишь тогда, когда за
 		 *       ним следует НЕ метка. Правдоподобие же («больше 1970») было бы
 		 *       гаданием: журналы несут и даты сбитых часов
+		 *
 		 */
 		{"<13>Oct 22 12:34:56 1234 app: msg", "Oct 22 12:34:56", "1234"},
 		{"<45>Oct 22 12:34:56 127.0.0.1 app: msg", "Oct 22 12:34:56", "127.0.0.1"}
@@ -405,6 +411,7 @@ TEST(CodecSysLogReader, Unescaping) {
 	 *
 	 * @note Описание отменяемых знаков перечисляет ровно три и снятие косой перед
 	 *       прочими ЗАПРЕЩАЕТ прямо: «\n» есть два знака, а не перевод строки
+	 *
 	 */
 	EXPECT_EQ(values.at(3), "g\\nh");
 }
@@ -637,6 +644,7 @@ TEST(CodecSysLogReader, LimitFailures) {
 	 * @note Третьим полем идёт ОЖИДАЕМОЕ МЕСТО отказа - смещение от начала записи. Без
 	 *       него проверка кода поверяла бы половину договора: потребитель по месту
 	 *       указывает беду в записи, и место, указывающее за её конец, ему негодно
+	 *
 	 */
 	const vector <tuple <string, syslog::error_t, size_t>> samples = {
 		// Приставка приоритета не закрыта вовсе: беда у самого начала записи
@@ -679,10 +687,11 @@ TEST(CodecSysLogReader, LimitFailures) {
 		 *          несёт что угодно, и разбор его не вправе останавливаться на всяком
 		 *          отступлении, - но проверка, строгости не задавшая, поверяла бы не тот
 		 *          договор и зеленела бы, чего ни сделай с пределами
+		 *
 		 */
-		syslog::reader_t::settings_t settings;
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Выполняем установку настроек разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку отказа чтения очередного образца
@@ -695,6 +704,7 @@ TEST(CodecSysLogReader, LimitFailures) {
 		 * @warning Утверждение это не украшение: места отказов отсчитывались от смещения,
 		 *          сдвинутого к началу СЛЕДУЮЩЕЙ записи, и указывали за конец текущей.
 		 *          Прежняя проверка места сличала лишь номер строки и молчала об этом
+		 *
 		 */
 		EXPECT_LT(document.errorLocation().offset, ::std::get <0> (sample).size()) << ::std::get <0> (sample);
 		// Если место отказа образцом задано, сличаем его число в число
@@ -704,7 +714,6 @@ TEST(CodecSysLogReader, LimitFailures) {
 		// Выполняем проверку того, что отказ отнесён к первой строке записи
 		EXPECT_EQ(document.errorLocation().line, 1u) << ::std::get <0> (sample);
 	}
-
 }
 
 /**
@@ -730,10 +739,10 @@ TEST(CodecSysLogReader, SettingsLimits) {
 	{
 		// Объект события, удерживаемого целиком
 		syslog::document_t document;
-		// Настройки разбора записей
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем предел числа блоков структурированных данных
-		settings.maxStructures = 2;
+		settings.reader.maxStructures = 2;
 		// Выполняем установку настроек разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку успешности чтения записи, в предел уложившейся
@@ -753,10 +762,10 @@ TEST(CodecSysLogReader, SettingsLimits) {
 	{
 		// Объект события, удерживаемого целиком
 		syslog::document_t document;
-		// Настройки разбора записей
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем предел числа полей внутри блока
-		settings.maxParams = 2;
+		settings.reader.maxParams = 2;
 		// Выполняем установку настроек разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку успешности чтения записи, в предел уложившейся
@@ -805,10 +814,10 @@ TEST(CodecSysLogReader, ModernFailures) {
 	for(const pair <string, syslog::error_t> & sample : samples){
 		// Объект события, удерживаемого целиком
 		syslog::document_t document;
-		// Настройки разбора записей
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем описание записи современным ЯВНО
-		settings.standard = syslog::standard_t::RFC5424;
+		settings.reader.standard = syslog::standard_t::RFC5424;
 		/**
 		 * Устанавливаем сличение вида полей записи
 		 *
@@ -816,8 +825,9 @@ TEST(CodecSysLogReader, ModernFailures) {
 		 *          знаками, как в записи и стоят, и дата содержанием не поверяется. Это
 		 *          намеренно - поток живого журнала несёт что угодно, - но проверка,
 		 *          сличения не задавшая, зеленела бы при любой дате
+		 *
 		 */
-		settings.mode = syslog::mode_t::WEAK;
+		settings.reader.mode = syslog::mode_t::WEAK;
 		// Выполняем установку настроек разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку отказа чтения очередного образца
@@ -833,6 +843,7 @@ TEST(CodecSysLogReader, ModernFailures) {
 	 * @note Половина эта доказывает, что описание задано не напрасно: при `AUTO` запись с
 	 *       нецифровым номером описания уходит по дороге устаревшего описания и отказа не
 	 *       даёт вовсе
+	 *
 	 */
 	{
 		// Объект события, удерживаемого целиком
@@ -879,6 +890,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	 *       всякая следующая подача ей отвечалась бы отказом. Проверка потока обязана
 	 *       звать подачу тремя доводами, иначе поверяла бы не то. Замерено 08.09.2026:
 	 *       первая редакция проверки падала на своей же неверной догадке
+	 *
 	 */
 	ASSERT_TRUE(reader.feed(RECORD.data(), RECORD.size(), false));
 	// Выполняем проверку отказа смены настроек посреди разбора
@@ -902,6 +914,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	 * @note Знак конца строки ставится НЕПРЕМЕННО: без него и без последнего куска
 	 *       запись завершённой не считается, разбор её не начинает вовсе, и состояние
 	 *       остаётся голодным. Проверка отказа мерила бы тогда не отказ
+	 *
 	 */
 	constexpr string_view BROKEN = "<999>Oct 22 10:52:01 host app: Message\n";
 	// Выполняем создание объекта чтения записей, отказом остановленного
@@ -926,9 +939,12 @@ TEST(CodecSysLogReader, FeedContract) {
 	 * @note Порог уплотнения равен 64 КиБ, и записи подаются кусками, покуда разобранное
 	 *       начало хранилища его не перерастёт: уплотнение снимает разобранное начало и
 	 *       сбрасывает смещение разбора в нуль
+	 *
 	 */
 	size_t records = 0;
-	// Выполняем подачу записей до тех пор, покуда порог уплотнения не пройден
+	/**
+	 * Выполняем подачу записей до тех пор, покуда порог уплотнения не пройден
+	 */
 	for(size_t i = 0; i < 4096; i++){
 		// Выполняем подачу очередной записи системного журнала
 		ASSERT_TRUE(compact.feed(CHUNK.data(), CHUNK.size(), false));
@@ -1105,6 +1121,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	 * @note Наблюдение это заведено 09.09.2026 после ошибки на единицу, вскрытой у
 	 *       кодека CEF: проверка «сверх предела отказ» проходит и при заслоне,
 	 *       срабатывающем на единицу раньше, оттого предел судится обоими краями
+	 *
 	 */
 	// Запись системного журнала, длиною предел поверяющая
 	const string exact = "<165>Oct 22 10:52:01 host app: Message";
@@ -1131,6 +1148,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	 *
 	 * @note Записи оканчиваются возвратом каретки с переводом строки: знак возврата в
 	 *       запись не входит и снимается разбором, иначе текст сообщения нёс бы его
+	 *
 	 */
 	ASSERT_TRUE(empty.feed("<165>Oct 22 10:52:01 host app: Message\r\n\n<165>Oct 22 10:52:02 host app: Second\r\n"));
 	// Количество прочтённых записей системного журнала
@@ -1241,13 +1259,16 @@ TEST(CodecSysLogReader, NumberOverflowWrap) {
 		 * @note Описание задаётся ЯВНО: при самоопределении запись с негодным номером
 		 *       описания опознаётся видом RFC 3164, где номера того нет вовсе, и разбор
 		 *       её проходит без отказа - законно, но проверяемой ветви не касается
+		 *
 		 */
 		settings.standard = syslog::standard_t::RFC5424;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(reader.settings(settings));
 		// Выполняем подачу записи с номером описания, за предел вышедшим
 		ASSERT_TRUE(reader.feed("<13>4294967297 2023-04-11T23:29:33Z host app - - - Message"));
-		// Выполняем перебор событий разбора записи
+		/**
+		 * Выполняем перебор событий разбора записи
+		 */
 		while(reader.next()){}
 		// Выполняем проверку того, что чтение записи отказом завершилось
 		EXPECT_EQ(reader.state(), syslog::state_t::FAILED);
@@ -1262,7 +1283,9 @@ TEST(CodecSysLogReader, NumberOverflowWrap) {
 		syslog::reader_t reader;
 		// Выполняем подачу записи с приоритетом, за предел вышедшим
 		ASSERT_TRUE(reader.feed("<4294967299>1 2023-04-11T23:29:33Z host app - - - Message"));
-		// Выполняем перебор событий разбора записи
+		/**
+		 * Выполняем перебор событий разбора записи
+		 */
 		while(reader.next()){}
 		// Выполняем проверку того, что чтение записи отказом завершилось
 		EXPECT_EQ(reader.state(), syslog::state_t::FAILED);
@@ -1295,13 +1318,17 @@ TEST(CodecSysLogReader, UnboundedFeedIsRefused) {
 	const string chunk(settings.maxRecord, 'A');
 	// Выполняем подачу куска текста длиною ровно в предел
 	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
-	// Выполняем перебор событий разбора
+	/**
+	 * Выполняем перебор событий разбора
+	 */
 	while(reader.next()){}
 	// Выполняем проверку того, что кусок длиною ровно в предел отказа не навёл
 	EXPECT_EQ(reader.error(), syslog::error_t::NONE);
 	// Выполняем подачу второго куска текста, предел превосходящего
 	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
-	// Выполняем перебор событий разбора
+	/**
+	 * Выполняем перебор событий разбора
+	 */
 	while(reader.next()){}
 	// Выполняем проверку того, что превышение предела отвечено отказом
 	EXPECT_EQ(reader.error(), syslog::error_t::RECORD_TOO_LONG);
@@ -1324,6 +1351,7 @@ TEST(CodecSysLogReader, UnboundedFeedIsRefused) {
  *
  * @note Найдено щупом оборота дат 15.09.2026: строгое сличение принимало пять записей
  *       из восьми и расходилось само с собою - строчную «t» отвергало, а «z» нет
+ *
  */
 TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 	// Записи даты, описанию противные
@@ -1341,6 +1369,7 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 		 *          сличение, опирающееся на его отказ, было бы зелено ЧУЖОЮ строгостью.
 		 *          Доказано щупом: при всеядном разборе дат кодек отвергает все девять
 		 *          записей ниже сам
+		 *
 		 */
 		"<34>1 2003-13-11T22:14:15Z host app - - - test",
 		"<34>1 2003-00-11T22:14:15Z host app - - - test",
@@ -1368,27 +1397,31 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 		"<34>1 2004-02-29T12:00:00Z host app - - - test",
 		"<34>1 - host app - - - test"
 	};
-	// Выполняем перебор записей, описанию противных
+	/**
+	 * Выполняем перебор записей, описанию противных
+	 */
 	for(auto & record : REFUSED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись, описанию противная, отвергнута
 		EXPECT_FALSE(document.parse(record)) << "принята запись: " << record;
 	}
-	// Выполняем перебор записей, описанию отвечающих
+	/**
+	 * Выполняем перебор записей, описанию отвечающих
+	 */
 	for(auto & record : ACCEPTED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись, описанию отвечающая, принята
@@ -1403,6 +1436,7 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 	 *
 	 * @note Замерено 15.09.2026: ожидание это и было в проверке сперва неверным - не
 	 *       код. Слабое сличение отвергало обе, и справедливо
+	 *
 	 */
 	const vector <string> TOLERATED = {
 		"<34>1 2003-10-11T22:14:15.1234567Z host app - - - test",
@@ -1416,17 +1450,20 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 		 *       дефекту сличения литералов с учётом регистра. Модуль дат дефект
 		 *       снял - §5.6 RFC 3339 строчные допускает прямо, - и запись перешла из
 		 *       неразбираемых в разбираемые, но описанию противные
+		 *
 		 */
 		"<34>1 2003-10-11t22:14:15Z host app - - - test"
 	};
-	// Выполняем перебор записей, строгому сличению противных, при слабом сличении
+	/**
+	 * Выполняем перебор записей, строгому сличению противных, при слабом сличении
+	 */
 	for(auto & record : TOLERATED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем слабое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::WEAK;
+		settings.reader.mode = syslog::mode_t::WEAK;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		/**
@@ -1434,6 +1471,7 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
 		 *
 		 * @note Отказ здесь означал бы потерю событий живых устройств: запреты эти
 		 *       принадлежат строгому сличению и слабому чужды
+		 *
 		 */
 		EXPECT_TRUE(document.parse(record)) << "отвергнута при слабом сличении: " << record;
 	}
@@ -1452,6 +1490,7 @@ TEST(CodecSysLogReader, TimestampStrictnessOfTheStandard) {
  * @note Найдено щупом приоритета 15.09.2026: запись «<01>» принималась всяким сличением
  *       и молча возвращалась из оборота как «<1>». Искажение тихое - запись остаётся
  *       правдоподобной, и сверить её не с чем
+ *
  */
 TEST(CodecSysLogReader, PriorityLeadingZerosAreRefusedWhenStrict) {
 	// Записи приоритета с ведущими нулями
@@ -1467,20 +1506,22 @@ TEST(CodecSysLogReader, PriorityLeadingZerosAreRefusedWhenStrict) {
 		"<34>Oct 11 22:14:15 host app: test",
 		"<191>Oct 11 22:14:15 host app: test"
 	};
-	// Выполняем перебор записей приоритета с ведущими нулями
+	/**
+	 * Выполняем перебор записей приоритета с ведущими нулями
+	 */
 	for(auto & record : REFUSED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись с ведущим нулём отвергнута
 		EXPECT_FALSE(document.parse(record)) << "принята запись: " << record;
 		// Устанавливаем слабое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::WEAK;
+		settings.reader.mode = syslog::mode_t::WEAK;
 		// Объект документа системного журнала при слабом сличении
 		syslog::document_t tolerant;
 		// Устанавливаем настройки разбора записей
@@ -1490,24 +1531,29 @@ TEST(CodecSysLogReader, PriorityLeadingZerosAreRefusedWhenStrict) {
 		 *
 		 * @note Отказ здесь означал бы потерю событий живых устройств: запрет этот
 		 *       принадлежит строгому сличению и слабому чужд
+		 *
 		 */
 		EXPECT_TRUE(tolerant.parse(record)) << "отвергнута при слабом сличении: " << record;
 	}
-	// Выполняем перебор записей приоритета, описанию отвечающих
+	/**
+	 * Выполняем перебор записей приоритета, описанию отвечающих
+	 */
 	for(auto & record : ACCEPTED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись, описанию отвечающая, принята
 		ASSERT_TRUE(document.parse(record)) << "отвергнута запись: " << record;
 		// Получаем собранную обратно запись
 		string built = document.dump();
-		// Снимаем перевод строки, сборкою добавленный
+		/**
+		 * Снимаем перевод строки, сборкою добавленный
+		 */
 		while(!built.empty() && ((built.back() == '\n') || (built.back() == '\r')))
 			// Снимаем последний знак собранной записи
 			built.pop_back();
@@ -1531,6 +1577,7 @@ TEST(CodecSysLogReader, PriorityLeadingZerosAreRefusedWhenStrict) {
  *       набор знаков - нет, и запись с управляющим знаком внутри имени узла принималась
  *       молча. Код отказа INVALID_HOSTNAME при том был объявлен, но не наводился ни одним
  *       путём: поверка задумывалась и сделана не была
+ *
  */
 TEST(CodecSysLogReader, HeaderFieldsFollowThePrintableSet) {
 	// Записи с полями заголовка, набору знаков противными
@@ -1541,14 +1588,16 @@ TEST(CodecSysLogReader, HeaderFieldsFollowThePrintableSet) {
 		{string("<34>1 2003-10-11T22:14:15Z host app pr\x02oc - - test"), syslog::error_t::INVALID_PROCESS},
 		{string("<34>1 2003-10-11T22:14:15Z host app - m\x1fsg - test"), syslog::error_t::INVALID_HEADER_FIELD}
 	};
-	// Выполняем перебор записей, набору знаков противных
+	/**
+	 * Выполняем перебор записей, набору знаков противных
+	 */
 	for(auto & item : REFUSED){
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Получаем настройки разбора записей
-		syslog::reader_t::settings_t settings = document.settings();
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(document.settings(settings));
 		// Выполняем проверку того, что запись, набору знаков противная, отвергнута
@@ -1559,12 +1608,13 @@ TEST(CodecSysLogReader, HeaderFieldsFollowThePrintableSet) {
 		 * @note Код сличается ИМЕННО тот, а не любой: имени узла и опознавателю работы
 		 *       описание отвело свои коды, и подмена их общим скрыла бы, какое поле
 		 *       записи негодно
+		 *
 		 */
 		EXPECT_EQ(document.error(), item.second);
 		// Объект документа системного журнала при слабом сличении
 		syslog::document_t tolerant;
 		// Устанавливаем слабое сличение разбираемой записи с описанием
-		settings.mode = syslog::mode_t::WEAK;
+		settings.reader.mode = syslog::mode_t::WEAK;
 		// Устанавливаем настройки разбора записей
 		ASSERT_TRUE(tolerant.settings(settings));
 		// Выполняем проверку того, что при слабом сличении запись принята
@@ -1572,10 +1622,10 @@ TEST(CodecSysLogReader, HeaderFieldsFollowThePrintableSet) {
 	}
 	// Объект документа системного журнала
 	syslog::document_t document;
-	// Получаем настройки разбора записей
-	syslog::reader_t::settings_t settings = document.settings();
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	// Устанавливаем строгое сличение разбираемой записи с описанием
-	settings.mode = syslog::mode_t::STRONG;
+	settings.reader.mode = syslog::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
 	ASSERT_TRUE(document.settings(settings));
 	// Выполняем проверку того, что запись, набору знаков отвечающая, принята
@@ -1599,6 +1649,7 @@ TEST(CodecSysLogReader, HeaderFieldsFollowThePrintableSet) {
  *
  * @note Заведена 15.09.2026 по разряду, взятому у кодеков JSON: проверка,
  *       ведомая на одних умолчаниях, не стережёт ни одной настройки
+ *
  */
 TEST(CodecSysLogReader, ChunkedUnderStrictMatching) {
 	// Разбираемый поток записей, поверки строгого сличения задевающий
@@ -1624,6 +1675,7 @@ TEST(CodecSysLogReader, ChunkedUnderStrictMatching) {
 		 *          красным - она отменяет его ВОВСЕ, и проверка остаётся зелёной, не
 		 *          сличив ни одного снимка. Молчаливый пропуск в проверке прячет
 		 *          молчаливую утрату в коде
+		 *
 		 */
 		size_t compared = 0;
 		/**
@@ -1631,6 +1683,7 @@ TEST(CodecSysLogReader, ChunkedUnderStrictMatching) {
 		 *
 		 * @note Нуль означает подачу текста целиком и стоит ПЕРВЫМ: им снимается образец,
 		 *       с каким сличаются все прочие
+		 *
 		 */
 		for(size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (2),
 		                    static_cast <size_t> (3), static_cast <size_t> (5), static_cast <size_t> (7),
@@ -1659,7 +1712,9 @@ TEST(CodecSysLogReader, ChunkedUnderStrictMatching) {
 					break;
 				// Сдвигаем смещение подачи за поданный кусок текста
 				offset += size;
-				// Выполняем перебор событий разбора, куском наведённых
+				/**
+				 * Выполняем перебор событий разбора, куском наведённых
+				 */
 				while(reader.next()){
 					// Добавляем к снимку вид очередного события разбора
 					actual.append(std::to_string(static_cast <uint32_t> (reader.event())));
@@ -1719,18 +1774,19 @@ TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet) {
 	// Заголовок записи, единый у всех случаев набора
 	const string head = "<165>1 2026-09-15T00:00:00Z host app 1 - ";
 	/**
-	 * @brief Метод разбора записи строгим сличением
+	 * @brief Функция разбора записи строгим сличением
 	 *
 	 * @param structured блок структурированных данных записи
 	 * @return           признак успешности разбора записи
+	 *
 	 */
 	auto strict = [&head](const string & structured) noexcept -> bool {
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение записи
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выводим признак успешности разбора записи
@@ -1745,6 +1801,7 @@ TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet) {
 	 *
 	 * @note Случай этот главный в наборе: разбор обрывает опознаватель блока лишь
 	 *       пробелом и скобкой, отчего знак равенства проходит в него свободно
+	 *
 	 */
 	EXPECT_FALSE(strict("[exa=mple@1 iut=\"3\"]"));
 	// Выполняем проверку отказа знаком управления в опознавателе блока
@@ -1765,12 +1822,13 @@ TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet) {
 	 * @note Половина эта договора важнее первой: набор знаков есть требование
 	 *       СТРОГОГО сличения, и записи живых устройств, его нарушающие, слабым
 	 *       сличением обязаны читаться по-прежнему
+	 *
 	 */
 	syslog::document_t document;
-	// Настройки разбора записи
-	syslog::reader_t::settings_t settings;
+	// Настройки документа
+	syslog::document_t::settings_t settings;
 	// Устанавливаем слабое сличение записи
-	settings.mode = syslog::mode_t::WEAK;
+	settings.reader.mode = syslog::mode_t::WEAK;
 	// Устанавливаем настройки разбора записи
 	document.settings(settings);
 	// Выполняем проверку того, что запись с кавычкою в имени слабым сличением принята
@@ -1800,19 +1858,20 @@ TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet) {
  */
 TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten) {
 	/**
-	 * @brief Метод разбора записи заданным сличением
+	 * @brief Функция разбора записи заданным сличением
 	 *
 	 * @param version номер описания записи
 	 * @param mode    строгость сличения записи
 	 * @return        признак успешности разбора записи
+	 *
 	 */
 	auto parse = [](const string & version, const syslog::mode_t mode) noexcept -> bool {
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгость сличения записи
-		settings.mode = mode;
+		settings.reader.mode = mode;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выводим признак успешности разбора записи
@@ -1831,6 +1890,7 @@ TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten) {
 	 *
 	 * @note Отказ этот иного рода и наводится ИНЫМ кодом: запись такая не битая, а
 	 *       описания, кодеку неведомого
+	 *
 	 */
 	EXPECT_FALSE(parse("2", syslog::mode_t::STRONG));
 	/**
@@ -1839,6 +1899,7 @@ TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten) {
 	 * @note Половина эта договора важнее первой: вид номера есть требование СТРОГОГО
 	 *       сличения, и записи живых устройств, его нарушающие, слабым сличением
 	 *       обязаны читаться по-прежнему
+	 *
 	 */
 	EXPECT_TRUE(parse("0", syslog::mode_t::WEAK));
 	// Выполняем проверку того, что ведущий нуль слабым сличением принимается
@@ -1868,21 +1929,22 @@ TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8) {
 	// Метка порядка байтов, кодировку объявляющая
 	const string mark = "\xEF\xBB\xBF";
 	/**
-	 * @brief Метод разбора записи заданным сличением
+	 * @brief Функция разбора записи заданным сличением
 	 *
 	 * @param message текст сообщения записи
 	 * @param mode    строгость сличения записи
 	 * @return        признак успешности разбора записи
+	 *
 	 */
 	auto parse = [](const string & message, const syslog::mode_t mode) noexcept -> bool {
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгость сличения записи
-		settings.mode = mode;
+		settings.reader.mode = mode;
 		// Устанавливаем снятие метки порядка байтов с текста сообщения
-		settings.bom = true;
+		settings.reader.bom = true;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выводим признак успешности разбора записи
@@ -1907,6 +1969,7 @@ TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8) {
 	 *
 	 * @note Половина эта договора важнее первой: заявления о кодировке нет, и
 	 *       спрашивать с текста годности UTF-8 не с чего
+	 *
 	 */
 	EXPECT_TRUE(parse(string("a\xD0"), syslog::mode_t::STRONG));
 	// Выполняем проверку того, что октет 0xFE без метки принимается строгим сличением
@@ -1915,6 +1978,7 @@ TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8) {
 	 * Выполняем проверку того, что слабое сличение негодную кодировку принимает
 	 *
 	 * @note Годность кодировке есть требование СТРОГОГО сличения
+	 *
 	 */
 	EXPECT_TRUE(parse(mark + "a\xFE", syslog::mode_t::WEAK));
 }
@@ -1943,16 +2007,17 @@ TEST(CodecSysLogReader, GuardsUntouchedByTheSuite) {
 	 *
 	 * @note Дата пробуется четырьмя видами - RFC 3164, RFC 3339, asctime и запись с
 	 *       пробелом вместо знака «T», - и заслон этот стоит за всеми четырьмя
+	 *
 	 */
 	{
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем слабое сличение записи
-		settings.mode = syslog::mode_t::WEAK;
+		settings.reader.mode = syslog::mode_t::WEAK;
 		// Устанавливаем чтение записи устаревшим описанием
-		settings.standard = syslog::standard_t::RFC3164;
+		settings.reader.standard = syslog::standard_t::RFC3164;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выполняем проверку отказа разбора записи с негодной датой
@@ -1965,14 +2030,15 @@ TEST(CodecSysLogReader, GuardsUntouchedByTheSuite) {
 	 *
 	 * @note Записи живых устройств рвутся посреди поля, и скобка при том остаётся
 	 *       незакрытой: заслон этот стоит ровно на такой записи
+	 *
 	 */
 	{
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем чтение записи устаревшим описанием
-		settings.standard = syslog::standard_t::RFC3164;
+		settings.reader.standard = syslog::standard_t::RFC3164;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выполняем проверку отказа разбора записи с незакрытой скобкой
@@ -1985,14 +2051,15 @@ TEST(CodecSysLogReader, GuardsUntouchedByTheSuite) {
 	 *
 	 * @note Половина эта договора важнее первой: заслон обязан ловить незакрытую
 	 *       скобку и не трогать закрытую
+	 *
 	 */
 	{
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем чтение записи устаревшим описанием
-		settings.standard = syslog::standard_t::RFC3164;
+		settings.reader.standard = syslog::standard_t::RFC3164;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выполняем проверку успешности разбора записи с закрытой скобкой
@@ -2021,21 +2088,22 @@ TEST(CodecSysLogReader, GuardsUntouchedByTheSuite) {
  */
 TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict) {
 	/**
-	 * @brief Метод разбора записи заданным сличением
+	 * @brief Функция разбора записи заданным сличением
 	 *
 	 * @param record разбираемая запись
 	 * @param mode   строгость сличения записи
 	 * @return       признак успешности разбора записи
+	 *
 	 */
 	auto parse = [](const string & record, const syslog::mode_t mode) noexcept -> bool {
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгость сличения записи
-		settings.mode = mode;
+		settings.reader.mode = mode;
 		// Устанавливаем чтение записи нынешним описанием
-		settings.standard = syslog::standard_t::RFC5424;
+		settings.reader.standard = syslog::standard_t::RFC5424;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выводим признак успешности разбора записи
@@ -2048,6 +2116,7 @@ TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict) {
 	 *
 	 * @note Половина эта договора важнее первой: знаком «-» отсутствие значения и
 	 *       записывается, и отказ ему сломал бы законные записи
+	 *
 	 */
 	EXPECT_TRUE(parse("<165>1 2026-09-15T00:00:00Z - - - - hi", syslog::mode_t::STRONG));
 	// Выполняем проверку отказа пустым именем узла
@@ -2058,12 +2127,12 @@ TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict) {
 	{
 		// Объект документа системного журнала
 		syslog::document_t document;
-		// Настройки разбора записи
-		syslog::reader_t::settings_t settings;
+		// Настройки документа
+		syslog::document_t::settings_t settings;
 		// Устанавливаем строгое сличение записи
-		settings.mode = syslog::mode_t::STRONG;
+		settings.reader.mode = syslog::mode_t::STRONG;
 		// Устанавливаем чтение записи нынешним описанием
-		settings.standard = syslog::standard_t::RFC5424;
+		settings.reader.standard = syslog::standard_t::RFC5424;
 		// Устанавливаем настройки разбора записи
 		document.settings(settings);
 		// Выполняем проверку отказа разбора записи с пустым полем
@@ -2076,6 +2145,7 @@ TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict) {
 	 *
 	 * @note Слабое сличение отвечает отказом лишь неразбираемому, а поле пустое
 	 *       разбирается
+	 *
 	 */
 	EXPECT_TRUE(parse("<165>1 2026-09-15T00:00:00Z  app 1 - - hi", syslog::mode_t::WEAK));
 }
@@ -2119,6 +2189,7 @@ TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces) {
 	 * Сбор событий разбора подачей кусками заданного размера
 	 *
 	 * @note Размер куска, нулём заданный, означает подачу текста целиком
+	 *
 	 */
 	auto gather = [&text](const size_t chunk) noexcept -> vector <item_t> {
 		// Собранные события разбора
@@ -2162,6 +2233,7 @@ TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces) {
 	 *
 	 * @warning Поверка эта стережёт сам измеритель: ход, нули отдающий, сличение кусков
 	 *          прошёл бы молча, ничего не доказав
+	 *
 	 */
 	{
 		// Места записей, событиями выданные
@@ -2220,35 +2292,62 @@ TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces) {
 TEST(CodecSysLogReader, PositionsSurviveRepeatedCompaction) {
 	// Перед каждой записью находятся две пустые строки, окончания строк имеют вид CRLF
 	const string record = ("<165>1 2026-09-15T00:00:00Z host app 1 - - " + string(1024, 'x'));
+	// Повтор записи с двумя пустыми строками перед ней и переводом строки после
 	const string unit = ("\r\n\r\n" + record + "\r\n");
+	// Сто шестьдесят повторов в потоке
 	const size_t count = 160;
+	// Собираемый текст потока
 	string text;
+	/**
+	 * Собираем текст из повторов записи с разделителями
+	 */
 	for(size_t i = 0; i < count; i++)
+		// Дописываем очередной повтор к тексту
 		text.append(unit);
 	// Поток достаточен для нескольких уплотнений при подаче частями
 	ASSERT_GT(text.size(), static_cast <size_t> (0x20000));
+	// Размеры кусков подачи: от одного байта до всего текста
 	const vector <size_t> chunks = {1, 17, 4093, 65536, text.size()};
+	/**
+	 * Прогоняем подачу текста частями разного размера
+	 */
 	for(const size_t chunk : chunks){
+		// Читатель потока, кускам подвергаемый
 		syslog::reader_t reader;
+		// Счётчик снятых записей
 		size_t records = 0;
+		/**
+		 * Подаём текст порциями выбранного размера
+		 */
 		for(size_t offset = 0; offset < text.size();){
 			// Подаём текст с разрывами внутри записи и между CR и LF
 			const size_t size = std::min(chunk, text.size() - offset);
+			// Подаём очередной кусок текста, последним помечая конец
 			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			// Переходим к следующему куску текста
 			offset += size;
+			/**
+			 * Снимаем записи из читателя по мере их появления
+			 */
 			while(reader.next()){
 				// Окончание потока не является событием отдельной записи
 				if(reader.event() == syslog::event_t::FINISH)
 					continue;
 				// Координаты выводятся из исходного текста независимо от читателя
 				ASSERT_LT(records, count);
+				// Сверяем смещение записи с её местом в исходном тексте
 				ASSERT_EQ(reader.position().offset, records * unit.size() + 4) << "chunk=" << chunk;
 				ASSERT_EQ(reader.position().line, records * 3 + 3) << "chunk=" << chunk;
 				ASSERT_EQ(reader.position().column, 1u) << "chunk=" << chunk;
+				// Сверяем общее имя места события с прежним
+				ASSERT_EQ(reader.location().offset, reader.position().offset);
+				// Отдельной записью считаем лишь событие RECORD
 				if(reader.event() == syslog::event_t::RECORD)
+					// Пополняем счётчик снятых записей
 					records++;
 			}
 		}
+		// Сверяем число снятых записей с числом повторов
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), syslog::state_t::FINISHED);
 		EXPECT_EQ(reader.error(), syslog::error_t::NONE);
@@ -2262,25 +2361,51 @@ TEST(CodecSysLogReader, PositionsSurviveRepeatedCompaction) {
 TEST(CodecSysLogReader, ErrorPositionsSurviveRepeatedCompaction) {
 	// Поток содержит длинные записи, пустые строки и повреждённый хвост
 	const string unit = ("\r\n\r\n<165>1 2026-09-15T00:00:00Z host app 1 - - " + string(1024, 'x') + "\r\n");
+	// Сто шестьдесят повторов длинной записи
 	const size_t count = 160;
+	// Собираемый текст с повреждённым хвостом
 	string text;
+	/**
+	 * Собираем текст из повторов длинной записи
+	 */
 	for(size_t i = 0; i < count; i++)
+		// Дописываем очередной повтор к тексту
 		text.append(unit);
+	// Ожидаемое смещение отказа: за текстом, с учётом знака «<» хвоста
 	const size_t expected = (text.size() + 1);
+	// Дописываем повреждённый хвост «<bad>»
 	text.append("<bad>");
+	// Размеры кусков подачи: от семнадцати байт до всего текста
 	const vector <size_t> chunks = {17, 65536, text.size()};
+	/**
+	 * Прогоняем подачу с оборванной последней записью частями разного размера
+	 */
 	for(const size_t chunk : chunks){
+		// Читатель потока, кускам подвергаемый
 		syslog::reader_t reader;
+		// Счётчик снятых записей
 		size_t records = 0;
+		/**
+		 * Подаём текст порциями выбранного размера
+		 */
 		for(size_t offset = 0; offset < text.size();){
+			// Размер очередного куска, хвост урезающий
 			const size_t size = std::min(chunk, text.size() - offset);
+			// Подаём очередной кусок текста, последним помечая конец
 			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			// Переходим к следующему куску текста
 			offset += size;
+			/**
+			 * Считаем записи, отданные читателем
+			 */
 			while(reader.next()){
+				// Отдельной записью считаем лишь событие RECORD
 				if(reader.event() == syslog::event_t::RECORD)
+					// Пополняем счётчик снятых записей
 					records++;
 			}
 		}
+		// Сверяем число снятых записей с числом повторов
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), syslog::state_t::FAILED);
 		EXPECT_EQ(reader.error(), syslog::error_t::INVALID_PRIORITY);
@@ -2297,40 +2422,63 @@ TEST(CodecSysLogReader, ErrorPositionsSurviveRepeatedCompaction) {
 TEST(CodecSysLogReader, ResetRestoresPositionsAfterCompaction) {
 	// Первая запись заканчивается на точной границе уплотнения
 	string prefix = "<165>1 2026-09-15T00:00:00Z host app 1 - - ";
+	// Дополняем первую запись до точной границы уплотнения
 	prefix.append(0xFFFF - prefix.size(), 'x');
 	prefix.append(1, '\n');
+	// Читатель потока, уплотнению подвергаемый
 	syslog::reader_t reader;
+	// Подаём первую запись без признака конца
 	ASSERT_TRUE(reader.feed(prefix.data(), prefix.size(), false));
+	// Счётчик записей начальной подачи
 	size_t initial = 0;
+	/**
+	 * Считаем записи начальной подачи
+	 */
 	while(reader.next()){
+		// Отдельной записью считаем лишь событие RECORD
 		if(reader.event() == syslog::event_t::RECORD)
+			// Пополняем счётчик начальных записей
 			initial++;
 	}
+	// Сверяем число начальных записей с единицей
 	ASSERT_EQ(initial, 1u);
 	ASSERT_EQ(reader.state(), syslog::state_t::HUNGRY);
 	// Следующая подача удаляет первую запись из хранилища
 	ASSERT_TRUE(reader.feed("<165>1 2026-09-15T00:00:00Z host app 1 - - value\n"));
+	// Счётчик записей после докормки
 	size_t records = 0;
+	/**
+	 * Снимаем записи после докормки
+	 */
 	while(reader.next()){
+		// Событие RECORD сверяем по координатам и считаем записью
 		if(reader.event() == syslog::event_t::RECORD){
+			// Сверяем смещение записи, отсчитанное от начала исходного текста
 			EXPECT_EQ(reader.position().offset, prefix.size());
 			EXPECT_EQ(reader.position().line, 2u);
+			// Пополняем счётчик снятых записей
 			records++;
 		}
 	}
+	// Сверяем число снятых записей с единицей
 	ASSERT_EQ(records, 1u);
 	// После сброса координаты ошибки относятся только к новому тексту
 	reader.reset();
+	// Подаём повреждённый хвост после сброса
 	ASSERT_TRUE(reader.feed("<bad>"));
+	// Убеждаемся, что читатель отказал на повреждённом хвосте
 	EXPECT_FALSE(reader.next());
+	// Сверяем код отказа с ожидаемым INVALID_PRIORITY
 	EXPECT_EQ(reader.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(reader.errorLocation().offset, 1u);
 	EXPECT_EQ(reader.errorLocation().line, 1u);
 	EXPECT_EQ(reader.errorLocation().column, 2u);
 	// Повторный сброс после ошибки восстанавливает и координаты исправной записи
 	reader.reset();
+	// Подаём исправную запись после повторного сброса
 	ASSERT_TRUE(reader.feed("<165>1 2026-09-15T00:00:00Z host app 1 - - value\n"));
 	ASSERT_TRUE(reader.next());
+	// Сверяем смещение записи с началом нового текста
 	EXPECT_EQ(reader.position().offset, 0u);
 	EXPECT_EQ(reader.position().line, 1u);
 	EXPECT_EQ(reader.position().column, 1u);

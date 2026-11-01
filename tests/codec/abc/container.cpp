@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки сборки бинарного контейнера ABC целиком — заголовок с чередой кадров,
  *        порог накопления, смена вида содержимого, поточная подача и сохранность
  *        накопленного при отказе укладки
@@ -32,10 +38,14 @@
  * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
  *       набора abc - под этой системой не шла ни одна его проверка. Участок памяти
  *       там запрашивается своим средством, VirtualAlloc
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/mman.h>
 	#include <sys/resource.h>
+/**
+ * Для операционной системы MS Windows
+ */
 #else
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
@@ -44,10 +54,13 @@
 	 *       сталкивающиеся с именами членов перечислений модуля, и заголовок
 	 *       кодека перестаёт разбираться вовсе. Единая точка и пара
 	 *       suppress.hpp / restore.hpp заведены ровно для этого
+	 *
 	 */
 	#include <sys/macro/win32.hpp>
 
-	// Признак отказа выдачи участка памяти приводится к общему для систем виду
+	/**
+	 * Признак отказа выдачи участка памяти приводится к общему для систем виду
+	 */
 	#define MAP_FAILED (reinterpret_cast <void *> (-1))
 #endif
 
@@ -62,6 +75,7 @@
  *
  * @note Снятие идёт ПОСЛЕ всех подключений и возвращается в конце файла: макросы эти
  *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
+ *
  */
 #include <sys/macro/suppress.hpp>
 #include <sys/log.hpp>
@@ -70,7 +84,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -225,6 +245,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	 * @param texts     собираемые записи контейнера
 	 * @param result    буфер собранного контейнера
 	 * @return          признак успешной сборки контейнера
+	 *
 	 */
 	auto assemble = [](abc::assembler_t & assembler, const vector <string> & texts,
 	 vector <uint8_t> & result) noexcept -> bool {
@@ -270,6 +291,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	 *
 	 * @note Сличение полное, а не по числу записей: остаток прежнего контейнера осел бы
 	 * в теле либо в оглавлении, а число записей при том сошлось бы
+	 *
 	 */
 	ASSERT_EQ(second, sample);
 	// Сниматель, снимающий два контейнера подряд
@@ -312,6 +334,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	// Снятое содержимое обязано отвечать записям второго контейнера
 	ASSERT_EQ(payload, expected);
 }
+// Проверка того, что настройки сборщика и владельца уходят в свойства заголовка контейнера
 TEST_F(ContainerFixture, HeaderProperties) {
 	// Сборщик контейнера
 	abc::assembler_t assembler;
@@ -735,7 +758,9 @@ TEST_F(ContainerFixture, ModulesAreOptional) {
 	ASSERT_FALSE(loader.header().is(abc::flag_t::ENCRYPTED));
 	// Собираемое ожидаемое содержимое кадров контейнера
 	vector <uint8_t> expected;
-	// Выполняем перебор всех внесённых записей
+	/**
+	 * Выполняем перебор всех внесённых записей
+	 */
 	for(const vector <uint8_t> & item : records)
 		// Выполняем накопление ожидаемого содержимого кадров
 		expected.insert(expected.end(), item.begin(), item.end());
@@ -831,6 +856,7 @@ TEST_F(ContainerFixture, ChunkBeyondBody) {
 		 * @note Сумма вырабатывается по ДЕЙСТВИТЕЛЬНОМУ размеру кадра на носителе, а не по
 		 *       ДЕЙСТВИТЕЛЬНОМУ: снятие сличает сумму по объявленной длине, и вырабатывать
 		 *       её приходится по ней же, иначе отказ придёт по сумме, а не по границе тела
+		 *
 		 */
 		abc::fixed(damaged.data() + abc::HEADER_LENGTH + abc::CHUNK_DIGEST,
 		 abc::digest(damaged.data() + abc::HEADER_LENGTH,
@@ -901,6 +927,7 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 	 *       нулями лениво; у MS Windows - VirtualAlloc, и плата за него берётся из
 	 *       общего счёта памяти системы, оттого отказ там вероятнее. Отказ и там и
 	 *       там ведёт к пропуску проверки, заведённому ниже
+	 *
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
@@ -919,6 +946,7 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 		 *
 		 * @note Правка предела живёт до конца процесса, а влияет на прочие проверки лишь
 		 *       послаблением: предел поднимается, а не опускается
+		 *
 		 */
 		{
 			// Пределы памяти данных, отведённые процессу
@@ -933,8 +961,13 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 				static_cast <void> (::setrlimit(RLIMIT_DATA, &limits));
 			}
 		}
+		// Запрашиваем у системы анонимное отображение памяти свыше четырёх гигабайт
 		void * buffer = ::mmap(nullptr, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
+		// Запрашиваем у системы резервированный участок памяти свыше четырёх гигабайт через VirtualAlloc
 		void * buffer = ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READONLY);
 		// Приводим признак отказа к общему для систем виду
 		if(buffer == nullptr)
@@ -960,9 +993,14 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 	const uint64_t records = assembler.records();
 	// Размер накопленных записей
 	const size_t pending = assembler.pending();
-	// Выполняем возврат отображения памяти системе
+	/**
+	 * Выполняем возврат отображения памяти системе
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		::munmap(buffer, size);
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		::VirtualFree(buffer, 0, MEM_RELEASE);
 	#endif
@@ -1083,6 +1121,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 		 * @note Контрольная сумма кадра здесь не пересобирается намеренно: поверка подписи
 		 *       ходит по кадрам как по октетам и сумм их не сличает вовсе, - потому отказ
 		 *       обязан прийти именно по устройству, а не по сумме
+		 *
 		 */
 		for(uint8_t i = 0; i < 4; i++)
 			// Выполняем укладку очередного октета объявленной длины кадра
@@ -1114,6 +1153,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 		ASSERT_EQ(error, abc::error_t::TRUNCATED_CHUNK);
 	}
 }
+// Проверка того, что отказы снятия контейнера и поверки подписи доносятся журналу
 TEST_F(ContainerFixture, FailuresReachLogger) {
 	// Накопленные записи журнала
 	vector <string> records;
@@ -1411,6 +1451,7 @@ TEST_F(ContainerFixture, FeedRefusesTheAbsentBuffer) {
  *       он ИНОЙ: дерево свёрток здесь исправно и корень выдало, отказал подписыватель.
  *       Одна причина `SIGNING_FAILED` покрывает обе беды, и сличение причин их не
  *       различает - различает лишь достижимость (05.09.2026)
+ *
  */
 TEST_F(ContainerFixture, SignerRefusalNamesTheSigningCause) {
 	// Выполняем заведение ключа владельца контейнера
@@ -1469,6 +1510,7 @@ TEST_F(ContainerFixture, SignerRefusalNamesTheSigningCause) {
  *       ответится укладка тела, и до оглавления дело не дойдёт. Оттого настройка ставится
  *       после внесения, когда тело уже уложено. Замерено 05.09.2026, до того перенос
  *       причины здесь был не закреплён
+ *
  */
 TEST_F(ContainerFixture, IndexPackFailureCarriesThePackerCause) {
 	// Выполняем сборку записи для проверок
@@ -1545,6 +1587,7 @@ TEST_F(ContainerFixture, IndexPackFailureCarriesThePackerCause) {
  * @note Отказ наводится ГЛУБИНОЙ, а не порчею октетов: укладчик берётся сборщиком свой,
  *       настройки его извне не задаются, и глубина - единственная дверь, отпираемая
  *       СОДЕРЖИМЫМ значения. Предел глубины `MAX_DEPTH` равен 0x400
+ *
  */
 TEST_F(ContainerFixture, ComposeFailureCarriesTheWriterCause){
 	/**
@@ -1552,7 +1595,9 @@ TEST_F(ContainerFixture, ComposeFailureCarriesTheWriterCause){
 	 * и потому звеньев берётся на одно больше
 	 */
 	abc::value_t deep(string{"дно"});
-	// Выполняем обёртывание значения перечнями до превышения предела глубины
+	/**
+	 * Выполняем обёртывание значения перечнями до превышения предела глубины
+	 */
 	for(size_t i = 0; i < 0x401; i++){
 		// Очередное объемлющее звено перечня
 		abc::value_t outer;
@@ -1588,6 +1633,7 @@ TEST_F(ContainerFixture, ComposeFailureCarriesTheWriterCause){
  *          единице самою установкою настроек. Решение это НАМЕРЕННОЕ, а стереглось оно
  *          лишь косвенно: щуп нужности 07.09.2026 обесточил приведение, и не покраснело
  *          ничего
+ *
  */
 TEST_F(ContainerFixture, ZeroBlockThresholdIsRaisedToTheSmallest) {
 	// Сборщик контейнера

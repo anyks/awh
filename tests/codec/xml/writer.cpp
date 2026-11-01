@@ -51,6 +51,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -327,13 +330,13 @@ TEST(CodecXmlWriter, ProcessingTargetColon) {
 	// Исходный текст разметки с разделителем в цели указания обработчику
 	const string source = "<?a:b данные?><root/>";
 	// Настройки разбора без разрешения префиксов
-	xml::reader_t::settings_t settings;
+	xml::document_t::settings_t settings;
 	// Выполняем выключение разрешения префиксов пространств имён
-	settings.namespaces = false;
-	// Объект дерева разметки исходного текста
-	xml::document_t document;
+	settings.reader.namespaces = false;
+	// Объект дерева разметки исходного текста с установленными настройками разбора
+	xml::document_t document(settings);
 	// Выполняем разбор исходного текста разметки
-	ASSERT_TRUE(document.parse(source, settings)) << xml::message(document.error());
+	ASSERT_TRUE(document.parse(source)) << xml::message(document.error());
 	// Объект записи текста разметки
 	xml::writer_t writer;
 	// Выполняем запись разобранного дерева разметки
@@ -350,6 +353,7 @@ TEST(CodecXmlWriter, ProcessingTargetColon) {
 	 * @note Разделитель префикса знаком начала имени договором дозволен наравне с
 	 *       буквой, и цель `:b` построена правильно: ошибочной её делает лишь цифра
 	 *       в начале имени
+	 *
 	 */
 	ASSERT_FALSE(direct.processing("1b", "данные"));
 }
@@ -423,7 +427,7 @@ TEST(CodecXmlWriter, NonAsciiAttribute) {
  */
 TEST(CodecXmlWriter, NamespaceUndeclaration) {
 	/**
-	 * @brief Метод кругового хода дерева разметки
+	 * @brief Функция кругового хода дерева разметки
 	 *
 	 * @param text исходный текст разметки
 	 * @return     записанный обратно текст разметки
@@ -483,6 +487,7 @@ TEST(CodecXmlWriter, ErrorCodes) {
 	 *       бывает не только заведением пустым, как здесь, но и удержанием через
 	 *       перестроение дерева. Прежде проверка эта закрепляла код `INTERNAL` -
 	 *       и тем закрепляла отправку потребителя искать дефект у нас
+	 *
 	 */
 	{
 		// Объект записи текста разметки
@@ -495,6 +500,7 @@ TEST(CodecXmlWriter, ErrorCodes) {
 		ASSERT_EQ(writer.error(), xml::error_t::INVALID_NODE);
 	}
 }
+// Проверяем отклонение записи при повторах, непригодных знаках и ошибочной кодировке
 TEST(CodecXmlWriter, Malformed2) {
 	/**
 	 * Выполняем проверку отклонения повторного имени атрибута
@@ -730,6 +736,7 @@ TEST(CodecXmlWriter, ReservedNamespaces) {
 		 *       отказа, а код не спрашивал, и подмена кода в любом из пяти заслонов
 		 *       проходила незамеченной. Коды же здесь РАЗНЫЕ и смысл несут разный:
 		 *       занятый префикс - вина зовущего, а негодное обозначение - вина данных
+		 *
 		 */
 		ASSERT_EQ(writer.error(), item.code) << item.prefix << " -> " << item.uri;
 	}
@@ -740,6 +747,7 @@ TEST(CodecXmlWriter, ReservedNamespaces) {
 	 *       свойством, а метка, уже завершённая, свойств не принимает. Оттого и код у
 	 *       него `INVALID_ATTRIBUTE`, а не о пространстве имён: не то объявлено, а не
 	 *       туда записано
+	 *
 	 */
 	{
 		// Объект записи текста разметки
@@ -850,6 +858,7 @@ TEST(CodecXmlWriter, Refusals) {
 		 *
 		 * @note Всякое действие после отказа отвечает отказом, а собранный текст
 		 *       наружу не отдаётся: он оборван посреди метки узла
+		 *
 		 */
 		ASSERT_FALSE(writer.open("b"));
 		ASSERT_FALSE(writer.close());
@@ -896,6 +905,7 @@ TEST(CodecXmlWriter, Refusals) {
 		 * Выполняем проверку отклонения атрибута после записанного содержимого
 		 *
 		 * @note Метка узла к этому мигу уже завершена, и дописывать в неё нечего
+		 *
 		 */
 		ASSERT_FALSE(writer.attribute("k", "v"));
 		// Выполняем проверку выданного кода ошибки записи
@@ -907,6 +917,7 @@ TEST(CodecXmlWriter, Refusals) {
 	 * @note Предел задаётся настройками и по умолчанию снят: обход дерева ведётся
 	 *       собственным стеком, и держать здесь предел разбора значило бы отвергать
 	 *       дерево, разобранное с поднятым пределом глубины
+	 *
 	 */
 	{
 		// Настройки записи текста разметки с заданным пределом глубины
@@ -942,6 +953,7 @@ TEST(CodecXmlWriter, Refusals) {
 	 * @note Записывать можно всякий узел дерева, а не только корень, и обращение с
 	 *       пробельным содержимым задаётся у него зачастую выше по дереву: приняв
 	 *       такой узел за обычный, запись расставила бы внутри него отступы
+	 *
 	 */
 	{
 		// Объект дерева разметки
@@ -972,26 +984,31 @@ TEST(CodecXmlWriter, Refusals) {
 	 *
 	 * @note Разобранное обязано записываться обратно: глубина дерева задаётся тем, кто
 	 *       его построил, и запись собственным стеком обходит его целиком
+	 *
 	 */
 	{
 		// Глубина вложенности узлов проверяемого дерева разметки
 		const uint32_t depth = (xml::MAX_DEPTH * 8);
 		// Собираемый текст разметки заданной глубины вложенности
 		string text;
-		// Выполняем сборку открывающих меток узлов разметки
+		/**
+		 * Выполняем сборку открывающих меток узлов разметки
+		 */
 		for(uint32_t i = 0; i < depth; i++) text.append("<a>");
 		// Выполняем добавление содержимого самого глубокого узла
 		text.append("текст");
-		// Выполняем сборку закрывающих меток узлов разметки
+		/**
+		 * Выполняем сборку закрывающих меток узлов разметки
+		 */
 		for(uint32_t i = 0; i < depth; i++) text.append("</a>");
 		// Настройки разбора с поднятым пределом глубины вложенности
-		xml::reader_t::settings_t reading;
+		xml::document_t::settings_t reading;
 		// Выполняем поднятие предела глубины вложенности узлов
-		reading.maxDepth = (depth + 1);
-		// Объект дерева разметки
-		xml::document_t document;
+		reading.reader.maxDepth = (depth + 1);
+		// Объект дерева разметки с установленными настройками разбора
+		xml::document_t document(reading);
 		// Выполняем проверку того, что разбор глубокого текста разметки удался
-		ASSERT_TRUE(document.parse(text, reading));
+		ASSERT_TRUE(document.parse(text));
 		// Объект записи текста разметки
 		xml::writer_t writer;
 		// Выполняем проверку того, что запись глубокого дерева разметки удалась
@@ -1017,7 +1034,7 @@ TEST(CodecXmlWriter, Refusals) {
  */
 TEST(CodecXmlWriter, PrettyStability) {
 	/**
-	 * @brief Метод кругового хода текст→дерево→текст нарядной записью
+	 * @brief Функция кругового хода текст→дерево→текст нарядной записью
 	 *
 	 * @param text      исходный текст разметки
 	 * @param separator знак отступа нарядной записи
@@ -1029,11 +1046,13 @@ TEST(CodecXmlWriter, PrettyStability) {
 		// Объект дерева разметки
 		xml::document_t document;
 		// Настройки разбора текста разметки
-		xml::reader_t::settings_t reading;
+		xml::document_t::settings_t reading;
 		// Выполняем установку разрешения префиксов по договору о пространствах имён
-		reading.namespaces = namespaces;
+		reading.reader.namespaces = namespaces;
+		// Выполняем установку настроек разбора текста разметки
+		document.settings(reading);
 		// Если разбор текста разметки выполнить не удалось, выводим признак отказа
-		if(!document.parse(text, reading)) return "ОТКАЗ РАЗБОРА";
+		if(!document.parse(text)) return "ОТКАЗ РАЗБОРА";
 		// Настройки нарядной записи текста разметки
 		xml::writer_t::settings_t settings;
 		// Выполняем установку нарядного вида записи
@@ -1083,6 +1102,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 *
 	 * @note Узел, несущий разом текст и вложенные узлы, записывается в одну строку:
 	 *       перевод строки перед вложенным узлом попал бы в текст соседа
+	 *
 	 */
 	ASSERT_EQ(trip("<p>Здравствуй, <b>мир</b>!</p>", xml::separator_t::TABS), "<p>Здравствуй, <b>мир</b>!</p>");
 	/**
@@ -1090,6 +1110,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 *
 	 * @note Договор велит держать пробельное содержимое узла, помеченного отведённым
 	 *       атрибутом, и отступов внутри такого узла быть не должно
+	 *
 	 */
 	ASSERT_EQ(
 		trip("<r xml:space=\"preserve\"><a/> <b/></r>", xml::separator_t::TABS),
@@ -1101,6 +1122,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 * @note Обращение с пробельным содержимым отведено самим договором о разметке, а не
 	 *       договором о пространствах имён: атрибут действует и там, где префиксы не
 	 *       разрешаются вовсе, и имя его в дереве не разделено
+	 *
 	 */
 	ASSERT_EQ(
 		trip("<r xml:space=\"preserve\"><a/> <b/></r>", xml::separator_t::TABS, false),
@@ -1111,6 +1133,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 *
 	 * @note Договор отводит атрибуту ровно два значения, и всякое иное запись толкует
 	 *       отменой сохранения - тем же самым образом, каким его толкует чтение
+	 *
 	 */
 	ASSERT_EQ(
 		trip("<r xml:space=\"preserve\"><s xml:space=\"неведомо\"><a/><b/></s></r>", xml::separator_t::TABS),
@@ -1121,6 +1144,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 *
 	 * @note Раздел дословного текста значим сам по себе, каким бы ни было его
 	 *       содержимое: отступ рядом с ним переменил бы содержимое объемлющего узла
+	 *
 	 */
 	ASSERT_EQ(
 		trip("<r><a/><![CDATA[   ]]><b/></r>", xml::separator_t::TABS),
@@ -1203,8 +1227,10 @@ TEST(CodecXmlWriter, ReservedNamespaceName) {
  * @note Запись отвергает построения, разбором не восстановимые: имена негодные,
  *       содержимое, несущее знаки завершения своего же вида, и обращения, порядку
  *       записи противоречащие
+ *
  * @warning Отказ ЗАПОМИНАЕТСЯ, и дальнейшая запись отвергается вся: текст, начатый
  *          ошибочно, годным уже не станет, а выдача его половины была бы хуже отказа
+ *
  */
 TEST(CodecXmlWriter, RefusalCodes) {
 	/**
@@ -1294,6 +1320,7 @@ TEST(CodecXmlWriter, RefusalCodes) {
 	 * @note Знаки эти уйти в текст не могут ничем: ни примечание, ни раздел дословного
 	 *       текста, ни указание обработчику замен внутри себя не допускают, и запись
 	 *       такого содержимого дала бы текст, разбором не восстановимый
+	 *
 	 */
 	{
 		// Поток записи текста разметки
@@ -1424,7 +1451,9 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 	 * Негодная последовательность байтов отвергается всюду, куда её подают
 	 */
 	{
-		// Выполняем перебор мест подачи негодной последовательности байтов
+		/**
+		 * Выполняем перебор мест подачи негодной последовательности байтов
+		 */
 		for(uint32_t place = 0; place < 5; place++){
 			// Объект потоковой записи текста разметки
 			xml::writer_t writer;
@@ -1453,6 +1482,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 			 * @note Имя узла отвергается ИНЫМ кодом: допустимость знаков имени сличается
 			 *       прежде перекодировки, и негодная последовательность байтов имени
 			 *       недопустима сама по себе, безотносительно кодировки
+			 *
 			 */
 			ASSERT_EQ(writer.error(), (place == 0 ? xml::error_t::INVALID_NAME : xml::error_t::INVALID_ENCODING)) << place;
 			// Выполняем проверку пустоты собранного текста
@@ -1464,6 +1494,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 	 *
 	 * @warning Обозначение здесь обязано пережить вызов: связывание держит его
 	 *          последовательностью знаков, памятью не владеющей
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1484,6 +1515,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 	 *
 	 * @note Имя с префиксом собирается записью иначе, и повтор его отсеивается своею
 	 *       дорогою - не тою, какою отсеивается повтор имени без префикса
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1503,6 +1535,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 	 * @note Объявление принадлежит метке узла, а не его содержимому: за завершением метки
 	 *       ставить его уже некуда. Оттого отвергается оно и без единого открытого узла, и
 	 *       следом за первым же содержимым внутри открытого
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1516,6 +1549,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 		 *          ошибки ОКОНЧАТЕЛЬНО, и всякое действие следом отвергается независимо от
 		 *          своего построения. Продолжение проверки прежним объектом сличало бы не
 		 *          то, что задумано
+		 *
 		 */
 		xml::writer_t other;
 		// Выполняем открытие узла разметки
@@ -1532,6 +1566,7 @@ TEST(CodecXmlWriter, RefusalsByContent) {
 	 *
 	 * @note Запись узла целиком собирает его тремя шагами, и отказ любого из них обязан
 	 *       доходить до вызывающего: иначе узел остался бы открытым, а отказ - незамеченным
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1555,7 +1590,9 @@ TEST(CodecXmlWriter, ProcessingTargetAndCollapse) {
 	 * Обозначение указания обработчику, договором не дозволенное, отвергается
 	 */
 	{
-		// Выполняем перебор недопустимых обозначений указания обработчику
+		/**
+		 * Выполняем перебор недопустимых обозначений указания обработчику
+		 */
 		for(auto & target : vector <string> {
 			// Пустое обозначение
 			"",
@@ -1577,6 +1614,7 @@ TEST(CodecXmlWriter, ProcessingTargetAndCollapse) {
 	 *
 	 * @note Свёртка пустой метки - это НАСТРОЙКА, а не устройство: договор дозволяет обе
 	 *       записи, и выбор оставлен вызывающему
+	 *
 	 */
 	{
 		// Настройки записи текста разметки
@@ -1626,6 +1664,7 @@ TEST(CodecXmlWriter, NamespaceDeclarations) {
 	 *
 	 * @note Без отмены узел достался бы пространству имён родителя: объявление по
 	 *       умолчанию действует на всё поддерево, и молчание означало бы согласие
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1654,6 +1693,7 @@ TEST(CodecXmlWriter, NamespaceDeclarations) {
 	 *       не свойств: свойство без префикса не принадлежит никакому пространству имён.
 	 *       Оттого свойству в том же пространстве имён приходится порождать префикс, хотя
 	 *       обозначение уже объявлено
+	 *
 	 */
 	{
 		// Объект потоковой записи текста разметки
@@ -1830,15 +1870,17 @@ TEST(CodecXmlWriter, DeclarationAfterTakeIsRefused) {
 		// Проверяем закрытость выдачи после отказа
 		ASSERT_TRUE(writer.take().empty());
 		// Начинаем новый документ явной очисткой
-		writer.clear();
+		writer.reset();
 		// Пустое изъятие до записи не должно запрещать объявление
 		ASSERT_TRUE(writer.take().empty());
 		ASSERT_TRUE(writer.declaration());
 		// Извлекаем объявление и продолжаем корректную запись
 		const string prefix = writer.take();
+		// Дописываем узел «next» после изъятого объявления
 		ASSERT_TRUE(writer.element("next", "ok"));
 		// Проверяем собранный из двух частей документ
 		xml::document_t document;
+		// Разбираем документ из двух изъятых кусков
 		ASSERT_TRUE(document.parse(prefix + writer.take()));
 	}
 }
@@ -1863,9 +1905,11 @@ TEST(CodecXmlWriter, BindingCannotChangeWrittenAttributes) {
 	ASSERT_FALSE(writer.take().empty());
 	// Проверяем отказ связывания, превращающего атрибуты в дубликаты
 	ASSERT_FALSE(writer.binding("b", "urn:one"));
+	// Проверяем, что отказ отвечает коду INVALID_NAMESPACE
 	ASSERT_EQ(writer.error(), xml::error_t::INVALID_NAMESPACE);
 	// Проверяем терминальность отказа
 	ASSERT_FALSE(writer.complete());
+	// Проверяем, что после отказа пусты и выдача, и изъятие текста
 	ASSERT_TRUE(writer.text().empty());
 	ASSERT_TRUE(writer.take().empty());
 }
@@ -1882,13 +1926,16 @@ TEST(CodecXmlWriter, BindingCannotChangeWrittenElement) {
 		xml::writer_t writer;
 		// Задаём объявление родительского пространства имён
 		vector <xml::binding_t> declares(1);
+		// Даём префикс «p» лишь первому режиму, а двум остальным пустоту
 		declares[0].prefix = ((mode == 0) ? "p" : "");
+		// Даём пространство urn:one первым двум режимам, а третьему пустоту
 		declares[0].uri = ((mode == 2) ? "" : "urn:one");
 		// Открываем родительский и дочерний элементы в заданном пространстве
 		ASSERT_TRUE(writer.open("root", declares[0].uri, declares));
 		ASSERT_TRUE(writer.open("child", declares[0].uri));
 		// Проверяем отказ изменения пространства имени дочернего элемента
 		ASSERT_FALSE(writer.binding(declares[0].prefix, "urn:two"));
+		// Проверяем, что причиной отказа названа смена пространства записанного имени
 		ASSERT_EQ(writer.error(), xml::error_t::INVALID_NAMESPACE);
 	}
 }
@@ -1899,6 +1946,7 @@ TEST(CodecXmlWriter, BindingCannotChangeWrittenElement) {
 TEST(CodecXmlWriter, BindingKeepsLegalNamespaceChanges) {
 	// Создаём объект записи разметки
 	xml::writer_t writer;
+	// Открываем корневой узел разметки
 	ASSERT_TRUE(writer.open("root"));
 	ASSERT_TRUE(writer.binding("p", "urn:one"));
 	ASSERT_TRUE(writer.open("child"));
@@ -1916,9 +1964,13 @@ TEST(CodecXmlWriter, BindingKeepsLegalNamespaceChanges) {
 	ASSERT_TRUE(writer.close());
 	// Проверяем корректность документа и сохранение имён
 	xml::document_t document;
+	// Разбираем собранный текст документа
 	ASSERT_TRUE(document.parse(writer.text()));
+	// Находим узел «leaf» в пространстве urn:two
 	const xml::node_t leaf = document.element().find("leaf", "urn:two");
+	// Проверяем, что узел «leaf» найден
 	ASSERT_TRUE(leaf.valid());
+	// Проверяем, что признак «x» узла хранит «1» в пространстве urn:two
 	ASSERT_EQ(leaf.attribute("x", "urn:two"), "1");
 	ASSERT_EQ(leaf.attribute("plain"), "2");
 }
@@ -1928,6 +1980,7 @@ TEST(CodecXmlWriter, BindingKeepsLegalNamespaceChanges) {
  * @details Выдача текста при отказе отдаёт пустоту намеренно, и изъятие обязано
  * поступать так же: иначе оно обходило бы эту защиту стороною и отдавало наружу ту
  * самую негодную разметку, какую выдача не отдаёт
+ *
  */
 TEST(CodecXmlWriter, TakeClosedByRefusal){
 	// Объект записи текста разметки
@@ -1943,7 +1996,7 @@ TEST(CodecXmlWriter, TakeClosedByRefusal){
 	// Выполняем проверку пустоты изъятого текста
 	ASSERT_TRUE(writer.take().empty());
 	// Выполняем очистку объекта записи
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку снятия отказа очисткой
 	ASSERT_EQ(writer.error(), xml::error_t::NONE);
 }
@@ -1960,6 +2013,7 @@ TEST(CodecXmlWriter, TakeClosedByRefusal){
  *
  * @note Отсюда правило: довод недостижимости обязан называть условие, каким держится, -
  *       иначе перемена условия его не касается. Найдено сличением с кодеками INI и TOML
+ *
  */
 TEST(CodecXmlWriter, StaleNodeIsNotAnInternalDefect){
 	// Дерево разметки
@@ -2062,22 +2116,30 @@ TEST(CodecXmlWriter, GeneratedPrefixClashingWithAVerbatimNameIsRefused) {
  *
  */
 TEST(CodecXmlWriter, NamespaceAliasesCannotDuplicateAttributes) {
-	// Проверяем также сохранение имён после изъятия начала метки
+	/**
+	 * Проверяем также сохранение имён после изъятия начала метки
+	 */
 	for(const bool take : {false, true}){
+		// Объект записи текста разметки
 		xml::writer_t writer;
+		// Открываем корневой узел разметки
 		ASSERT_TRUE(writer.open("root"));
 		ASSERT_TRUE(writer.binding("a", "urn:same"));
 		ASSERT_TRUE(writer.attribute("x", "1", "urn:same"));
 		ASSERT_TRUE(writer.binding("b", "urn:same"));
+		// Во втором режиме изымаем записанный текст посреди проверки
 		if(take)
 			// Изъятие текста не снимает проверку имён
 			ASSERT_FALSE(writer.take().empty());
 		ASSERT_FALSE(writer.attribute("x", "2", "urn:same"));
+		// Проверяем, что повтор расширенного имени отвечает кодом DUPLICATE_ATTRIBUTE
 		ASSERT_EQ(writer.error(), xml::error_t::DUPLICATE_ATTRIBUTE);
+		// Проверяем, что после отказа выдача текста пуста
 		ASSERT_TRUE(writer.text().empty());
 	}
 	// Разные местные имена и разные пространства остаются допустимыми
 	xml::writer_t writer;
+	// Открываем корневой узел для допустимых записей
 	ASSERT_TRUE(writer.open("root"));
 	ASSERT_TRUE(writer.binding("a", "urn:first"));
 	ASSERT_TRUE(writer.attribute("x", "1", "urn:first"));
@@ -2087,8 +2149,11 @@ TEST(CodecXmlWriter, NamespaceAliasesCannotDuplicateAttributes) {
 	ASSERT_TRUE(writer.attribute("x", "3", "urn:second"));
 	ASSERT_TRUE(writer.attribute("x", "4"));
 	ASSERT_TRUE(writer.close());
+	// Дерево разметки для разбора собранного текста
 	xml::document_t document;
+	// Разбираем собранный текст документа
 	ASSERT_TRUE(document.parse(writer.text()));
+	// Проверяем, что признак «x» пространства urn:first хранит «1»
 	ASSERT_EQ(document.element().attribute("x", "urn:first"), "1");
 	ASSERT_EQ(document.element().attribute("y", "urn:first"), "2");
 	ASSERT_EQ(document.element().attribute("x", "urn:second"), "3");
@@ -2099,41 +2164,59 @@ TEST(CodecXmlWriter, NamespaceAliasesCannotDuplicateAttributes) {
  *
  */
 TEST(CodecXmlWriter, OwnBufferContent) {
+	/**
+	 * Прогоняем все пять способов подачи содержимого
+	 */
 	for(uint8_t mode = 0; mode < 5; mode++){
+		// Объект записи текста и независимый эталон
 		xml::writer_t writer, reference;
+		// Открываем корневой узел проверяемой записи
 		ASSERT_TRUE(writer.open("root"));
 		ASSERT_TRUE(reference.open("root"));
 		ASSERT_TRUE(writer.text(string(4096, 'x')));
 		ASSERT_TRUE(reference.text(string(4096, 'x')));
 		// Копия служит независимым образцом ожидаемого результата
 		const string before = reference.text();
+		// Смотрим на собранный текст проверяемой записи без копии
 		const string_view input(writer.text());
+		/**
+		 * Подаём содержимое выбранным способом
+		 */
 		switch(mode){
 			case 0: {
+				// Подаём проверяемой записи её же текст срезом собственного буфера
 				ASSERT_TRUE(writer.text(input));
 				ASSERT_TRUE(reference.text(before));
 			} break;
 			case 1: {
+				// Подаём проверяемой записи дословный раздел срезом собственного буфера
 				ASSERT_TRUE(writer.cdata(input));
 				ASSERT_TRUE(reference.cdata(before));
 			} break;
 			case 2: {
+				// Подаём проверяемой записи примечание срезом собственного буфера
 				ASSERT_TRUE(writer.comment(input));
 				ASSERT_TRUE(reference.comment(before));
 			} break;
 			case 3: {
+				// Подаём проверяемой записи указание обработчику срезом собственного буфера
 				ASSERT_TRUE(writer.processing(input.substr(1, 4), input));
 				ASSERT_TRUE(reference.processing(string_view(before).substr(1, 4), before));
 			} break;
 			case 4: {
+				// Подаём проверяемой записи узел с именем, содержимым и признаком из среза собственного буфера
 				ASSERT_TRUE(writer.element(input.substr(1, 4), input, input.substr(6)));
 				ASSERT_TRUE(reference.element(string_view(before).substr(1, 4), before, string_view(before).substr(6)));
 			} break;
 		}
+		// Закрываем корневой узел проверяемой записи
 		ASSERT_TRUE(writer.close());
 		ASSERT_TRUE(reference.close());
+		// Сличаем текст проверяемой записи с эталоном
 		ASSERT_EQ(writer.text(), reference.text());
+		// Дерево разметки для разбора собранного текста
 		xml::document_t document;
+		// Разбираем собранный текст проверяемой записи
 		ASSERT_TRUE(document.parse(writer.text()));
 	}
 }
@@ -2142,40 +2225,63 @@ TEST(CodecXmlWriter, OwnBufferContent) {
  *
  */
 TEST(CodecXmlWriter, OwnBufferNamesAndBindings) {
+	/**
+	 * Прогоняем все три способа подачи имён и привязок
+	 */
 	for(uint8_t mode = 0; mode < 3; mode++){
+		// Объект записи текста и независимый эталон
 		xml::writer_t writer, reference;
+		// Открываем корневой узел проверяемой записи
 		ASSERT_TRUE(writer.open("root"));
 		ASSERT_TRUE(reference.open("root"));
 		ASSERT_TRUE(writer.attribute("seed", string(4096, 'x')));
 		ASSERT_TRUE(reference.attribute("seed", string(4096, 'x')));
+		// Запоминаем текст эталона независимой копией
 		const string before = reference.text();
+		// Смотрим на собранный текст проверяемой записи без копии
 		const string_view input(writer.text());
+		// Заводим взгляд на сохранённую копию эталона
 		const string_view copied(before);
+		/**
+		 * Подаём имена и привязки выбранным способом
+		 */
 		switch(mode){
 			case 0: {
+				// Подаём признак с именем, значением и пространством из среза собственного буфера
 				ASSERT_TRUE(writer.attribute(input.substr(1, 4), input, input.substr(12, 4096)));
 				ASSERT_TRUE(reference.attribute(copied.substr(1, 4), copied, copied.substr(12, 4096)));
 			} break;
 			case 1: {
+				// Подаём связывание префикса с пространством из среза собственного буфера
 				ASSERT_TRUE(writer.binding(input.substr(1, 4), input.substr(12, 4096)));
 				ASSERT_TRUE(reference.binding(copied.substr(1, 4), copied.substr(12, 4096)));
 			} break;
 			case 2: {
+				// Связывания проверяемой записи и эталона
 				vector <xml::binding_t> bindings(1), expected(1);
+				// Ставим префикс связывания проверяемой записи срезом собственного буфера
 				bindings[0].prefix = input.substr(1, 4);
+				// Ставим пространство связывания проверяемой записи срезом собственного буфера
 				bindings[0].uri = input.substr(12, 4096);
+				// Ставим префикс связывания эталона взглядом на его копию
 				expected[0].prefix = copied.substr(1, 4);
+				// Ставим пространство связывания эталона взглядом на его копию
 				expected[0].uri = copied.substr(12, 4096);
+				// Открываем узел проверяемой записи с именем и связываниями из среза собственного буфера
 				ASSERT_TRUE(writer.open(input.substr(6, 4), bindings[0].uri, bindings, bindings[0].prefix));
 				ASSERT_TRUE(reference.open(copied.substr(6, 4), expected[0].uri, expected, expected[0].prefix));
 				ASSERT_TRUE(writer.close());
 				ASSERT_TRUE(reference.close());
 			} break;
 		}
+		// Закрываем корневой узел проверяемой записи
 		ASSERT_TRUE(writer.close());
 		ASSERT_TRUE(reference.close());
+		// Сличаем текст проверяемой записи с эталоном
 		ASSERT_EQ(writer.text(), reference.text());
+		// Дерево разметки для разбора собранного текста
 		xml::document_t document;
+		// Разбираем собранный текст проверяемой записи
 		ASSERT_TRUE(document.parse(writer.text()));
 	}
 }

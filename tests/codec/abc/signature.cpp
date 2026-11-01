@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки подписи владельца бинарного контейнера ABC — дерево свёрток, подпись
  *        всеми четырьмя видами, обнаружение подмены и поверка без ключа расшифровки
  *
@@ -20,6 +26,7 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <limits>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -33,7 +40,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта AWH
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -88,7 +101,9 @@ namespace {
 				settings.block = 64;
 				// Выполняем установку настроек сборки контейнера
 				assembler.settings(settings);
-				// Выполняем перебор всех собираемых записей контейнера
+				/**
+				 * Выполняем перебор всех собираемых записей контейнера
+				 */
 				for(size_t i = 0; i < 10; i++){
 					// Выполняем сборку очередной записи
 					const vector <uint8_t> item = abc::value_t(string{"запись номер "} + to_string(i)).dump();
@@ -218,7 +233,9 @@ TEST_F(SignatureFixture, SignedRoundtrip) {
 		{"rsa", crypto_t::signature_t::RSA},
 		{"gost", crypto_t::signature_t::GOST}
 	};
-	// Выполняем перебор всех видов подписей
+	/**
+	 * Выполняем перебор всех видов подписей
+	 */
 	for(const auto & kind : kinds){
 		// Выполняем заведение ключа владельца контейнера
 		ASSERT_TRUE(this->_crypto->generateKey(kind.first, kind.second))
@@ -436,6 +453,17 @@ TEST_F(SignatureFixture, SignRecordRoundtrip) {
 	ASSERT_EQ(taken.root, sign.root);
 	// Выполняем проверку снятых октетов подписи владельца
 	ASSERT_EQ(taken.signature, sign.signature);
+	// Запись, вход которой лежит в её собственном поле подписи
+	abc::sign_t inPlace;
+	// Помещаем уложенную запись в поле, очищаемое при снятии
+	inPlace.signature = buffer;
+	// Выполняем снятие записи из собственного поля подписи
+	ASSERT_TRUE(abc::unpack(inPlace.signature.data(), inPlace.signature.size(), inPlace, error))
+		<< "код отказа: " << abc::message(error);
+	// Выполняем проверку снятого корня дерева свёрток
+	ASSERT_EQ(inPlace.root, sign.root);
+	// Выполняем проверку снятых октетов подписи владельца
+	ASSERT_EQ(inPlace.signature, sign.signature);
 	/**
 	 * Выполняем проверку того, что запись подписи самоограничена: длины объявлены
 	 * заголовком её, и приписанный хвост снятию не мешает
@@ -462,8 +490,10 @@ TEST_F(SignatureFixture, SignRecordRoundtrip) {
 	 *          и живые, и отказ приходил бы от СОСЕДНЕГО заслона, называющего ту же
 	 *          причину. Вскрыто щупом нужности 07.09.2026: обесточение заслона не красило
 	 *          проверку, хотя причина ею и утверждалась
+	 *
 	 */
 	const vector <uint8_t> stub(abc::SIGNATURE_HEADER - 1, 0x00);
+	// Убеждаемся, что запись длиною в SIGNATURE_HEADER - 1 октетов отвергнута обрывом подписи
 	ASSERT_FALSE(abc::unpack(stub.data(), stub.size(), taken, error));
 	// Выполняем проверку кода отказа обрыва записи подписи
 	ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
@@ -742,6 +772,7 @@ TEST_F(SignatureFixture, WideSignatureRefused) {
  * @note Дерево свёрток вида хэш-суммы НЕ ведает: листы его вырабатываются постоянной
  *       свёрткой в тридцать два октета, и довод этот правит одной лишь подписью корня.
  *       Оттого проверка и сличает поверку целиком, а не длину свёртки
+ *
  */
 TEST_F(SignatureFixture, SignWithNonDefaultHash) {
 	// Выполняем заведение ключа владельца контейнера
@@ -776,6 +807,7 @@ TEST_F(SignatureFixture, SignWithNonDefaultHash) {
 	 *       контейнера и потому сходится при любом виде, включая умолчание. Замерено
 	 *       щупом 31.08.2026 - проверка, поверкой и оканчивавшаяся, проходила и тогда,
 	 *       когда третий довод `sign` отбрасывался целиком
+	 *
 	 */
 	{
 		// Заголовок опознания собранного контейнера
@@ -1076,6 +1108,7 @@ TEST_F(SignatureFixture, HashKindMustMatchSignatureKind) {
 		 *       своим `else`, и без скобок он повисает на этом условии. Нынешнему коду
 		 *       вреда нет, но `else`, дописанный сюда потом, привяжется НЕ К ЭТОМУ `if`.
 		 *       Ловится собирателем GNU (`-Wdangling-else`), собиратель clang молчит
+		 *
 		 */
 		if(!probe.accept){
 			// Отказ обязан быть именно о повреждённой записи подписи
@@ -1187,6 +1220,10 @@ TEST_F(SignatureFixture, MerkleRefusesWithoutItsGear) {
 	ASSERT_FALSE(merkle.add(nullptr, 4));
 	// Выполняем проверку отказа внесения кадра нулевой длины
 	ASSERT_FALSE(merkle.add("кадр", 0));
+	// Октет с заведомо непредставимой объявленной длиной кадра
+	const uint8_t octet = 0;
+	// Выполняем проверку отказа без переполнения длины с приставкой
+	ASSERT_FALSE(merkle.add(&octet, numeric_limits <size_t>::max()));
 	// Выполняем проверку того, что листьев у дерева не прибавилось
 	ASSERT_EQ(merkle.leaves(), 0ul);
 	/**
@@ -1216,6 +1253,7 @@ TEST_F(SignatureFixture, MerkleRefusesWithoutItsGear) {
  *          красит, ибо тот избыточен - внесение кадра ниже отвергает те же три условия
  *          само. Ждать от неё покраснения при правке заслона нельзя, и знать это надо
  *          прежде, чем счесть её беззубой
+ *
  */
 TEST_F(SignatureFixture, MerkleRootWithAnAppendedChunkRefusesWithoutItsGear) {
 	// Дерево свёрток без модуля шифрования
@@ -1250,8 +1288,26 @@ TEST_F(SignatureFixture, MerkleRootWithAnAppendedChunkRefusesWithoutItsGear) {
 	 * принимались бы, ничего не решая
 	 */
 	vector <uint8_t> other;
+	// Убеждаемся, что дерево свелось со вторым кадром «иной» длиной 4
 	ASSERT_TRUE(merkle.root(other, "иной", 4)) << "дерево не свелось со вторым кадром";
+	// Убеждаемся, что корень дерева сменился от подмены кадра на «иной»
 	ASSERT_NE(root, other) << "приданный кадр на корень не влияет";
+}
+/**
+ * @brief Проверка сведения дерева с кадром из выходного буфера
+ *
+ */
+TEST_F(SignatureFixture, MerkleRootWithAnAppendedChunkWorksInPlace) {
+	// Дерево свёрток с модулем шифрования
+	abc::merkle_t merkle;
+	// Выполняем установку модуля шифрования дерева свёрток
+	merkle.crypto(this->_crypto.get());
+	// Выходной буфер, несущий приданный кадр
+	vector <uint8_t> root = {'a', 'b', 'c', 'd'};
+	// Выполняем сведение дерева с кадром из выходного буфера
+	ASSERT_TRUE(merkle.root(root, root.data(), root.size()));
+	// Выполняем проверку длины корня дерева
+	ASSERT_EQ(root.size(), abc::DIGEST_LENGTH);
 }
 /**
  * @brief Проверка того, что воронка отказа дерева свёрток доносит беду журналу
@@ -1274,6 +1330,7 @@ TEST_F(SignatureFixture, TheMerkleFunnelReportsItsTroubleToTheJournal) {
 	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
 	 *          а полагаться на состояние, оставленное соседями, значило бы городить
 	 *          поверку, чей исход зависит от порядка запуска
+	 *
 	 */
 	awh::log::level(awh::log::level_t::ALL);
 	// Донесения, снятые с журнала подпискою

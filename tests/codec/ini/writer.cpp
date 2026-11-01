@@ -53,6 +53,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён кодеков AWH
+ */
 using namespace awh::codec;
 
 /**
@@ -87,6 +90,7 @@ TEST(CodecIniWriter, Windows) {
 	 *
 	 * @note Наречие это примечания в конце строки не признаёт, и ограждения такое
 	 *       значение не требует
+	 *
 	 */
 	ASSERT_TRUE(writer.property("PATH", "c:\\bin;c:\\sbin"));
 	// Выполняем проверку собранного текста настроек
@@ -113,6 +117,7 @@ TEST(CodecIniWriter, Git) {
 	 * @note Точка с запятой в значении ограждается кавычками, хотя примечания это
 	 *       наречие пишет решёткой: читает оно оба знака, и неограждённое значение
 	 *       при обратном чтении обрезалось бы
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "[remote \"origin\"]\n\turl = git@host:repo.git\n\n[core]\n\tpath = \"a;b\"\n");
 }
@@ -185,6 +190,7 @@ TEST(CodecIniWriter, Malformed) {
 		 * @note Записать такое значение нечем: управляющие последовательности
 		 *       настройками не разрешены, а ограждение кавычками знак конца строки
 		 *       не спасает - строка на нём обрывается
+		 *
 		 */
 		ASSERT_FALSE(writer.property("key", "first\nsecond"));
 		// Выполняем проверку кода ошибки записи
@@ -258,7 +264,7 @@ TEST(CodecIniWriter, Clear) {
 	// Выполняем проверку отклонения пустого имени раздела
 	ASSERT_FALSE(writer.section(""));
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку сброса кода ошибки записи
 	ASSERT_EQ(writer.error(), ini::error_t::NONE);
 	// Выполняем запись объявления раздела
@@ -282,12 +288,13 @@ TEST(CodecIniWriter, DelimitedSection) {
 	 *
 	 * @note Запись «[a.b.c]» читающий разобрал бы разделом «a» с подразделом «b.c»,
 	 *       а не разделом «a.b» с подразделом «c»
+	 *
 	 */
 	ASSERT_FALSE(writer.section("a.b", "c"));
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), ini::error_t::INVALID_SECTION);
 	// Выполняем очистку собранного текста настроек
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку прохождения записи обычного имени раздела
 	ASSERT_TRUE(writer.section("a", "b.c"));
 	// Выполняем проверку собранного текста настроек
@@ -341,6 +348,7 @@ TEST(CodecIniWriter, Rollback) {
 		 *
 		 * @note Пустая строка, отделяющая раздел от предыдущего, откатывается вместе
 		 *       с ним: объявления, которое она отделяет, не вышло
+		 *
 		 */
 		ASSERT_EQ(writer.text(), before);
 	}
@@ -360,6 +368,7 @@ TEST(CodecIniWriter, TrailingNewline) {
 	 *
 	 * @note Без признания примечание к строке не дописывается вовсе, а уходит
 	 *       отдельной строкой, и знак конца строки в нём законно делит его надвое
+	 *
 	 */
 	writing.inlineComments = true;
 	// Объект записи текста настроек
@@ -424,6 +433,7 @@ TEST(CodecIniWriter, IndentedValue) {
 		 * Выполняем проверку отклонения многострочного значения без продолжений
 		 *
 		 * @note Записать такое значение в одну строку нечем
+		 *
 		 */
 		ASSERT_FALSE(writer.property("k", "one\ntwo"));
 	}
@@ -441,7 +451,7 @@ TEST(CodecIniWriter, TrailingBackslash) {
 	// Выполняем проверку кода ошибки записи имени раздела
 	ASSERT_EQ(writer.error(), ini::error_t::INVALID_SECTION);
 	// Выполняем сброс собранного текста настроек
-	writer.clear();
+	writer.reset();
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("a"));
 	// Выполняем проверку отказа записи имени свойства с обратной косой чертой в конце
@@ -449,7 +459,7 @@ TEST(CodecIniWriter, TrailingBackslash) {
 	// Выполняем проверку кода ошибки записи имени свойства
 	ASSERT_EQ(writer.error(), ini::error_t::INVALID_KEY);
 	// Выполняем сброс собранного текста настроек
-	writer.clear();
+	writer.reset();
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("a"));
 	// Выполняем проверку записи имени с удвоенной обратной косой чертой в конце
@@ -485,6 +495,7 @@ TEST(CodecIniWriter, LocaleNumbers) {
 	 *       «fa_IR» и «ar_SA» взяты особо: десятичным знаком там служит «٫»
 	 *       (U+066B), занимающий в UTF-8 два байта, - замена одного лишь первого
 	 *       байта оставляла бы от него обрубок
+	 *
 	 */
 	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
 		// Если установить очередную локаль не удалось
@@ -535,6 +546,7 @@ TEST(CodecIniWriter, LocaleNumbers) {
 	 *          читалась провалом, тогда как отчёт говорил `SKIPPED 2`, `FAILED 0`, а
 	 *          исход прогона был нулевым. Пропуск проверкою НЕ ПРОЙДЕН, но и НЕ ПРОВАЛЕН:
 	 *          вычитать его из общего числа наравне с отказом нельзя
+	 *
 	 */
 	if(checked == 0)
 		// Выполняем пропуск проверки
@@ -671,6 +683,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 *
 	 * @note Пустая строка стоит между примечанием и объявлением раздела: без неё
 	 *       читающий слил бы объявление с примечанием
+	 *
 	 */
 	ASSERT_EQ(writer.text(), "; примечание \\\n\n[a]\nk = v\n");
 	// Настройки разбора текста настроек со склеиванием строк
@@ -708,6 +721,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 * Выполняем проверку того, что ограждение не ставится в конце текста
 	 *
 	 * @note Склеивать в конце текста нечего, и лишней пустой строки там не появляется
+	 *
 	 */
 	{
 		// Объект записи текста настроек
@@ -797,6 +811,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 	 *
 	 * @note Знак забоя лежит выше набора управляющих знаков, а разбор отвергает его
 	 *       сырым наравне с ними
+	 *
 	 */
 	{
 		// Собираемое значение свойства со знаком забоя
@@ -825,6 +840,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 	 *
 	 * @note Разбор читает у вида `\xNN` ровно два знака: одна цифра им отвергается, а
 	 *       третий знак, годный в шестнадцатеричные, к числу уже не пристаёт
+	 *
 	 */
 	{
 		// Настройки записи текста настроек наречия Git
@@ -849,6 +865,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 	 *
 	 * @note Управляющий знак без управляющих последовательностей записать нечем, и
 	 *       запись отвечает отказом вместо текста, читаемого обратно неверно
+	 *
 	 */
 	{
 		// Настройки записи без управляющих последовательностей
@@ -918,6 +935,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 *
 	 * @note Защитить значение нечем: кавычки наречием не снимаются, а управляющие
 	 *       последовательности запрещены - остаётся отказ
+	 *
 	 */
 	{
 		// Настройки дерева настроек без управляющих последовательностей
@@ -939,6 +957,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 * @note Защита нужна лишь там, где читающий прочёл бы иначе: пробел внутри значения
 	 *       сохраняется сам по себе, и запись его последовательностью обратила бы
 	 *       читаемый текст настроек в нечитаемый
+	 *
 	 */
 	{
 		// Объект дерева настроек
@@ -1022,6 +1041,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 	 *
 	 * @note Ограждение кавычками запрещено, а читающий кавычки снимает: значение,
 	 *       кавычкой начинающееся, досталось бы ему без неё
+	 *
 	 */
 	{
 		// Настройки записи текста настроек по умолчанию
@@ -1112,6 +1132,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 	 *
 	 * @note Читающий их сохраняет сам, и защищать их управляющими последовательностями
 	 *       незачем: текст настроек лишь замусорился бы
+	 *
 	 */
 	{
 		// Настройки дерева настроек, обвязку сохраняющие
@@ -1139,6 +1160,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 	 * @note Строку продолжения читающий отделяет отступом и обвязку её отбрасывает,
 	 *       а пустую строку продолжения теряет вовсе: пробел перед знаком конца строки
 	 *       и сам знак в конце значения этим способом не записываются
+	 *
 	 */
 	{
 		// Проверяемые значения, продолжением отступом непредставимые
@@ -1275,6 +1297,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 	 * @note Знак примечания берётся из исходного текста, но лишь пока читающий его
 	 *       признаёт: наречие MS Windows решётку примечанием не считает, и строка с нею
 	 *       досталась бы ему свойством
+	 *
 	 */
 	{
 		// Настройки дерева настроек наречия Git
@@ -1285,8 +1308,14 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		ini::document_t document(options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("# примечание\n[раздел]\n\tключ = значение\n"));
+		// Настройки записи текста документа
+		ini::document_t::settings_t dialect = options;
+		// Устанавливаем наречие записи текста документа
+		dialect.writer = ini::writer_t::settings_t::windows();
+		// Выполняем установку настроек записи документа
+		document.settings(dialect);
 		// Выполняем перевод дерева настроек в наречие MS Windows
-		const string text = document.dump(ini::writer_t::settings_t::windows());
+		const string text = document.dump();
 		// Выполняем проверку того, что перевод дерева настроек удался
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Настройки дерева настроек наречия MS Windows
@@ -1363,7 +1392,7 @@ TEST(CodecIniWriter, GitRefusesDelimiterInSectionName) {
 	// Выполняем проверку названной причины отказа
 	ASSERT_EQ(writer.error(), ini::error_t::INVALID_SECTION);
 	// Выполняем сброс собранного текста
-	writer.clear();
+	writer.reset();
 	// Выполняем объявление раздела с подразделом, знаков-разделителей не несущих
 	ASSERT_TRUE(writer.section("core", "origin"));
 	// Выполняем проверку записи подраздела кавычками
@@ -1774,6 +1803,7 @@ TEST(CodecIniWriter, MultilineComment) {
 		 *
 		 * @note Без отбрасывания строка несла бы возврат каретки перед знаком конца
 		 *       строки, поставленным настройкой, и разметка вышла бы двойною
+		 *
 		 */
 		ASSERT_EQ(writer.text(), "[a]\n; первая\n; вторая\n");
 	}
@@ -1809,6 +1839,7 @@ TEST(CodecIniWriter, TrailingRefusedOnEmptyWriter) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякую дописку, отвечал
 	 *       бы тому же ожиданию, и порча условия осталась бы незамечена
+	 *
 	 */
 	{
 		// Объект записи текста настроек
@@ -1864,6 +1895,7 @@ TEST(CodecIniWriter, TrailingJudgesWrittenNotSettings) {
 		 *
 		 * @note Без правки текст выходил `k = v[CR] ; хвост[LF]` - возврат каретки стоял
 		 *       посреди строки, и разбор такого текста расходился с записью
+		 *
 		 */
 		ASSERT_EQ(writer.text(), string("[a]\r\nk = v ; хвост\n"));
 	}
@@ -1893,6 +1925,7 @@ TEST(CodecIniWriter, TrailingJudgesWrittenNotSettings) {
 		 * @note Без правки здесь приходил отказ кодом INTERNAL: снимаемая
 		 *       последовательность бралась из настроек нынешних, а текст был записан
 		 *       прежними, и совпадения не находилось
+		 *
 		 */
 		ASSERT_TRUE(writer.trailing("хвост"));
 		// Выполняем проверку собранного текста настроек
@@ -1941,6 +1974,7 @@ TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
 	 *
 	 * @note Отказ этот верен: читающий числит «имя[]» добавлением к перечню, и записанное
 	 *       имя разошлось бы с прочитанным
+	 *
 	 */
 	ASSERT_EQ(string(collected.keys("section").front()), string("key"));
 }
@@ -2016,6 +2050,7 @@ TEST(CodecIniWriter, RefusalSticksToWriter) {
 	 * @warning Перебираются ВСЕ они, а не выборка: сторож стоит в каждом теле по
 	 *          отдельности, и метод, сторожа не получивший, выпал бы из договора молча.
 	 *          Заведётся у записи новый метод - приписать его сюда
+	 *
 	 */
 	/**
 	 * @note Утверждения ниже суть EXPECT, а не ASSERT, намеренно: ASSERT обрывает тело
@@ -2024,6 +2059,7 @@ TEST(CodecIniWriter, RefusalSticksToWriter) {
 	 * @note Снятие всех шести сторожей роняет восемь утверждений из девяти: методов
 	 *       больше, нежели сторожей, оттого что часть их поручает работу соседям.
 	 *       Замерено срывом
+	 *
 	 */
 	EXPECT_FALSE(writer.section("иной"));
 	EXPECT_FALSE(writer.section("иной", "подраздел"));
@@ -2039,7 +2075,7 @@ TEST(CodecIniWriter, RefusalSticksToWriter) {
 	// Выполняем проверку того, что собранный текст отказом не тронут
 	ASSERT_EQ(writer.text(), before);
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Выполняем проверку того, что сброс код отказа отпускает
 	ASSERT_EQ(writer.error(), ini::error_t::NONE);
 	// Выполняем проверку того, что запись после сброса принимается
@@ -2059,6 +2095,7 @@ TEST(CodecIniWriter, RefusalSticksToWriter) {
  *
  * @note Проверка эта доказана порчею: возврат прежнего безусловного запрета скобок в
  *       `Writer::acceptable` роняет её отказом записи на первом же имени
+ *
  */
 TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
 	/**
@@ -2083,8 +2120,14 @@ TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
 		ASSERT_TRUE(document.create(name)) << name << ": " << ini::message(document.error());
 		// Выполняем установку свойства объявленного раздела
 		ASSERT_TRUE(document.set("k", "v", name)) << name;
+		// Настройки записи текста документа
+		ini::document_t::settings_t dialect = settings;
+		// Устанавливаем наречие записи текста документа
+		dialect.writer = ini::writer_t::settings_t::python();
+		// Выполняем установку настроек записи документа
+		document.settings(dialect);
 		// Получаем записанный текст настроек наречием python
-		const string text = document.dump(ini::writer_t::settings_t::python());
+		const string text = document.dump();
 		// Выполняем проверку того, что запись имя приняла
 		ASSERT_FALSE(text.empty()) << name;
 		// Объект дерева настроек, записанное читающего обратно
@@ -2109,6 +2152,7 @@ TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
  * обратное чтение отвергало пустотою имени
  *
  * @note Нашёл это ворошитель переводом дерева настроек из наречия в наречие
+ *
  */
 TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
 	// Настройки разбора текста настроек с разделителем одним
@@ -2121,28 +2165,40 @@ TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
 	ASSERT_TRUE(document.parse("[b]\r\n:elais=pris\r\n")) << ini::message(document.error());
 	// Выполняем проверку того, что имя свойства прочитано целиком
 	ASSERT_TRUE(document.has(":elais", "b"));
+	// Настройки записи текста документа
+	ini::document_t::settings_t writing = reading;
+	// Устанавливаем наречие записи текста настроек языком Python
+	writing.writer = ini::writer_t::settings_t::python();
+	// Выполняем установку настроек записи документа
+	document.settings(writing);
 	/**
 	 * Выполняем проверку отказа перевода дерева в наречие языка Python
 	 *
 	 * @note Отказ здесь есть верное поведение: имя это наречием невыразимо, а
 	 *       записанное как есть читалось бы обратно пустым
+	 *
 	 */
-	ASSERT_TRUE(document.dump(ini::writer_t::settings_t::python()).empty());
+	ASSERT_TRUE(document.dump().empty());
+	// Устанавливаем наречие записи текста настроек MS Windows
+	writing.writer = ini::writer_t::settings_t::windows();
+	// Выполняем установку настроек записи документа
+	document.settings(writing);
 	/**
 	 * Выполняем проверку перевода дерева в наречие MS Windows
 	 *
 	 * @note Наречие это разделителем признаёт одно равенство, и двоеточие в имени ему
 	 *       не мешает: отвергать такое имя не за что
+	 *
 	 */
-	const string translated = document.dump(ini::writer_t::settings_t::windows());
+	const string translated = document.dump();
 	// Выполняем проверку того, что перевод состоялся
 	ASSERT_FALSE(translated.empty()) << ini::message(document.error());
 	// Настройки обратного чтения перевода наречием MS Windows
-	ini::document_t::settings_t back_settings;
+	ini::document_t::settings_t backSettings;
 	// Устанавливаем настройки разбора наречия MS Windows
-	back_settings.reader = ini::reader_t::settings_t::windows();
+	backSettings.reader = ini::reader_t::settings_t::windows();
 	// Объект дерева настроек, перевод читающего обратно
-	ini::document_t back(back_settings);
+	ini::document_t back(backSettings);
 	// Выполняем проверку того, что перевод обратно читается
 	ASSERT_TRUE(back.parse(translated)) << translated << ": " << ini::message(back.error());
 	// Выполняем проверку того, что имя свойства пережило круг знак в знак
@@ -2161,6 +2217,7 @@ TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
  *       записанное за разделом либо за свойством другим, круг проходит знак в знак -
  *       метка там знаком содержимого и остаётся. Отвергать его всюду значило бы
  *       отвергать годное, и проверка закрепляет обе стороны правила
+ *
  */
 TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 	// Имя свойства, меткою порядка байтов открытое
@@ -2200,6 +2257,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 		 * Выполняем проверку того, что имя пережило круг знак в знак
 		 *
 		 * @note Метка, не первою в тексте стоящая, знаком содержимого и остаётся
+		 *
 		 */
 		ASSERT_TRUE(back.has(name)) << written;
 	}
@@ -2217,6 +2275,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
  *       наречием без примечаний в конце строки, записывался как есть, а перевод его в
  *       наречие Git давал текст, тем же наречием уже не читаемый. Нашёл это ворошитель
  *       переводом дерева настроек из наречия в наречие
+ *
  */
 TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	// Настройки разбора наречия MS Windows, примечаний в конце строки не знающего
@@ -2229,18 +2288,26 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	ASSERT_TRUE(document.parse("[a#]\r\nk=v\r\n")) << ini::message(document.error());
 	// Выполняем проверку того, что имя раздела прочитано целиком
 	ASSERT_TRUE(document.has("k", "a#"));
+	// Настройки записи текста документа
+	ini::document_t::settings_t dialect = reading;
+	// Устанавливаем наречие записи текста документа
+	dialect.writer = ini::writer_t::settings_t::git();
+	// Выполняем установку настроек записи документа
+	document.settings(dialect);
 	/**
 	 * Выполняем проверку отказа перевода дерева в наречие Git
 	 *
 	 * @note Отказ здесь есть верное поведение: имя это наречием невыразимо, а
 	 *       записанное как есть обращало бы объявление в незакрытое
+	 *
 	 */
-	ASSERT_TRUE(document.dump(ini::writer_t::settings_t::git()).empty());
+	ASSERT_TRUE(document.dump().empty());
 	/**
 	 * Выполняем проверку того, что имя СВОЙСТВА со знаком примечания отвергается тоже
 	 *
 	 * @note Пробела перед знаком читающий не требует: имя `k#v` наречие Git читает
 	 *       именем `k`, а `#v = 1` берёт примечанием - значение пропадало бы вовсе
+	 *
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
@@ -2249,30 +2316,43 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 		ASSERT_TRUE(keyed.parse("[s]\r\nk#v=1\r\n")) << ini::message(keyed.error());
 		// Выполняем проверку того, что имя свойства прочитано целиком
 		ASSERT_TRUE(keyed.has("k#v", "s"));
+		// Настройки записи текста документа
+		ini::document_t::settings_t dialect = reading;
+		// Устанавливаем наречие записи текста документа
+		dialect.writer = ini::writer_t::settings_t::git();
+		// Выполняем установку настроек записи документа
+		keyed.settings(dialect);
 		// Выполняем проверку отказа перевода дерева в наречие Git
-		ASSERT_TRUE(keyed.dump(ini::writer_t::settings_t::git()).empty());
+		ASSERT_TRUE(keyed.dump().empty());
 	}
 	/**
 	 * Выполняем проверку того, что наречием без примечаний в конце строки имя годно
 	 *
 	 * @note Признак `inlineComments` тем и решает: наречие systemd знак примечания
 	 *       внутри имени значащим не числит, и круг проходит знак в знак
+	 *
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
 		ini::document_t keyed(reading);
 		// Выполняем разбор текста со знаком примечания внутри имени свойства
 		ASSERT_TRUE(keyed.parse("[s]\r\nk#v=1\r\n")) << ini::message(keyed.error());
+		// Настройки записи текста документа
+		ini::document_t::settings_t dialect = reading;
+		// Устанавливаем наречие записи текста документа
+		dialect.writer = ini::writer_t::settings_t::systemd();
+		// Выполняем установку настроек записи документа
+		keyed.settings(dialect);
 		// Получаем перевод дерева настроек в наречие systemd
-		const string translated = keyed.dump(ini::writer_t::settings_t::systemd());
+		const string translated = keyed.dump();
 		// Выполняем проверку того, что перевод состоялся
 		ASSERT_FALSE(translated.empty()) << ini::message(keyed.error());
 		// Настройки обратного чтения перевода наречием systemd
-		ini::document_t::settings_t back_settings;
+		ini::document_t::settings_t backSettings;
 		// Устанавливаем настройки разбора наречия systemd
-		back_settings.reader = ini::reader_t::settings_t::systemd();
+		backSettings.reader = ini::reader_t::settings_t::systemd();
 		// Объект дерева настроек, перевод читающего обратно
-		ini::document_t back(back_settings);
+		ini::document_t back(backSettings);
 		// Выполняем проверку того, что перевод обратно читается
 		ASSERT_TRUE(back.parse(translated)) << translated << ": " << ini::message(back.error());
 		// Выполняем проверку того, что имя свойства пережило круг знак в знак
@@ -2294,6 +2374,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
  * @note Нашёл это ворошитель, как только набор его научился перебирать саму настройку:
  *       прежде она держалась снятой при всяком проходе, а снятую настройку проверить
  *       нечем
+ *
  */
 TEST(CodecIniWriter, StrictNamesAreMirroredFromTheReader) {
 	/**
@@ -2355,6 +2436,7 @@ TEST(CodecIniWriter, StrictNamesAreMirroredFromTheReader) {
 	 *
 	 * @note Дерево берёт настройки записи у настроек разбора: без зеркала оно выдавало бы
 	 *       текст, своим же чтением отвергаемый
+	 *
 	 */
 	{
 		// Настройки дерева настроек
@@ -2370,6 +2452,7 @@ TEST(CodecIniWriter, StrictNamesAreMirroredFromTheReader) {
 		 *
 		 * @note Пустая перезапись означает отказ записи: имя наречием невыразимо, и отказ
 		 *       здесь верен, тогда как текст, чтением отвергаемый, есть порок
+		 *
 		 */
 		ASSERT_TRUE(doc.dump().empty());
 	}
@@ -2439,6 +2522,7 @@ TEST(CodecIniWriter, SeparatorSettingIsObeyed) {
 	 *
 	 * @note Проверка эта и отделяет настройку от запрета, знаку равенства прибитого:
 	 *       знак равенства при разделителе-двоеточии имени вредить не может
+	 *
 	 */
 	{
 		// Настройки записи текста
@@ -2503,6 +2587,7 @@ TEST(CodecIniWriter, EveryLanguageIntegerRecordIsWritten) {
 	 *
 	 * @note Число берётся в пределах знакового: описание TOML отводит целому шестьдесят
 	 *       четыре разряда СО ЗНАКОМ, и число сверх того запись отвергает своим кодом
+	 *
 	 */
 	ASSERT_TRUE(writer.number("j", static_cast <unsigned long long> (9007199254740993ULL)));
 	// Выполняем проверку собранного текста
@@ -2528,7 +2613,9 @@ TEST(CodecIniWriter, EveryLanguageIntegerRecordIsWritten) {
  *
  */
 TEST(CodecIniWriter, OwnBufferStrings) {
-	// Проверяем короткий буфер и буфер с перевыделением памяти
+	/**
+	 * Проверяем короткий буфер и буфер с перевыделением памяти
+	 */
 	for(const size_t size : vector <size_t> {0, 4096}){
 		// Настройки записи текста
 		ini::writer_t::settings_t settings;
@@ -2540,13 +2627,18 @@ TEST(CodecIniWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			ini::writer_t writer(settings), reference(settings);
+			// Заводим у писателя свойство «a» длиною size из знаков x
 			ASSERT_TRUE(writer.property("a", string(size, 'x')));
 			ASSERT_TRUE(reference.property("a", string(size, 'x')));
 			// Снимки входа без завершающего перевода строки
 			string_view own = writer.text();
+			// Снимок текста независимой копии без завершающего перевода строки
 			string_view mirror = reference.text();
+			// Отсекаем у собственного снимка завершающий перевод строки
 			own.remove_suffix(1);
+			// Отсекаем у снимка копии завершающий перевод строки
 			mirror.remove_suffix(1);
+			// Заводим у писателя свойство «b» из собственного снимка буфера
 			ASSERT_TRUE(writer.property("b", own));
 			ASSERT_TRUE(reference.property("b", mirror));
 			// Выполняем проверку совпадения с записью независимой копии
@@ -2558,10 +2650,12 @@ TEST(CodecIniWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			ini::writer_t writer(settings), reference(settings);
+			// Заводим у писателя свойство «a» длиною size из знаков x
 			ASSERT_TRUE(writer.property("a", string(size, 'x')));
 			ASSERT_TRUE(reference.property("a", string(size, 'x')));
 			// Снимки входа
 			const string note = reference.text();
+			// Пишем примечание, взятое из самого выходного буфера писателя
 			ASSERT_TRUE(writer.comment(writer.text()));
 			ASSERT_TRUE(reference.comment(note));
 			// Выполняем проверку совпадения с записью независимой копии
@@ -2573,13 +2667,18 @@ TEST(CodecIniWriter, OwnBufferStrings) {
 		{
 			// Сравниваем результат с записью независимой копии
 			ini::writer_t writer(settings), reference(settings);
+			// Заводим у писателя свойство «a» длиною size из знаков x
 			ASSERT_TRUE(writer.property("a", string(size, 'x')));
 			ASSERT_TRUE(reference.property("a", string(size, 'x')));
 			// Снимки входа без завершающего перевода строки
 			string_view own = writer.text();
+			// Снимок текста независимой копии без завершающего перевода строки
 			string_view mirror = reference.text();
+			// Отсекаем у собственного снимка завершающий перевод строки
 			own.remove_suffix(1);
+			// Отсекаем у снимка копии завершающий перевод строки
 			mirror.remove_suffix(1);
+			// Дописываем хвост из собственного снимка выходного буфера
 			ASSERT_TRUE(writer.trailing(own));
 			ASSERT_TRUE(reference.trailing(mirror));
 			// Выполняем проверку совпадения с записью независимой копии

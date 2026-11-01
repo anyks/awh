@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки поточного чтения бинарного контейнера ABC — выдача событий, стек
  *        вместимых, независимость выдачи от нарезки записи на куски и коды отказов
  *
@@ -35,7 +41,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён проекта
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека ABC
+ */
 using namespace awh::codec;
 
 /**
@@ -58,7 +70,7 @@ namespace {
 		 */
 		switch(static_cast <uint8_t> (reader.event())){
 			// Если событием является пустое значение
-			case static_cast <uint8_t> (abc::event_t::NUL): return "null";
+			case static_cast <uint8_t> (abc::event_t::NIL): return "null";
 			// Если событием является логическое значение
 			case static_cast <uint8_t> (abc::event_t::BOOL): return (value.boolean ? "true" : "false");
 			// Если событием является начало массива
@@ -192,7 +204,7 @@ TEST(CodecAbcReader, Scalars) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку пустого значения
-	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NIL));
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -286,7 +298,7 @@ TEST(CodecAbcReader, Containers) {
 	// Выполняем укладку имени поля отображения
 	text(data, "имя");
 	// Выполняем укладку значения поля отображения
-	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NIL));
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -547,6 +559,14 @@ TEST(CodecAbcReader, Failures) {
 		ASSERT_EQ(reader.error(), abc::error_t::DEPTH_EXCEEDED);
 		// Выполняем проверку глубины, на какой отказ произошёл
 		ASSERT_EQ(reader.location().depth, 4u);
+		// Выполняем проверку глубины обнаруженного отказа
+		ASSERT_EQ(reader.errorLocation().depth, 4u);
+		// Выполняем проверку смещения обнаруженного отказа
+		ASSERT_NE(reader.errorLocation().offset, abc::NO_OFFSET);
+		// Выполняем сброс разбора
+		reader.reset();
+		// Выполняем проверку снятия места отказа при сбросе
+		ASSERT_EQ(reader.errorLocation().offset, abc::NO_OFFSET);
 	}
 	// Выполняем проверку отказа на превышение длины строкового значения
 	{
@@ -937,6 +957,7 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * @param record    разбираемая запись
 	 * @param canonical признак поверки на строгий вид
 	 * @return          код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & record, const bool canonical,
 	 const abc::duplicate_t duplicates = abc::duplicate_t::KEEP) noexcept -> abc::error_t {
@@ -973,6 +994,7 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * @note Повтор имени поля разбирается лишь при правиле, его дозволяющем: умолчанием
 	 * взят ОТКАЗ, и он поверяется ниже отдельно. Прочие четыре записи от правила этого
 	 * не зависят вовсе
+	 *
 	 */
 	EXPECT_EQ(digest(strict, false), abc::error_t::NONE);
 	EXPECT_EQ(digest(unordered, false), abc::error_t::NONE);
@@ -985,6 +1007,7 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * @details Умолчание это объявлено у самого правила `duplicate_t`: молчаливый выбор
 	 * одного из двух значений означал бы потерю данных, а повтор имени есть приём
 	 * путаницы разборов. Прочие четыре записи повтора не несут и умолчанием проходят
+	 *
 	 */
 	EXPECT_EQ(digest(duplicate, false, abc::duplicate_t::REFUSE), abc::error_t::DUPLICATE_KEY);
 	EXPECT_EQ(digest(strict, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
@@ -1018,6 +1041,7 @@ TEST(CodecAbcReader, DuplicateWideMapping){
 	 * @param count  число пар отображения
 	 * @param repeat место пары, чьё имя повторяется последней парой, либо число пар
 	 * @return       собранная запись отображения
+	 *
 	 */
 	auto build = [](const uint32_t count, const uint32_t repeat) noexcept -> vector <uint8_t> {
 		// Собираемая запись отображения
@@ -1049,6 +1073,7 @@ TEST(CodecAbcReader, DuplicateWideMapping){
 	 *
 	 * @param record разбираемая запись
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & record) noexcept -> abc::error_t {
 		// Разборщик бинарной записи
@@ -1071,6 +1096,7 @@ TEST(CodecAbcReader, DuplicateWideMapping){
 	 *
 	 * @note Порог заведения указателя равен 32, а перестроение его случается на
 	 * удвоении: ряд накрывает обход перечня, заведение указателя и два перестроения
+	 *
 	 */
 	for(const uint32_t count : {2u, 31u, 32u, 33u, 64u, 65u, 129u, 300u}){
 		// Записи отображения без повтора имени поля разбор отвечает согласием
@@ -1094,6 +1120,7 @@ TEST(CodecAbcReader, DuplicateWideMapping){
 	 * @details Указатель вмещающего отображения обязан пережить открытие и закрытие
 	 * вложенного: имена его укладываются в тот же перечень, а закрытие усекает перечень
 	 * до начала части вмещающего. Повтор кладётся ПОСЛЕ вложенного отображения
+	 *
 	 */
 	{
 		// Собираемая запись отображения с вложенным отображением
@@ -1183,6 +1210,7 @@ TEST(CodecAbcReader, RepairCreatesNoDuplicates){
 	 *
 	 * @note Обе строки исправляются в один и тот же знак замены, а записи их расходятся
 	 * последним октетом и идут ПО ВОЗРАСТАНИЮ
+	 *
 	 */
 	const vector <uint8_t> record = {
 		0xA2,
@@ -1196,6 +1224,7 @@ TEST(CodecAbcReader, RepairCreatesNoDuplicates){
 	 * @param duplicates правило обращения с повтором имени поля
 	 * @param patched    количество исправленных строк
 	 * @return           код отказа разбора
+	 *
 	 */
 	auto digest = [&record](const bool canonical, const abc::duplicate_t duplicates,
 	 size_t & patched) noexcept -> abc::error_t {
@@ -1245,6 +1274,7 @@ TEST(CodecAbcReader, RepairCreatesNoDuplicates){
 	 *
 	 * @note Возрастание это - записи, а не исправленной строки: строки у обоих имён
 	 * одинаковы, и сличение их дало бы отказ порядка
+	 *
 	 */
 	ASSERT_EQ(digest(true, abc::duplicate_t::KEEP, patched), abc::error_t::NONE);
 	// Исправлены обязаны быть ОБА имени поля
@@ -1254,6 +1284,7 @@ TEST(CodecAbcReader, RepairCreatesNoDuplicates){
 	 *
 	 * @note Половина вторая договора: исправление не должно ни создавать повторов, ни
 	 * ПРЯТАТЬ их. Оба имени ниже суть одна и та же негодная запись
+	 *
 	 */
 	{
 		// Отображение, где одна и та же негодная запись имени объявлена дважды
@@ -1300,6 +1331,7 @@ TEST(CodecAbcReader, RepairedStringsSurviveBothFeedingWays){
 	 *
 	 * @param index номер документа
 	 * @return      запись одного документа со строкою «эл-N» и негодным октетом
+	 *
 	 */
 	auto make = [](const size_t index) noexcept -> vector <uint8_t> {
 		// Разборщик бинарной записи
@@ -1362,6 +1394,9 @@ TEST(CodecAbcReader, RepairedStringsSurviveBothFeedingWays){
 	 * исправленных строк очистке подлежать не вправе
 	 */
 	vector <string> expected;
+	/**
+	 * Собираем ожидаемые строки первых тридцати двух записей
+	 */
 	for(size_t i = 0; i < 32; i++){
 		// Выполняем сборку очередного документа потока
 		const vector <uint8_t> record = make(i);
@@ -1378,6 +1413,9 @@ TEST(CodecAbcReader, RepairedStringsSurviveBothFeedingWays){
 	 * опорожняется, хранилище чистится, и содержимое строк за чисткою обязано остаться верным
 	 */
 	expected.clear();
+	/**
+	 * Собираем ожидаемые строки следующих тридцати двух записей
+	 */
 	for(size_t i = 32; i < 64; i++){
 		// Выполняем сборку очередного документа потока
 		const vector <uint8_t> record = make(i);
@@ -1413,6 +1451,7 @@ TEST(CodecAbcReader, ChunkedKeyRefused){
 	 *
 	 * @param record разбираемая запись
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & record) noexcept -> abc::error_t {
 		// Разборщик бинарной записи
@@ -1444,6 +1483,7 @@ TEST(CodecAbcReader, ChunkedKeyRefused){
 	 * То же имя, уложенное ОДНОЙ единицей, принимается
 	 *
 	 * @note Половина вторая договора: отвергается собираемость кусками, а не содержимое
+	 *
 	 */
 	const vector <uint8_t> whole = {
 		0xA1,
@@ -1457,6 +1497,7 @@ TEST(CodecAbcReader, ChunkedKeyRefused){
 	 *
 	 * @note Половина третья: отказ принадлежит имени, а не строке неопределённой длины
 	 * вообще, - иначе он запрещал бы поточную укладку значений заодно
+	 *
 	 */
 	const vector <uint8_t> value = {
 		0xA1,
@@ -1492,6 +1533,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfStatefulSettings){
 	 * @param error    код отказа разбора
 	 * @param defer    признак отложенного снятия событий
 	 * @return         собранная последовательность событий разбора
+	 *
 	 */
 	auto sweep = [](const vector <uint8_t> & data, const abc::reader_t::settings_t & settings,
 	 const size_t chunk, abc::error_t & error, const bool defer = false) noexcept -> vector <string> {
@@ -1512,6 +1554,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfStatefulSettings){
 		 * уже собранных событий, и подача целиком давала бы пустую выдачу там, где подача
 		 * кусками выдавала бы события, снятые до отказа. Расхождение это принадлежало бы
 		 * помощнику, а не разбору
+		 *
 		 */
 		while(offset < data.size()){
 			// Выполняем получение размера подаваемого куска
@@ -1527,6 +1570,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfStatefulSettings){
 			 * него своя: событие, снятое позже, указывает отрезком в буфер разбора, а тот
 			 * между подачами усекается. Способ этот и стережёт вместилища, живущие дольше
 			 * куска, - снятие сразу после подачи их не трогает вовсе
+			 *
 			 */
 			if(!defer){
 				/**
@@ -1565,6 +1609,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfStatefulSettings){
 	 * @param title    название поверяемого случая
 	 * @param data     разбираемая запись
 	 * @param settings настройки разбора записи
+	 *
 	 */
 	auto verify = [&sweep](const string & title, const vector <uint8_t> & data,
 	 const abc::reader_t::settings_t & settings) noexcept -> void {
@@ -1674,6 +1719,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfStatefulSettings){
 		 * @note Негодных строк ДВЕ намеренно: вместилище исправленного растёт, и отрезок
 		 * второй строки лежит за первой, - потеря его на границе куска дала бы первую
 		 * строку вместо второй
+		 *
 		 */
 		const vector <uint8_t> patched = {
 			0x83,
@@ -1720,6 +1766,7 @@ TEST(CodecAbcReader, ResetMidRecordForgetsEverything){
 	 *
 	 * @note Запись нарочно наполняет ВСЕ вместилища разом - стек открыт отображением,
 	 * имена ложатся в перечень повторов, негодная строка ложится в исправленные
+	 *
 	 */
 	const vector <uint8_t> broken = {
 		0xA3,
@@ -1741,6 +1788,7 @@ TEST(CodecAbcReader, ResetMidRecordForgetsEverything){
 	 * @param reader разбиратель, каким ведётся разбор
 	 * @param data   разбираемая запись
 	 * @return       собранная последовательность событий разбора
+	 *
 	 */
 	auto drain = [](abc::reader_t & reader, const vector <uint8_t> & data) noexcept -> vector <string> {
 		// Собираемая последовательность событий разбора
@@ -1783,6 +1831,7 @@ TEST(CodecAbcReader, ResetMidRecordForgetsEverything){
 		 *
 		 * @note Часть снимается намеренно: очередь событий - такое же вместилище, и
 		 * сброс обязан снять и её
+		 *
 		 */
 		if(reader.next())
 			// Выполняем снятие одного собранного события разбора
@@ -1819,6 +1868,7 @@ TEST(CodecAbcReader, DuplicateAcrossWidePool){
 	 *
 	 * @param repeat место имени, повторяемого последней парой, либо число имён
 	 * @return       собранная запись отображения
+	 *
 	 */
 	auto build = [&](const size_t repeat) noexcept -> vector <uint8_t> {
 		// Собираемая запись отображения
@@ -1829,6 +1879,7 @@ TEST(CodecAbcReader, DuplicateAcrossWidePool){
 		 * @brief Работа укладки пары отображения объявленного номера
 		 *
 		 * @param number номер укладываемого имени поля
+		 *
 		 */
 		auto pair = [&](const size_t number) noexcept -> void {
 			// Выполняем укладку метки имени поля отображения
@@ -1864,6 +1915,7 @@ TEST(CodecAbcReader, DuplicateAcrossWidePool){
 	 *
 	 * @param record разбираемая запись
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & record) noexcept -> abc::error_t {
 		// Разборщик бинарной записи
@@ -1886,6 +1938,7 @@ TEST(CodecAbcReader, DuplicateAcrossWidePool){
 	 *
 	 * @note Места взяты началом, серединой и концом: усечение смещения губит сличение
 	 * лишь у имён, легших ЗА границей поля, и повтор у начала прошёл бы и без сторожа
+	 *
 	 */
 	for(const size_t repeat : {static_cast <size_t> (0), COUNT / 2, COUNT - 1}){
 		// Записи с повтором имени поля разбор обязан ответить отказом
@@ -1896,6 +1949,7 @@ TEST(CodecAbcReader, DuplicateAcrossWidePool){
 	 *
 	 * @note Половина вторая договора: сличение обязано находить не только совпадение, но
 	 * и различие. Имена различаются ТРЕМЯ первыми октетами из тысячи
+	 *
 	 */
 	ASSERT_EQ(digest(build(COUNT)), abc::error_t::NONE);
 }
@@ -1920,6 +1974,7 @@ TEST(CodecAbcReader, ChunkedValueRespectsLimit){
 	 * @param width    ширина куска значения в октетах
 	 * @param limit    предел длины значения
 	 * @return         код отказа разбора
+	 *
 	 */
 	auto digest = [](const bool text, const size_t pieces, const size_t width,
 	 const uint64_t limit) noexcept -> abc::error_t {
@@ -1980,6 +2035,7 @@ TEST(CodecAbcReader, ChunkedValueRespectsLimit){
 		 *
 		 * @note Всякий кусок в предел УМЕЩАЕТСЯ: сличай разбор куски порознь, запись эта
 		 * прошла бы, и предел обходился бы дроблением
+		 *
 		 */
 		ASSERT_EQ(digest(text, 4, 4, 10), refusal) << "строка: " << text;
 		/**
@@ -1992,6 +2048,7 @@ TEST(CodecAbcReader, ChunkedValueRespectsLimit){
 		ASSERT_EQ(digest(text, 40, 4, 0), abc::error_t::NONE) << "строка: " << text;
 	}
 }
+// Проверка правил обращения разбора с негодными строками
 TEST(CodecAbcReader, MalformedRules){
 	/**
 	 * Работа разбора записи затребованным правилом обращения с негодной строкой
@@ -2001,6 +2058,7 @@ TEST(CodecAbcReader, MalformedRules){
 	 * @param data   снятое содержимое строки
 	 * @param patched признак того, что содержимое было исправлено
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & record, const abc::malformed_t rule,
 	 string & data, bool & patched) noexcept -> abc::error_t {
@@ -2061,6 +2119,7 @@ TEST(CodecAbcReader, MalformedRules){
 	 *
 	 * @note Обрывок этот занимает ДВА октета, а знак замены - три, и содержимое тем самым
 	 * длиннее исходного: оттого оно и лежит в отдельном хранилище
+	 *
 	 */
 	ASSERT_EQ(digest(record, abc::malformed_t::REPLACE, data, patched), abc::error_t::NONE);
 	// Выполняем проверку того, что обрывок подменён одним знаком замены
@@ -2087,6 +2146,7 @@ TEST(CodecAbcReader, MalformedRules){
 	 * потребителем позже, когда разбор ушёл уже вперёд. Держи хранилище исправленных
 	 * строк одну строку, вторая затёрла бы первую, ещё не выданную, - и первая выдала бы
 	 * содержимое второй. Первая сборка правила этим и страдала
+	 *
 	 */
 	{
 		// Массив из двух строк, каждая с усечённой точкой своего вида
@@ -2160,6 +2220,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 	 * @param lead   ведущий октет значения
 	 * @param length объявляемая длина значения
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const uint8_t lead, const uint64_t length) noexcept -> abc::error_t {
 		// Собираемая запись
@@ -2169,6 +2230,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 		 *
 		 * @note Ширина метки берётся наибольшая намеренно: объявить четыре гигабайта с
 		 * лишком иначе нельзя, а именно это и поверяется
+		 *
 		 */
 		record.push_back(static_cast <uint8_t> (lead | 0x1B));
 		/**
@@ -2177,6 +2239,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 		 * @note Октеты кладутся МЛАДШИМ ВПЕРЁД, как то и делает запись: первая сборка
 		 * проверки клала их старшим вперёд, и длина `0xFFFFFFFF` обращалась в
 		 * `0xFFFFFFFF00000000` - проверка краснела на своей же ошибке, а не на кодеке
+		 *
 		 */
 		for(uint8_t i = 0; i < 8; i++)
 			// Выполняем укладку очередного октета длины младшим вперёд
@@ -2190,6 +2253,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 		 * же кодом, каким отвечает и сторож ширины отрезка, - и два случая стали бы
 		 * неотличимы. Неоконченная подача разделяет их: длина, отрезку вмещающаяся, велит
 		 * ждать октетов, а не вмещающаяся отвергается НЕМЕДЛЯ, октетов не дожидаясь
+		 *
 		 */
 		if(!reader.feed(record.data(), record.size(), false))
 			// Выводим код отказа разбора
@@ -2226,6 +2290,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 	 * @param subtype подвид расширения: целое любой ширины либо десятичное
 	 * @param length  объявляемая длина октетов величины
 	 * @return        код отказа разбора
+	 *
 	 */
 	auto extend = [](const abc::extend_t subtype, const uint64_t length) noexcept -> abc::error_t {
 		// Собираемая запись
@@ -2241,7 +2306,9 @@ TEST(CodecAbcReader, SpanWidthLimit){
 			record.push_back(0x00);
 		// Выполняем укладку метки длины октетов величины шириною в восемь октетов
 		record.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::UNSIGNED) << 5) | 0x1B));
-		// Выполняем перебор всех октетов объявляемой длины
+		/**
+		 * Выполняем перебор всех октетов объявляемой длины
+		 */
 		for(uint8_t i = 0; i < 8; i++)
 			// Выполняем укладку очередного октета длины младшим вперёд
 			record.push_back(static_cast <uint8_t> ((length >> (i * 8)) & 0xFF));
@@ -2265,6 +2332,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
 	 * @note Величина неограниченной ширины кусками НЕ кладётся, оттого предел этот ей
 	 * настоящий - но величина в четыре гигабайта есть число о тридцати четырёх миллиардах
 	 * разрядов, и тесным предел назвать нельзя
+	 *
 	 */
 	ASSERT_EQ(extend(abc::extend_t::BIGNUM, static_cast <uint64_t> (numeric_limits <uint32_t>::max()) + 1),
 	 abc::error_t::INVALID_LENGTH);
@@ -2289,6 +2357,7 @@ TEST(CodecAbcReader, SpanWidthLimit){
  *
  * @note Отказ этот - обратное давление, а не поломка, и вторая половина проверки о том:
  *       разбор после отказа цел, и подача обыкновенной записи продолжается
+ *
  */
 TEST(CodecAbcReader, BufferSpanWidthGuardOnFeeding){
 	// Разбиратель записей контейнера
@@ -2320,6 +2389,50 @@ TEST(CodecAbcReader, BufferSpanWidthGuardOnFeeding){
 	}
 }
 /**
+ * @brief Проверка отказа выдачи места при переполнении суммы размеров
+ *
+ */
+TEST(CodecAbcReader, ReserveRejectsWrappedSize) {
+	// Разбиратель записей контейнера
+	abc::reader_t reader;
+	// Буфер записи числа
+	vector <uint8_t> record;
+	// Выполняем укладку числа
+	abc::integer(record, 7);
+	// Выполняем подачу записи без снятия события
+	ASSERT_TRUE(reader.feed(record.data(), record.size(), false));
+	// Выполняем проверку отказа размеру, переполняющему сумму с накопленным
+	ASSERT_EQ(reader.reserve(numeric_limits <size_t>::max()), nullptr);
+	// Выполняем проверку причины отказа
+	ASSERT_EQ(reader.error(), abc::error_t::OVERFLOW_LIMIT);
+	// Выполняем проверку сохранения ранее собранного события
+	ASSERT_TRUE(reader.next());
+	// Выполняем проверку сохранения значения события
+	ASSERT_EQ(reader.value().number, static_cast <uint64_t> (7));
+}
+/**
+ * @brief Проверка отказа подачи при переполнении суммы размеров
+ *
+ */
+TEST(CodecAbcReader, FeedRejectsWrappedSize) {
+	// Разбиратель записей контейнера
+	abc::reader_t reader;
+	// Буфер записи числа
+	vector <uint8_t> record;
+	// Выполняем укладку числа
+	abc::integer(record, 7);
+	// Выполняем подачу записи без снятия события
+	ASSERT_TRUE(reader.feed(record.data(), record.size(), false));
+	// Выполняем проверку отказа до чтения по заведомо непредставимому размеру
+	ASSERT_FALSE(reader.feed(record.data(), numeric_limits <size_t>::max(), false));
+	// Выполняем проверку причины отказа
+	ASSERT_EQ(reader.error(), abc::error_t::OVERFLOW_LIMIT);
+	// Выполняем проверку сохранения ранее собранного события
+	ASSERT_TRUE(reader.next());
+	// Выполняем проверку сохранения значения события
+	ASSERT_EQ(reader.value().number, static_cast <uint64_t> (7));
+}
+/**
  * @brief Проверка заслона выдачи места шире поля смещения отрезка события
  *
  */
@@ -2342,6 +2455,7 @@ TEST(CodecAbcReader, BufferSpanWidthGuard){
 	 *
 	 * @note Половина эта отделяет обратное давление от поломки: разбиратель, отказом
 	 * испорченный, отвечал бы отказом и обыкновенной записи вслед за нею
+	 *
 	 */
 	{
 		// Буфер собираемой записи
@@ -2387,6 +2501,7 @@ TEST(CodecAbcReader, BufferSpanWidthGuard){
  * @note Проверка эта не выполняется сама собою: череда мест записи-образца несёт
  *       четырнадцать различных смещений и четыре глубины, и вырождение мест в нули
  *       обратило бы её в тождество. Установлено щупом 31.08.2026
+ *
  */
 TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
 	// Буфер собираемой записи
@@ -2395,6 +2510,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
 	 * @brief Работа укладки записи строки
 	 *
 	 * @param value укладываемая строка
+	 *
 	 */
 	auto text = [&data](const string & value) noexcept -> void {
 		// Выполняем укладку метки строки вместе с длиною её
@@ -2451,6 +2567,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
 	 * @param chunk размер куска подачи, ноль - подача записи целиком
 	 * @param ok    признак успешности разбора
 	 * @return      череда мест собранных событий
+	 *
 	 */
 	auto places = [&data](const size_t chunk, bool & ok) noexcept -> vector <string> {
 		// Разбиратель записей контейнера
@@ -2463,6 +2580,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
 		const size_t width = ((chunk == 0) ? data.size() : chunk);
 		/**
 		 * @brief Работа снятия собранных разбором событий
+		 *
 		 */
 		auto drain = [&reader, &result]() noexcept -> void {
 			/**
@@ -2507,6 +2625,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
 	 *
 	 * @note Поверка эта стережёт вырождение самой проверки: сличение пустых черёд
 	 * выполнялось бы тождеством при всяком размахе поломки
+	 *
 	 */
 	ASSERT_EQ(expected.size(), static_cast <size_t> (19));
 	/**
@@ -2540,6 +2659,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfEventLocations){
  *       имени поля назван у заголовка приёмом путаницы разборов, и молчаливая подмена
  *       его на «взять первое» открывает ровно этот приём. Оттого поля сличаются
  *       поимённо, а не одним лишь `duplicates`: молчаливой подмене подлежит всякое
+ *
  */
 TEST(CodecAbcReader, SettingsDefaults){
 	// Настройки разбора записи, взятые умолчанием
@@ -2579,6 +2699,7 @@ TEST(CodecAbcReader, SettingsDefaults){
  *
  * @note Перебор ведётся по обоим полям, а не по одному: места эти написаны отдельно
  *       друг от друга, и сторож на одном поле оставил бы второе голым
+ *
  */
 TEST(CodecAbcReader, CustomExtensionRefusals){
 	/**
@@ -2586,6 +2707,7 @@ TEST(CodecAbcReader, CustomExtensionRefusals){
 	 *
 	 * @param data октеты записи
 	 * @return     код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & data) noexcept -> abc::error_t {
 		// Читатель бинарной записи
@@ -3010,6 +3132,7 @@ TEST(CodecAbcReader, ResetRevivesWhileAbortKeepsTheFailure){
 	 * @note Запись кладётся ОКТЕТАМИ, а не сборкою владеющего значения, намеренно:
 	 *       проверки разбирателя собираются отдельным стендом по частям, и тянуть сюда
 	 *       владеющее значение значило бы связать часть с частью без нужды
+	 *
 	 */
 	const vector <uint8_t> record = {0xA1, 0x41, 0x61, 0x01};
 	// Запись, оборванная посреди имени поля
@@ -3020,7 +3143,9 @@ TEST(CodecAbcReader, ResetRevivesWhileAbortKeepsTheFailure){
 	const auto drain = [](abc::reader_t & reader) noexcept -> size_t {
 		// Счёт вычерпанных событий
 		size_t result = 0;
-		// Выполняем вычерпывание очереди событий разбирателя
+		/**
+		 * Выполняем вычерпывание очереди событий разбирателя
+		 */
 		while(reader.next())
 			// Выполняем учёт вычерпанного события
 			result++;
@@ -3044,6 +3169,7 @@ TEST(CodecAbcReader, ResetRevivesWhileAbortKeepsTheFailure){
 		 *
 		 * @note Причина здесь `TRAILING_OCTETS` - октеты за концом документа, - и она
 		 *       верна: разбиратель дочитал запись и всё, поданное следом, лежит за нею
+		 *
 		 */
 		ASSERT_FALSE(reader.feed(record.data(), record.size(), true));
 		// Выполняем проверку названной причины отказа
@@ -3073,6 +3199,7 @@ TEST(CodecAbcReader, ResetRevivesWhileAbortKeepsTheFailure){
 		 * @note Потокового разбирателя нельзя заставить взять выданное обратно, и события
 		 *       эти суть НАЧАЛО записи, а не запись. Отличить полную от оборванной даёт
 		 *       один лишь признак отказа - тем дерево документа от него и разнится
+		 *
 		 */
 		ASSERT_GT(drain(reader), static_cast <size_t> (0));
 		// Выполняем проверку отказа подачи годной записи в мёртвого разбирателя
@@ -3092,6 +3219,7 @@ TEST(CodecAbcReader, ResetRevivesWhileAbortKeepsTheFailure){
 	 * @warning Здесь и лежит различие, ради какого проверка заведена: `abort` и `reset`
 	 *          близнецы по виду и противоположны по смыслу. Сличается не то, что `abort`
 	 *          что-то делает, а то, что он ИМЕННО НЕ делает работы близнеца
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3140,6 +3268,7 @@ TEST(CodecAbcReader, RefusalsNamedButUnguarded) {
 	 *
 	 * @note Метка 0x3B есть отрицательное с ведомой шириною в восемь октетов, а восемь
 	 *       октетов единиц дают −(2^64), какое в int64_t не умещается
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3156,6 +3285,7 @@ TEST(CodecAbcReader, RefusalsNamedButUnguarded) {
 	 *
 	 * @note Метка 0xE1 есть расширение вида «десятичное число», за каким обязан следовать
 	 *       порядок целым; здесь на его месте стоит строка
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3177,6 +3307,7 @@ TEST(CodecAbcReader, RefusalsNamedButUnguarded) {
 	 * не это место, - и различается это разбором. Разбор дал третье, до чего оговорка
 	 * доводит сама: проверка была не слепа, а УЖЕ дороги. Причина названа одна, а мест,
 	 * её наводящих, четыре, и покрыто было одно
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3204,6 +3335,7 @@ TEST(CodecAbcReader, RefusalsNamedButUnguarded) {
 	 * @note Предел берётся настройками, а не постоянной модуля: постоянная эта равна
 	 *       67 108 864, и запись такого размаха стенду не по силам. Настройка же
 	 *       перекрывает её, и оттого дорога проверяема
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3258,7 +3390,9 @@ TEST(CodecAbcReader, SegmentBeginNamesTheKind) {
 		ASSERT_TRUE(reader.feed(blob.data(), blob.size(), true)) << abc::message(reader.error());
 		// Собранный перечень событий разбора
 		vector <abc::event_t> events;
-		// Выполняем снятие всех событий разбора
+		/**
+		 * Выполняем снятие всех событий разбора
+		 */
 		while(reader.next())
 			// Выполняем накопление события разбора
 			events.push_back(reader.event());
@@ -3276,6 +3410,7 @@ TEST(CodecAbcReader, SegmentBeginNamesTheKind) {
 	 *
 	 * @note Половина эта и делает проверку зрячей: одна лишь первая была бы зелена и при
 	 *       разбирателе, называющем всякое собираемое значение двоичными данными
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3284,7 +3419,9 @@ TEST(CodecAbcReader, SegmentBeginNamesTheKind) {
 		ASSERT_TRUE(reader.feed(text.data(), text.size(), true)) << abc::message(reader.error());
 		// Собранный перечень событий разбора
 		vector <abc::event_t> events;
-		// Выполняем снятие всех событий разбора
+		/**
+		 * Выполняем снятие всех событий разбора
+		 */
 		while(reader.next())
 			// Выполняем накопление события разбора
 			events.push_back(reader.event());
@@ -3324,6 +3461,7 @@ TEST(CodecAbcReader, EverySegmentRoadNamesTheSameCause) {
 	 * Дорога первая: кусок иного вида внутри начатого значения
 	 *
 	 * @note Начата СТРОКА, а кусок подан двоичный
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3340,6 +3478,7 @@ TEST(CodecAbcReader, EverySegmentRoadNamesTheSameCause) {
 	 *
 	 * @note Вложенности здесь нет по устройству записи: кусок обязан быть определённой
 	 *       длины, и начать сборку кусками внутри сборки кусками нельзя
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3355,6 +3494,7 @@ TEST(CodecAbcReader, EverySegmentRoadNamesTheSameCause) {
 	 * Дорога третья: вместимое внутри значения, собираемого кусками
 	 *
 	 * @note Кусками собираются лишь строка и двоичные данные, и вместимому там места нет
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3407,6 +3547,7 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
 	 *
 	 * @note Место это отдельно от того, что стережёт узлы у значений: причина одна, а
 	 *       мест, её наводящих, два, и покрыто было одно
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3445,6 +3586,7 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
 	 * у значений, собираемых кусками, - и запись из вложенных перечней идёт первым,
 	 * оставляя второе непокрытым. Довод общий: причина одна, а мест, её наводящих,
 	 * несколько, и сличать надлежит число ПРОВЕРЕННЫХ мест с числом наводящих
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3487,6 +3629,7 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
 	 * @note Конец вместимого закрывает лишь вместимое неопределённой длины; внутри
 	 *       вместимого с объявленным числом звеньев он есть та же неуравновешенность,
 	 *       что и конец без начала, - и место у неё своё
+	 *
 	 */
 	{
 		// Объект разбирателя
@@ -3504,6 +3647,7 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
 	 * @note Подробности 0x1C, 0x1D и 0x1E отложены видом записи, и всякая обязана
 	 *       отвечать одною причиной: потребитель, ветвящийся по ней, отличает запись
 	 *       БУДУЩЕГО вида от записи порченой
+	 *
 	 */
 	{
 		/**
@@ -3539,7 +3683,7 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
  */
 TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 	/**
-	 * @brief Метод подачи записи разбирателю с извлечением названной причины отказа
+	 * @brief Функция подачи записи разбирателю с извлечением названной причины отказа
 	 *
 	 * @note Ожидаемая причина сюда НЕ передаётся, хотя прежде передавалась и не
 	 *       употреблялась: назови вызывающий одну причину доводом, а другую сличением -
@@ -3585,6 +3729,7 @@ TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 	 *
 	 * @note Место это достижимо оттого, что сличается слово записи, а не отведённое по
 	 *       нему: заслон стоит ПЕРЕД отведением, и в том его смысл
+	 *
 	 */
 	ASSERT_EQ(refuses({0xE0, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}), abc::error_t::INVALID_LENGTH);
 	// Открытое расширение, длина октетов какого превышает предел настроек
@@ -3597,6 +3742,7 @@ TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 	 * неограниченной ширины до места сего не доходит: предел в четыре гигабайта стоит у
 	 * ОБОИХ - у величины и у расширения, - двумя отдельными местами с дословно одинаковым
 	 * доводом. Одна причина, два места, покрыто было одно
+	 *
 	 */
 	ASSERT_EQ(refuses({0xE2, 0x01, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}), abc::error_t::INVALID_LENGTH);
 }
@@ -3788,6 +3934,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfExtensions) {
 	 *
 	 * @note Номер взят широким нарочно: единица проволочной записи его занимает
 	 * несколько октетов, и нарезка вправе разорвать её посередине
+	 *
 	 */
 	abc::put(data, abc::group_t::UNSIGNED, 300000);
 	// Выполняем укладку длины октетов расширения
@@ -3804,6 +3951,7 @@ TEST(CodecAbcReader, ChunkIndependenceOfExtensions) {
 	 * @note Открытое расширение краткой записи не имеет, оттого и обозначено оно
 	 * знаком вопроса: проверке важно лишь то, что событие это выдано и выдано в
 	 * своём месте, а содержимое его закреплено проверкою CustomExtensionRefusals
+	 *
 	 */
 	ASSERT_EQ(expected, (vector <string> {"[", "X-9", "D+2e-2", "?", "]", ";", "."}))
 		<< "код отказа: " << abc::message(whole.error());
@@ -3918,6 +4066,7 @@ TEST(CodecAbcReader, TheSpanBeyondTheCountOfPlacesIsRefused){
 	 *
 	 * @param width объявляемый размах вместимого
 	 * @return      код отказа разбора
+	 *
 	 */
 	auto digest = [](const uint64_t width) noexcept -> abc::error_t {
 		// Собираемая запись
@@ -3980,6 +4129,7 @@ TEST(CodecAbcReader, SingleValueInsideSegmentIsRefused){
 	 * @param kind разновидность одиночного значения
 	 * @param size длина октетов одиночного значения
 	 * @return     код отказа разбора
+	 *
 	 */
 	auto digest = [](const uint8_t lead, const abc::single_t kind, const uint8_t size) noexcept -> abc::error_t {
 		// Буфер собираемой записи
@@ -4167,6 +4317,7 @@ TEST(CodecAbcReader, TheWideNumberRefusesTheLengthOfAForeignKind) {
 	 *
 	 * @param length единица проволочной записи, стоящая длиною октетов величины
 	 * @return       код отказа разбора
+	 *
 	 */
 	auto digest = [](const vector <uint8_t> & length) noexcept -> abc::error_t {
 		// Буфер собираемой записи
@@ -4215,6 +4366,7 @@ TEST(CodecAbcReader, TheUnsignedNumberCarriesItsSignedViewWhenItFits) {
 	 * @param number укладываемое целое без знака
 	 * @param value  снимаемое значение разобранного числа
 	 * @return       признак успешности разбора
+	 *
 	 */
 	auto digest = [](const uint64_t number, abc::reader_t::value_t & value) noexcept -> bool {
 		// Буфер собираемой записи
@@ -4321,6 +4473,7 @@ TEST(CodecAbcReader, TheAbsentBufferWithDeclaredOctetsIsRefusedByTheReader) {
 	 * @note Окончание записи ею не объявляется намеренно: пустая запись отвергается
 	 * СВОИМ заслоном - пустотою при затребованном документе, - и утверждать здесь его
 	 * значило бы стеречь чужое
+	 *
 	 */
 	{
 		// Разбиратель бинарной записи
@@ -4328,4 +4481,37 @@ TEST(CodecAbcReader, TheAbsentBufferWithDeclaredOctetsIsRefusedByTheReader) {
 		// Выполняем подачу несуществующего буфера нулевым размером
 		ASSERT_TRUE(empty.feed(nullptr, 0, false)) << "код отказа: " << abc::message(empty.error());
 	}
+}
+
+/**
+ * @brief Проверка состояния чтения по очереди событий и фазе разбора
+ *
+ * @details Состояние обязано отвечать на тот же вопрос, что и у прочих кодеков:
+ *          готово ли событие, нужен ли ещё кусок записи, кончилась ли запись,
+ *          прекращён ли разбор отказом.
+ *
+ */
+TEST(CodecAbcReader, StateFollowsTheQueueAndThePhase) {
+	// Буфер собираемой записи
+	vector <uint8_t> data;
+	// Выполняем укладку целого без знака
+	abc::put(data, abc::group_t::UNSIGNED, 1);
+	// Читатель бинарной записи
+	abc::reader_t reader;
+	// Выполняем проверку состояния до подачи
+	ASSERT_EQ(reader.state(), abc::state_t::HUNGRY);
+	// Выполняем подачу записи целиком
+	ASSERT_TRUE(reader.feed(data.data(), data.size(), true));
+	// Выполняем проверку состояния при непустой очереди
+	ASSERT_EQ(reader.state(), abc::state_t::READY);
+	/**
+	 * Выполняем снятие всех собранных событий
+	 */
+	while(reader.next()){}
+	// Выполняем проверку состояния разобранной записи
+	ASSERT_EQ(reader.state(), abc::state_t::FINISHED);
+	// Выполняем прекращение разбора
+	reader.abort();
+	// Выполняем проверку состояния прекращённого разбора
+	ASSERT_EQ(reader.state(), abc::state_t::FAILED);
 }

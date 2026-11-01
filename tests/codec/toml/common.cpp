@@ -34,7 +34,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, помощники рамки дающее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён awh::codec, типы кодека toml несущее
+ */
 using namespace awh::codec;
 
 /**
@@ -55,6 +61,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          оставлял за собою три кода, заведённых после него, - и описания их
 	 *          никем не проверялись. Та же беда была у перебора кодировок, и найдена
 	 *          она снастью молчащих кодов, а не глазами
+	 *
 	 */
 	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::UNREPRESENTABLE_VALUE); code++){
 		// Получаем описание очередного кода ошибки
@@ -78,6 +85,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          их никем не проверялись - вторая та же беда на том же месте. А 15.09.2026
 	 *          поверка эта СРАБОТАЛА: заведение `UNREPRESENTABLE_VALUE` уронило её сразу,
 	 *          и предел был подвинут в ту же правку, а не спустя месяц
+	 *
 	 */
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (
 	 static_cast <uint32_t> (toml::error_t::UNREPRESENTABLE_VALUE) + 1)), "unknown error");
@@ -106,6 +114,7 @@ TEST(CodecTomlCommon, MalformedSequenceIsMeasuredByItsLongestPart) {
 	 *
 	 * @note Три тела сличены исчерпывающе: все записи до трёх байт да четырёхбайтные с
 	 *       ведущим `F0..F7` - 151 060 736 записей, ноль расхождений
+	 *
 	 */
 	// Разобранный знак Юникода
 	uint32_t code = 0;
@@ -156,6 +165,7 @@ TEST(CodecTomlCommon, Encodings) {
 	 *
 	 * @note Договор един у INI, TOML, YAML, XML и JSON: член перечня имя имеет своё, а
 	 *       «unknown» достаётся значению, членом перечня не являющемуся
+	 *
 	 */
 	ASSERT_STRNE(toml::name(toml::encoding_t::NONE), toml::name(static_cast <toml::encoding_t> (200)));
 }
@@ -179,6 +189,7 @@ TEST(CodecTomlCommon, EncodingNames) {
 	 *          оставлял кодировки UTF-32 за собою вовсе - заведены они были после
 	 *          него и стали в перечне выше. Замерено покрытием: строки выдачи
 	 *          названий их и разбора названий обратно числились слепыми
+	 *
 	 */
 	for(uint8_t i = static_cast <uint8_t> (toml::encoding_t::UTF8); i <= static_cast <uint8_t> (toml::encoding_t::UTF32BE); i++){
 		// Получаем название очередной кодировки
@@ -296,6 +307,7 @@ TEST(CodecTomlCommon, Defaults) {
 	 * Выполняем проверку отсутствия смещения часового пояса
 	 *
 	 * @note Ноль обозначением отсутствия быть не может: он означает часовой пояс UTC
+	 *
 	 */
 	ASSERT_EQ(stamp.offset, toml::NO_TIMEZONE);
 	// Выполняем проверку того, что обозначение отсутствия смещения нулём не является
@@ -342,6 +354,7 @@ TEST(CodecTomlCommon, ExportedHelpers) {
 		 *       черту разбирает само чтение, а способ держит наборы Юникода сверх них.
 		 *       Оттого взяты тут ГРАНИЦЫ наборов - знак перед набором, края его и знак
 		 *       за ним
+		 *
 		 */
 		const pair <uint32_t, bool> letters[] = {
 			// Буква латинская способом этим не признаётся
@@ -573,6 +586,7 @@ TEST(CodecTomlCommon, DecodeBrokenSequence) {
 	 *
 	 * @note Заход этот стоит рядом нарочно: ноль, приходящий на всякую
 	 *       последовательность, отвечал бы тому же ожиданию
+	 *
 	 */
 	ASSERT_EQ(toml::decode(string_view("\xD0\xB0", 2), 0, code), static_cast <size_t> (2));
 	// Выполняем проверку прочитанного знака Юникода

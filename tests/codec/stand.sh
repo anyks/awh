@@ -159,6 +159,11 @@ case "$(uname -s)" in
 	##
 	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
 	##
+	# Основа «-lutil» потребна слою процессов: «src/sys/procre.cpp» зовёт у FreeBSD
+	# «kinfo_getproc», и без неё связывание стенда отказывает
+	##
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
+	##
 	# Системы Sun держат сетевые вызовы вне libc: «src/net/addr.cpp» зовёт
 	# «if_nametoindex» и «if_indextoname», а живут они в «libsocket» с «libnsl»
 	#

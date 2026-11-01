@@ -54,7 +54,13 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подключаем пространство имён awh, кодек CSV в себе несущее
+ */
 using namespace awh;
+/**
+ * Подключаем пространство имён кодека, открывающее краткое имя csv
+ */
 using namespace awh::codec;
 
 /**
@@ -63,7 +69,7 @@ using namespace awh::codec;
  */
 namespace {
 	/**
-	 * @brief Метод сбора выдачи разбора в последовательность знаков
+	 * @brief Функция сбора выдачи разбора в последовательность знаков
 	 *
 	 * @details Выдача собирается записью, пригодной к сличению: поле обрамляется
 	 * скобками, конец записи отмечается точкой с запятой, а отказ - восклицательным
@@ -134,7 +140,7 @@ namespace {
 		return result;
 	}
 	/**
-	 * @brief Метод сбора ПОДРОБНОЙ выдачи разбора
+	 * @brief Функция сбора ПОДРОБНОЙ выдачи разбора
 	 *
 	 * @details Выдача эта несёт не только содержимое полей, но и всё, что событие несёт
 	 * помимо него: положение в тексте, признак заключения в кавычки и признак правки
@@ -202,7 +208,7 @@ namespace {
 		return result;
 	}
 	/**
-	 * @brief Метод проверки выдачи разбора при всякой нарезке текста
+	 * @brief Функция проверки выдачи разбора при всякой нарезке текста
 	 *
 	 * @details Договор о независимости выдачи от нарезки проверяется здесь, а не
 	 * отдельным испытанием: нарушается он всяким знаком, чьё значение зависит от
@@ -239,6 +245,7 @@ namespace {
 			 * @note Сличается СОБЫТИЕ целиком - вместе с положением и признаками, - а не
 			 *       одно содержимое поля: договор о независимости от нарезки о событии, и
 			 *       метаданные его прежде не закреплялись ничем
+			 *
 			 */
 			if(details != standard)
 				// Выводим расхождение, отмеченное размером куска
@@ -276,6 +283,7 @@ TEST(CodecCsvReader, Simple) {
 	 *       его знака, отчего завершение последнего поля брало смещение поля прежнего
 	 *       и выдавало его содержимое вторично. Расхождение это обнаружено сличением с
 	 *       эталоном, а ни одна из проверок его не задевала
+	 *
 	 */
 	ASSERT_EQ(::parse("a,"), "F[a]F[]R;");
 	// Выполняем проверку разбора разделителя в конце записи из многих полей
@@ -305,6 +313,7 @@ TEST(CodecCsvReader, Newlines) {
 	 * @note Возврат каретки завершает запись сам по себе, а следующий за ним перевод
 	 *       строки лишь дополняет его: запись здесь завершена, и пустой записи за нею
 	 *       не следует
+	 *
 	 */
 	ASSERT_EQ(::parse("a\r"), "F[a]R;");
 }
@@ -348,6 +357,7 @@ TEST(CodecCsvReader, Multiline) {
 	 *
 	 * @note Приведение их к единому виду испортило бы значения, где знаки эти значащие:
 	 *       договор велит хранить содержимое поля неизменным
+	 *
 	 */
 	ASSERT_EQ(::parse("\"a\rb\",c\r\n"), "F[a\rb]F[c]R;");
 	// Выполняем проверку разбора записи из нескольких многострочных полей
@@ -387,6 +397,7 @@ TEST(CodecCsvReader, Strict) {
 	 *
 	 * @note Поле «a» выдаётся до отказа: завершила его запятая, стоящая прежде
 	 *       недопустимого знака, и выданного назад не берут
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\nc,d\n", settings), "F[a]!bare line break instead of CRLF");
 	/**
@@ -398,6 +409,7 @@ TEST(CodecCsvReader, Strict) {
 	 *       это не сличал никто, при том что проверка на строгий разбор стояла и
 	 *       causa её была та же. Вольный разбор оба знака принимает концом записи,
 	 *       и оттого места эти вне строгого режима недостижимы вовсе
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\rc,d\r\n", settings), "F[a]!bare line break instead of CRLF");
 	/**
@@ -407,6 +419,7 @@ TEST(CodecCsvReader, Strict) {
 	 *       и перевода строки за ним не будет уже никогда. Из грамматики договора такой
 	 *       текст выпадает так же, как и возврат каретки посреди текста, а место отказа
 	 *       у него отдельное - конец подачи, а не разбор знака
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\r", settings), "F[a]!bare line break instead of CRLF");
 	// Выполняем проверку разбора записи, договору отвечающей
@@ -433,6 +446,7 @@ TEST(CodecCsvReader, Unterminated) {
 	 *       есть: причина у такого текста ровно одна - он оборван, и выдать оборванное
 	 *       за целое значило бы потерять данные молча. Накопленное при этом не
 	 *       пропадает, и договор этот закрепляется здесь
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\r\nc,d\r\n\"e"), "F[a]F[b]R;F[c]F[d]R;!unterminated quoted field");
 }
@@ -498,6 +512,7 @@ TEST(CodecCsvReader, EncodingAfterParsing) {
 	 *
 	 * @note Расхождение числа полей стоит во второй записи, а недопустимый знак - в
 	 *       третьей: объявлена обязана быть первая из ошибок по ходу текста
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\r\nc\r\nd\x7F\r\n", settings), "F[a]F[b]R;F[c]!field count differs from expected");
 	// Настройки разбора текста без прекращения на расхождении числа полей
@@ -510,6 +525,7 @@ TEST(CodecCsvReader, EncodingAfterParsing) {
 	 *       он тексту таблицы сам по себе. Прежде ожидание закрепляло тут негодную
 	 *       последовательность - чтение схлопывало все причины приведения в одну, - и
 	 *       поправлено оно вместе с самим схлопыванием
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\r\nc,d\r\ne\x7F\r\n", loose), "F[a]F[b]R;F[c]F[d]R;!invalid character");
 }
@@ -532,6 +548,7 @@ TEST(CodecCsvReader, Blanks) {
 	 *
 	 * @note Запись «""» пустой строкой не является: она даёт запись с единственным
 	 *       пустым полем, и отличие это значащее
+	 *
 	 */
 	ASSERT_EQ(::parse("\"\"\r\n"), "F[]R;");
 	// Настройки разбора текста с выдачей пустых строк
@@ -623,6 +640,7 @@ TEST(CodecCsvReader, Ragged) {
 	 *
 	 * @note Отбросить их значило бы потерять данные молча, тогда как дополнение
 	 *       недостающих ничего не теряет
+	 *
 	 */
 	ASSERT_EQ(::parse("a,b\r\n1,2,3\r\n", settings), "H[a]H[b]R;F[1]F[2]F[3]R;");
 	// Включаем отказ на расхождение количества полей
@@ -681,6 +699,7 @@ TEST(CodecCsvReader, Comments) {
 	 *
 	 * @note Примечанием считается лишь строка, со знака этого начинающаяся: знак
 	 *       внутри записи - обыкновенное содержимое поля
+	 *
 	 */
 	ASSERT_EQ(::parse("a,#b\r\n", settings), "F[a]F[#b]R;");
 }
@@ -704,6 +723,7 @@ TEST(CodecCsvReader, Trim) {
 	 * Выполняем проверку сохранения обвязки внутри поля в кавычках
 	 *
 	 * @note Обвязка внутри кавычек значаща: кавычками её туда и поместили
+	 *
 	 */
 	ASSERT_EQ(::parse("\" a \",b\r\n", settings), "F[ a ]F[b]R;");
 	// Включаем снятие обвязки у всех полей
@@ -761,6 +781,7 @@ TEST(CodecCsvReader, Detect) {
 	 * @note Здесь запятых втрое больше, чем точек с запятой, и всякое определение по
 	 *       частоте знака выбрало бы запятую. Подсчёт же полей ведётся тем же прочтением
 	 *       кавычек, что и разбор: разделитель внутри поля в кавычках полем не разделяет
+	 *
 	 */
 	ASSERT_EQ(::parse("\"a,b,c\";x\r\n\"d,e,f\";y\r\n", settings), "F[a,b,c]F[x]R;F[d,e,f]F[y]R;");
 	/**
@@ -768,6 +789,7 @@ TEST(CodecCsvReader, Detect) {
 	 *
 	 * @note Разделителя такой текст не содержит вовсе, и отказывать ему незачем:
 	 *       отличить его от неразбираемого нельзя ни одним способом
+	 *
 	 */
 	ASSERT_EQ(::parse("a\r\nb\r\nc\r\n", settings), "F[a]R;F[b]R;F[c]R;");
 }
@@ -885,6 +907,7 @@ TEST(CodecCsvReader, Location) {
 	 * Выполняем проверку номера строки поля, следующего за многострочным
 	 *
 	 * @note Многострочное поле заняло две строки, и поле за ним стоит на третьей
+	 *
 	 */
 	ASSERT_EQ(locations.at(3).line, 3u);
 	// Выполняем проверку номера строки поля следующей записи
@@ -930,6 +953,7 @@ TEST(CodecCsvReader, Flags) {
 	 *
 	 * @note Признак служит тому, кто желает выдать поле обратно ровно таким, каким оно
 	 *       записано: снятие кавычек содержимое уже изменило
+	 *
 	 */
 	ASSERT_TRUE(modified.at(1));
 	// Выполняем проверку признака изменения содержимого поля с удвоенной кавычкой
@@ -981,6 +1005,7 @@ TEST(CodecCsvReader, ChunkIndependence) {
 	 *       это незакреплённым. Замер 02.09.2026 картой мутантов: потеря `_modified`,
 	 *       `_record` и `_line` на границе куска меняла наблюдаемую выдачу и не красила
 	 *       НИ ОДНОЙ проверки набора
+	 *
 	 */
 	const string standard = ::detailed(text, 0, settings);
 	/**
@@ -1026,6 +1051,7 @@ TEST(CodecCsvReader, RecordLimitCountsContentOnly) {
 	 *
 	 * @note Поле «"a\r\nb"» занимает шесть знаков вместе с кавычками: переводы строки
 	 *       внутри кавычек содержимое, и в длину записи они входят
+	 *
 	 */
 	settings.maxRecord = 6;
 	// Проверяем приём поля в кавычках с переводом строки внутри
@@ -1121,6 +1147,7 @@ TEST(CodecCsvReader, FieldLimitRefusesWhileParsing) {
 	 *
 	 * @note Место это от величины предела ЗАВИСИТ: сличение по завершении поля давало
 	 *       один и тот же конец поля при любом пределе
+	 *
 	 */
 	ASSERT_EQ(reader.location().offset, static_cast <uint64_t> (settings.maxField));
 }
@@ -1196,7 +1223,9 @@ TEST(CodecCsvReader, DetectionIndependentOfChunking) {
 		if(chunk == 0){
 			// Выполняем подачу текста целиком
 			reader.feed(text.data(), text.size(), true);
-			// Выполняем перебор всех событий разбора
+			/**
+			 * Выполняем перебор всех событий разбора
+			 */
 			while(reader.next());
 		/**
 		 * Если текст подаётся кусками
@@ -1208,7 +1237,9 @@ TEST(CodecCsvReader, DetectionIndependentOfChunking) {
 			 * Выполняем подачу текста кусками
 			 */
 			for(;;){
-				// Выполняем перебор всех событий разбора
+				/**
+				 * Выполняем перебор всех событий разбора
+				 */
 				while(reader.next());
 				// Если текст подан целиком, выходим из подачи
 				if(offset >= text.size()) break;
@@ -1233,6 +1264,52 @@ TEST(CodecCsvReader, DetectionIndependentOfChunking) {
 	for(const size_t chunk : {static_cast <size_t> (1), static_cast <size_t> (2), static_cast <size_t> (3), static_cast <size_t> (7), static_cast <size_t> (64)})
 		// Выполняем проверку того, что нарезка на куски разделителя не меняет
 		ASSERT_EQ(separator(chunk), whole) << "кусок " << chunk;
+}
+
+/**
+ * @brief Проверка отложения только записей, нужных определению разделителя
+ *
+ * @details Откладывается не весь поданный текст, а лишь записи до порога определения;
+ *          остаток куска разбирается сразу после выбора разделителя. Перевод строки
+ *          внутри поля в кавычках засчитывается записью, и потому граница отложения
+ *          вправе прийтись посреди поля: разбор обязан перенести через неё своё
+ *          состояние так же, как переносит через всякую нарезку
+ *
+ */
+TEST(CodecCsvReader, DetectionPrefixEndsInsideAQuotedField) {
+	// Настройки разбора текста с определением разделителя по содержимому
+	csv::reader_t::settings_t settings;
+	// Включаем определение разделителя по содержимому
+	settings.separator = '\0';
+	// Задаём количество записей, по каким ведётся определение
+	settings.detect = 3;
+	/**
+	 * Текст, у какого перевод строки внутри поля в кавычках попадает в первые записи
+	 *
+	 * @note Разделителем здесь служит точка с запятой: запятых в значениях больше, и
+	 *       выбор по частоте знака ответил бы неверно
+	 *
+	 */
+	const string text = "a;\"x\ny\";b\nc;d;e\nf;g;h\ni;j;k\n";
+	// Выдача разбора текста, поданного целиком
+	const string result = ::dump(text, 0, settings);
+	// Подробная выдача разбора текста, поданного целиком
+	const string standard = ::detailed(text, 0, settings);
+	/**
+	 * Выполняем проверку совпадения выдачи при подаче кусками разных размеров
+	 */
+	for(const size_t chunk : {static_cast <size_t> (1), static_cast <size_t> (2), static_cast <size_t> (3), static_cast <size_t> (7), static_cast <size_t> (64)}){
+		// Выполняем проверку совпадения содержимого полей
+		ASSERT_EQ(::dump(text, chunk, settings), result) << "кусок " << chunk;
+		// Выполняем проверку совпадения подробной выдачи
+		ASSERT_EQ(::detailed(text, chunk, settings), standard) << "кусок " << chunk;
+	}
+	// Чтение текста с определением разделителя
+	csv::reader_t reader(settings);
+	// Выполняем подачу текста целиком
+	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
+	// Выполняем проверку определённого разделителя
+	ASSERT_EQ(reader.separator(), ';');
 }
 
 /**
@@ -1275,6 +1352,7 @@ TEST(CodecCsvReader, SettingsMidParseKeepParsing) {
 	 *
 	 * @note Настройка взята намеренно безобидная: сброс уничтожал разобранное при
 	 *       ЛЮБОЙ смене, и доказывать надо именно это, а не отказ по новому пределу
+	 *
 	 */
 	settings.maxRecord = 4096;
 	// Выполняем установку настроек разбора посреди подачи
@@ -1290,6 +1368,7 @@ TEST(CodecCsvReader, SettingsMidParseKeepParsing) {
 	 *
 	 * @note Сбросом посреди подачи первая запись терялась, а остаток разбирался как
 	 *       новый текст - и поле «cc» выходило пустым, начинаясь с разделителя
+	 *
 	 */
 	ASSERT_EQ(fields, (vector <string> {"aa", "bb", "cc", "dd"}));
 }
@@ -1337,6 +1416,7 @@ TEST(CodecCsvReader, MalformedEncodingRefused) {
 		 *
 		 * @note Кодировка эта не поддерживается, но ОПОЗНАЁТСЯ нарочно: без опознания
 		 *       текст её разбирался бы как UTF-16 с пустыми знаками
+		 *
 		 */
 		{"метка UTF-32", {0xFF, 0xFE, 0x00, 0x00, 'a', 0, 0, 0}, csv::error_t::UNSUPPORTED_ENCODING}
 	};
@@ -1408,6 +1488,7 @@ TEST(CodecCsvReader, ForcedEncodingsParseAndRefuse) {
 	 *
 	 * @note Байт 0xE9 есть знак «é», и в UTF-8 он записывается двумя байтами: подача
 	 *       эта негодна для UTF-8 и годна для ISO-8859-1, чем и отличает одну от другой
+	 *
 	 */
 	{
 		// Прочитанные поля таблицы
@@ -1424,6 +1505,7 @@ TEST(CodecCsvReader, ForcedEncodingsParseAndRefuse) {
 	 *
 	 * @note Байт 0x80 у Windows-1252 есть знак евро, тогда как у ISO-8859-1 он
 	 *       управляющий: тем эти две кодировки и разнятся
+	 *
 	 */
 	{
 		// Прочитанные поля таблицы
@@ -1526,6 +1608,7 @@ TEST(CodecCsvReader, MissingRequestedHeaderRefused) {
 	 * @note Приговор обязан не зависеть от нарезки текста на куски: требование
 	 *       заголовка проверяется по концу текста, и решение это - как раз из тех,
 	 *       что нарезкой ломаются
+	 *
 	 */
 	for(const size_t step : {size_t(0), size_t(1), size_t(3)}){
 		// Выполняем проверку отказа пустому тексту
@@ -1699,6 +1782,7 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 	 *       последовательность, разорванная внутри этого окна, переноса через границу
 	 *       куска не задевает вовсе. Обнаружено покрытием: ветви переноса молчали, тогда
 	 *       как подачи по одному байту, казалось, обязаны были их пройти
+	 *
 	 */
 	const vector <Probe> probes = {
 		{"усечённая последовательность", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xD0}, csv::error_t::INVALID_ENCODING},
@@ -1716,6 +1800,7 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 		 *       одному байту недобранная последовательность удерживается, а следующий
 		 *       кусок её не довершает - и текст на нём кончается. Двухбайтовой
 		 *       последовательностью такого не достать: её обрыв приходит уже последним куском
+		 *
 		 */
 		{"обрыв трёхбайтовой последовательности", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xE0, 0xA0}, csv::error_t::INVALID_ENCODING},
 		// Четырёхбайтовая последовательность, оборванная за два байта до конца
@@ -1799,6 +1884,7 @@ TEST(CodecCsvReader, StrictRefusesLoneLineFeed) {
 	 *
 	 * @note Код здесь СВОЙ, а не общий `INVALID_CHARACTER`: нарушен не состав знаков, а
 	 *       грамматика конца записи, и потребителю разница эта видна кодом
+	 *
 	 */
 	ASSERT_EQ(reader.error(), csv::error_t::BARE_LINE_BREAK);
 	// Чтение текста таблицы знаками конца строки по договору
@@ -2221,6 +2307,7 @@ TEST(CodecCsvReader, FieldCountMismatchAtQuotedRecordEnd) {
  *       остаётся заявленным и стоит текста - отказом при ближайшей подаче, кодом
  *       `ENCODING_ALREADY_CHOSEN`. Так отвечают все три кодека, и разметка XML правлена тем
  *       же ходом; прежде отказом отвечал один лишь JSON
+ *
  */
 TEST(CodecCsvReader, ForcedEncodingDroppedWhenUnappliable){
 	// Объект чтения текста таблицы
@@ -2362,6 +2449,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
  * ОБРАТНОЕ - его виды живут лишь до следующей подачи
  *
  * @note Замер: виды, снятые после первого куска, пережили двести последующих подач
+ *
  */
 TEST(CodecCsvReader, HeaderViewsSurviveFeeding){
 	// Настройки чтения с объявленным заголовком
@@ -2374,7 +2462,9 @@ TEST(CodecCsvReader, HeaderViewsSurviveFeeding){
 	const string first = "имя,возраст\nАня,30\n";
 	// Выполняем подачу первого куска текста таблицы
 	reader.feed(first.data(), first.size(), false);
-	// Выполняем перебор всех событий разбора
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
 	while(reader.next()){}
 	// Снимаем имена столбцов заголовка
 	const vector <string_view> header = reader.header();
@@ -2390,7 +2480,9 @@ TEST(CodecCsvReader, HeaderViewsSurviveFeeding){
 		const string more = string(64, 'x') + "," + to_string(i) + "\n";
 		// Выполняем подачу очередного куска текста таблицы
 		reader.feed(more.data(), more.size(), (i == 199));
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 	}
 	// Выполняем проверку того, что удержанные виды подачу пережили
@@ -2410,6 +2502,7 @@ TEST(CodecCsvReader, HeaderViewsSurviveFeeding){
  *       освобождённой памяти, удержанное имя те же двести подач пережило
  *
  * @note Обесцененное значение здесь НЕ читается: чтение его есть неопределённое поведение
+ *
  */
 TEST(CodecCsvReader, FieldViewLifetimesDiffer){
 	// Настройки чтения с объявленным заголовком
@@ -2452,7 +2545,9 @@ TEST(CodecCsvReader, FieldViewLifetimesDiffer){
 		const string more = string(64, 'x') + "," + to_string(i) + "\n";
 		// Выполняем подачу очередного куска текста таблицы
 		reader.feed(more.data(), more.size(), (i == 199));
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 	}
 	// Выполняем проверку того, что копия значения подачу пережила
@@ -2473,6 +2568,7 @@ TEST(CodecCsvReader, FieldViewLifetimesDiffer){
  *
  * @note Разбор JSON на просьбу о кодировке отвечает ОТКАЗОМ подачи - поведение это
  *       между кодеками не переносится
+ *
  */
 TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 	/**
@@ -2487,7 +2583,9 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 		const string first = "a,b\n1,";
 		// Выполняем подачу первого куска текста таблицы
 		reader.feed(first.data(), first.size(), false);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем смену разделителя полей посреди текста
 		settings.separator = ';';
@@ -2527,7 +2625,9 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 		const string first = "a,b\n1,";
 		// Выполняем подачу первого куска текста таблицы
 		reader.feed(first.data(), first.size(), false);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем навязывание кодировки посреди текста
 		settings.encoding = csv::encoding_t::UTF16LE;
@@ -2539,6 +2639,7 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 		 * @note Правлено 08.09.2026: прежде указание снималось молча, и просьба, исполнить
 		 *       которую нельзя, пропадала бесследно. Ныне она стоит текста - отказом при
 		 *       ближайшей подаче
+		 *
 		 */
 		ASSERT_EQ(reader.settings().encoding, csv::encoding_t::UTF16LE);
 		// Остаток текста таблицы
@@ -2559,6 +2660,7 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
  *
  * @note Заводителей копии ни одно из девяти тел кодеков не объявляет: копия неявная, и
  *       верность её держится ТОЛЬКО на том, что виды хранятся указаниями
+ *
  */
 TEST(CodecCsvReader, CopyRebasesItsViews){
 	// Настройки чтения с объявленным заголовком
@@ -2571,7 +2673,9 @@ TEST(CodecCsvReader, CopyRebasesItsViews){
 	const string text = "имястолбца,второй\nАня,30\n";
 	// Выполняем подачу текста таблицы
 	source.feed(text.data(), text.size(), false);
-	// Выполняем перебор всех событий разбора
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
 	while(source.next()){}
 	// Выполняем проверку заголовка исходного чтения
 	ASSERT_EQ(source.header().size(), static_cast <size_t> (2));
@@ -2597,6 +2701,7 @@ TEST(CodecCsvReader, CopyRebasesItsViews){
 	 * @warning Куча ТОПЧЕТСЯ намеренно: вид, указывающий в память освобождённую, читается
 	 *          целым до первого же выделения поверх неё, и проверка без топтания приняла
 	 *          бы мёртвый вид за живой
+	 *
 	 */
 	{
 		// Снимаемая копия заголовка исходного чтения
@@ -2647,9 +2752,12 @@ TEST(CodecCsvReader, CopyRebasesItsViews){
 		 *       она выдала хоть что-нибудь: копия, выдающая события пустые либо чужие,
 		 *       прошла бы такую проверку целиком. Сличать надлежит обещанное, а не то,
 		 *       что удобнее достать
+		 *
 		 */
 		while(copy.next()){
-			// Определяем вид события разбора
+			/**
+			 * Определяем вид события разбора
+			 */
 			switch(static_cast <uint8_t> (copy.event())){
 				// Если событием является поле записи
 				case static_cast <uint8_t> (csv::event_t::FIELD):
@@ -2711,6 +2819,7 @@ TEST(CodecCsvReader, StrictRefusesBothLoneLineBreaks) {
 		 *
 		 * @note Проверяется отсутствие события конца записи: возврат каретки, парою не
 		 *       подтверждённый, записи не завершает, и выдавать её разбору нечем
+		 *
 		 */
 		ASSERT_EQ(result.find("R;"), string::npos) << result;
 	}
@@ -2739,6 +2848,7 @@ TEST(CodecCsvReader, StrictRefusesBothLoneLineBreaks) {
 	 *
 	 * @note Половина эта обязательна: отказ, поставленный без неё, отверг бы заодно и
 	 *       разбор нестрогий, ради которого послабления и заведены
+	 *
 	 */
 	{
 		// Настройки нестрогого разбора текста
@@ -2770,7 +2880,7 @@ TEST(CodecCsvReader, StrictRefusesBothLoneLineBreaks) {
  */
 TEST(CodecCsvReader, LimitsAreExactAndCountBytes) {
 	/**
-	 * @brief Метод проверки принятия текста при заданных настройках
+	 * @brief Функция проверки принятия текста при заданных настройках
 	 *
 	 * @param text     разбираемый текст таблицы
 	 * @param settings настройки разбора текста
@@ -2782,7 +2892,9 @@ TEST(CodecCsvReader, LimitsAreExactAndCountBytes) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим признак отсутствия отказа разбора
 		return (reader.error() == csv::error_t::NONE);
@@ -2832,7 +2944,7 @@ TEST(CodecCsvReader, LimitsAreExactAndCountBytes) {
 		// Выполняем указание предела числа полей записи
 		settings.maxFields = limit;
 		/**
-		 * @brief Метод сборки записи из заданного числа полей
+		 * @brief Функция сборки записи из заданного числа полей
 		 *
 		 * @param count число полей собираемой записи
 		 * @return      собранный текст записи
@@ -2841,7 +2953,9 @@ TEST(CodecCsvReader, LimitsAreExactAndCountBytes) {
 		const auto record = [](const uint32_t count) noexcept -> string {
 			// Собираемый текст записи
 			string result;
-			// Выполняем сборку записи из заданного числа полей
+			/**
+			 * Выполняем сборку записи из заданного числа полей
+			 */
 			for(uint32_t i = 0; i < count; i++){
 				// Выполняем добавление разделителя полей
 				if(i > 0) result.append(",");
@@ -2909,7 +3023,9 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста, разбор которого прекращается отказом
 		reader.feed("слишкомдлинное,а\r\n");
-		// Выполняем снятие всех событий, собранных до отказа
+		/**
+		 * Выполняем снятие всех событий, собранных до отказа
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку кода отказа разбора
 		ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
@@ -2917,7 +3033,9 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		reader.feed("б,в\r\n");
 		// Количество событий, выданных после отказа
 		size_t events = 0;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) events++;
 		// Выполняем проверку того, что событий после отказа не выдано
 		ASSERT_EQ(events, static_cast <size_t> (0));
@@ -2940,7 +3058,9 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		const string first = "аб,вг,деё,очень-длинное-поле\r\n";
 		// Выполняем подачу первого текста таблицы
 		reader.feed(first.data(), first.size(), true);
-		// Выполняем снятие всех событий, собранных до отказа
+		/**
+		 * Выполняем снятие всех событий, собранных до отказа
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку наступления первого отказа
 		ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
@@ -2952,7 +3072,9 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		const string second = "длинноеполе,а\r\n";
 		// Выполняем подачу второго текста таблицы
 		reader.feed(second.data(), second.size(), true);
-		// Выполняем снятие всех событий, собранных до отказа
+		/**
+		 * Выполняем снятие всех событий, собранных до отказа
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку наступления второго отказа
 		ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
@@ -2973,7 +3095,9 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу первого текста таблицы
 		reader.feed("альфа,бета\r\n1,2\r\n");
-		// Выполняем снятие всех событий разбора
+		/**
+		 * Выполняем снятие всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку сбора заголовка первого разбора
 		ASSERT_EQ(reader.header().size(), static_cast <size_t> (2));
@@ -2983,13 +3107,16 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		ASSERT_TRUE(reader.header().empty());
 		// Выполняем подачу второго текста таблицы со своим заголовком
 		reader.feed("гамма\r\n3\r\n");
-		// Выполняем снятие всех событий разбора
+		/**
+		 * Выполняем снятие всех событий разбора
+		 */
 		while(reader.next()) ;
 		/**
 		 * Выполняем проверку того, что заголовок собран заново, а не дополнен прежним
 		 *
 		 * @note Именно дополнение и было бы здесь бедою: заголовок из трёх столбцов
 		 *       вместо одного увёл бы обращение по имени в чужой столбец
+		 *
 		 */
 		ASSERT_EQ(reader.header().size(), static_cast <size_t> (1));
 		// Выполняем проверку имени столбца нового заголовка
@@ -3018,7 +3145,7 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
  */
 TEST(CodecCsvReader, SeparatorDetectionContract) {
 	/**
-	 * @brief Метод разбора текста с определением разделителя
+	 * @brief Функция разбора текста с определением разделителя
 	 *
 	 * @param text   разбираемый текст таблицы
 	 * @param detect количество записей, по которым определяется разделитель
@@ -3040,13 +3167,17 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 		reader.feed(text.data(), text.size(), true);
 		// Собранная выдача разбора
 		string result;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если событием является поле записи
 			if(reader.event() == csv::event_t::FIELD)
+				// Обрамляем значение поля угловыми скобками в собираемой выдаче
 				result.append("<").append(reader.field().value).append(">");
 			// Если событием является конец записи
 			else if(reader.event() == csv::event_t::RECORD)
+				// Помечаем конец записи вертикальной чертой
 				result.append("|");
 		}
 		/**
@@ -3076,6 +3207,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 	 *
 	 * @note Половина обязательная: перечень, признающий всякий знак, прошёл бы половину
 	 *       первую целиком, ничего не проверив
+	 *
 	 */
 	{
 		// Выполняем проверку непризнания двоеточия
@@ -3090,6 +3222,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 	 *
 	 * @note Запятых в тексте втрое больше настоящих разделителей, и выбор по частоте
 	 *       дал бы запятую, разорвав значения на части
+	 *
 	 */
 	ASSERT_EQ(detect("\"а,б,в\";\"г,д,е\"\r\n\"ж,з,и\";\"к,л,м\"\r\n", 4),
 	          "<а,б,в><г,д,е>|<ж,з,и><к,л,м>|");
@@ -3098,6 +3231,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 	 *
 	 * @note Текст без единого кандидата разбирается одним полем на запись: разделителя
 	 *       в нём нет, и отвергать нечего
+	 *
 	 */
 	ASSERT_EQ(detect("абв\r\nгде\r\n", 4), "<абв>|<где>|");
 	/**
@@ -3106,6 +3240,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 	 * @note Текст подобран так, что первая запись говорит за запятую, а вторая - за
 	 *       точку с запятой: просмотр одной записи и просмотр двух дают РАЗНЫЙ ответ,
 	 *       и потому смысл нуля этим текстом различим
+	 *
 	 */
 	{
 		// Выполняем проверку того, что ноль сводит просмотр к одной записи
@@ -3128,10 +3263,11 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 	 *          проверка говорит именно то, что нужно, - умолчание ведёт себя как
 	 *          широкий просмотр, а не как узкий, - и переживёт всякую правку самого
 	 *          уклада угадывания, покуда широкий и узкий просмотр расходятся
+	 *
 	 */
 	{
 		/**
-		 * @brief Метод разбора текста при умолчании ширины просмотра
+		 * @brief Функция разбора текста при умолчании ширины просмотра
 		 *
 		 * @param text разбираемый текст таблицы
 		 * @return     собранная выдача разбора
@@ -3150,13 +3286,17 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 			reader.feed(text.data(), text.size(), true);
 			// Собранная выдача разбора
 			string result;
-			// Выполняем перебор всех событий разбора
+			/**
+			 * Выполняем перебор всех событий разбора
+			 */
 			while(reader.next()){
 				// Если событием является поле записи
 				if(reader.event() == csv::event_t::FIELD)
+					// Обрамляем значение поля угловыми скобками собираемой выдачи
 					result.append("<").append(reader.field().value).append(">");
 				// Если событием является конец записи
 				else if(reader.event() == csv::event_t::RECORD)
+					// Помечаем конец записи вертикальной чертой
 					result.append("|");
 			}
 			// Выводим собранную выдачу разбора
@@ -3191,7 +3331,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
  */
 TEST(CodecCsvReader, ZeroMeansNoLimitForEveryLimit) {
 	/**
-	 * @brief Метод проверки принятия заведомо крупного текста при заданном пределе
+	 * @brief Функция проверки принятия заведомо крупного текста при заданном пределе
 	 *
 	 * @param settings настройки разбора текста
 	 * @param text     разбираемый текст таблицы
@@ -3203,7 +3343,9 @@ TEST(CodecCsvReader, ZeroMeansNoLimitForEveryLimit) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим признак отсутствия отказа разбора
 		return (reader.error() == csv::error_t::NONE);
@@ -3289,28 +3431,47 @@ TEST(CodecCsvReader, ZeroMeansNoLimitForEveryLimit) {
  *
  */
 TEST(CodecCsvReader, LimitsRaiseTheirOwnCodes) {
+	// Собиратель кода разбора: прогоняет текст и выдаёт код, которым читатель отозвался
 	const auto code = [](const string & text, const csv::reader_t::settings_t & settings) noexcept -> uint32_t {
+		// Читатель с настройками, чей код отказа проверяется
 		csv::reader_t reader(settings);
+		// Подаём текст целиком с признаком завершения подачи
 		reader.feed(text.data(), text.size(), true);
+		/**
+		 * Прочёсываем читатель до конца, чтобы увидеть код отказа
+		 */
 		while(reader.next()) ;
+		// Выдаём код отказа числом, пригодным для сличения
 		return static_cast <uint32_t> (reader.error());
 	};
 	{
+		// Настройки разбора для предела длины поля
 		csv::reader_t::settings_t s;
+		// Отключаем ожидание заголовка
 		s.header = csv::header_t::NONE;
+		// Задаём предел длины поля в восемь знаков
 		s.maxField = 8;
+		// Проверяем, что предел длины поля отвечает кодом FIELD_TOO_LONG
 		ASSERT_EQ(code(string(9, 'a') + "\r\n", s), static_cast <uint32_t> (csv::error_t::FIELD_TOO_LONG));
 	}
 	{
+		// Настройки разбора для предела длины записи
 		csv::reader_t::settings_t s;
+		// Отключаем ожидание заголовка
 		s.header = csv::header_t::NONE;
+		// Задаём предел длины записи в восемь знаков
 		s.maxRecord = 8;
+		// Проверяем, что предел длины записи отвечает кодом RECORD_TOO_LONG
 		ASSERT_EQ(code(string(9, 'a') + "\r\n", s), static_cast <uint32_t> (csv::error_t::RECORD_TOO_LONG));
 	}
 	{
+		// Настройки разбора для предела числа полей
 		csv::reader_t::settings_t s;
+		// Отключаем ожидание заголовка
 		s.header = csv::header_t::NONE;
+		// Задаём предел числа полей в два
 		s.maxFields = 2;
+		// Проверяем, что предел числа полей отвечает кодом TOO_MANY_FIELDS
 		ASSERT_EQ(code(string("а,б,в\r\n"), s), static_cast <uint32_t> (csv::error_t::TOO_MANY_FIELDS));
 	}
 }
@@ -3334,7 +3495,7 @@ TEST(CodecCsvReader, LimitsRaiseTheirOwnCodes) {
  */
 TEST(CodecCsvReader, ErrorLocationIsIndependentOfChunking) {
 	/**
-	 * @brief Метод разбора текста с выдачей места отказа
+	 * @brief Функция разбора текста с выдачей места отказа
 	 *
 	 * @param text разбираемый текст таблицы
 	 * @param step размер куска подачи, ноль - подача целиком
@@ -3358,17 +3519,23 @@ TEST(CodecCsvReader, ErrorLocationIsIndependentOfChunking) {
 			reader.feed(text.data(), text.size(), true);
 		// Если подача идёт кусками
 		else {
-			// Выполняем перебор всех кусков подаваемого текста
+			/**
+			 * Выполняем перебор всех кусков подаваемого текста
+			 */
 			for(size_t i = 0; i < text.size(); i += step){
 				// Размер подаваемого куска текста
 				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
 				// Выполняем подачу очередного куска текста
 				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
-				// Выполняем перебор всех событий разбора
+				/**
+				 * Выполняем перебор всех событий разбора
+				 */
 				while(reader.next()) ;
 			}
 		}
-		// Выполняем перебор всех оставшихся событий разбора
+		/**
+		 * Выполняем перебор всех оставшихся событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим место обнаружения отказа разбора
 		return reader.errorLocation();
@@ -3381,7 +3548,9 @@ TEST(CodecCsvReader, ErrorLocationIsIndependentOfChunking) {
 		const struct { const char * text; uint64_t offset; } probes[] = {
 			{"аб\rвг\r\n", 5}, {"ааааааааааа\r\n", 8}, {"\"аб\r\n", 7}
 		};
-		// Выполняем перебор всех проверяемых текстов
+		/**
+		 * Выполняем перебор всех проверяемых текстов
+		 */
 		for(const auto & probe : probes){
 			// Место отказа при подаче текста целиком
 			const csv::location_t whole = locate(probe.text, 0);
@@ -3432,7 +3601,7 @@ TEST(CodecCsvReader, ErrorLocationIsIndependentOfChunking) {
  */
 TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
 	/**
-	 * @brief Метод проверки работоспособности знака разделителем
+	 * @brief Функция проверки работоспособности знака разделителем
 	 *
 	 * @param separator проверяемый знак-разделитель полей
 	 * @return          признак того, что разбор таким разделителем работает
@@ -3452,13 +3621,16 @@ TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
 		 *
 		 * @note Поля пусты нарочно: всякое содержимое обрамляло бы разделитель знаками,
 		 *       годность которых проверка мерит же сама
+		 *
 		 */
 		const string text = string(1, separator) + "\r\n";
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Количество выданных полей таблицы
 		size_t fields = 0;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если получено событие поля таблицы
 			if(reader.event() == csv::event_t::FIELD)
@@ -3506,6 +3678,7 @@ TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
 			 * @note Расхождений среди печатных знаков US-ASCII нет ни одного, и утверждение
 			 *       это стоит здесь сторожем: обрамление, на проверке замкнутое, дало бы их
 			 *       именно тут
+			 *
 			 */
 			else FAIL() << "расхождение на печатном знаке 0x" << ::std::hex << code;
 		}
@@ -3524,7 +3697,9 @@ TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
 	{
 		// Знаки, разделителями работающие: четвёрка определения и прочие печатные
 		const char accepted[] = {',', ';', '\t', '|', ':', ' ', '#', '/'};
-		// Выполняем перебор всех работающих знаков
+		/**
+		 * Выполняем перебор всех работающих знаков
+		 */
 		for(const char letter : accepted){
 			// Выполняем проверку согласия посредника с разбором
 			EXPECT_TRUE(csv::suitable(letter, '"')) << "знак «" << letter << "»";
@@ -3557,7 +3732,7 @@ TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
  */
 TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 	/**
-	 * @brief Метод разбора текста с заданной кавычкой
+	 * @brief Функция разбора текста с заданной кавычкой
 	 *
 	 * @param quote  знак кавычек
 	 * @param text   разбираемый текст таблицы
@@ -3578,7 +3753,9 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если получено событие поля таблицы
 			if(reader.event() == csv::event_t::FIELD)
@@ -3610,7 +3787,9 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 		const string text = "а\"б\r\n";
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку отказа столкновением настроек
 		EXPECT_EQ(reader.error(), csv::error_t::SEPARATOR_CONFLICT);
@@ -3621,7 +3800,9 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 	 * Выполняем проверку принятия кавычки, знакам конца строки равной
 	 */
 	{
-		// Выполняем перебор знаков конца строки в роли кавычки
+		/**
+		 * Выполняем перебор знаков конца строки в роли кавычки
+		 */
 		for(const char quote : {'\r', '\n'}){
 			// Собранное описание разобранных полей
 			string result;
@@ -3632,6 +3813,7 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 			 *
 			 * @note Разбор здесь тот же, что и с кавычкой обычной: конец строки
 			 *       распознаётся прежде кавычки, и негодная кавычка просто не работает
+			 *
 			 */
 			EXPECT_EQ(result, "а|б|;в|г|;");
 			// Выполняем проверку того, что посредник такую кавычку принимает
@@ -3681,7 +3863,7 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
  */
 TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
 	/**
-	 * @brief Метод разбора текста при заданном положении признака заголовка
+	 * @brief Функция разбора текста при заданном положении признака заголовка
 	 *
 	 * @param text   разбираемый текст таблицы
 	 * @param header положение признака наличия заголовка
@@ -3700,7 +3882,9 @@ TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
 		reader.feed(text.data(), text.size(), true);
 		// Собранное описание разобранных событий
 		string result;
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){
 			// Если получено событие имени поля заголовка
 			if(reader.event() == csv::event_t::HEADER)
@@ -3725,6 +3909,7 @@ TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
 	 *
 	 * @note Все значения здесь строковые, и ничем, кроме признака, одно прочтение от
 	 *       другого не отличить: в этом и состоит довод решения
+	 *
 	 */
 	const string text = "имя,город\r\nПётр,Москва\r\n";
 	// Коды отказа при обоих прочтениях текста
@@ -3746,6 +3931,7 @@ TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
 	 *
 	 * @note Сличение это и есть закрепление довода: будь прочтения одинаковы, признак не
 	 *       нёс бы сведений, и угадывание было бы возможно
+	 *
 	 */
 	EXPECT_NE(headless, headed);
 }
@@ -3764,6 +3950,7 @@ TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
  * @warning Обе половины обязательны: поле ДЛИНОЮ РОВНО предела принимается, и лишь длиною
  *          на единицу больше отвергается. Проверка, подающая превышение с запасом, ослабления
  *          на единицу не замечает вовсе - ровно так дыра и держалась
+ *
  */
 TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 	/**
@@ -3802,7 +3989,9 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 				// Выполняем подачу очередного знака текста таблицы
 				reader.feed(text.data() + i, 1, ((i + 1) == text.size()));
 		}
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выводим код отказа разбора
 		return reader.error();
@@ -3812,6 +4001,7 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 	 *
 	 * @note Способы эти ведут к РАЗНЫМ местам сличения с пределом, и закреплять границу
 	 *       надлежит у обоих: одним куском поле выдаётся немедленно, по кускам - набирается
+	 *
 	 */
 	for(const bool whole : {true, false}){
 		// Выполняем проверку принятия поля длиною ровно предела
@@ -3832,6 +4022,7 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 		 * @note Половина существенная: при снятии обвязки предел сличается с содержимым
 		 *       УЖЕ ОБРЕЗАННЫМ, и место сличения там СВОЁ. Прежде оно границы не имело
 		 *       вовсе: ослабление предела на единицу именно в нём не красило ничего
+		 *
 		 */
 		{
 			// Выполняем проверку принятия обрезанного поля длиною ровно предела
@@ -3852,6 +4043,7 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 	 *
 	 * @note Замер 01.09.2026 печатью внутри самой ветви: за весь прогон она отвергала
 	 *       ровно один случай, и ослабление предела на единицу её не задевало вовсе
+	 *
 	 */
 	{
 		/**
@@ -3875,7 +4067,9 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 			reader.settings(settings);
 			// Выполняем завершение накопленного поля
 			reader.feed("\r\n", 2, true);
-			// Выполняем перебор всех событий разбора
+			/**
+			 * Выполняем перебор всех событий разбора
+			 */
 			while(reader.next()) ;
 			// Выводим код отказа разбора
 			return reader.error();
@@ -3937,6 +4131,7 @@ TEST(CodecCsvReader, RecordsAccumulatedBeforeRefusalAreDelivered) {
 	 * @note Три записи по два поля дают девять событий: начало записи и два поля на
 	 *       каждую. Число записано ЛИТЕРАЛОМ намеренно - выведи мы его из самого разбора,
 	 *       и проверка осталась бы зелёной при любом числе выданного
+	 *
 	 */
 	ASSERT_EQ(events, static_cast <size_t> (9));
 	/**
@@ -3946,6 +4141,7 @@ TEST(CodecCsvReader, RecordsAccumulatedBeforeRefusalAreDelivered) {
 	 *       спрашивается он у чтения, а не у состояния. Разметка держит и то и другое,
 	 *       и это расхождение договоров, а не изъян: у таблицы состояний разбора,
 	 *       наружу значимых, нет вовсе
+	 *
 	 */
 	ASSERT_EQ(reader.error(), csv::error_t::INVALID_ENCODING);
 }
@@ -4002,6 +4198,7 @@ TEST(CodecCsvReader, TrimmingKeepsOnlyTheSignificantPart) {
 				 * @note Считается ЧИСЛО собранных полей, а не пустота итога: первое поле
 				 *       бывает пустым, и по пустоте итога разделитель перед вторым полем
 				 *       пропадал бы - проверка сличала бы «б» вместо «|б»
+				 *
 				 */
 				if(count++ > 0) result.append("|");
 				// Добавляем содержимое поля к собираемому итогу
@@ -4019,6 +4216,7 @@ TEST(CodecCsvReader, TrimmingKeepsOnlyTheSignificantPart) {
 	 * Выполняем проверку снятия обвязки у одних лишь полей без кавычек
 	 *
 	 * @note Поле в кавычках обвязку сохраняет: кавычки объявляют содержимое дословным
+	 *
 	 */
 	ASSERT_EQ(parse("  а  ,\"  б  \"\r\n", csv::trim_t::UNQUOTED), "а|  б  ");
 	// Выполняем проверку того, что поле из одних пробелов обращается в пустое
@@ -4071,6 +4269,7 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
 	 * Выполняем проверку годности поля, значащая часть которого в предел уложилась
 	 *
 	 * @note Знаков в поле семь, а значащих три: сличается значащая часть
+	 *
 	 */
 	ASSERT_TRUE(parse("  abc  ,x\r\n", csv::trim_t::ALL, 3));
 	/**
@@ -4078,6 +4277,7 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
 	 *
 	 * @note Половина эта - сторож самого сличения: без неё годность выше объяснялась бы
 	 *       и вовсе выключенным пределом
+	 *
 	 */
 	ASSERT_FALSE(parse("  abc  ,x\r\n", csv::trim_t::NONE, 3));
 	// Выполняем проверку отказа полю, значащая часть которого предел превышает
@@ -4093,6 +4293,7 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
 	 *
 	 * @note Отказ обязан приходиться на знак, предел переполнивший: обвязка из двух
 	 *       пробелов знаком поля не считается, и третий значащий знак стоит шестым
+	 *
 	 */
 	{
 		// Настройки разбора текста
@@ -4146,20 +4347,25 @@ TEST(CodecCsvReader, StateFollowsTheSharedContract) {
 		csv::reader_t reader;
 		// Выполняем подачу куска исходного текста, последним не объявленного
 		ASSERT_TRUE(reader.feed("a,b\n1,2", 7, false));
-		// Выполняем выборку всех собранных событий разбора
+		/**
+		 * Выполняем выборку всех собранных событий разбора
+		 */
 		while(reader.next());
 		/**
 		 * Выполняем проверку голода по исчерпании событий незавершённого текста
 		 *
 		 * @note Голод здесь и есть ответ на вопрос «просить ли следующий кусок»,
 		 *       ради какого состояние заводится
+		 *
 		 */
 		ASSERT_EQ(reader.state(), csv::state_t::HUNGRY);
 		// Выполняем проверку отсутствия отказа при незавершённом тексте
 		ASSERT_EQ(reader.error(), csv::error_t::NONE);
 		// Выполняем подачу оставшегося куска исходного текста
 		ASSERT_TRUE(reader.feed("\n3,4\n", 5, true));
-		// Выполняем выборку всех собранных событий разбора
+		/**
+		 * Выполняем выборку всех собранных событий разбора
+		 */
 		while(reader.next());
 		// Выполняем проверку прихода разбора к концу текста
 		ASSERT_EQ(reader.state(), csv::state_t::FINISHED);
@@ -4169,6 +4375,7 @@ TEST(CodecCsvReader, StateFollowsTheSharedContract) {
 	 *
 	 * @note Половина эта закрепляет ЧЕСТНОСТЬ состояния до первого события: голод
 	 *       здесь был бы ложью, ведущей потребителя в бесконечный круг подачи
+	 *
 	 */
 	{
 		// Выполняем создание объекта потокового чтения таблицы
@@ -4208,7 +4415,9 @@ TEST(CodecCsvReader, StateAfterARefusalIsFailed) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста с одиночным переводом строки при строгом разборе
 		reader.feed("а,б\nв,г\n", 12, true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		/**
 		 * Выполняем проверку того, что разбор прекращён отказом
@@ -4217,6 +4426,7 @@ TEST(CodecCsvReader, StateAfterARefusalIsFailed) {
 		 *       вправду прекращён отказом», и то был сторож без предмета - не откажи разбор
 		 *       ни разу, половина эта не сработала бы вовсе, а проверка зеленела бы. Замерено
 		 *       08.09.2026: одиночный перевод строки при строгом разборе отказ даёт
+		 *
 		 */
 		ASSERT_NE(reader.error(), csv::error_t::NONE);
 		// Выполняем проверку того, что состояние объявлено отказом
@@ -4265,7 +4475,9 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста, предел длины поля превышающего, с парою в конце записи
 		reader.feed("аб\r\n", 6, true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем проверку того, что разбор прекращён отказом
 		ASSERT_NE(reader.error(), csv::error_t::NONE);
@@ -4278,6 +4490,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 	 * @note Пределов у записи два - длина поля и число полей, - и проверяются они РАЗНЫМИ
 	 *       местами: длина при добавлении знака, число при завершении поля. Оттого предел
 	 *       длины до завершения и не доходит, а предел числа берётся именно им
+	 *
 	 */
 	{
 		// Настройки чтения текста таблицы
@@ -4296,6 +4509,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		 * @note Первая редакция этой половины строгости не задавала, и предел срабатывал
 		 *       РАНЬШЕ нужного места - при завершении поля возвратом каретки. Замерено
 		 *       08.09.2026 картой: обе ветви оставались непокрытыми, хотя проверка зеленела
+		 *
 		 */
 		settings.strict = true;
 		// Объект чтения текста таблицы
@@ -4306,9 +4520,12 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		 * @note Длина подачи СЕМЬ октетов, а не шесть: буквы кириллицы занимают по два, и
 		 *       «а,б\r\n» есть 2 + 1 + 2 + 2. Первая редакция подала шесть, отрезав перевод
 		 *       строки, - и отказ пришёл иной, `BARE_LINE_BREAK` вместо предела числа полей
+		 *
 		 */
 		reader.feed("а,б\r\n", 7, true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем проверку того, что разбор прекращён отказом
 		ASSERT_NE(reader.error(), csv::error_t::NONE);
@@ -4321,6 +4538,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 	 * @note Завершение ЗАПИСИ отвергает по своему доводу - несовпадению числа полей с
 	 *       ожидаемым, - и довод этот проверяется отдельным местом от завершения ПОЛЯ.
 	 *       Оттого предел числа полей до него не доходит: он срабатывает раньше, у поля
+	 *
 	 */
 	{
 		// Настройки чтения текста таблицы
@@ -4337,9 +4555,12 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		 * @note Длина подачи ОДИННАДЦАТЬ октетов: «а,б\r\n» есть 2 + 1 + 2 + 2, «в\r\n» есть
 		 *       2 + 2. Буквы кириллицы занимают по два октета, и счёт их по одному даёт
 		 *       обрезанный текст, отвергаемый по иному доводу
+		 *
 		 */
 		reader.feed("а,б\r\nв\r\n", 11, true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем проверку того, что разбор прекращён отказом
 		ASSERT_NE(reader.error(), csv::error_t::NONE);
@@ -4358,7 +4579,9 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу текста, предела не превышающего, с парою в конце записи
 		ASSERT_TRUE(reader.feed("аб\r\n", 6, true)) << csv::message(reader.error());
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()){}
 		// Выполняем проверку отсутствия отказа разбора
 		ASSERT_EQ(reader.error(), csv::error_t::NONE);
@@ -4470,6 +4693,7 @@ TEST(CodecCsvReader, EveryRefusalIsReportedOnce) {
 	 * @note Отказы взяты те, какие выносит САМ разбор: отказ приведения кодировки
 	 *       сообщается своим слоем и своим сообщением, и записей об одном тексте выходит
 	 *       две законно - об отказе приведения и об отказе разбора, его принявшего
+	 *
 	 */
 	const char * probes[] = {
 		"\"a",
@@ -4490,7 +4714,9 @@ TEST(CodecCsvReader, EveryRefusalIsReportedOnce) {
 		csv::reader_t reader(settings);
 		// Выполняем подачу проверяемого текста целиком
 		reader.feed(text, ::strlen(text), true);
-		// Выполняем перебор всех событий разбора
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
 		while(reader.next()) ;
 		// Выполняем проверку того, что разбор текста отказал
 		ASSERT_NE(reader.error(), csv::error_t::NONE) << text;
