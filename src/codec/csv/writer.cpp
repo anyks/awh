@@ -641,7 +641,7 @@ bool awh::codec::csv::Writer::number(const T value) noexcept {
 		 *       «0.1» выходит как «0.1», а не как «0.10000000000000001»
 		 *
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+		const lexical::output_t <char> & output = lexical::toChars(
 			buffer, buffer + sizeof(buffer),
 			/**
 			 * Запись ведётся числом его собственного типа: кратчайшая запись

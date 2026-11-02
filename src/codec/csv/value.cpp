@@ -500,7 +500,7 @@ const awh::codec::csv::value_t & awh::codec::csv::Value::at(const string & path)
 			 *       же образцом, каким переведены извлечения числа у поля таблицы
 			 *
 			 */
-			const lexical_t::result_t <char> res = lexical_t::fromChars(item.data(), (item.data() + item.size()), index);
+			const lexical::result_t <char> & res = lexical::fromChars(item.data(), (item.data() + item.size()), index);
 			/**
 			 * Если номер разобрать не удалось либо запись разобрана не целиком
 			 *
@@ -664,7 +664,7 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 		// Разобранное целое число, выходной переменной ещё не отданное
 		int64_t integer = 0;
 		// Выполняем разбор записи целого числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), integer);
+		const lexical::result_t <char> & res = lexical::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), integer);
 		/**
 		 * Если запись разобрана целиком
 		 */
@@ -683,7 +683,7 @@ bool awh::codec::csv::Value::extract(T & result) const noexcept {
 	// Разобранное дробное число, выходной переменной ещё не отданное
 	double number = 0.;
 	// Выполняем разбор записи дробного числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
+	const lexical::result_t <char> & res = lexical::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 	/**
 	 * Если запись разобрана не целиком
 	 */
@@ -851,7 +851,7 @@ bool awh::codec::csv::Value::value(uint64_t & result) const noexcept {
 		// Разобранное число, выходной переменной ещё не отданное
 		uint64_t number = 0;
 		// Выполняем разбор записи беззнакового целого числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
+		const lexical::result_t <char> & res = lexical::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 		/**
 		 * Если запись разобрана не целиком
 		 */

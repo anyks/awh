@@ -101,7 +101,7 @@ namespace {
 		// Выполняем прогон разбора средствами модуля
 		const outcome_t module = measure(COMPARE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа средствами модуля
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -145,7 +145,7 @@ namespace {
 		// Выполняем прогон разбора средствами модуля
 		const outcome_t module = measure(COMPARE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа средствами модуля
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -189,7 +189,7 @@ namespace {
 		// Выполняем прогон разбора средствами модуля
 		const outcome_t module = measure(COMPARE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа средствами модуля
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла

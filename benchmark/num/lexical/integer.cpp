@@ -138,7 +138,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор десятичной записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -175,7 +175,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор десятичной записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -212,7 +212,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор десятичной записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -249,7 +249,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор шестнадцатеричной записи числа
-			awh::lexical_t::fromChars(first, last, value, 16);
+			awh::lexical::fromChars(first, last, value, 16);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -286,7 +286,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа по основанию 36
-			awh::lexical_t::fromChars(first, last, value, 36);
+			awh::lexical::fromChars(first, last, value, 36);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -323,7 +323,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор заведомо непомещающейся записи числа
-			const auto answer = awh::lexical_t::fromChars(first, last, value);
+			const auto answer = awh::lexical::fromChars(first, last, value);
 			// Накапливаем код отказа разбора
 			accumulator += static_cast <uint64_t> (answer.error);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -360,7 +360,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(ALLOCATION_ROUNDS, [&]() noexcept {
 			// Выполняем разбор десятичной записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += static_cast <uint64_t> (value);
 			// Запрещаем вынос измеряемого разбора за пределы цикла

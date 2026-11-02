@@ -60,13 +60,6 @@ class PortmapFixture : public testing::Test {
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::device_t> makeDevice() const noexcept;
-				/**
-		 * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
-		 *
-		 * @return сформированный объект кодека действий службы перенаправления UPnP
-		 *
-		 */
-		std::unique_ptr <awh::proto::portmap::upnp_t> makeUpnp() const noexcept;
 	protected:
 		/**
 		 * @brief Метод записи адреса записью IPv6, отведённой договором PCP

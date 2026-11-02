@@ -397,11 +397,11 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Хранилище записи дробного числа
-		char buffer[awh::lexical::maxRecordLength <double> ()];
+		char buffer[lexical::maxRecordLength <double> ()];
 		/**
 		 * Выполняем запись дробного числа кратчайшим обратимым представлением
 		 *
-		 * @warning Запись ведётся `lexical_t`, а НЕ ходом оснастки `noexp`: тот
+		 * @warning Запись ведётся `lexical`, а НЕ ходом оснастки `noexp`: тот
 		 *          формирует число ПО ЛОКАЛИ, и в том его назначение - вид числа для
 		 *          глаз читателя определённой страны. Запись же протокола локали не
 		 *          подвластна вовсе: десятичным знаком ей служит точка при всякой
@@ -413,7 +413,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 		 *       она делала ровно то, ради чего заведена, - а обращение к ней отсюда
 		 *
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), current);
+		const lexical::output_t <char> & output = lexical::toChars(buffer, (buffer + sizeof(buffer)), current);
 		/**
 		 * Если запись дробного числа выполнить не удалось
 		 *
@@ -1073,14 +1073,14 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 		/**
 		 * Выполняем разбор записи номера описания модулем разбора чисел
 		 *
-		 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stoull`: тот судит запись ПО
+		 * @warning Разбор ведётся `lexical`, а НЕ `std::stoull`: тот судит запись ПО
 		 *          ЛОКАЛИ, а номер описания пришёл из дерева отправителя и локали машины
 		 *          не подвластен вовсе. Заодно уходят исключения, каких договор писателя
 		 *          не знает: ход этот объявлен `noexcept`, и брошенное `std::stoull`
 		 *          валило бы программу целиком
 		 *
 		 */
-		const auto parsed = lexical_t::fromChars(text.data(), (text.data() + text.size()), current);
+		const auto & parsed = lexical::fromChars(text.data(), (text.data() + text.size()), current);
 		/**
 		 * Если разбор записи номера описания отказом завершился либо запись исчерпана не вся
 		 *

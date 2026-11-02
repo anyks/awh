@@ -139,7 +139,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(WRITE_ROUNDS, [&]() noexcept {
 			// Выполняем запись очередного числа выборки
-			const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+			const awh::lexical::output_t <char> output = awh::lexical::toChars(
 				buffer, buffer + sizeof(buffer), values[index]
 			);
 			// Накапливаем длину сформированной записи
@@ -179,7 +179,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(WRITE_ROUNDS, [&]() noexcept {
 			// Выполняем запись очередного числа выборки
-			const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+			const awh::lexical::output_t <char> output = awh::lexical::toChars(
 				buffer, buffer + sizeof(buffer), static_cast <float> (values[index])
 			);
 			// Накапливаем длину сформированной записи
@@ -217,7 +217,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(WRITE_ROUNDS, [&]() noexcept {
 			// Выполняем запись очередного числа
-			const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+			const awh::lexical::output_t <char> output = awh::lexical::toChars(
 				buffer, buffer + sizeof(buffer), value
 			);
 			// Накапливаем длину сформированной записи
@@ -268,7 +268,7 @@ namespace {
 			// Прочитанное обратно значение записанного числа
 			double back = 0.;
 			// Выполняем разбор записанного числа
-			const awh::lexical_t::result_t <char> res = awh::lexical_t::fromChars(
+			const awh::lexical::result_t <char> res = awh::lexical::fromChars(
 				buffer, buffer + static_cast <size_t> (length), back
 			);
 			// Если запись читается обратно тем же самым числом
@@ -358,7 +358,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(ALLOCATION_ROUNDS, [&]() noexcept {
 			// Выполняем запись очередного числа выборки
-			const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+			const awh::lexical::output_t <char> output = awh::lexical::toChars(
 				buffer, buffer + sizeof(buffer), values[index]
 			);
 			// Накапливаем длину сформированной записи

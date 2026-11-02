@@ -63,6 +63,11 @@ namespace awh {
 		 */
 		namespace {
 			/**
+			 * @brief Размер буфера временных данных размещаемого на стеке
+			 *
+			 */
+			constexpr size_t STACK_BUFFER_SIZE = 512;
+			/**
 			 * @brief Максимальное количество десятичных цифр точного преобразования
 			 *
 			 * @details При превышении указанного количества шагов преобразования модуль
@@ -71,11 +76,7 @@ namespace awh {
 			 *
 			 */
 			constexpr size_t MAX_DECIMAL_STEPS = 20000;
-			/**
-			 * @brief Размер буфера временных данных размещаемого на стеке
-			 *
-			 */
-			constexpr size_t STACK_BUFFER_SIZE = 512;
+
 			/**
 			 * @brief Класс временного буфера длинной арифметики
 			 *
@@ -144,8 +145,9 @@ namespace awh {
 						}
 					}
 			};
+
 			/**
-			 * @brief Метод извлечения значения разряда без проверки границ
+			 * @brief Функция извлечения значения разряда без проверки границ
 			 *
 			 * @details Внутренняя версия без проверки границ, пригодная для встраивания в циклы.
 			 *
@@ -154,19 +156,19 @@ namespace awh {
 			 * @return      значение указанного разряда
 			 *
 			 */
-			inline bool getBit(const uint8_t * value, const size_t index) noexcept {
+			__AWH_INLINE__ bool getBit(const uint8_t * value, const size_t index) noexcept {
 				// Выводим значение указанного разряда числа
 				return ((value[index / 8] & static_cast <uint8_t> (1 << (index % 8))) != 0);
 			}
 			/**
-			 * @brief Метод установки значения разряда без проверки границ
+			 * @brief Функция установки значения разряда без проверки границ
 			 *
 			 * @param value буфер числа для установки
 			 * @param index индекс устанавливаемого разряда
 			 * @param mode  устанавливаемое значение разряда
 			 *
 			 */
-			inline void setBit(uint8_t * value, const size_t index, const bool mode) noexcept {
+			__AWH_INLINE__ void setBit(uint8_t * value, const size_t index, const bool mode) noexcept {
 				// Если требуется установить разряд числа
 				if(mode)
 					// Выполняем установку разряда числа
@@ -174,6 +176,7 @@ namespace awh {
 				// Выполняем сброс разряда числа
 				else value[index / 8] &= static_cast <uint8_t> (~(1 << (index % 8)));
 			}
+
 			/**
 			 * @brief Класс буфера данных переменного размера
 			 *
@@ -346,7 +349,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Buffer() noexcept : _size(0), _data(nullptr) {}
+					explicit Buffer() noexcept : _size(0), _data(nullptr) {}
 					/**
 					 * @brief Конструктор
 					 *
@@ -363,7 +366,7 @@ namespace awh {
 					 * @param other буфер данных для копирования
 					 *
 					 */
-					Buffer(const Buffer & other) noexcept : _size(0), _data(nullptr) {
+					explicit Buffer(const Buffer & other) noexcept : _size(0), _data(nullptr) {
 						// Выполняем копирование содержимого буфера данных
 						this->copy(other);
 					}
@@ -373,7 +376,7 @@ namespace awh {
 					 * @param other буфер данных для перемещения
 					 *
 					 */
-					Buffer(Buffer && other) noexcept : _size(0), _data(nullptr) {
+					explicit Buffer(Buffer && other) noexcept : _size(0), _data(nullptr) {
 						/**
 						 * Если перемещаемый буфер размещён в динамической памяти
 						 */
@@ -440,14 +443,15 @@ namespace awh {
 						return (* this);
 					}
 			};
+
 			/**
-			 * @brief Метод чтения 32-битного слова из буфера числа
+			 * @brief Функция чтения 32-битного слова из буфера числа
 			 *
 			 * @param buffer буфер числа для чтения
 			 * @return       прочитанное значение слова
 			 *
 			 */
-			inline uint32_t load32(const uint8_t * buffer) noexcept {
+			static __AWH_INLINE__ uint32_t load32(const uint8_t * buffer) noexcept {
 				// Выводим прочитанное значение слова
 				return (
 					static_cast <uint32_t> (buffer[0]) |
@@ -457,13 +461,13 @@ namespace awh {
 				);
 			}
 			/**
-			 * @brief Метод записи 32-битного слова в буфер числа
+			 * @brief Функция записи 32-битного слова в буфер числа
 			 *
 			 * @param buffer буфер числа для записи
 			 * @param value  записываемое значение слова
 			 *
 			 */
-			inline void store32(uint8_t * buffer, const uint32_t value) noexcept {
+			static __AWH_INLINE__ void store32(uint8_t * buffer, const uint32_t value) noexcept {
 				// Записываем младший байт слова
 				buffer[0] = static_cast <uint8_t> (value & 0xFF);
 				// Записываем второй байт слова
@@ -473,6 +477,7 @@ namespace awh {
 				// Записываем старший байт слова
 				buffer[3] = static_cast <uint8_t> ((value >> 24) & 0xFF);
 			}
+
 			/**
 			 * @brief Количество разрядов буфера разрядов размещаемого на стеке
 			 *
@@ -481,7 +486,6 @@ namespace awh {
 			 *
 			 */
 			constexpr size_t STACK_LIMB_COUNT = 264;
-
 			/**
 			 * @brief Предельное количество разрядов для умножения без создания буферов
 			 *
@@ -560,13 +564,13 @@ namespace awh {
 					}
 			};
 			/**
-			 * @brief Метод извлечения количества ведущих нулевых бит разряда
+			 * @brief Функция извлечения количества ведущих нулевых бит разряда
 			 *
 			 * @param value значение разряда для подсчёта
 			 * @return      количество ведущих нулевых бит разряда
 			 *
 			 */
-			inline uint32_t leadingZeros(const uint32_t value) noexcept {
+			static constexpr uint32_t leadingZeros(const uint32_t value) noexcept {
 				// Если значение разряда является нулевым
 				if(value == 0)
 					// Выводим количество ведущих нулевых бит разряда
@@ -599,7 +603,7 @@ namespace awh {
 				#endif
 			}
 			/**
-			 * @brief Метод переноса буфера числа в буфер разрядов
+			 * @brief Функция переноса буфера числа в буфер разрядов
 			 *
 			 * @param limbs буфер разрядов приёмника
 			 * @param count количество разрядов буфера приёмника
@@ -607,7 +611,7 @@ namespace awh {
 			 * @param size  размер буфера числа источника в байтах
 			 *
 			 */
-			void loadLimbs(uint32_t * limbs, const size_t count, const uint8_t * value, const size_t size) noexcept {
+			static __AWH_INLINE__ void loadLimbs(uint32_t * limbs, const size_t count, const uint8_t * value, const size_t size) noexcept {
 				// Определяем количество полных разрядов числа
 				const size_t full = (size / 4);
 				// Индекс обрабатываемого разряда
@@ -643,7 +647,7 @@ namespace awh {
 					limbs[i] = 0;
 			}
 			/**
-			 * @brief Метод переноса буфера разрядов в буфер числа
+			 * @brief Функция переноса буфера разрядов в буфер числа
 			 *
 			 * @param value буфер числа приёмника
 			 * @param size  размер буфера числа приёмника в байтах
@@ -651,7 +655,7 @@ namespace awh {
 			 * @param count количество разрядов буфера источника
 			 *
 			 */
-			void storeLimbs(uint8_t * value, const size_t size, const uint32_t * limbs, const size_t count) noexcept {
+			static __AWH_INLINE__ void storeLimbs(uint8_t * value, const size_t size, const uint32_t * limbs, const size_t count) noexcept {
 				// Определяем количество полных разрядов числа
 				const size_t full = (size / 4);
 				// Индекс обрабатываемого разряда
@@ -673,7 +677,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод деления числа на небольшое целое значение
+			 * @brief Функция деления числа на небольшое целое значение
 			 *
 			 * @param value буфер числа для деления
 			 * @param size  размер буфера числа в байтах
@@ -681,7 +685,7 @@ namespace awh {
 			 * @return      остаток от деления
 			 *
 			 */
-			uint32_t divSmall(uint8_t * value, const size_t size, const uint32_t div) noexcept {
+			static __AWH_INLINE__ uint32_t divSmall(uint8_t * value, const size_t size, const uint32_t div) noexcept {
 				// Остаток от деления числа
 				uint64_t rem = 0;
 				// Определяем количество старших байтов, не образующих полного слова
@@ -720,7 +724,7 @@ namespace awh {
 				return static_cast <uint32_t> (rem);
 			}
 			/**
-			 * @brief Метод умножения числа на небольшое целое значение со сложением
+			 * @brief Функция умножения числа на небольшое целое значение со сложением
 			 *
 			 * @details Значение множителя не должно превышать 2^56: произведение множителя
 			 *          на 32-битный разряд числа складывается с переносом предыдущего шага,
@@ -734,7 +738,7 @@ namespace awh {
 			 * @param add   значение слагаемого
 			 *
 			 */
-			void mulAddSmall(uint8_t * value, const size_t size, const uint64_t mul, const uint64_t add) noexcept {
+			static __AWH_INLINE__ void mulAddSmall(uint8_t * value, const size_t size, const uint64_t mul, const uint64_t add) noexcept {
 				// Значение переноса разряда
 				uint64_t carry = add;
 				// Определяем количество слов числа
@@ -770,14 +774,14 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод округления десятичной строки цифр до количества значащих цифр
+			 * @brief Функция округления десятичной строки цифр до количества значащих цифр
 			 *
 			 * @param digits строка десятичных цифр от старшей к младшей
 			 * @param point  показатель степени десяти применяемый к строке цифр
 			 * @param count  требуемое количество значащих цифр
 			 *
 			 */
-			void decimalRound(string & digits, int64_t & point, const size_t count) noexcept {
+			static __AWH_INLINE__ void decimalRound(string & digits, int64_t & point, const size_t count) noexcept {
 				// Если округление не требуется
 				if((count == 0) || (digits.size() <= count))
 					// Выходим из функции
@@ -821,12 +825,12 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод удаления ведущих нулей десятичной строки цифр
+			 * @brief Функция удаления ведущих нулей десятичной строки цифр
 			 *
 			 * @param digits строка десятичных цифр от старшей к младшей
 			 *
 			 */
-			void decimalTrim(string & digits) noexcept {
+			static __AWH_INLINE__ void decimalTrim(string & digits) noexcept {
 				// Индекс первой значащей цифры
 				size_t offset = 0;
 				// Выполняем поиск первой значащей цифры
@@ -838,6 +842,7 @@ namespace awh {
 					// Выполняем удаление ведущих нулей
 					digits.erase(0, offset);
 			}
+
 			/**
 			 * @brief Структура параметров формата вещественного числа
 			 *
@@ -856,19 +861,20 @@ namespace awh {
 			 *
 			 */
 			struct realValue_t {
-				bool sign;                 // Знак вещественного числа
-				int64_t exp;               // Показатель степени двойки
-				class_t type;              // Класс значения вещественного числа
-				Buffer mantissa;           // Буфер мантиссы вещественного числа
+				bool sign;       // Знак вещественного числа
+				int64_t exp;     // Показатель степени двойки
+				class_t type;    // Класс значения вещественного числа
+				Buffer mantissa; // Буфер мантиссы вещественного числа
 			};
+
 			/**
-			 * @brief Метод извлечения параметров формата вещественного числа
+			 * @brief Функция извлечения параметров формата вещественного числа
 			 *
 			 * @param size размер буфера числа в байтах
 			 * @return     параметры формата вещественного числа
 			 *
 			 */
-			realParams_t realParams(const size_t size) noexcept {
+			static __AWH_INLINE__ realParams_t realParams(const size_t size) noexcept {
 				// Результат работы функции
 				realParams_t result;
 				// Определяем общую разрядность вещественного числа
@@ -885,13 +891,13 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * @brief Метод извлечения размера рабочего буфера мантиссы
+			 * @brief Функция извлечения размера рабочего буфера мантиссы
 			 *
 			 * @param size размер буфера числа в байтах
 			 * @return     размер рабочего буфера мантиссы в байтах
 			 *
 			 */
-			inline size_t realWorkSize(const size_t size) noexcept {
+			static constexpr size_t realWorkSize(const size_t size) noexcept {
 				// Выводим размер рабочего буфера мантиссы
 				return ((size * 3) + 16);
 			}
@@ -2406,7 +2412,7 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 			// Значение обрабатываемой группы десятичных цифр
 			uint32_t group = 0;
 			// Выполняем разбор группы десятичных цифр модулем разбора чисел
-			const lexical_t::result_t <char> result = lexical_t::fromChars(
+			const lexical::result_t <char> & result = lexical::fromChars(
 				text.data() + offset, text.data() + offset + length, group, 10
 			);
 			// Если разбор группы десятичных цифр не выполнен
@@ -2957,7 +2963,7 @@ namespace awh {
 					// Значение обрабатываемой группы десятичных цифр
 					uint32_t group = 0;
 					// Выполняем разбор группы десятичных цифр модулем разбора чисел
-					const lexical_t::result_t <char> result = lexical_t::fromChars(
+					const lexical::result_t <char> result = lexical::fromChars(
 						digits.data() + offset, digits.data() + offset + length, group, 10
 					);
 					// Если разбор группы десятичных цифр не выполнен
@@ -5106,7 +5112,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 			// Значение показателя степени десяти числа
 			int64_t power = 0;
 			// Выполняем разбор показателя степени десяти модулем разбора чисел
-			const lexical_t::result_t <char> result = lexical_t::fromChars(
+			const lexical::result_t <char> & result = lexical::fromChars(
 				text.data() + position, text.data() + text.size(), power, 10
 			);
 			// Если разбор показателя степени десяти выполнен
@@ -5172,7 +5178,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 		// Приближённое значение разбираемого числа
 		double approx = 0.0;
 		// Выполняем приближённый разбор числа модулем разбора чисел
-		lexical_t::fromChars(text.data(), text.data() + text.size(), approx);
+		lexical::fromChars(text.data(), text.data() + text.size(), approx);
 		// Выполняем установку приближённого значения числа
 		realSetReal(value, size, static_cast <long double> (approx));
 		// Выводим результат выполнения разбора

@@ -31,9 +31,12 @@
 #include <random>
 
 /**
- * Используем пространство имён модуля
+ * Подписываемся на пространство имён библиотеки
  */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён модуля разбора чисел
+ */
 using namespace awh::lexical;
 
 /**
@@ -48,7 +51,7 @@ static string compose(const double value, const format_t format = format_t::GENE
 	// Хранилище записи числа достаточного размера
 	char buffer[maxRecordLength <double> ()];
 	// Выполняем запись числа
-	const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value, format);
+	const lexical::output_t <char> result = lexical::toChars(buffer, buffer + sizeof(buffer), value, format);
 	// Если запись числа выполнить не удалось
 	if(!static_cast <bool> (result))
 		// Выводим пустую запись числа
@@ -68,7 +71,7 @@ static double restore(const string & text) noexcept {
 	// Разобранное значение числа
 	double result = 0.;
 	// Выполняем разбор записи числа
-	lexical_t::fromChars(text.data(), text.data() + text.size(), result);
+	lexical::fromChars(text.data(), text.data() + text.size(), result);
 	// Выводим разобранное значение числа
 	return result;
 }
@@ -159,7 +162,6 @@ TEST_F(LexicalFixture, WriteFloatRoundTripTest){
 		for(const format_t format : {format_t::GENERAL, format_t::FIXED, format_t::SCIENTIFIC}){
 			// Выполняем запись числа
 			const string text = compose(value, format);
-
 			// Проверяем что запись числа сформирована
 			ASSERT_FALSE(text.empty()) << "value = " << value;
 			// Проверяем что запись читается обратно тем же самым числом
@@ -196,7 +198,6 @@ TEST_F(LexicalFixture, WriteFloatShortestTest){
 		const string text = compose(value, format_t::SCIENTIFIC);
 		// Определяем положение буквы порядка записи
 		const size_t position = text.find('e');
-
 		// Проверяем что запись числа содержит букву порядка
 		ASSERT_NE(position, string::npos) << "text = " << text;
 		// Получаем запись мантиссы числа
@@ -246,14 +247,13 @@ TEST_F(LexicalFixture, WriteFloatSingleTest){
 			// Продолжаем перебор дальше
 			continue;
 		// Выполняем запись числа
-		const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
-
+		const lexical::output_t <char> result = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 		// Проверяем что запись числа выполнена
 		ASSERT_TRUE(static_cast <bool> (result)) << "value = " << value;
 		// Разобранное обратно значение числа
 		float back = 0.f;
 		// Выполняем разбор записи числа
-		lexical_t::fromChars(buffer, result.ptr, back);
+		lexical::fromChars(buffer, result.ptr, back);
 		// Проверяем что запись читается обратно тем же самым числом
 		ASSERT_EQ(back, value) << "text = " << string(buffer, static_cast <size_t> (result.ptr - buffer));
 	}
@@ -276,7 +276,7 @@ TEST_F(LexicalFixture, WriteIntegerTest){
 	 */
 	auto write = [&](const int64_t value, const int32_t base) noexcept -> string {
 		// Выполняем запись целого числа
-		const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value, base);
+		const lexical::output_t <char> result = lexical::toChars(buffer, buffer + sizeof(buffer), value, base);
 		// Если запись числа выполнить не удалось
 		if(!static_cast <bool> (result))
 			// Выводим пустую запись числа
@@ -284,7 +284,6 @@ TEST_F(LexicalFixture, WriteIntegerTest){
 		// Выводим сформированную запись числа
 		return string(buffer, static_cast <size_t> (result.ptr - buffer));
 	};
-
 	// Проверяем запись нулевого значения
 	ASSERT_EQ(write(0, 10), "0");
 	// Проверяем запись положительного значения
@@ -329,14 +328,13 @@ TEST_F(LexicalFixture, WriteIntegerRoundTripTest){
 		 */
 		for(const int32_t base : {2, 8, 10, 16, 36}){
 			// Выполняем запись целого числа
-			const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value, base);
-
+			const lexical::output_t <char> result = lexical::toChars(buffer, buffer + sizeof(buffer), value, base);
 			// Проверяем что запись числа выполнена
 			ASSERT_TRUE(static_cast <bool> (result)) << "value = " << value;
 			// Разобранное обратно значение числа
 			int64_t back = 0;
 			// Выполняем разбор записи числа
-			lexical_t::fromChars(buffer, result.ptr, back, base);
+			lexical::fromChars(buffer, result.ptr, back, base);
 			// Проверяем что запись читается обратно тем же самым числом
 			ASSERT_EQ(back, value) << "base = " << base;
 		}
@@ -370,8 +368,7 @@ TEST_F(LexicalFixture, WriteInsufficientBufferTest){
 			// Заполняем хранилище записи охранным значением
 			::memset(buffer, '#', sizeof(buffer));
 			// Выполняем запись числа в недостаточное место
-			const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + size, value);
-
+			const lexical::output_t <char> result = lexical::toChars(buffer, buffer + size, value);
 			// Проверяем что запись числа отвергнута
 			ASSERT_FALSE(static_cast <bool> (result)) << "value = " << value << ", size = " << size;
 			// Проверяем что причиной отказа указан недостаток места
@@ -384,8 +381,7 @@ TEST_F(LexicalFixture, WriteInsufficientBufferTest){
 				ASSERT_EQ(buffer[i], '#') << "value = " << value << ", size = " << size << ", index = " << i;
 		}
 		// Выполняем запись числа в достаточное место
-		const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + length, value);
-
+		const lexical::output_t <char> result = lexical::toChars(buffer, buffer + length, value);
 		// Проверяем что запись числа выполнена
 		ASSERT_TRUE(static_cast <bool> (result)) << "value = " << value;
 	}
@@ -413,14 +409,13 @@ TEST_F(LexicalFixture, WriteIntegerWidthsTest){
 		// Создаём тип записываемого целого числа
 		using type_t = decltype(value);
 		// Выполняем запись целого числа
-		const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
-
+		const lexical::output_t <char> result = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 		// Проверяем что запись числа выполнена
 		ASSERT_TRUE(static_cast <bool> (result));
 		// Разобранное обратно значение числа
 		type_t back = static_cast <type_t> (0);
 		// Выполняем разбор записи числа
-		lexical_t::fromChars(buffer, result.ptr, back);
+		lexical::fromChars(buffer, result.ptr, back);
 		// Проверяем что запись читается обратно тем же самым числом
 		ASSERT_EQ(back, value) << "text = " << string(buffer, static_cast <size_t> (result.ptr - buffer));
 	};

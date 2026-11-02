@@ -26,9 +26,12 @@
 #include "lexical.hpp"
 
 /**
- * Используем пространства имён
+ * Подписываемся на пространство имён библиотеки
  */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён модуля разбора чисел
+ */
 using namespace awh::lexical;
 
 /**
@@ -126,14 +129,12 @@ TEST_F(LexicalFixture, BitArithmeticTest){
 	ASSERT_EQ(leadingZeros(0x00000000FFFFFFFFULL), 32);
 	// Проверяем, что нулевое значение обрабатывается без неопределённого поведения
 	ASSERT_EQ(leadingZeros(0ULL), 64);
-
 	// Умножаем максимальные uint64_t
 	const value128_t square = multiply128(0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL);
 	// Проверяем младшие 64 бита произведения
 	ASSERT_EQ(square.low, 1ULL);
 	// Проверяем старшие 64 бита произведения
 	ASSERT_EQ(square.high, 0xFFFFFFFFFFFFFFFEULL);
-
 	// Умножаем малые значения 2 * 3
 	const value128_t simple = multiply128(2ULL, 3ULL);
 	// Проверяем младшие 64 бита
@@ -190,7 +191,6 @@ TEST_F(LexicalFixture, ExtendedMantissaTest){
 	ASSERT_GT(am.mantissa, 0u);
 	// Проверяем, что экспонента ненулевая
 	ASSERT_NE(am.power2, 0);
-
 	// Строим середину между 1.0 и следующим float
 	const mantissa_t halfway = toExtendedHalfway(1.0);
 	// Строим расширенное представление 1.0
@@ -199,7 +199,6 @@ TEST_F(LexicalFixture, ExtendedMantissaTest){
 	ASSERT_EQ(halfway.power2, oneExt.power2 - 1);
 	// Проверяем формулу мантиссы середины
 	ASSERT_EQ(halfway.mantissa, (oneExt.mantissa << 1) + 1);
-
 	// Вычисляем mantissa_t для целого 7 через computeFloat
 	const mantissa_t computed = computeFloat <binary_t <double>> (0, 7);
 	// Задаём переменную для сборки double
@@ -225,7 +224,6 @@ TEST_F(LexicalFixture, ComputeFloatTest){
 	ASSERT_EQ(zero.mantissa, 0u);
 	// Проверяем нулевую экспоненту
 	ASSERT_EQ(zero.power2, 0);
-
 	// Вычисляем представление единицы
 	const mantissa_t one = computeFloat <binary_t <double>> (0, 1);
 	// Значение для double
@@ -234,14 +232,12 @@ TEST_F(LexicalFixture, ComputeFloatTest){
 	toFloat(false, one, value);
 	// Проверяем побитовое равенство с 1.0
 	ASSERT_TRUE(sameBits(value, 1.0));
-
 	// Вычисляем значение с экспонентой выше максимума
 	const mantissa_t huge = computeFloat <binary_t <double>> (400, 1);
 	// Проверяем, что получена бесконечность
 	ASSERT_EQ(huge.power2, binary_t <double>::infinitePower());
 	// Проверяем нулевую мантиссу у infinity
 	ASSERT_EQ(huge.mantissa, 0u);
-
 	// Вычисляем значение с экспонентой ниже минимума
 	const mantissa_t tiny = computeFloat <binary_t <double>> (-400, 1);
 	// Проверяем антипереполнение в ноль
@@ -275,7 +271,6 @@ TEST_F(LexicalFixture, BigintBasicsTest){
 	ASSERT_LT(b.compare(a), 0);
 	// Проверяем, что a > b
 	ASSERT_GT(a.compare(b), 0);
-
 	// Берём старшие 64 бита нормализованного значения
 	bool truncated = false;
 	// Проверяем, что hi64 возвращает корректное значение
@@ -299,7 +294,6 @@ TEST_F(LexicalFixture, AsciiDigitHelpersTest){
 	ASSERT_FALSE(isDigit('/'));
 	// Проверяем, что ':' не цифра
 	ASSERT_FALSE(isDigit(':'));
-
 	// Разбираем восемь цифр подряд
 	const char digits[] = "12345678";
 	// Проверяем результат разбора восьми цифр
@@ -368,52 +362,47 @@ TEST_F(LexicalFixture, InfNanTest){
 	// Задаём значение для разбора
 	double d = 0;
 	// Разбираем "inf" в double
-	auto r = lexical_t::fromChars(&"inf"[0], &"inf"[3], d);
+	auto r = lexical::fromChars(&"inf"[0], &"inf"[3], d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем, что результат — бесконечность
 	ASSERT_TRUE(std::isinf(d));
 	// Проверяем положительный знак infinity
 	ASSERT_GT(d, 0);
-
 	// Разбираем "-Infinity"
-	r = lexical_t::fromChars(&"-Infinity"[0], &"-Infinity"[9], d);
+	r = lexical::fromChars(&"-Infinity"[0], &"-Infinity"[9], d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем, что результат — бесконечность
 	ASSERT_TRUE(std::isinf(d));
 	// Проверяем отрицательный знак infinity
 	ASSERT_LT(d, 0);
-
 	// Разбираем "nan"
-	r = lexical_t::fromChars(&"nan"[0], &"nan"[3], d);
+	r = lexical::fromChars(&"nan"[0], &"nan"[3], d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем, что результат — NaN
 	ASSERT_TRUE(std::isnan(d));
-
 	// Разбираем "nan(ind)" с опциональной последовательностью
-	r = lexical_t::fromChars(&"nan(ind)"[0], &"nan(ind)"[8], d);
+	r = lexical::fromChars(&"nan(ind)"[0], &"nan(ind)"[8], d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем, что результат — NaN
 	ASSERT_TRUE(std::isnan(d));
 	// Проверяем, что указатель указывает за закрывающую скобку
 	ASSERT_EQ(r.ptr, &"nan(ind)"[8]);
-
 	// Разбираем "inf" в JSON-формате (NO_INFNAN)
-	r = lexical_t::fromChars(&"inf"[0], &"inf"[3], d, format_t::JSON);
+	r = lexical::fromChars(&"inf"[0], &"inf"[3], d, format_t::JSON);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
 	ASSERT_EQ(r.ec, std::errc::invalid_argument);
-
 	// Значение для float
 	float f = 0;
 	// Задаём строку L"INF"
 	const wchar_t infW[] = L"INF";
 	// Разбираем "INF" в float через wchar_t
-	auto rf = lexical_t::fromChars(infW, infW + 3, f);
+	auto rf = lexical::fromChars(infW, infW + 3, f);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(rf);
 	// Проверяем, что результат — бесконечность
@@ -428,7 +417,7 @@ TEST_F(LexicalFixture, OverflowUnderflowTest){
 	// Задаём значение для переполнения
 	double d = 1;
 	// Разбираем число с огромной положительной экспонентой
-	auto r = lexical_t::fromChars(&"1e9999"[0], &"1e9999"[6], d);
+	auto r = lexical::fromChars(&"1e9999"[0], &"1e9999"[6], d);
 	// Проверяем, что разбор завершился с ошибкой диапазона
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки result_out_of_range
@@ -437,11 +426,10 @@ TEST_F(LexicalFixture, OverflowUnderflowTest){
 	ASSERT_TRUE(std::isinf(d));
 	// Проверяем положительный знак infinity
 	ASSERT_GT(d, 0);
-
 	// Задаём значение для антипереполнения
 	d = 1;
 	// Разбираем число с огромной отрицательной экспонентой
-	r = lexical_t::fromChars(&"1e-9999"[0], &"1e-9999"[7], d);
+	r = lexical::fromChars(&"1e-9999"[0], &"1e-9999"[7], d);
 	// Проверяем, что разбор завершился с ошибкой диапазона
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки result_out_of_range
@@ -460,20 +448,19 @@ TEST_F(LexicalFixture, PartialParsePtrTest){
 	// Значение для разбора
 	double d = 0;
 	// Разбираем строку "12.34xyz" в double
-	const auto r = lexical_t::fromChars(text, text + sizeof(text) - 1, d);
+	const auto r = lexical::fromChars(text, text + sizeof(text) - 1, d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение разобранного числа
 	ASSERT_TRUE(sameBits(d, 12.34));
 	// Проверяем, что ptr остановился сразу за числом
 	ASSERT_EQ(r.ptr, text + 5);
-
 	// Разбираем целое без хвоста
 	const char only[] = "42";
 	// Значение для разбора
 	int64_t i = 0;
 	// Разбираем строку "42" в int64_t
-	const auto ri = lexical_t::fromChars(only, only + 2, i);
+	const auto ri = lexical::fromChars(only, only + 2, i);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(ri);
 	// Проверяем значение
@@ -490,23 +477,21 @@ TEST_F(LexicalFixture, InvalidInputTest){
 	// Значение для разбора
 	double d = 123;
 	// Пытаемся разобрать пустую строку
-	auto r = lexical_t::fromChars(static_cast <const char *> (""), static_cast <const char *> (""), d);
+	auto r = lexical::fromChars(static_cast <const char *> (""), static_cast <const char *> (""), d);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
 	ASSERT_EQ(r.ec, std::errc::invalid_argument);
 	// Проверяем, что исходное значение не изменилось
 	ASSERT_EQ(d, 123);
-
 	// Пытаемся разобрать нечисловую строку
-	r = lexical_t::fromChars(&"abc"[0], &"abc"[3], d);
+	r = lexical::fromChars(&"abc"[0], &"abc"[3], d);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
 	ASSERT_EQ(r.ec, std::errc::invalid_argument);
-
 	// Пытаемся разобрать число с ведущим '+' без ALLOW_LEADING_PLUS
-	r = lexical_t::fromChars(&"+1"[0], &"+1"[2], d);
+	r = lexical::fromChars(&"+1"[0], &"+1"[2], d);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
@@ -523,16 +508,15 @@ TEST_F(LexicalFixture, OptionsLeadingPlusAndWhitespaceTest){
 	// Создаём опции с разрешением ведущего плюса
 	options_t <char> plusOpts(format_t::GENERAL | format_t::ALLOW_LEADING_PLUS);
 	// Разбираем строку "+12.5" с разрешённым ведущим плюсом
-	auto r = lexical_t::fromCharsAdvanced(&"+12.5"[0], &"+12.5"[5], d, plusOpts);
+	auto r = lexical::fromCharsAdvanced(&"+12.5"[0], &"+12.5"[5], d, plusOpts);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение
 	ASSERT_TRUE(sameBits(d, 12.5));
-
 	// Создаём опции с разрешением пропуска пробельных символов
 	options_t <char> spaceOpts(format_t::GENERAL | format_t::SKIP_WHITE_SPACE);
 	// Разбираем строку с пробелами и табуляцией перед числом
-	r = lexical_t::fromCharsAdvanced(&"  \t3.5"[0], &"  \t3.5"[6], d, spaceOpts);
+	r = lexical::fromCharsAdvanced(&"  \t3.5"[0], &"  \t3.5"[6], d, spaceOpts);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение
@@ -549,7 +533,7 @@ TEST_F(LexicalFixture, CustomDecimalPointTest){
 	// Создаём опции с запятой в качестве десятичного разделителя
 	options_t <char> opts(format_t::GENERAL, ',');
 	// Разбираем строку "3,14" с запятой
-	const auto r = lexical_t::fromCharsAdvanced(&"3,14"[0], &"3,14"[4], d, opts);
+	const auto r = lexical::fromCharsAdvanced(&"3,14"[0], &"3,14"[4], d, opts);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение
@@ -564,31 +548,31 @@ TEST_F(LexicalFixture, JsonFormatRulesTest){
 	// Значение для разбора
 	double d = 0;
 	// Проверяем запрет ведущих нулей в JSON
-	auto r = lexical_t::fromChars(&"01"[0], &"01"[2], d, format_t::JSON);
+	auto r = lexical::fromChars(&"01"[0], &"01"[2], d, format_t::JSON);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем допустимость одиночного нуля
-	r = lexical_t::fromChars(&"0"[0], &"0"[1], d, format_t::JSON);
+	r = lexical::fromChars(&"0"[0], &"0"[1], d, format_t::JSON);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение нуля
 	ASSERT_TRUE(sameBits(d, 0.0));
 	// Проверяем запрет точки без дробных цифр
-	r = lexical_t::fromChars(&"1."[0], &"1."[2], d, format_t::JSON);
+	r = lexical::fromChars(&"1."[0], &"1."[2], d, format_t::JSON);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем разбор нормального JSON-числа
-	r = lexical_t::fromChars(&"1.25e2"[0], &"1.25e2"[6], d, format_t::JSON);
+	r = lexical::fromChars(&"1.25e2"[0], &"1.25e2"[6], d, format_t::JSON);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 125.0
 	ASSERT_TRUE(sameBits(d, 125.0));
 	// Проверяем запрет Infinity в JSON
-	r = lexical_t::fromChars(&"Infinity"[0], &"Infinity"[8], d, format_t::JSON);
+	r = lexical::fromChars(&"Infinity"[0], &"Infinity"[8], d, format_t::JSON);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем допуск NaN в JSON_OR_INFNAN
-	r = lexical_t::fromChars(&"NaN"[0], &"NaN"[3], d, format_t::JSON_OR_INFNAN);
+	r = lexical::fromChars(&"NaN"[0], &"NaN"[3], d, format_t::JSON_OR_INFNAN);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем, что результат — NaN
@@ -605,25 +589,23 @@ TEST_F(LexicalFixture, FixedAndScientificOnlyTest){
 	// Задаём строку с фиксированным числом
 	const char fixedNum[] = "1.5";
 	// Разбираем строку "1.5" в режиме FIXED
-	auto r = lexical_t::fromChars(fixedNum, fixedNum + 3, d, format_t::FIXED);
+	auto r = lexical::fromChars(fixedNum, fixedNum + 3, d, format_t::FIXED);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение
 	ASSERT_TRUE(sameBits(d, 1.5));
-
 	// Без SCIENTIFIC экспонента не потребляется — разбирается только «1»
 	const char mixed[] = "1e2";
 	// Разбираем строку "1e2" в режиме FIXED
-	r = lexical_t::fromChars(mixed, mixed + 3, d, format_t::FIXED);
+	r = lexical::fromChars(mixed, mixed + 3, d, format_t::FIXED);
 	// Проверяем успешность частичного разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 1.0
 	ASSERT_TRUE(sameBits(d, 1.0));
 	// Проверяем остановку указателя перед 'e'
 	ASSERT_EQ(r.ptr, mixed + 1);
-
 	// Разбираем ту же строку в режиме SCIENTIFIC
-	r = lexical_t::fromChars(mixed, mixed + 3, d, format_t::SCIENTIFIC);
+	r = lexical::fromChars(mixed, mixed + 3, d, format_t::SCIENTIFIC);
 	// Проверяем успешность полного разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 100.0
@@ -661,58 +643,51 @@ TEST_F(LexicalFixture, IntegerBasesTest){
 	// Разбираем шестнадцатеричное ff
 	int64_t i = 0;
 	// Разбираем строку "ff" в шестнадцатеричной системе
-	auto r = lexical_t::fromChars(&"ff"[0], &"ff"[2], i, 16);
+	auto r = lexical::fromChars(&"ff"[0], &"ff"[2], i, 16);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 255
 	ASSERT_EQ(i, 255);
-
 	// Разбираем двоичное 1010
-	r = lexical_t::fromChars(&"1010"[0], &"1010"[4], i, 2);
+	r = lexical::fromChars(&"1010"[0], &"1010"[4], i, 2);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 10
 	ASSERT_EQ(i, 10);
-
 	// Разбираем отрицательное десятичное
-	r = lexical_t::fromChars(&"-42"[0], &"-42"[3], i, 10);
+	r = lexical::fromChars(&"-42"[0], &"-42"[3], i, 10);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение -42
 	ASSERT_EQ(i, -42);
-
 	// Разбираем цифру основания 36
-	r = lexical_t::fromChars(&"z"[0], &"z"[1], i, 36);
+	r = lexical::fromChars(&"z"[0], &"z"[1], i, 36);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение 35
 	ASSERT_EQ(i, 35);
-
 	// Разбираем UINT64_MAX
 	uint64_t u = 0;
 	// Разбираем строку "18446744073709551615" в десятичной системе
-	r = lexical_t::fromChars(&"18446744073709551615"[0], &"18446744073709551615"[20], u, 10);
+	r = lexical::fromChars(&"18446744073709551615"[0], &"18446744073709551615"[20], u, 10);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r);
 	// Проверяем значение UINT64_MAX
 	ASSERT_EQ(u, UINT64_MAX);
-
 	// Пытаемся разобрать недопустимую цифру для основания 16
-	r = lexical_t::fromChars(&"g"[0], &"g"[1], i, 16);
+	r = lexical::fromChars(&"g"[0], &"g"[1], i, 16);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
 	ASSERT_EQ(r.ec, std::errc::invalid_argument);
-
 	// Пытаемся разобрать с недопустимо малым основанием
-	r = lexical_t::fromChars(&"10"[0], &"10"[2], i, 1);
+	r = lexical::fromChars(&"10"[0], &"10"[2], i, 1);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
 	ASSERT_EQ(r.ec, std::errc::invalid_argument);
-
 	// Пытаемся разобрать с недопустимо большим основанием
-	r = lexical_t::fromChars(&"10"[0], &"10"[2], i, 37);
+	r = lexical::fromChars(&"10"[0], &"10"[2], i, 37);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(r);
 	// Проверяем код ошибки invalid_argument
@@ -754,14 +729,14 @@ TEST_F(LexicalFixture, IntegerOverflowDetectionTest){
 		// Результат разбора числовой строки
 		uint64_t value = 0;
 		// Выполняем разбор переполняющего значения
-		const auto result = lexical_t::fromChars(sample.text, sample.text + std::strlen(sample.text), value, sample.base);
+		const auto result = lexical::fromChars(sample.text, sample.text + std::strlen(sample.text), value, sample.base);
 		// Проверяем обнаружение выхода значения за пределы диапазона
 		ASSERT_EQ(result.ec, std::errc::result_out_of_range) << sample.text;
 	}
 	// Результат разбора наибольшего представимого значения
 	uint64_t value = 0;
 	// Выполняем разбор наибольшего представимого значения
-	const auto result = lexical_t::fromChars(&"18446744073709551615"[0], &"18446744073709551615"[20], value);
+	const auto result = lexical::fromChars(&"18446744073709551615"[0], &"18446744073709551615"[20], value);
 	// Проверяем успешность разбора наибольшего представимого значения
 	ASSERT_TRUE(result);
 	// Проверяем корректность разобранного значения
@@ -799,27 +774,25 @@ TEST_F(LexicalFixture, WideCharTypesTest){
 	// Значение 2.5e1 в wchar_t
 	const wchar_t w[] = L"2.5e1";
 	// Выполняем разбор в double
-	const auto rw = lexical_t::fromChars(w, w + 5, d);
+	const auto rw = lexical::fromChars(w, w + 5, d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(rw);
 	// Проверяем значение 25.0
 	ASSERT_TRUE(sameBits(d, 25.0));
-
 	// Разбираем число из char16_t
 	const char16_t u16[] = u"0.125";
 	// Выполняем разбор в double
-	const auto r16 = lexical_t::fromChars(u16, u16 + 5, d);
+	const auto r16 = lexical::fromChars(u16, u16 + 5, d);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r16);
 	// Проверяем значение 0.125
 	ASSERT_TRUE(sameBits(d, 0.125));
-
 	// Разбираем целое из char32_t
 	const char32_t u32[] = U"-8";
 	// Значение для разбора в int32_t
 	int32_t i = 0;
 	// Выполняем разбор в int32_t
-	const auto r32 = lexical_t::fromChars(u32, u32 + 2, i, 10);
+	const auto r32 = lexical::fromChars(u32, u32 + 2, i, 10);
 	// Проверяем успешность разбора
 	ASSERT_TRUE(r32);
 	// Проверяем значение -8
@@ -831,6 +804,7 @@ TEST_F(LexicalFixture, WideCharTypesTest){
  *
  */
 TEST_F(LexicalFixture, ParseNumberStringErrorsTest){
+	// Опции разбора чисел в записи JSON
 	options_t <char> opts(format_t::JSON);
 	// В JSON '+' не считается допустимым знаком — ошибка «нет цифр»
 	auto pns = parseNumberString <true> (&"+"[0], &"+"[1], opts);
@@ -838,35 +812,30 @@ TEST_F(LexicalFixture, ParseNumberStringErrorsTest){
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки NO_DIGITS_IN_INTEGER_PART
 	ASSERT_EQ(pns.error, awh::lexical::error_t::NO_DIGITS_IN_INTEGER_PART);
-
 	// После '-' обязательна цифра (не точка)
 	pns = parseNumberString <true> (&"-."[0], &"-."[2], opts);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки MISSING_INTEGER_AFTER_SIGN
 	ASSERT_EQ(pns.error, awh::lexical::error_t::MISSING_INTEGER_AFTER_SIGN);
-
 	// Проверяем запрет ведущих нулей
 	pns = parseNumberString <true> (&"01"[0], &"01"[2], opts);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки LEADING_ZEROS_IN_INTEGER_PART
 	ASSERT_EQ(pns.error, awh::lexical::error_t::LEADING_ZEROS_IN_INTEGER_PART);
-
 	// Проверяем запрет числа без целой части
 	pns = parseNumberString <true> (&".1"[0], &".1"[2], opts);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки NO_DIGITS_IN_INTEGER_PART
 	ASSERT_EQ(pns.error, awh::lexical::error_t::NO_DIGITS_IN_INTEGER_PART);
-
 	// Проверяем запрет точки без дробных цифр
 	pns = parseNumberString <true> (&"1."[0], &"1."[2], opts);
 	// Проверяем отказ разбора
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки NO_DIGITS_IN_FRACTIONAL_PART
 	ASSERT_EQ(pns.error, awh::lexical::error_t::NO_DIGITS_IN_FRACTIONAL_PART);
-
 	// В JSON (FIXED|SCIENTIFIC) незавершённый «e» игнорируется — валидно число «1»
 	pns = parseNumberString <true> (&"1e"[0], &"1e"[2], opts);
 	// Проверяем успешность разбора
@@ -875,7 +844,6 @@ TEST_F(LexicalFixture, ParseNumberStringErrorsTest){
 	ASSERT_EQ(pns.mantissa, 1ull);
 	// Проверяем остановку указателя перед 'e'
 	ASSERT_EQ(pns.lastmatch, &"1e"[1]);
-
 	// SCIENTIFIC без FIXED требует экспоненту
 	options_t <char> sciOnly(format_t::SCIENTIFIC);
 	// Проверяем отказ разбора числа без экспоненты
@@ -884,7 +852,6 @@ TEST_F(LexicalFixture, ParseNumberStringErrorsTest){
 	ASSERT_FALSE(pns.valid);
 	// Проверяем код ошибки MISSING_EXPONENTIAL_PART
 	ASSERT_EQ(pns.error, awh::lexical::error_t::MISSING_EXPONENTIAL_PART);
-
 	// Проверяем успешный разбор в общем режиме
 	pns = parseNumberString <false> (&"1.25e3"[0], &"1.25e3"[6], options_t <char> (format_t::GENERAL));
 	// Проверяем успешность разбора

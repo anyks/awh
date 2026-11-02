@@ -1029,7 +1029,7 @@ bool codec::json::Writer::value(const int64_t value) noexcept {
 	// Хранилище записи целого числа
 	char buffer[32];
 	// Выполняем запись целого числа
-	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись целого числа выполнить не удалось
 	 *
@@ -1061,7 +1061,7 @@ bool codec::json::Writer::value(const uint64_t value) noexcept {
 	// Хранилище записи беззнакового целого числа
 	char buffer[32];
 	// Выполняем запись беззнакового целого числа
-	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись целого числа выполнить не удалось
 	 *
@@ -1152,7 +1152,7 @@ bool codec::json::Writer::value(const double value) noexcept {
 	 *          числа обходится одним проходом вместо семнадцати записей и семнадцати разборов.
 	 *
 	 */
-	lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	lexical::output_t <char> output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись числа с плавающей запятой выполнить не удалось
 	 *
@@ -1247,7 +1247,7 @@ bool codec::json::Writer::value(const double value) noexcept {
 		 */
 		if(digits && (exponent >= 0) && (exponent < static_cast <int32_t> (numeric_limits <double>::max_digits10))){
 			// Выполняем запись числа без порядка
-			output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value, lexical::format_t::FIXED);
+			output = lexical::toChars(buffer, buffer + sizeof(buffer), value, lexical::format_t::FIXED);
 			/**
 			 * Если запись числа без порядка выполнена
 			 *

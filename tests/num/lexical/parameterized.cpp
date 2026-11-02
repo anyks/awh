@@ -26,9 +26,12 @@
 #include "lexical.hpp"
 
 /**
- * Используем пространства имён
+ * Подписываемся на пространство имён библиотеки
  */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён модуля разбора чисел
+ */
 using namespace awh::lexical;
 
 /**
@@ -36,6 +39,7 @@ using namespace awh::lexical;
  *
  */
 struct DoubleParseParameter {
+	// Исходная запись разбираемого числа
 	const char * text = nullptr;
 };
 
@@ -110,6 +114,7 @@ INSTANTIATE_TEST_SUITE_P(DoubleParseCases, DoubleParseParameterizedFixture,
  *
  */
 struct FloatParseParameter {
+	// Исходная запись разбираемого числа
 	const char * text = nullptr;
 };
 
@@ -156,9 +161,13 @@ INSTANTIATE_TEST_SUITE_P(FloatParseCases, LexicalParseParameterizedFixture,
  *
  */
 struct IntegerParseParameter {
+	// Признак успешности разбора
 	bool ok = true;
+	// Основание системы счисления
 	int32_t base = 10;
+	// Ожидаемое значение разбора
 	int64_t expected = 0;
+	// Исходная запись разбираемого числа
 	const char * text = nullptr;
 };
 
@@ -178,7 +187,7 @@ TEST_P(IntegerParseParameterizedFixture, ParseIntegerTest){
 	// Получаем параметры
 	const auto & p = GetParam();
 	// Выполняем разбор
-	const auto answer = lexical_t::fromChars(p.text, p.text + std::strlen(p.text), value, p.base);
+	const auto answer = lexical::fromChars(p.text, p.text + std::strlen(p.text), value, p.base);
 	// Если ожидаемое значение корректно, проверяем совпадение
 	if(p.ok){
 		// Проверяем результат
@@ -225,9 +234,13 @@ INSTANTIATE_TEST_SUITE_P(IntegerParseCases, IntegerParseParameterizedFixture,
  *
  */
 struct Pow10Parameter {
+	// Значение мантиссы
 	uint64_t mantissa = 0;
+	// Показатель степени десяти
 	int exponent = 0;
+	// Ожидаемый результат умножения
 	double expected = 0;
+	// Признак переполнения в бесконечность
 	bool infinite = false;
 };
 

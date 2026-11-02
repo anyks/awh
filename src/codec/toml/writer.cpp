@@ -2627,7 +2627,7 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 *       ведётся по правилам местности «C» и от настроек приложения не зависит
 	 *
 	 */
-	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 	// Определяем длину записи числа с плавающей точкой
 	length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 	/**

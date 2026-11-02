@@ -103,7 +103,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа по строгим правилам RFC 8259
-			awh::lexical_t::fromChars(first, last, value, awh::lexical::format_t::JSON);
+			awh::lexical::fromChars(first, last, value, awh::lexical::format_t::JSON);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -140,7 +140,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи специального значения
-			const auto answer = awh::lexical_t::fromChars(first, last, value);
+			const auto answer = awh::lexical::fromChars(first, last, value);
 			// Накапливаем признак успешности разбора
 			accumulator += static_cast <uint64_t> (static_cast <bool> (answer));
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -177,7 +177,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа в двухбайтовой кодировке
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -210,7 +210,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем сборку числа из мантиссы и показателя степени
-			accumulator += awh::lexical_t::integerTimesPow10 <double> (mantissa, exponent);
+			accumulator += awh::lexical::integerTimesPow10 <double> (mantissa, exponent);
 			// Запрещаем вынос измеряемого разбора за пределы цикла
 			barrier(&accumulator);
 		});

@@ -681,7 +681,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 			/**
 			 * Обратно прочитанное значение очередного поля блока данных
 			 *
-			 * @warning Читается оно `lexical_t`, а НЕ `strtod`: тот сам локали
+			 * @warning Читается оно `lexical`, а НЕ `strtod`: тот сам локали
 			 *          подвластен и под немецкой читает «0.1» нулём, обращая проверку
 			 *          глухоты в проверку того же самого разряда локали с другой
 			 *          стороны. Установлено 08.09.2026: проверка падала на своей же
@@ -690,7 +690,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 			 */
 			double parsed = 0.;
 			// Выполняем обратное чтение записанного значения без оглядки на локаль
-			awh::lexical_t::fromChars(written.c_str(), written.c_str() + written.size(), parsed);
+			awh::lexical::fromChars(written.c_str(), written.c_str() + written.size(), parsed);
 			// Выполняем проверку того, что записанное значение читается тем же числом
 			EXPECT_DOUBLE_EQ(parsed, expected.second) << name << ": " << written;
 		}

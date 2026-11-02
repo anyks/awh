@@ -3215,9 +3215,9 @@ awh::codec::yaml::Value::Value(const double value) noexcept : value_t() {
 		 *       рамки, выдавая `0.1` как `0.10000000000000001`
 		 *
 		 */
-		const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+		const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 		// Определяем длину собранной записи дробного числа
-		const int length = (static_cast <bool> (output) ? static_cast <int> (output.ptr - buffer) : 0);
+		const int length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 		/**
 		 * Если собрать запись дробного числа удалось
 		 */

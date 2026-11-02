@@ -363,7 +363,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		/**
 		 * Выполняем запись дробного числа кратчайшим обратимым представлением
 		 *
-		 * @warning Запись ведётся `lexical_t`, а НЕ ходом оснастки `noexp`: тот
+		 * @warning Запись ведётся `lexical`, а НЕ ходом оснастки `noexp`: тот
 		 *          формирует число ПО ЛОКАЛИ, и в том его назначение - вид числа для
 		 *          глаз читателя определённой страны. Запись же протокола локали не
 		 *          подвластна вовсе: десятичным знаком ей служит точка при всякой
@@ -375,7 +375,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		 *       она делала ровно то, ради чего заведена, - а обращение к ней отсюда
 		 *
 		 */
-		const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), current);
+		const lexical::output_t <char> & output = lexical::toChars(buffer, (buffer + sizeof(buffer)), current);
 		/**
 		 * Если запись дробного числа выполнить не удалось
 		 *

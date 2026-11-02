@@ -636,7 +636,7 @@ bool awh::codec::ini::integer(const string_view text, int64_t & result) noexcept
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем разбор целого числа со знаком
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical::result_t <char> & res = lexical::fromChars(value.data(), value.data() + value.length(), result);
 	/**
 	 * Выводим признак успешного разбора, если число разобрано целиком
 	 *
@@ -674,7 +674,7 @@ bool awh::codec::ini::integer(const string_view text, uint64_t & result) noexcep
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем разбор целого числа без знака
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical::result_t <char> & res = lexical::fromChars(value.data(), value.data() + value.length(), result);
 	// Выводим признак успешного разбора, если число разобрано целиком
 	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
 }
@@ -696,7 +696,7 @@ bool awh::codec::ini::real(const string_view text, double & result) noexcept {
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем разбор числа с плавающей точкой
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical::result_t <char> & res = lexical::fromChars(value.data(), value.data() + value.length(), result);
 	/**
 	 * Если число за предел вида вышло
 	 *

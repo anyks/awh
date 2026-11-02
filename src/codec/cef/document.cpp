@@ -277,7 +277,7 @@ namespace {
 	 */
 	static __AWH_INLINE__ bool numberOf(const string & value, T & result) noexcept {
 		// Выполняем разбор записи числа модулем разбора чисел
-		const auto parsed = lexical_t::fromChars(value.data(), (value.data() + value.size()), result);
+		const auto & parsed = lexical::fromChars(value.data(), (value.data() + value.size()), result);
 		// Если разбор записи числа отказом завершился
 		if(!static_cast <bool> (parsed))
 			// Выводим отрицательный признак разбора записи
@@ -585,7 +585,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			/**
 			 * Выполняем разбор записи целого числа модулем разбора чисел
 			 *
-			 * @warning Разбор ведётся `lexical_t`, а НЕ средствами рамки языка:
+			 * @warning Разбор ведётся `lexical`, а НЕ средствами рамки языка:
 			 *          `std::stoll` судит запись ПО ЛОКАЛИ, а протокольные данные
 			 *          локали не подвластны вовсе - запись эта пришла от отправителя, а
 			 *          не от машины, на какой кодек исполняется. Заодно уходят
@@ -621,11 +621,11 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *       поверяет запись лучше и без второго мнения
 			 *
 			 */
-			double number = 0.;
+			double number = .0;
 			/**
 			 * Выполняем разбор записи дробного числа модулем разбора чисел
 			 *
-			 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stod`: тот судит запись по
+			 * @warning Разбор ведётся `lexical`, а НЕ `std::stod`: тот судит запись по
 			 *          локали и под немецкой читает «1.5» единицею, обрывая разбор на
 			 *          точке. Запись пришла от отправителя, и локаль машины к ней
 			 *          отношения не имеет
@@ -694,7 +694,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 				/**
 				 * Выполняем разбор записи штампа времени модулем разбора чисел
 				 *
-				 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stoull`: тот судит
+				 * @warning Разбор ведётся `lexical`, а НЕ `std::stoull`: тот судит
 				 *          запись по локали и бросает исключения, каких договор кодека
 				 *          не знает
 				 *

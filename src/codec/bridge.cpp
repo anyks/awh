@@ -516,11 +516,12 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 		 *       нечего, и пустое значение там и есть ответ
 		 *
 		 */
-		case static_cast <uint8_t> (narrow_t::SKIP):
+		case static_cast <uint8_t> (narrow_t::SKIP): {
 			// Запоминаем признак пропуска значения правилом сужения
 			this->_skipped = true;
 			// Выводим пустое значение записью JSON
 			return writer.null();
+		}
 		// Если вид, кодеку неведомый, следует обратить в знаки
 		case static_cast <uint8_t> (narrow_t::TEXT): {
 			// Извлекаемая последовательность знаков
@@ -560,7 +561,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 					// Хранилище записи числа дробного
 					char buffer[64];
 					// Выполняем запись числа дробного знаками
-					const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
+					const lexical::output_t <char> & output = lexical::toChars(buffer, (buffer + sizeof(buffer)), real);
 					// Если запись числа дробного собрана
 					if(static_cast <bool> (output))
 						// Выводим запись числа последовательностью знаков
@@ -1121,7 +1122,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 			 *          идёт им же - дороги записи и чтения обязаны быть одной
 			 *
 			 */
-			const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
+			const lexical::output_t <char> & output = lexical::toChars(buffer, (buffer + sizeof(buffer)), real);
 			// Если запись числа дробного выполнить не удалось
 			if(!static_cast <bool> (output))
 				// Выводим запись значения, как её отдаёт контейнер
@@ -1199,7 +1200,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 		 *          и теряет саму величину, а не разряды
 		 *
 		 */
-		const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
+		const lexical::output_t <char> & output = lexical::toChars(buffer, (buffer + sizeof(buffer)), real);
 		// Если запись числа дробного выполнена
 		if(static_cast <bool> (output))
 			// Выводим собранную запись числа дробного
@@ -1307,7 +1308,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 				// Извлекаемое целое со знаком
 				int64_t number = 0;
 				// Выполняем извлечение целого со знаком из записи
-				const lexical_t::result_t <char> res = lexical_t::fromChars(record.data(), end, number);
+				const lexical::result_t <char> res = lexical::fromChars(record.data(), end, number);
 				// Если запись разобрана целиком и без отказа
 				if(static_cast <bool> (res) && (res.ptr == end))
 					// Выводим значение целым со знаком
@@ -1317,7 +1318,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 				// Извлекаемое целое без знака
 				uint64_t number = 0;
 				// Выполняем извлечение целого без знака из записи
-				const lexical_t::result_t <char> res = lexical_t::fromChars(record.data(), end, number);
+				const lexical::result_t <char> res = lexical::fromChars(record.data(), end, number);
 				// Если запись разобрана целиком и без отказа
 				if(static_cast <bool> (res) && (res.ptr == end))
 					// Выводим значение целым без знака
@@ -1329,7 +1330,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 			// Извлекаемое число дробное
 			double number = 0.;
 			// Выполняем извлечение числа дробного из записи
-			const lexical_t::result_t <char> res = lexical_t::fromChars(record.data(), end, number);
+			const lexical::result_t <char> res = lexical::fromChars(record.data(), end, number);
 			// Если запись разобрана целиком и без отказа
 			if(static_cast <bool> (res) && (res.ptr == end))
 				// Выводим значение числом дробным

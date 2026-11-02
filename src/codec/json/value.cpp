@@ -380,7 +380,7 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 		 */
 		case static_cast <uint16_t> (type_t::EXTENDED): {
 			// Разбираемое дробное число
-			double number = 0.;
+			double number = .0;
 			/**
 			 * Выполняем разбор записи числа
 			 *
@@ -388,7 +388,7 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 			 *       и хранится записью. Таких чисел на документ приходятся единицы
 			 *
 			 */
-			lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
+			lexical::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
 			// Устанавливаем извлечённое значение приведением дробного
 			result = convert <T> (number);
 		} break;
@@ -3329,7 +3329,7 @@ uint32_t awh::codec::json::Document::transplant(const json::value_t & value, con
 			 */
 			} else if(value.type() == type_t::FLOAT) {
 				// Извлекаемое дробное число одинарной точности
-				float number = 0.f;
+				float number = .0f;
 				// Выполняем извлечение дробного числа одинарной точности
 				value.value(number);
 				// Устанавливаем извлечённое число узлу дерева
@@ -3339,7 +3339,7 @@ uint32_t awh::codec::json::Document::transplant(const json::value_t & value, con
 			 */
 			} else {
 				// Извлекаемое дробное число двойной точности
-				double number = 0.;
+				double number = .0;
 				// Выполняем извлечение дробного числа двойной точности
 				value.value(number);
 				// Устанавливаем извлечённое число узлу дерева

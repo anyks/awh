@@ -46,12 +46,10 @@ static constexpr const char * WAN_SERVICE6 = "urn:schemas-upnp-org:service:WANIP
  *
  */
 TEST_F(PortmapFixture, UpnpAdd) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Параметры заводимого перенаправления порта
-	upnp_t::mapping_t mapping;
+	upnp::mapping_t mapping;
 	// Устанавливаем договор перенаправления порта
-	mapping.proto = upnp_t::proto_t::TCP;
+	mapping.proto = upnp::proto_t::TCP;
 	// Устанавливаем внешний порт перенаправления
 	mapping.externalPort = 8080;
 	// Устанавливаем внутренний порт перенаправления
@@ -63,7 +61,7 @@ TEST_F(PortmapFixture, UpnpAdd) {
 	// Устанавливаем срок жизни перенаправления
 	mapping.lifeTime = 3600;
 	// Выполняем сборку вызова заведения перенаправления порта
-	const upnp_t::request_t request = upnp->add(WAN_SERVICE, mapping);
+	const upnp::request_t request = upnp::add(WAN_SERVICE, mapping);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку названия вызываемого действия службы
@@ -95,13 +93,13 @@ TEST_F(PortmapFixture, UpnpAdd) {
 		// Сбрасываем внутренний адрес машины перенаправления
 		mapping.internalClient.clear();
 		// Выполняем проверку отклонения сборки без внутреннего адреса машины
-		ASSERT_FALSE(upnp->add(WAN_SERVICE, mapping).valid());
+		ASSERT_FALSE(upnp::add(WAN_SERVICE, mapping).valid());
 		// Восстанавливаем внутренний адрес машины перенаправления
 		mapping.internalClient = "192.168.1.42";
 		// Сбрасываем договор перенаправления порта
-		mapping.proto = upnp_t::proto_t::NONE;
+		mapping.proto = upnp::proto_t::NONE;
 		// Выполняем проверку отклонения сборки без договора перенаправления
-		ASSERT_FALSE(upnp->add(WAN_SERVICE, mapping).valid());
+		ASSERT_FALSE(upnp::add(WAN_SERVICE, mapping).valid());
 	}
 }
 /**
@@ -112,12 +110,10 @@ TEST_F(PortmapFixture, UpnpAdd) {
  *
  */
 TEST_F(PortmapFixture, UpnpDescription) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Параметры заводимого перенаправления порта
-	upnp_t::mapping_t mapping;
+	upnp::mapping_t mapping;
 	// Устанавливаем договор перенаправления порта
-	mapping.proto = upnp_t::proto_t::UDP;
+	mapping.proto = upnp::proto_t::UDP;
 	// Устанавливаем внешний порт перенаправления
 	mapping.externalPort = 5060;
 	// Устанавливаем внутренний порт перенаправления
@@ -125,27 +121,25 @@ TEST_F(PortmapFixture, UpnpDescription) {
 	// Устанавливаем внутренний адрес машины перенаправления
 	mapping.internalClient = "192.168.1.42";
 	// Устанавливаем описание перенаправления длиннее допустимого
-	mapping.description.assign(upnp_t::MAX_DESCRIPTION * 2, 'x');
+	mapping.description.assign(upnp::MAX_DESCRIPTION * 2, 'x');
 	// Выполняем сборку вызова заведения перенаправления порта
-	const upnp_t::request_t request = upnp->add(WAN_SERVICE, mapping);
+	const upnp::request_t request = upnp::add(WAN_SERVICE, mapping);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку обрезки описания перенаправления до допустимой длины
-	ASSERT_NE(request.body.find(std::string("<NewPortMappingDescription>").append(upnp_t::MAX_DESCRIPTION, 'x').append("</NewPortMappingDescription>")), std::string::npos);
+	ASSERT_NE(request.body.find(std::string("<NewPortMappingDescription>").append(upnp::MAX_DESCRIPTION, 'x').append("</NewPortMappingDescription>")), std::string::npos);
 }
 /**
  * @brief Проверка сборки прочих вызовов службы соединения
  *
  */
 TEST_F(PortmapFixture, UpnpActions) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	/**
 	 * Выполняем проверку сборки вызова снятия перенаправления порта
 	 */
 	{
 		// Выполняем сборку вызова снятия перенаправления порта
-		const upnp_t::request_t request = upnp->remove(WAN_SERVICE, upnp_t::proto_t::TCP, 8080);
+		const upnp::request_t request = upnp::remove(WAN_SERVICE, upnp::proto_t::TCP, 8080);
 		// Выполняем проверку пригодности собранного вызова
 		ASSERT_TRUE(request.valid());
 		// Выполняем проверку названия вызываемого действия службы
@@ -153,14 +147,14 @@ TEST_F(PortmapFixture, UpnpActions) {
 		// Выполняем проверку наличия внешнего порта перенаправления
 		ASSERT_NE(request.body.find("<NewExternalPort>8080</NewExternalPort>"), std::string::npos);
 		// Выполняем проверку отклонения сборки без внешнего порта перенаправления
-		ASSERT_FALSE(upnp->remove(WAN_SERVICE, upnp_t::proto_t::TCP, 0).valid());
+		ASSERT_FALSE(upnp::remove(WAN_SERVICE, upnp::proto_t::TCP, 0).valid());
 	}
 	/**
 	 * Выполняем проверку сборки вызова чтения внешнего адреса маршрутизатора
 	 */
 	{
 		// Выполняем сборку вызова чтения внешнего адреса маршрутизатора
-		const upnp_t::request_t request = upnp->external(WAN_SERVICE);
+		const upnp::request_t request = upnp::external(WAN_SERVICE);
 		// Выполняем проверку пригодности собранного вызова
 		ASSERT_TRUE(request.valid());
 		// Выполняем проверку названия вызываемого действия службы
@@ -171,7 +165,7 @@ TEST_F(PortmapFixture, UpnpActions) {
 	 */
 	{
 		// Выполняем сборку вызова чтения перенаправления по порядковому номеру
-		const upnp_t::request_t request = upnp->entry(WAN_SERVICE, 3);
+		const upnp::request_t request = upnp::entry(WAN_SERVICE, 3);
 		// Выполняем проверку пригодности собранного вызова
 		ASSERT_TRUE(request.valid());
 		// Выполняем проверку названия вызываемого действия службы
@@ -184,7 +178,7 @@ TEST_F(PortmapFixture, UpnpActions) {
 	 */
 	{
 		// Выполняем сборку вызова чтения перенаправления по внешнему порту
-		const upnp_t::request_t request = upnp->specific(WAN_SERVICE, upnp_t::proto_t::UDP, 5060);
+		const upnp::request_t request = upnp::specific(WAN_SERVICE, upnp::proto_t::UDP, 5060);
 		// Выполняем проверку пригодности собранного вызова
 		ASSERT_TRUE(request.valid());
 		// Выполняем проверку названия вызываемого действия службы
@@ -197,7 +191,7 @@ TEST_F(PortmapFixture, UpnpActions) {
 	 */
 	{
 		// Выполняем сборку вызова чтения состояния соединения маршрутизатора
-		const upnp_t::request_t request = upnp->status(WAN_SERVICE);
+		const upnp::request_t request = upnp::status(WAN_SERVICE);
 		// Выполняем проверку пригодности собранного вызова
 		ASSERT_TRUE(request.valid());
 		// Выполняем проверку названия вызываемого действия службы
@@ -209,8 +203,6 @@ TEST_F(PortmapFixture, UpnpActions) {
  *
  */
 TEST_F(PortmapFixture, UpnpAnswer) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Разобранный ответ службы
 	soap::response_t response;
 	// Код причины отказа кодека
@@ -231,7 +223,7 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 		// Извлекаемый внешний адрес маршрутизатора
 		std::string address;
 		// Выполняем извлечение внешнего адреса маршрутизатора
-		ASSERT_TRUE(upnp->address(response, address));
+		ASSERT_TRUE(upnp::address(response, address));
 		// Выполняем проверку извлечённого внешнего адреса маршрутизатора
 		ASSERT_EQ(address, "203.0.113.7");
 	}
@@ -255,7 +247,7 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 		// Извлекаемый внешний адрес маршрутизатора
 		std::string address;
 		// Выполняем проверку отклонения извлечения пустого внешнего адреса
-		ASSERT_FALSE(upnp->address(response, address));
+		ASSERT_FALSE(upnp::address(response, address));
 	}
 	/**
 	 * Выполняем проверку извлечения перенаправления порта
@@ -278,9 +270,9 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 		// Выполняем разбор ответа службы
 		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемое перенаправление порта
-		upnp_t::mapping_t mapping;
+		upnp::mapping_t mapping;
 		// Выполняем извлечение перенаправления порта
-		ASSERT_TRUE(upnp->mapping(response, mapping));
+		ASSERT_TRUE(upnp::mapping(response, mapping));
 		/**
 		 * Выполняем проверку договора перенаправления порта
 		 *
@@ -288,7 +280,7 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 		 *       его вольно, и сличение ведётся без учёта регистра
 		 *
 		 */
-		ASSERT_EQ(mapping.proto, upnp_t::proto_t::TCP);
+		ASSERT_EQ(mapping.proto, upnp::proto_t::TCP);
 		// Выполняем проверку внешнего порта перенаправления
 		ASSERT_EQ(mapping.externalPort, 12345);
 		// Выполняем проверку внутреннего порта перенаправления
@@ -320,9 +312,9 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 		// Выполняем разбор ответа службы
 		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемое перенаправление порта
-		upnp_t::mapping_t mapping;
+		upnp::mapping_t mapping;
 		// Выполняем проверку отклонения извлечения перенаправления порта
-		ASSERT_FALSE(upnp->mapping(response, mapping));
+		ASSERT_FALSE(upnp::mapping(response, mapping));
 	}
 }
 /**
@@ -334,8 +326,6 @@ TEST_F(PortmapFixture, UpnpAnswer) {
  *
  */
 TEST_F(PortmapFixture, UpnpResult) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Отказ службы о занятости перенаправления
 	const std::string data =
 		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>"
@@ -351,21 +341,21 @@ TEST_F(PortmapFixture, UpnpResult) {
 	// Выполняем разбор отказа службы
 	ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 	// Выполняем проверку кода ошибки, выданного службой
-	ASSERT_EQ(upnp->result(response), upnp_t::result_t::CONFLICT);
+	ASSERT_EQ(upnp::result(response), upnp::result_t::CONFLICT);
 	// Выполняем проверку описания кода ошибки, выданного службой
-	ASSERT_STREQ(message(upnp->result(response)), "conflict in mapping entry");
+	ASSERT_STREQ(message(upnp::result(response)), "conflict in mapping entry");
 	/**
 	 * Выполняем проверку осмысленности повторной просьбы с иным портом
 	 */
 	{
 		// Выполняем проверку осмысленности повторной просьбы при занятости порта
-		ASSERT_TRUE(upnp->retriable(upnp_t::result_t::CONFLICT));
+		ASSERT_TRUE(upnp::retriable(upnp::result_t::CONFLICT));
 		// Выполняем проверку осмысленности повторной просьбы при требовании равенства портов
-		ASSERT_TRUE(upnp->retriable(upnp_t::result_t::SAME_PORT_REQUIRED));
+		ASSERT_TRUE(upnp::retriable(upnp::result_t::SAME_PORT_REQUIRED));
 		// Выполняем проверку бессмысленности повторной просьбы при отказе настройки
-		ASSERT_FALSE(upnp->retriable(upnp_t::result_t::NOT_AUTHORIZED));
+		ASSERT_FALSE(upnp::retriable(upnp::result_t::NOT_AUTHORIZED));
 		// Выполняем проверку бессмысленности повторной просьбы при нехватке места
-		ASSERT_FALSE(upnp->retriable(upnp_t::result_t::NO_PORT_MAPS));
+		ASSERT_FALSE(upnp::retriable(upnp::result_t::NO_PORT_MAPS));
 	}
 	/**
 	 * Выполняем проверку сохранения кода ошибки, кодеку неизвестного
@@ -384,9 +374,9 @@ TEST_F(PortmapFixture, UpnpResult) {
 		// Выполняем разбор отказа службы
 		ASSERT_TRUE(soap::parse(vendor, response, error)) << message(error);
 		// Выполняем проверку сохранения кода ошибки изготовителя
-		ASSERT_EQ(static_cast <uint32_t> (upnp->result(response)), static_cast <uint32_t> (801));
+		ASSERT_EQ(static_cast <uint32_t> (upnp::result(response)), static_cast <uint32_t> (801));
 		// Выполняем проверку описания неизвестного кода ошибки
-		ASSERT_STREQ(message(upnp->result(response)), "unknown error code");
+		ASSERT_STREQ(message(upnp::result(response)), "unknown error code");
 	}
 	/**
 	 * Выполняем проверку кода успешного выполнения просьбы
@@ -400,7 +390,7 @@ TEST_F(PortmapFixture, UpnpResult) {
 		// Выполняем разбор ответа службы
 		ASSERT_TRUE(soap::parse(success, response, error)) << message(error);
 		// Выполняем проверку кода успешного выполнения просьбы
-		ASSERT_EQ(upnp->result(response), upnp_t::result_t::SUCCESS);
+		ASSERT_EQ(upnp::result(response), upnp::result_t::SUCCESS);
 		// Выполняем проверку названия действия, на которое получен ответ
 		ASSERT_EQ(response.action, "AddPortMapping");
 	}
@@ -419,12 +409,10 @@ TEST_F(PortmapFixture, UpnpResult) {
  *
  */
 TEST_F(PortmapFixture, UpnpPinhole) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Параметры проделываемого пробоя заслона
-	upnp_t::pinhole_t pinhole;
+	upnp::pinhole_t pinhole;
 	// Устанавливаем договор пробоя заслона
-	pinhole.proto = upnp_t::proto_t::TCP;
+	pinhole.proto = upnp::proto_t::TCP;
 	// Устанавливаем внутренний порт машины, которой отдаются подключения
 	pinhole.internalPort = 8080;
 	// Устанавливаем внутренний адрес машины, которой отдаются подключения
@@ -432,7 +420,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 	// Устанавливаем срок жизни пробоя заслона
 	pinhole.lifeTime = 3600;
 	// Выполняем сборку вызова проделывания пробоя заслона
-	const upnp_t::request_t request = upnp->pinhole(WAN_SERVICE6, pinhole);
+	const upnp::request_t request = upnp::pinhole(WAN_SERVICE6, pinhole);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку названия вызываемого действия службы
@@ -493,11 +481,11 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 	 */
 	{
 		// Устанавливаем договор пробоя заслона
-		pinhole.proto = upnp_t::proto_t::UDP;
+		pinhole.proto = upnp::proto_t::UDP;
 		// Выполняем проверку наличия договора пробоя числом по описи IANA
-		ASSERT_NE(upnp->pinhole(WAN_SERVICE6, pinhole).body.find("<Protocol>17</Protocol>"), std::string::npos);
+		ASSERT_NE(upnp::pinhole(WAN_SERVICE6, pinhole).body.find("<Protocol>17</Protocol>"), std::string::npos);
 		// Восстанавливаем договор пробоя заслона
-		pinhole.proto = upnp_t::proto_t::TCP;
+		pinhole.proto = upnp::proto_t::TCP;
 	}
 	/**
 	 * Выполняем проверку отклонения неполных параметров пробоя заслона
@@ -506,7 +494,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 		// Сбрасываем внутренний адрес машины
 		pinhole.internalClient.clear();
 		// Выполняем проверку отклонения сборки без внутреннего адреса машины
-		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+		ASSERT_FALSE(upnp::pinhole(WAN_SERVICE6, pinhole).valid());
 		// Восстанавливаем внутренний адрес машины
 		pinhole.internalClient = "2001:db8::42";
 		// Сбрасываем срок жизни пробоя заслона
@@ -518,13 +506,13 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 		 *       просьбу, которую устройство отвергнет
 		 *
 		 */
-		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+		ASSERT_FALSE(upnp::pinhole(WAN_SERVICE6, pinhole).valid());
 		// Восстанавливаем срок жизни пробоя заслона
 		pinhole.lifeTime = 3600;
 		// Сбрасываем договор пробоя заслона
-		pinhole.proto = upnp_t::proto_t::NONE;
+		pinhole.proto = upnp::proto_t::NONE;
 		// Выполняем проверку отклонения сборки без договора пробоя
-		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+		ASSERT_FALSE(upnp::pinhole(WAN_SERVICE6, pinhole).valid());
 	}
 }
 /**
@@ -535,10 +523,8 @@ TEST_F(PortmapFixture, UpnpPinhole) {
  *
  */
 TEST_F(PortmapFixture, UpnpUnpinhole) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Выполняем сборку вызова заделывания пробоя заслона
-	const upnp_t::request_t request = upnp->unpinhole(WAN_SERVICE6, 42);
+	const upnp::request_t request = upnp::unpinhole(WAN_SERVICE6, 42);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку названия вызываемого действия службы
@@ -568,10 +554,8 @@ TEST_F(PortmapFixture, UpnpUnpinhole) {
  *
  */
 TEST_F(PortmapFixture, UpnpRepinhole) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Выполняем сборку вызова продления срока пробоя заслона
-	const upnp_t::request_t request = upnp->repinhole(WAN_SERVICE6, 42, 7200);
+	const upnp::request_t request = upnp::repinhole(WAN_SERVICE6, 42, 7200);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку названия вызываемого действия службы
@@ -605,11 +589,11 @@ TEST_F(PortmapFixture, UpnpRepinhole) {
 	 */
 	{
 		// Выполняем проверку отклонения сборки с нулевым сроком жизни пробоя
-		ASSERT_FALSE(upnp->repinhole(WAN_SERVICE6, 42, 0).valid());
+		ASSERT_FALSE(upnp::repinhole(WAN_SERVICE6, 42, 0).valid());
 		// Выполняем проверку отклонения сборки со сроком жизни свыше суток
-		ASSERT_FALSE(upnp->repinhole(WAN_SERVICE6, 42, upnp_t::MAX_LIFETIME + 1).valid());
+		ASSERT_FALSE(upnp::repinhole(WAN_SERVICE6, 42, upnp::MAX_LIFETIME + 1).valid());
 		// Выполняем проверку принятия предельного срока жизни пробоя
-		ASSERT_TRUE(upnp->repinhole(WAN_SERVICE6, 42, upnp_t::MAX_LIFETIME).valid());
+		ASSERT_TRUE(upnp::repinhole(WAN_SERVICE6, 42, upnp::MAX_LIFETIME).valid());
 	}
 }
 /**
@@ -617,10 +601,8 @@ TEST_F(PortmapFixture, UpnpRepinhole) {
  *
  */
 TEST_F(PortmapFixture, UpnpFirewall) {
-	// Создаём объект кодека действий службы перенаправления
-	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
 	// Выполняем сборку вызова чтения состояния заслона IPv6
-	const upnp_t::request_t request = upnp->firewall(WAN_SERVICE6);
+	const upnp::request_t request = upnp::firewall(WAN_SERVICE6);
 	// Выполняем проверку пригодности собранного вызова
 	ASSERT_TRUE(request.valid());
 	// Выполняем проверку названия вызываемого действия службы
@@ -648,7 +630,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = false;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
+		ASSERT_TRUE(upnp::firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 включён
 		ASSERT_TRUE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 разрешены
@@ -680,7 +662,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = true;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
+		ASSERT_TRUE(upnp::firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 отключён
 		ASSERT_FALSE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 запрещены
@@ -707,7 +689,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = true;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
+		ASSERT_TRUE(upnp::firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 включён
 		ASSERT_TRUE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 запрещены
@@ -731,7 +713,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		// Извлекаемый опознаватель пробоя заслона
 		uint16_t unique = 0;
 		// Выполняем извлечение опознавателя пробоя заслона
-		ASSERT_TRUE(upnp->unique(response, unique));
+		ASSERT_TRUE(upnp::unique(response, unique));
 		// Выполняем проверку извлечённого опознавателя пробоя заслона
 		ASSERT_EQ(unique, 65000);
 	}
@@ -762,7 +744,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			// Извлекаемый опознаватель пробоя заслона
 			uint16_t unique = 0;
 			// Выполняем проверку отклонения извлечения негодного опознавателя
-			ASSERT_FALSE(upnp->unique(response, unique));
+			ASSERT_FALSE(upnp::unique(response, unique));
 		}
 		// Разбираемый ответ службы заслона IPv6 с предельным опознавателем
 		const std::string text =
@@ -778,7 +760,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		// Извлекаемый опознаватель пробоя заслона
 		uint16_t unique = 0;
 		// Выполняем проверку извлечения предельного опознавателя пробоя
-		ASSERT_TRUE(upnp->unique(response, unique));
+		ASSERT_TRUE(upnp::unique(response, unique));
 		// Выполняем проверку извлечённого опознавателя пробоя заслона
 		ASSERT_EQ(unique, 65535);
 	}
@@ -805,6 +787,6 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		 *       успех недопустимо
 		 *
 		 */
-		ASSERT_FALSE(upnp->unique(response, unique));
+		ASSERT_FALSE(upnp::unique(response, unique));
 	}
 }

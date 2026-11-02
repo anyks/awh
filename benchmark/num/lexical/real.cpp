@@ -134,7 +134,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -171,7 +171,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -208,7 +208,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(EXACT_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -245,7 +245,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(EXACT_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -282,7 +282,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(PARSE_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла
@@ -319,7 +319,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(ALLOCATION_ROUNDS, [&]() noexcept {
 			// Выполняем разбор записи числа
-			awh::lexical_t::fromChars(first, last, value);
+			awh::lexical::fromChars(first, last, value);
 			// Накапливаем результат разбора
 			accumulator += value;
 			// Запрещаем вынос измеряемого разбора за пределы цикла

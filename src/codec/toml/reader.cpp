@@ -3530,7 +3530,7 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		// Собираемое значение числа с плавающей точкой
 		double number = .0;
 		// Выполняем разбор числа с плавающей точкой
-		const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), (digits.data() + digits.length()), number);
+		const lexical::result_t <char> & res = lexical::fromChars(digits.data(), (digits.data() + digits.length()), number);
 		/**
 		 * Если разбор числа выполнить не удалось
 		 *

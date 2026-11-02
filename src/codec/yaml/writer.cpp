@@ -2923,9 +2923,9 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 *       наречия к локали держалась той подменою; ныне все четверо глухи ПО УСТРОЙСТВУ
 	 *
 	 */
-	const lexical::output_t <char> output = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+	const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 	// Определяем длину собранной записи дробного числа
-	const int length = (static_cast <bool> (output) ? static_cast <int> (output.ptr - buffer) : 0);
+	const int32_t length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 	/**
 	 * Если собрать запись дробного числа не удалось
 	 *

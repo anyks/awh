@@ -302,7 +302,7 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 				// Извлекаемое целое со знаком
 				int64_t number = 0;
 				// Выполняем извлечение целого со знаком из записи
-				const lexical_t::result_t <char> res = lexical_t::fromChars(begin, end, number);
+				const lexical::result_t <char> & res = lexical::fromChars(begin, end, number);
 				// Если запись разобрана целиком и без отказа
 				if(static_cast <bool> (res) && (res.ptr == end))
 					// Выводим число видом целого со знаком
@@ -312,7 +312,7 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 				// Извлекаемое целое без знака
 				uint64_t number = 0;
 				// Выполняем извлечение целого без знака из записи
-				const lexical_t::result_t <char> res = lexical_t::fromChars(begin, end, number);
+				const lexical::result_t <char> & res = lexical::fromChars(begin, end, number);
 				// Если запись разобрана целиком и без отказа
 				if(static_cast <bool> (res) && (res.ptr == end))
 					// Выводим число видом целого без знака
@@ -323,7 +323,7 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 			// Извлекаемое число дробное
 			double number = 0.;
 			// Выполняем извлечение числа дробного из записи
-			const lexical_t::result_t <char> res = lexical_t::fromChars(begin, end, number);
+			const lexical::result_t <char> res = lexical::fromChars(begin, end, number);
 			// Если запись разобрана целиком и без отказа
 			if(static_cast <bool> (res) && (res.ptr == end))
 				// Выводим число видом дробного двойной точности

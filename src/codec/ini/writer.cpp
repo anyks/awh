@@ -2231,7 +2231,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	/**
 	 * Если записывается число с плавающей точкой
 	 */
-	else if constexpr(is_floating_point <T>::value){
+	else if constexpr(is_floating_point <T>::value) {
 		/**
 		 * Выполняем запись числа с плавающей точкой кратчайшим обратимым представлением
 		 *
@@ -2249,7 +2249,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 		 *       ведётся по правилам местности «C» и от настроек приложения не зависит
 		 *
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+		const lexical::output_t <char> & output = lexical::toChars(
 			buffer, buffer + sizeof(buffer),
 			/**
 			 * Запись ведётся числом его собственного типа: кратчайшая запись

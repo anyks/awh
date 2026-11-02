@@ -621,7 +621,7 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	// Разобранное значение, выходной переменной ещё не отданное
 	int64_t number = 0;
 	// Выполняем разбор целого числа со знаком
-	const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), digits.data() + digits.length(), number);
+	const lexical::result_t <char> & res = lexical::fromChars(digits.data(), digits.data() + digits.length(), number);
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
@@ -694,7 +694,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	// Разобранное значение, выходной переменной ещё не отданное
 	uint64_t number = 0;
 	// Выполняем разбор целого числа без знака
-	const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), digits.data() + digits.length(), number);
+	const lexical::result_t <char> & res = lexical::fromChars(digits.data(), digits.data() + digits.length(), number);
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
@@ -804,7 +804,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	// Разобранное значение, выходной переменной ещё не отданное
 	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
-	const lexical_t::result_t <char> res = lexical_t::fromChars(parsed.data(), parsed.data() + parsed.length(), number);
+	const lexical::result_t <char> & res = lexical::fromChars(parsed.data(), parsed.data() + parsed.length(), number);
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *

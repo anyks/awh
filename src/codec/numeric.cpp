@@ -226,7 +226,7 @@ namespace {
 		// Разбираемое дробное число
 		double number = 0.;
 		// Выполняем разбор записи числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(begin, end, number);
+		const lexical::result_t <char> & res = lexical::fromChars(begin, end, number);
 		/**
 		 * Если запись дробным числом не разбирается вовсе
 		 */
@@ -246,7 +246,7 @@ namespace {
 		 *          конце, прошёл бы за успех, и приведению досталось бы неразобранное число
 		 *
 		 */
-		if(!static_cast <bool> (res) && (res.error != awh::lexical_t::error_t::OVERFLOW_RANGE))
+		if(!static_cast <bool> (res) && (res.error != lexical::error_t::OVERFLOW_RANGE))
 			// Выводим признак неудачного извлечения
 			return false;
 		// Устанавливаем извлечённое значение приведением дробного
@@ -472,7 +472,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 				// Разбираемое целое число со знаком
 				int64_t number = 0;
 				// Выполняем разбор записи числа
-				const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), end, number);
+				const lexical::result_t <char> & res = lexical::fromChars(value.data(), end, number);
 				/**
 				 * Если запись числа целым со знаком не разбирается
 				 */
@@ -485,7 +485,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 					 *       целым не вместимая, числом быть не перестаёт
 					 *
 					 */
-					if((res.error != lexical_t::error_t::OVERFLOW_RANGE) || (res.ptr != end))
+					if((res.error != lexical::error_t::OVERFLOW_RANGE) || (res.ptr != end))
 						// Выводим признак неудачного разбора
 						return false;
 					// Выводим признак успешности разбора записи числом дробным
@@ -499,7 +499,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 			// Разбираемое целое число без знака
 			uint64_t number = 0;
 			// Выполняем разбор записи числа
-			const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), end, number);
+			const lexical::result_t <char> & res = lexical::fromChars(value.data(), end, number);
 			/**
 			 * Если запись числа целым без знака не разбирается
 			 */
@@ -507,7 +507,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 				/**
 				 * Если запись числом не является вовсе
 				 */
-				if((res.error != lexical_t::error_t::OVERFLOW_RANGE) || (res.ptr != end))
+				if((res.error != lexical::error_t::OVERFLOW_RANGE) || (res.ptr != end))
 					// Выводим признак неудачного разбора
 					return false;
 				// Выводим признак успешности разбора записи числом дробным

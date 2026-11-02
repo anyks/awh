@@ -75,7 +75,7 @@ bool LexicalFixture::sameBits(const float a, const float b) noexcept {
 	return (ua == ub);
 }
 /**
- * @brief Разбирает double через lexical_t и сверяет со strtod
+ * @brief Разбирает double через lexical и сверяет со strtod
  *
  * @param text исходная строка
  *
@@ -89,8 +89,8 @@ void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	char * endRef = nullptr;
 	// Разбираем строку с помощью strtod для получения ожидаемого значения
 	const double expected = std::strtod(text, &endRef);
-	// Разбираем строку с помощью lexical_t::fromChars
-	const auto answer = awh::lexical_t::fromChars(text, text + std::strlen(text), actual);
+	// Разбираем строку с помощью lexical::fromChars
+	const auto answer = awh::lexical::fromChars(text, text + std::strlen(text), actual);
 	// Проверяем, что разбор прошёл успешно
 	ASSERT_TRUE(static_cast <bool> (answer)) << "parse failed: " << text;
 	// Проверяем, что указатель на конец разбора совпадает с ожидаемым
@@ -104,7 +104,7 @@ void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 		/**
 		 * Если платформа сбрасывает субнормальные значения, а разбор вывел именно
 		 * такое значение, то расхождение внесено эталоном: он обнулил результат,
-		 * тогда как lexical_t считает целочисленно и режимом сопроцессора не задет
+		 * тогда как lexical считает целочисленно и режимом сопроцессора не задет
 		 */
 		if(flushesSubnormals() && subnormalBits(actual) && (expected == 0))
 			// Объявляем случай непроверяемым на этой платформе
@@ -114,7 +114,7 @@ void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	}
 }
 /**
- * @brief Разбирает float через lexical_t и сверяет со strtof
+ * @brief Разбирает float через lexical и сверяет со strtof
  *
  * @param text исходная строка
  *
@@ -128,8 +128,8 @@ void LexicalFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 	char * endRef = nullptr;
 	// Разбираем строку с помощью strtof для получения ожидаемого значения
 	const float expected = std::strtof(text, &endRef);
-	// Разбираем строку с помощью lexical_t::fromChars
-	const auto answer = awh::lexical_t::fromChars(text, text + std::strlen(text), actual);
+	// Разбираем строку с помощью lexical::fromChars
+	const auto answer = awh::lexical::fromChars(text, text + std::strlen(text), actual);
 	// Проверяем, что разбор прошёл успешно
 	ASSERT_TRUE(static_cast <bool> (answer)) << "parse failed: " << text;
 	// Проверяем, что указатель на конец разбора совпадает с ожидаемым
@@ -143,7 +143,7 @@ void LexicalFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 		/**
 		 * Если платформа сбрасывает субнормальные значения, а разбор вывел именно
 		 * такое значение, то расхождение внесено эталоном: он обнулил результат,
-		 * тогда как lexical_t считает целочисленно и режимом сопроцессора не задет
+		 * тогда как lexical считает целочисленно и режимом сопроцессора не задет
 		 */
 		if(flushesSubnormals() && subnormalBits(actual) && (expected == 0))
 			// Объявляем случай непроверяемым на этой платформе

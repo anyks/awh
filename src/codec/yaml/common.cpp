@@ -108,7 +108,7 @@ namespace {
 	/**
 	 * @brief Функция чтения дробного числа, к местности нечувствительная
 	 *
-	 * @details Чтение ведётся приведением `awh::lexical_t::fromChars`, разряда `LC_NUMERIC`
+	 * @details Чтение ведётся приведением `awh::lexical::fromChars`, разряда `LC_NUMERIC`
 	 *          не знающим вовсе: запись читается по правилам местности «C» при любой действующей
 	 *          местности. Тем же приведением читают дробное кодеки INI и TOML.
 	 *
@@ -154,7 +154,7 @@ namespace {
 			// Выводим нулевое дробное число
 			return 0.;
 		// Выполняем чтение дробного числа записью, местности не знающей
-		const lexical_t::result_t <char> outcome = lexical_t::fromChars(text, (text + length), result);
+		const lexical::result_t <char> & outcome = lexical::fromChars(text, (text + length), result);
 		/**
 		 * Если число за предел дробного вида вышло
 		 *

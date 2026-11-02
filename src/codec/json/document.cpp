@@ -482,7 +482,7 @@ bool awh::codec::json::Document::Value::extract(T & result) const noexcept {
 		 */
 		case static_cast <uint16_t> (type_t::EXTENDED): {
 			// Разбираемое дробное число
-			double number = 0.;
+			double number = .0;
 			// Получаем запись числа, хранимую узлом
 			const string_view text(this->_doc->_storage.data() + node.offset, node.length());
 			/**
@@ -492,7 +492,7 @@ bool awh::codec::json::Document::Value::extract(T & result) const noexcept {
 			 *       и хранится записью. Таких чисел на документ приходятся единицы
 			 *
 			 */
-			lexical_t::fromChars(text.data(), (text.data() + text.size()), number);
+			lexical::fromChars(text.data(), (text.data() + text.size()), number);
 			// Устанавливаем извлечённое значение приведением дробного
 			result = codec::convert <T> (number);
 		} break;
@@ -1487,7 +1487,7 @@ bool awh::codec::json::Document::classify(const string_view text, node_t & node)
 			// Разбираемое целое число со знаком
 			int64_t result = 0;
 			// Выполняем разбор записи числа
-			const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+			const lexical::result_t <char> & res = lexical::fromChars(text.data(), end, result);
 			/**
 			 * Если запись числа целым со знаком не разбирается
 			 */
@@ -1512,7 +1512,7 @@ bool awh::codec::json::Document::classify(const string_view text, node_t & node)
 		// Разбираемое целое число без знака
 		uint64_t result = 0;
 		// Выполняем разбор записи числа
-		const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+		const lexical::result_t <char> & res = lexical::fromChars(text.data(), end, result);
 		/**
 		 * Если запись числа целым без знака не разбирается
 		 */
@@ -1535,9 +1535,9 @@ bool awh::codec::json::Document::classify(const string_view text, node_t & node)
 		return true;
 	}
 	// Разбираемое дробное число
-	double result = 0.;
+	double result = .0;
 	// Выполняем разбор записи числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+	const lexical::result_t <char> & res = lexical::fromChars(text.data(), end, result);
 	/**
 	 * Если запись числа дробным не разбирается либо число вышло за предел двойной точности
 	 *

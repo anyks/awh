@@ -7671,9 +7671,9 @@ bool awh::codec::yaml::Document::set(const string & path, const double value) no
 	 */
 	else {
 		// Выполняем сборку записи дробного числа кратчайшим обратимым представлением
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+		const lexical::output_t <char> & output = lexical::toChars(buffer, buffer + sizeof(buffer), value);
 		// Определяем длину собранной записи дробного числа
-		length = (static_cast <bool> (output) ? static_cast <int> (output.ptr - buffer) : 0);
+		length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 	}
 	/**
 	 * Если собрать запись дробного значения не удалось

@@ -47,16 +47,6 @@ std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() con
 	return std::make_unique <awh::proto::portmap::device_t> ();
 }
 /**
- * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
- *
- * @return сформированный объект кодека действий службы перенаправления UPnP
- *
- */
-std::unique_ptr <awh::proto::portmap::upnp_t> PortmapFixture::makeUpnp() const noexcept {
-	// Создаём и возвращаем объект кодека действий службы перенаправления UPnP
-	return std::make_unique <awh::proto::portmap::upnp_t> ();
-}
-/**
  * @brief Метод записи адреса записью IPv6, отведённой договором PCP
  *
  * @param address место под записываемый адрес размером ADDRESS_SIZE

@@ -514,7 +514,7 @@ void awh::unit::Cluster::create() noexcept {
 				}
 			}
 			// Записываем в лог информацию о запущенном кластере
-			awh::log::print("Cluster [%s] has been started successfully", awh::log::flag_t::INFO, this->_name.c_str());
+			log::print("Cluster [%s] has been started successfully", log::flag_t::INFO, this->_name.c_str());
 			/**
 			 * Переходим по всему списку активных воркеров
 			 *
@@ -527,7 +527,7 @@ void awh::unit::Cluster::create() noexcept {
 				// Если служебный канал заведён, фиксируем и запускаем его
 				if((worker->cid != 0) && !(this->_io->commit(worker->cid) && this->_io->launch(worker->cid)))
 					// Записываем ошибку в лог
-					awh::log::print("Cluster control channel of the worker process [%d] could not be launched", awh::log::flag_t::CRITICAL, pid);
+					log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, pid);
 				// Выполняем фиксацию и запуск работы события
 				if(!(this->_io->commit(worker->eid) && this->_io->launch(worker->eid))){
 					/**
@@ -535,13 +535,13 @@ void awh::unit::Cluster::create() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог запуска события
-						awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, pid);
+						log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, pid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог запуска события
-						awh::log::print("Cluster worker process [%d] event could not be launched", awh::log::flag_t::CRITICAL, pid);
+						log::print("Cluster worker process [%d] event could not be launched", log::flag_t::CRITICAL, pid);
 					#endif
 					// Выходим из приложения
 					::_exit(EXIT_FAILURE);
@@ -560,13 +560,13 @@ void awh::unit::Cluster::create() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -602,13 +602,13 @@ void awh::unit::Cluster::emplace(const pid_t pid) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -686,7 +686,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 				 */
 				if(this->adopt()){
 					// Записываем в лог сообщение об успешном запуске воркера
-					awh::log::print("Cluster worker process [%d] has been started successfully", awh::log::flag_t::INFO, ::getpid());
+					log::print("Cluster worker process [%d] has been started successfully", log::flag_t::INFO, ::getpid());
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const event::status_t)> ("cluster_status", status);
 					// Выполняем функцию обратного вызова
@@ -726,7 +726,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			// Если количество создаваемых процессов не установлено
 			else {
 				// Записываем в лог информацию о запущенном сервере на PIPE
-				awh::log::print("Cluster [%s] has been started successfully", awh::log::flag_t::INFO, this->_name.c_str());
+				log::print("Cluster [%s] has been started successfully", log::flag_t::INFO, this->_name.c_str());
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 			}
@@ -798,13 +798,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Child process worker could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL);
+				log::debug("Child process worker could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Child process worker could not be created", awh::log::flag_t::CRITICAL);
+				log::print("Child process worker could not be created", log::flag_t::CRITICAL);
 			#endif
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
@@ -823,7 +823,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		// Если служебный канал не заведён
 		if((controls[0] == 0) || (controls[1] == 0)){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster control channel could not be created", awh::log::flag_t::CRITICAL);
+			log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
 			// Если первый конец служебного канала заведён
 			if(controls[0] != 0)
 				// Уничтожаем первый конец служебного канала
@@ -850,13 +850,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Child process could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL);
+					log::debug("Child process could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Child process could not be created", awh::log::flag_t::CRITICAL);
+					log::print("Child process could not be created", log::flag_t::CRITICAL);
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -949,13 +949,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::WARNING);
+							log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Error setting cluster worker event options", awh::log::flag_t::WARNING);
+							log::print("Error setting cluster worker event options", log::flag_t::WARNING);
 						#endif
 					}
 					// Устанавливаем функцию обратного вызова на событие записи сообщений
@@ -999,7 +999,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						if(!(this->_io->commit(this->_control) && this->_io->launch(this->_control))){
 							// Записываем ошибку в лог
-							awh::log::print("Cluster control channel could not be launched, the worker is deaf to the master", awh::log::flag_t::CRITICAL);
+							log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
 							// Уничтожаем свой конец служебного канала
 							this->_io->destroy(this->_control);
 							// Обнуляем идентификатор служебного канала
@@ -1016,7 +1016,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						} else this->dispatch(this->_control, control_t::ONLINE, ret.first->first);
 						// Записываем в лог сообщение об успешном запуске события
-						awh::log::print("Cluster worker process [%d] has been started successfully", awh::log::flag_t::INFO, ret.first->first);
+						log::print("Cluster worker process [%d] has been started successfully", log::flag_t::INFO, ret.first->first);
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
 					// Если событие не может быть запущено
@@ -1026,13 +1026,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог запуска события
-							awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, ret.first->first);
+							log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, ret.first->first);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог запуска события
-							awh::log::print("Cluster worker process [%d] event could not be launched", awh::log::flag_t::CRITICAL, ret.first->first);
+							log::print("Cluster worker process [%d] event could not be launched", log::flag_t::CRITICAL, ret.first->first);
 						#endif
 						// Выходим из приложения
 						::_exit(EXIT_FAILURE);
@@ -1044,13 +1044,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, ::getpid());
+						log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, ::getpid());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Процесс превратился в зомби, самоликвидируем его
-						awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+						log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
 					::_exit(EXIT_FAILURE);
@@ -1073,13 +1073,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::WARNING);
+						log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Error setting cluster worker event options", awh::log::flag_t::WARNING);
+						log::print("Error setting cluster worker event options", log::flag_t::WARNING);
 					#endif
 				}
 				// Устанавливаем функцию обратного вызова на событие записи сообщений
@@ -1107,7 +1107,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					// Выполняем фиксацию и запуск работы служебного канала
 					if(!(this->_io->commit(ret.first->second->cid) && this->_io->launch(ret.first->second->cid)))
 						// Записываем ошибку в лог
-						awh::log::print("Cluster control channel of the worker process [%d] could not be launched", awh::log::flag_t::CRITICAL, ret.first->first);
+						log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, ret.first->first);
 					// Выполняем фиксацию и запуск работы события
 					if(!(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid))){
 						/**
@@ -1115,13 +1115,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог запуска события
-							awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, replaced);
+							log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, replaced);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог запуска события
-							awh::log::print("Cluster worker process [%d] event could not be launched", awh::log::flag_t::CRITICAL, replaced);
+							log::print("Cluster worker process [%d] event could not be launched", log::flag_t::CRITICAL, replaced);
 						#endif
 						// Выходим из приложения
 						::_exit(EXIT_FAILURE);
@@ -1235,7 +1235,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	// Если события не созданы
 	if((events[0] == 0) || (events[1] == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster %s channel could not be created", awh::log::flag_t::CRITICAL, (service ? "control" : "worker"));
+		log::print("Cluster %s channel could not be created", log::flag_t::CRITICAL, (service ? "control" : "worker"));
 		// Выводим отсутствие заведённого события
 		return 0;
 	}
@@ -1265,7 +1265,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	 */
 	if(pipe.empty() || !::SetEnvironmentVariableW(variable, awh::fmk::convert(pipe).c_str())){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster %s pipe name %s, the worker is not spawned", awh::log::flag_t::CRITICAL, (service ? "control" : "worker"),
+		log::print("Cluster %s pipe name %s, the worker is not spawned", log::flag_t::CRITICAL, (service ? "control" : "worker"),
 		 (pipe.empty() ? "could not be obtained" : "could not be passed to the child process"));
 		// Уничтожаем оба конца канала обмена сообщениями
 		this->_io->destroy(events[1]);
@@ -1293,7 +1293,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	// Устанавливаем опции события
 	if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 		// Записываем ошибку в лог
-		awh::log::print("Error setting cluster worker event options", awh::log::flag_t::WARNING);
+		log::print("Error setting cluster worker event options", log::flag_t::WARNING);
 	/**
 	 * Служебному каналу подписывается одно лишь чтение
 	 *
@@ -1319,7 +1319,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	// Выполняем фиксацию и запуск работы события: конец канала переходит к ожиданию подключения
 	if(!(this->_io->commit(events[0]) && this->_io->launch(events[0]))){
 		// Записываем ошибку в лог запуска события
-		awh::log::print("Cluster %s event could not be launched", awh::log::flag_t::CRITICAL, (service ? "control" : "worker"));
+		log::print("Cluster %s event could not be launched", log::flag_t::CRITICAL, (service ? "control" : "worker"));
 		/**
 		 * Снимаем имя канала из окружения: канал уничтожается, и имя его лживо
 		 *
@@ -1404,7 +1404,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 		 */
 		if(rounds > 200)
 			// Записываем предупреждение в лог
-			awh::log::print("Cluster %s pipe was not ready after %u rounds, the worker is spawned anyway", awh::log::flag_t::WARNING, (service ? "control" : "worker"), static_cast <uint32_t> (rounds - 1));
+			log::print("Cluster %s pipe was not ready after %u rounds, the worker is spawned anyway", log::flag_t::WARNING, (service ? "control" : "worker"), static_cast <uint32_t> (rounds - 1));
 	}
 	// Выводим идентификатор заведённого события
 	return events[0];
@@ -1436,9 +1436,9 @@ pid_t awh::unit::Cluster::execute() noexcept {
 			// Устанавливаем пределы объекта задания
 			if(!::SetInformationJobObject(::__awh_job__, JobObjectExtendedLimitInformation, &limits, sizeof(limits)))
 				// Записываем ошибку в лог
-				awh::log::print("Cluster job object limits could not be set", awh::log::flag_t::WARNING);
+				log::print("Cluster job object limits could not be set", log::flag_t::WARNING);
 		// Если объект задания создать не удалось
-		} else awh::log::print("Cluster job object could not be created, orphaned workers are possible", awh::log::flag_t::WARNING);
+		} else log::print("Cluster job object could not be created, orphaned workers are possible", log::flag_t::WARNING);
 	}
 	// Буфер под путь к образу приложения
 	wchar_t image[MAX_PATH]{0};
@@ -1458,7 +1458,7 @@ pid_t awh::unit::Cluster::execute() noexcept {
 	 */
 	if((length == 0) || (length >= MAX_PATH)){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster could not determine its own executable path%s", awh::log::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
+		log::print("Cluster could not determine its own executable path%s", log::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
 		// Возвращаем признак отсутствия порождённого процесса
 		return 0;
 	}
@@ -1472,7 +1472,7 @@ pid_t awh::unit::Cluster::execute() noexcept {
 	 */
 	if(!::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", std::to_wstring(static_cast <uint32_t> (this->_pid)).c_str())){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster role marker could not be set in the environment", awh::log::flag_t::CRITICAL);
+		log::print("Cluster role marker could not be set in the environment", log::flag_t::CRITICAL);
 		// Возвращаем признак отсутствия порождённого процесса
 		return 0;
 	}
@@ -1512,14 +1512,14 @@ pid_t awh::unit::Cluster::execute() noexcept {
 	// Если процесс породить не удалось
 	if(!created){
 		// Записываем ошибку в лог
-		awh::log::print("Child process could not be created", awh::log::flag_t::CRITICAL);
+		log::print("Child process could not be created", log::flag_t::CRITICAL);
 		// Возвращаем признак отсутствия порождённого процесса
 		return 0;
 	}
 	// Если объект задания заведён — вносим в него порождённый процесс
 	if((::__awh_job__ != nullptr) && !::AssignProcessToJobObject(::__awh_job__, info.hProcess))
 		// Записываем ошибку в лог
-		awh::log::print("Child process [%d] could not be assigned to the cluster job object", awh::log::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
+		log::print("Child process [%d] could not be assigned to the cluster job object", log::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
 	// Получаем идентификатор порождённого процесса
 	const pid_t pid = static_cast <pid_t> (info.dwProcessId);
 	{
@@ -1550,7 +1550,7 @@ pid_t awh::unit::Cluster::execute() noexcept {
 		 */
 		if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE)){
 			// Записываем ошибку в лог
-			awh::log::print("Child process [%d] termination watch could not be registered, the process is terminated", awh::log::flag_t::CRITICAL, pid);
+			log::print("Child process [%d] termination watch could not be registered, the process is terminated", log::flag_t::CRITICAL, pid);
 			// Снимаем порождённый процесс, работать он ещё не начинал
 			::TerminateProcess(info.hProcess, static_cast <UINT> (EXIT_FAILURE));
 			// Закрываем дескриптор объекта процесса
@@ -1599,7 +1599,7 @@ bool awh::unit::Cluster::adopt() noexcept {
 	/**
 	 * Выполняем разбор метки роли числом
 	 *
-	 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stoul`: тот кидает исключение
+	 * @warning Разбор ведётся `lexical`, а НЕ `std::stoul`: тот кидает исключение
 	 *          и при переполнении, и при негодной записи, а метод объявлен
 	 *          `noexcept` - перехват исключений в теле его есть скрытая роскошь,
 	 *          которую рамка не обещает. Разбор локали не подвластен и исключений
@@ -1611,14 +1611,14 @@ bool awh::unit::Cluster::adopt() noexcept {
 	 */
 	uint64_t number = 0;
 	// Выполняем разбор идентификатора процесса мастера
-	const auto parsed = awh::lexical_t::fromChars <uint64_t, wchar_t> (marker, (marker + size), number);
+	const auto & parsed = awh::lexical::fromChars <uint64_t, wchar_t> (marker, (marker + size), number);
 	/**
 	 * Если метка роли числом не разобралась
 	 */
 	if(!static_cast <bool> (parsed) || (parsed.ptr != (marker + size)) ||
 	   (number > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster role marker is malformed, the process is treated as master", awh::log::flag_t::CRITICAL);
+		log::print("Cluster role marker is malformed, the process is treated as master", log::flag_t::CRITICAL);
 		// Сообщаем, что процесс дочерним не является
 		return false;
 	}
@@ -1644,7 +1644,7 @@ bool awh::unit::Cluster::adopt() noexcept {
 		// Запоминаем дескриптор объекта родительского процесса
 		this->_master = reinterpret_cast <uintptr_t> (handle);
 	// Если дескриптор объекта мастера получить не удалось
-	else awh::log::print("Cluster master process [%d] could not be opened, orphan detection is disabled", awh::log::flag_t::CRITICAL, pid);
+	else log::print("Cluster master process [%d] could not be opened, orphan detection is disabled", log::flag_t::CRITICAL, pid);
 	/**
 	 * Открываем свой конец канала обмена сообщениями с мастером
 	 *
@@ -1666,7 +1666,7 @@ bool awh::unit::Cluster::adopt() noexcept {
 	 */
 	if(!this->attach()){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker process [%d] has no messaging channel with the master, the worker is terminated", awh::log::flag_t::CRITICAL, ::getpid());
+		log::print("Cluster worker process [%d] has no messaging channel with the master, the worker is terminated", log::flag_t::CRITICAL, ::getpid());
 		// Завершаем работу работника: работать ему нечем
 		::_exit(EXIT_FAILURE);
 	}
@@ -1697,7 +1697,7 @@ bool awh::unit::Cluster::attach() noexcept {
 	// Если имени канала в окружении нет
 	if((size == 0) || (size >= (sizeof(buffer) / sizeof(buffer[0])))){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker pipe name is not set, messaging with the master is disabled", awh::log::flag_t::CRITICAL);
+		log::print("Cluster worker pipe name is not set, messaging with the master is disabled", log::flag_t::CRITICAL);
 		// Сообщаем, что канал обмена сообщениями не открыт
 		return false;
 	}
@@ -1713,7 +1713,7 @@ bool awh::unit::Cluster::attach() noexcept {
 	// Если событие завести не удалось
 	if(eid == 0){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker event could not be created", awh::log::flag_t::CRITICAL);
+		log::print("Cluster worker event could not be created", log::flag_t::CRITICAL);
 		// Сообщаем, что канал обмена сообщениями не открыт
 		return false;
 	}
@@ -1760,7 +1760,7 @@ bool awh::unit::Cluster::attach() noexcept {
 				this->_io->on(cid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 			}
 		// Если имени служебного канала в окружении нет
-		} else awh::log::print("Cluster control channel name is not set, the worker is deaf to the master", awh::log::flag_t::CRITICAL);
+		} else log::print("Cluster control channel name is not set, the worker is deaf to the master", log::flag_t::CRITICAL);
 	}
 	// Создаём воркера для самого себя
 	unique_ptr <worker_t> worker = make_unique <worker_t> ();
@@ -1793,7 +1793,7 @@ bool awh::unit::Cluster::attach() noexcept {
 	 */
 	if(!(this->_io->commit(eid) && this->_io->connect({eid}) && this->_io->launch(eid))){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker event could not be launched", awh::log::flag_t::CRITICAL);
+		log::print("Cluster worker event could not be launched", log::flag_t::CRITICAL);
 		// Удаляем соответствие идентификатора события идентификатору процесса
 		this->_matching.erase(eid);
 		// Удаляем воркера из списка активных воркеров
@@ -1815,7 +1815,7 @@ bool awh::unit::Cluster::attach() noexcept {
 		// Выполняем фиксацию, подключение и запуск работы служебного события
 		if(!(this->_io->commit(cid) && this->_io->connect({cid}) && this->_io->launch(cid))){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster control channel could not be launched, the worker is deaf to the master", awh::log::flag_t::CRITICAL);
+			log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
 			// Уничтожаем служебное событие
 			this->_io->destroy(cid);
 			// Обнуляем идентификатор служебного канала
@@ -1850,7 +1850,7 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 		// Если завершившийся процесс требуется анализировать дальше
 		if(i->second->pid == pid){
 			// Записываем в лог сообщение об остановке дочернего процесса
-			awh::log::print("Child process stopped, PID=%d, STATUS=%d", awh::log::flag_t::WARNING, pid, status);
+			log::print("Child process stopped, PID=%d, STATUS=%d", log::flag_t::WARNING, pid, status);
 			// Определяем, является ли завершение ручной остановкой процесса
 			const bool manual = cluster_t::manual(status);
 			// Если это ручная остановка процесса — останавливаем весь кластер
@@ -1901,7 +1901,7 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 				// Если защита включена и число подряд идущих быстрых падений превысило порог — прекращаем перезапуск и останавливаем кластер
 				if((this->_rebirth.limit > 0) && (this->_rebirth.restarts >= this->_rebirth.limit)){
 					// Записываем в лог сообщение об обнаружении цикла перезапусков
-					awh::log::print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", awh::log::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+					log::print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
 					// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
 					this->clear(shutdown_t::NONE);
 					// Выходим из приложения с кодом завершения дочернего процесса
@@ -2129,7 +2129,7 @@ size_t awh::unit::Cluster::dispatch(const event::id_t eid, const control_t type,
 	 */
 	if(size > (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t))){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster control message of %zu bytes exceeds the limit of %zu bytes", awh::log::flag_t::WARNING, size, (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t)));
+		log::print("Cluster control message of %zu bytes exceeds the limit of %zu bytes", log::flag_t::WARNING, size, (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t)));
 		// Выводим отсутствие отправленных байт
 		return 0;
 	}
@@ -2319,7 +2319,7 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 			// Уничтожаем второй конец пары
 			this->_io->destroy(events[1]);
 			// Записываем ошибку в лог
-			awh::log::print("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", awh::log::flag_t::CRITICAL, initiator, peer);
+			log::print("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", log::flag_t::CRITICAL, initiator, peer);
 			// Выходим из функции
 			return;
 		}
@@ -2337,7 +2337,7 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 	// Запоминаем заведённую связь у узла, с которым связь заказана
 	this->_links[peer].emplace(initiator);
 	// Записываем в лог сообщение о заведённой связи
-	awh::log::print("Cluster workers [%d] and [%d] have been linked", awh::log::flag_t::INFO, initiator, peer);
+	log::print("Cluster workers [%d] and [%d] have been linked", log::flag_t::INFO, initiator, peer);
 }
 /**
  * @brief Метод разрыва всех связей выбывающего узла
@@ -2457,7 +2457,7 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				// Помечаем узел уходящим намеренно
 				this->_leaving.emplace(pid);
 				// Записываем в лог сообщение об уходе работника
-				awh::log::print("Cluster worker process [%d] is leaving on its own", awh::log::flag_t::INFO, pid);
+				log::print("Cluster worker process [%d] is leaving on its own", log::flag_t::INFO, pid);
 			} break;
 			// Если работник заказал прямую связь
 			case static_cast <uint8_t> (control_t::LINK):
@@ -2803,13 +2803,13 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, ::getpid());
+					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, size}, log::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Процесс превратился в зомби, самоликвидируем его
-					awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -2851,13 +2851,13 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, ::getpid());
+					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Процесс превратился в зомби, самоликвидируем его
-					awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -2906,13 +2906,13 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, ::getpid());
+						log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, log::flag_t::CRITICAL, ::getpid());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Процесс превратился в зомби, самоликвидируем его
-						awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+						log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
 					::_exit(EXIT_FAILURE);
@@ -2946,13 +2946,13 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, ::getpid());
+							log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, log::flag_t::CRITICAL, ::getpid());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Процесс превратился в зомби, самоликвидируем его
-							awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+							log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 						#endif
 						// Выходим из приложения
 						::_exit(EXIT_FAILURE);
@@ -2996,13 +2996,13 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (error), message}, awh::log::flag_t::CRITICAL, ::getpid());
+					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (error), message}, log::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Процесс превратился в зомби, самоликвидируем его
-					awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -3044,13 +3044,13 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status), size}, awh::log::flag_t::CRITICAL, ::getpid());
+					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status), size}, log::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Процесс превратился в зомби, самоликвидируем его
-					awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -3248,13 +3248,13 @@ void awh::unit::Cluster::stop() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Only the master process can stop the cluster", awh::log::flag_t::WARNING);
+			log::print("Only the master process can stop the cluster", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -3271,7 +3271,7 @@ void awh::unit::Cluster::start() noexcept {
 	 */
 	if(this->_rejected){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster is rejected as the second one in this process and cannot be started", awh::log::flag_t::CRITICAL);
+		log::print("Cluster is rejected as the second one in this process and cannot be started", log::flag_t::CRITICAL);
 		// Выходим из функции
 		return;
 	}
@@ -3297,13 +3297,13 @@ void awh::unit::Cluster::start() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Only the master process can start the cluster", awh::log::flag_t::WARNING);
+			log::print("Only the master process can start the cluster", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -3355,13 +3355,13 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Only the master process can clear the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Only the master process can clear the cluster", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Only the master process can clear the cluster", awh::log::flag_t::WARNING);
+			log::print("Only the master process can clear the cluster", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -3387,13 +3387,13 @@ void awh::unit::Cluster::emplace() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Only the master process can create child processes", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Only the master process can create child processes", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Only the master process can create child processes", awh::log::flag_t::WARNING);
+				log::print("Only the master process can create child processes", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -3448,13 +3448,13 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::WARNING);
+			log::debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Only the master process can remove child processes", awh::log::flag_t::WARNING);
+			log::print("Only the master process can remove child processes", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -3618,13 +3618,13 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, ::getpid());
+					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Процесс превратился в зомби, самоликвидируем его
-					awh::log::print("Process [%d] has turned into a zombie, we perform self-destruction", awh::log::flag_t::CRITICAL, ::getpid());
+					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -3636,13 +3636,13 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
+				log::debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Процесс превратился в зомби, самоликвидируем его
-				awh::log::print("A message addressed to a parent process can only be sent from child processes", awh::log::flag_t::WARNING);
+				log::print("A message addressed to a parent process can only be sent from child processes", log::flag_t::WARNING);
 			#endif
 		}
 	// Возвращаем значение по умолчанию
@@ -3732,13 +3732,13 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::WARNING);
+				log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Процесс превратился в зомби, самоликвидируем его
-				awh::log::print("A message addressed to a child process can only be sent from the parent process", awh::log::flag_t::WARNING);
+				log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
 			#endif
 		}
 	// Возвращаем значение по умолчанию
@@ -3775,13 +3775,13 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
+				log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Процесс превратился в зомби, самоликвидируем его
-				awh::log::print("A message addressed to a child process can only be sent from the parent process", awh::log::flag_t::WARNING);
+				log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
 			#endif
 		}
 	// Возвращаем значение по умолчанию
@@ -3798,28 +3798,28 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Записываем ошибку в лог
-		awh::log::print("Only a worker process can order a direct link", awh::log::flag_t::WARNING);
+		log::print("Only a worker process can order a direct link", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если служебный канал не заведён, заказывать связь нечем
 	if(this->_control == 0){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster control channel is not established, a direct link cannot be ordered", awh::log::flag_t::WARNING);
+		log::print("Cluster control channel is not established, a direct link cannot be ordered", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если узел заказал связь с самим собой
 	if(pid == static_cast <pid_t> (::getpid())){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker process [%d] cannot link to itself", awh::log::flag_t::WARNING, pid);
+		log::print("Cluster worker process [%d] cannot link to itself", log::flag_t::WARNING, pid);
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если связь с названным узлом уже заведена
 	if(this->_peers.find(pid) != this->_peers.end()){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker process [%d] is already linked", awh::log::flag_t::WARNING, pid);
+		log::print("Cluster worker process [%d] is already linked", log::flag_t::WARNING, pid);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -3837,7 +3837,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		// Если пара обмена не заведена
 		if((events[0] == 0) || (events[1] == 0)){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster link channel could not be created", awh::log::flag_t::CRITICAL);
+			log::print("Cluster link channel could not be created", log::flag_t::CRITICAL);
 			// Если первый конец пары заведён
 			if(events[0] != 0)
 				// Уничтожаем первый конец пары
@@ -3859,7 +3859,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		// Если имя канала связи получить не удалось
 		if(name.empty()){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster link channel name could not be obtained", awh::log::flag_t::CRITICAL);
+			log::print("Cluster link channel name could not be obtained", log::flag_t::CRITICAL);
 			// Уничтожаем первый конец пары
 			this->_io->destroy(events[0]);
 			// Уничтожаем второй конец пары
@@ -3885,7 +3885,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		 */
 		if(!(this->_io->commit(events[0]) && this->_io->launch(events[0]))){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster link channel could not be launched", awh::log::flag_t::CRITICAL);
+			log::print("Cluster link channel could not be launched", log::flag_t::CRITICAL);
 			// Уничтожаем свой конец пары
 			this->_io->destroy(events[0]);
 			// Выводим отрицательный результат
@@ -3929,7 +3929,7 @@ bool awh::unit::Cluster::unlink(const pid_t pid) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Записываем ошибку в лог
-		awh::log::print("Only a worker process can break a direct link", awh::log::flag_t::WARNING);
+		log::print("Only a worker process can break a direct link", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -3969,13 +3969,13 @@ size_t awh::unit::Cluster::transmit(const pid_t pid, const void * buffer, const 
 	 */
 	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
-		awh::log::debug("Cluster worker process [%d] is not linked, a message cannot be transmitted", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::WARNING, pid);
+		log::debug("Cluster worker process [%d] is not linked, a message cannot be transmitted", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING, pid);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		awh::log::print("Cluster worker process [%d] is not linked, a message cannot be transmitted", awh::log::flag_t::WARNING, pid);
+		log::print("Cluster worker process [%d] is not linked, a message cannot be transmitted", log::flag_t::WARNING, pid);
 	#endif
 	// Возвращаем значение по умолчанию
 	return 0;
@@ -3993,14 +3993,14 @@ size_t awh::unit::Cluster::relay(const pid_t pid, const void * buffer, const siz
 	// Если процесс является родительским
 	if(this->master()){
 		// Записываем ошибку в лог
-		awh::log::print("Only a worker process can relay a message through the master", awh::log::flag_t::WARNING);
+		log::print("Only a worker process can relay a message through the master", log::flag_t::WARNING);
 		// Возвращаем значение по умолчанию
 		return 0;
 	}
 	// Если служебный канал не заведён, пересылать нечем
 	if(this->_control == 0){
 		// Записываем ошибку в лог
-		awh::log::print("Cluster control channel is not established, a message cannot be relayed", awh::log::flag_t::WARNING);
+		log::print("Cluster control channel is not established, a message cannot be relayed", log::flag_t::WARNING);
 		// Возвращаем значение по умолчанию
 		return 0;
 	}
@@ -4043,7 +4043,7 @@ bool awh::unit::Cluster::shutdown(const pid_t pid, const int32_t code) noexcept 
 	// Если процесс является дочерним
 	if(!this->master()){
 		// Записываем ошибку в лог
-		awh::log::print("Only the master process can order a worker to terminate", awh::log::flag_t::WARNING);
+		log::print("Only the master process can order a worker to terminate", log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -4081,7 +4081,7 @@ void awh::unit::Cluster::leave(const int32_t code) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
 		// Записываем ошибку в лог
-		awh::log::print("Only a worker process can leave the cluster", awh::log::flag_t::WARNING);
+		log::print("Only a worker process can leave the cluster", log::flag_t::WARNING);
 		// Выходим из функции
 		return;
 	}
@@ -4101,7 +4101,7 @@ void awh::unit::Cluster::leave(const int32_t code) noexcept {
 		// Извещаем мастера о своём уходе
 		this->dispatch(this->_control, control_t::OFFLINE, static_cast <pid_t> (::getpid()), &code, sizeof(code));
 	// Записываем в лог сообщение об уходе работника
-	awh::log::print("Cluster worker process [%d] is leaving with code %d", awh::log::flag_t::INFO, ::getpid(), code);
+	log::print("Cluster worker process [%d] is leaving with code %d", log::flag_t::INFO, ::getpid(), code);
 	// Завершаем работу процесса названным кодом
 	::_exit(code);
 }
@@ -4187,7 +4187,7 @@ awh::unit::Cluster::Cluster() noexcept :
 			// Помечаем кластер отвергнутым
 			this->_rejected = true;
 			// Записываем ошибку в лог
-			awh::log::print("A cluster already exists in this process: the second one is rejected and will not be started", awh::log::flag_t::CRITICAL);
+			log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
 			// Выходим из конструктора
 			return;
 		}
@@ -4218,7 +4218,7 @@ awh::unit::Cluster::Cluster() noexcept :
 			// Помечаем кластер отвергнутым
 			this->_rejected = true;
 			// Записываем ошибку в лог
-			awh::log::print("A cluster already exists in this process: the second one is rejected and will not be started", awh::log::flag_t::CRITICAL);
+			log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
 		// Если кластер ещё не создан
 		} else {
 			// Выполняем установку объекта кластера

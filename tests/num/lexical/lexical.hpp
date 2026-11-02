@@ -86,14 +86,14 @@ class LexicalFixture : public testing::Test {
 		static bool sameBits(const float a, const float b) noexcept;
 	public:
 		/**
-		 * @brief Разбирает double через lexical_t и сверяет со strtod
+		 * @brief Разбирает double через lexical и сверяет со strtod
 		 *
 		 * @param text исходная строка
 		 *
 		 */
 		static void expectDoubleMatchesStrtod(const char * text) noexcept;
 		/**
-		 * @brief Разбирает float через lexical_t и сверяет со strtof
+		 * @brief Разбирает float через lexical и сверяет со strtof
 		 *
 		 * @param text исходная строка
 		 *

@@ -513,7 +513,7 @@ namespace {
 		 * Ноль записывается сразу: отрицательный ноль от обычного в записи ничем
 		 * отличаться не должен
 		 */
-		if(number == 0.)
+		if(number == .0)
 			// Выводим нулевой результат
 			return string(1, '0');
 		// Количество знаков после запятой в записи числа
@@ -2483,7 +2483,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 							}
 						}
 						// Разобранное число с плавающей точкой
-						double number = 0.;
+						double number = .0;
 						/**
 						 * Смещение начала записи числа
 						 *
@@ -2494,7 +2494,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 						 */
 						const size_t begin = ((record.front() == '+') ? 1 : 0);
 						// Выполняем разбор записи числа модулем разбора чисел
-						const auto parsed = lexical_t::fromChars((record.data() + begin), (record.data() + record.size()), number);
+						const auto & parsed = lexical::fromChars((record.data() + begin), (record.data() + record.size()), number);
 						// Выводим признак того, что запись разобрана целиком и конечна
 						result = (
 							static_cast <bool> (parsed) &&
@@ -2831,9 +2831,9 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 						// Смещение начала записи числа: ведущий знак «плюс» разбору неведом
 						const size_t begin = ((record.front() == L'+') ? 1 : 0);
 						// Разобранное число с плавающей точкой
-						double number = 0.;
+						double number = .0;
 						// Выполняем разбор записи числа модулем разбора чисел
-						const auto parsed = lexical_t::fromChars((record.data() + begin), (record.data() + record.size()), number);
+						const auto & parsed = lexical::fromChars((record.data() + begin), (record.data() + record.size()), number);
 						// Выводим признак того, что запись разобрана целиком и конечна
 						result = (
 							static_cast <bool> (parsed) &&
@@ -4669,7 +4669,7 @@ T awh::fmk::atoi(string_view value) noexcept {
 			// Результат конвертации в базовом типе перечисления
 			underlying_type_t <T> number = 0;
 			// Вызываем метод конвертации
-			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			const auto & answer = lexical::fromChars(value.data(), value.data() + value.size(), number);
 			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
 			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
 				// Выполняем приведение результата к типу перечисления
@@ -4682,7 +4682,7 @@ T awh::fmk::atoi(string_view value) noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
+			const auto & answer = lexical::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4977,7 +4977,7 @@ T awh::fmk::atoi(wstring_view value) noexcept {
 			// Результат конвертации в базовом типе перечисления
 			underlying_type_t <T> number = 0;
 			// Вызываем метод конвертации
-			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			auto answer = lexical::fromChars(value.data(), value.data() + value.size(), number);
 			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
 			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
 				// Выполняем приведение результата к типу перечисления
@@ -4990,7 +4990,7 @@ T awh::fmk::atoi(wstring_view value) noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
+			auto answer = lexical::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -5279,12 +5279,12 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 		 */
 		try {
 			// Целая часть числа
-			double intpart = 0.;
+			double intpart = .0;
 			/**
 			 * Целое число записывается без дробной части вовсе, а дробное - с
 			 * количеством знаков после запятой, заданным размером шага
 			 */
-			result = noexpFixed(number, ((::modf(number, &intpart) != 0.) ? static_cast <int32_t> (step) : 0));
+			result = noexpFixed(number, ((::modf(number, &intpart) != .0) ? static_cast <int32_t> (step) : 0));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -5506,9 +5506,9 @@ float awh::fmk::rate(const float a, const float b) noexcept {
 	 */
 	try {
 		// Если второе число равно нулю, относительный процент не определён
-		if(b == 0.f)
+		if(b == .0f)
 			// Возвращаем нулевой результат
-			return 0.f;
+			return .0f;
 		// Возвращаем разницу в процентах
 		return ((a > b ? ((a - b) / b * 100.f) : ((b - a) / b * 100.f) * -1.f));
 	/**
@@ -7737,7 +7737,7 @@ string awh::fmk::icon(const bool end) noexcept {
  */
 double awh::fmk::bytes(const string_view str) noexcept {
 	// Размер количество байт
-	double result = 0.;
+	double result = .0;
 	// Если строка передана и начинается с цифры
 	if(!str.empty() && ascii::isDigit(str[0])){
 		/**
@@ -7853,7 +7853,7 @@ string awh::fmk::bytes(const double value, const bool onlyNum) noexcept {
 	// Переменная результата
 	string result = "0 bytes";
 	// Если количество байт передано
-	if(value > 0.){
+	if(value > .0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
