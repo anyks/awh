@@ -38,9 +38,9 @@
  */
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <sys/un.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -1162,8 +1162,6 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			case static_cast <uint8_t> (event::node_t::PEER): {
 				// Признак того, что искомая запись найдена
 				bool found = false;
-				// Выполняем инициализацию объекта опроса ядра
-				gnu::netlink_t netlink;
 				/**
 				 * Определяем семейство протоколов по размеру адреса
 				 *
@@ -1179,7 +1177,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				/**
 				 * Выполняем выборку таблицы соседей канального уровня
 				 */
-				netlink.dump(RTM_GETNEIGH, family, [&](const struct nlmsghdr * header) noexcept -> bool {
+				gnu::netlink::dump(RTM_GETNEIGH, family, [&](const struct nlmsghdr * header) noexcept -> bool {
 					// Если сообщение не является записью таблицы соседей
 					if(header->nlmsg_type != RTM_NEWNEIGH)
 						// Продолжаем обход

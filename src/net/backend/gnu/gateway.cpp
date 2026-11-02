@@ -19,7 +19,7 @@
  * @details У BSD и macOS таблица маршрутов читается вызовом `sysctl` с ветвью
  *          `PF_ROUTE`, а правка её ведётся записью сообщений в маршрутный сокет. У
  *          Linux и то и другое делается через netlink: выборкой RTM_GETROUTE, а правка -
- *          сообщениями RTM_NEWROUTE и RTM_DELROUTE
+ *          сообщениями RTM_NEWROUTE и RTM_DELROUTE.
  *
  * @copyright Copyright © 2026
  *
@@ -56,6 +56,11 @@ using namespace std;
  *
  */
 namespace routing {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Структура разобранной записи таблицы маршрутов
 	 *
@@ -187,7 +192,7 @@ namespace routing {
 	 * @return      результат правки таблицы маршрутов
 	 *
 	 */
-	static __AWH_INLINE__ bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
+	static __AWH_INLINE__ bool modify(const uint16_t type, const uint16_t flags, const eth::gateway_t::route_t & route) noexcept {
 		// Если адрес шлюза не инициализирован
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена
@@ -343,14 +348,14 @@ namespace routing {
 			// Если адрес назначения является IPv4
 			if(family == AF_INET)
 				// Добавляем адрес назначения маршрута
-				::routing::attribute(&message.header, limit, RTA_DST, &awh_cast <const awh::net::addr_net_ipv4_t *> (route.destination.get())->address, size);
+				::routing::attribute(&message.header, limit, RTA_DST, &awh_cast <const net::addr_net_ipv4_t *> (route.destination.get())->address, size);
 			// Добавляем адрес назначения маршрута
-			else ::routing::attribute(&message.header, limit, RTA_DST, &awh_cast <const awh::net::addr_net_ipv6_t *> (route.destination.get())->address[0], size);
+			else ::routing::attribute(&message.header, limit, RTA_DST, &awh_cast <const net::addr_net_ipv6_t *> (route.destination.get())->address[0], size);
 		}
 		// Если адрес шлюза является IPv4
 		if(family == AF_INET){
 			// Получаем адрес шлюза маршрута
-			const uint32_t gateway = awh_cast <const awh::net::addr_net_ipv4_t *> (route.gateway.get())->address;
+			const uint32_t gateway = awh_cast <const net::addr_net_ipv4_t *> (route.gateway.get())->address;
 			// Если адрес шлюза задан, добавляем его в сообщение
 			if(gateway > 0)
 				// Добавляем адрес шлюза маршрута
@@ -358,7 +363,7 @@ namespace routing {
 		// Если адрес шлюза является IPv6
 		} else {
 			// Получаем адрес шлюза маршрута
-			const uint8_t * gateway = &awh_cast <const awh::net::addr_net_ipv6_t *> (route.gateway.get())->address[0];
+			const uint8_t * gateway = &awh_cast <const net::addr_net_ipv6_t *> (route.gateway.get())->address[0];
 			// Буфер нулевого адреса для сравнения
 			const uint8_t zero[16] = {0};
 			// Если адрес шлюза задан, добавляем его в сообщение
@@ -376,9 +381,7 @@ namespace routing {
 				::routing::attribute(&message.header, limit, RTA_OIF, &index, sizeof(index));
 		}
 		// Выполняем инициализацию объекта опроса ядра
-		const awh::gnu::netlink_t netlink;
-		// Выполняем отправку сообщения ядру
-		return netlink.commit(&message, message.header.nlmsg_len);
+		return gnu::netlink::commit(&message, message.header.nlmsg_len);
 	}
 };
 
@@ -499,11 +502,10 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		// Разобранная запись таблицы маршрутов
 		::routing::entry_t entry;
 		// Выполняем инициализацию объекта опроса ядра
-		const gnu::netlink_t netlink;
 		/**
 		 * Выполняем выборку таблицы маршрутов
 		 */
-		netlink.dump(RTM_GETROUTE, family, [&](const struct nlmsghdr * header) noexcept -> bool {
+		awh::gnu::netlink::dump(RTM_GETROUTE, family, [&](const struct nlmsghdr * header) noexcept -> bool {
 			// Разобранная запись таблицы маршрутов
 			::routing::entry_t current;
 			// Если запись разобрать не удалось
@@ -594,7 +596,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			/**
 			 * Выполняем запрос разрешённого ядром маршрута
 			 */
-			netlink.request(&query, query.header.nlmsg_len, [&](const struct nlmsghdr * header) noexcept -> bool {
+			awh::gnu::netlink::request(&query, query.header.nlmsg_len, [&](const struct nlmsghdr * header) noexcept -> bool {
 				// Разобранная запись ответа ядра
 				::routing::entry_t current;
 				// Если запись разобрать не удалось
@@ -646,13 +648,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, log::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("%s", log::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат

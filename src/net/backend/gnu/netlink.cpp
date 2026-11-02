@@ -44,7 +44,7 @@
 using namespace std;
 
 /**
- * @brief Метод выборки сведений у ядра
+ * @brief Функция выборки сведений у ядра
  *
  * @param type     тип запроса (RTM_GETNEIGH, RTM_GETLINK, RTM_GETADDR, RTM_GETROUTE)
  * @param family   семейство протоколов (AF_INET, AF_INET6 либо AF_UNSPEC)
@@ -52,7 +52,7 @@ using namespace std;
  * @return         результат выполнения выборки
  *
  */
-bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const handler_t & callback) const noexcept {
+bool awh::gnu::netlink::dump(const uint16_t type, const uint8_t family, const handler_t & callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если функция обхода сообщений не передана
@@ -139,6 +139,8 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			// Выходим из функции
 			return result;
 		}
+		// Признак продолжения обхода сообщений
+		bool walking = true;
 		/**
 		 * Создаём буфер приёма ответа
 		 *
@@ -148,8 +150,6 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		 *
 		 */
 		vector <uint8_t> buffer(32768, 0);
-		// Признак продолжения обхода сообщений
-		bool walking = true;
 		/**
 		 * Выполняем чтение ответа ядра до конца выборки
 		 */
@@ -263,14 +263,14 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 	return result;
 }
 /**
- * @brief Метод отправки ядру сообщения изменения
+ * @brief Функция отправки ядру сообщения изменения
  *
  * @param message сообщение изменения
  * @param size    размер сообщения изменения
  * @return        результат выполнения изменения
  *
  */
-bool awh::gnu::Netlink::commit(const void * message, const size_t size) const noexcept {
+bool awh::gnu::netlink::commit(const void * message, const size_t size) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Создаём сокет к ядру
@@ -349,14 +349,14 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 	return result;
 }
 /**
- * @brief Метод заведения виртуального сетевого устройства
+ * @brief Функция заведения виртуального сетевого устройства
  *
  * @param name имя заводимого устройства
  * @param kind род заводимого устройства
  * @return     результат заведения устройства
  *
  */
-bool awh::gnu::Netlink::link(string_view name, string_view kind) const noexcept {
+bool awh::gnu::netlink::link(string_view name, string_view kind) noexcept {
 	// Если имя либо род устройства не переданы
 	if(name.empty() || kind.empty())
 		// Выходим из функции
@@ -430,16 +430,16 @@ bool awh::gnu::Netlink::link(string_view name, string_view kind) const noexcept 
 	// Увеличиваем размер сообщения
 	message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(info->rta_len));
 	// Выполняем отправку сообщения ядру
-	return this->commit(&message, message.header.nlmsg_len);
+	return commit(&message, message.header.nlmsg_len);
 }
 /**
- * @brief Метод снятия виртуального сетевого устройства
+ * @brief Функция снятия виртуального сетевого устройства
  *
  * @param name имя снимаемого устройства
  * @return     результат снятия устройства
  *
  */
-bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
+bool awh::gnu::netlink::unlink(string_view name) noexcept {
 	// Если имя устройства не передано
 	if(name.empty())
 		// Выходим из функции
@@ -491,10 +491,10 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 	// Устанавливаем номер снимаемого устройства
 	message.info.ifi_index = static_cast <int32_t> (index);
 	// Выполняем отправку сообщения ядру
-	return this->commit(&message, message.header.nlmsg_len);
+	return commit(&message, message.header.nlmsg_len);
 }
 /**
- * @brief Метод запроса сведений у ядра
+ * @brief Функция запроса сведений у ядра
  *
  * @param message  сообщение запроса
  * @param size     размер сообщения запроса
@@ -502,7 +502,7 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
  * @return         результат выполнения запроса
  *
  */
-bool awh::gnu::Netlink::request(const void * message, const size_t size, const handler_t & callback) const noexcept {
+bool awh::gnu::netlink::request(const void * message, const size_t size, const handler_t & callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сообщение запроса либо функция обхода не переданы

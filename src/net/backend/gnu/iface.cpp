@@ -156,17 +156,17 @@ namespace device {
 		 * Определяем тип интерфейса
 		 */
 		switch(type){
-			// Если это туннельный интерфейс (IPIP)
-			case ARPHRD_TUNNEL:
-			// Если это туннельный интерфейс (IPIP поверх IPv6)
-			case ARPHRD_TUNNEL6:
+			// Если это туннельный интерфейс (PPP)
+			case ARPHRD_PPP:
 			// Если это туннельный интерфейс (SIT, IPv6 поверх IPv4)
 			case ARPHRD_SIT:
 			// Если это туннельный интерфейс (IPv6 поверх IPv6)
 			// Если это туннельный интерфейс (GRE)
 			case ARPHRD_IPGRE:
-			// Если это туннельный интерфейс (PPP)
-			case ARPHRD_PPP:
+			// Если это туннельный интерфейс (IPIP)
+			case ARPHRD_TUNNEL:
+			// Если это туннельный интерфейс (IPIP поверх IPv6)
+			case ARPHRD_TUNNEL6:
 				// Сообщаем, что это туннельный интерфейс
 				return true;
 		}
@@ -351,8 +351,6 @@ namespace device {
 		const uint32_t index = ::if_nametoindex(string(name).c_str());
 		// Если номер сетевого интерфейса получен
 		if(index > 0){
-			// Объект работы с ядром через сокет управления сетью
-			const gnu::netlink_t netlink;
 			/**
 			 * Проходим по всему списку сетевых интерфейсов
 			 *
@@ -426,7 +424,7 @@ namespace device {
 				// Увеличиваем размер сообщения на размер свойства
 				message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
 				// Выполняем отправку сообщения ядру
-				netlink.commit(&message, message.header.nlmsg_len);
+				gnu::netlink::commit(&message, message.header.nlmsg_len);
 			}
 		}
 		// Освобождаем список сетевых интерфейсов
@@ -695,10 +693,8 @@ namespace device {
 					::memcpy(RTA_DATA(attribute), &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], 16);
 					// Увеличиваем размер сообщения на размер свойства
 					message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
-					// Объект работы с ядром через сокет управления сетью
-					const gnu::netlink_t netlink;
 					// Выполняем отправку сообщения ядру
-					result = netlink.commit(&message, message.header.nlmsg_len);
+					result = gnu::netlink::commit(&message, message.header.nlmsg_len);
 				}
 				/**
 				 * Применяем новый IP-адрес интерфейса
@@ -763,20 +759,6 @@ namespace device {
 					// Возвращаем результат
 					return net::invalid_socket_t;
 				}
-				/**
-				 * Выполняем инициализацию объекта опроса ядра
-				 *
-				 * @details Клонирующих драйверов, которыми это делается у BSD запросом
-				 *          SIOCIFCREATE, у Linux нет вовсе: устройство заводится сообщением
-				 *          RTM_NEWLINK с указанием рода, а имя драйвера родом и служит.
-				 *
-				 * @note Заводим устройство сообщением ядру
-				 *
-				 * @note Сокет управления здесь всё равно нужен: наружу метод отдаёт именно
-				 *       его, и потребитель настраивает через него заведённое устройство
-				 *
-				 */
-				const gnu::netlink_t netlink;
 				// Структура запроса
 				struct ifreq ifr{};
 				// Если имя интерфейса задано
@@ -786,7 +768,7 @@ namespace device {
 					// Устанавливаем завершающий ноль
 					ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 					// Создаём интерфейс
-					if(!netlink.link(name, driver)){
+					if(!gnu::netlink::link(name, driver)){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -816,7 +798,7 @@ namespace device {
 						// Формируем имя интерфейса
 						::snprintf(ifr.ifr_name, IFNAMSIZ, "%s%zu", string(driver).c_str(), i);
 						// Пытаемся создать интерфейс
-						if(netlink.link(ifr.ifr_name, driver)){
+						if(gnu::netlink::link(ifr.ifr_name, driver)){
 							// Сохраняем имя
 							name = ifr.ifr_name;
 							// Возвращаем сокет
@@ -890,8 +872,6 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 				// Возвращаем результат
 				return result;
 			}
-			// Выполняем инициализацию объекта опроса ядра
-			const gnu::netlink_t netlink;
 			/**
 			 * Снимаем устройство сообщением ядру
 			 *
@@ -899,7 +879,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 			 *       RTM_DELLINK, тем же путём, что и заведение
 			 *
 			 */
-			if(!(result = netlink.unlink(name))){
+			if(!(result = awh::gnu::netlink::unlink(name))){
 				/**
 				 * Если включён режим отладки
 				 */
