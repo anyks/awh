@@ -142,14 +142,14 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/s
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
 ##
-# Ход «fs_t» зовёт «os» при смене владельца файла, и без «src/sys/os.cpp» связывание
+# Ход «fs» зовёт «os» при смене владельца файла, и без «src/sys/os.cpp» связывание
 # отказывает на средствах опознания пользователя и группы
 ##
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/signals.cpp" -o "$OUTPUT/sys-signals.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/procre.cpp" -o "$OUTPUT/sys-procre.o"
 ##
-# Работа с файловой системой ведётся ходом «fs_t», и стенд обязан его собирать: с 11.09.2026
+# Работа с файловой системой ведётся ходом «fs», и стенд обязан его собирать: с 11.09.2026
 # кодеки INI, TOML и YAML зовут «sys/fs» вместо прямых ходов к файловой системе
 #
 # @warning Под macOS файл этот собирается как Objective-C++, а не как C++: разбор
@@ -224,7 +224,7 @@ done
 # Части эти лежат в «src/codec» и делятся между кодеками
 #
 # @note Часть «replace» изъята 11.09.2026: модуль «codec/replace» удалён, а
-#       подмена целевого файла временным ведётся ныне ходом «fs_t::replaceAddress».
+#       подмена целевого файла временным ведётся ныне ходом «fs::replaceAddress».
 #       Перечень этот держится ВРУЧНУЮ, и оттого снос модуля валит стенд связыванием -
 #       маска подхватила бы всякий посторонний файл, потому перечень и ручной
 ##

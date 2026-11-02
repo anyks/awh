@@ -1,5 +1,5 @@
 /**
- * @file fs.cpp
+ * @file awh::fs::cpp
  * @date 2026-01-24
  *
  * @license{LicenseRef-AWH-1.0}
@@ -53,68 +53,67 @@ int32_t main(){
 	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект для работы с файловой системой
-	fs_t fs;
 	// Проверяем соответствие директории в файловой системе по адресу
-	cout << " !!!! IS DIR " << (fs_t::type_t::DIR == fs.type("../tests")) << endl;
+	cout << " !!!! IS DIR " << (awh::fs::type_t::DIR == awh::fs::type("../tests")) << endl;
 	// Проверяем соответствие файлу в файловой системе по адресу
-	cout << " !!!! IS FILE " << (fs_t::type_t::FILE == fs.type("../README.md")) << endl;
+	cout << " !!!! IS FILE " << (awh::fs::type_t::FILE == awh::fs::type("../README.md")) << endl;
 	// Проверяем соответствие символьной ссылки в файловой системе по адресу
-	cout << " !!!! IS LINK " << (fs_t::type_t::LINK == fs.type("../README2.md")) << endl;
+	cout << " !!!! IS LINK " << (awh::fs::type_t::LINK == awh::fs::type("../README2.md")) << endl;
 	// Проверяем соответствие ярлыка в файловой системе по адресу
-	cout << " !!!! IS LINK " << (fs_t::type_t::LINK == fs.type("../README3.md")) << endl;
+	cout << " !!!! IS LINK " << (awh::fs::type_t::LINK == awh::fs::type("../README3.md")) << endl;
 	// Создаём символьную ссылку
-	fs.symlink("../tests", "../tests2");
+	awh::fs::symlink("../tests", "../tests2");
 	// Возвращаем адрес символьной ссылки
-	cout << " !!!! Symlink " << fs.fullpath("../tests2") << " -> " << fs.fullpath("../tests2", true) << endl;
+	cout << " !!!! Symlink " << awh::fs::fullpath("../tests2") << " -> " << awh::fs::fullpath("../tests2", true) << endl;
 	// Возвращаем адрес ярлыка
-	cout << " !!!! Shortcut " << fs.fullpath("../README3.md") << " -> " << fs.fullpath("../README3.md", true) << endl;
+	cout << " !!!! Shortcut " << awh::fs::fullpath("../README3.md") << " -> " << awh::fs::fullpath("../README3.md", true) << endl;
 	// Создаём жёсткую ссылку
-	fs.hardlink("../README.md", "../README4.md");
+	awh::fs::hardlink("../README.md", "../README4.md");
 	// Удаляем файл по адресу
-	fs.unlink("../README4.md");
+	awh::fs::unlink("../README4.md");
 	// Удаляем символьную ссылку по адресу
-	fs.unlink("../tests2");
+	awh::fs::unlink("../tests2");
 	// Удаляем каталог по адресу
-	fs.unlink("../tests3");
+	awh::fs::unlink("../tests3");
 	// Устанавливаем права доступа к файлу
-	fs.chmod("../README.md", fs.chmod("../README.md"));
+	awh::fs::chmod("../README.md", awh::fs::chmod("../README.md"));
 	// Устанавливаем владельца на файл
-	// fs.chown("../README.md", "forman", "staff");
+	// awh::fs::chown("../README.md", "forman", "staff");
 	// Создаём каталог
-	cout << " !!! Create Dir: " << fs.mkdir("../data/test/sample") << endl;
-	// cout << " !!! Create Dir: " << fs.mkdir("../data/test/sample", "forman", "staff") << endl;
+	cout << " !!! Create Dir: " << awh::fs::mkdir("../data/test/sample") << endl;
+	// cout << " !!! Create Dir: " << awh::fs::mkdir("../data/test/sample", "forman", "staff") << endl;
 	// Удаляем каталог по адресу
-	cout << " !!! Remove Dir: " << fs.unlink("../data") << endl;
+	cout << " !!! Remove Dir: " << awh::fs::unlink("../data") << endl;
 	// Извлекаем название и расширение файла
-	const fs_t::components_t & components = fs.components("../README.md", false, true);
+	const awh::fs::components_t & components = awh::fs::components("../README.md", false, true);
 	// Возвращаем название и расширение файла
 	cout << " !!! File Name: " << components.first << endl;
 	cout << " !!! File Ext: " << components.second << endl;
 	// Подсчитываем количество файлов в каталоге
-	cout << " !!! File Count: " << fs.count("..", "md", true) << endl;
+	cout << " !!! File Count: " << awh::fs::count("..", "md", true) << endl;
 	// Подсчитываем размер файла/каталога
-	cout << " !!! File Size: " << fs.size("..", "", true) << endl;
+	cout << " !!! File Size: " << awh::fs::size("..", "", true) << endl;
 	// Добавляем в файл бинарные данные
-	fs.append("../Data.txt", L"Hello World!!!\n");
+	awh::fs::append("../Data.txt", L"Hello World!!!\n");
 	// Записываем в файл бинарные данные
-	fs.write("../Data.txt", L"Hello World and ANYKS!!!\n");
+	awh::fs::write("../Data.txt", L"Hello World and ANYKS!!!\n");
 	// Читаем из файла построчно
-	fs.readfile("../README3.md", [](string_view str) noexcept -> void {
+	awh::fs::readfile("../README3.md", [](string_view str) noexcept -> void {
 		// Возвращаем строку файла
 		cout << " !!!! LINE: " << str << endl;
 	});
 	// Читаем из файла бинарными блоками
-	fs.readfile("../README3.md", 4096, [](const void * data, const size_t size) noexcept -> void {
+	awh::fs::readfile("../README3.md", 4096, [](const void * data, const size_t size) noexcept -> void {
 		// Возвращаем размер прочитанного буфера
 		cout << " !!!! BUFFER SIZE: " << size << " || " << string(static_cast <const char *> (data), size) << endl;
 	});
 	// Рекурсивно получаем все файлы в каталоге
-	fs.readdir("..", "", true, [](const fs_t::type_t type, string_view filename) noexcept -> void {
+	awh::fs::readdir("..", "", true, [](const awh::fs::type_t type, string_view filename) noexcept -> void {
 		// Печатаем имя файла
 		cout << " !!!! FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << endl;
 	});
 	// Рекурсивно получаем все файлы с фильтром по расширению в каталоге
-	fs.readdir("..", "md", false, [](const fs_t::type_t type, string_view filename, string_view text) noexcept -> void {
+	awh::fs::readdir("..", "md", false, [](const awh::fs::type_t type, string_view filename, string_view text) noexcept -> void {
 		// Печатаем имя файла и его содержимое
 		cout << " !!!! FILTERED FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << " || CONTENT: " << text << endl;
 	});
@@ -128,13 +127,13 @@ int32_t main(){
 	 */
 	{
 		// Создаём объект файла средствами самого модуля
-		const auto handle = fs.handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Признак того, что все доли легли в файл
 		bool laid = true;
 		// Выполняем пакетную дозапись одним описателем
 		for(uint8_t i = 0; i < 4; i++)
 			// Записи теперь отвечают вызывающему, а не одному лишь журналу
-			laid = (fs.append("../Batch.txt", "Hello World!!!\n", handle) && laid);
+			laid = (awh::fs::append("../Batch.txt", "Hello World!!!\n", handle) && laid);
 		// Печатаем исход пакетной дозаписи
 		cout << " !!! Batch append: " << laid << endl;
 		/**
@@ -144,7 +143,7 @@ int32_t main(){
 		 *       записанного этим не доведёт. Признак долговечности велит довести запись
 		 *       до самого носителя, а не до вместилища накопителя
 		 */
-		cout << " !!! Flush: " << fs.flush("../Batch.txt", true, handle) << endl;
+		cout << " !!! Flush: " << awh::fs::flush("../Batch.txt", true, handle) << endl;
 	}
 	/**
 	 * Чтение тем же объектом файла
@@ -155,15 +154,15 @@ int32_t main(){
 	 */
 	{
 		// Создаём объект файла средствами самого модуля
-		const auto handle = fs.handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Читаем файл построчно одним описателем
-		fs.readfile("../Batch.txt", [](string_view str) noexcept -> void {
+		awh::fs::readfile("../Batch.txt", [](string_view str) noexcept -> void {
 			// Возвращаем строку файла
 			cout << " !!!! BATCH LINE: " << str << endl;
-		}, fs_t::seek_t::BEGIN, 0, handle);
+		}, awh::fs::seek_t::BEGIN, 0, handle);
 	}
 	// Удаляем файл пакетной записи
-	fs.unlink("../Batch.txt");
+	awh::fs::unlink("../Batch.txt");
 	/**
 	 * Обход каталога с остановкой и продолжением
 	 *
@@ -173,7 +172,7 @@ int32_t main(){
 	 */
 	{
 		// Создаём объект каталога средствами самого модуля
-		const auto handle = fs.handleDir();
+		const auto handle = awh::fs::handleDir();
 		// Признак того, что обход довершён до конца
 		bool done = false;
 		// Число долей, за которое обход довершён
@@ -185,7 +184,7 @@ int32_t main(){
 			// Число записей, выданных в этой доле
 			uint8_t count = 0;
 			// Выполняем очередную долю обхода
-			done = fs.walkdir("..", "", false, [&count](const fs_t::type_t type, string_view filename) noexcept -> bool {
+			done = awh::fs::walkdir("..", "", false, [&count](const awh::fs::type_t type, string_view filename) noexcept -> bool {
 				// Печатаем имя файла
 				cout << " !!!! WALK: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << endl;
 				// Останавливаем обход после третьей записи
@@ -205,7 +204,7 @@ int32_t main(){
 	 */
 	{
 		// Создаём объект каталога средствами самого модуля
-		const auto handle = fs.handleDir();
+		const auto handle = awh::fs::handleDir();
 		// Число записей в каталоге
 		size_t count = 0;
 		/**
@@ -215,7 +214,7 @@ int32_t main(){
 			// Сбрасываем счётчик записей
 			count = 0;
 			// Выполняем обзор каталога
-			fs.readdir("..", "", false, [&count]([[maybe_unused]] const fs_t::type_t type, [[maybe_unused]] string_view filename) noexcept -> void {
+			awh::fs::readdir("..", "", false, [&count]([[maybe_unused]] const awh::fs::type_t type, [[maybe_unused]] string_view filename) noexcept -> void {
 				// Считаем записи каталога
 				count++;
 			}, true, handle);

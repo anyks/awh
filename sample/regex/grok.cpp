@@ -240,14 +240,13 @@ static void storing(const grok_t & grok) noexcept {
  * @details Файловой системы модуль не касается вовсе: запись отдаётся строкою
  *          байтов, а куда её деть - дело вызывающей стороны. Тем же порядком
  *          устроено и чтение шаблонов из каталога: обход каталога ведёт
- *          вызывающая сторона объектом «awh::fs_t», а сюда подаётся уже текст
+ *          вызывающая сторона пространством имён «awh::fs», а сюда подаётся уже текст
  *
  */
 static void keeping(grok_t & grok) noexcept {
 	// Выводим заголовок примера
 	cout << "== Запись шаблонов в файловой системе" << endl;
 	// Создаём объект работы с файловой системой
-	const fs_t fs;
 	// Путь к файлу записи собранных шаблонов
 	const string filename = "patterns.grok";
 	// Запись собранных шаблонов
@@ -262,9 +261,9 @@ static void keeping(grok_t & grok) noexcept {
 		return;
 	}
 	// Выполняем запись набора собранных шаблонов в файл
-	fs.write(filename, record.data(), record.size());
+	awh::fs::write(filename, record.data(), record.size());
 	// Выводим размер записанного файла
-	cout << "записано в файл " << filename << ", размер " << fs.size(filename) << " байт" << endl;
+	cout << "записано в файл " << filename << ", размер " << awh::fs::size(filename) << " байт" << endl;
 	// Прочитанная из файла запись собранных шаблонов
 	string readed;
 	/**
@@ -275,7 +274,7 @@ static void keeping(grok_t & grok) noexcept {
 	 *          предусмотрен вовсе
 	 *
 	 */
-	fs.read(filename, readed);
+	awh::fs::read(filename, readed);
 	/**
 	 * Признак доверия порождённому машинному коду записи
 	 *
@@ -306,7 +305,7 @@ static void keeping(grok_t & grok) noexcept {
 	// Если восстановление собранных шаблонов не выполнено
 	} else cout << "запись не восстановлена, код " << static_cast <uint32_t> (grok.error()) << endl;
 	// Выполняем удаление файла записи собранных шаблонов
-	fs.unlink(filename);
+	awh::fs::unlink(filename);
 	// Выводим разделитель примеров
 	cout << endl;
 }

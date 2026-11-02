@@ -56,13 +56,7 @@ namespace {
 	 */
 	using namespace awh;
 
-	/**
-	 * @brief Объект для работы с файловой системой
-	 *
-	 */
-	static thread_local fs_t __awh_fs__;
-
-	/**
+		/**
 	 * @brief Предел роста вместилища обращением по номеру
 	 *
 	 * @details Значение по умолчанию взято с запасом над всяким разумным обращением по
@@ -251,7 +245,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+		return (awh::fs::type(path.substr(0, slash), false) == awh::fs::type_t::DIR);
 	}
 };
 
@@ -1986,7 +1980,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 *       и остаток прежнего сохранения торчал бы хвостом за концом записанного
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.unlink(temporary));
+	static_cast <void> (awh::fs::unlink(temporary));
 	/**
 	 * Выполняем запись текста значения во временный файл
 	 *
@@ -1994,7 +1988,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
 	 *
 	 */
-	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = awh::fs::write(temporary, text.data(), text.size(), awh::fs::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
@@ -2043,7 +2037,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 		// Запоминаем код отказа записи файла значения
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2088,7 +2082,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 *       разницу берёт на себя
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.flush(temporary, true));
+	static_cast <void> (awh::fs::flush(temporary, true));
 	/**
 	 * Если перенос собранного текста на место цели не удался
 	 *
@@ -2096,11 +2090,11 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 *
 	 */
-	if(!::__awh_fs__.replaceAddress(temporary, filename)){
+	if(!awh::fs::replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */

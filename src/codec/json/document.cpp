@@ -57,13 +57,7 @@ namespace {
 	 */
 	using namespace awh;
 
-	/**
-	 * @brief Объект для работы с файловой системой
-	 *
-	 */
-	static thread_local fs_t __awh_fs__;
-
-	/**
+		/**
 	 * Запас памяти под перечень узлов дерева документа
 	 *
 	 * @note Величины запаса взяты замером: сверх достаточного они выигрыша уже не дают,
@@ -122,7 +116,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+		return (awh::fs::type(path.substr(0, slash), false) == awh::fs::type_t::DIR);
 	}
 };
 
@@ -1915,7 +1909,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
 	 * кодами отказа
 	 */
-	const fs_t::type_t type = ::__awh_fs__.type(filename);
+	const awh::fs::type_t type = awh::fs::type(filename);
 	/**
 	 * Если адрес указывает на каталог
 	 *
@@ -1931,7 +1925,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       чтения. Замерено на стенде Windows 11 ARM64
 	 *
 	 */
-	if(type == fs_t::type_t::DIR){
+	if(type == awh::fs::type_t::DIR){
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
 		/**
@@ -1966,7 +1960,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 *
 	 */
-	if(type != fs_t::type_t::FILE){
+	if(type != awh::fs::type_t::FILE){
 		/**
 		 * Запоминаем код отказа разбора
 		 *
@@ -2029,7 +2023,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       величины оборванное чтение было бы неотличимо от файла, вправду короткого
 	 *
 	 */
-	const uintmax_t expected = ::__awh_fs__.size(filename);
+	const uintmax_t expected = awh::fs::size(filename);
 	/**
 	 * Выполняем чтение файла документа кусками
 	 *
@@ -2038,7 +2032,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       искажённым - кириллический адрес при этом не находился бы ничем
 	 *
 	 */
-	::__awh_fs__.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+	awh::fs::read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
 		// Пропускаем смещение куска, чтению оно не нужно
 		static_cast <void> (offset);
 		// Наращиваем количество байтов, поданных разбору
@@ -2525,7 +2519,7 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	 *       хвостом за концом записанного. Прежде усечение делал сам поток признаком `trunc`
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.unlink(temporary));
+	static_cast <void> (awh::fs::unlink(temporary));
 	/**
 	 * Выполняем запись текста документа во временный файл
 	 *
@@ -2533,7 +2527,7 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
 	 *
 	 */
-	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = awh::fs::write(temporary, text.data(), text.size(), awh::fs::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
@@ -2588,7 +2582,7 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 		// Запоминаем код отказа записи файла документа
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2635,7 +2629,7 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	 *       разницу берёт на себя
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.flush(temporary, true));
+	static_cast <void> (awh::fs::flush(temporary, true));
 	/**
 	 * Если перенос собранного текста на место цели не удался
 	 *
@@ -2643,11 +2637,11 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 *
 	 */
-	if(!::__awh_fs__.replaceAddress(temporary, filename)){
+	if(!awh::fs::replaceAddress(temporary, filename)){
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */

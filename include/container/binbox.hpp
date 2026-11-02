@@ -248,8 +248,6 @@ namespace awh {
 			// Версия контейнера
 			uint32_t _version;
 		private:
-			// Объект работы с файловой системой
-			shared_ptr <fs_t> _fs;
 			// Объект работы с криптографией
 			shared_ptr <crypto_t> _crypto;
 		private:

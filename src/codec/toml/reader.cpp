@@ -596,88 +596,34 @@ void awh::codec::toml::Reader::assemble(const uint32_t part, const uint32_t part
 	}
 }
 /**
- * @brief Слот указателя родов объявленных имён
+ * @brief Метод получения начала имени слота
  *
- * @details Ключ до 48 знаков лежит в самом слоте, рядом с родом, и сличение при
- *          поиске не ходит в чужую память. Ключ длиннее слотом не вмещается и
- *          держится слотом же во владении, отчего указатель не зависит от прочих
- *          полей читателя и переживает копирование целиком.
+ * @return адрес начала имени слота
  *
  */
-struct awh::codec::toml::Reader::Names::Slot {
-	/**
-	 * @brief Наибольшая длина имени, слотом вмещаемая
-	 *
-	 */
-	static constexpr uint16_t EMBEDDED = 48;
-	/**
-	 * @brief Обозначение свободного слота
-	 *
-	 */
-	static constexpr uint8_t FREE = 0;
-	/**
-	 * @brief Обозначение занятого слота
-	 *
-	 */
-	static constexpr uint8_t USED = 1;
-	/**
-	 * @brief Обозначение слота снятого имени
-	 *
-	 * @note Снятое из пробы не выбрасывается: выбрасывание разорвало бы цепочку
-	 *       линейной пробы, а пересборка таблицы пометки стирает
-	 *
-	 */
-	static constexpr uint8_t DEAD = 2;
-	// Состояние слота
-	uint8_t state;
-	// Род объявленного имени
-	kind_t kind;
-	// Длина имени слота
-	uint16_t length;
-	/**
-	 * Имя слота
-	 *
-	 * @note Читается тело слота, покуда длина имени вмещаема, и владеемая слотом
-	 *       память - свыше того
-	 *
-	 */
-	union {
-		// Тело слота, короткое имя держащее
-		char body[EMBEDDED];
-		// Начало имени, слотом перенесённого
-		char * remote = nullptr;
-	} key;
-	/**
-	 * @brief Метод получения начала имени слота
-	 *
-	 * @return адрес начала имени слота
-	 *
-	 */
-	const char * data() const noexcept {
-		// Выводим начало имени, слотом хранимого
-		return ((this->length <= EMBEDDED) ? this->key.body : this->key.remote);
-	}
-	/**
-	 * @brief Метод освобождения длинного имени слота
-	 *
-	 */
-	void release() noexcept {
-		/**
-		 * Если слот занят длинным именем
-		 */
-		if((this->state == USED) && (this->length > EMBEDDED))
-			// Выполняем освобождение памяти длинного имени
-			delete[] this->key.remote;
-		// Выполняем помещение слота в свободное состояние
-		this->state = FREE;
-	}
-	/**
-	 * @brief Конструктор
-	 *
-	 */
-	explicit Slot() noexcept : state(FREE), kind(static_cast <kind_t> (0)), length(0) {}
-};
+const char * awh::codec::toml::Reader::Names::Slot::data() const noexcept {
+	// Выводим начало имени, слотом хранимого
+	return ((this->length <= EMBEDDED) ? this->key.body : this->key.remote);
+}
 /**
+ * @brief Метод освобождения длинного имени слота
+ *
+ */
+void awh::codec::toml::Reader::Names::Slot::release() noexcept {
+	/**
+	 * Если слот занят длинным именем
+	 */
+	if((this->state == USED) && (this->length > EMBEDDED))
+		// Выполняем освобождение памяти длинного имени
+		delete[] this->key.remote;
+	// Выполняем помещение слота в свободное состояние
+	this->state = FREE;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Reader::Names::Slot::Slot() noexcept : state(FREE), kind(static_cast <kind_t> (0)), length(0) {}/**
  * @brief Очистка указателя имён
  *
  */
@@ -708,7 +654,7 @@ void awh::codec::toml::Reader::Names::clear() noexcept {
  */
 void awh::codec::toml::Reader::Names::rehash(const size_t wanted) noexcept {
 	// Количество слотов пересобранной таблицы
-	size_t capacity = 128;
+	size_t capacity = 256;
 	/**
 	 * Выполняем подбор количества слотов степенью двойки
 	 */
@@ -750,10 +696,16 @@ void awh::codec::toml::Reader::Names::rehash(const size_t wanted) noexcept {
 		// Выполняем учёт занятого слота
 		occupied++;
 	}
-	// Выполняем освобождение слотов прежней таблицы
-	delete[] this->slots;
+	/**
+	 * Если прежняя таблица была выделена за пределами читателя
+	 */
+	if(this->detached)
+		// Выполняем освобождение слотов прежней таблицы
+		delete[] this->slots;
 	// Выполняем принятие слотов пересобранной таблицы
 	this->slots = slots;
+	// Выполняем отметку таблицы выделенной за пределами читателя
+	this->detached = true;
 	// Выполняем принятие количества слотов пересобранной таблицы
 	this->capacity = capacity;
 	// Выполняем принятие занятости пересобранной таблицы
@@ -819,7 +771,7 @@ bool awh::codec::toml::Reader::Names::insert(const string_view key, const kind_t
 	 */
 	if(((this->occupied + this->buried) * 2) >= this->capacity)
 		// Выполняем пересборку таблицы слотов с запасом над занятостью
-		this->rehash((this->occupied > 64) ? (this->occupied * 2) : 128);
+		this->rehash((this->occupied > 64) ? (this->occupied * 4) : 256);
 	// Положение очередного слота пробы
 	size_t cursor = (mixed(key) & (this->capacity - 1));
 	/**
@@ -975,22 +927,46 @@ awh::codec::toml::Reader::Names & awh::codec::toml::Reader::Names::operator = (N
 	if(this != &names){
 		// Выполняем очистку приёмника перемещения
 		this->clear();
-		// Выполняем принятие слотов перемещаемого указателя имён
-		this->slots = names.slots;
+		// Выполняем освобождение таблицы, приёмником выделенной
+		if(this->detached){
+			// Выполняем освобождение слотов таблицы приёмника
+			delete[] this->slots;
+			// Выполняем отметку таблицы приёмника встроенной
+			this->detached = false;
+		}
+		/**
+		 * Если перемещаемый указатель держит таблицу при себе
+		 */
+		if(!names.detached){
+			// Выполняем перенос встроенных слотов перемещаемого указателя имён
+			::memcpy(this->embedded, names.embedded, sizeof(this->embedded));
+			// Выполняем принятие встроенных слотов приёмником
+			this->slots = this->embedded;
+		// Если перемещаемый указатель держит таблицу выделением
+		} else {
+			// Выполняем принятие слотов перемещаемого указателя имён
+			this->slots = names.slots;
+			// Выполняем отметку таблицы приёмника выделенной
+			this->detached = true;
+			// Выполняем возвращение перемещаемого указателя к встроенным слотам
+			names.slots = names.embedded;
+			// Выполняем отметку таблицы перемещаемого указателя встроенной
+			names.detached = false;
+		}
 		// Выполняем принятие количества слотов перемещаемого указателя имён
 		this->capacity = names.capacity;
 		// Выполняем принятие занятости перемещаемого указателя имён
 		this->occupied = names.occupied;
 		// Выполняем принятие числа снятых имён перемещаемого указателя
 		this->buried = names.buried;
-		// Выполняем опустошение перемещаемого указателя имён
-		names.slots = nullptr;
 		// Выполняем обнуление количества слотов перемещаемого указателя имён
-		names.capacity = 0;
+		names.capacity = sizeof(names.embedded) / sizeof(Slot);
 		// Выполняем обнуление занятости перемещаемого указателя имён
 		names.occupied = 0;
 		// Выполняем обнуление числа снятых имён перемещаемого указателя
 		names.buried = 0;
+		// Выполняем опустошение слотов перемещаемого указателя имён
+		::memset(names.embedded, 0, sizeof(names.embedded));
 	}
 	// Выводим приёмник перемещения
 	return *this;
@@ -999,7 +975,7 @@ awh::codec::toml::Reader::Names & awh::codec::toml::Reader::Names::operator = (N
  * @brief Конструктор
  *
  */
-awh::codec::toml::Reader::Names::Names() noexcept : capacity(0), occupied(0), buried(0), slots(nullptr) {}
+awh::codec::toml::Reader::Names::Names() noexcept : capacity(64), occupied(0), buried(0), slots(this->embedded), detached(false) {}
 /**
  * @brief Конструктор
  *
@@ -1027,6 +1003,17 @@ awh::codec::toml::Reader::Names::Names(Names && names) noexcept : Names() {
 awh::codec::toml::Reader::Names::~Names() noexcept {
 	// Выполняем очистку указателя имён
 	this->clear();
+	/**
+	 * Если таблица была выделена за пределами читателя
+	 */
+	if(this->detached){
+		// Выполняем освобождение слотов таблицы
+		delete[] this->slots;
+		// Выполняем возвращение указателя к встроенным слотам
+		this->slots = this->embedded;
+		// Выполняем отметку таблицы встроенной
+		this->detached = false;
+	}
 }
 /**
  * @brief Метод получения рода уже объявленного имени

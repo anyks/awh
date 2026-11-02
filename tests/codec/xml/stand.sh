@@ -160,7 +160,7 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/s
 #
 # Выполняем сборку слоя файловой системы и опознания системы
 #
-# @details Подмена целевого файла временным живёт ходом «fs_t::replaceAddress» с той
+# @details Подмена целевого файла временным живёт ходом «fs::replaceAddress» с той
 #          поры, как модуль «codec/replace» удалён. Кодеки зовут её сохранением
 #          документа, и без этих частей связывание валится на «awh::Filesystem::Filesystem»
 #
@@ -226,7 +226,7 @@ OBJECTS="$OBJECTS $OUTPUT/csv-common.o"
 #
 # @note Часть «replace» изъята 15.09.2026: модуль «codec/replace» удалён как
 #       нарушение договора, а подмена целевого файла временным ведётся ныне ходом
-#       «fs_t::replaceAddress». Стенд валился сборкою на отсутствующем исходнике
+#       «fs::replaceAddress». Стенд валился сборкою на отсутствующем исходнике
 
 # Выполняем перебор всех частей кодека XML
 for PART in common encoding reader writer document value; do

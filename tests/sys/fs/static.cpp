@@ -36,137 +36,84 @@
 #endif
 
 /**
- * @brief Метод настройки тестовой фикстуры
- *
- */
-TEST_F(FSFixture, CreateFSTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
-	// Выполняем сброс объекта
-	this->_fs.reset();
-	// Проверяем что объект сброшен
-	ASSERT_TRUE(this->_fs == nullptr);
-}
-
-/**
- * @brief Метод очистки тестовой фикстуры
- *
- */
-TEST_F(FSFixture, ResetAndCreateFSTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
-	// Выполняем сброс объекта
-	this->_fs.reset();
-	// Проверяем что объект сброшен
-	ASSERT_TRUE(this->_fs == nullptr);
-	// Создаём объект работы с ФС
-	this->_fs = std::make_unique <awh::fs_t> ();
-	// Проверяем что объект создан
-	ASSERT_TRUE(this->_fs != nullptr);
-}
-
-/**
- * @brief Метод повторного создания объекта работы с ФС
- *
- */
-TEST_F(FSFixture, ReCreateFSTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
-	// Создаём объект работы с ФС
-	this->_fs = std::make_unique <awh::fs_t> ();
-	// Проверяем что объект создан
-	ASSERT_TRUE(this->_fs != nullptr);
-}
-
-/**
  * @brief Тестирование методов работы с ФС
  *
  */
 TEST_F(FSFixture, FSTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
-	
-	// Проверка типа текущей директории
-	awh::fs_t::type_t type = this->_fs->type(".");
-	ASSERT_EQ(type, awh::fs_t::type_t::DIR);
-
-	// Проверка полного пути
-	std::string path = this->_fs->fullpath(".");
+	// Определяем тип текущего каталога
+	awh::fs::type_t type = awh::fs::type(".");
+	// Текущий каталог обязан быть каталогом
+	ASSERT_EQ(type, awh::fs::type_t::DIR);
+	// Получаем полный путь текущего каталога
+	std::string path = awh::fs::fullpath(".");
+	// Полный путь не должен быть пустым
 	ASSERT_FALSE(path.empty());
-	
-	// -------------------------------------------------------------
-	// Тест создания и удаления каталогов
-	// -------------------------------------------------------------
+	// Имя каталога проверки
 	std::string testDir = "test_dir_fs_unit";
-	
-	// Удаляем если существует (cleanup)
-	if(this->_fs->type(testDir) != awh::fs_t::type_t::NONE)
-		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(testDir));
-
-	// Создаем каталог
-	ASSERT_TRUE(this->_fs->mkdir(testDir));
-	ASSERT_EQ(this->_fs->type(testDir), awh::fs_t::type_t::DIR);
-	
-	// -------------------------------------------------------------
-	// Тест операций с файлами (write, read, append, size)
-	// -------------------------------------------------------------
+	// Удаляем каталог проверки, если он остался от прошлого прогона
+	if(awh::fs::type(testDir) != awh::fs::type_t::NONE)
+		// Выполняем снос каталога вместе с содержимым
+		ASSERT_TRUE(awh::fs::unlink(testDir));
+	// Заводим каталог проверки
+	ASSERT_TRUE(awh::fs::mkdir(testDir));
+	// Каталог проверки обязан быть каталогом
+	ASSERT_EQ(awh::fs::type(testDir), awh::fs::type_t::DIR);
+	// Адрес файла проверки
 	std::string testFile = testDir + "/test.txt";
+	// Первая часть содержимого
 	std::string content1 = "Hello";
+	// Вторая часть содержимого
 	std::string content2 = " World";
-	
-	// Записываем файл (write)
-	this->_fs->write(testFile, content1.c_str());
-	ASSERT_EQ(this->_fs->type(testFile), awh::fs_t::type_t::FILE);
-	
-	// Проверяем размер
-	ASSERT_EQ(this->_fs->size(testFile), content1.size());
-	
-	// Добавляем данные (append)
-	this->_fs->append(testFile, content2.c_str());
-	ASSERT_EQ(this->_fs->size(testFile), content1.size() + content2.size());
-	
-	// Читаем весь файл (read string)
-	std::string readContent = this->_fs->read <std::string> (testFile);
+	// Записываем первую часть в файл
+	awh::fs::write(testFile, content1.c_str());
+	// Файл проверки обязан быть файлом
+	ASSERT_EQ(awh::fs::type(testFile), awh::fs::type_t::FILE);
+	// Размер файла обязан совпасть с записанным
+	ASSERT_EQ(awh::fs::size(testFile), content1.size());
+	// Дописываем вторую часть в файл
+	awh::fs::append(testFile, content2.c_str());
+	// Размер файла обязан совпасть с суммой частей
+	ASSERT_EQ(awh::fs::size(testFile), content1.size() + content2.size());
+	// Читаем файл целиком
+	std::string readContent = awh::fs::read <std::string> (testFile);
+	// Содержимое обязано совпасть с записанным
 	ASSERT_EQ(readContent, content1 + content2);
-	
-	// Читаем со смещением (read partial)
-	std::string partialContent = this->_fs->read <std::string> (testFile, awh::fs_t::seek_t::BEGIN, content1.size());
+	// Читаем файл со смещением
+	std::string partialContent = awh::fs::read <std::string> (testFile, awh::fs::seek_t::BEGIN, content1.size());
+	// Прочитанное со смещением обязано совпасть со второй частью
 	ASSERT_EQ(partialContent, content2);
-	
-	// -------------------------------------------------------------
-	// Тест прав доступа (chmod)
-	// -------------------------------------------------------------
+	/**
+	 * Для операционных систем семейства Unix
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Получаем текущие права
-		uint32_t perms = this->_fs->chmod(testFile);
-		// Меняем права (например 0777)
-		ASSERT_TRUE(this->_fs->chmod(testFile, static_cast <uint32_t> (0777)));
-		ASSERT_EQ(this->_fs->chmod(testFile) & 0777, 0777);
-		// Возвращаем старые (или стандартные 0644)
-		this->_fs->chmod(testFile, perms);
+		// Получаем текущие права файла
+		uint32_t perms = awh::fs::chmod(testFile);
+		// Устанавливаем права 0777
+		ASSERT_TRUE(awh::fs::chmod(testFile, static_cast <uint32_t> (0777)));
+		// Права обязаны установиться
+		ASSERT_EQ(awh::fs::chmod(testFile) & 0777, 0777);
+		// Возвращаем прежние права
+		awh::fs::chmod(testFile, perms);
 	#endif
-
-	// -------------------------------------------------------------
-	// Тест ссылок (symlink, hardlink)
-	// -------------------------------------------------------------
+	// Адрес символьной ссылки
 	std::string symLink = testDir + "/symlink.txt";
+	// Адрес жёсткой ссылки
 	std::string hardLink = testDir + "/hardlink.txt";
-
 	/**
 	 * Создаём символьную ссылку
 	 *
 	 * @note Цель передаётся полным адресом: относительная цель сохраняется дословно и
 	 *       раскрывается системой от каталога, в котором лежит ссылка, а не от текущего
 	 *       каталога процесса
+	 *
 	 */
-	ASSERT_TRUE(this->_fs->symlink(this->_fs->fullpath(testFile, true), symLink));
+	ASSERT_TRUE(awh::fs::symlink(awh::fs::fullpath(testFile, true), symLink));
 	/**
 	 * Для операционной системы MS Windows
 	 *
 	 * @note Символьной ссылки в понимании POSIX у MS Windows нет: заведение её требует
 	 *       особого права SeCreateSymbolicLinkPrivilege, какого у обычного пользователя
-	 *       не бывает. Оттого Filesystem::symlink заводит там ярлык оболочки, а тот
+	 *       не бывает. Оттого fs::symlink заводит там ярлык оболочки, а тот
 	 *       обязан носить расширение «.lnk» - без него оболочка ярлыка не распознаёт.
 	 *       Проверять надлежит то имя, какое библиотека и создала
 	 *
@@ -175,66 +122,65 @@ TEST_F(FSFixture, FSTest){
 		// Дополняем адрес ссылки расширением ярлыка оболочки
 		symLink.append(".lnk");
 	#endif
-	ASSERT_EQ(this->_fs->type(symLink), awh::fs_t::type_t::LINK);
-	
-	// Создаем жесткую ссылку
-	ASSERT_TRUE(this->_fs->hardlink(testFile, hardLink));
-	ASSERT_EQ(this->_fs->type(hardLink), awh::fs_t::type_t::FILE); // Hardlink looks like a file
-	
-	// Проверяем чтение через симлинк
-	std::string linkContent = this->_fs->read <std::string> (symLink);
+	// Ссылка обязана определиться как ссылка
+	ASSERT_EQ(awh::fs::type(symLink), awh::fs::type_t::LINK);
+	// Создаём жёсткую ссылку
+	ASSERT_TRUE(awh::fs::hardlink(testFile, hardLink));
+	// Жёсткая ссылка обязана выглядеть файлом
+	ASSERT_EQ(awh::fs::type(hardLink), awh::fs::type_t::FILE);
+	// Читаем данные через символьную ссылку
+	std::string linkContent = awh::fs::read <std::string> (symLink);
+	// Данные через ссылку обязаны совпасть с записанными
 	ASSERT_EQ(linkContent, content1 + content2);
-
 	/**
 	 * Для операционных систем семейства Unix
 	 *
 	 * @note Относительная цель сохраняется дословно: система раскрывает её от каталога, в котором
 	 *       лежит ссылка, поэтому перенос каталога вместе со ссылкой её не разрывает
+	 *
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём ссылку с относительной целью на файл того же каталога
-		ASSERT_TRUE(this->_fs->symlink("test.txt", testDir + "/relative.txt"));
-		// Ссылка определяется как ссылка
-		ASSERT_EQ(this->_fs->type(testDir + "/relative.txt"), awh::fs_t::type_t::LINK);
-		// Данные через ссылку читаются
-		ASSERT_EQ((this->_fs->read <std::string> (testDir + "/relative.txt")), content1 + content2);
+		ASSERT_TRUE(awh::fs::symlink("test.txt", testDir + "/relative.txt"));
+		// Ссылка обязана определиться как ссылка
+		ASSERT_EQ(awh::fs::type(testDir + "/relative.txt"), awh::fs::type_t::LINK);
+		// Данные через ссылку обязаны читаться
+		ASSERT_EQ((awh::fs::read <std::string> (testDir + "/relative.txt")), content1 + content2);
 	#endif
-	
-	// -------------------------------------------------------------
-	// Тест readdir (список файлов)
-	// -------------------------------------------------------------
+	// Найденные в каталоге имена
 	std::vector <std::string> foundFiles;
-	this->_fs->readdir(testDir, "", true, [&]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+	// Обходим каталог проверки
+	awh::fs::readdir(testDir, "", true, [&]([[maybe_unused]] const awh::fs::type_t type, std::string_view name) noexcept -> void {
+		// Запоминаем найденное имя
 		foundFiles.emplace_back(name);
 	});
-	
-	// Должны найти test.txt, symlink.txt, hardlink.txt
+	// В каталоге обязаны найтись три заведённых имени
 	ASSERT_GE(foundFiles.size(), 3);
-	
-	// -------------------------------------------------------------
-	// Тест readfile (построчное чтение)
-	// -------------------------------------------------------------
-	// Создаем многострочный файл
+	// Адрес многострочного файла
 	std::string multiLineFile = testDir + "/multiline.txt";
+	// Содержимое многострочного файла
 	std::string mlContent = "Line1\nLine2\nLine3";
-	this->_fs->write(multiLineFile, mlContent.c_str());
-	
+	// Записываем многострочный файл
+	awh::fs::write(multiLineFile, mlContent.c_str());
+	// Прочитанные строки файла
 	std::vector <std::string> lines;
-	this->_fs->readfile(multiLineFile, [&](std::string_view line) noexcept -> void {
+	// Читаем файл построчно
+	awh::fs::readfile(multiLineFile, [&](std::string_view line) noexcept -> void {
+		// Запоминаем прочитанную строку
 		lines.emplace_back(line);
 	});
-	
+	// Число прочитанных строк обязано быть не меньше трёх
 	ASSERT_GE(lines.size(), 3);
+	// Первая строка обязана совпасть
 	ASSERT_EQ(lines[0], "Line1");
+	// Вторая строка обязана совпасть
 	ASSERT_EQ(lines[1], "Line2");
+	// Третья строка обязана совпасть
 	ASSERT_EQ(lines[2], "Line3");
-	
-	// -------------------------------------------------------------
-	// Очистка
-	// -------------------------------------------------------------
-	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(testDir));
-	ASSERT_EQ(this->_fs->type(testDir), awh::fs_t::type_t::NONE);
+	// Сносим каталог проверки вместе с содержимым
+	ASSERT_TRUE(awh::fs::unlink(testDir));
+	// Каталог проверки обязан исчезнуть
+	ASSERT_EQ(awh::fs::type(testDir), awh::fs::type_t::NONE);
 }
 
 /**
@@ -242,32 +188,30 @@ TEST_F(FSFixture, FSTest){
  *
  */
 TEST_F(FSFixture, MkdirDeepNestedTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_mkdir_deep_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Глубоко вложенный путь
 	const std::string deep = root + "/a/b/c/d/e/f/g/h";
 	// Создаём всю цепочку каталогов за один вызов
-	ASSERT_TRUE(this->_fs->mkdir(deep));
+	ASSERT_TRUE(awh::fs::mkdir(deep));
 	// Финальный каталог должен существовать
-	ASSERT_EQ(this->_fs->type(deep), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(deep), awh::fs::type_t::DIR);
 	// Промежуточные каталоги тоже должны существовать
-	ASSERT_EQ(this->_fs->type(root + "/a/b/c"), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(root + "/a/b/c"), awh::fs::type_t::DIR);
 	// Проверяем путь с завершающим разделителем
 	const std::string withSlash = root + "/x/y/";
 	// Создаём каталог с завершающим разделителем
-	ASSERT_TRUE(this->_fs->mkdir(withSlash));
+	ASSERT_TRUE(awh::fs::mkdir(withSlash));
 	// Каталог без завершающего разделителя должен существовать
-	ASSERT_EQ(this->_fs->type(root + "/x/y"), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(root + "/x/y"), awh::fs::type_t::DIR);
 	// Удаляем корневой каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 	// Каталог должен быть удалён
-	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(root), awh::fs::type_t::NONE);
 }
 
 /**
@@ -275,32 +219,30 @@ TEST_F(FSFixture, MkdirDeepNestedTest){
  *
  */
 TEST_F(FSFixture, ReadOffsetBeyondSizeTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string dir = "test_read_offset_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	// Создаём каталог
-	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_TRUE(awh::fs::mkdir(dir));
 	// Путь к файлу
 	const std::string file = dir + "/data.bin";
 	// Содержимое файла (5 байт)
 	const std::string content = "12345";
 	// Записываем файл
-	this->_fs->write(file, content.c_str());
+	awh::fs::write(file, content.c_str());
 	// Проверяем размер
-	ASSERT_EQ(this->_fs->size(file), static_cast <uintmax_t> (content.size()));
+	ASSERT_EQ(awh::fs::size(file), static_cast <uintmax_t> (content.size()));
 	// Смещение больше размера файла — результат пустой, без падения и без огромной аллокации
-	ASSERT_TRUE((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, 100)).empty());
+	ASSERT_TRUE((awh::fs::read <std::string> (file, awh::fs::seek_t::BEGIN, 100)).empty());
 	// Смещение равно размеру файла — результат пустой
-	ASSERT_TRUE((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, content.size())).empty());
+	ASSERT_TRUE((awh::fs::read <std::string> (file, awh::fs::seek_t::BEGIN, content.size())).empty());
 	// Смещение внутри файла — читаем остаток
-	ASSERT_EQ((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, 3)), "45");
+	ASSERT_EQ((awh::fs::read <std::string> (file, awh::fs::seek_t::BEGIN, 3)), "45");
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(dir));
+	ASSERT_TRUE(awh::fs::unlink(dir));
 }
 
 /**
@@ -308,16 +250,14 @@ TEST_F(FSFixture, ReadOffsetBeyondSizeTest){
  *
  */
 TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string dir = "test_readfile_zero_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	// Создаём каталог
-	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_TRUE(awh::fs::mkdir(dir));
 	// Путь к файлу
 	const std::string file = dir + "/blob.bin";
 	// Формируем содержимое заведомо больше одной страницы памяти
@@ -329,11 +269,11 @@ TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
 		// Добавляем строку с номером
 		content.append("0123456789ABCDEF");
 	// Записываем файл
-	this->_fs->write(file, content.c_str());
+	awh::fs::write(file, content.c_str());
 	// Накопитель прочитанных данных
 	std::string collected;
 	// Читаем файл блоками с нулевым размером блока (должен использоваться размер страницы)
-	this->_fs->readfile(file, 0, [&](const void * buffer, const size_t size) noexcept -> void {
+	awh::fs::readfile(file, 0, [&](const void * buffer, const size_t size) noexcept -> void {
 		// Если буфер получен — добавляем к накопителю
 		if((buffer != nullptr) && (size > 0))
 			// Добавляем данные блока
@@ -342,7 +282,7 @@ TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
 	// Прочитанные данные должны полностью совпасть с записанными
 	ASSERT_EQ(collected, content);
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(dir));
+	ASSERT_TRUE(awh::fs::unlink(dir));
 }
 
 /**
@@ -350,28 +290,26 @@ TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
  *
  */
 TEST_F(FSFixture, UnlinkRecursiveNestedTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_unlink_tree_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Создаём вложенную структуру каталогов
-	ASSERT_TRUE(this->_fs->mkdir(root + "/sub1/sub2"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/sub1/sub2"));
 	// Создаём файлы на разных уровнях вложенности
-	this->_fs->write(root + "/f1.txt", "level0");
+	awh::fs::write(root + "/f1.txt", "level0");
 	// Файл первого уровня
-	this->_fs->write(root + "/sub1/f2.txt", "level1");
+	awh::fs::write(root + "/sub1/f2.txt", "level1");
 	// Файл второго уровня
-	this->_fs->write(root + "/sub1/sub2/f3.txt", "level2");
+	awh::fs::write(root + "/sub1/sub2/f3.txt", "level2");
 	// Проверяем, что файлы созданы
-	ASSERT_EQ(this->_fs->type(root + "/sub1/sub2/f3.txt"), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(root + "/sub1/sub2/f3.txt"), awh::fs::type_t::FILE);
 	// Удаляем всё дерево рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 	// Дерево должно быть полностью удалено
-	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(root), awh::fs::type_t::NONE);
 }
 
 /**
@@ -379,16 +317,14 @@ TEST_F(FSFixture, UnlinkRecursiveNestedTest){
  *
  */
 TEST_F(FSFixture, ReadfileLineEndingsTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string dir = "test_readfile_lines_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	// Создаём каталог
-	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_TRUE(awh::fs::mkdir(dir));
 	/**
 	 * @brief Вспомогательная функция чтения строк файла
 	 *
@@ -401,11 +337,11 @@ TEST_F(FSFixture, ReadfileLineEndingsTest){
 		// Путь к файлу
 		const std::string file = dir + "/" + name;
 		// Записываем содержимое
-		this->_fs->write(file, content.c_str());
+		awh::fs::write(file, content.c_str());
 		// Список прочитанных строк
 		std::vector <std::string> lines;
 		// Читаем файл построчно
-		this->_fs->readfile(file, [&](std::string_view line) noexcept -> void {
+		awh::fs::readfile(file, [&](std::string_view line) noexcept -> void {
 			// Добавляем строку в список
 			lines.emplace_back(line);
 		});
@@ -452,7 +388,7 @@ TEST_F(FSFixture, ReadfileLineEndingsTest){
 		ASSERT_EQ(lines[2], "y");
 	}
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(dir));
+	ASSERT_TRUE(awh::fs::unlink(dir));
 }
 
 /**
@@ -460,38 +396,36 @@ TEST_F(FSFixture, ReadfileLineEndingsTest){
  *
  */
 TEST_F(FSFixture, SizeCountExtensionTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_size_ext_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Создаём вложенную структуру
-	ASSERT_TRUE(this->_fs->mkdir(root + "/sub"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/sub"));
 	// Файлы верхнего уровня
-	this->_fs->write(root + "/a.txt", "aaa");   // 3 байта, txt
+	awh::fs::write(root + "/a.txt", "aaa");   // 3 байта, txt
 	// Ещё один txt-файл
-	this->_fs->write(root + "/b.txt", "bb");    // 2 байта, txt
+	awh::fs::write(root + "/b.txt", "bb");    // 2 байта, txt
 	// Файл с другим расширением
-	this->_fs->write(root + "/c.log", "c");     // 1 байт, log
+	awh::fs::write(root + "/c.log", "c");     // 1 байт, log
 	// Файл во вложенном каталоге
-	this->_fs->write(root + "/sub/d.txt", "dddd"); // 4 байта, txt
+	awh::fs::write(root + "/sub/d.txt", "dddd"); // 4 байта, txt
 	// Размер только txt-файлов с рекурсией: 3 + 2 + 4 = 9
-	ASSERT_EQ(this->_fs->size(root, "txt", true), static_cast <uintmax_t> (9));
+	ASSERT_EQ(awh::fs::size(root, "txt", true), static_cast <uintmax_t> (9));
 	// Размер только txt-файлов без рекурсии: 3 + 2 = 5
-	ASSERT_EQ(this->_fs->size(root, "txt", false), static_cast <uintmax_t> (5));
+	ASSERT_EQ(awh::fs::size(root, "txt", false), static_cast <uintmax_t> (5));
 	// Размер всех файлов с рекурсией: 3 + 2 + 1 + 4 = 10
-	ASSERT_EQ(this->_fs->size(root, "", true), static_cast <uintmax_t> (10));
+	ASSERT_EQ(awh::fs::size(root, "", true), static_cast <uintmax_t> (10));
 	// Количество txt-файлов с рекурсией: a, b, d = 3
-	ASSERT_EQ(this->_fs->count(root, "txt", true), static_cast <uintmax_t> (3));
+	ASSERT_EQ(awh::fs::count(root, "txt", true), static_cast <uintmax_t> (3));
 	// Количество txt-файлов без рекурсии: a, b = 2
-	ASSERT_EQ(this->_fs->count(root, "txt", false), static_cast <uintmax_t> (2));
+	ASSERT_EQ(awh::fs::count(root, "txt", false), static_cast <uintmax_t> (2));
 	// Количество всех файлов с рекурсией: a, b, c, d = 4
-	ASSERT_EQ(this->_fs->count(root, "", true), static_cast <uintmax_t> (4));
+	ASSERT_EQ(awh::fs::count(root, "", true), static_cast <uintmax_t> (4));
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 }
 
 /**
@@ -499,28 +433,26 @@ TEST_F(FSFixture, SizeCountExtensionTest){
  *
  */
 TEST_F(FSFixture, TypeDetectLinksOverloadTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string dir = "test_type_detect_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	// Создаём каталог
-	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_TRUE(awh::fs::mkdir(dir));
 	// Путь к файлу
 	const std::string file = dir + "/file.txt";
 	// Создаём файл
-	this->_fs->write(file, "data");
+	awh::fs::write(file, "data");
 	// Каталог определяется как каталог независимо от детекта ссылок
-	ASSERT_EQ(this->_fs->type(dir, true), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(dir, true), awh::fs::type_t::DIR);
 	// Каталог определяется как каталог и с отключённым детектом ссылок
-	ASSERT_EQ(this->_fs->type(dir, false), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(dir, false), awh::fs::type_t::DIR);
 	// Файл определяется как файл независимо от детекта ссылок
-	ASSERT_EQ(this->_fs->type(file, true), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file, true), awh::fs::type_t::FILE);
 	// Файл определяется как файл и с отключённым детектом ссылок
-	ASSERT_EQ(this->_fs->type(file, false), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file, false), awh::fs::type_t::FILE);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -528,14 +460,14 @@ TEST_F(FSFixture, TypeDetectLinksOverloadTest){
 		// Путь к символьной ссылке
 		const std::string link = dir + "/link.txt";
 		// Создаём символьную ссылку на файл (цель передаётся полным адресом)
-		this->_fs->symlink(this->_fs->fullpath(file, true), link);
+		awh::fs::symlink(awh::fs::fullpath(file, true), link);
 		// При включённом детекте ссылка определяется как ссылка
-		ASSERT_EQ(this->_fs->type(link, true), awh::fs_t::type_t::LINK);
+		ASSERT_EQ(awh::fs::type(link, true), awh::fs::type_t::LINK);
 		// При отключённом детекте тип берётся по цели ссылки (обычный файл)
-		ASSERT_EQ(this->_fs->type(link, false), awh::fs_t::type_t::FILE);
+		ASSERT_EQ(awh::fs::type(link, false), awh::fs::type_t::FILE);
 	#endif
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(dir));
+	ASSERT_TRUE(awh::fs::unlink(dir));
 }
 
 /**
@@ -560,45 +492,46 @@ TEST_F(FSFixture, CyrillicPathTest){
 	// Содержимое проверяемого файла
 	const std::string content = "Проверка кириллицы";
 	// Удаляем каталог, если он остался от прошлого прогона
-	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	// Создаём каталог с кириллическим названием
-	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_TRUE(awh::fs::mkdir(dir));
 	// Каталог обязан опознаваться каталогом
-	ASSERT_EQ(this->_fs->type(dir), awh::fs_t::type_t::DIR);
+	ASSERT_EQ(awh::fs::type(dir), awh::fs::type_t::DIR);
 	// Записываем файл с кириллическим названием
-	this->_fs->write(file, content.c_str());
+	awh::fs::write(file, content.c_str());
 	// Файл обязан опознаваться файлом
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
 	// Размер файла обязан совпасть с размером записанного
-	ASSERT_EQ(this->_fs->size(file), content.size());
+	ASSERT_EQ(awh::fs::size(file), content.size());
 	// Прочитанное обязано совпасть с записанным
-	ASSERT_EQ(this->_fs->read <std::string> (file), content);
+	ASSERT_EQ(awh::fs::read <std::string> (file), content);
 	// Выполняем дозапись данных в файл
-	this->_fs->append(file, content.c_str());
+	awh::fs::append(file, content.c_str());
 	// Размер файла обязан удвоиться после дозаписи
-	ASSERT_EQ(this->_fs->size(file), (content.size() * 2));
+	ASSERT_EQ(awh::fs::size(file), (content.size() * 2));
 	/**
 	 * Название файла обязано вернуться обходом каталога тем же, каким его задавали
 	 *
 	 * @note Именно здесь и всплывала подмена кодовой страницы: файл создавался, но
 	 *       обход каталога отдавал иное название, и найти созданное было нельзя
+	 *
 	 */
 	bool found = false;
 	// Выполняем обход каталога
-	this->_fs->readdir(dir, "", false, [&found](const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+	awh::fs::readdir(dir, "", false, [&found](const awh::fs::type_t type, std::string_view name) noexcept -> void {
 		// Если найдено название заданного файла
-		if((type == awh::fs_t::type_t::FILE) && (name.find("мой файл.txt") != std::string_view::npos))
+		if((type == awh::fs::type_t::FILE) && (name.find("мой файл.txt") != std::string_view::npos))
 			// Отмечаем название найденным
 			found = true;
 	});
 	// Название файла обязано найтись обходом каталога
 	ASSERT_TRUE(found);
 	// Полный путь обязан оканчиваться заданным названием
-	ASSERT_NE(this->_fs->fullpath(file).find("мой файл.txt"), std::string::npos);
+	ASSERT_NE(awh::fs::fullpath(file).find("мой файл.txt"), std::string::npos);
 	// Удаляем каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(dir));
+	ASSERT_TRUE(awh::fs::unlink(dir));
 }
 
 /**
@@ -628,36 +561,37 @@ TEST_F(FSFixture, SharedOpenFileTest){
 	// Содержимое, дописываемое к проверяемому файлу
 	const std::string extra = "BBB";
 	// Удаляем файл, если он остался от прошлого прогона
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Выполняем удаление проверяемого файла
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Записываем проверяемый файл
-	this->_fs->write(file, content.c_str());
+	awh::fs::write(file, content.c_str());
 	// Файл обязан опознаваться файлом
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
 	/**
 	 * Открываем файл вторым описателем и НЕ закрываем его
 	 *
 	 * @note Открытие идёт на чтение и запись: запертость наступает именно от чужого
 	 *       права записи, и открытие на одно лишь чтение дефекта бы не показало
+	 *
 	 */
 	FILE * holder = ::fopen(file.c_str(), "r+b");
 	// Второй описатель обязан завестись
 	ASSERT_NE(holder, nullptr);
 	// Размер файла обязан читаться и при открытом чужом описателе
-	ASSERT_EQ(this->_fs->size(file), content.size());
+	ASSERT_EQ(awh::fs::size(file), content.size());
 	// Содержимое файла обязано читаться и при открытом чужом описателе
-	ASSERT_EQ(this->_fs->read <std::string> (file), content);
+	ASSERT_EQ(awh::fs::read <std::string> (file), content);
 	// Выполняем дозапись данных в файл при открытом чужом описателе
-	this->_fs->append(file, extra.c_str());
+	awh::fs::append(file, extra.c_str());
 	// Размер файла обязан вырасти на размер дописанного
-	ASSERT_EQ(this->_fs->size(file), (content.size() + extra.size()));
+	ASSERT_EQ(awh::fs::size(file), (content.size() + extra.size()));
 	// Прочитанное обязано совпасть с записанным и дописанным
-	ASSERT_EQ(this->_fs->read <std::string> (file), (content + extra));
+	ASSERT_EQ(awh::fs::read <std::string> (file), (content + extra));
 	// Закрываем второй описатель
 	::fclose(holder);
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -676,7 +610,7 @@ TEST_F(FSFixture, EnvironmentPathTest){
 		// Собираем путь с переменной окружения
 		const std::string path = "%TEMP%\\awh_env_probe.txt";
 		// Получаем полный путь
-		const std::string result = this->_fs->fullpath(path);
+		const std::string result = awh::fs::fullpath(path);
 		// Переменная окружения обязана быть раскрыта
 		ASSERT_EQ(result.find('%'), std::string::npos);
 		// Раскрытый путь обязан оканчиваться заданным названием
@@ -700,17 +634,15 @@ TEST_F(FSFixture, EnvironmentPathTest){
  *
  */
 TEST_F(FSFixture, BatchAppendByExternalFileHandleTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_batch_append_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Объект файла обязан завестись
 		ASSERT_TRUE(handle != nullptr);
 		/**
@@ -718,26 +650,26 @@ TEST_F(FSFixture, BatchAppendByExternalFileHandleTest){
 		 */
 		for(uint8_t i = 0; i < 4; i++)
 			// Выполняем дозапись очередной доли
-			this->_fs->append(file, "ab", 2, handle);
+			awh::fs::append(file, "ab", 2, handle);
 	}
 	// Состав файла обязан сложиться из всех долей по порядку
-	ASSERT_EQ(this->_fs->read <std::string> (file), "abababab");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "abababab");
 	// Размер файла обязан равняться сумме долей
-	ASSERT_EQ(this->_fs->size(file), 8u);
+	ASSERT_EQ(awh::fs::size(file), 8u);
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Выполняем дозапись первой доли
-		this->_fs->append(file, "1", 1, handle);
+		awh::fs::append(file, "1", 1, handle);
 		// Выполняем чужую запись в самое начало файла
-		this->_fs->write(file, "Z", 1, awh::fs_t::seek_t::BEGIN, 0);
+		awh::fs::write(file, "Z", 1, awh::fs::seek_t::BEGIN, 0);
 		// Выполняем дозапись второй доли
-		this->_fs->append(file, "2", 1, handle);
+		awh::fs::append(file, "2", 1, handle);
 	}
 	// Обе доли обязаны лечь в конец, а чужая запись - в начало
-	ASSERT_EQ(this->_fs->read <std::string> (file), "Zbababab12");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "Zbababab12");
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -752,43 +684,41 @@ TEST_F(FSFixture, BatchAppendByExternalFileHandleTest){
  *
  */
 TEST_F(FSFixture, RepeatedSurveyByExternalDirHandleTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_dir_handle_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Заводим дерево каталогов
-	ASSERT_TRUE(this->_fs->mkdir(root + "/a/b"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/a/b"));
 	// Заводим ещё один каталог
-	ASSERT_TRUE(this->_fs->mkdir(root + "/c"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/c"));
 	// Заводим файлы по всей глубине дерева
-	this->_fs->write(root + "/one.txt", "1", 1);
+	awh::fs::write(root + "/one.txt", "1", 1);
 	// Заводим файл первого уровня вложенности
-	this->_fs->write(root + "/a/two.txt", "2", 1);
+	awh::fs::write(root + "/a/two.txt", "2", 1);
 	// Заводим файл второго уровня вложенности
-	this->_fs->write(root + "/a/b/three.txt", "3", 1);
+	awh::fs::write(root + "/a/b/three.txt", "3", 1);
 	// Заводим файл соседнего каталога
-	this->_fs->write(root + "/c/four.log", "4", 1);
+	awh::fs::write(root + "/c/four.log", "4", 1);
 	// Состав дерева, снятый без внешнего объекта каталога
 	std::vector <std::string> plain;
 	// Выполняем обход дерева без внешнего объекта каталога
-	this->_fs->readdir(root, "", true, [&plain]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+	awh::fs::readdir(root, "", true, [&plain]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> void {
 		// Запоминаем очередную запись
 		plain.emplace_back(address);
 	});
 	// Дерево обязано дать все семь записей
 	ASSERT_EQ(plain.size(), 7u);
 	// Заводим объект каталога средствами самого модуля
-	const auto handle = this->_fs->handleDir();
+	const auto handle = awh::fs::handleDir();
 	// Объект каталога обязан завестись
 	ASSERT_TRUE(handle != nullptr);
 	// Состав дерева, снятый внешним объектом каталога
 	std::vector <std::string> first;
 	// Выполняем обход дерева внешним объектом каталога
-	this->_fs->readdir(root, "", true, [&first]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+	awh::fs::readdir(root, "", true, [&first]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> void {
 		// Запоминаем очередную запись
 		first.emplace_back(address);
 	}, true, handle);
@@ -797,14 +727,14 @@ TEST_F(FSFixture, RepeatedSurveyByExternalDirHandleTest){
 	// Состав дерева, снятый тем же объектом повторно
 	std::vector <std::string> second;
 	// Выполняем повторный обход дерева тем же объектом каталога
-	this->_fs->readdir(root, "", true, [&second]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+	awh::fs::readdir(root, "", true, [&second]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> void {
 		// Запоминаем очередную запись
 		second.emplace_back(address);
 	}, true, handle);
 	// Повторный обзор обязан дать тот же самый состав
 	ASSERT_EQ(second, plain);
 	// Удаляем корневой каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 }
 
 /**
@@ -821,37 +751,35 @@ TEST_F(FSFixture, RepeatedSurveyByExternalDirHandleTest){
  *
  */
 TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_dir_walk_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Заводим дерево каталогов
-	ASSERT_TRUE(this->_fs->mkdir(root + "/a/b"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/a/b"));
 	// Заводим ещё один каталог
-	ASSERT_TRUE(this->_fs->mkdir(root + "/c"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/c"));
 	// Заводим файлы по всей глубине дерева
-	this->_fs->write(root + "/one.txt", "1", 1);
+	awh::fs::write(root + "/one.txt", "1", 1);
 	// Заводим файл первого уровня вложенности
-	this->_fs->write(root + "/a/two.txt", "2", 1);
+	awh::fs::write(root + "/a/two.txt", "2", 1);
 	// Заводим файл второго уровня вложенности
-	this->_fs->write(root + "/a/b/three.txt", "3", 1);
+	awh::fs::write(root + "/a/b/three.txt", "3", 1);
 	// Заводим файл соседнего каталога
-	this->_fs->write(root + "/c/four.log", "4", 1);
+	awh::fs::write(root + "/c/four.log", "4", 1);
 	// Состав дерева, снятый одним обходом
 	std::vector <std::string> whole;
 	// Выполняем обход дерева целиком
-	this->_fs->readdir(root, "", true, [&whole]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+	awh::fs::readdir(root, "", true, [&whole]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> void {
 		// Запоминаем очередную запись
 		whole.emplace_back(address);
 	});
 	// Дерево обязано дать все семь записей
 	ASSERT_EQ(whole.size(), 7u);
 	// Заводим объект каталога средствами самого модуля
-	const auto handle = this->_fs->handleDir();
+	const auto handle = awh::fs::handleDir();
 	// Состав дерева, собранный долями
 	std::vector <std::string> parts;
 	// Число долей, за которое обход довершён
@@ -865,7 +793,7 @@ TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
 		// Число записей, выданных в этой доле
 		uint8_t count = 0;
 		// Выполняем очередную долю обхода
-		done = this->_fs->walkdir(root, "", true, [&parts, &count]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+		done = awh::fs::walkdir(root, "", true, [&parts, &count]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> bool {
 			// Запоминаем очередную запись
 			parts.emplace_back(address);
 			// Останавливаем обход после второй записи
@@ -885,7 +813,7 @@ TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
 	// Число записей, выданных без внешнего объекта каталога
 	uint8_t count = 0;
 	// Выполняем обход без внешнего объекта каталога
-	const bool result = this->_fs->walkdir(root, "", true, [&single, &count]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+	const bool result = awh::fs::walkdir(root, "", true, [&single, &count]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> bool {
 		// Запоминаем очередную запись
 		single.emplace_back(address);
 		// Останавливаем обход после второй записи
@@ -896,7 +824,7 @@ TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
 	// Без внешнего объекта каталога обход отдаёт ровно то, что успел
 	ASSERT_EQ(single.size(), 2u);
 	// Удаляем корневой каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 }
 
 /**
@@ -908,28 +836,26 @@ TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
  *
  */
 TEST_F(FSFixture, WriteAndAppendReportTheOutcomeTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_write_outcome_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Запись обязана ответить успехом
-	ASSERT_TRUE(this->_fs->write(file, "abcd", 4));
+	ASSERT_TRUE(awh::fs::write(file, "abcd", 4));
 	// Дозапись обязана ответить успехом
-	ASSERT_TRUE(this->_fs->append(file, "ef", 2));
+	ASSERT_TRUE(awh::fs::append(file, "ef", 2));
 	// Прочитанное обязано совпасть с записанным
-	ASSERT_EQ(this->_fs->read <std::string> (file), "abcdef");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "abcdef");
 	// Запись по пустому адресу обязана ответить отказом
-	ASSERT_FALSE(this->_fs->write("", "x", 1));
+	ASSERT_FALSE(awh::fs::write("", "x", 1));
 	// Дозапись по пустому адресу обязана ответить отказом
-	ASSERT_FALSE(this->_fs->append("", "x", 1));
+	ASSERT_FALSE(awh::fs::append("", "x", 1));
 	// Запись пустого буфера обязана ответить отказом
-	ASSERT_FALSE(this->_fs->write(file, nullptr, 0));
+	ASSERT_FALSE(awh::fs::write(file, nullptr, 0));
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -946,32 +872,30 @@ TEST_F(FSFixture, WriteAndAppendReportTheOutcomeTest){
  *
  */
 TEST_F(FSFixture, FlushBringsTheWrittenOntoTheMediumTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_flush_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим объект файла средствами самого модуля
-	const auto handle = this->_fs->handleFile();
+	const auto handle = awh::fs::handleFile();
 	// Выполняем пакетную дозапись одним описателем
-	ASSERT_TRUE(this->_fs->append(file, "abcd", 4, handle));
+	ASSERT_TRUE(awh::fs::append(file, "abcd", 4, handle));
 	// Сброс тем же объектом файла обязан быть выполнен
-	ASSERT_TRUE(this->_fs->flush(file, true, handle));
+	ASSERT_TRUE(awh::fs::flush(file, true, handle));
 	// Сброс без доведения до носителя обязан быть выполнен
-	ASSERT_TRUE(this->_fs->flush(file, false, handle));
+	ASSERT_TRUE(awh::fs::flush(file, false, handle));
 	// Сброс без внешнего объекта файла обязан быть выполнен
-	ASSERT_TRUE(this->_fs->flush(file));
+	ASSERT_TRUE(awh::fs::flush(file));
 	// Записанное обязано быть на месте
-	ASSERT_EQ(this->_fs->read <std::string> (file), "abcd");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "abcd");
 	// Сброс отсутствующего файла обязан ответить отказом
-	ASSERT_FALSE(this->_fs->flush("test_flush_unit_absent.bin"));
+	ASSERT_FALSE(awh::fs::flush("test_flush_unit_absent.bin"));
 	// Сброс по пустому адресу обязан ответить отказом
-	ASSERT_FALSE(this->_fs->flush(""));
+	ASSERT_FALSE(awh::fs::flush(""));
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -987,30 +911,28 @@ TEST_F(FSFixture, FlushBringsTheWrittenOntoTheMediumTest){
  *
  */
 TEST_F(FSFixture, TheAddressIsNotParsedAtTheCreatedFileHandleTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_lazy_address_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим объект файла средствами самого модуля
-	const auto handle = this->_fs->handleFile();
+	const auto handle = awh::fs::handleFile();
 	// Выполняем первую дозапись, ею объект файла и заводится
-	ASSERT_TRUE(this->_fs->append(file, "a", 1, handle));
+	ASSERT_TRUE(awh::fs::append(file, "a", 1, handle));
 	// Заведомо негодный адрес, разбор пути его бы не прошёл
 	const std::string absent = "test_lazy_address_unit_no/such/path/at/all.bin";
 	// Такого адреса быть не должно
-	ASSERT_EQ(this->_fs->type(absent), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(absent), awh::fs::type_t::NONE);
 	// Дозапись негодным адресом при открытом описателе обязана быть выполнена
-	ASSERT_TRUE(this->_fs->append(absent, "b", 1, handle));
+	ASSERT_TRUE(awh::fs::append(absent, "b", 1, handle));
 	// Обе доли обязаны лечь в тот файл, каким объект был заведён
-	ASSERT_EQ(this->_fs->read <std::string> (file), "ab");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "ab");
 	// Негодный адрес заведён быть не должен
-	ASSERT_EQ(this->_fs->type(absent), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(absent), awh::fs::type_t::NONE);
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1031,56 +953,54 @@ TEST_F(FSFixture, TheAddressIsNotParsedAtTheCreatedFileHandleTest){
  *
  */
 TEST_F(FSFixture, TheFileHandleCarriesTheRightsOfItsCreatorTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_handle_rights_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, "abcdefgh", 8));
+	ASSERT_TRUE(awh::fs::write(file, "abcdefgh", 8));
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Запись обязана ответить успехом, ею объект файла и заводится
-		ASSERT_TRUE(this->_fs->write(file, "XY", 2, awh::fs_t::seek_t::BEGIN, 0, handle));
+		ASSERT_TRUE(awh::fs::write(file, "XY", 2, awh::fs::seek_t::BEGIN, 0, handle));
 		// Прочитанное значение
 		std::string result = "";
 		// Чтение тем же объектом обязано пройти
-		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		awh::fs::read(file, result, awh::fs::seek_t::BEGIN, 0, handle);
 		// Прочитанное обязано совпасть с записанным
 		ASSERT_EQ(result, "XYcdefgh");
 	}
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Дозапись обязана ответить успехом, ею объект файла и заводится
-		ASSERT_TRUE(this->_fs->append(file, "Z", 1, handle));
+		ASSERT_TRUE(awh::fs::append(file, "Z", 1, handle));
 		// Прочитанное значение
 		std::string result = "";
 		// Чтение тем же объектом права не имеет
-		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		awh::fs::read(file, result, awh::fs::seek_t::BEGIN, 0, handle);
 		// Отказавшее чтение обязано оставить ПУСТО, а не размеченный нулями буфер
 		ASSERT_TRUE(result.empty());
 	}
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Прочитанное значение
 		std::string result = "";
 		// Чтение обязано пройти, им объект файла и заводится
-		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		awh::fs::read(file, result, awh::fs::seek_t::BEGIN, 0, handle);
 		// Прочитанное обязано совпасть с содержимым файла
 		ASSERT_EQ(result, "XYcdefghZ");
 		// Запись тем же объектом права не имеет и обязана ответить отказом
-		ASSERT_FALSE(this->_fs->write(file, "Q", 1, awh::fs_t::seek_t::BEGIN, 0, handle));
+		ASSERT_FALSE(awh::fs::write(file, "Q", 1, awh::fs::seek_t::BEGIN, 0, handle));
 	}
 	// Отказавшая запись содержимого файла тронуть не смела
-	ASSERT_EQ(this->_fs->read <std::string> (file), "XYcdefghZ");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "XYcdefghZ");
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1092,21 +1012,19 @@ TEST_F(FSFixture, TheFileHandleCarriesTheRightsOfItsCreatorTest){
  *
  */
 TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_batch_read_unit.txt";
 	// Содержимое проверяемого файла
 	const std::string content = "Line1\nLine2\nLine3";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, content.c_str(), content.size()));
+	ASSERT_TRUE(awh::fs::write(file, content.c_str(), content.size()));
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Собранные доли содержимого
 		std::string collected = "";
 		/**
@@ -1114,7 +1032,7 @@ TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
 		 */
 		for(size_t offset = 0; offset < content.size(); offset += 2){
 			// Выполняем чтение очередной доли
-			this->_fs->read(file, 2, [&collected](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+			awh::fs::read(file, 2, [&collected](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
 				// Собираем прочитанную долю
 				collected.append(static_cast <const char *> (buffer), size);
 				// Велим остановиться на первой же доле
@@ -1126,14 +1044,14 @@ TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
 	}
 	{
 		// Заводим объект файла средствами самого модуля
-		const auto handle = this->_fs->handleFile();
+		const auto handle = awh::fs::handleFile();
 		// Прочитанные строки
 		std::vector <std::string> lines;
 		// Выполняем построчное чтение внешним объектом файла
-		this->_fs->readfile(file, [&lines](std::string_view line) noexcept -> void {
+		awh::fs::readfile(file, [&lines](std::string_view line) noexcept -> void {
 			// Запоминаем очередную строку
 			lines.emplace_back(line);
-		}, awh::fs_t::seek_t::BEGIN, 0, handle);
+		}, awh::fs::seek_t::BEGIN, 0, handle);
 		// Строк обязано выйти ровно три
 		ASSERT_EQ(lines.size(), 3u);
 		// Первая строка обязана совпасть
@@ -1142,7 +1060,7 @@ TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
 		ASSERT_EQ(lines[2], "Line3");
 	}
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1158,24 +1076,22 @@ TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
  *
  */
 TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_walk_content_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Заводим дерево каталогов
-	ASSERT_TRUE(this->_fs->mkdir(root + "/nested"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/nested"));
 	// Заводим файлы по всей глубине дерева
-	ASSERT_TRUE(this->_fs->write(root + "/one.txt", "a1\na2", 5));
+	ASSERT_TRUE(awh::fs::write(root + "/one.txt", "a1\na2", 5));
 	// Заводим файл вложенного каталога
-	ASSERT_TRUE(this->_fs->write(root + "/nested/two.txt", "b1\nb2", 5));
+	ASSERT_TRUE(awh::fs::write(root + "/nested/two.txt", "b1\nb2", 5));
 	// Строки, снятые одним обходом
 	std::set <std::string> whole;
 	// Выполняем обход дерева целиком
-	ASSERT_TRUE(this->_fs->walkdir(root, "txt", true, [&whole]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
+	ASSERT_TRUE(awh::fs::walkdir(root, "txt", true, [&whole]([[maybe_unused]] const awh::fs::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
 		// Запоминаем очередную строку
 		whole.emplace(text);
 		// Велим продолжать обход
@@ -1184,7 +1100,7 @@ TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
 	// Строк обязано выйти четыре
 	ASSERT_EQ(whole.size(), 4u);
 	// Заводим объект каталога средствами самого модуля
-	const auto handle = this->_fs->handleDir();
+	const auto handle = awh::fs::handleDir();
 	// Строки, собранные долями
 	std::set <std::string> parts;
 	// Число долей, за которое обход довершён
@@ -1196,7 +1112,7 @@ TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
 	 */
 	while(!done && (rounds < 100)){
 		// Выполняем очередную долю обхода
-		done = this->_fs->walkdir(root, "txt", true, [&parts]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
+		done = awh::fs::walkdir(root, "txt", true, [&parts]([[maybe_unused]] const awh::fs::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
 			// Запоминаем очередную строку
 			parts.emplace(text);
 			// Останавливаем обход на первой же строке
@@ -1214,7 +1130,7 @@ TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
 	// Блоки, снятые одним обходом
 	std::set <std::string> blocks;
 	// Выполняем обход дерева блоками
-	ASSERT_TRUE(this->_fs->walkdir(root, "txt", 4096, true, [&blocks]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, const void * buffer, const size_t size) noexcept -> bool {
+	ASSERT_TRUE(awh::fs::walkdir(root, "txt", 4096, true, [&blocks]([[maybe_unused]] const awh::fs::type_t type, [[maybe_unused]] std::string_view filename, const void * buffer, const size_t size) noexcept -> bool {
 		// Запоминаем очередной блок
 		blocks.emplace(static_cast <const char *> (buffer), size);
 		// Велим продолжать обход
@@ -1223,7 +1139,7 @@ TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
 	// Блоков обязано выйти два, по одному на файл
 	ASSERT_EQ(blocks.size(), 2u);
 	// Удаляем корневой каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 }
 
 /**
@@ -1238,30 +1154,28 @@ TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
  *
  */
 TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корневой каталог теста
 	const std::string root = "test_dir_switch_unit";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Заводим два соседних каталога
-	ASSERT_TRUE(this->_fs->mkdir(root + "/first"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/first"));
 	// Заводим второй каталог
-	ASSERT_TRUE(this->_fs->mkdir(root + "/second"));
+	ASSERT_TRUE(awh::fs::mkdir(root + "/second"));
 	// Заводим файлы первого каталога
-	ASSERT_TRUE(this->_fs->write(root + "/first/a.txt", "a", 1));
+	ASSERT_TRUE(awh::fs::write(root + "/first/a.txt", "a", 1));
 	// Заводим ещё один файл первого каталога
-	ASSERT_TRUE(this->_fs->write(root + "/first/b.txt", "b", 1));
+	ASSERT_TRUE(awh::fs::write(root + "/first/b.txt", "b", 1));
 	// Заводим файл второго каталога
-	ASSERT_TRUE(this->_fs->write(root + "/second/c.txt", "c", 1));
+	ASSERT_TRUE(awh::fs::write(root + "/second/c.txt", "c", 1));
 	// Заводим объект каталога средствами самого модуля
-	const auto handle = this->_fs->handleDir();
+	const auto handle = awh::fs::handleDir();
 	// Число записей, выданных первым обходом
 	uint8_t count = 0;
 	// Начинаем обход первого каталога и обрываем его на первой записи
-	ASSERT_FALSE(this->_fs->walkdir(root + "/first", "", false, [&count]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view address) noexcept -> bool {
+	ASSERT_FALSE(awh::fs::walkdir(root + "/first", "", false, [&count]([[maybe_unused]] const awh::fs::type_t type, [[maybe_unused]] std::string_view address) noexcept -> bool {
 		// Останавливаем обход на первой же записи
 		return (++count < 1);
 	}, true, handle));
@@ -1270,7 +1184,7 @@ TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
 	// Состав второго каталога
 	std::vector <std::string> second;
 	// Обходим ТЕМ ЖЕ объектом иной каталог
-	ASSERT_TRUE(this->_fs->walkdir(root + "/second", "", false, [&second]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+	ASSERT_TRUE(awh::fs::walkdir(root + "/second", "", false, [&second]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> bool {
 		// Запоминаем очередную запись
 		second.emplace_back(address);
 		// Велим продолжать обход
@@ -1283,7 +1197,7 @@ TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
 	// Состав первого каталога, снятый тем же объектом следом
 	std::vector <std::string> first;
 	// Обход первого каталога обязан пойти С НАЧАЛА, прерванное состояние утеряно
-	ASSERT_TRUE(this->_fs->walkdir(root + "/first", "", false, [&first]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+	ASSERT_TRUE(awh::fs::walkdir(root + "/first", "", false, [&first]([[maybe_unused]] const awh::fs::type_t type, std::string_view address) noexcept -> bool {
 		// Запоминаем очередную запись
 		first.emplace_back(address);
 		// Велим продолжать обход
@@ -1292,7 +1206,7 @@ TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
 	// Первый каталог обязан быть отдан целиком, а не остатком прерванного обхода
 	ASSERT_EQ(first.size(), 2u);
 	// Удаляем корневой каталог рекурсивно
-	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_TRUE(awh::fs::unlink(root));
 }
 
 /**
@@ -1307,44 +1221,42 @@ TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
  *
  */
 TEST_F(FSFixture, TruncateCutsAndCreatesEmptyTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_truncate_unit.bin";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Усечение отсутствующего файла обязано завести его пустым
-	ASSERT_TRUE(this->_fs->truncate(file));
+	ASSERT_TRUE(awh::fs::truncate(file));
 	// Файл обязан появиться
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
 	// Длина заведённого файла обязана быть нулевой
-	ASSERT_EQ(this->_fs->size(file), 0u);
+	ASSERT_EQ(awh::fs::size(file), 0u);
 	// Заполняем проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, "abcdefgh", 8));
+	ASSERT_TRUE(awh::fs::write(file, "abcdefgh", 8));
 	// Усечение до длины меньшей обязано пройти
-	ASSERT_TRUE(this->_fs->truncate(file, 3));
+	ASSERT_TRUE(awh::fs::truncate(file, 3));
 	// От содержимого обязано остаться ровно начало
-	ASSERT_EQ(this->_fs->read <std::string> (file), "abc");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "abc");
 	// Наращивание до длины большей обязано пройти
-	ASSERT_TRUE(this->_fs->truncate(file, 6));
+	ASSERT_TRUE(awh::fs::truncate(file, 6));
 	// Длина файла обязана вырасти
-	ASSERT_EQ(this->_fs->size(file), 6u);
+	ASSERT_EQ(awh::fs::size(file), 6u);
 	// Прежнее начало обязано уцелеть, а хвост обязан быть нулевым
-	ASSERT_EQ(this->_fs->read <std::string> (file), std::string("abc\0\0\0", 6));
+	ASSERT_EQ(awh::fs::read <std::string> (file), std::string("abc\0\0\0", 6));
 	// Очистка существующего файла обязана пройти
-	ASSERT_TRUE(this->_fs->truncate(file, 0));
+	ASSERT_TRUE(awh::fs::truncate(file, 0));
 	// Файл обязан остаться на месте пустым
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
 	// Длина очищенного файла обязана быть нулевой
-	ASSERT_EQ(this->_fs->size(file), 0u);
+	ASSERT_EQ(awh::fs::size(file), 0u);
 	// Усечение по негодному пути обязано ответить отказом
-	ASSERT_FALSE(this->_fs->truncate("test_truncate_unit_no/such/path/at/all.bin"));
+	ASSERT_FALSE(awh::fs::truncate("test_truncate_unit_no/such/path/at/all.bin"));
 	// Усечение по пустому адресу обязано ответить отказом
-	ASSERT_FALSE(this->_fs->truncate(""));
+	ASSERT_FALSE(awh::fs::truncate(""));
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1358,26 +1270,24 @@ TEST_F(FSFixture, TruncateCutsAndCreatesEmptyTest){
  *
  */
 TEST_F(FSFixture, AddressViewWithoutTerminatorTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Файл, из адреса которого вырезается представление
 	const std::string file = "test_view_unit_ab";
 	// Адрес без последнего символа указывает на отсутствующий файл
 	const std::string_view view(file.data(), file.size() - 1);
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, "data", 4));
+	ASSERT_TRUE(awh::fs::write(file, "data", 4));
 	// Отсутствующий файл обязан определяться отсутствующим
-	ASSERT_EQ(this->_fs->type(view), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(view), awh::fs::type_t::NONE);
 	// Удаление отсутствующего файла обязано ответить отказом
-	ASSERT_FALSE(this->_fs->unlink(view, true));
+	ASSERT_FALSE(awh::fs::unlink(view, true));
 	// Соседний файл обязан уцелеть
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1391,30 +1301,28 @@ TEST_F(FSFixture, AddressViewWithoutTerminatorTest){
  *
  */
 TEST_F(FSFixture, WriteIntoExistingEmptyFileTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_empty_unit.txt";
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(file) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	// Заводим пустой файл
-	ASSERT_TRUE(this->_fs->truncate(file));
+	ASSERT_TRUE(awh::fs::truncate(file));
 	// Длина заведённого файла обязана быть нулевой
-	ASSERT_EQ(this->_fs->size(file), 0u);
+	ASSERT_EQ(awh::fs::size(file), 0u);
 	// Разрешённый адрес существующего пустого файла
-	const std::string address = this->_fs->fullpath(file, true);
+	const std::string address = awh::fs::fullpath(file, true);
 	// Адрес обязан быть получен
 	ASSERT_FALSE(address.empty());
 	// Завершающего нуля внутри адреса быть не должно
 	ASSERT_EQ(address.find('\0'), std::string::npos);
 	// Запись в существующий пустой файл обязана пройти
-	ASSERT_TRUE(this->_fs->write(file, "abc", 3));
+	ASSERT_TRUE(awh::fs::write(file, "abc", 3));
 	// Записанное обязано читаться
-	ASSERT_EQ(this->_fs->read <std::string> (file), "abc");
+	ASSERT_EQ(awh::fs::read <std::string> (file), "abc");
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1427,10 +1335,9 @@ TEST_F(FSFixture, WriteIntoExistingEmptyFileTest){
  * @details Права устанавливались вызовом ::chmod по указателю представления, и адрес
  *          читался за границей представления: существует укороченный адрес, а права
  *          пытались установить соседнему, отсутствующему
+ *
  */
 TEST_F(FSFixture, ChmodAddressViewWithoutTerminatorTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Адрес, из которого вырезается представление
 	const std::string file = "test_chmod_unit_ab";
 	// Представление без последнего символа
@@ -1438,19 +1345,19 @@ TEST_F(FSFixture, ChmodAddressViewWithoutTerminatorTest){
 	// Существующий файл, на который указывает представление
 	const std::string target(view);
 	// Удаляем остатки предыдущего запуска
-	if(this->_fs->type(target) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(target) != awh::fs::type_t::NONE)
 		// Удаляем проверяемый файл
-		ASSERT_TRUE(this->_fs->unlink(target));
+		ASSERT_TRUE(awh::fs::unlink(target));
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(target, "data", 4));
+	ASSERT_TRUE(awh::fs::write(target, "data", 4));
 	// Соседнего файла быть не должно
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::NONE);
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::NONE);
 	// Установка прав существующему файлу обязана пройти
-	ASSERT_TRUE(this->_fs->chmod(view, static_cast <uint32_t> (0600)));
+	ASSERT_TRUE(awh::fs::chmod(view, static_cast <uint32_t> (0600)));
 	// Права обязаны быть установлены
-	ASSERT_EQ(this->_fs->chmod(view), 0600u);
+	ASSERT_EQ(awh::fs::chmod(view), 0600u);
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(target));
+	ASSERT_TRUE(awh::fs::unlink(target));
 }
 #endif
 
@@ -1459,39 +1366,40 @@ TEST_F(FSFixture, ChmodAddressViewWithoutTerminatorTest){
  *
  * @details Цикл чтения сравнивал абсолютную позицию с размером остатка: со смещением
  *          больше половины файла не читалось ничего, а с меньшим читался не весь остаток
+ *
  */
 TEST_F(FSFixture, ReadfileFromOffsetTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_readfile_offset_unit.bin";
 	// Содержимое файла
 	const std::string data(100, 'x');
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, data.data(), data.size()));
-	// Выполняем перебор смещений
+	ASSERT_TRUE(awh::fs::write(file, data.data(), data.size()));
+	/**
+	 * Выполняем перебор смещений
+	 */
 	for(const size_t offset : {size_t(0), size_t(30), size_t(60), size_t(99)}){
 		// Количество прочитанных байт
 		size_t total = 0;
 		// Выполняем чтение файла блоками
-		this->_fs->readfile(file, 16, [&total](const void *, const size_t size) noexcept -> void {
+		awh::fs::readfile(file, 16, [&total](const void *, const size_t size) noexcept -> void {
 			// Считаем прочитанные байты
 			total += size;
-		}, awh::fs_t::seek_t::BEGIN, offset);
+		}, awh::fs::seek_t::BEGIN, offset);
 		// Прочитан обязан быть весь остаток файла
 		ASSERT_EQ(total, data.size() - offset) << "offset " << offset;
 		// Сбрасываем счётчик
 		total = 0;
 		// Выполняем чтение файла строками
-		this->_fs->readfile(file, [&total](std::string_view line) noexcept -> void {
+		awh::fs::readfile(file, [&total](std::string_view line) noexcept -> void {
 			// Считаем прочитанные байты
 			total += line.size();
-		}, awh::fs_t::seek_t::BEGIN, offset);
+		}, awh::fs::seek_t::BEGIN, offset);
 		// Прочитан обязан быть весь остаток файла
 		ASSERT_EQ(total, data.size() - offset) << "offset " << offset;
 	}
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1500,10 +1408,9 @@ TEST_F(FSFixture, ReadfileFromOffsetTest){
  * @details Смещение от конца отсчитывается назад, как у POSIX: читаются последние байты.
  *          У MS Windows позиция уходила за конец файла, а размер чтения считался от начала,
  *          и вместо хвоста файла возвращался буфер нулей
+ *
  */
 TEST_F(FSFixture, ReadFromEndTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Проверяемый файл
 	const std::string file = "test_read_end_unit.bin";
 	// Содержимое файла
@@ -1511,11 +1418,11 @@ TEST_F(FSFixture, ReadFromEndTest){
 	// Хвост файла отличается от начала
 	data.replace(90, 10, "0123456789");
 	// Заводим проверяемый файл
-	ASSERT_TRUE(this->_fs->write(file, data.data(), data.size()));
+	ASSERT_TRUE(awh::fs::write(file, data.data(), data.size()));
 	// Читаются последние десять байт
-	ASSERT_EQ(this->_fs->read <std::string> (file, awh::fs_t::seek_t::END, 10), "0123456789");
+	ASSERT_EQ(awh::fs::read <std::string> (file, awh::fs::seek_t::END, 10), "0123456789");
 	// Удаляем проверяемый файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1523,16 +1430,16 @@ TEST_F(FSFixture, ReadFromEndTest){
  *
  * @details У MS Windows адрес раскрывался в буфер постоянного размера: длинный адрес в него
  *          не помещался, сводился к пустому, а пустой адрес становился текущим каталогом
+ *
  */
 TEST_F(FSFixture, FullpathLongAddressTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Название длиннее MAX_PATH
 	const std::string name = ("long_" + std::string(300, 'a'));
 	// Полный адрес
-	const std::string address = this->_fs->fullpath(name, false);
+	const std::string address = awh::fs::fullpath(name, false);
 	// Полный адрес обязан оканчиваться переданным названием
 	ASSERT_GE(address.size(), name.size());
+	// Адрес обязан оканчиваться переданным названием
 	ASSERT_EQ(address.compare(address.size() - name.size(), name.size(), name), 0);
 }
 
@@ -1542,47 +1449,58 @@ TEST_F(FSFixture, FullpathLongAddressTest){
  * @details Функции MS Windows отказывали на адресе длиннее 260 знаков: каталог не создавался,
  *          файл не открывался и не удалялся. Здесь адрес длиннее 300 знаков проходит весь путь:
  *          создание каталогов, запись, тип, размер, чтение, обход и рекурсивное удаление
+ *
  */
 TEST_F(FSFixture, LongAddressTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Корень проверки
 	const std::string root = "long_address_test";
 	// Если корень остался от прошлого прогона
-	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(root) != awh::fs::type_t::NONE)
 		// Удаляем его
-		ASSERT_TRUE(this->_fs->unlink(root));
+		ASSERT_TRUE(awh::fs::unlink(root));
 	// Собираем адрес каталога длиннее MAX_PATH
 	std::string dir = root;
-	// Шесть уровней по пятьдесят знаков
+	/**
+	 * Шесть уровней по пятьдесят знаков
+	 */
 	for(int i = 0; i < 6; i++)
+		// Наращиваем адрес уровнем из пятидесяти знаков
 		dir.append(AWH_FS_SEPARATOR).append(std::string(50, static_cast <char> ('a' + i)));
 	// Полный адрес каталога обязан быть длиннее MAX_PATH
-	ASSERT_GT(this->_fs->fullpath(dir, false).size(), static_cast <size_t> (300));
+	ASSERT_GT(awh::fs::fullpath(dir, false).size(), static_cast <size_t> (300));
 	// Создаём каталоги
-	ASSERT_TRUE(this->_fs->mkdir(dir));
-	ASSERT_EQ(this->_fs->type(dir), awh::fs_t::type_t::DIR);
+	ASSERT_TRUE(awh::fs::mkdir(dir));
+	// Созданный каталог обязан определиться каталогом
+	ASSERT_EQ(awh::fs::type(dir), awh::fs::type_t::DIR);
 	// Адрес файла
 	const std::string file = (dir + AWH_FS_SEPARATOR + "f.txt");
 	// Записываем файл
-	ASSERT_TRUE(this->_fs->write(file, "hello"));
-	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
-	ASSERT_EQ(this->_fs->size(file), static_cast <uintmax_t> (5));
-	ASSERT_EQ(this->_fs->read <std::string> (file), "hello");
+	ASSERT_TRUE(awh::fs::write(file, "hello"));
+	// Записанный файл обязан определиться файлом
+	ASSERT_EQ(awh::fs::type(file), awh::fs::type_t::FILE);
+	// Размер файла обязан совпасть с записанным
+	ASSERT_EQ(awh::fs::size(file), static_cast <uintmax_t> (5));
+	// Содержимое файла обязано совпасть с записанным
+	ASSERT_EQ(awh::fs::read <std::string> (file), "hello");
 	// Обход находит файл
 	size_t found = 0;
-	this->_fs->readdir(root, "", true, [&](const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+	// Обходим дерево каталогов
+	awh::fs::readdir(root, "", true, [&](const awh::fs::type_t type, std::string_view name) noexcept -> void {
 		// Если найден записанный файл
-		if((type == awh::fs_t::type_t::FILE) && (name.size() >= 5) && (name.substr(name.size() - 5) == "f.txt"))
+		if((type == awh::fs::type_t::FILE) && (name.size() >= 5) && (name.substr(name.size() - 5) == "f.txt"))
 			// Считаем находку
 			found++;
 	});
+	// Найден обязан быть ровно один файл
 	ASSERT_EQ(found, static_cast <size_t> (1));
-	ASSERT_EQ(this->_fs->count(root), static_cast <uintmax_t> (1));
-	ASSERT_EQ(this->_fs->size(root), static_cast <uintmax_t> (5));
+	// Счёт файлов дерева обязан быть равен одному
+	ASSERT_EQ(awh::fs::count(root), static_cast <uintmax_t> (1));
+	// Размер дерева обязан совпасть с размером файла
+	ASSERT_EQ(awh::fs::size(root), static_cast <uintmax_t> (5));
 	// Рекурсивное удаление
-	ASSERT_TRUE(this->_fs->unlink(root));
-	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+	ASSERT_TRUE(awh::fs::unlink(root));
+	// Корень обязан исчезнуть
+	ASSERT_EQ(awh::fs::type(root), awh::fs::type_t::NONE);
 }
 
 /**
@@ -1598,14 +1516,13 @@ TEST_F(FSFixture, LongAddressTest){
 
 	/**
 	 * @brief Смена владельца: к себе выполняется, к несуществующему пользователю - отказ
+	 *
 	 */
 	TEST_F(FSFixture, ChownIdentifierTest){
-		// Если объект работы с ФС создан
-		ASSERT_TRUE(this->_fs != nullptr);
 		// Адрес временного файла
 		const std::string file = "chown_identifier_test.txt";
 		// Создаём временный файл
-		ASSERT_TRUE(this->_fs->write(file, "x"));
+		ASSERT_TRUE(awh::fs::write(file, "x"));
 		// Данные пользователя процесса
 		const struct passwd * me = ::getpwuid(::getuid());
 		// Данные группы процесса
@@ -1613,13 +1530,13 @@ TEST_F(FSFixture, LongAddressTest){
 		// Имена процесса обязаны быть
 		ASSERT_TRUE((me != nullptr) && (mine != nullptr));
 		// Смена владельца на себя выполняется
-		ASSERT_TRUE(this->_fs->chown(file, me->pw_name, mine->gr_name));
+		ASSERT_TRUE(awh::fs::chown(file, me->pw_name, mine->gr_name));
 		// Смена владельца на несуществующего пользователя - отказ
-		ASSERT_FALSE(this->_fs->chown(file, "no-such-user-zz", mine->gr_name));
+		ASSERT_FALSE(awh::fs::chown(file, "no-such-user-zz", mine->gr_name));
 		// Смена владельца на несуществующую группу - отказ
-		ASSERT_FALSE(this->_fs->chown(file, me->pw_name, "no-such-group-zz"));
+		ASSERT_FALSE(awh::fs::chown(file, me->pw_name, "no-such-group-zz"));
 		// Удаляем временный файл
-		ASSERT_TRUE(this->_fs->unlink(file));
+		ASSERT_TRUE(awh::fs::unlink(file));
 	}
 #endif
 
@@ -1634,6 +1551,7 @@ TEST_F(FSFixture, FullpathDanglingSymlinkTest) {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём отдельный каталог, не принимая существующий за свой
 		const std::string directory = "./fs-dangling-link-test";
+		// Каталог проверки обязан завестись
 		ASSERT_EQ(::mkdir(directory.c_str(), 0700), 0);
 		/**
 		 * @brief Страж каталога проверки
@@ -1648,32 +1566,48 @@ TEST_F(FSFixture, FullpathDanglingSymlinkTest) {
 			 */
 			~Guard() noexcept {
 				// Удаляем только созданный этой проверкой каталог
-				static_cast <void> (awh::fs_t().unlink(this->directory));
+				static_cast <void> (awh::fs::unlink(this->directory));
 			}
 		} guard_t;
 		// Передаём созданный каталог стражу
 		guard_t guard{directory};
 		// Создаём вложенный каталог и относительную ссылку на отсутствующую цель
 		const std::string nested = (directory + "/nested");
+		// Адрес ссылки на отсутствующую цель
 		const std::string link = (nested + "/link.log");
+		// Адрес целевого файла
 		const std::string target = (directory + "/journal.log");
-		ASSERT_TRUE(this->_fs->mkdir(nested));
+		// Вложенный каталог обязан завестись
+		ASSERT_TRUE(awh::fs::mkdir(nested));
+		// Относительная ссылка обязана завестись
 		ASSERT_EQ(::symlink("../journal.log", link.c_str()), 0);
 		// Адрес должен обозначать тот же файл, что и целевой путь
-		const std::string resolved = this->_fs->fullpath(link, true);
+		const std::string resolved = awh::fs::fullpath(link, true);
+		// Разрешённый адрес не должен быть пустым
 		ASSERT_FALSE(resolved.empty());
+		// Разрешённый адрес обязан быть абсолютным
 		EXPECT_EQ(resolved.front(), '/');
-		EXPECT_EQ(resolved, this->_fs->fullpath(target));
+		// Разрешённый адрес обязан совпасть с целевым
+		EXPECT_EQ(resolved, awh::fs::fullpath(target));
 		// Присоединяем абсолютную ссылку и проверяем всю цепочку
 		const std::string first = (directory + "/first.log");
-		ASSERT_EQ(::symlink(this->_fs->fullpath(link).c_str(), first.c_str()), 0);
-		EXPECT_EQ(this->_fs->fullpath(first, true), this->_fs->fullpath(target));
+		// Абсолютная ссылка обязана завестись
+		ASSERT_EQ(::symlink(awh::fs::fullpath(link).c_str(), first.c_str()), 0);
+		// Разрешение цепочки обязано привести к цели
+		EXPECT_EQ(awh::fs::fullpath(first, true), awh::fs::fullpath(target));
 		// Проверяем порядок разрешения ссылки каталога и компонента '..'
 		const std::string alias = (directory + "/alias");
-		ASSERT_TRUE(this->_fs->mkdir(nested + "/deeper"));
+		// Глубокий каталог обязан завестись
+		ASSERT_TRUE(awh::fs::mkdir(nested + "/deeper"));
+		// Ссылка на каталог обязана завестись
 		ASSERT_EQ(::symlink("nested/deeper", alias.c_str()), 0);
+		// Адрес прохода через ссылку и компонент '..'
 		const std::string through = (alias + "/../link.log");
-		EXPECT_EQ(this->_fs->fullpath(through, true), this->_fs->fullpath(target));
+		// Разрешение обязано привести к цели
+		EXPECT_EQ(awh::fs::fullpath(through, true), awh::fs::fullpath(target));
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#else
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
@@ -1686,12 +1620,10 @@ TEST_F(FSFixture, FullpathDanglingSymlinkTest) {
  *
  */
 TEST_F(FSFixture, OwnerMtimeXattrTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Адрес временного файла
 	const std::string file = "owner_mtime_xattr_test.txt";
 	// Создаём временный файл
-	ASSERT_TRUE(this->_fs->write(file, "x"));
+	ASSERT_TRUE(awh::fs::write(file, "x"));
 	/**
 	 * Владелец читается и устанавливается только под POSIX: на MS Windows метод чтения
 	 * возвращает номера -1, а установки ничего не делает
@@ -1704,23 +1636,23 @@ TEST_F(FSFixture, OwnerMtimeXattrTest){
 		// Имена процесса обязаны быть
 		ASSERT_TRUE((me != nullptr) && (mine != nullptr));
 		// Читаем владельца файла
-		const awh::fs_t::owner_t owner = this->_fs->owner(file);
+		const awh::fs::owner_t owner = awh::fs::owner(file);
 		// Владелец совпадает с пользователем процесса
 		EXPECT_EQ(owner.uid, static_cast <uint32_t> (::getuid()));
 		EXPECT_EQ(owner.gid, static_cast <uint32_t> (::getgid()));
 		EXPECT_EQ(owner.user, me->pw_name);
 		EXPECT_EQ(owner.group, mine->gr_name);
 		// Установка владельца по прочитанной структуре выполняется
-		EXPECT_TRUE(this->_fs->owner(file, owner));
+		EXPECT_TRUE(awh::fs::owner(file, owner));
 	#endif
 	// Время изменения читается
-	EXPECT_GT(this->_fs->mtime(file), static_cast <uint64_t> (0));
+	EXPECT_GT(awh::fs::mtime(file), static_cast <uint64_t> (0));
 	// Устанавливаем время изменения кратное целой секунде
 	const uint64_t date = 1234567890000ULL;
 	// Установка времени изменения выполняется
-	ASSERT_TRUE(this->_fs->mtime(file, date));
+	ASSERT_TRUE(awh::fs::mtime(file, date));
 	// Время изменения читается установленным
-	EXPECT_EQ(this->_fs->mtime(file), date);
+	EXPECT_EQ(awh::fs::mtime(file), date);
 	/**
 	 * Расширенные атрибуты есть у macOS, Linux, FreeBSD и NetBSD: у macOS имя берётся
 	 * без приставки, у остальных - из пространства пользователя. У OpenBSD, DragonFly,
@@ -1743,13 +1675,16 @@ TEST_F(FSFixture, OwnerMtimeXattrTest){
 		// Значение атрибута
 		const std::string value = "attribute value";
 		// Список атрибутов для установки
-		const awh::fs_t::xattrs_t attrs = {{name, value}};
+		const awh::fs::xattrs_t attrs = {{name, value}};
 		// Установка проходит без отказов
-		ASSERT_EQ(this->_fs->xattr(file, attrs), static_cast <size_t> (0));
+		ASSERT_EQ(awh::fs::xattr(file, attrs), static_cast <size_t> (0));
 		// Читаем список атрибутов
-		const awh::fs_t::xattrs_t read = this->_fs->xattr(file);
+		const awh::fs::xattrs_t read = awh::fs::xattr(file);
 		// Установленный атрибут находится в списке со своим значением
 		bool found = false;
+		/**
+		 * Выполняем перебор прочитанных атрибутов
+		 */
 		for(auto & attr : read){
 			// Если найден установленный атрибут
 			if(attr.first == name){
@@ -1766,14 +1701,14 @@ TEST_F(FSFixture, OwnerMtimeXattrTest){
 	 */
 	#else
 		// Список атрибутов для установки
-		const awh::fs_t::xattrs_t attrs = {{"user.anything", "value"}};
+		const awh::fs::xattrs_t attrs = {{"user.anything", "value"}};
 		// Установка отвергает всё
-		EXPECT_EQ(this->_fs->xattr(file, attrs), attrs.size());
+		EXPECT_EQ(awh::fs::xattr(file, attrs), attrs.size());
 		// Список прочитанных атрибутов пуст
-		EXPECT_TRUE(this->_fs->xattr(file).empty());
+		EXPECT_TRUE(awh::fs::xattr(file).empty());
 	#endif
 	// Удаляем временный файл
-	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(file));
 }
 
 /**
@@ -1782,8 +1717,6 @@ TEST_F(FSFixture, OwnerMtimeXattrTest){
  *
  */
 TEST_F(FSFixture, InodeLinkTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	// Адрес временного файла
 	const std::string file = "inode_link_test.txt";
 	// Адрес жёсткой ссылки
@@ -1791,19 +1724,19 @@ TEST_F(FSFixture, InodeLinkTest){
 	// Адрес второй записи
 	const std::string copy = "inode_link_copy.txt";
 	// Создаём временный файл
-	ASSERT_TRUE(this->_fs->write(file, "data"));
+	ASSERT_TRUE(awh::fs::write(file, "data"));
 	// Сведения о записи файла
-	const awh::fs_t::inode_t info = this->_fs->inode(file);
+	const awh::fs::inode_t info = awh::fs::inode(file);
 	// Номер записи назначен
 	EXPECT_GT(info.ino, static_cast <uint64_t> (0));
 	// У записи одно имя
 	EXPECT_EQ(info.nlink, static_cast <uint64_t> (1));
 	// Создаём жёсткую ссылку с отчётом о результате
-	ASSERT_TRUE(this->_fs->hardlink(file, hard));
+	ASSERT_TRUE(awh::fs::hardlink(file, hard));
 	// Ссылка читается тем же содержимым
-	EXPECT_EQ(this->_fs->read <std::string> (hard), "data");
+	EXPECT_EQ(awh::fs::read <std::string> (hard), "data");
 	// Сведения о записи ссылки
-	const awh::fs_t::inode_t alias = this->_fs->inode(hard);
+	const awh::fs::inode_t alias = awh::fs::inode(hard);
 	// Ссылка живёт на том же устройстве
 	EXPECT_EQ(alias.dev, info.dev);
 	// Ссылка обозначает ту же запись
@@ -1811,17 +1744,17 @@ TEST_F(FSFixture, InodeLinkTest){
 	// У записи теперь два имени
 	EXPECT_EQ(alias.nlink, static_cast <uint64_t> (2));
 	// Создаём вторую запись с тем же содержимым
-	ASSERT_TRUE(this->_fs->write(copy, "data"));
+	ASSERT_TRUE(awh::fs::write(copy, "data"));
 	// Вторая запись отличается номером
-	EXPECT_NE(this->_fs->inode(copy).ino, info.ino);
+	EXPECT_NE(awh::fs::inode(copy).ino, info.ino);
 	// Ссылка на отсутствующую цель отвергается
-	EXPECT_FALSE(this->_fs->hardlink("no-such-target-zz.txt", "inode_link_bad.txt"));
+	EXPECT_FALSE(awh::fs::hardlink("no-such-target-zz.txt", "inode_link_bad.txt"));
 	// Отказ не заводит нового имени
-	EXPECT_EQ(this->_fs->type("inode_link_bad.txt"), awh::fs_t::type_t::NONE);
+	EXPECT_EQ(awh::fs::type("inode_link_bad.txt"), awh::fs::type_t::NONE);
 	// Удаляем временные файлы
-	ASSERT_TRUE(this->_fs->unlink(file));
-	ASSERT_TRUE(this->_fs->unlink(hard));
-	ASSERT_TRUE(this->_fs->unlink(copy));
+	ASSERT_TRUE(awh::fs::unlink(file));
+	ASSERT_TRUE(awh::fs::unlink(hard));
+	ASSERT_TRUE(awh::fs::unlink(copy));
 }
 
 /**
@@ -1840,8 +1773,6 @@ TEST_F(FSFixture, InodeLinkTest){
  *
  */
 TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
-	// Если объект работы с ФС создан
-	ASSERT_TRUE(this->_fs != nullptr);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -1849,44 +1780,44 @@ TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
 		// Корневой каталог теста
 		const std::string dir = "test_resolve_flag_unit";
 		// Удаляем остатки предыдущего запуска
-		if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		if(awh::fs::type(dir) != awh::fs::type_t::NONE)
 			// Удаляем каталог рекурсивно
-			ASSERT_TRUE(this->_fs->unlink(dir));
+			ASSERT_TRUE(awh::fs::unlink(dir));
 		// Создаём каталог
-		ASSERT_TRUE(this->_fs->mkdir(dir));
+		ASSERT_TRUE(awh::fs::mkdir(dir));
 		// Путь к файлу и путь к ссылке на него
 		const std::string file = dir + "/file.txt", link = dir + "/link.txt";
 		// Создаём файл
-		this->_fs->write(file, "data");
+		awh::fs::write(file, "data");
 		// Создаём ссылку на существующий файл (цель передаётся полным адресом)
-		ASSERT_TRUE(this->_fs->symlink(this->_fs->fullpath(file, true), link));
+		ASSERT_TRUE(awh::fs::symlink(awh::fs::fullpath(file, true), link));
 		// Путь к ссылке, цели которой нет
 		const std::string ghost = dir + "/ghost.txt";
 		// Создаём висячую ссылку: существование цели не входит в договор
-		ASSERT_TRUE(this->_fs->symlink(dir + "/absent.txt", ghost));
+		ASSERT_TRUE(awh::fs::symlink(dir + "/absent.txt", ghost));
 		// Данные сведений о самой ссылке
 		struct stat info{};
 		// Если сведения о ссылке не считаны, опыт ставить не с чем
 		ASSERT_EQ(::lstat(link.c_str(), &info), 0);
 		// Права ссылки без разрешения совпадают с её собственными правами
-		ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (info.st_mode & 07777));
+		ASSERT_EQ(awh::fs::chmod(link), static_cast <uint32_t> (info.st_mode & 07777));
 		// С флагом разрешения права берутся у цели ссылки
-		ASSERT_EQ(this->_fs->chmod(link, true), this->_fs->chmod(file));
+		ASSERT_EQ(awh::fs::chmod(link, true), awh::fs::chmod(file));
 		// Время висячей ссылки без разрешения читается, с разрешением отсутствующая цель не даёт времени
-		ASSERT_GT(this->_fs->mtime(ghost), 0ULL);
+		ASSERT_GT(awh::fs::mtime(ghost), 0ULL);
 		// Владелец висячей ссылки без разрешения - её собственный владелец
-		ASSERT_EQ(this->_fs->owner(ghost).uid, static_cast <uint32_t> (::geteuid()));
+		ASSERT_EQ(awh::fs::owner(ghost).uid, static_cast <uint32_t> (::geteuid()));
 		// С разрешением владельца отсутствующей цели получить нельзя: номер остаётся ненайденным
-		ASSERT_EQ(this->_fs->owner(ghost, true).uid, static_cast <uint32_t> (-1));
+		ASSERT_EQ(awh::fs::owner(ghost, true).uid, static_cast <uint32_t> (-1));
 		// Владелец для установки: только номер пользователя, номер группы оставляется ненайденным
 		// (-1 сохраняет нынешнюю группу, а её смена без прав суперпользователя запрещена)
-		awh::fs_t::owner_t mine;
+		awh::fs::owner_t mine;
 		// Устанавливаем номер текущего пользователя
 		mine.uid = static_cast <uint32_t> (::geteuid());
 		// Установка владельца без разрешения удаётся самой ссылке
-		ASSERT_TRUE(this->_fs->owner(ghost, mine));
+		ASSERT_TRUE(awh::fs::owner(ghost, mine));
 		// С разрешением ставить нечего: цели нет, и вызов отказывает
-		ASSERT_FALSE(this->_fs->owner(ghost, mine, true));
+		ASSERT_FALSE(awh::fs::owner(ghost, mine, true));
 		/**
 		 * Метод установки владельца по имени выбирает объект тем же флагом: имена берутся текущего
 		 * пользователя, поэтому установка ничего не меняет, но обязана пройти без разрешения и
@@ -1895,30 +1826,32 @@ TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
 		{
 			// Запись текущего пользователя и его группы
 			const struct passwd * pwd = ::getpwuid(::geteuid());
+			// Запись текущей группы
 			const struct group * grp = ::getgrgid(::getegid());
 			// Если имена получены
 			if((pwd != nullptr) && (grp != nullptr)){
-				// Установка по имени без разрешения удаётся, с разрешением - отказ
-				ASSERT_TRUE(this->_fs->chown(ghost, pwd->pw_name, grp->gr_name));
-				ASSERT_FALSE(this->_fs->chown(ghost, pwd->pw_name, grp->gr_name, true));
+				// Установка по имени без разрешения удаётся
+				ASSERT_TRUE(awh::fs::chown(ghost, pwd->pw_name, grp->gr_name));
+				// Установка по имени с разрешением обязана отказать
+				ASSERT_FALSE(awh::fs::chown(ghost, pwd->pw_name, grp->gr_name, true));
 			}
 		}
 		// Время цели до опыта
-		const uint64_t before = this->_fs->mtime(file);
+		const uint64_t before = awh::fs::mtime(file);
 		// Права цели до опыта
-		const uint32_t mode = this->_fs->chmod(file);
+		const uint32_t mode = awh::fs::chmod(file);
 		// Время изменения для опыта: заведомо отличное от времени создания
 		const uint64_t when = 1422961506345ULL;
 		// Установка времени ссылки без разрешения удаётся и не доходит до цели
-		ASSERT_TRUE(this->_fs->mtime(link, when));
+		ASSERT_TRUE(awh::fs::mtime(link, when));
 		// Время цели при этом остаётся прежним
-		ASSERT_EQ(this->_fs->mtime(file), before);
+		ASSERT_EQ(awh::fs::mtime(file), before);
 		// С флагом разрешения время ставится цели
-		ASSERT_TRUE(this->_fs->mtime(link, when + 1000ULL, true));
+		ASSERT_TRUE(awh::fs::mtime(link, when + 1000ULL, true));
 		// Цель получила новое время
-		ASSERT_EQ(this->_fs->mtime(file), when + 1000ULL);
+		ASSERT_EQ(awh::fs::mtime(file), when + 1000ULL);
 		// Ссылка осталась при своём времени
-		ASSERT_EQ(this->_fs->mtime(link), when);
+		ASSERT_EQ(awh::fs::mtime(link), when);
 		/**
 		 * Права самой ссылки существуют лишь там, где их хранит система: lchmod есть в macOS,
 		 * FreeBSD, NetBSD и DragonFly; в Linux, Solaris и OpenBSD прав у ссылки нет, и установка
@@ -1926,24 +1859,27 @@ TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
 		 */
 		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 			// Установка прав самой ссылки удаётся
-			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0700)));
+			ASSERT_TRUE(awh::fs::chmod(link, static_cast <uint32_t> (0700)));
 			// Права ссылки равны установленным
-			ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (0700));
+			ASSERT_EQ(awh::fs::chmod(link), static_cast <uint32_t> (0700));
 			// Права цели при этом не изменились
-			ASSERT_EQ(this->_fs->chmod(file), mode);
+			ASSERT_EQ(awh::fs::chmod(file), mode);
 			// С флагом разрешения права ставятся цели
-			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0604), true));
+			ASSERT_TRUE(awh::fs::chmod(link, static_cast <uint32_t> (0604), true));
 			// Цель получила новые права
-			ASSERT_EQ(this->_fs->chmod(file), static_cast <uint32_t> (0604));
+			ASSERT_EQ(awh::fs::chmod(file), static_cast <uint32_t> (0604));
 			// Ссылка осталась при своих правах
-			ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (0700));
+			ASSERT_EQ(awh::fs::chmod(link), static_cast <uint32_t> (0700));
 			// Возвращаем цели прежние права, а ссылке - её собственные после установки цели
-			ASSERT_TRUE(this->_fs->chmod(file, mode));
+			ASSERT_TRUE(awh::fs::chmod(file, mode));
+		/**
+		 * Для систем, где права ссылки не хранятся
+		 */
 		#else
 			// Установка прав ссылки пропускается как выполненная: менять права негде
-			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0700)));
+			ASSERT_TRUE(awh::fs::chmod(link, static_cast <uint32_t> (0700)));
 			// Права цели при этом не изменились
-			ASSERT_EQ(this->_fs->chmod(file), mode);
+			ASSERT_EQ(awh::fs::chmod(file), mode);
 		#endif
 		/**
 		 * Расширенные атрибуты: опыт удаётся лишь там, где файловая система принимает атрибуты у
@@ -1951,11 +1887,13 @@ TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
 		 */
 		#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
 			// Если система приняла атрибут самой висячей ссылке
-			if(this->_fs->xattr(ghost, {{"user.note", "ghost"}}) == 0){
+			if(awh::fs::xattr(ghost, {{"user.note", "ghost"}}) == 0){
 				// Отметка обнаружения атрибута ссылки
 				bool found = false;
-				// Выполняем поиск установленного значения среди атрибутов ссылки без разрешения
-				for(auto & attr : this->_fs->xattr(ghost)){
+				/**
+				 * Выполняем поиск установленного значения среди атрибутов ссылки без разрешения
+				 */
+				for(auto & attr : awh::fs::xattr(ghost)){
 					// Если атрибут найден
 					if((attr.first == "user.note") && (attr.second == "ghost"))
 						// Устанавливаем отметку
@@ -1964,18 +1902,18 @@ TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
 				// Атрибут ссылки читается без разрешения
 				ASSERT_TRUE(found);
 				// С разрешением цель ссылки отсутствует, и атрибутов у неё нет
-				ASSERT_TRUE(this->_fs->xattr(ghost, true).empty());
+				ASSERT_TRUE(awh::fs::xattr(ghost, true).empty());
 			/**
 			 * Если файловая система не принимает атрибуты у ссылок
 			 */
 			} else {
 				// Перед пропуском убираем рабочий каталог: пропуск не должен оставлять состояние
-				ASSERT_TRUE(this->_fs->unlink(dir));
+				ASSERT_TRUE(awh::fs::unlink(dir));
 				// Сообщаем, что этим опытом проверка атрибутов ссылки не выполняется
 				GTEST_SKIP() << "расширенные атрибуты символьных ссылок эта файловая система не принимает";
 			}
 		#endif
 		// Удаляем каталог рекурсивно
-		ASSERT_TRUE(this->_fs->unlink(dir));
+		ASSERT_TRUE(awh::fs::unlink(dir));
 	#endif
 }

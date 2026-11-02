@@ -13,12 +13,12 @@
  * @site https://anyks.com
  *
  * \~russian
- * @brief Заголовочный файл модуля работы с файловой системой — класс Filesystem для чтения и записи файлов,
+ * @brief Заголовочный файл модуля работы с файловой системой — пространство имён fs для чтения и записи файлов,
  *        обхода каталогов, получения атрибутов, создания и удаления объектов ФС с нативной поддержкой macOS, Windows,
  *        Linux, FreeBSD, NetBSD, OpenBSD, Solaris и OpenIndiana
  *
  * \~english
- * @brief Header file of the filesystem module — the Filesystem class for reading and writing files,
+ * @brief Header file of the filesystem module — the fs namespace for reading and writing files,
  *        walking directories, getting attributes, creating and removing filesystem objects with native support of macOS, Windows,
  *        Linux, FreeBSD, NetBSD, OpenBSD, Solaris and OpenIndiana
  *
@@ -45,6 +45,42 @@
  */
 #include "os.hpp"
 #include "macro/global.hpp"
+
+/**
+ * \~russian
+ * @brief Для операционной системы MS Windows
+ *
+ * \~english
+ * @brief For the MS Windows operating system
+ *
+ * \~
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * \~russian
+	 * @brief Файловый разделитель Windows
+	 *
+	 * \~english
+	 * @brief Windows file separator
+	 *
+	 * \~
+	 */
+	#define AWH_FS_SEPARATOR "\\"
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	/**
+	 * \~russian
+	 * @brief Файловый разделитель UNIX-подобных систем
+	 *
+	 * \~english
+	 * @brief File separator for UNIX-like systems
+	 *
+	 * \~
+	 */
+	#define AWH_FS_SEPARATOR "/"
+#endif
 
 /**
  * \~russian
@@ -155,1573 +191,157 @@ namespace awh {
 
 	/**
 	 * \~russian
-	 * @brief Создаём тип данных объекта каталога
-	 *
-	 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleDir`
-	 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
-	 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleDir`,
-	 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
+	 * @brief Пространство имён модуля работы с файловой системой
 	 *
 	 * \~english
-	 * @brief Create a directory object data type
-	 *
-	 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleDir` itself
-	 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
-	 *       no point in keeping a separate name for it. The object is created by the module with the work
-	 *       `Filesystem::handleDir`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+	 * @brief Namespace of the filesystem module
 	 *
 	 * \~
 	 */
-	using handle_dir_t = unique_ptr <HandleDir, HandleDirDeleter>;
-	/**
-	 * \~russian
-	 * @brief Создаём тип данных объекта файла
-	 *
-	 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleFile`
-	 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
-	 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleFile`,
-	 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
-	 *
-	 * @warning При УЖЕ ЗАВЕДЁННОМ объекте адрес, поданный работе, не разбирается вовсе: он идёт
-	 *          только в открытие, а описатель уже открыт. Работа ляжет в тот файл, каким объект
-	 *          был заведён, - даже если названо иное имя. Один объект обслуживает ОДИН файл,
-	 *          и для другого нужен другой объект
-	 *
-	 * @warning Объект несёт права доступа той работы, какая его ЗАВЕЛА, а не той, какой он
-	 *          передан следом. Заведённый `write` годен и записи, и чтению; заведённый
-	 *          `append` - одной дозаписи; заведённый `read` либо `readfile` - одному чтению.
-	 *          Работа, прав не имеющая, отвечает отказом: `write` - ложью, а `read` - пустым
-	 *          результатом. Права эти одинаковы на всех системах и расхождений не имеют
-	 *
-	 * \~english
-	 * @brief Create a file object data type
-	 *
-	 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleFile` itself
-	 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
-	 *       no point in keeping a separate name for it. The object is created by the module with the work
-	 *       `Filesystem::handleFile`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
-	 *
-	 * @warning At an ALREADY CREATED object the address given to the work is not parsed at all: it goes
-	 *          only into the opening, while the descriptor is already open. The work will lay into the file
-	 *          the object was created with - even if another name is given. One object serves ONE file,
-	 *          and another one is needed for another file
-	 *
-	 * @warning The object carries the access rights of the work that CREATED it, and not of the one
-	 *          it is passed to afterwards. One created by `write` is fit for both writing and reading;
-	 *          one created by `append` - for appending only; one created by `read` or `readfile` - for
-	 *          reading only. A work having no rights answers with a refusal: `write` with a falsehood,
-	 *          and `read` with an empty result. These rights are the same at all the systems and have no divergences
-	 *
-	 * \~
-	 */
-	using handle_file_t = unique_ptr <HandleFile, HandleFileDeleter>;
+	namespace fs {
+		/**
+		 * \~russian
+		 * @brief Типы смещений в файле
+		 *
+		 * \~english
+		 * @brief Types of the offsets in a file
+		 *
+		 * \~
+		 */
+		enum class seek_t : uint8_t {
+			BEGIN   = 0x00, // Смещение от начала файла
+			CURRENT = 0x01, // Смещение от текущей позиции
+			END     = 0x02  // Смещение от конца файла
+		};
+		/**
+		 * \~russian
+		 * @brief Тип файловой системы
+		 *
+		 * \~english
+		 * @brief Type of the filesystem object
+		 *
+		 * \~
+		 */
+		enum class type_t : uint8_t {
+			NONE = 0x00, // Не установлено
+			DIR  = 0x01, // Каталог
+			CHR  = 0x02, // Устройство
+			BLK  = 0x03, // Блок устройства
+			FILE = 0x04, // Физический файл
+			FIFO = 0x05, // Очередь ввода-вывода
+			SOCK = 0x06, // Unix-сокет
+			LINK = 0x07  // Символьная ссылка
+		};
 
-	/**
-	 * \~russian
-	 * @brief Класс модуля работы с файловой системой
-	 *
-	 * \~english
-	 * @brief Class of the filesystem module
-	 *
-	 * \~
-	 */
-	typedef class __AWH_SHARED_EXPORT__ Filesystem {
-		public:
-			/**
-			 * \~russian
-			 * @brief Типы смещений в файле
-			 *
-			 * \~english
-			 * @brief Types of the offsets in a file
-			 *
-			 * \~
-			 */
-			enum class seek_t : uint8_t {
-				BEGIN   = 0x00, // Смещение от начала файла
-				CURRENT = 0x01, // Смещение от текущей позиции
-				END     = 0x02  // Смещение от конца файла
-			};
-			/**
-			 * \~russian
-			 * @brief Тип файловой системы
-			 *
-			 * \~english
-			 * @brief Type of the filesystem object
-			 *
-			 * \~
-			 */
-			enum class type_t : uint8_t {
-				NONE = 0x00, // Не установлено
-				DIR  = 0x01, // Каталог
-				CHR  = 0x02, // Устройство
-				BLK  = 0x03, // Блок устройства
-				FILE = 0x04, // Физический файл
-				FIFO = 0x05, // Очередь ввода-вывода
-				SOCK = 0x06, // Unix-сокет
-				LINK = 0x07  // Символьная ссылка
-			};
-		public:
-			/**
-			 * \~russian
-			 * @brief Тип прав доступа к файлу или каталогу
-			 *
-			 * \~english
-			 * @brief Type of the access rights to a file or a directory
-			 *
-			 * \~
-			 */
-			using components_t = pair <string, string>;
-			/**
-			 * \~russian
-			 * @brief Тип списка расширенных атрибутов: пары «имя - значение»
-			 *
-			 * \~english
-			 * @brief Type of the list of the extended attributes: pairs «name - value»
-			 *
-			 * \~
-			 */
-			using xattrs_t = vector <pair <string, string>>;
-		public:
-			/**
-			 * \~russian
-			 * @brief Структура владельца файла или каталога
-			 *
-			 * @note Имена хранятся рядом с номерами затем, что номера пользователей на разных
-			 *       машинах разные: владелец восстанавливается по имени, а номер нужен тогда,
-			 *       когда такого имени на машине нет
-			 *
-			 * \~english
-			 * @brief Structure of the owner of a file or a directory
-			 *
-			 * @note The names are kept next to the numbers because the numbers of the users differ
-			 *       between machines: the owner is restored by the name, and the number is needed when
-			 *       the machine has no such name
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Owner {
-				// Идентификатор пользователя
-				uint32_t uid;
-				// Идентификатор группы
-				uint32_t gid;
-				// Имя пользователя
-				string user;
-				// Название группы
-				string group;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Owner() noexcept;
-			} owner_t;
-			/**
-			 * \~russian
-			 * @brief Структура сведений о записи файловой системы: устройство, номер и число имён
-			 *
-			 * @note Два имени с одинаковыми устройством и номером есть одна запись - жёсткая ссылка
-			 *
-			 * \~english
-			 * @brief Structure of the information about a filesystem record: the device, the number and the number of names
-			 *
-			 * @note Two names with the same device and number are one record - a hard link
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Inode {
-				// Идентификатор устройства (тома)
-				uint64_t dev;
-				// Номер записи на устройстве
-				uint64_t ino;
-				// Количество имён записи
-				uint64_t nlink;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Inode() noexcept;
-			} inode_t;
-		private:
-			// Объект работы с операционной системой
-			os_t _os;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения сведений о записи файловой системы самого объекта (ссылка не разыменовывается)
-			 *
-			 * @param addr путь к файлу, каталогу либо ссылке
-			 * @return     сведения о записи (нули, если получить не удалось)
-			 *
-			 * \~english
-			 * @brief Method of getting the information about the filesystem record of the object itself (a link is not dereferenced)
-			 *
-			 * @param addr path to the file, the directory or the link
-			 * @return     the information about the record (zeros if it cannot be got)
-			 *
-			 * \~
-			 */
-			inode_t inode(string_view addr) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод создания символьной ссылки
-			 *
-			 * @param first  адрес на который нужно сделать ссылку
-			 * @param second адрес где должна быть создана ссылка
-			 * @return       результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of creating a symbolic link
-			 *
-			 * @param first  address the link should be made to
-			 * @param second address where the link should be created
-			 * @return       result of the work of the function
-			 *
-			 * \~
-			 */
-			bool symlink(string_view first, string_view second) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод создания жёсткой ссылки с отчётом о результате
-			 *
-			 * @note При отказе системы ничего другого не заводит: ни ярлыка, ни копии.
-			 *       Отказ бывает между разными томами и на файловых системах без жёстких
-			 *       ссылок (FAT, exFAT) - решать, чем его заменить, вызывающему
-			 *
-			 * @param first  существующий файл
-			 * @param second адрес создаваемой ссылки
-			 * @return       результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of creating a hard link with a report of the result
-			 *
-			 * @note On a refusal of the system it creates nothing else: neither a shortcut nor
-			 *       a copy. A refusal happens between different volumes and on filesystems without hard links
-			 *       (FAT, exFAT) - what replaces it is decided by the caller
-			 *
-			 * @param first  existing file
-			 * @param second address of the link being created
-			 * @return       result of the work of the function
-			 *
-			 * \~
-			 */
-			bool hardlink(string_view first, string_view second) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод удаления адреса файловой системы
-			 *
-			 * @param addr    полный адрес для удаления
-			 * @param resolve флаг резолвинга символьных ссылок
-			 * @return        результат удаления
-			 *
-			 * \~english
-			 * @brief Method of removing a filesystem address
-			 *
-			 * @param addr    full address to remove
-			 * @param resolve flag of resolving the symbolic links
-			 * @return        result of the removal
-			 *
-			 * \~
-			 */
-			bool unlink(string_view addr, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод, определяющий тип файловой системы по адресу
-			 *
-			 * @param addr        адрес директории или файла
-			 * @param detectLinks флаг детектирования символьных ссылок (на горячих путях можно отключить)
-			 * @return            тип файловой системы
-			 *
-			 * \~english
-			 * @brief Method determining the type of the filesystem object by the address
-			 *
-			 * @param addr        address of the directory or of the file
-			 * @param detectLinks flag of detecting the symbolic links (on hot paths it may be switched off)
-			 * @return            type of the filesystem object
-			 *
-			 * \~
-			 */
-			type_t type(string_view addr, const bool detectLinks = true) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод извлечения реального адреса
-			 *
-			 * @details Если оснастка не смогла разобрать адрес (на Windows это предел длины),
-			 *          возвращается раскрытый адрес в родной записи разделителей, и отказ
-			 *          записывается в журнал.
-			 *
-			 * @note Под POSIX при resolve=true относительная цель разрешается от каталога ссылки,
-			 *       в том числе при отсутствии конечного файла. Цепочка ограничена 40 переходами.
-			 *       При отказе разрешения сохраняется прежний переход к абсолютному исходному пути.
-			 *
-			 * @param addr    адрес который нужно определить
-			 * @param resolve флаг резолвинга символьных ссылок
-			 * @return        полный путь
-			 *
-			 * \~english
-			 * @brief Method of getting the real address
-			 *
-			 * @details If the platform failed to resolve the address (on Windows that is the
-			 *          length limit), the expanded address in native separator notation is
-			 *          returned, and the refusal goes to the journal.
-			 *
-			 * @note On POSIX with resolve=true, a relative target is resolved from the link directory even
-			 *       if the final file is missing. Resolution is limited to 40 link transitions.
-			 *       On failure, the existing fallback to the absolute input path is retained.
-			 *
-			 * @param addr    address that needs to be determined
-			 * @param resolve flag of resolving the symbolic links
-			 * @return        full path
-			 *
-			 * \~
-			 */
-			string fullpath(string_view addr, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения прав доступа к файлу или каталогу
-			 *
-			 * @param addr    путь к файлу или каталогу
-			 * @param resolve ложь - права снимаются с самого объекта (у символьной ссылки с неё, а не
-			 *                с её цели), истина - с цели ссылки; цели может и не быть, тогда
-			 *                права снимаются с самой ссылки и отказ не является ошибкой данных
-			 * @return        запрашиваемые метаданные
-			 *
-			 * \~english
-			 * @brief Method of getting the access rights to a file or a directory
-			 *
-			 * @param addr    path to the file or to the directory
-			 * @param resolve false - the rights are taken from the object itself (from a symbolic
-			 *                link, not from its target), true - from the target of the link; the
-			 *                target may be absent, then the rights are taken from the link itself
-			 * @return        the requested metadata
-			 *
-			 * \~
-			 */
-			uint32_t chmod(string_view addr, const bool resolve = false) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод изменения прав доступа к файлу или каталогу
-			 *
-			 * @param addr    путь к файлу или каталогу
-			 * @param mode    метаданные для установки
-			 * @param resolve ложь - права устанавливаются у самого объекта (у символьной ссылки её
-			 *                собственные, цель не затрагивается), истина - у цели ссылки; там, где
-			 *                система прав у ссылки не хранит (Linux, Solaris, OpenBSD), без флага
-			 *                разрешения операция пропускается как выполненная
-			 * @return        результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of changing the access rights to a file or a directory
-			 *
-			 * @param addr    path to the file or to the directory
-			 * @param mode    metadata to set
-			 * @param resolve false - the rights are set on the object itself (on a symbolic link, on
-			 *                the link without touching its target), true - on the target of the link;
-			 *                where the system stores no rights for a link (Linux, Solaris, OpenBSD)
-			 *                the operation is skipped as done without the resolve flag
-			 * @return        result of the work of the function
-			 *
-			 * \~
-			 */
-			bool chmod(string_view addr, const uint32_t mode, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки владельца на файл или каталог
-			 *
-			 * @param addr    путь к файлу или каталогу для установки владельца
-			 * @param user    имя пользователя
-			 * @param group   название группы пользователя
-			 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
-			 *                цель не трогается), истина - цели ссылки; на MS Windows с флагом
-			 *                разрешается ярлык `.lnk`
-			 * @return        результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of setting the owner of a file or a directory
-			 *
-			 * @param addr    path to the file or to the directory to set the owner of
-			 * @param user    name of the user
-			 * @param group   name of the group of the user
-			 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
-			 *                link without touching its target), true - on the target of the link; at
-			 *                MS Windows with the flag a shortcut is resolved
-			 * @return        result of the work of the function
-			 *
-			 * \~
-			 */
-			bool chown(string_view addr, string_view user, string_view group = "", const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения владельца файла, каталога либо самой символьной ссылки
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param resolve ложь - владелец снимается с самого объекта (у символьной ссылки с неё, а
-			 *                не с её цели), истина - с цели ссылки
-			 * @return        владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
-			 *
-			 * \~english
-			 * @brief Method of getting the owner of a file, a directory or of the symbolic link itself
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param resolve false - the owner is got from the object itself (from a symbolic link, from
-			 *                the link and not from its target), true - from the target of the link
-			 * @return        the owner (numbers -1 and empty names if it cannot be got or at MS Windows)
-			 *
-			 * \~
-			 */
-			owner_t owner(string_view addr, const bool resolve = false) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки владельца файла, каталога либо самой символьной ссылки
-			 *
-			 * @note Владелец ищется по имени, а при отсутствии имени на машине - берётся номер.
-			 *       На MS Windows ничего не делает
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param owner   владелец для установки
-			 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
-			 *                цель не трогается), истина - цели ссылки
-			 * @return        результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of setting the owner of a file, a directory or of the symbolic link itself
-			 *
-			 * @note The owner is looked up by the name, and when the machine has no such name the number
-			 *       is taken. Does nothing at MS Windows
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param owner   the owner to set
-			 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
-			 *                link without touching its target), true - on the target of the link
-			 * @return        result of the work of the function
-			 *
-			 * \~
-			 */
-			bool owner(string_view addr, const owner_t & owner, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения времени изменения файла, каталога либо самой символьной ссылки
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param resolve ложь - время снимается с самого объекта (у символьной ссылки с неё, а не с
-			 *                её цели), истина - с цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
-			 * @return        время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
-			 *
-			 * \~english
-			 * @brief Method of getting the modification time of a file, a directory or of the symbolic link itself
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param resolve false - the time is got from the object itself (from a symbolic link, from
-			 *                the link and not from its target), true - from the target of the link; at
-			 *                MS Windows with the flag a shortcut is resolved
-			 * @return        the modification time in milliseconds since the Unix epoch (0 if it cannot be got)
-			 *
-			 * \~
-			 */
-			uint64_t mtime(string_view addr, const bool resolve = false) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки времени изменения файла, каталога либо самой символьной ссылки
-			 *
-			 * @note Время доступа не трогается
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param date    время изменения в миллисекундах от начала эпохи Unix
-			 * @param resolve ложь - время ставится самому объекту (у символьной ссылки - ссылке, цель не
-			 *                трогается), истина - цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
-			 * @return        результат работы функции
-			 *
-			 * \~english
-			 * @brief Method of setting the modification time of a file, a directory or of the symbolic link itself
-			 *
-			 * @note The access time is not touched
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param date    the modification time in milliseconds since the Unix epoch
-			 * @param resolve false - the time is set on the object itself (on a symbolic link, on the
-			 *                link without touching its target), true - on the target of the link; at
-			 *                MS Windows with the flag a shortcut is resolved
-			 * @return        result of the work of the function
-			 *
-			 * \~
-			 */
-			bool mtime(string_view addr, const uint64_t date, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения расширенных атрибутов файла, каталога либо самой символьной ссылки
-			 *
-			 * @note Имена приводятся к виду Linux: атрибуты пространства пользователя BSD получают
-			 *       приставку «user.», имена macOS остаются как есть. На OpenBSD, DragonFly, Solaris и MS Windows
-			 *       расширенных атрибутов в этом виде нет, и список пуст
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param resolve ложь - атрибуты снимаются с самого объекта (у символьной ссылки с неё, а
-			 *                не с её цели), истина - с цели ссылки
-			 * @return        список расширенных атрибутов
-			 *
-			 * \~english
-			 * @brief Method of getting the extended attributes of a file, a directory or of the symbolic link itself
-			 *
-			 * @note The names are brought to the Linux form: the attributes of the BSD user namespace get the prefix
-			 *       «user.», the macOS names stay as they are. OpenBSD, DragonFly, Solaris and MS Windows have no extended
-			 *       attributes of this kind, and the list is empty
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param resolve false - the attributes are got from the object itself (from a symbolic link,
-			 *                from the link and not from its target), true - from the target of the link
-			 * @return        list of the extended attributes
-			 *
-			 * \~
-			 */
-			xattrs_t xattr(string_view addr, const bool resolve = false) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки расширенных атрибутов файла, каталога либо самой символьной ссылки
-			 *
-			 * @note На BSD устанавливаются только атрибуты с приставкой «user.» - в пространство
-			 *       пользователя. Атрибут, какого система не принимает, пропускается
-			 *
-			 * @param addr    путь к файлу, каталогу либо ссылке
-			 * @param attrs   список расширенных атрибутов
-			 * @param resolve ложь - атрибуты ставятся самому объекту (у символьной ссылки - ссылке,
-			 *                цель не трогается), истина - цели ссылки
-			 * @return        количество атрибутов, которые установить не удалось
-			 *
-			 * \~english
-			 * @brief Method of setting the extended attributes of a file, a directory or of the symbolic link itself
-			 *
-			 * @note At BSD only the attributes with the prefix «user.» are set - into the user namespace.
-			 *       An attribute the system does not accept is skipped
-			 *
-			 * @param addr    path to the file, the directory or the link
-			 * @param attrs   list of the extended attributes
-			 * @param resolve false - the attributes are set on the object itself (on a symbolic link, on
-			 *                the link without touching its target), true - on the target of the link
-			 * @return        number of the attributes which could not be set
-			 *
-			 * \~
-			 */
-			size_t xattr(string_view addr, const xattrs_t & attrs, const bool resolve = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного создания пути
-			 *
-			 * @param addr адрес для создания каталога
-			 * @return     результат создания каталога
-			 *
-			 * \~english
-			 * @brief Method of the recursive creation of a path
-			 *
-			 * @param addr address to create the directory at
-			 * @return     result of the creation of the directory
-			 *
-			 * \~
-			 */
-			bool mkdir(string_view addr) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод создания каталога с указанием владельца
-			 *
-			 * @param addr  адрес для создания каталога
-			 * @param user  имя пользователя
-			 * @param group название группы пользователя
-			 * @return      результат создания каталога
-			 *
-			 * \~english
-			 * @brief Method of creating a directory with the owner specified
-			 *
-			 * @param addr  address to create the directory at
-			 * @param user  name of the user
-			 * @param group name of the group of the user
-			 * @return      result of the creation of the directory
-			 *
-			 * \~
-			 */
-			bool mkdir(string_view addr, string_view user, string_view group) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод подмены целевого файла временным
-			 *
-			 * @details Запись в файл ведётся через временный файл с последующей подменою: так
-			 *          отказ посреди записи оставляет прежнее содержимое целым, а не наполовину выписанным.
-			 *          Подмена эта у POSIX выполняется `rename()`, но у MS Windows тот же
-			 *          вызов существующий файл НЕ ЗАМЕНЯЕТ - он отвечает отказом, и запись во второй раз
-			 *          по одному и тому же пути не удаётся вовсе.
-			 *
-			 * @warning Беда эта была настоящей и найдена не рассуждением: набор проверок
-			 *          кодеков, впервые собравшись под MinGW 07.09.2026, дал четыре отказа в
-			 *          трёх разных кодеках, и у всех четырёх падала ВТОРАЯ работа с файлом по
-			 *          тому же пути, а первая проходила. Доказано щупом на стенде MinGW:
-			 *          `rename()` на существующий файл отвечает `-1`, на отсутствующий - нулём
-			 *
-			 * @note Способ замены у MS Windows взят тот же, каким пользуется модуль
-			 *       криптографии: `MoveFileEx` с признаками `MOVEFILE_REPLACE_EXISTING` и
-			 *       `MOVEFILE_WRITE_THROUGH`. Первый дозволяет замену на месте, второй велит
-			 *       дождаться, пока запись ляжет на устройство, - иначе подмена считается
-			 *       свершённой прежде времени. Зовётся широкий вид (`MoveFileExW`), а не узкий:
-			 *       узкий читает пути в кодовой странице ANSI, и путь UTF-8 с символами вне
-			 *       неё до файла не доходит - пути перекладываются в UTF-16 через fmk::convert
-			 *
-			 * @note Тело живёт в `src/sys/fs.cpp`, а не здесь, - по общему правилу
-			 *       дерева о чистых заголовочных файлах. Порядок этот важен не только видом:
-			 *       `windows.h` приносит макросы `ERROR`, `DELETE`, `TEXT`, и, стой включение
-			 *       в заголовке, они расходились бы по всякому кодеку, его включившему. В
-			 *       исходнике же они заперты одной единицей трансляции
-			 *
-			 * @note Снос целевого файла перед `rename()` был бы способом более простым, но
-			 *       НЕВЕРНЫМ: между сносом и переименованием целевого файла не существует
-			 *       вовсе, и отказ в этот миг оставляет потребителя без прежнего содержимого -
-			 *       ровно то, ради чего временный файл и заводится
-			 *
-			 * @param temporary адрес временного файла записи
-			 * @param filename  адрес целевого файла записи
-			 * @return          признак успешной подмены
-			 *
-			 * \~english
-			 * @brief Method of the replacement of a target file by a temporary one
-			 *
-			 * @details The writing into a file is performed through a temporary file with a subsequent
-			 *          replacement: thus a refusal in the middle of the writing leaves the previous content whole.
-			 *          At POSIX this replacement is performed by `rename()`, but at MS Windows the same call
-			 *          does NOT replace an existing file - it answers with a refusal.
-			 *
-			 * @warning This problem was real and was not found by reasoning: a set of codec checks,
-			 *          first assembled under MinGW on 09/07/2026, gave four failures in three different codecs,
-			 *          and for all four the SECOND work with a file along the same path failed, while the first one passed.
-			 *          Proven by a probe at the MinGW stand: `rename()` responds to an existing file with `-1`, to a missing file - zero
-			 *
-			 * @note The replacement method for MS Windows is the same as that used by the cryptography module:
-			 *       `MoveFileEx` with the attributes `MOVEFILE_REPLACE_EXISTING` and `MOVEFILE_WRITE_THROUGH`.
-			 *       The first allows replacement on the spot, the second tells you to wait until the recording
-			 *       is transferred to the device, otherwise the replacement is considered completed ahead of time.
-			 *       The wide view (`MoveFileExW`) is called, not the narrow one: the narrow one reads paths in the ANSI
-			 *       code page, and a UTF-8 path with characters outside it does not reach the file - the paths
-			 *       are converted to UTF-16 through fmk::convert
-			 *
-			 * @note The body lives in `src/sys/fs.cpp`, and not here - according to the general tree rule
-			 *       about pure header files. This order is important not only in appearance:
-			 *       `windows.h` brings the macros `ERROR`, `DELETE`, `TEXT`, and if included in the header,
-			 *       they would diverge for any codec that included it. In the source code,
-			 *       they are locked in one translation unit
-			 *
-			 * @note Demolishing the target file before `rename()` would be a simpler method, but it is WRONG:
-			 *       between demolition and renaming, the target file does not exist at all,
-			 *       and failure at that moment leaves the user without the previous contents - exactly what the temporary file is created for
-			 *
-			 * @param temporary address of the temporary file of the writing
-			 * @param filename  address of the target file of the writing
-			 * @return          sign of the successful replacement
-			 *
-			 * \~
-			 */
-			bool replaceAddress(string_view temporary, string_view filename) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод извлечения названия и расширения файла
-			 *
-			 * @param addr    путь к файлу для извлечения его параметров
-			 * @param resolve флаг резолвинга символьных ссылок
-			 * @param before  флаг определения первой точки расширения слева
-			 *
-			 * \~english
-			 * @brief Method of getting the name and the extension of a file
-			 *
-			 * @param addr    path to the file to get its parameters of
-			 * @param resolve flag of resolving the symbolic links
-			 * @param before  flag of determining the first dot of the extension from the left
-			 *
-			 * \~
-			 */
-			components_t components(string_view addr, const bool resolve = false, const bool before = false) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод подсчёта размера файла/каталога
-			 *
-			 * @param addr    адрес для подсчёта размера
-			 * @param ext     расширение файла если требуется фильтрация
-			 * @param recurse флаг рекурсивного перебора каталогов
-			 * @return        общий размер файла/каталога
-			 *
-			 * \~english
-			 * @brief Method of counting the size of a file/directory
-			 *
-			 * @param addr    address to count the size of
-			 * @param ext     extension of the file if filtering is required
-			 * @param recurse flag of the recursive walk of the directories
-			 * @return        total size of the file/directory
-			 *
-			 * \~
-			 */
-			uintmax_t size(string_view addr, string_view ext = "", const bool recurse = true) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод подсчёта количества файлов в каталоге
-			 *
-			 * @param addr    адрес для подсчёта количества файлов
-			 * @param ext     расширение файла если требуется фильтрация
-			 * @param recurse флаг рекурсивного перебора каталогов
-			 * @return        количество файлов в каталоге
-			 *
-			 * \~english
-			 * @brief Method of counting the number of files in a directory
-			 *
-			 * @param addr    address to count the number of files at
-			 * @param ext     extension of the file if filtering is required
-			 * @param recurse flag of the recursive walk of the directories
-			 * @return        number of files in the directory
-			 *
-			 * \~
-			 */
-			uintmax_t count(string_view addr, string_view ext = "", const bool recurse = true) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод создания объекта каталога
-			 *
-			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleDir`
-			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
-			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
-			 *
-			 * @note Объект служит каталогу, названному в `path`, и хранит состояние обхода. Повторный
-			 *       обзор того же каталога идёт мимо повторного открытия, а обход, прерванный откликом
-			 *       у `walkdir`, продолжается с места остановки
-			 *
-			 * @return умный указатель на объект каталога
-			 *
-			 * \~english
-			 * @brief Method of the creation of a directory object
-			 *
-			 * @details The object is created by the module itself and is given away by a smart pointer:
-			 *          the type `HandleDir` is deliberately incomplete outside the module - the system API
-			 *          of the platform does not go into the header of the framework. The demolition is performed
-			 *          by its own deleter, whose body lives in the source.
-			 *
-			 * @note The object serves the directory named in `path` and keeps the state of the walk.
-			 *       A repeated survey of the same directory goes past a repeated opening, and a walk interrupted
-			 *       by the callback at `walkdir` continues from the place of the stop
-			 *
-			 * @return smart pointer to a directory object
-			 *
-			 * \~
-			 */
-			handle_dir_t handleDir() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод создания объекта файла
-			 *
-			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleFile`
-			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
-			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
-			 *
-			 * @note Объект годен для пакетной обработки: один описатель обслуживает много обращений
-			 *       к одному адресу. Открытие файла выполняет та работа, которой объект передан
-			 *       первой, - сам по себе объект описателя не держит
-			 *
-			 * @return умный указатель на объект файла
-			 *
-			 * \~english
-			 * @brief Method of the creation of a file object
-			 *
-			 * @details The object is created by the module itself and is given away by a smart pointer:
-			 *          the type `HandleFile` is deliberately incomplete outside the module - the system API
-			 *          of the platform does not go into the header of the framework. The demolition is performed
-			 *          by its own deleter, whose body lives in the source.
-			 *
-			 * @note The object is fit for the batch processing: one descriptor serves many calls
-			 *       to one address. The opening of the file is performed by the work the object is passed
-			 *       to first - by itself the object holds no descriptor
-			 *
-			 * @return smart pointer to a file object
-			 *
-			 * \~
-			 */
-			handle_file_t handleFile() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод исключительного создания временного файла рядом с целью
-			 *
-			 * @details Возвращает открытый объект для записи и сброса без повторного открытия
-			 *          по имени. Существующие файлы не удаляются. Под POSIX сохраняются биты
-			 *          доступа существующего обычного файла; новая цель получает 0644 с учётом umask.
-			 *          Владение и ACL этим методом не переносятся. Под Windows действует ACL
-			 *          каталога. Вызывающий закрывает объект и удаляет временный файл при отказе.
-			 *
-			 * @param filename адрес целевого файла
-			 * @param address  адрес созданного временного файла, при отказе пустой
-			 * @return         открытый объект либо пустой указатель при отказе
-			 *
-			 * \~english
-			 * @brief Method of exclusively creating a temporary file beside its target
-			 * @details Returns an open handle for writing and flushing without reopening by name.
-			 *          Existing files are never removed. POSIX access bits of an existing regular
-			 *          target are retained; a new target receives 0644 subject to umask. Ownership and ACLs
-			 *          are not copied. Windows inherits the directory ACL. The caller closes
-			 *          the handle and removes the temporary file on failure.
-			 * @param filename target file path
-			 * @param address  created temporary file path, empty on failure
-			 * @return         open handle or a null pointer on failure
-			 *
-			 * \~
-			 */
-			handle_file_t temporary(string_view filename, string & address) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод сброса записанного из ядра на носитель
-			 *
-			 * @details Запись, отвеченная успехом, лежит ещё не на носителе, а во вместилище ядра,
-			 *          и обрыв питания её теряет. Работа эта доводит записанное до носителя и
-			 *          отвечает лишь тогда, когда носитель сброс подтвердил.
-			 *
-			 * @warning Под системою Apple `fsync` обещания этого НЕ выполняет: он выносит записанное
-			 *          из ядра в накопитель, но опустошить вместилище самого накопителя не велит.
-			 *          Доводит до пластины лишь `F_FULLFSYNC`, и он здесь и зовётся при `durable`
-			 *
-			 * @note Отказ `EINVAL` означает, что носитель сброса не держит (канал, устройство
-			 *       посимвольное), - это не отказ записи, и отказом он не объявляется
-			 *
-			 * @note Внешний объект файла тут не роскошь, а способ: без него работа откроет файл
-			 *       заново, а описатель, каким шла запись, останется несброшенным. Пакетная запись
-			 *       обязана сбрасываться ТЕМ ЖЕ объектом, каким она и велась
-			 *
-			 * @param filename путь к файлу который необходимо сбросить на носитель
-			 * @param durable  признак доведения записанного до носителя, а не до накопителя
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, что сброс выполнен
-			 *
-			 * \~english
-			 * @brief Method of the flushing of the written data from the kernel onto the medium
-			 *
-			 * @details A writing answered with a success lies not yet on the medium, but in the storage
-			 *          of the kernel, and a power failure loses it. This work brings the written data
-			 *          onto the medium and answers only when the medium has confirmed the flush.
-			 *
-			 * @warning At the Apple system `fsync` does NOT fulfil this promise: it brings the written data
-			 *          out of the kernel into the drive, but does not order the drive's own storage to be emptied.
-			 *          Only `F_FULLFSYNC` brings it down to the platter, and it is the one called here at `durable`
-			 *
-			 * @note The refusal `EINVAL` means that the medium does not support the flushing (a pipe, a character
-			 *       device) - this is not a refusal of the writing, and it is not declared a refusal
-			 *
-			 * @note The external file object is not a luxury here but the means: without it the work will open
-			 *       the file anew, while the descriptor the writing went through will remain unflushed. A batch
-			 *       writing must be flushed by THE SAME object it was performed with
-			 *
-			 * @param filename path to the file that needs to be flushed onto the medium
-			 * @param durable  sign of bringing the written data onto the medium, and not onto the drive
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign that the flush has been performed
-			 *
-			 * \~
-			 */
-			bool flush(string_view filename, const bool durable = true, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод усечения файла до заданной длины
-			 *
-			 * @details Файл, длины не имеющий, заводится ПУСТЫМ: усечение до нуля есть и способ
-			 *          завести пустой файл, и способ очистить существующий. Файл длиною меньше
-			 *          заданной наращивается нулями - так велит сама работа систем, и своего
-			 *          здесь не придумано
-			 *
-			 * @note Работа эта закрывает то, чего записью не сделать: `write` нулевой длины
-			 *       отвечает отказом, а усечение существующего файла записью не выражается вовсе
-			 *
-			 * @param filename путь к файлу который необходимо усечь
-			 * @param length   длина, до какой усекается файл
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 *
-			 * @return         признак того, что усечение выполнено
-			 *
-			 * \~english
-			 * @brief Method of the truncation of a file to a given length
-			 *
-			 * @details A file having no length is created EMPTY: the truncation to zero is both the way
-			 *          to create an empty file and the way to clear an existing one. A file shorter than
-			 *          the given length is extended with zeroes - so the work of the systems themselves
-			 *          ordains, and nothing of our own is invented here
-			 *
-			 * @note This work closes what cannot be done by the writing: `write` of a zero length answers
-			 *       with a refusal, and the truncation of an existing file is not expressed by a writing at all
-			 *
-			 * @param filename path to the file that needs to be truncated
-			 * @param length   length the file is truncated to
-			 * @param handle   external file object if batch processing support is required
-			 *
-			 * @return         sign that the truncation has been performed
-			 *
-			 * \~
-			 */
-			bool truncate(string_view filename, const uint64_t length = 0, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Шаблон метода добавления в файл бинарных данных
-			 *
-			 * @tparam T тип буфера данных
-			 *
-			 * \~english
-			 * @brief Template of the method of appending binary data to a file
-			 *
-			 * @tparam T type of the data buffer
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод добавления в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of appending binary data to a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool append(string_view filename, const T & buffer, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод добавления в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of appending binary data to a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool append(string_view filename, const char * buffer, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод добавления в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of appending binary data to a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool append(string_view filename, const wchar_t * buffer, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод добавления в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param size     размер бинарного буфера для записи в файл
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of appending binary data to a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param size     size of the binary buffer to write into the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Шаблон метода чтения данных из файла
-			 *
-			 * @tparam T тип возвращаемого результата
-			 *
-			 * \~english
-			 * @brief Template of the method of reading data from a file
-			 *
-			 * @tparam T type of the returned result
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод чтения данных из файла
-			 *
-			 * @param filename путь к файлу для чтения
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         бинарный буфер с прочитанными данными
-			 *
-			 * \~english
-			 * @brief Method of reading data from a file
-			 *
-			 * @param filename path to the file to read
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         binary buffer with the read data
-			 *
-			 * \~
-			 */
-			auto read(string_view filename, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept -> T;
-			/**
-			 * \~russian
-			 * @brief Шаблон метода чтения данных из файла
-			 *
-			 * @tparam T тип возвращаемого результата
-			 *
-			 * \~english
-			 * @brief Template of the method of reading data from a file
-			 *
-			 * @tparam T type of the returned result
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод чтения данных из файла
-			 *
-			 * @param filename путь к файлу для чтения
-			 * @param result   контейнер куда следует положить результат
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of reading data from a file
-			 *
-			 * @param filename path to the file to read
-			 * @param result   container the result should be put into
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного чтения больших файлов блоками с обратным вызовом
-			 *
-			 * @param filename путь к файлу для чтения
-			 * @param size     размер блока для чтения
-			 * @param callback функция обратного вызова для обработки прочитанных данных (возвращает true для продолжения чтения и false для остановки)
-			 * @param offset   смещение в файле с которого следует начать чтение
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive reading of large files in blocks with a callback
-			 *
-			 * @param filename path to the file to read
-			 * @param size     size of the block to read
-			 * @param callback callback function for handling the read data (returns true to continue the reading and false to stop)
-			 * @param offset   offset in the file the reading should start from
-			 * @param handle   external file object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Шаблон метода записи в файл бинарных данных
-			 *
-			 * @tparam T тип буфера данных
-			 *
-			 * \~english
-			 * @brief Template of the method of writing binary data into a file
-			 *
-			 * @tparam T type of the data buffer
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод записи в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of writing binary data into a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод записи в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of writing binary data into a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод записи в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of writing binary data into a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод записи в файл бинарных данных
-			 *
-			 * @param filename путь к файлу в который необходимо выполнить запись
-			 * @param buffer   бинарный буфер который необходимо записать в файл
-			 * @param size     размер бинарного буфера для записи в файл
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 * @return         признак того, легли ли данные в файл
-			 *
-			 * \~english
-			 * @brief Method of writing binary data into a file
-			 *
-			 * @param filename path to the file the writing should be performed into
-			 * @param buffer   binary buffer that needs to be written into the file
-			 * @param size     size of the binary buffer to write into the file
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 * @return         sign of whether the data has been laid into the file
-			 *
-			 * \~
-			 */
-			bool write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного получения всех строк файла
-			 *
-			 * @param filename путь к файлу для чтения
-			 * @param callback функция обратного вызова
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive getting of all the lines of a file
-			 *
-			 * @param filename path to the file to read
-			 * @param callback callback function
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного получения буфера данных из больших файлов
-			 *
-			 * @param filename путь к файлу для чтения
-			 * @param size     размер буфера для чтения файла
-			 * @param callback функция обратного вызова
-			 * @param seek     тип смещения в файле
-			 * @param offset   смещение в файле
-			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive getting of a data buffer from large files
-			 *
-			 * @param filename path to the file to read
-			 * @param size     size of the buffer to read the file with
-			 * @param callback callback function
-			 * @param seek     type of the offset in the file
-			 * @param offset   offset in the file
-			 * @param handle   external file object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод обхода файлов во всех подкаталогах с остановкой и продолжением
-			 *
-			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
-			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
-			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
-			 *          обход с того же места, а не с начала.
-			 *
-			 * @warning Продолжение идёт ПО ВОЗМОЖНОСТИ: между долями обхода дерево вправе измениться,
-			 *          и записи, добавленные либо снесённые ниже уже пройденного места, видны не будут.
-			 *          Снимка состава объект не держит - он держит открытые каталоги и место в каждом
-			 *
-			 * @note Без внешнего объекта каталога работа эта равна `readdir` с досрочным выходом:
-			 *       продолжать будет нечем, состояние обхода гибнет вместе с вызовом
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова, ложь останавливает обход
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 * @return         признак того, что обход довершён до конца
-			 *
-			 * \~english
-			 * @brief Method of the walk of the files in all the subdirectories with a stop and a continuation
-			 *
-			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
-			 *          by returning false. If an external directory object is passed at that, the object keeps
-			 *          the place of the stop, and the next call with the same object and the same address
-			 *          continues the walk from the same place, and not from the beginning.
-			 *
-			 * @warning The continuation goes AS FAR AS POSSIBLE: between the parts of the walk the tree
-			 *          is entitled to change, and the entries added or demolished below an already passed place
-			 *          will not be seen. The object keeps no snapshot of the content - it keeps the opened
-			 *          directories and the place in each of them
-			 *
-			 * @note Without an external directory object this work equals `readdir` with an early exit:
-			 *       there will be nothing to continue with, the state of the walk dies together with the call
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function, false stops the walk
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 * @return         sign that the walk is completed to the end
-			 *
-			 * \~
-			 */
-			bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обхода файлов во всех подкаталогах построчно с остановкой и продолжением
-			 *
-			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
-			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
-			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
-			 *          обход с того же места, а не с начала.
-			 *
-			 * @warning Остановка выполняется на границе СТРОКИ, а не файла: отказ отклика прерывает
-			 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
-			 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
-			 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
-			 *          файла отбросит его остаток безвозвратно
-			 *
-			 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
-			 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
-			 *       по дереву, идёт по возможности
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова, ложь останавливает обход
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 * @return         признак того, что обход довершён до конца
-			 *
-			 * \~english
-			 * @brief Method of the walk of the files in all the subdirectories line by line with a stop and a continuation
-			 *
-			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
-			 *          by returning false. If an external directory object is passed at that, the object keeps
-			 *          the place of the stop, and the next call with the same object and the same address
-			 *          continues the walk from the same place, and not from the beginning.
-			 *
-			 * @warning The stop is performed at the boundary of a LINE, and not of a file: a refusal of the callback
-			 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
-			 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
-			 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
-			 *          middle of a file will discard its remainder irretrievably
-			 *
-			 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
-			 *       between the parts of the walk, and the count would point at another place already. The continuation
-			 *       here, as the continuation over the tree, goes as far as possible
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function, false stops the walk
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 * @return         sign that the walk is completed to the end
-			 *
-			 * \~
-			 */
-			bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обхода файлов во всех подкаталогах бинарными блоками с остановкой и продолжением
-			 *
-			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
-			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
-			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
-			 *          обход с того же места, а не с начала.
-			 *
-			 * @warning Остановка выполняется на границе БЛОКА, а не файла: отказ отклика прерывает
-			 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
-			 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
-			 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
-			 *          файла отбросит его остаток безвозвратно
-			 *
-			 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
-			 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
-			 *       по дереву, идёт по возможности
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param size     размер буфера для чтения файла
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова, ложь останавливает обход
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 * @return         признак того, что обход довершён до конца
-			 *
-			 * \~english
-			 * @brief Method of the walk of the files in all the subdirectories in binary blocks with a stop and a continuation
-			 *
-			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
-			 *          by returning false. If an external directory object is passed at that, the object keeps
-			 *          the place of the stop, and the next call with the same object and the same address
-			 *          continues the walk from the same place, and not from the beginning.
-			 *
-			 * @warning The stop is performed at the boundary of a BLOCK, and not of a file: a refusal of the callback
-			 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
-			 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
-			 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
-			 *          middle of a file will discard its remainder irretrievably
-			 *
-			 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
-			 *       between the parts of the walk, and the count would point at another place already. The continuation
-			 *       here, as the continuation over the tree, goes as far as possible
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param size     size of the buffer to read the file with
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function, false stops the walk
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 * @return         sign that the walk is completed to the end
-			 *
-			 * \~
-			 */
-			bool walkdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <bool (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
-			 *
-			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
-			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
-			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
-			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
-			 *
-			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
-			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive getting of the files in all the subdirectories
-			 *
-			 * @note The external directory object serves the directory named in `path`,
-			 *       just as the file object serves the file named in `filename`.
-			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
-			 *       During recursive traversal, the object serves the ROOT:
-			 *       the module opens subdirectories with their own descriptors,
-			 *       without releasing them to the outside world
-			 *
-			 * @note An object submitted with a different address stops servicing the previous one:
-			 *       the previous handle is closed, and the bypass state, if there was one, is lost
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
-			 *
-			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
-			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
-			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
-			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
-			 *
-			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
-			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive reading of the files in all the subdirectories line by line
-			 *
-			 * @note The external directory object serves the directory named in `path`,
-			 *       just as the file object serves the file named in `filename`.
-			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
-			 *       During recursive traversal, the object serves the ROOT:
-			 *       the module opens subdirectories with their own descriptors,
-			 *       without releasing them to the outside world
-			 *
-			 * @note An object submitted with a different address stops servicing the previous one:
-			 *       the previous handle is closed, and the bypass state, if there was one, is lost
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах бинарными блоками
-			 *
-			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
-			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
-			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
-			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
-			 *
-			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
-			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
-			 *
-			 * @param path     путь до каталога
-			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param size     размер буфера для чтения файла
-			 * @param recurse  флаг рекурсивного перебора каталогов
-			 * @param callback функция обратного вызова
-			 * @param resolve  флаг резолвинга символьных ссылок
-			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
-			 *
-			 * \~english
-			 * @brief Method of the recursive reading of the files in all the subdirectories in binary blocks
-			 *
-			 * @note The external directory object serves the directory named in `path`,
-			 *       just as the file object serves the file named in `filename`.
-			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
-			 *       During recursive traversal, the object serves the ROOT:
-			 *       the module opens subdirectories with their own descriptors, without releasing them to the outside world
-			 *
-			 * @note An object submitted with a different address stops servicing the previous one:
-			 *       the previous handle is closed, and the bypass state, if there was one, is lost
-			 *
-			 * @param path     path to the directory
-			 * @param ext      extension of the file the filtering is driven by
-			 * @param size     size of the buffer to read the file with
-			 * @param recurse  flag of the recursive walk of the directories
-			 * @param callback callback function
-			 * @param resolve  flag of resolving the symbolic links
-			 * @param handle   external directory object if batch processing support is required
-			 *
-			 * \~
-			 */
-			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
-		public:
+		/**
+		 * \~russian
+		 * @brief Тип прав доступа к файлу или каталогу
+		 *
+		 * \~english
+		 * @brief Type of the access rights to a file or a directory
+		 *
+		 * \~
+		 */
+		using components_t = pair <string, string>;
+		/**
+		 * \~russian
+		 * @brief Тип списка расширенных атрибутов: пары «имя - значение»
+		 *
+		 * \~english
+		 * @brief Type of the list of the extended attributes: pairs «name - value»
+		 *
+		 * \~
+		 */
+		using xattrs_t = vector <pair <string, string>>;
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных объекта каталога
+		 *
+		 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleDir`
+		 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
+		 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleDir`,
+		 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
+		 *
+		 * \~english
+		 * @brief Create a directory object data type
+		 *
+		 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleDir` itself
+		 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
+		 *       no point in keeping a separate name for it. The object is created by the module with the work
+		 *       `Filesystem::handleDir`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+		 *
+		 * \~
+		 */
+		using handle_dir_t = unique_ptr <HandleDir, HandleDirDeleter>;
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных объекта файла
+		 *
+		 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleFile`
+		 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
+		 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleFile`,
+		 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
+		 *
+		 * @warning При УЖЕ ЗАВЕДЁННОМ объекте адрес, поданный работе, не разбирается вовсе: он идёт
+		 *          только в открытие, а описатель уже открыт. Работа ляжет в тот файл, каким объект
+		 *          был заведён, - даже если названо иное имя. Один объект обслуживает ОДИН файл,
+		 *          и для другого нужен другой объект
+		 *
+		 * @warning Объект несёт права доступа той работы, какая его ЗАВЕЛА, а не той, какой он
+		 *          передан следом. Заведённый `write` годен и записи, и чтению; заведённый
+		 *          `append` - одной дозаписи; заведённый `read` либо `readfile` - одному чтению.
+		 *          Работа, прав не имеющая, отвечает отказом: `write` - ложью, а `read` - пустым
+		 *          результатом. Права эти одинаковы на всех системах и расхождений не имеют
+		 *
+		 * \~english
+		 * @brief Create a file object data type
+		 *
+		 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleFile` itself
+		 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
+		 *       no point in keeping a separate name for it. The object is created by the module with the work
+		 *       `Filesystem::handleFile`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+		 *
+		 * @warning At an ALREADY CREATED object the address given to the work is not parsed at all: it goes
+		 *          only into the opening, while the descriptor is already open. The work will lay into the file
+		 *          the object was created with - even if another name is given. One object serves ONE file,
+		 *          and another one is needed for another file
+		 *
+		 * @warning The object carries the access rights of the work that CREATED it, and not of the one
+		 *          it is passed to afterwards. One created by `write` is fit for both writing and reading;
+		 *          one created by `append` - for appending only; one created by `read` or `readfile` - for
+		 *          reading only. A work having no rights answers with a refusal: `write` with a falsehood,
+		 *          and `read` with an empty result. These rights are the same at all the systems and have no divergences
+		 *
+		 * \~
+		 */
+		using handle_file_t = unique_ptr <HandleFile, HandleFileDeleter>;
+
+		/**
+		 * \~russian
+		 * @brief Структура владельца файла или каталога
+		 *
+		 * @note Имена хранятся рядом с номерами затем, что номера пользователей на разных
+		 *       машинах разные: владелец восстанавливается по имени, а номер нужен тогда,
+		 *       когда такого имени на машине нет
+		 *
+		 * \~english
+		 * @brief Structure of the owner of a file or a directory
+		 *
+		 * @note The names are kept next to the numbers because the numbers of the users differ
+		 *       between machines: the owner is restored by the name, and the number is needed when
+		 *       the machine has no such name
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Owner {
+			// Идентификатор пользователя
+			uint32_t uid;
+			// Идентификатор группы
+			uint32_t gid;
+			// Имя пользователя
+			string user;
+			// Название группы
+			string group;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -1731,17 +351,1384 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Filesystem() noexcept;
+			explicit Owner() noexcept;
+		} owner_t;
+		/**
+		 * \~russian
+		 * @brief Структура сведений о записи файловой системы: устройство, номер и число имён
+		 *
+		 * @note Два имени с одинаковыми устройством и номером есть одна запись - жёсткая ссылка
+		 *
+		 * \~english
+		 * @brief Structure of the information about a filesystem record: the device, the number and the number of names
+		 *
+		 * @note Two names with the same device and number are one record - a hard link
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Inode {
+			// Идентификатор устройства (тома)
+			uint64_t dev;
+			// Номер записи на устройстве
+			uint64_t ino;
+			// Количество имён записи
+			uint64_t nlink;
 			/**
 			 * \~russian
-			 * @brief Деструктор
-			 *
+			 * @brief Конструктор
 			 *
 			 * \~english
-			 * @brief Destructor
+			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			~Filesystem() noexcept;
-	} fs_t;
+			explicit Inode() noexcept;
+		} inode_t;
+
+		/**
+		 * \~russian
+		 * @brief Функция получения сведений о записи файловой системы самого объекта (ссылка не разыменовывается)
+		 *
+		 * @param addr путь к файлу, каталогу либо ссылке
+		 * @return     сведения о записи (нули, если получить не удалось)
+		 *
+		 * \~english
+		 * @brief Function of getting the information about the filesystem record of the object itself (a link is not dereferenced)
+		 *
+		 * @param addr path to the file, the directory or the link
+		 * @return     the information about the record (zeros if it cannot be got)
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ inode_t inode(string_view addr) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция создания символьной ссылки
+		 *
+		 * @param first  адрес на который нужно сделать ссылку
+		 * @param second адрес где должна быть создана ссылка
+		 * @return       результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of creating a symbolic link
+		 *
+		 * @param first  address the link should be made to
+		 * @param second address where the link should be created
+		 * @return       result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool symlink(string_view first, string_view second) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция создания жёсткой ссылки с отчётом о результате
+		 *
+		 * @note При отказе системы ничего другого не заводит: ни ярлыка, ни копии.
+		 *       Отказ бывает между разными томами и на файловых системах без жёстких
+		 *       ссылок (FAT, exFAT) - решать, чем его заменить, вызывающему
+		 *
+		 * @param first  существующий файл
+		 * @param second адрес создаваемой ссылки
+		 * @return       результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of creating a hard link with a report of the result
+		 *
+		 * @note On a refusal of the system it creates nothing else: neither a shortcut nor
+		 *       a copy. A refusal happens between different volumes and on filesystems without hard links
+		 *       (FAT, exFAT) - what replaces it is decided by the caller
+		 *
+		 * @param first  existing file
+		 * @param second address of the link being created
+		 * @return       result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool hardlink(string_view first, string_view second) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция удаления адреса файловой системы
+		 *
+		 * @param addr    полный адрес для удаления
+		 * @param resolve флаг резолвинга символьных ссылок
+		 * @return        результат удаления
+		 *
+		 * \~english
+		 * @brief Function of removing a filesystem address
+		 *
+		 * @param addr    full address to remove
+		 * @param resolve flag of resolving the symbolic links
+		 * @return        result of the removal
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool unlink(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция, определяющая тип файловой системы по адресу
+		 *
+		 * @param addr        адрес директории или файла
+		 * @param detectLinks флаг детектирования символьных ссылок (на горячих путях можно отключить)
+		 * @return            тип файловой системы
+		 *
+		 * \~english
+		 * @brief Function determining the type of the filesystem object by the address
+		 *
+		 * @param addr        address of the directory or of the file
+		 * @param detectLinks flag of detecting the symbolic links (on hot paths it may be switched off)
+		 * @return            type of the filesystem object
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ type_t type(string_view addr, const bool detectLinks = true) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения реального адреса
+		 *
+		 * @details Если оснастка не смогла разобрать адрес (на Windows это предел длины),
+		 *          возвращается раскрытый адрес в родной записи разделителей, и отказ
+		 *          записывается в журнал.
+		 *
+		 * @note Под POSIX при resolve=true относительная цель разрешается от каталога ссылки,
+		 *       в том числе при отсутствии конечного файла. Цепочка ограничена 40 переходами.
+		 *       При отказе разрешения сохраняется прежний переход к абсолютному исходному пути.
+		 *
+		 * @param addr    адрес который нужно определить
+		 * @param resolve флаг резолвинга символьных ссылок
+		 * @return        полный путь
+		 *
+		 * \~english
+		 * @brief Function of getting the real address
+		 *
+		 * @details If the platform failed to resolve the address (on Windows that is the
+		 *          length limit), the expanded address in native separator notation is
+		 *          returned, and the refusal goes to the journal.
+		 *
+		 * @note On POSIX with resolve=true, a relative target is resolved from the link directory even
+		 *       if the final file is missing. Resolution is limited to 40 link transitions.
+		 *       On failure, the existing fallback to the absolute input path is retained.
+		 *
+		 * @param addr    address that needs to be determined
+		 * @param resolve flag of resolving the symbolic links
+		 * @return        full path
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string fullpath(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения прав доступа к файлу или каталогу
+		 *
+		 * @param addr    путь к файлу или каталогу
+		 * @param resolve ложь - права снимаются с самого объекта (у символьной ссылки с неё, а не
+		 *                с её цели), истина - с цели ссылки; цели может и не быть, тогда
+		 *                права снимаются с самой ссылки и отказ не является ошибкой данных
+		 * @return        запрашиваемые метаданные
+		 *
+		 * \~english
+		 * @brief Function of getting the access rights to a file or a directory
+		 *
+		 * @param addr    path to the file or to the directory
+		 * @param resolve false - the rights are taken from the object itself (from a symbolic
+		 *                link, not from its target), true - from the target of the link; the
+		 *                target may be absent, then the rights are taken from the link itself
+		 * @return        the requested metadata
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint32_t chmod(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция изменения прав доступа к файлу или каталогу
+		 *
+		 * @param addr    путь к файлу или каталогу
+		 * @param mode    метаданные для установки
+		 * @param resolve ложь - права устанавливаются у самого объекта (у символьной ссылки её
+		 *                собственные, цель не затрагивается), истина - у цели ссылки; там, где
+		 *                система прав у ссылки не хранит (Linux, Solaris, OpenBSD), без флага
+		 *                разрешения операция пропускается как выполненная
+		 * @return        результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of changing the access rights to a file or a directory
+		 *
+		 * @param addr    path to the file or to the directory
+		 * @param mode    metadata to set
+		 * @param resolve false - the rights are set on the object itself (on a symbolic link, on
+		 *                the link without touching its target), true - on the target of the link;
+		 *                where the system stores no rights for a link (Linux, Solaris, OpenBSD)
+		 *                the operation is skipped as done without the resolve flag
+		 * @return        result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool chmod(string_view addr, const uint32_t mode, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки владельца на файл или каталог
+		 *
+		 * @param addr    путь к файлу или каталогу для установки владельца
+		 * @param user    имя пользователя
+		 * @param group   название группы пользователя
+		 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
+		 *                цель не трогается), истина - цели ссылки; на MS Windows с флагом
+		 *                разрешается ярлык `.lnk`
+		 * @return        результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of setting the owner of a file or a directory
+		 *
+		 * @param addr    path to the file or to the directory to set the owner of
+		 * @param user    name of the user
+		 * @param group   name of the group of the user
+		 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
+		 *                link without touching its target), true - on the target of the link; at
+		 *                MS Windows with the flag a shortcut is resolved
+		 * @return        result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool chown(string_view addr, string_view user, string_view group = "", const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения владельца файла, каталога либо самой символьной ссылки
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param resolve ложь - владелец снимается с самого объекта (у символьной ссылки с неё, а
+		 *                не с её цели), истина - с цели ссылки
+		 * @return        владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
+		 *
+		 * \~english
+		 * @brief Function of getting the owner of a file, a directory or of the symbolic link itself
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param resolve false - the owner is got from the object itself (from a symbolic link, from
+		 *                the link and not from its target), true - from the target of the link
+		 * @return        the owner (numbers -1 and empty names if it cannot be got or at MS Windows)
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ owner_t owner(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки владельца файла, каталога либо самой символьной ссылки
+		 *
+		 * @note Владелец ищется по имени, а при отсутствии имени на машине - берётся номер.
+		 *       На MS Windows ничего не делает
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param owner   владелец для установки
+		 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
+		 *                цель не трогается), истина - цели ссылки
+		 * @return        результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of setting the owner of a file, a directory or of the symbolic link itself
+		 *
+		 * @note The owner is looked up by the name, and when the machine has no such name the number
+		 *       is taken. Does nothing at MS Windows
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param owner   the owner to set
+		 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
+		 *                link without touching its target), true - on the target of the link
+		 * @return        result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool owner(string_view addr, const owner_t & owner, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения времени изменения файла, каталога либо самой символьной ссылки
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param resolve ложь - время снимается с самого объекта (у символьной ссылки с неё, а не с
+		 *                её цели), истина - с цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
+		 * @return        время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
+		 *
+		 * \~english
+		 * @brief Function of getting the modification time of a file, a directory or of the symbolic link itself
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param resolve false - the time is got from the object itself (from a symbolic link, from
+		 *                the link and not from its target), true - from the target of the link; at
+		 *                MS Windows with the flag a shortcut is resolved
+		 * @return        the modification time in milliseconds since the Unix epoch (0 if it cannot be got)
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint64_t mtime(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки времени изменения файла, каталога либо самой символьной ссылки
+		 *
+		 * @note Время доступа не трогается
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param date    время изменения в миллисекундах от начала эпохи Unix
+		 * @param resolve ложь - время ставится самому объекту (у символьной ссылки - ссылке, цель не
+		 *                трогается), истина - цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
+		 * @return        результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of setting the modification time of a file, a directory or of the symbolic link itself
+		 *
+		 * @note The access time is not touched
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param date    the modification time in milliseconds since the Unix epoch
+		 * @param resolve false - the time is set on the object itself (on a symbolic link, on the
+		 *                link without touching its target), true - on the target of the link; at
+		 *                MS Windows with the flag a shortcut is resolved
+		 * @return        result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool mtime(string_view addr, const uint64_t date, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения расширенных атрибутов файла, каталога либо самой символьной ссылки
+		 *
+		 * @note Имена приводятся к виду Linux: атрибуты пространства пользователя BSD получают
+		 *       приставку «user.», имена macOS остаются как есть. На OpenBSD, DragonFly, Solaris и MS Windows
+		 *       расширенных атрибутов в этом виде нет, и список пуст
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param resolve ложь - атрибуты снимаются с самого объекта (у символьной ссылки с неё, а
+		 *                не с её цели), истина - с цели ссылки
+		 * @return        список расширенных атрибутов
+		 *
+		 * \~english
+		 * @brief Function of getting the extended attributes of a file, a directory or of the symbolic link itself
+		 *
+		 * @note The names are brought to the Linux form: the attributes of the BSD user namespace get the prefix
+		 *       «user.», the macOS names stay as they are. OpenBSD, DragonFly, Solaris and MS Windows have no extended
+		 *       attributes of this kind, and the list is empty
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param resolve false - the attributes are got from the object itself (from a symbolic link,
+		 *                from the link and not from its target), true - from the target of the link
+		 * @return        list of the extended attributes
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ xattrs_t xattr(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки расширенных атрибутов файла, каталога либо самой символьной ссылки
+		 *
+		 * @note На BSD устанавливаются только атрибуты с приставкой «user.» - в пространство
+		 *       пользователя. Атрибут, какого система не принимает, пропускается
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param attrs   список расширенных атрибутов
+		 * @param resolve ложь - атрибуты ставятся самому объекту (у символьной ссылки - ссылке,
+		 *                цель не трогается), истина - цели ссылки
+		 * @return        количество атрибутов, которые установить не удалось
+		 *
+		 * \~english
+		 * @brief Function of setting the extended attributes of a file, a directory or of the symbolic link itself
+		 *
+		 * @note At BSD only the attributes with the prefix «user.» are set - into the user namespace.
+		 *       An attribute the system does not accept is skipped
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param attrs   list of the extended attributes
+		 * @param resolve false - the attributes are set on the object itself (on a symbolic link, on
+		 *                the link without touching its target), true - on the target of the link
+		 * @return        number of the attributes which could not be set
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t xattr(string_view addr, const xattrs_t & attrs, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного создания пути
+		 *
+		 * @param addr адрес для создания каталога
+		 * @return     результат создания каталога
+		 *
+		 * \~english
+		 * @brief Function of the recursive creation of a path
+		 *
+		 * @param addr address to create the directory at
+		 * @return     result of the creation of the directory
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool mkdir(string_view addr) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция создания каталога с указанием владельца
+		 *
+		 * @param addr  адрес для создания каталога
+		 * @param user  имя пользователя
+		 * @param group название группы пользователя
+		 * @return      результат создания каталога
+		 *
+		 * \~english
+		 * @brief Function of creating a directory with the owner specified
+		 *
+		 * @param addr  address to create the directory at
+		 * @param user  name of the user
+		 * @param group name of the group of the user
+		 * @return      result of the creation of the directory
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool mkdir(string_view addr, string_view user, string_view group) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция подмены целевого файла временным
+		 *
+		 * @details Запись в файл ведётся через временный файл с последующей подменою: так
+		 *          отказ посреди записи оставляет прежнее содержимое целым, а не наполовину выписанным.
+		 *          Подмена эта у POSIX выполняется `rename()`, но у MS Windows тот же
+		 *          вызов существующий файл НЕ ЗАМЕНЯЕТ - он отвечает отказом, и запись во второй раз
+		 *          по одному и тому же пути не удаётся вовсе.
+		 *
+		 * @warning Беда эта была настоящей и найдена не рассуждением: набор проверок
+		 *          кодеков, впервые собравшись под MinGW 07.09.2026, дал четыре отказа в
+		 *          трёх разных кодеках, и у всех четырёх падала ВТОРАЯ работа с файлом по
+		 *          тому же пути, а первая проходила. Доказано щупом на стенде MinGW:
+		 *          `rename()` на существующий файл отвечает `-1`, на отсутствующий - нулём
+		 *
+		 * @note Способ замены у MS Windows взят тот же, каким пользуется модуль
+		 *       криптографии: `MoveFileEx` с признаками `MOVEFILE_REPLACE_EXISTING` и
+		 *       `MOVEFILE_WRITE_THROUGH`. Первый дозволяет замену на месте, второй велит
+		 *       дождаться, пока запись ляжет на устройство, - иначе подмена считается
+		 *       свершённой прежде времени. Зовётся широкий вид (`MoveFileExW`), а не узкий:
+		 *       узкий читает пути в кодовой странице ANSI, и путь UTF-8 с символами вне
+		 *       неё до файла не доходит - пути перекладываются в UTF-16 через fmk::convert
+		 *
+		 * @note Тело живёт в `src/sys/fs.cpp`, а не здесь, - по общему правилу
+		 *       дерева о чистых заголовочных файлах. Порядок этот важен не только видом:
+		 *       `windows.h` приносит макросы `ERROR`, `DELETE`, `TEXT`, и, стой включение
+		 *       в заголовке, они расходились бы по всякому кодеку, его включившему. В
+		 *       исходнике же они заперты одной единицей трансляции
+		 *
+		 * @note Снос целевого файла перед `rename()` был бы способом более простым, но
+		 *       НЕВЕРНЫМ: между сносом и переименованием целевого файла не существует
+		 *       вовсе, и отказ в этот миг оставляет потребителя без прежнего содержимого -
+		 *       ровно то, ради чего временный файл и заводится
+		 *
+		 * @param temporary адрес временного файла записи
+		 * @param filename  адрес целевого файла записи
+		 * @return          признак успешной подмены
+		 *
+		 * \~english
+		 * @brief Function of the replacement of a target file by a temporary one
+		 *
+		 * @details The writing into a file is performed through a temporary file with a subsequent
+		 *          replacement: thus a refusal in the middle of the writing leaves the previous content whole.
+		 *          At POSIX this replacement is performed by `rename()`, but at MS Windows the same call
+		 *          does NOT replace an existing file - it answers with a refusal.
+		 *
+		 * @warning This problem was real and was not found by reasoning: a set of codec checks,
+		 *          first assembled under MinGW on 09/07/2026, gave four failures in three different codecs,
+		 *          and for all four the SECOND work with a file along the same path failed, while the first one passed.
+		 *          Proven by a probe at the MinGW stand: `rename()` responds to an existing file with `-1`, to a missing file - zero
+		 *
+		 * @note The replacement method for MS Windows is the same as that used by the cryptography module:
+		 *       `MoveFileEx` with the attributes `MOVEFILE_REPLACE_EXISTING` and `MOVEFILE_WRITE_THROUGH`.
+		 *       The first allows replacement on the spot, the second tells you to wait until the recording
+		 *       is transferred to the device, otherwise the replacement is considered completed ahead of time.
+		 *       The wide view (`MoveFileExW`) is called, not the narrow one: the narrow one reads paths in the ANSI
+		 *       code page, and a UTF-8 path with characters outside it does not reach the file - the paths
+		 *       are converted to UTF-16 through fmk::convert
+		 *
+		 * @note The body lives in `src/sys/fs.cpp`, and not here - according to the general tree rule
+		 *       about pure header files. This order is important not only in appearance:
+		 *       `windows.h` brings the macros `ERROR`, `DELETE`, `TEXT`, and if included in the header,
+		 *       they would diverge for any codec that included it. In the source code,
+		 *       they are locked in one translation unit
+		 *
+		 * @note Demolishing the target file before `rename()` would be a simpler method, but it is WRONG:
+		 *       between demolition and renaming, the target file does not exist at all,
+		 *       and failure at that moment leaves the user without the previous contents - exactly what the temporary file is created for
+		 *
+		 * @param temporary address of the temporary file of the writing
+		 * @param filename  address of the target file of the writing
+		 * @return          sign of the successful replacement
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool replaceAddress(string_view temporary, string_view filename) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения названия и расширения файла
+		 *
+		 * @param addr    путь к файлу для извлечения его параметров
+		 * @param resolve флаг резолвинга символьных ссылок
+		 * @param before  флаг определения первой точки расширения слева
+		 *
+		 * \~english
+		 * @brief Function of getting the name and the extension of a file
+		 *
+		 * @param addr    path to the file to get its parameters of
+		 * @param resolve flag of resolving the symbolic links
+		 * @param before  flag of determining the first dot of the extension from the left
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ components_t components(string_view addr, const bool resolve = false, const bool before = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция подсчёта размера файла/каталога
+		 *
+		 * @param addr    адрес для подсчёта размера
+		 * @param ext     расширение файла если требуется фильтрация
+		 * @param recurse флаг рекурсивного перебора каталогов
+		 * @return        общий размер файла/каталога
+		 *
+		 * \~english
+		 * @brief Function of counting the size of a file/directory
+		 *
+		 * @param addr    address to count the size of
+		 * @param ext     extension of the file if filtering is required
+		 * @param recurse flag of the recursive walk of the directories
+		 * @return        total size of the file/directory
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uintmax_t size(string_view addr, string_view ext = "", const bool recurse = true) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция подсчёта количества файлов в каталоге
+		 *
+		 * @param addr    адрес для подсчёта количества файлов
+		 * @param ext     расширение файла если требуется фильтрация
+		 * @param recurse флаг рекурсивного перебора каталогов
+		 * @return        количество файлов в каталоге
+		 *
+		 * \~english
+		 * @brief Function of counting the number of files in a directory
+		 *
+		 * @param addr    address to count the number of files at
+		 * @param ext     extension of the file if filtering is required
+		 * @param recurse flag of the recursive walk of the directories
+		 * @return        number of files in the directory
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uintmax_t count(string_view addr, string_view ext = "", const bool recurse = true) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция создания объекта каталога
+		 *
+		 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleDir`
+		 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
+		 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
+		 *
+		 * @note Объект служит каталогу, названному в `path`, и хранит состояние обхода. Повторный
+		 *       обзор того же каталога идёт мимо повторного открытия, а обход, прерванный откликом
+		 *       у `walkdir`, продолжается с места остановки
+		 *
+		 * @return умный указатель на объект каталога
+		 *
+		 * \~english
+		 * @brief Function of the creation of a directory object
+		 *
+		 * @details The object is created by the module itself and is given away by a smart pointer:
+		 *          the type `HandleDir` is deliberately incomplete outside the module - the system API
+		 *          of the platform does not go into the header of the framework. The demolition is performed
+		 *          by its own deleter, whose body lives in the source.
+		 *
+		 * @note The object serves the directory named in `path` and keeps the state of the walk.
+		 *       A repeated survey of the same directory goes past a repeated opening, and a walk interrupted
+		 *       by the callback at `walkdir` continues from the place of the stop
+		 *
+		 * @return smart pointer to a directory object
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ handle_dir_t handleDir() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция создания объекта файла
+		 *
+		 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleFile`
+		 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
+		 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
+		 *
+		 * @note Объект годен для пакетной обработки: один описатель обслуживает много обращений
+		 *       к одному адресу. Открытие файла выполняет та работа, которой объект передан
+		 *       первой, - сам по себе объект описателя не держит
+		 *
+		 * @return умный указатель на объект файла
+		 *
+		 * \~english
+		 * @brief Function of the creation of a file object
+		 *
+		 * @details The object is created by the module itself and is given away by a smart pointer:
+		 *          the type `HandleFile` is deliberately incomplete outside the module - the system API
+		 *          of the platform does not go into the header of the framework. The demolition is performed
+		 *          by its own deleter, whose body lives in the source.
+		 *
+		 * @note The object is fit for the batch processing: one descriptor serves many calls
+		 *       to one address. The opening of the file is performed by the work the object is passed
+		 *       to first - by itself the object holds no descriptor
+		 *
+		 * @return smart pointer to a file object
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ handle_file_t handleFile() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция исключительного создания временного файла рядом с целью
+		 *
+		 * @details Возвращает открытый объект для записи и сброса без повторного открытия
+		 *          по имени. Существующие файлы не удаляются. Под POSIX сохраняются биты
+		 *          доступа существующего обычного файла; новая цель получает 0644 с учётом umask.
+		 *          Владение и ACL этой функцией не переносятся. Под Windows действует ACL
+		 *          каталога. Вызывающий закрывает объект и удаляет временный файл при отказе.
+		 *
+		 * @param filename адрес целевого файла
+		 * @param address  адрес созданного временного файла, при отказе пустой
+		 * @return         открытый объект либо пустой указатель при отказе
+		 *
+		 * \~english
+		 * @brief Function of exclusively creating a temporary file beside its target
+		 *
+		 * @details Returns an open handle for writing and flushing without reopening by name.
+		 *          Existing files are never removed. POSIX access bits of an existing regular
+		 *          target are retained; a new target receives 0644 subject to umask. Ownership and ACLs
+		 *          are not copied. Windows inherits the directory ACL. The caller closes
+		 *          the handle and removes the temporary file on failure.
+		 *
+		 * @param filename target file path
+		 * @param address  created temporary file path, empty on failure
+		 * @return         open handle or a null pointer on failure
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ handle_file_t temporary(string_view filename, string & address) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция сброса записанного из ядра на носитель
+		 *
+		 * @details Запись, отвеченная успехом, лежит ещё не на носителе, а во вместилище ядра,
+		 *          и обрыв питания её теряет. Работа эта доводит записанное до носителя и
+		 *          отвечает лишь тогда, когда носитель сброс подтвердил.
+		 *
+		 * @warning Под системою Apple `fsync` обещания этого НЕ выполняет: он выносит записанное
+		 *          из ядра в накопитель, но опустошить вместилище самого накопителя не велит.
+		 *          Доводит до пластины лишь `F_FULLFSYNC`, и он здесь и зовётся при `durable`
+		 *
+		 * @note Отказ `EINVAL` означает, что носитель сброса не держит (канал, устройство
+		 *       посимвольное), - это не отказ записи, и отказом он не объявляется
+		 *
+		 * @note Внешний объект файла тут не роскошь, а способ: без него работа откроет файл
+		 *       заново, а описатель, каким шла запись, останется несброшенным. Пакетная запись
+		 *       обязана сбрасываться ТЕМ ЖЕ объектом, каким она и велась
+		 *
+		 * @param filename путь к файлу который необходимо сбросить на носитель
+		 * @param durable  признак доведения записанного до носителя, а не до накопителя
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, что сброс выполнен
+		 *
+		 * \~english
+		 * @brief Function of the flushing of the written data from the kernel onto the medium
+		 *
+		 * @details A writing answered with a success lies not yet on the medium, but in the storage
+		 *          of the kernel, and a power failure loses it. This work brings the written data
+		 *          onto the medium and answers only when the medium has confirmed the flush.
+		 *
+		 * @warning At the Apple system `fsync` does NOT fulfil this promise: it brings the written data
+		 *          out of the kernel into the drive, but does not order the drive's own storage to be emptied.
+		 *          Only `F_FULLFSYNC` brings it down to the platter, and it is the one called here at `durable`
+		 *
+		 * @note The refusal `EINVAL` means that the medium does not support the flushing (a pipe, a character
+		 *       device) - this is not a refusal of the writing, and it is not declared a refusal
+		 *
+		 * @note The external file object is not a luxury here but the means: without it the work will open
+		 *       the file anew, while the descriptor the writing went through will remain unflushed. A batch
+		 *       writing must be flushed by THE SAME object it was performed with
+		 *
+		 * @param filename path to the file that needs to be flushed onto the medium
+		 * @param durable  sign of bringing the written data onto the medium, and not onto the drive
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign that the flush has been performed
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool flush(string_view filename, const bool durable = true, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция усечения файла до заданной длины
+		 *
+		 * @details Файл, длины не имеющий, заводится ПУСТЫМ: усечение до нуля есть и способ
+		 *          завести пустой файл, и способ очистить существующий. Файл длиною меньше
+		 *          заданной наращивается нулями - так велит сама работа систем, и своего
+		 *          здесь не придумано
+		 *
+		 * @note Работа эта закрывает то, чего записью не сделать: `write` нулевой длины
+		 *       отвечает отказом, а усечение существующего файла записью не выражается вовсе
+		 *
+		 * @param filename путь к файлу который необходимо усечь
+		 * @param length   длина, до какой усекается файл
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, что усечение выполнено
+		 *
+		 * \~english
+		 * @brief Function of the truncation of a file to a given length
+		 *
+		 * @details A file having no length is created EMPTY: the truncation to zero is both the way
+		 *          to create an empty file and the way to clear an existing one. A file shorter than
+		 *          the given length is extended with zeroes - so the work of the systems themselves
+		 *          ordains, and nothing of our own is invented here
+		 *
+		 * @note This work closes what cannot be done by the writing: `write` of a zero length answers
+		 *       with a refusal, and the truncation of an existing file is not expressed by a writing at all
+		 *
+		 * @param filename path to the file that needs to be truncated
+		 * @param length   length the file is truncated to
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign that the truncation has been performed
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool truncate(string_view filename, const uint64_t length = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции добавления в файл бинарных данных
+		 *
+		 * @tparam T тип буфера данных
+		 *
+		 * \~english
+		 * @brief Template of the function of appending binary data to a file
+		 *
+		 * @tparam T type of the data buffer
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция добавления в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of appending binary data to a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		bool append(string_view filename, const T & buffer, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция добавления в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of appending binary data to a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool append(string_view filename, const char * buffer, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция добавления в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of appending binary data to a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool append(string_view filename, const wchar_t * buffer, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция добавления в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param size     размер бинарного буфера для записи в файл
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of appending binary data to a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param size     size of the binary buffer to write into the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции чтения данных из файла
+		 *
+		 * @tparam T тип возвращаемого результата
+		 *
+		 * \~english
+		 * @brief Template of the function of reading data from a file
+		 *
+		 * @tparam T type of the returned result
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция чтения данных из файла
+		 *
+		 * @param filename путь к файлу для чтения
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         бинарный буфер с прочитанными данными
+		 *
+		 * \~english
+		 * @brief Function of reading data from a file
+		 *
+		 * @param filename path to the file to read
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         binary buffer with the read data
+		 *
+		 * \~
+		 */
+		auto read(string_view filename, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept -> T;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции чтения данных из файла
+		 *
+		 * @tparam T тип возвращаемого результата
+		 *
+		 * \~english
+		 * @brief Template of the function of reading data from a file
+		 *
+		 * @tparam T type of the returned result
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция чтения данных из файла
+		 *
+		 * @param filename путь к файлу для чтения
+		 * @param result   контейнер куда следует положить результат
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of reading data from a file
+		 *
+		 * @param filename path to the file to read
+		 * @param result   container the result should be put into
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 *
+		 * \~
+		 */
+		void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного чтения больших файлов блоками с обратным вызовом
+		 *
+		 * @param filename путь к файлу для чтения
+		 * @param size     размер блока для чтения
+		 * @param callback функция обратного вызова для обработки прочитанных данных (возвращает true для продолжения чтения и false для остановки)
+		 * @param offset   смещение в файле с которого следует начать чтение
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive reading of large files in blocks with a callback
+		 *
+		 * @param filename path to the file to read
+		 * @param size     size of the block to read
+		 * @param callback callback function for handling the read data (returns true to continue the reading and false to stop)
+		 * @param offset   offset in the file the reading should start from
+		 * @param handle   external file object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции записи в файл бинарных данных
+		 *
+		 * @tparam T тип буфера данных
+		 *
+		 * \~english
+		 * @brief Template of the function of writing binary data into a file
+		 *
+		 * @tparam T type of the data buffer
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция записи в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of writing binary data into a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		bool write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция записи в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of writing binary data into a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция записи в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of writing binary data into a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция записи в файл бинарных данных
+		 *
+		 * @param filename путь к файлу в который необходимо выполнить запись
+		 * @param buffer   бинарный буфер который необходимо записать в файл
+		 * @param size     размер бинарного буфера для записи в файл
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 * @return         признак того, легли ли данные в файл
+		 *
+		 * \~english
+		 * @brief Function of writing binary data into a file
+		 *
+		 * @param filename path to the file the writing should be performed into
+		 * @param buffer   binary buffer that needs to be written into the file
+		 * @param size     size of the binary buffer to write into the file
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 * @return         sign of whether the data has been laid into the file
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного получения всех строк файла
+		 *
+		 * @param filename путь к файлу для чтения
+		 * @param callback функция обратного вызова
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive getting of all the lines of a file
+		 *
+		 * @param filename path to the file to read
+		 * @param callback callback function
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного получения буфера данных из больших файлов
+		 *
+		 * @param filename путь к файлу для чтения
+		 * @param size     размер буфера для чтения файла
+		 * @param callback функция обратного вызова
+		 * @param seek     тип смещения в файле
+		 * @param offset   смещение в файле
+		 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive getting of a data buffer from large files
+		 *
+		 * @param filename path to the file to read
+		 * @param size     size of the buffer to read the file with
+		 * @param callback callback function
+		 * @param seek     type of the offset in the file
+		 * @param offset   offset in the file
+		 * @param handle   external file object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция обхода файлов во всех подкаталогах с остановкой и продолжением
+		 *
+		 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+		 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+		 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+		 *          обход с того же места, а не с начала.
+		 *
+		 * @warning Продолжение идёт ПО ВОЗМОЖНОСТИ: между долями обхода дерево вправе измениться,
+		 *          и записи, добавленные либо снесённые ниже уже пройденного места, видны не будут.
+		 *          Снимка состава объект не держит - он держит открытые каталоги и место в каждом
+		 *
+		 * @note Без внешнего объекта каталога работа эта равна `readdir` с досрочным выходом:
+		 *       продолжать будет нечем, состояние обхода гибнет вместе с вызовом
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова, ложь останавливает обход
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 * @return         признак того, что обход довершён до конца
+		 *
+		 * \~english
+		 * @brief Function of the walk of the files in all the subdirectories with a stop and a continuation
+		 *
+		 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+		 *          by returning false. If an external directory object is passed at that, the object keeps
+		 *          the place of the stop, and the next call with the same object and the same address
+		 *          continues the walk from the same place, and not from the beginning.
+		 *
+		 * @warning The continuation goes AS FAR AS POSSIBLE: between the parts of the walk the tree
+		 *          is entitled to change, and the entries added or demolished below an already passed place
+		 *          will not be seen. The object keeps no snapshot of the content - it keeps the opened
+		 *          directories and the place in each of them
+		 *
+		 * @note Without an external directory object this work equals `readdir` with an early exit:
+		 *       there will be nothing to continue with, the state of the walk dies together with the call
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function, false stops the walk
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 * @return         sign that the walk is completed to the end
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция обхода файлов во всех подкаталогах построчно с остановкой и продолжением
+		 *
+		 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+		 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+		 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+		 *          обход с того же места, а не с начала.
+		 *
+		 * @warning Остановка выполняется на границе СТРОКИ, а не файла: отказ отклика прерывает
+		 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
+		 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
+		 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
+		 *          файла отбросит его остаток безвозвратно
+		 *
+		 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
+		 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
+		 *       по дереву, идёт по возможности
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова, ложь останавливает обход
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 * @return         признак того, что обход довершён до конца
+		 *
+		 * \~english
+		 * @brief Function of the walk of the files in all the subdirectories line by line with a stop and a continuation
+		 *
+		 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+		 *          by returning false. If an external directory object is passed at that, the object keeps
+		 *          the place of the stop, and the next call with the same object and the same address
+		 *          continues the walk from the same place, and not from the beginning.
+		 *
+		 * @warning The stop is performed at the boundary of a LINE, and not of a file: a refusal of the callback
+		 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
+		 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
+		 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
+		 *          middle of a file will discard its remainder irretrievably
+		 *
+		 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
+		 *       between the parts of the walk, and the count would point at another place already. The continuation
+		 *       here, as the continuation over the tree, goes as far as possible
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function, false stops the walk
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 * @return         sign that the walk is completed to the end
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция обхода файлов во всех подкаталогах бинарными блоками с остановкой и продолжением
+		 *
+		 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+		 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+		 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+		 *          обход с того же места, а не с начала.
+		 *
+		 * @warning Остановка выполняется на границе БЛОКА, а не файла: отказ отклика прерывает
+		 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
+		 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
+		 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
+		 *          файла отбросит его остаток безвозвратно
+		 *
+		 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
+		 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
+		 *       по дереву, идёт по возможности
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param size     размер буфера для чтения файла
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова, ложь останавливает обход
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 * @return         признак того, что обход довершён до конца
+		 *
+		 * \~english
+		 * @brief Function of the walk of the files in all the subdirectories in binary blocks with a stop and a continuation
+		 *
+		 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+		 *          by returning false. If an external directory object is passed at that, the object keeps
+		 *          the place of the stop, and the next call with the same object and the same address
+		 *          continues the walk from the same place, and not from the beginning.
+		 *
+		 * @warning The stop is performed at the boundary of a BLOCK, and not of a file: a refusal of the callback
+		 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
+		 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
+		 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
+		 *          middle of a file will discard its remainder irretrievably
+		 *
+		 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
+		 *       between the parts of the walk, and the count would point at another place already. The continuation
+		 *       here, as the continuation over the tree, goes as far as possible
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param size     size of the buffer to read the file with
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function, false stops the walk
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 * @return         sign that the walk is completed to the end
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool walkdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <bool (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного получения файлов во всех подкаталогах
+		 *
+		 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+		 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+		 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+		 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+		 *
+		 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+		 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive getting of the files in all the subdirectories
+		 *
+		 * @note The external directory object serves the directory named in `path`,
+		 *       just as the file object serves the file named in `filename`.
+		 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+		 *       During recursive traversal, the object serves the ROOT:
+		 *       the module opens subdirectories with their own descriptors,
+		 *       without releasing them to the outside world
+		 *
+		 * @note An object submitted with a different address stops servicing the previous one:
+		 *       the previous handle is closed, and the bypass state, if there was one, is lost
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного чтения файлов во всех подкаталогах построчно
+		 *
+		 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+		 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+		 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+		 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+		 *
+		 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+		 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive reading of the files in all the subdirectories line by line
+		 *
+		 * @note The external directory object serves the directory named in `path`,
+		 *       just as the file object serves the file named in `filename`.
+		 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+		 *       During recursive traversal, the object serves the ROOT:
+		 *       the module opens subdirectories with their own descriptors,
+		 *       without releasing them to the outside world
+		 *
+		 * @note An object submitted with a different address stops servicing the previous one:
+		 *       the previous handle is closed, and the bypass state, if there was one, is lost
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция рекурсивного чтения файлов во всех подкаталогах бинарными блоками
+		 *
+		 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+		 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+		 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+		 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+		 *
+		 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+		 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
+		 *
+		 * @param path     путь до каталога
+		 * @param ext      расширение файла по которому идет фильтрация
+		 * @param size     размер буфера для чтения файла
+		 * @param recurse  флаг рекурсивного перебора каталогов
+		 * @param callback функция обратного вызова
+		 * @param resolve  флаг резолвинга символьных ссылок
+		 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+		 *
+		 * \~english
+		 * @brief Function of the recursive reading of the files in all the subdirectories in binary blocks
+		 *
+		 * @note The external directory object serves the directory named in `path`,
+		 *       just as the file object serves the file named in `filename`.
+		 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+		 *       During recursive traversal, the object serves the ROOT:
+		 *       the module opens subdirectories with their own descriptors, without releasing them to the outside world
+		 *
+		 * @note An object submitted with a different address stops servicing the previous one:
+		 *       the previous handle is closed, and the bypass state, if there was one, is lost
+		 *
+		 * @param path     path to the directory
+		 * @param ext      extension of the file the filtering is driven by
+		 * @param size     size of the buffer to read the file with
+		 * @param recurse  flag of the recursive walk of the directories
+		 * @param callback callback function
+		 * @param resolve  flag of resolving the symbolic links
+		 * @param handle   external directory object if batch processing support is required
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) noexcept;
+	}
 };

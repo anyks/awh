@@ -1556,7 +1556,7 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
  */
 bool awh::args::Args::filename(const string & filename, const codec::Bridge::format_t format) noexcept {
 	// Если файла настроек нет вовсе
-	if(this->_fs.type(filename) != fs_t::type_t::FILE){
+	if(fs::type(filename) != awh::fs::type_t::FILE){
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		/**
@@ -1578,12 +1578,12 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 	// Прочитанная запись файла настроек
 	string text = "";
 	// Выполняем чтение файла настроек целиком
-	this->_fs.read(filename, text);
+	fs::read(filename, text);
 	/**
 	 * Если запись файла настроек пуста вовсе
 	 *
 	 * @warning Пустота эта двузначна, и различать её ОБЯЗАТЕЛЬНО: ход чтения
-	 *          `fs_t::read` при отказе тоже оставляет запись пустой, отчего
+	 *          `awh::fs::read` при отказе тоже оставляет запись пустой, отчего
 	 *          отказ чтения и пустой файл с виду неотличимы. Различаются они
 	 *          РАЗМЕРОМ файла: нулевой размер означает, что файл прочитан
 	 *          исправно и пуст, всякий иной - что чтение отказало
@@ -1596,7 +1596,7 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 	 *       Замерено 14.09.2026 аудитом
 	 *
 	 */
-	if(text.empty() && (this->_fs.size(filename) > 0)){
+	if(text.empty() && (fs::size(filename) > 0)){
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		/**
@@ -1771,14 +1771,14 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 *          Имя временного файла у нас постоянное, и остаться он может от
 	 *          прогона, оборванного между записью и подменой. Поверка длины такую
 	 *          запись отвергла бы - и отвергала бы КАЖДЫЙ раз, покуда файл не
-	 *          снесут руками. Замерено 09.09.2026 разбором тела `fs_t::write`
+	 *          снесут руками. Замерено 09.09.2026 разбором тела `awh::fs::write`
 	 *
 	 * @note У систем POSIX усечение ход делает сам - поток открывается там без
 	 *       разбора смещения, - но снос обязан стоять и там: расхождение это есть
 	 *       свойство каркаса, а не наше, и опираться на него нельзя
 	 *
 	 */
-	static_cast <void> (this->_fs.unlink(temporary));
+	static_cast <void> (fs::unlink(temporary));
 	/**
 	 * Выполняем запись собранной записи настроек во временный файл
 	 *
@@ -1789,9 +1789,9 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 *       считает запись ВСЕГО буфера, а частичную - отказом; обход снят
 	 *
 	 */
-	if(!this->_fs.write(temporary, text.data(), text.size())){
+	if(!fs::write(temporary, text.data(), text.size())){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (fs::unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		/**
@@ -1825,9 +1825,9 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 *       файла не ушла
 	 *
 	 */
-	if(!this->_fs.flush(temporary)){
+	if(!fs::flush(temporary)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (fs::unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		/**
@@ -1847,9 +1847,9 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		return false;
 	}
 	// Выполняем подмену целевого файла настроек временным
-	if(!this->_fs.replaceAddress(temporary, filename)){
+	if(!fs::replaceAddress(temporary, filename)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (this->_fs.unlink(temporary));
+		static_cast <void> (fs::unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		/**

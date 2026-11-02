@@ -96,7 +96,7 @@ namespace awh {
 			 * @warning **Сводки сплошных щупов 06-07.09.2026 СНЯТЫ, и вот почему.** Они судили
 			 *          код, какого более не существует: хранилище держало свой поток `FILE *` и звало
 			 *          `fopen`, `fread`, `fwrite`, `fseeko`, `fflush`, `ferror`, `fsync` и `F_FULLFSYNC`
-			 *          своею рукой. 12.09.2026 всё это уступило место `awh::fs_t`, и вместе с кодом
+			 *          своею рукой. 12.09.2026 всё это уступило место `awh::fs`, и вместе с кодом
 			 *          ушли и места отказа, о каких сводки говорили: `measure` о двух ветвях систем,
 			 *          перемотка потока, короткое `fread`, различение конца файла и отказа через
 			 *          `ferror`. Держать приговоры о снесённом коде хуже, чем не держать никаких:
@@ -115,7 +115,7 @@ namespace awh {
 			 *       а не побочное;
 			 *       - **укладка нулевой длины** держится на усечении до нуля: заведение потока
 			 *       видом `w+b` заводило пустой файл само, а у файловой системы записи нулевой
-			 *       длины нет вовсе. Работа `fs_t::truncate` заведена ради этого и закрывает
+			 *       длины нет вовсе. Работа `awh::fs::truncate` заведена ради этого и закрывает
 			 *       заодно усечение, какого записью не выразить;
 			 *       - **последние руки носителя** остались последними руками: отказы чтения,
 			 *       записи и сброса наводятся лишь отказом самой файловой системы, и поддельной
@@ -170,7 +170,7 @@ namespace awh {
 			 * @warning **The summaries of the full probes of 2026-09-06/07 are REMOVED, and here is why.** They judged
 			 *          code that no longer exists: the storage held its own `FILE *` stream and called `fopen`, `fread`,
 			 *          `fwrite`, `fseeko`, `fflush`, `ferror`, `fsync` and `F_FULLFSYNC` with its own hand. On 2026-09-12
-			 *          all this gave way to `awh::fs_t`, and together with the code went the failure sites of which the
+			 *          all this gave way to `awh::fs`, and together with the code went the failure sites of which the
 			 *          summaries spoke: a `measure` about two system branches, the rewinding of a stream, a short `fread`,
 			 *          the distinction of an end-of-file and a refusal through `ferror`. To keep verdicts about removed
 			 *          code is worse than to keep none at all: a reader would have taken them for a description of the
@@ -188,7 +188,7 @@ namespace awh {
 			 *       asks the kind of a path directly, and this cutting is deliberate, not incidental;
 			 *       - **the laying of a zero length** holds on a truncation to zero: creating a stream by a `w+b` kind
 			 *       created an empty file itself, while a file system has no writing of a zero length at all. The
-			 *       `fs_t::truncate` work was introduced for this and closes as well a truncation that cannot be
+			 *       `awh::fs::truncate` work was introduced for this and closes as well a truncation that cannot be
 			 *       expressed by a writing;
 			 *       - **the last hands of a medium** remained the last hands: the refusals of a reading, a writing and
 			 *       a flush are induced only by a refusal of the file system itself, and there is no forged one in the
@@ -345,9 +345,9 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					handle_file_t _reader;
+					fs::handle_file_t _reader;
 					// Объект файла контейнера, открытый на запись
-					handle_file_t _writer;
+					fs::handle_file_t _writer;
 				protected:
 					/**
 					 * \~russian

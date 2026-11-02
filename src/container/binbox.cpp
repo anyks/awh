@@ -572,11 +572,11 @@ awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
  */
 void awh::BinBox::load(string_view filename) noexcept {
 	// Если путь к файлу указан и объект работы с файловой системой создан
-	if(!filename.empty() && (this->_fs != nullptr)){
+	if(!filename.empty()){
 		// Создаём бинарный буфер данных для загрузки из файла
 		vector <uint8_t> buffer;
 		// Выполняем загрузку данных из файла
-		this->_fs->read(filename, buffer);
+		fs::read(filename, buffer);
 		// Извлекаем из бинарного буфера дампа, записи контейнера
 		::binbox::dump(this->_name, this->_version, buffer, this->_records);
 	}
@@ -589,7 +589,7 @@ void awh::BinBox::load(string_view filename) noexcept {
  */
 void awh::BinBox::save(string_view filename) noexcept {
 	// Если путь к файлу указан и объект работы с файловой системой создан
-	if(!filename.empty() && (this->_fs != nullptr)){
+	if(!filename.empty()){
 		// Переменная результата
 		vector <uint8_t> result;
 		// Выполняем дамп бинарного контейнера в бинарный буфер данных
@@ -597,7 +597,7 @@ void awh::BinBox::save(string_view filename) noexcept {
 		// Если есть данные для сохранения дампа
 		if(!result.empty())
 			// Записываем в файл бинарные данные
-			this->_fs->write(filename, result);
+			fs::write(filename, result);
 	}
 }
 /**
@@ -1386,8 +1386,6 @@ void awh::BinBox::swap(BinBox & binbox) noexcept {
 	this->_name.swap(binbox._name);
 	// Выполняем обмен записями в контейнерах
 	this->_records.swap(binbox._records);
-	// Выполняем обмен объектами работы  файловой системой
-	std::swap(this->_fs, binbox._fs);
 	// Выполняем обмен объектами работы с криптографией
 	std::swap(this->_crypto, binbox._crypto);
 }
@@ -1519,8 +1517,6 @@ awh::BinBox::operator vector <uint8_t> () const noexcept {
  *
  */
 awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
-	// Выполняем копирование объекта работы с файловой системой
-	this->_fs = binbox._fs;
 	// Выполняем копирование объекта работы с криптографией
 	this->_crypto = binbox._crypto;
 	// Выполняем перемещение записей контейнера
@@ -1556,8 +1552,6 @@ awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept
  *
  */
 awh::BinBox::BinBox(BinBox && binbox) noexcept {
-	// Выполняем копирование объекта работы с файловой системой
-	this->_fs = binbox._fs;
 	// Выполняем копирование объекта работы с криптографией
 	this->_crypto = binbox._crypto;
 	// Выполняем перемещение записей контейнера
@@ -1576,9 +1570,7 @@ awh::BinBox::BinBox(BinBox && binbox) noexcept {
  *
  */
 awh::BinBox::BinBox() noexcept :
- _name{AWH_SHORT_NAME}, _fs(nullptr), _crypto(nullptr) {
-	// Выполняем создание объекта работы с файловой системой
-	this->_fs = make_unique <fs_t> ();
+ _name{AWH_SHORT_NAME}, _crypto(nullptr) {
 	// Выполняем инициализацию объекта работы с криптографией
 	this->_crypto = make_unique <crypto_t> ();
 	// Выполняем установку версии бинарного контейнера

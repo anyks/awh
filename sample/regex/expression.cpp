@@ -309,7 +309,6 @@ static void keeping(const regexp_t & regexp) noexcept {
 	// Создаём объект хранилища собранных выражений
 	const regex::storage_t storage;
 	// Создаём объект работы с файловой системой
-	const fs_t fs;
 	// Путь к файлу записи собранных выражений
 	const string filename = "expressions.rex";
 	// Набор собираемых выражений
@@ -339,9 +338,9 @@ static void keeping(const regexp_t & regexp) noexcept {
 		return;
 	}
 	// Выполняем запись набора собранных выражений в файл
-	fs.write(filename, record.data(), record.size());
+	awh::fs::write(filename, record.data(), record.size());
 	// Выводим размер записанного файла
-	cout << "записано в файл " << filename << ", размер " << fs.size(filename) << " байт" << endl;
+	cout << "записано в файл " << filename << ", размер " << awh::fs::size(filename) << " байт" << endl;
 	// Прочитанная из файла запись собранных выражений
 	string readed;
 	/**
@@ -352,7 +351,7 @@ static void keeping(const regexp_t & regexp) noexcept {
 	 *          предусмотрен вовсе
 	 *
 	 */
-	fs.read(filename, readed);
+	awh::fs::read(filename, readed);
 	// Набор восстановленных выражений
 	vector <regex::storage_t::exp_t> restored;
 	/**
@@ -387,7 +386,7 @@ static void keeping(const regexp_t & regexp) noexcept {
 	 */
 	// storage.trusted(true);
 	// Выполняем удаление файла записи собранных выражений
-	fs.unlink(filename);
+	awh::fs::unlink(filename);
 	// Выводим разделитель примеров
 	cout << endl;
 }

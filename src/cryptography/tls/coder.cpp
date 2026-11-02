@@ -110,6 +110,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/os.hpp>
 #include <sys/locker.hpp>
 #include <net/net.hpp>

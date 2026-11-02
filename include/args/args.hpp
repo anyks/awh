@@ -211,9 +211,6 @@ namespace awh {
 					 multiple(true), delimiter('.') {}
 				} settings_t;
 			private:
-				// Объект работы с файловой системой
-				const fs_t _fs;
-			private:
 				// Начало имён переменных окружения, приложению отведённых
 				string _prefix;
 			private:

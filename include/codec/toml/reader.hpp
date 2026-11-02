@@ -842,10 +842,162 @@ namespace awh {
 							// Количество слотов снятых имён указателя
 							size_t buried;
 						public:
-							// Слот указателя имён
-							struct Slot;
+							/**
+							 * \~russian
+							 * @brief Слот указателя имён
+							 *
+							 * @details Ключ до 48 знаков лежит в самом слоте, рядом с родом, и сличение
+							 *          при поиске не ходит в чужую память. Ключ длиннее слотом не вмещается
+							 *          и держится слотом же во владении, отчего указатель не зависит от
+							 *          прочих полей читателя и переживает копирование целиком.
+							 *
+							 * @note Снятое имя помечается в слоте, но из пробы не выбрасывается:
+							 *       выбрасывание разорвало бы цепочку линейной пробы, а пересборка
+							 *       таблицы пометки стирает
+							 *
+							 * \~english
+							 * @brief Slot of the index of the names
+							 *
+							 * @details The key of up to 48 characters lies in the slot itself, next to the kind, and the comparison
+							 *          of the search does not walk into someone else's memory. A key longer than the slot holds is
+							 *          carried by the slot itself in ownership, wherefore the index does not depend upon the other
+							 *          fields of the reader and survives a copying as a whole.
+							 *
+							 * @note A dropped name is marked in the slot, yet is not thrown out of the probe:
+							 *       the throwing away would tear the chain of the linear probe, while a rebuilding
+							 *       of the table erases the marks
+							 *
+							 * \~
+							 */
+							struct Slot {
+								/**
+								 * \~russian
+								 * @brief Наибольшая длина имени, слотом вмещаемая
+								 *
+								 * \~english
+								 * @brief The greatest length of a name held by the slot
+								 *
+								 * \~
+								 */
+								static constexpr uint16_t EMBEDDED = 48;
+								/**
+								 * \~russian
+								 * @brief Обозначение свободного слота
+								 *
+								 * \~english
+								 * @brief Designation of a free slot
+								 *
+								 * \~
+								 */
+								static constexpr uint8_t FREE = 0;
+								/**
+								 * \~russian
+								 * @brief Обозначение занятого слота
+								 *
+								 * \~english
+								 * @brief Designation of an occupied slot
+								 *
+								 * \~
+								 */
+								static constexpr uint8_t USED = 1;
+								/**
+								 * \~russian
+								 * @brief Обозначение слота снятого имени
+								 *
+								 * \~english
+								 * @brief Designation of a slot of a dropped name
+								 *
+								 * \~
+								 */
+								static constexpr uint8_t DEAD = 2;
+								// Состояние слота
+								uint8_t state;
+								// Род объявленного имени
+								kind_t kind;
+								// Длина имени слота
+								uint16_t length;
+								/**
+								 * \~russian
+								 * Имя слота
+								 *
+								 * @note Читается тело слота, покуда длина имени вмещаема, и владеемая слотом
+								 *       память - свыше того
+								 *
+								 * \~english
+								 * Name of the slot
+								 *
+								 * @note The body of the slot is read while the length of the name is holdable, and the memory
+								 *       owned by the slot - beyond that
+								 *
+								 * \~
+								 */
+								union {
+									// Тело слота, короткое имя держащее
+									char body[EMBEDDED];
+									// Начало имени, слотом перенесённого
+									char * remote = nullptr;
+								} key;
+							public:
+								/**
+								 * \~russian
+								 * @brief Метод получения начала имени слота
+								 *
+								 * @return адрес начала имени слота
+								 *
+								 * \~english
+								 * @brief Method of obtaining the beginning of the name of the slot
+								 *
+								 * @return address of the beginning of the name of the slot
+								 *
+								 * \~
+								 */
+								const char * data() const noexcept;
+								/**
+								 * \~russian
+								 * @brief Метод освобождения длинного имени слота
+								 *
+								 * \~english
+								 * @brief Method of the release of the long name of the slot
+								 *
+								 * \~
+								 */
+								void release() noexcept;
+							public:
+								/**
+								 * \~russian
+								 * @brief Конструктор
+								 *
+								 * \~english
+								 * @brief Constructor
+								 *
+								 * \~
+								 */
+								explicit Slot() noexcept;
+							};
 							// Слоты указателя имён
 							struct Slot * slots;
+							/**
+							 * \~russian
+							 * Встроенные слоты малого указателя имён
+							 *
+							 * @details Обычная запись объявляет имён считанные единицы, и
+							 *          заведение таблицы выделением на всякий её разбор обходилось
+							 *          дороже самих имён: малый запас живёт при читателе, а
+							 *          выделение начинается лишь по его исчерпании.
+							 *
+							 * \~english
+							 * Embedded slots of the small index of the names
+							 *
+							 * @details A common record declares a handful of the names, and the establishing
+							 *          of the table by an allocation cost more than the names themselves at every
+							 *          parsing of it: the small stock lives with the reader, while an allocation
+							 *          starts only upon its exhaustion.
+							 *
+							 * \~
+							 */
+							struct Slot embedded[64];
+							// Признак таблицы, выделенной за пределами читателя
+							bool detached;
 						public:
 							/**
 							 * \~russian

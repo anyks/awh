@@ -361,6 +361,7 @@
  *       `AWH_FS_SEPARATOR`, а не ради самого класса: обращений к нему в движке нет
  *
  */
+#include <sys/fs.hpp>
 #include <sys/os.hpp>
 
 /**

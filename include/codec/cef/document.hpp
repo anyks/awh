@@ -145,13 +145,13 @@ namespace awh {
 			 *     заслона подача его отвечалась ИСТИНОЙ с пустым деревом. Код назван по
 			 *     существу беды: «открыть не удалось» слало бы потребителя искать права
 			 *     доступа либо отсутствующий путь, тогда как подан не файл вовсе.
-			 *     Распознаётся каталог ДО чтения ходом `fs_t::type` - у MS Windows он не
+			 *     Распознаётся каталог ДО чтения ходом `awh::fs::type` - у MS Windows он не
 			 *     открывается вовсе, и проверка после открытия была бы там мертва.
 			 *     Закреплено `CodecContract.DirectoryFedInsteadOfAFileIsRefused`, где код
 			 *     сличается числом у восьми кодеков разом
 			 *
 			 * @li **Символьная ссылка ПРОХОДИТСЯ, а не отличается от своей цели.** Спрос
-			 *     вида объекта ведётся `fs_t::type(addr, false)`: ссылка на файл читается
+			 *     вида объекта ведётся `awh::fs::type(addr, false)`: ссылка на файл читается
 			 *     ровно как файл, а ссылка на каталог отвергается ровно как каталог. Ход
 			 *     этот по умолчанию ссылку ОТЛИЧАЕТ, отвечая `LINK`, и первая редакция
 			 *     заслона отвергала всякую ссылку кодом `FILE_NOT_OPENED`, тогда как прочесть
@@ -163,7 +163,7 @@ namespace awh {
 			 *     цель переименованием.** Цель оттого либо остаётся прежней целиком, либо
 			 *     становится новой целиком, а половины её не видно никогда. Порядок таков:
 			 *     запись во временный файл рядом с целью, сброс его на носитель, подмена
-			 *     ходом `fs_t::replaceAddress`; всякий отказ по дороге сносит временный файл
+			 *     ходом `awh::fs::replaceAddress`; всякий отказ по дороге сносит временный файл
 			 *     и цели не касается. Закреплено `CodecCefDocument.FailedSaveKeepsThePreviousRecord`
 			 *     и `CodecCefDocument.SaveOverLongerFile`
 			 *
@@ -176,7 +176,7 @@ namespace awh {
 			 *     `CodecCefDocument.TemporaryCollisionKeepsExistingFile`
 			 *
 			 * @warning ПРАВЛЕНО 16.09.2026, и прежнее решение было ОШИБОЧНЫМ. Гласило
-			 *          оно: «сохранение сносит прежний файл ПЕРЕД записью», ибо `fs_t::write` файл
+			 *          оно: «сохранение сносит прежний файл ПЕРЕД записью», ибо `awh::fs::write` файл
 			 *          не усекает, а пишет по смещению, и без сноса хвост прежнего сохранения
 			 *          торчал бы за концом нового. Довод о хвосте верен и посейчас - неверен был
 			 *          ВЫВОД из него: снос решал задачу усечения ценою данных потребителя. Отказ
@@ -197,7 +197,7 @@ namespace awh {
 			 *     обрыв питания её теряет; сохранение события журнала тем и ценно, что
 			 *     переживает падение машины. Своего `fsync` тут нет намеренно: под macOS он
 			 *     долговечности НЕ обещает вовсе, доводит до пластины лишь `F_FULLFSYNC`, и
-			 *     ход `fs_t::flush` это знает. Отказ сброса уходит предупреждением в журнал,
+			 *     ход `awh::fs::flush` это знает. Отказ сброса уходит предупреждением в журнал,
 			 *     а не отказом сохранения: записанное на месте и читается
 			 *
 			 * \~english
@@ -257,13 +257,13 @@ namespace awh {
 			 *     tree. The code is named after the substance of the trouble: "failed to open"
 			 *     would send the consumer looking for access rights or a missing path, when in
 			 *     fact a non-file was fed. The directory is recognised BEFORE the read by
-			 *     `fs_t::type` - under MS Windows it does not open at all, and a check after
+			 *     `awh::fs::type` - under MS Windows it does not open at all, and a check after
 			 *     the open would be dead there. Fixed by
 			 *     `CodecContract.DirectoryFedInsteadOfAFileIsRefused`, where the code is
 			 *     compared numerically across eight codecs at once
 			 *
 			 * @li **A symbolic link is FOLLOWED, not distinguished from its target.** The
-			 *     query of the kind of the object is conducted by `fs_t::type(addr, false)`:
+			 *     query of the kind of the object is conducted by `awh::fs::type(addr, false)`:
 			 *     a link to a file is read exactly as a file, and a link to a directory is
 			 *     refused exactly as a directory. The query by default DISTINGUISHES the link,
 			 *     answering `LINK`, and the first edition of the guard refused any link by the
@@ -276,7 +276,7 @@ namespace awh {
 			 *     replaces the target by renaming.** The target therefore either stays the
 			 *     old one in full, or becomes the new one in full, and a half of it is never
 			 *     seen by anyone. The order is: write to a temporary file next to the target,
-			 *     flush it to the storage, replace by `fs_t::replaceAddress`; any failure on
+			 *     flush it to the storage, replace by `awh::fs::replaceAddress`; any failure on
 			 *     the way removes the temporary file and does not touch the target. Fixed by
 			 *     `CodecCefDocument.FailedSaveKeepsThePreviousRecord` and
 			 *     `CodecCefDocument.SaveOverLongerFile`
@@ -292,7 +292,7 @@ namespace awh {
 			 *
 			 * @warning EDITED 2026-09-16, and the prior decision was WRONG. It said:
 			 *          "the save removes the previous file BEFORE the writing", because
-			 *          `fs_t::write` does not truncate the file, but writes by offset, and
+			 *          `awh::fs::write` does not truncate the file, but writes by offset, and
 			 *          without the removal the tail of the previous save would stick out
 			 *          past the end of the new one. The argument about the tail is still
 			 *          true - what was wrong was the CONCLUSION from it: the removal solved
@@ -318,7 +318,7 @@ namespace awh {
 			 *     what makes the save of a journal event worth doing - it survives a crash of
 			 *     the machine. There is no `fsync` of our own on purpose: under macOS it does
 			 *     NOT promise durability at all, only `F_FULLFSYNC` reaches the platter, and
-			 *     the `fs_t::flush` method knows that. A failure of the flush goes to the
+			 *     the `awh::fs::flush` method knows that. A failure of the flush goes to the
 			 *     log as a warning, not as a failure of the save: what was written stays in
 			 *     place and is read
 			 *

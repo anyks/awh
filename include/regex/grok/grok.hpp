@@ -73,7 +73,7 @@
  *          требует объектов фреймворка и журнала, каких у Grok нет и заводить
  *          какие ради одного чтения означало бы утяжелить всякого потребителя.
  *          Поэтому метод read принимает текст, а чтение файла либо обход
- *          каталога возложены на вызывающую сторону: объектом «awh::fs_t»
+ *          каталога возложены на вызывающую сторону: пространством имён «awh::fs»
  *          либо любым иным способом.
  *
  *          <b>Сжатие записи выполняют обработчики потребителя.</b> Решение
@@ -169,7 +169,7 @@
  *          requires framework and log objects, which Grok does not have and introducing
  *          which for the sake of one read would mean weighing down every consumer.
  *          Therefore the read method takes a text, while reading a file or walking
- *          a directory is laid on the calling side: by an «awh::fs_t» object
+ *          a directory is laid on the calling side: by the «awh::fs» namespace
  *          or by any other means.
  *          <b>Compression of the record is performed by the handlers of the consumer.</b> The decision
  *          is the same as for the storage of built expressions, and for the same reason:
@@ -593,7 +593,7 @@ namespace awh {
 			 *          Чтение самого файла возложено на вызывающую сторону: Grok
 			 *          файловым вводом-выводом не ведает, дабы не тянуть за собою
 			 *          объекты фреймворка и журнала. Прочесть файл можно объектом
-			 *          «awh::fs_t» либо любым иным способом, а сюда подать текст.
+			 *          «awh::fs» либо любым иным способом, а сюда подать текст.
 			 *
 			 * \~english
 			 * @brief Method of filling the registry with a pattern set from a text
@@ -608,7 +608,7 @@ namespace awh {
 			 *          Reading the file itself is laid on the calling side: Grok
 			 *          knows nothing of file input-output, so as not to drag along
 			 *          the framework and log objects. A file can be read by an
-			 *          «awh::fs_t» object or by any other means, and the text supplied here.
+			 *          «awh::fs» namespace or by any other means, and the text supplied here.
 			 *
 			 * \~
 			 */

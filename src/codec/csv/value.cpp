@@ -59,13 +59,7 @@ namespace {
 	 */
 	using namespace awh;
 
-	/**
-	 * @brief Объект для работы с файловой системой
-	 *
-	 */
-	static thread_local fs_t __awh_fs__;
-
-	/**
+		/**
 	 * @brief Функция проверки годности каталога, куда ложится файл
 	 *
 	 * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
@@ -88,7 +82,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+		return (awh::fs::type(path.substr(0, slash), false) == awh::fs::type_t::DIR);
 	}
 };
 
@@ -1222,7 +1216,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       за концом записанного. Прежде усечение делал сам поток признаком `trunc`
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.unlink(temporary));
+	static_cast <void> (awh::fs::unlink(temporary));
 	/**
 	 * Выполняем запись собранного текста таблицы
 	 *
@@ -1230,7 +1224,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
 	 *
 	 */
-	const bool written = ::__awh_fs__.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	const bool written = awh::fs::write(temporary, text.data(), text.size(), awh::fs::seek_t::BEGIN, 0);
 	/**
 	 * Если записанного файла на месте не оказалось
 	 */
@@ -1281,7 +1275,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 */
 	if(!written){
 		// Выполняем снос временного файла записи
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
@@ -1322,13 +1316,13 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       разницу берёт на себя
 	 *
 	 */
-	static_cast <void> (::__awh_fs__.flush(temporary, true));
+	static_cast <void> (awh::fs::flush(temporary, true));
 	/**
 	 * Если подмена целевого файла временным завершилась отказом
 	 */
-	if(!::__awh_fs__.replaceAddress(temporary, filename)){
+	if(!awh::fs::replaceAddress(temporary, filename)){
 		// Выполняем снос временного файла записи
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**

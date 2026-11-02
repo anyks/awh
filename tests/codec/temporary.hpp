@@ -151,13 +151,13 @@ inline std::string temporary(const std::string & name) noexcept {
  */
 inline bool makeDirectory(const std::string & path) noexcept {
 	// Выполняем заведение каталога ходом работы с файловой системой
-	return awh::fs_t().mkdir(path);
+	return awh::fs::mkdir(path);
 }
 /**
  * \~russian
  * @brief Функция сноса каталога ВМЕСТЕ С СОДЕРЖИМЫМ, переносимая между системами
  *
- * @details Ход `fs_t::unlink` каталог обходит сам и сносит его вместе с содержимым, а
+ * @details Ход `awh::fs::unlink` каталог обходит сам и сносит его вместе с содержимым, а
  *          путь обращает широким наравне с заведением. Обе половины обязаны ходить
  *          ОДНИМ ходом: почини одно заведение - и каталог заводился бы верным именем, а
  *          убирался бы искажённым, и остаток копился бы на стенде при каждом прогоне
@@ -176,7 +176,7 @@ inline bool makeDirectory(const std::string & path) noexcept {
  * \~english
  * @brief Function of the removal of a directory TOGETHER WITH ITS CONTENT
  *
- * @details The `fs_t::unlink` handle walks the directory by itself and removes it together
+ * @details The `awh::fs::unlink` handle walks the directory by itself and removes it together
  *          with the content, while addressing the path wide on par with the creation. Both
  *          halves are obliged to walk by ONE handle: fix the creation alone - and the
  *          directory would be created under a correct name, yet removed under a distorted
@@ -196,8 +196,6 @@ inline bool makeDirectory(const std::string & path) noexcept {
  * \~
  */
 inline bool removeDirectory(const std::string & path) noexcept {
-	// Объект работы с файловой системой
-	const awh::fs_t fs;
 	// Выполняем снос каталога вместе с содержимым и выводим признак его отсутствия
-	return (fs.unlink(path) || (fs.type(path, false) != awh::fs_t::type_t::DIR));
+	return (awh::fs::unlink(path) || (awh::fs::type(path, false) != awh::fs::type_t::DIR));
 }

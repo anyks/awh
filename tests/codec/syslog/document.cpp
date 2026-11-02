@@ -89,8 +89,6 @@ namespace {
 		std::string address;
 		// Признак создания каталога именно этой проверкой
 		bool created;
-		// Объект файловой системы
-		awh::fs_t fs;
 		/**
 		 * @brief Конструктор
 		 *
@@ -107,7 +105,7 @@ namespace {
 			// Если каталог создан этой проверкой
 			if(this->created)
 				// Удаляем каталог вместе с оставшимися файлами проверки
-				static_cast <void> (this->fs.unlink(this->address));
+				static_cast <void> (awh::fs::unlink(this->address));
 		}
 	} save_directory_t;
 }
@@ -1151,7 +1149,7 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
  *          проверялась она прежде РАССУЖДЕНИЕМ, а не опытом: настоящего отказа чтения ни
  *          одна проверка не ставила. Файл с отнятыми правами такой отказ и даёт
  *
- * @note Ход `fs_t::read` при отказе оставляет содержимое ПУСТЫМ, оттого пустота и служит
+ * @note Ход `awh::fs::read` при отказе оставляет содержимое ПУСТЫМ, оттого пустота и служит
  *       здесь признаком. Законно пустой файл от отказа тем и отличается, что величина
  *       его нулю равна
  *
@@ -1205,7 +1203,7 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
  *          видит, и `ifstream`, стоявший здесь до переезда на `sys/fs`, открывал её без
  *          всякой оговорки. Договор кодека обязан остаться тем же
  *
- * @note Заведено 13.09.2026 по РЕГРЕССИИ, внесённой переездом: ход `fs_t::type` по
+ * @note Заведено 13.09.2026 по РЕГРЕССИИ, внесённой переездом: ход `awh::fs::type` по
  *       умолчанию ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая редакция заслона
  *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её `fs_t` при этом
  *       давал без единой жалобы - отказ был выдуман кодеком, а не системой
@@ -1287,7 +1285,7 @@ TEST(CodecSysLogDocument, SymlinkToDirectoryIsRefused) {
 /**
  * @brief Проверка отказа сохранения там, где писать нельзя
  *
- * @details Отказ записи опознаётся ПРИЗНАКОМ самого хода `fs_t::write`: с переделки
+ * @details Отказ записи опознаётся ПРИЗНАКОМ самого хода `awh::fs::write`: с переделки
  *          `sys/fs` все восемь работ записи отвечают вызывающему, а не одному лишь
  *          журналу. Ветвь эта прежде проверками затронута не была вовсе - карта покрытия
  *          держала её пустой, - и отказ сохранения был неотличим от успеха
@@ -1743,10 +1741,8 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 			// Добавляем к записи знак конца строки
 			content.append(1, '\n');
 		}
-		// Объект работы с файловой системой
-		awh::fs_t fs;
 		// Выполняем запись журнала в файл
-		fs.write(filename, content.data(), content.size());
+		awh::fs::write(filename, content.data(), content.size());
 	}
 	/**
 	 * Помощник счёта записей в файле журнала
@@ -1756,12 +1752,10 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	 *
 	 */
 	auto lines = [](const string & filename) noexcept -> size_t {
-		// Объект работы с файловой системой
-		awh::fs_t fs;
 		// Содержимое файла журнала
 		string content = "";
 		// Выполняем чтение содержимого файла журнала
-		fs.read(filename, content);
+		awh::fs::read(filename, content);
 		// Количество непустых строк файла журнала
 		size_t result = 0;
 		/**
@@ -1793,10 +1787,8 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	 *
 	 */
 	EXPECT_EQ(lines(filename), count);
-	// Объект работы с файловой системой
-	awh::fs_t fs;
 	// Выполняем снос временного файла журнала
-	fs.unlink(filename);
+	awh::fs::unlink(filename);
 }
 
 /**
@@ -2106,7 +2098,7 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers) {
 	// Выполняем проверку того, что временный файл за собою не оставлен
 	EXPECT_NE(::stat(temporary.c_str(), &info), 0) << "временный файл оставлен в каталоге потребителя";
 	// Проверяем отсутствие файлов с любым уникальным суффиксом
-	EXPECT_EQ(awh::fs_t().count(directory), static_cast <uintmax_t> (0));
+	EXPECT_EQ(awh::fs::count(directory), static_cast <uintmax_t> (0));
 }
 
 /**
@@ -2214,7 +2206,7 @@ TEST(CodecSysLogDocument, SavePreservesAccessBits) {
 		// Адрес целевого файла
 		const string filename = (guard.address + "/journal.log");
 		// Создаём исходный файл
-		ASSERT_TRUE(guard.fs.write(filename, string("PREVIOUS RECORD")));
+		ASSERT_TRUE(awh::fs::write(filename, string("PREVIOUS RECORD")));
 		// Формируем документ для сохранения
 		syslog::document_t document;
 		// Разбираем запись, которую предстоит сохранить
@@ -2262,7 +2254,7 @@ TEST(CodecSysLogDocument, SaveKeepsUnrelatedSibling) {
 	// Содержимое постороннего файла
 	const string previous = "UNRELATED USER DATA";
 	// Кладём в посторонний файл его содержимое
-	ASSERT_TRUE(guard.fs.write(sibling, previous));
+	ASSERT_TRUE(awh::fs::write(sibling, previous));
 	// Формируем документ для сохранения
 	syslog::document_t document;
 	// Разбираем запись, которую предстоит сохранить рядом с посторонним файлом
@@ -2270,10 +2262,10 @@ TEST(CodecSysLogDocument, SaveKeepsUnrelatedSibling) {
 	// Сохраняем новую запись
 	ASSERT_TRUE(document.save(filename));
 	// Проверяем сохранность постороннего файла и содержимое цели
-	EXPECT_EQ(guard.fs.read <string> (sibling), previous);
-	EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
+	EXPECT_EQ(awh::fs::read <string> (sibling), previous);
+	EXPECT_EQ(awh::fs::read <string> (filename), document.dump());
 	// Проверяем отсутствие оставленных временных файлов
-	EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (2));
+	EXPECT_EQ(awh::fs::count(guard.address), static_cast <uintmax_t> (2));
 }
 
 /**
@@ -2290,24 +2282,24 @@ TEST(CodecSysLogDocument, TemporaryFilesKeepIndependentHandles) {
 	// Имена двух временных файлов, которые получат разные суффиксы
 	string first, second;
 	// Создаём два открытых файла для одной цели
-	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	awh::fs::handle_file_t one = awh::fs::temporary(filename, first);
 	// Заводим второй временный файл рядом с первым
-	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	awh::fs::handle_file_t two = awh::fs::temporary(filename, second);
 	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
 	ASSERT_NE(two, nullptr);
 	ASSERT_NE(first, second);
 	// Записываем разные значения через сохранённые дескрипторы
-	ASSERT_TRUE(guard.fs.write(first, string("FIRST"), awh::fs_t::seek_t::BEGIN, 0, one));
-	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
+	ASSERT_TRUE(awh::fs::write(first, string("FIRST"), awh::fs::seek_t::BEGIN, 0, one));
+	ASSERT_TRUE(awh::fs::write(second, string("SECOND"), awh::fs::seek_t::BEGIN, 0, two));
 	// Закрываем файлы перед проверкой их содержимого
 	one.reset();
 	// Закрываем второй файл
 	two.reset();
 	// Проверяем независимость результатов и отсутствие целевого файла
-	EXPECT_EQ(guard.fs.read <string> (first), "FIRST");
-	EXPECT_EQ(guard.fs.read <string> (second), "SECOND");
-	EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (2));
+	EXPECT_EQ(awh::fs::read <string> (first), "FIRST");
+	EXPECT_EQ(awh::fs::read <string> (second), "SECOND");
+	EXPECT_EQ(awh::fs::count(guard.address), static_cast <uintmax_t> (2));
 	EXPECT_EQ(::access(filename.c_str(), F_OK), -1);
 }
 
@@ -2328,7 +2320,7 @@ TEST(CodecSysLogDocument, TemporaryCollisionKeepsExistingFile) {
 	// Имена временных файлов для первой и второй попыток
 	string first, second;
 	// Заводим первый временный файл и запоминаем его имя
-	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	awh::fs::handle_file_t one = awh::fs::temporary(filename, first);
 	// Проверяем, что первый временный файл открыт
 	ASSERT_NE(one, nullptr);
 	// Отделяем номер последовательности от первого имени
@@ -2338,21 +2330,21 @@ TEST(CodecSysLogDocument, TemporaryCollisionKeepsExistingFile) {
 	// Составляем имя следующего номера, которое займём посторонним файлом
 	const string collision = (first.substr(0, offset + 1) + to_string(stoull(first.substr(offset + 1)) + 1));
 	// Занимаем следующее имя посторонним содержимым
-	ASSERT_TRUE(guard.fs.write(collision, string("UNRELATED")));
+	ASSERT_TRUE(awh::fs::write(collision, string("UNRELATED")));
 	// Создаём второй файл и проверяем, что занятое имя пропущено
-	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	awh::fs::handle_file_t two = awh::fs::temporary(filename, second);
 	// Проверяем, что второй временный файл открыт
 	ASSERT_NE(two, nullptr);
 	// Проверяем, что занятое имя пропущено в пользу следующего
 	EXPECT_NE(second, collision);
 	// Пишем во второй файл через сохранённый дескриптор
-	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
+	ASSERT_TRUE(awh::fs::write(second, string("SECOND"), awh::fs::seek_t::BEGIN, 0, two));
 	// Закрываем открытые объекты до чтения и удаления каталога
 	one.reset();
 	// Закрываем второй файл
 	two.reset();
 	// Проверяем, что посторонний файл не открыт для записи и не изменён
-	EXPECT_EQ(guard.fs.read <string> (collision), "UNRELATED");
+	EXPECT_EQ(awh::fs::read <string> (collision), "UNRELATED");
 }
 
 /**
@@ -2373,7 +2365,7 @@ TEST(CodecSysLogDocument, NewSaveKeepsCreationPermissions) {
 		// Адрес файла записи, права которого сличаем с эталоном
 		const string filename = (guard.address + "/journal.log");
 		// Создаём эталонный файл обычным способом
-		ASSERT_TRUE(guard.fs.write(reference, string("REFERENCE")));
+		ASSERT_TRUE(awh::fs::write(reference, string("REFERENCE")));
 		// Сохраняем документ по новому адресу
 		syslog::document_t document;
 		// Разбираем запись, которую предстоит сохранить
@@ -2425,8 +2417,8 @@ TEST(CodecSysLogDocument, SaveSupportsMaximumFilename) {
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - Event"));
 		ASSERT_TRUE(document.save(filename));
 		// Проверяем содержимое и отсутствие оставленного временного файла
-		EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
-		EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (1));
+		EXPECT_EQ(awh::fs::read <string> (filename), document.dump());
+		EXPECT_EQ(awh::fs::count(guard.address), static_cast <uintmax_t> (1));
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -2460,8 +2452,8 @@ TEST(CodecSysLogDocument, SaveThroughDanglingRelativeSymlink) {
 		// Адрес ссылки, по которой пойдёт сохранение
 		const string link = (nested + "/link.log");
 		// Заводим настоящий каталог цели
-		ASSERT_TRUE(guard.fs.mkdir(directory));
-		ASSERT_TRUE(guard.fs.write(unrelated, string("UNRELATED")));
+		ASSERT_TRUE(awh::fs::mkdir(directory));
+		ASSERT_TRUE(awh::fs::write(unrelated, string("UNRELATED")));
 		// Заводим ссылку на пока отсутствующую цель
 		ASSERT_EQ(::symlink(unrelated.c_str(), link.c_str()), 0);
 		// Сохраняем запись по ссылке на пока отсутствующую цель
@@ -2470,9 +2462,9 @@ TEST(CodecSysLogDocument, SaveThroughDanglingRelativeSymlink) {
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 		ASSERT_TRUE(document.save(link));
 		// Проверяем содержимое настоящей цели и сохранность постороннего файла
-		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
-		EXPECT_EQ(guard.fs.read <string> (unrelated), "UNRELATED");
-		EXPECT_EQ(guard.fs.type(link), awh::fs_t::type_t::LINK);
+		EXPECT_EQ(awh::fs::read <string> (target), document.dump());
+		EXPECT_EQ(awh::fs::read <string> (unrelated), "UNRELATED");
+		EXPECT_EQ(awh::fs::type(link), awh::fs::type_t::LINK);
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -2504,20 +2496,20 @@ TEST(CodecSysLogDocument, SaveThroughDanglingSymlinkChain) {
 		// Адрес второго звена цепочки - относительной ссылки
 		const string second = (nested + "/second.log");
 		// Ссылка каталога перед '..' должна разрешаться раньше перехода к родителю
-		ASSERT_TRUE(guard.fs.mkdir(nested + "/actual/deeper"));
+		ASSERT_TRUE(awh::fs::mkdir(nested + "/actual/deeper"));
 		// Заводим ссылку каталога, через которую пройдёт переход '..'
 		ASSERT_EQ(::symlink("actual/deeper", (nested + "/alias").c_str()), 0);
 		ASSERT_EQ(::symlink("alias/../journal.log", second.c_str()), 0);
-		ASSERT_EQ(::symlink(guard.fs.fullpath(second).c_str(), first.c_str()), 0);
+		ASSERT_EQ(::symlink(awh::fs::fullpath(second).c_str(), first.c_str()), 0);
 		// Сохраняем запись по первому звену цепочки
 		syslog::document_t document;
 		// Разбираем запись, которую предстоит сохранить через цепочку
 		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
 		ASSERT_TRUE(document.save(first));
 		// Проверяем конечную цель и оба промежуточных объекта
-		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
-		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
-		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+		EXPECT_EQ(awh::fs::read <string> (target), document.dump());
+		EXPECT_EQ(awh::fs::type(first), awh::fs::type_t::LINK);
+		EXPECT_EQ(awh::fs::type(second), awh::fs::type_t::LINK);
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -2556,8 +2548,8 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkCycleIsRefused) {
 		// Проверяем, что отказ назвал причину
 		EXPECT_NE(document.error(), syslog::error_t::NONE);
 		// Проверяем, что первое звено осталось ссылкой
-		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
-		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+		EXPECT_EQ(awh::fs::type(first), awh::fs::type_t::LINK);
+		EXPECT_EQ(awh::fs::type(second), awh::fs::type_t::LINK);
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -2583,18 +2575,18 @@ TEST(CodecSysLogDocument, MalformedTailIsRefusedAndKeptWhole) {
 	// Содержимое файла: исправная запись и хвост с переводом строки
 	const string content = (record + "<bad>\n");
 	// Кладём в файл исправную запись и недопустимый хвост
-	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	ASSERT_TRUE(awh::fs::write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
 	// Пробуем загрузить файл с недопустимым хвостом
 	EXPECT_FALSE(document.load(filename));
 	// Проверяем, что отказ назван ошибкой приоритета в хвосте
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
 	// Проверяем, что файл уцелел после отказа пустого сохранения
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
 	// Запоминаем дословный вид документа до повторной загрузки
@@ -2604,10 +2596,10 @@ TEST(CodecSysLogDocument, MalformedTailIsRefusedAndKeptWhole) {
 	// Проверяем, что повторный отказ назван тем же кодом приоритета
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(document.dump(), before);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Исправленная запись с пустой строкой в конце загружается после отказа
-	ASSERT_TRUE(guard.fs.unlink(filename));
-	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(awh::fs::unlink(filename));
+	ASSERT_TRUE(awh::fs::write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
 	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);
@@ -2630,18 +2622,18 @@ TEST(CodecSysLogDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	// Содержимое файла: исправная запись и хвост без перевода строки
 	const string content = (record + "<bad>");
 	// Кладём в файл исправную запись и недопустимый хвост
-	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	ASSERT_TRUE(awh::fs::write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
 	// Пробуем загрузить файл с недопустимым хвостом
 	EXPECT_FALSE(document.load(filename));
 	// Проверяем, что отказ назван ошибкой приоритета в хвосте
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
 	// Проверяем, что файл уцелел после отказа пустого сохранения
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
 	// Запоминаем дословный вид документа до повторной загрузки
@@ -2651,10 +2643,10 @@ TEST(CodecSysLogDocument, UnterminatedTailIsRefusedAndKeptWhole) {
 	// Проверяем, что повторный отказ назван тем же кодом приоритета
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	EXPECT_EQ(document.dump(), before);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Исправленная запись с пустой строкой в конце загружается после отказа
-	ASSERT_TRUE(guard.fs.unlink(filename));
-	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(awh::fs::unlink(filename));
+	ASSERT_TRUE(awh::fs::write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
 	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);
@@ -2677,7 +2669,7 @@ TEST(CodecSysLogDocument, OversizedTailIsRefusedAndKeptWhole) {
 	// Содержимое файла: исправная запись и хвост в 128 символов, предел вдвое превышающий
 	const string content = (record + "<165>1 2026-09-15T00:00:00Z host app 1 - - " + string(128, 'x') + "\n");
 	// Кладём в файл исправную запись и недопустимый хвост
-	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	ASSERT_TRUE(awh::fs::write(filename, string(content)));
 	// Проверяем отказ загрузки и точный код ошибки хвоста
 	syslog::document_t document;
 	// Настройки документа
@@ -2690,11 +2682,11 @@ TEST(CodecSysLogDocument, OversizedTailIsRefusedAndKeptWhole) {
 	EXPECT_FALSE(document.load(filename));
 	// Проверяем, что отказ назван превышением предела записи
 	EXPECT_EQ(document.error(), syslog::error_t::RECORD_TOO_LONG);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Пустой документ не должен затереть исходный файл первой записью
 	EXPECT_FALSE(document.save(filename));
 	// Проверяем, что содержимое файла уцелело после отказа пустого сохранения
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Отказ предварительного чтения сохраняет прежний документ
 	ASSERT_TRUE(document.parse(record));
 	// Запоминаем дословный вид документа до повторной загрузки
@@ -2704,10 +2696,10 @@ TEST(CodecSysLogDocument, OversizedTailIsRefusedAndKeptWhole) {
 	// Проверяем, что повторный отказ назван тем же кодом превышения предела
 	EXPECT_EQ(document.error(), syslog::error_t::RECORD_TOO_LONG);
 	EXPECT_EQ(document.dump(), before);
-	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	EXPECT_EQ(awh::fs::read <string> (filename), content);
 	// Исправленная запись с пустой строкой в конце загружается после отказа
-	ASSERT_TRUE(guard.fs.unlink(filename));
-	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(awh::fs::unlink(filename));
+	ASSERT_TRUE(awh::fs::write(filename, string(record + "\n")));
 	ASSERT_TRUE(document.load(filename));
 	// Убеждаемся, что после успешной загрузки ошибка сброшена
 	EXPECT_EQ(document.error(), syslog::error_t::NONE);

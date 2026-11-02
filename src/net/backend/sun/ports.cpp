@@ -499,6 +499,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/fs.hpp>
 #include <sys/os.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>

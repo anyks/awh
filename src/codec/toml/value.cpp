@@ -65,13 +65,7 @@ namespace {
 	 */
 	using namespace awh;
 
-	/**
-	 * @brief Объект для работы с файловой системой
-	 *
-	 */
-	static thread_local fs_t __awh_fs__;
-
-	/**
+		/**
 	 * @brief Предел роста вместилища обращением по номеру
 	 *
 	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
@@ -125,7 +119,7 @@ namespace {
 			// Выводим признак годности каталога текущего
 			return true;
 		// Выводим признак того, что каталог назначения каталогом и является
-		return (__awh_fs__.type(path.substr(0, slash), false) == fs_t::type_t::DIR);
+		return (awh::fs::type(path.substr(0, slash), false) == awh::fs::type_t::DIR);
 	}
 	
 	/**
@@ -2308,7 +2302,7 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 *
 	 */
-	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
+	if(awh::fs::type(filename, false) != awh::fs::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
@@ -2317,11 +2311,11 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
 	// Собираемое содержимое читаемого файла настроек
 	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	::__awh_fs__.read(filename, text);
+	awh::fs::read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (::__awh_fs__.size(filename) > 0)){
+	if(text.empty() && (awh::fs::size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -2353,7 +2347,7 @@ bool awh::codec::toml::Value::load(const string & filename, const document_t::se
 	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 *
 	 */
-	if(::__awh_fs__.type(filename, false) != fs_t::type_t::FILE){
+	if(awh::fs::type(filename, false) != awh::fs::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачного чтения файла
@@ -2362,11 +2356,11 @@ bool awh::codec::toml::Value::load(const string & filename, const document_t::se
 	// Собираемое содержимое читаемого файла настроек
 	string text = "";
 	// Выполняем чтение содержимого файла настроек
-	::__awh_fs__.read(filename, text);
+	awh::fs::read(filename, text);
 	/**
 	 * Если содержимое прочитать не удалось
 	 */
-	if(text.empty() && (::__awh_fs__.size(filename) > 0)){
+	if(text.empty() && (awh::fs::size(filename) > 0)){
 		// Запоминаем код отказа чтения файла настроек
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим признак неудачного чтения файла
@@ -2798,11 +2792,11 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
-	static_cast <void> (::__awh_fs__.unlink(temporary));
+	static_cast <void> (awh::fs::unlink(temporary));
 	/**
 	 * Если запись собранного текста настроек во временный файл не удалась
 	 */
-	if(!::__awh_fs__.write(temporary, text.data(), text.size())){
+	if(!awh::fs::write(temporary, text.data(), text.size())){
 		/**
 		 * Запоминаем код отказа записи файла настроек
 		 *
@@ -2810,9 +2804,9 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 		 *          отказало ОТКРЫТИЕ, а заведись и не наполнись - отказала запись
 		 *
 		 */
-		this->_error = ((::__awh_fs__.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
+		this->_error = ((awh::fs::type(temporary, false) == awh::fs::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		/**
 		 * Если включён режим отладки
@@ -2847,11 +2841,11 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	 *          содержимое, до носителя не дошедшее
 	 *
 	 */
-	if(!::__awh_fs__.flush(temporary)){
+	if(!awh::fs::flush(temporary)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2880,11 +2874,11 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	/**
 	 * Если подмена целевого файла временным не удалась
 	 */
-	if(!::__awh_fs__.replaceAddress(temporary, filename)){
+	if(!awh::fs::replaceAddress(temporary, filename)){
 		// Запоминаем код отказа записи файла настроек
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
-		static_cast <void> (::__awh_fs__.unlink(temporary));
+		static_cast <void> (awh::fs::unlink(temporary));
 		/**
 		 * Если включён режим отладки
 		 */

@@ -1946,7 +1946,7 @@ TEST(Grok, RefusalCodes) {
  *
  * @details Надстройка файловой системы не касается вовсе - ни при чтении
  *          шаблонов из каталога, ни при хранении записи: и то и другое
- *          возложено на вызывающую сторону, объект «awh::fs_t». Проверка
+ *          возложено на вызывающую сторону, пространство имён «awh::fs». Проверка
  *          закрепляет круг «сохранил в файл - прочитал - восстановил»,
  *          которым пользуется всякий потребитель.
  *
@@ -1960,7 +1960,6 @@ TEST(Grok, StorageFilesystem) {
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Создаём объект работы с файловой системой
-	const fs_t fs;
 	// Путь к файлу записи собранных шаблонов
 	const string filename = "grok-filesystem.grok";
 	// Запись собранных шаблонов
@@ -1971,13 +1970,13 @@ TEST(Grok, StorageFilesystem) {
 	// Выполняем проверку непустоты записи
 	ASSERT_FALSE(record.empty());
 	// Выполняем запись набора собранных шаблонов в файл
-	fs.write(filename, record.data(), record.size());
+	awh::fs::write(filename, record.data(), record.size());
 	// Выполняем проверку размера записанного файла
-	ASSERT_EQ(static_cast <size_t> (fs.size(filename)), record.size());
+	ASSERT_EQ(static_cast <size_t> (awh::fs::size(filename)), record.size());
 	// Прочитанная из файла запись собранных шаблонов
 	string readed = "";
 	// Выполняем чтение записи собранных шаблонов из файла
-	fs.read(filename, readed);
+	awh::fs::read(filename, readed);
 	// Выполняем проверку совпадения прочитанной записи с записанной
 	ASSERT_EQ(readed, record) << "запись прочитана иною, нежели записана";
 	// Набор восстановленных шаблонов
@@ -2000,5 +1999,5 @@ TEST(Grok, StorageFilesystem) {
 	// Выполняем проверку названия поля, письменностью русскою заданного
 	EXPECT_EQ(values["время"], "2026-09-09T12:00:00Z");
 	// Выполняем удаление файла записи собранных шаблонов
-	EXPECT_TRUE(fs.unlink(filename));
+	EXPECT_TRUE(awh::fs::unlink(filename));
 }

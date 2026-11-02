@@ -13,7 +13,7 @@
  * @site https://anyks.com
  *
  * @brief Параметризованные тесты модуля работы с файловой системой —
- *        прогон подготовленных наборов входных данных через методы модуля с проверкой чтения и записи файлов,
+ *        прогон подготовленных наборов входных данных через функции модуля с проверкой чтения и записи файлов,
  *        обхода каталогов, получения атрибутов и построения путей
  *
  * @copyright Copyright © 2026
@@ -30,7 +30,9 @@
  *
  */
 struct PathTestParams {
+	// Входной путь
 	std::string input = "";
+	// Признак того, что путь обязан быть абсолютным
 	bool shouldBeAbsolute = false;
 };
 
@@ -41,25 +43,26 @@ struct PathTestParams {
 class FSPathTests : public FSFixture, public testing::WithParamInterface<PathTestParams> {};
 
 /**
- * @brief Тест метода fullpath
+ * @brief Тест функции fullpath
  *
  */
 TEST_P(FSPathTests, FullPathTest) {
 	// Получаем параметры теста
 	const auto& params = GetParam();
-	
-	// Вызываем метод fullpath
-	std::string result = this->_fs->fullpath(params.input);
-	
+	// Вызываем fullpath
+	std::string result = awh::fs::fullpath(params.input);
 	// Проверяем что путь не пустой
 	ASSERT_FALSE(result.empty());
-
 	/**
-	 * Если путь должен быть абсолютным, он должен начинаться с / (на Unix)
-	 * В тестах предполагаем Unix окружение на основе списка файлов
+	 * Для операционных систем семейства Unix
+	 *
+	 * @note В тестах предполагается Unix-окружение на основе списка файлов
+	 *
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если путь должен быть абсолютным
 		if(params.shouldBeAbsolute)
+			// Путь обязан начинаться с разделителя
 			ASSERT_EQ(result.front(), '/');
 	#endif
 }
@@ -83,10 +86,14 @@ INSTANTIATE_TEST_SUITE_P(FSPathTestCases, FSPathTests,
  *
  */
 struct ComponentsTestParams {
+	// Путь для разбора
 	std::string path = "";
+	// Ожидаемое имя
 	std::string expectedName = "";
+	// Ожидаемое расширение
 	std::string expectedExt = "";
-	bool isFile = false; // true если симулируем файл, false если каталог
+	// Признак файла: true - файл, false - каталог
+	bool isFile = false;
 };
 
 /**
@@ -96,66 +103,50 @@ struct ComponentsTestParams {
 class FSComponentsTests : public FSFixture, public testing::WithParamInterface<ComponentsTestParams> {};
 
 /**
- * @brief Тест метода components
+ * @brief Тест функции components
  *
  */
 TEST_P(FSComponentsTests, ComponentsTest) {
 	// Получаем параметры теста
 	const auto& params = GetParam();
-	
-	// Создаем временную структуру для теста
+	// Создаём временную структуру для теста
 	std::string tempPath = params.path;
-
 	/**
-	 * Для корректной работы components нам нужно чтобы файл/каталог реально существовал (для определения типа), либо мы тестируем логику парсинга?
-	 * fs::components внутри вызывает fullpath и type.
-	 * Если type::DIR, то возвращает {dirname, ""}.
-	 * Если type::FILE, то парсит имя и расширение.
-	 * Поэтому нам прийдется создавать эти элементы.
+	 * Для корректной работы components файл или каталог обязан существовать:
+	 * fs::components внутри вызывает fullpath и type
 	 */
-
-	// Создаем временный файл или каталог
+	// Создаём временный файл или каталог
 	std::string realPath = "fs_comp_test_" + std::to_string(std::rand());
-	// Создаем в текущей директории
+	// Если проверяется файл
 	if(params.isFile)
-		// Создаем файл
-		this->_fs->write(realPath, "test");
-	// Иначе каталог
-	else this->_fs->mkdir(realPath);
-	
-	// Тестируем на созданном пути
-	auto [name, ext] = this->_fs->components(realPath);
-
-	/**
-	 * Проверяем хотя бы что расширение пустое для папок, и не пустое если ожидали (но мы создали файл без расширения выше)
-	 * Давайте лучше создадим файл с расширением если оно есть в параметрах
-	 */
-	
-	// Очищаем предыдущий
-	this->_fs->unlink(realPath);
-	
-	// Создаем новый с нужным именем
+		// Создаём файл
+		awh::fs::write(realPath, "test");
+	// Иначе создаём каталог
+	else awh::fs::mkdir(realPath);
+	// Получаем компоненты созданного пути
+	auto [name, ext] = awh::fs::components(realPath);
+	// Очищаем предыдущий путь
+	awh::fs::unlink(realPath);
+	// Создаём новый путь с ожидаемым именем
 	std::string filename = params.expectedName;
-	// Добавляем расширение если нужно
+	// Если расширение ожидается
 	if(!params.expectedExt.empty())
 		// Добавляем точку и расширение
 		filename += "." + params.expectedExt;
-	
-	// В текущей папке
+	// Если проверяется файл
 	if(params.isFile)
-		// Создаем файл
-		this->_fs->write(filename, "test");
-	// Иначе каталог
-	else this->_fs->mkdir(filename);
-
-	// Вызываем components
-	auto result = this->_fs->components(filename);
-	// Сравниваем результаты
+		// Создаём файл
+		awh::fs::write(filename, "test");
+	// Иначе создаём каталог
+	else awh::fs::mkdir(filename);
+	// Получаем компоненты пути с ожидаемым именем
+	auto result = awh::fs::components(filename);
+	// Имя обязано совпасть с ожидаемым
 	ASSERT_EQ(result.first, params.expectedName);
+	// Расширение обязано совпасть с ожидаемым
 	ASSERT_EQ(result.second, params.expectedExt);
-	
-	// Удаляем временный файл/каталог
-	this->_fs->unlink(filename);
+	// Удаляем временный файл или каталог
+	awh::fs::unlink(filename);
 }
 
 /**

@@ -991,6 +991,9 @@ def check_file(path, lines, members, report, fixes=None):
         # this-> для известных членов
         for mm in re.finditer(r"(?<![\w_])(_\w+)(?![\w_])", code):
             name = mm.group(1)
+            # Инициализатор конструктора пишется без this-> по синтаксису языка
+            if re.match(r"^\s*_\w+\s*[({]", code):
+                continue
             if name not in members or name in ("__awh_nodes__",):
                 continue
             before = code[:mm.start()]

@@ -950,7 +950,7 @@ TEST(Args, StringExtractionRendersTypedValues) {
 /**
  * @brief Проверка того, что пустой файл настроек не зовётся отказом файловой системы
  *
- * @details Пустота прочитанного двузначна: ход чтения `fs_t::read` при отказе тоже
+ * @details Пустота прочитанного двузначна: ход чтения `awh::fs::read` при отказе тоже
  *          оставляет запись пустой. Различаются они РАЗМЕРОМ файла, и различать их
  *          обязательно - иначе исправно читаемый пустой файл шлёт потребителя
  *          проверять путь и права
@@ -1151,21 +1151,20 @@ TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness) {
  *          macOS: снос снят - проверка ЗЕЛЕНА. Зубы у неё лишь там, где запись не
  *          усекает, то есть у MS Windows, и прогонять её надо на стенде
  *
- * @note Слепота эта — свойство расхождения у `fs_t::write`, а не изъян проверки:
+ * @note Слепота эта — свойство расхождения у `awh::fs::write`, а не изъян проверки:
  *       сойдись обе ветви на одном поведении, зубы появились бы всюду
  *
  */
 TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers) {
 	// Создаём объект работы с логами
 	// Создаём объект работы с файловой системой
-	fs_t fs;
 	// Получаем путь к файлу настроек
 	const string filename = ::temporary("args-atomic.json");
 	// Получаем путь к временному файлу сохранения
 	const string leftover = (filename + ".awh-tmp");
 	// Выполняем снос файлов, от прежних прогонов оставшихся
-	static_cast <void> (fs.unlink(filename));
-	static_cast <void> (fs.unlink(leftover));
+	static_cast <void> (awh::fs::unlink(filename));
+	static_cast <void> (awh::fs::unlink(leftover));
 	/**
 	 * Оставляем на месте временного файла остаток ЗАВЕДОМО ДЛИННЕЕ будущей записи
 	 *
@@ -1176,10 +1175,10 @@ TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers) {
 		// Собираемый остаток прежнего сохранения
 		const string junk(4096, 'X');
 		// Выполняем запись остатка во временный файл
-		fs.write(leftover, junk.data(), junk.size());
+		awh::fs::write(leftover, junk.data(), junk.size());
 	}
 	// Выполняем проверку того, что остаток на месте
-	ASSERT_EQ(fs.type(leftover), fs_t::type_t::FILE) << "остаток прежнего сохранения не заведён";
+	ASSERT_EQ(awh::fs::type(leftover), awh::fs::type_t::FILE) << "остаток прежнего сохранения не заведён";
 	// Создаём объект разбора доводов запуска
 	args_t args;
 	// Выполняем укладку значения настроек
@@ -1187,24 +1186,24 @@ TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers) {
 	// Выполняем сохранение настроек записью JSON
 	ASSERT_TRUE(args.save(filename, codec::bridge_t::format_t::JSON)) << "сохранение настроек поверх остатка отвечено отказом";
 	// Выполняем проверку того, что файл настроек заведён
-	ASSERT_EQ(fs.type(filename), fs_t::type_t::FILE) << "файл настроек не заведён вовсе";
+	ASSERT_EQ(awh::fs::type(filename), awh::fs::type_t::FILE) << "файл настроек не заведён вовсе";
 	/**
 	 * Выполняем проверку того, что временного файла за собою не осталось
 	 *
 	 * @note Подмена целевого файла временным временный ЗАБИРАЕТ, а не копирует:
 	 *       остаться он может лишь при отказе, а отказа здесь не было
 	 */
-	ASSERT_NE(fs.type(leftover), fs_t::type_t::FILE) << "временный файл сохранения остался на месте";
+	ASSERT_NE(awh::fs::type(leftover), awh::fs::type_t::FILE) << "временный файл сохранения остался на месте";
 	// Собираемая запись сохранённых настроек
 	string record = "";
 	// Выполняем чтение сохранённого файла настроек
-	fs.read(filename, record);
+	awh::fs::read(filename, record);
 	// Выполняем проверку того, что хвоста остатка в записи нет
 	ASSERT_EQ(record.find('X'), string::npos) << "хвост прежнего сохранения уцелел в записи настроек";
 	// Выполняем проверку того, что запись несёт уложенное значение
 	ASSERT_NE(record.find("localhost"), string::npos) << "уложенное значение в записи настроек отсутствует";
 	// Выполняем снос файла настроек за собою
-	static_cast <void> (fs.unlink(filename));
+	static_cast <void> (awh::fs::unlink(filename));
 }
 
 /**

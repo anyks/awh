@@ -50,12 +50,7 @@ using namespace awh::codec;
  *
  */
 namespace {
-	/**
-	 * @brief Объект для работы с файловой системой
-	 *
-	 */
-	static thread_local awh::fs_t __awh_fs__;
-};
+	};
 
 /**
  * @brief Метод объявления отказа работы с носителем
@@ -88,7 +83,7 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 	 *       файлом ни один из них не зовётся
 	 *
 	 */
-	if(filename.empty() || (::__awh_fs__.type(filename) != fs_t::type_t::FILE)){
+	if(filename.empty() || (awh::fs::type(filename) != awh::fs::type_t::FILE)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -118,11 +113,11 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 	 *       завела, и один объект достался бы тому, кто обратился первым
 	 *
 	 */
-	this->_reader = ::__awh_fs__.handleFile();
+	this->_reader = awh::fs::handleFile();
 	// Выполняем заведение объекта файла контейнера на запись
-	this->_writer = ::__awh_fs__.handleFile();
+	this->_writer = awh::fs::handleFile();
 	// Выполняем получение полной длины контейнера
-	this->_length = static_cast <uint64_t> (::__awh_fs__.size(filename));
+	this->_length = static_cast <uint64_t> (awh::fs::size(filename));
 	// Выполняем запоминание названия файла контейнера
 	this->_filename = filename;
 	// Отмечаем хранилище привязанным к файлу контейнера
@@ -147,7 +142,7 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	 *       отказ до первой записи: заведение описателя у файловой системы ленивое
 	 *
 	 */
-	if(filename.empty() || !::__awh_fs__.truncate(filename)){
+	if(filename.empty() || !awh::fs::truncate(filename)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -183,9 +178,9 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	 *       завела, и один объект достался бы тому, кто обратился первым
 	 *
 	 */
-	this->_reader = ::__awh_fs__.handleFile();
+	this->_reader = awh::fs::handleFile();
 	// Выполняем заведение объекта файла контейнера на запись
-	this->_writer = ::__awh_fs__.handleFile();
+	this->_writer = awh::fs::handleFile();
 	// Выводим признак успешно заведённого файла
 	return true;
 }
@@ -245,7 +240,7 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	 *       под эти три ветви здесь нет и быть не должно
 	 *
 	 */
-	if(!::__awh_fs__.flush(this->_filename, (this->_sync == sync_t::FULL), this->_writer)){
+	if(!awh::fs::flush(this->_filename, (this->_sync == sync_t::FULL), this->_writer)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -354,7 +349,7 @@ awh::codec::abc::editor_t::source_t awh::codec::abc::Storage::source() noexcept 
 		 *       потребитель принял бы обрывок за запись
 		 *
 		 */
-		::__awh_fs__.read(this->_filename, size, [&result](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+		awh::fs::read(this->_filename, size, [&result](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
 			// Выполняем заведение места под прочитанные октеты
 			result.assign(static_cast <const uint8_t *> (buffer), (static_cast <const uint8_t *> (buffer) + size));
 			// Велим остановить чтение на первой же доле
@@ -422,7 +417,7 @@ awh::codec::abc::editor_t::sink_t awh::codec::abc::Storage::sink() noexcept {
 		 *       Частичная запись зовётся отказом самой файловой системой
 		 *
 		 */
-		if(!::__awh_fs__.write(this->_filename, buffer, size, fs_t::seek_t::BEGIN, offset, this->_writer))
+		if(!awh::fs::write(this->_filename, buffer, size, awh::fs::seek_t::BEGIN, offset, this->_writer))
 			// Выводим признак неудачной записи
 			return false;
 		/**
@@ -650,7 +645,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	/**
 	 * Если записать октеты собранного контейнера не удалось
 	 */
-	if((size > 0) && !::__awh_fs__.write(temporary, buffer, size, fs_t::seek_t::BEGIN, 0, this->_writer)){
+	if((size > 0) && !awh::fs::write(temporary, buffer, size, awh::fs::seek_t::BEGIN, 0, this->_writer)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -669,7 +664,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 		// Выполняем закрытие временного файла контейнера
 		this->close();
 		// Выполняем снос временного файла контейнера
-		(void) ::__awh_fs__.unlink(temporary);
+		(void) awh::fs::unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -682,7 +677,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 		// Выполняем закрытие временного файла контейнера
 		this->close();
 		// Выполняем снос временного файла контейнера
-		(void) ::__awh_fs__.unlink(temporary);
+		(void) awh::fs::unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -697,7 +692,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 *          MSYS2 MinGW64 порознь для цели закрытой и открытой: отказ в обоих случаях,
 	 *          то есть дело не в чужом описателе, а в самой замене. Оттого там зовётся
 	 *          `MoveFileEx` с доводом `MOVEFILE_REPLACE_EXISTING`, какой замену исполняет
-	 *          и неделимость сохраняет. Разводит эти способы `fs_t::replaceAddress` -
+	 *          и неделимость сохраняет. Разводит эти способы `awh::fs::replaceAddress` -
 	 *          средство самого AWH, а не кодеков: беда эта не кодековая вовсе, и посредника
 	 *          здесь заводить нельзя. Прежде разводил их общий `awh::codec::replace`,
 	 *          и работа перенесена в `sys/fs` решением по устройству 09.09.2026
@@ -709,7 +704,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 * Если перенести готовое на место назначенного файла не удалось
 	 *
 	 */
-	if(!::__awh_fs__.replaceAddress(temporary, filename)){
+	if(!awh::fs::replaceAddress(temporary, filename)){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -726,7 +721,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 		// Объявляем отказ
 		this->fail(error_t::UNWRITABLE_SINK);
 		// Выполняем снос временного файла контейнера
-		(void) ::__awh_fs__.unlink(temporary);
+		(void) awh::fs::unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -844,7 +839,7 @@ bool awh::codec::abc::Storage::fetch(const string & filename, vector <uint8_t> &
 	 *       на том остановиться: перемотки потока здесь нет вовсе
 	 *
 	 */
-	::__awh_fs__.read(this->_filename, result.size(), [&result](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+	awh::fs::read(this->_filename, result.size(), [&result](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
 		// Выполняем перенос прочитанной доли в выдачу
 		result.assign(static_cast <const uint8_t *> (buffer), (static_cast <const uint8_t *> (buffer) + size));
 		// Велим остановить чтение на первой же доле
@@ -964,7 +959,7 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 	 *       последним, а сличение полного счёта с длиною рассудит и этот случай
 	 *
 	 */
-	::__awh_fs__.read(this->_filename, block, [&loader, &delivered, &refused, this](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+	awh::fs::read(this->_filename, block, [&loader, &delivered, &refused, this](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
 		/**
 		 * Если подача очередного куска отвечена отказом
 		 */

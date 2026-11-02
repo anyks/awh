@@ -1763,7 +1763,7 @@ TEST(Regex, StorageCipher) {
  *
  * @details Модуль файловой системы не касается вовсе: хранилище отдаёт запись
  *          строкою байтов, а кладёт её на диск вызывающая сторона объектом
- *          «awh::fs_t». Проверка закрепляет именно этот круг - сохранение
+ *          «awh::fs». Проверка закрепляет именно этот круг - сохранение
  *          в файл, чтение обратно и восстановление, - ибо им пользуется всякий
  *          потребитель, а прежде он был показан лишь памятью.
  *
@@ -1780,7 +1780,6 @@ TEST(Regex, StorageFilesystem) {
 	// Создаём объект хранилища собранных выражений
 	const regex::storage_t storage;
 	// Создаём объект работы с файловой системой
-	const fs_t fs;
 	// Путь к файлу записи собранных выражений
 	const string filename = "storage-filesystem.rex";
 	// Набор текстов проверяемых выражений
@@ -1809,7 +1808,7 @@ TEST(Regex, StorageFilesystem) {
 	// Выполняем проверку непустоты записи хранилища
 	ASSERT_FALSE(record.empty());
 	// Выполняем запись набора собранных выражений в файл
-	fs.write(filename, record.data(), record.size());
+	awh::fs::write(filename, record.data(), record.size());
 	/**
 	 * Выполняем проверку размера записанного файла
 	 *
@@ -1818,11 +1817,11 @@ TEST(Regex, StorageFilesystem) {
 	 *          здесь, а не отказом восстановления с невнятным кодом.
 	 *
 	 */
-	ASSERT_EQ(static_cast <size_t> (fs.size(filename)), record.size());
+	ASSERT_EQ(static_cast <size_t> (awh::fs::size(filename)), record.size());
 	// Прочитанная из файла запись собранных выражений
 	string readed;
 	// Выполняем чтение записи собранных выражений из файла
-	fs.read(filename, readed);
+	awh::fs::read(filename, readed);
 	// Выполняем проверку совпадения прочитанной записи с записанной
 	ASSERT_EQ(readed, record) << "запись прочитана иною, нежели записана";
 	// Набор восстановленных выражений
@@ -1846,7 +1845,7 @@ TEST(Regex, StorageFilesystem) {
 	// Выполняем проверку отказа сопоставления восстановленным выражением
 	EXPECT_FALSE(regexp.test("forman anyks com", restored.at(0)));
 	// Выполняем удаление файла записи собранных выражений
-	EXPECT_TRUE(fs.unlink(filename));
+	EXPECT_TRUE(awh::fs::unlink(filename));
 }
 
 /**

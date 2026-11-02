@@ -28,18 +28,10 @@
  * @brief Метод настройки тестовой фикстуры
  *
  */
-void FSFixture::SetUp(){
-	// Создаём объект модуля работы с файловой системой
-	this->_fs = std::make_unique <awh::fs_t> ();
-}
+void FSFixture::SetUp() {}
 
 /**
  * @brief Метод очистки тестовой фикстуры
  *
  */
-void FSFixture::TearDown() {
-	// Сбрасываем объект системы
-	this->_fs.reset();
-	// Сбрасываем объект логгера
-	// Сбрасываем объект фреймворка
-}
+void FSFixture::TearDown() {}

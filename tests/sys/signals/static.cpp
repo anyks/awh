@@ -808,20 +808,18 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 	 *
 	 */
 	TEST_F(SignalsFixture, BusMappedReadTest){
-		// Объект работы с файловой системой
-		awh::fs_t fs;
 		// Рабочий файл из двух блоков
 		const std::string file = "test_signals_mapped.bin";
 		// Данные файла
 		const std::string data(8 * 1024 * 1024, 'x');
 		// Записываем файл
-		fs.write(file, data.c_str(), data.size());
+		awh::fs::write(file, data.c_str(), data.size());
 		// Приёмник данных блока
 		char sink[1024] = {0};
 		// Количество прочитанных блоков
 		int32_t blocks = 0;
 		// Читаем файл блоками по четыре мегабайта
-		fs.read(file, 4 * 1024 * 1024, [&sink, &blocks]([[maybe_unused]] const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+		awh::fs::read(file, 4 * 1024 * 1024, [&sink, &blocks]([[maybe_unused]] const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
 			// Копируем данные блока
 			::memcpy(sink, buffer, std::min(size, sizeof(sink)));
 			// Увеличиваем количество прочитанных блоков
@@ -834,7 +832,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 		// Проверяем отказ чтения после первого блока
 		ASSERT_EQ(1, blocks);
 		// Удаляем рабочий файл
-		fs.unlink(file);
+		awh::fs::unlink(file);
 	}
 #endif
 
@@ -846,8 +844,6 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
  *
  */
 TEST_F(SignalsFixture, InterruptedWriteTest){
-	// Объект работы с файловой системой
-	awh::fs_t fs;
 	// Рабочий файл
 	const std::string file = "test_signals_eintr.bin";
 	// Данные записи
@@ -865,7 +861,7 @@ TEST_F(SignalsFixture, InterruptedWriteTest){
 	// Запускаем таймер
 	::setitimer(ITIMER_REAL, &timer, nullptr);
 	// Записываем данные во время доставки сигналов
-	const bool written = fs.write(file, data.c_str(), data.size());
+	const bool written = awh::fs::write(file, data.c_str(), data.size());
 	// Останавливаем таймер прежде обратного чтения: чтение EINTR не проверяется
 	struct itimerval off = {{0, 0}, {0, 0}};
 	// Останавливаем таймер
@@ -875,9 +871,9 @@ TEST_F(SignalsFixture, InterruptedWriteTest){
 	// Проверяем запись и обратное чтение
 	ASSERT_TRUE(written);
 	// Проверяем совпадение данных при обратном чтении
-	ASSERT_EQ(data, fs.read <std::string> (file));
+	ASSERT_EQ(data, awh::fs::read <std::string> (file));
 	// Удаляем рабочий файл
-	fs.unlink(file);
+	awh::fs::unlink(file);
 }
 
 /**
@@ -888,14 +884,12 @@ TEST_F(SignalsFixture, InterruptedWriteTest){
  *
  */
 TEST_F(SignalsFixture, InterruptedReadTest){
-	// Объект работы с файловой системой
-	awh::fs_t fs;
 	// Рабочий файл
 	const std::string file = "test_signals_eintr_read.bin";
 	// Данные записи
 	const std::string data(64 * 1024 * 1024, 'y');
 	// Записываем данные прежде запуска таймера
-	ASSERT_TRUE(fs.write(file, data.c_str(), data.size()));
+	ASSERT_TRUE(awh::fs::write(file, data.c_str(), data.size()));
 	// Обработчик сигнала таймера: без SA_RESTART, чтобы прерывать системные вызовы
 	struct sigaction alarm;
 	// Заполняем структуру обработчика нулями
@@ -909,11 +903,11 @@ TEST_F(SignalsFixture, InterruptedReadTest){
 	// Запускаем таймер
 	::setitimer(ITIMER_REAL, &timer, nullptr);
 	// Читаем данные целиком во время доставки сигналов
-	const std::string whole = fs.read <std::string> (file);
+	const std::string whole = awh::fs::read <std::string> (file);
 	// Объём данных, дошедший до колбэка поблочного чтения
 	size_t total = 0;
 	// Читаем данные по частям во время доставки сигналов
-	fs.readfile(file, 1024 * 1024, [&total]([[maybe_unused]] const void * buffer, const size_t size) noexcept -> void {
+	awh::fs::readfile(file, 1024 * 1024, [&total]([[maybe_unused]] const void * buffer, const size_t size) noexcept -> void {
 		// Увеличиваем объём прочитанного
 		total += size;
 	});
@@ -928,5 +922,5 @@ TEST_F(SignalsFixture, InterruptedReadTest){
 	// Проверяем объём, дошедший до колбэка поблочного чтения
 	ASSERT_EQ(data.size(), total);
 	// Удаляем рабочий файл
-	fs.unlink(file);
+	awh::fs::unlink(file);
 }

@@ -11881,15 +11881,14 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	 *       нежели откроет движок. Проверка тогда падала бы не по дефекту движка, а
 	 *       по дефекту самой проверки
 	 */
-	awh::fs_t fs;
 	// Удаляем файл, оставшийся от предыдущего запуска
-	if(fs.type(filename) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(filename) != awh::fs::type_t::NONE)
 		// Выполняем удаление отслеживаемого файла
-		fs.unlink(filename);
+		awh::fs::unlink(filename);
 	// Выполняем заведение отслеживаемого файла с содержимым
-	fs.write(filename, content.c_str());
+	awh::fs::write(filename, content.c_str());
 	// Файл обязан завестись
-	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(filename), awh::fs::type_t::FILE);
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
@@ -11952,7 +11951,7 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 	// Удаляем отслеживаемый файл
-	fs.unlink(filename);
+	awh::fs::unlink(filename);
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
 	// Проверяем что содержимое файла прочитано целиком и без искажений
@@ -11982,8 +11981,6 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	bool dirChanged = false;
 	// Признак замеченного удаления наблюдаемого файла
 	bool fileDeleted = false;
-	// Объект работы с файловой системой
-	awh::fs_t fs;
 	// Путь к наблюдаемому каталогу
 	const std::string dirname = "./watch_states_dir";
 	// Путь к наблюдаемому файлу
@@ -11991,15 +11988,15 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	// Путь к записи, заводимой в наблюдаемом каталоге
 	const std::string child = (dirname + "/child.txt");
 	// Удаляем каталог, оставшийся от предыдущего запуска
-	if(fs.type(dirname) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(dirname) != awh::fs::type_t::NONE)
 		// Выполняем удаление наблюдаемого каталога
-		fs.unlink(dirname);
+		awh::fs::unlink(dirname);
 	// Заводим наблюдаемый каталог
-	ASSERT_TRUE(fs.mkdir(dirname));
+	ASSERT_TRUE(awh::fs::mkdir(dirname));
 	// Заводим наблюдаемый файл
-	fs.write(filename, "AAA");
+	awh::fs::write(filename, "AAA");
 	// Файл обязан завестись
-	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(filename), awh::fs::type_t::FILE);
 	// Добавляем новое событие отслеживания каталога
 	const awh::event::id_t did = this->_io->event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
 	// Добавляем новое событие отслеживания файла
@@ -12034,13 +12031,13 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 		}
 	});
 	// Устанавливаем функцию обратного вызова на внесение изменений в наблюдаемое
-	this->_io->on(starter, [&fs, &child, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+	this->_io->on(starter, [&child, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
 		if(status == awh::event::status_t::SUCCESS){
 			// Заводим запись в наблюдаемом каталоге
-			fs.write(child, "BBB");
+			awh::fs::write(child, "BBB");
 			// Удаляем наблюдаемый файл
-			fs.unlink(filename);
+			awh::fs::unlink(filename);
 		}
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого каталога
@@ -12092,11 +12089,11 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 	// Удаляем наблюдаемый каталог
-	fs.unlink(dirname);
+	awh::fs::unlink(dirname);
 	// Удаляем наблюдаемый файл, если он уцелел
-	if(fs.type(filename) != awh::fs_t::type_t::NONE)
+	if(awh::fs::type(filename) != awh::fs::type_t::NONE)
 		// Выполняем удаление наблюдаемого файла
-		fs.unlink(filename);
+		awh::fs::unlink(filename);
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
 	// Проверяем что замечено появление записи в наблюдаемом каталоге
@@ -12134,8 +12131,6 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	bool changed = false;
 	// Признак уничтожения наблюдения за файлом
 	bool dropped = false;
-	// Объект работы с файловой системой
-	awh::fs_t fs;
 	// Путь к наблюдаемому файлу
 	const std::string filename = "./foreign_watched.txt";
 	// Путь к посторонней записи до переноса
@@ -12145,17 +12140,17 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	// Удаляем остатки от предыдущего запуска
 	for(const auto & path : {filename, before, after}){
 		// Если запись файловой системы уцелела от предыдущего запуска
-		if(fs.type(path) != awh::fs_t::type_t::NONE)
+		if(awh::fs::type(path) != awh::fs::type_t::NONE)
 			// Выполняем удаление записи файловой системы
-			fs.unlink(path);
+			awh::fs::unlink(path);
 	}
 	// Заводим наблюдаемый файл
-	fs.write(filename, "AAA");
+	awh::fs::write(filename, "AAA");
 	// Заводим постороннюю запись, подлежащую переносу
-	fs.write(before, "BBB");
+	awh::fs::write(before, "BBB");
 	// Обе записи обязаны завестись
-	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
-	ASSERT_EQ(fs.type(before), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(filename), awh::fs::type_t::FILE);
+	ASSERT_EQ(awh::fs::type(before), awh::fs::type_t::FILE);
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
@@ -12209,11 +12204,11 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	 *       дозапись уходила мимо файла молча, - и закреплено это отдельной проверкой
 	 *       `SharedOpenFileTest` в наборе `sys`
 	 */
-	this->_io->on(writer, [&fs, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+	this->_io->on(writer, [&filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
 		if(status == awh::event::status_t::SUCCESS)
 			// Выполняем правку наблюдаемого файла
-			fs.append(filename, "CCC");
+			awh::fs::append(filename, "CCC");
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
 	this->_io->on(fid, [&changed, &dropped, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {
@@ -12273,9 +12268,9 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	// Удаляем остатки проверки
 	for(const auto & path : {filename, before, after}){
 		// Если запись файловой системы уцелела
-		if(fs.type(path) != awh::fs_t::type_t::NONE)
+		if(awh::fs::type(path) != awh::fs::type_t::NONE)
 			// Выполняем удаление записи файловой системы
-			fs.unlink(path);
+			awh::fs::unlink(path);
 	}
 	// Проверяем что чужой перенос наблюдения не оборвал
 	ASSERT_FALSE(dropped);

@@ -164,7 +164,7 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/s
 #
 # Выполняем сборку слоя файловой системы и опознания системы
 #
-# @details Подмена целевого файла временным живёт ходом «fs_t::replaceAddress» с той
+# @details Подмена целевого файла временным живёт ходом «fs::replaceAddress» с той
 #          поры, как модуль «codec/replace» удалён. Кодеки зовут её сохранением
 #          документа, и без этих частей связывание валится на «awh::Filesystem::Filesystem»
 #
