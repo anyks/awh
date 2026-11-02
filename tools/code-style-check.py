@@ -966,6 +966,9 @@ def check_file(path, lines, members, report, fixes=None):
         # snake_case в объявлениях переменных и параметров (§4.3)
         for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]\w*)\s*(?==[^=]|;|,|\)|\()", code):
             name = vm.group(1)
+            # Имя typedef-алиаса живёт по §4.1 (*_t, snake_case), а не по §4.3
+            if re.match(r"\s*typedef\b", code):
+                continue
             if pragma_line:
                 continue
             kw = {"if", "for", "while", "switch", "return", "case", "sizeof", "noexcept", "const", "static", "auto", "int", "void", "bool", "value_type", "size_type", "difference_type", "pointer", "const_pointer", "reference", "const_reference", "rebind", "other"} | STD_CALLS

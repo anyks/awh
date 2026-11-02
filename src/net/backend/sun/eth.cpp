@@ -105,10 +105,8 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
-				// Выполняем инициализацию объекта работы с операционной системы
-				os_t os;
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
-				if(!os.isAdmin()){
+				if(!os::isAdmin()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -128,27 +126,27 @@ namespace options {
 					 * Поднимаем общий потолок буферов сокета: он ограничивает всё
 					 * остальное, и задавать его следует первым
 					 */
-					os.exec("ndd -set /dev/tcp tcp_max_buf 16777216");
+					os::exec("ndd -set /dev/tcp tcp_max_buf 16777216");
 					/**
 					 * Эмпирическое правило: наибольшее окно перегрузки берут вдвое
 					 * меньше общего потолка буферов
 					 */
-					os.exec("ndd -set /dev/tcp tcp_cwnd_max 8388608");
+					os::exec("ndd -set /dev/tcp tcp_cwnd_max 8388608");
 					// Увеличиваем размер буфера отправки, устанавливаемый по умолчанию
-					os.exec("ndd -set /dev/tcp tcp_xmit_hiwat 1042560");
+					os::exec("ndd -set /dev/tcp tcp_xmit_hiwat 1042560");
 					// Увеличиваем размер буфера приёма, устанавливаемый по умолчанию
-					os.exec("ndd -set /dev/tcp tcp_recv_hiwat 1042560");
+					os::exec("ndd -set /dev/tcp tcp_recv_hiwat 1042560");
 					/**
 					 * Устанавливаем максимальное количество подключений: у Solaris и
 					 * illumos очередь разделена надвое - установленные подключения
 					 * ждут в одной, полуоткрытые в другой
 					 */
-					os.exec("ndd -set /dev/tcp tcp_conn_req_max_q 49152");
-					os.exec("ndd -set /dev/tcp tcp_conn_req_max_q0 49152");
+					os::exec("ndd -set /dev/tcp tcp_conn_req_max_q 49152");
+					os::exec("ndd -set /dev/tcp tcp_conn_req_max_q0 49152");
 					// Разрешаем масштабирование окна независимо от запроса другой стороны
-					os.exec("ndd -set /dev/tcp tcp_wscale_always 1");
+					os::exec("ndd -set /dev/tcp tcp_wscale_always 1");
 					// Разрешаем выборочные подтверждения независимо от запроса другой стороны
-					os.exec("ndd -set /dev/tcp tcp_sack_permitted 2");
+					os::exec("ndd -set /dev/tcp tcp_sack_permitted 2");
 				}
 			#endif
 		/**

@@ -53,6 +53,7 @@
 	 * @note Заголовка sys/user.h у NetBSD нет вовсе: сведения о процессе описаны там
 	 *       в заголовке настроек ядра, откуда и берутся. У FreeBSD и OpenBSD он есть,
 	 *       и подключается по-прежнему
+	 *
 	 */
 	#define _WANT_KINFO_PROC
 	#include <sys/param.h>
@@ -69,6 +70,7 @@
 	 * @note Разрешения названий настроек ядра у OpenBSD нет, и выполняется оно нами по
 	 *       таблицам названий, которые система отдаёт заголовками. Таблицы сетевой
 	 *       ветви лежат в заголовках сетевых, оттого они здесь и подключаются
+	 *
 	 */
 	#if defined(__OpenBSD__)
 		#include <sys/queue.h>
@@ -219,7 +221,7 @@ using namespace std;
 			result.assign(buffer.begin(), buffer.end());
 	}
 	/**
-	 * @brief Шаблон метода чтения метаданных из бинарного контейнера
+	 * @brief Шаблон функции чтения метаданных из бинарного контейнера
 	 *
 	 * @tparam T Тип данных выводимого результата
 	 *
@@ -242,7 +244,7 @@ using namespace std;
 		}
 	}
 	/**
-	 * @brief Шаблон метода чтения метаданных из бинарного контейнера
+	 * @brief Шаблон функции чтения метаданных из бинарного контейнера
 	 *
 	 * @tparam T Тип данных выводимого результата
 	 *
@@ -387,13 +389,6 @@ using namespace std;
 		// Возвращаем результат извлечения данных
 		return ((result == 0) && (* data != nullptr));
 	}
-	/**
-	 * @brief Метод извлечения настроек ядра операционной системы
-	 *
-	 * @param name   название записи для получения настроек
-	 * @param buffer бинарный буфер с извлечёнными значениями
-	 *
-	 */
 	/**
 	 * Если операционной системой является OpenBSD
 	 */
@@ -646,7 +641,13 @@ using namespace std;
 			#pragma GCC diagnostic pop
 		#endif
 	#endif
-
+	/**
+	 * @brief Функция извлечения настроек ядра операционной системы
+	 *
+	 * @param name   название записи для получения настроек
+	 * @param buffer бинарный буфер с извлечёнными значениями
+	 *
+	 */
 	static void sysctl(string_view name, vector <char> & buffer) noexcept {
 		// Если название параметра и тип извлекаемого значения переданы
 		if(!name.empty()){
@@ -813,7 +814,7 @@ using namespace std;
 		}
 	}
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name   название записи для установки настроек
 	 * @param buffer буфер бинарных данных записи для установки настроек
@@ -943,12 +944,12 @@ using namespace std;
 	}
 #endif
 /**
- * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
+ * @brief Функция проверки запуска приложения под суперпользователем
  *
  * @return результат проверки
  *
  */
-bool awh::Operating_System::isAdmin() const noexcept {
+bool awh::os::isAdmin() noexcept {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -980,12 +981,12 @@ bool awh::Operating_System::isAdmin() const noexcept {
 	#endif
 }
 /**
- * @brief Метод определения операционной системы
+ * @brief Функция определения операционной системы
  *
  * @return семейство операционных систем
  *
  */
-awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
+awh::os::family_t awh::os::family() noexcept {
 	/**
 	 * Операционной системой является Windows 32bit
 	 */
@@ -1044,6 +1045,9 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 		#if defined(__illumos__)
 			// Возвращаем флаг операционной системы
 			return family_t::ILLUMOS;
+		/**
+		 * Операционной системой является Solaris
+		 */
 		#else
 			// Возвращаем флаг операционной системы
 			return family_t::SOLARIS;
@@ -1063,12 +1067,12 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	#endif
 }
 /**
- * @brief Метод определение архитектуры процессора
+ * @brief Функция определение архитектуры процессора
  *
  * @return архитектура процессора
  *
  */
-awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcept {
+awh::os::cpu_t awh::os::architecture() noexcept {
 	/**
 	 * Если процессор принадлежит к x86_64
 	 */
@@ -1120,13 +1124,13 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
 	#endif
 }
 /**
- * @brief Метод определения текущего расхода памяти
+ * @brief Функция определения текущего расхода памяти
  *
  * @param mode режим потребления памяти
  * @return     размер расхода памяти
  *
  */
-size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
+size_t awh::os::rss(const rss_t mode) noexcept {
 	// Переменная результата
 	size_t result = 0;
 	/**
@@ -1241,6 +1245,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							int32_t mib[] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
 							// Количество частей запроса сведений о процессе
 							static constexpr u_int MIB_SIZE = 6;
+						/**
+						 * Для операционной системы OpenBSD
+						 */
 						#elif defined(__OpenBSD__)
 							// Создаём объект информации о памяти
 							struct kinfo_proc info;
@@ -1250,6 +1257,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
 							// Количество частей запроса сведений о процессе
 							static constexpr u_int MIB_SIZE = 6;
+						/**
+						 * Для остальных систем семейства BSD
+						 */
 						#else
 							// Создаём объект информации о памяти
 							struct kinfo_proc info;
@@ -1278,10 +1288,17 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							// Возвращаем пустой результат
 							return result;
 						}
-						// RSS в страницах; переводим в байты
+						/**
+						 * RSS в страницах; переводим в байты
+						 */
 						#if defined(__NetBSD__) || defined(__OpenBSD__)
+							// Возвращаем потребление памяти в байтах
 							return (static_cast <size_t> (info.p_vm_rssize) * ::getpagesize());
+						/**
+						 * Для остальных систем
+						 */
 						#else
+							// Возвращаем потребление памяти в байтах
 							return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
 						#endif
 					/**
@@ -1528,10 +1545,10 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 	return result;
 }
 /**
- * @brief Метод вывода статистики расхода памяти
+ * @brief Функция вывода статистики расхода памяти
  *
  */
-void awh::Operating_System::printStatsMemory() const noexcept {
+void awh::os::printStatsMemory() noexcept {
 	// Если выделение памяти нами не захвачено
 	if(!alloc::allocator_t::captured()){
 		/**
@@ -1568,10 +1585,10 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 	cout << endl << "---------------- END ----------------" << endl << endl << flush;
 }
 /**
- * @brief Метод очистки выделенной памяти
+ * @brief Функция очистки выделенной памяти
  *
  */
-void awh::Operating_System::releaseFreeMemory() const noexcept {
+void awh::os::releaseFreeMemory() noexcept {
 	/**
 	 * Отдаём память своим распределителем, а не средствами системных
 	 *
@@ -1581,17 +1598,16 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 	 * иные не отдавали вовсе. Свой распределитель отдаёт её одинаково всюду, и
 	 * знать, чем собран потребитель, для того не надо
 	 */
-	// Отдаём системе свободную память
 	alloc::allocator_t::purge();
 }
 /**
- * @brief Метод резервирования нужного размера памяти для всего приложения
+ * @brief Функция резервирования нужного размера памяти для всего приложения
  *
  * @param size размер резервированной памяти
  * @return     результат выполнения операции
  *
  */
-bool awh::Operating_System::warmup(const size_t size) const noexcept {
+bool awh::os::warmup(const size_t size) noexcept {
 	// Если размер резервированной памяти передан
 	if(size > 0){
 		// Выделяем память
@@ -1624,13 +1640,13 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 	return false;
 }
 /**
- * @brief Метод блокировки возвращения оперативной памяти системе
+ * @brief Функция блокировки возвращения оперативной памяти системе
  *
  * @param mode флаг активации/деактивации
  * @return     результат выполнения операции
  *
  */
-bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept {
+bool awh::os::disableReturnMemory(const bool mode) noexcept {
 	// Если выделение памяти нами не захвачено
 	if(!alloc::allocator_t::captured()){
 		/**
@@ -1670,32 +1686,32 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * @brief Метод получения идентификатора текущего пользователя
+	 * @brief Функция получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
 	 *
 	 */
-	uid_t awh::Operating_System::user() const noexcept {
+	uid_t awh::os::user() noexcept {
 		// Возвращаем идентификатор текущего пользователя
 		return ::geteuid();
 	}
 	/**
-	 * @brief Метод получения группы текущего пользователя
+	 * @brief Функция получения группы текущего пользователя
 	 *
 	 * @return идентификатор группы текущего пользователя
 	 *
 	 */
-	gid_t awh::Operating_System::group() const noexcept {
+	gid_t awh::os::group() noexcept {
 		// Возвращаем идентификатор группы пользователя
 		return ::getegid();
 	}
 	/**
-	 * @brief Метод получения списка групп текущего пользователя
+	 * @brief Функция получения списка групп текущего пользователя
 	 *
 	 * @return список групп текущего пользователя
 	 *
 	 */
-	vector <gid_t> awh::Operating_System::groups() const noexcept {
+	vector <gid_t> awh::os::groups() noexcept {
 		// Переменная результата
 		vector <gid_t> result;
 		// Буфер данных для извлечения данных
@@ -1754,13 +1770,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Метод получения имени пользователя по его идентификатору
+	 * @brief Функция получения имени пользователя по его идентификатору
 	 *
 	 * @param uid идентификатор пользователя
 	 * @return    имя запрашиваемого пользователя
 	 *
 	 */
-	string awh::Operating_System::user(const uid_t uid) const noexcept {
+	string awh::os::user(const uid_t uid) noexcept {
 		// Буфер данных для извлечения данных
 		vector <char> buffer;
 		// Объект параметров пользователя
@@ -1791,13 +1807,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return "";
 	}
 	/**
-	 * @brief Метод получения группы пользователя по её идентификатору
+	 * @brief Функция получения группы пользователя по её идентификатору
 	 *
 	 * @param gid идентификатор группы пользователя
 	 * @return    название группы пользователя
 	 *
 	 */
-	string awh::Operating_System::group(const gid_t gid) const noexcept {
+	string awh::os::group(const gid_t gid) noexcept {
 		// Буфер данных для извлечения данных
 		vector <char> buffer;
 		// Объект параметров группы пользователя
@@ -1828,13 +1844,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return "";
 	}
 	/**
-	 * @brief Метод получения идентификатора группы пользователя
+	 * @brief Функция получения идентификатора группы пользователя
 	 *
 	 * @param name название группы пользователя
 	 * @return     идентификатор группы пользователя
 	 *
 	 */
-	gid_t awh::Operating_System::group(string_view name) const noexcept {
+	gid_t awh::os::group(string_view name) noexcept {
 		// Если название группы пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1870,13 +1886,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return static_cast <gid_t> (-1);
 	}
 	/**
-	 * @brief Метод вывода идентификатора пользователя
+	 * @brief Функция вывода идентификатора пользователя
 	 *
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор пользователя
 	 *
 	 */
-	uid_t awh::Operating_System::uid(string_view name) const noexcept {
+	uid_t awh::os::uid(string_view name) noexcept {
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1912,13 +1928,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return static_cast <uid_t> (-1);
 	}
 	/**
-	 * @brief Метод вывода идентификатора группы пользователя
+	 * @brief Функция вывода идентификатора группы пользователя
 	 *
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор группы пользователя
 	 *
 	 */
-	gid_t awh::Operating_System::gid(string_view name) const noexcept {
+	gid_t awh::os::gid(string_view name) noexcept {
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
@@ -1960,7 +1976,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 * @return     список групп пользователя
 	 *
 	 */
-	vector <gid_t> awh::Operating_System::groups(string_view user) const noexcept {
+	vector <gid_t> awh::os::groups(string_view user) noexcept {
 		// Переменная результата
 		vector <gid_t> result;
 		// Если имя пользователя передано
@@ -2024,13 +2040,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Метод запуска приложения от имени указанного пользователя
+	 * @brief Функция запуска приложения от имени указанного пользователя
 	 *
 	 * @param uid идентификатор пользователя
 	 * @return    результат выполнения операции
 	 *
 	 */
-	bool awh::Operating_System::chown(const uid_t uid) const noexcept {
+	bool awh::os::chown(const uid_t uid) noexcept {
 		// Если идентификатор пользователя успешно установлен
 		if(::setuid(uid) == 0)
 			// Возвращаем положительный результат
@@ -2055,14 +2071,14 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	/**
-	 * @brief Метод запуска приложения от имени указанного пользователя
+	 * @brief Функция запуска приложения от имени указанного пользователя
 	 *
 	 * @param uid идентификатор пользователя
 	 * @param gid идентификатор группы пользователя
 	 * @return    результат выполнения операции
 	 *
 	 */
-	bool awh::Operating_System::chown(const uid_t uid, const gid_t gid) const noexcept {
+	bool awh::os::chown(const uid_t uid, const gid_t gid) noexcept {
 		// Если идентификатор пользователя успешно установлен
 		if(::setuid(uid) == 0){
 			// Если идентификатор групы пользователя успешно установлен
@@ -2107,14 +2123,14 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	/**
-	 * @brief Метод запуска приложения от имени указанного пользователя
+	 * @brief Функция запуска приложения от имени указанного пользователя
 	 *
 	 * @param user  название пользователя
 	 * @param group название группы пользователя
 	 * @return      результат выполнения операции
 	 *
 	 */
-	bool awh::Operating_System::chown(string_view user, string_view group) const noexcept {
+	bool awh::os::chown(string_view user, string_view group) noexcept {
 		// Если имя пользователя и название группы пользователя переданы
 		if(!user.empty() && !group.empty()){
 			// Буфер данных для извлечения данных пользователя
@@ -2140,7 +2156,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Выполняем извлечение данных группы пользователя
 				if(::getGroupByName(groupname.c_str(), grp, bufferGroup, &dataGroup))
 					// Возвращаем установку права доступа
-					return this->chown(uid, grp.gr_gid);
+					return chown(uid, grp.gr_gid);
 				// Если данные группы пользователя не извлечены
 				else {
 					/**
@@ -2182,12 +2198,12 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
  */
 #else
 	/**
-	 * @brief Метод получения идентификатора текущего пользователя
+	 * @brief Функция получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
 	 *
 	 */
-	wstring awh::Operating_System::user() const noexcept {
+	wstring awh::os::user() noexcept {
 		// Переменная результата
 		wstring result = L"";
 		// Токен текущего процесса
@@ -2301,12 +2317,12 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Метод получения списка групп текущего пользователя
+	 * @brief Функция получения списка групп текущего пользователя
 	 *
 	 * @return список групп текущего пользователя
 	 *
 	 */
-	vector <wstring> awh::Operating_System::groups() const noexcept {
+	vector <wstring> awh::os::groups() noexcept {
 		// Переменная результата
 		vector <wstring> result;
 		// Токен текущего процесса
@@ -2425,13 +2441,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Метод получения названия пользователя/группы по идентификатору
+	 * @brief Функция получения названия пользователя/группы по идентификатору
 	 *
 	 * @param sid идентификатор пользователя/группы
 	 * @return    имя запрашиваемого пользователя/группы
 	 *
 	 */
-	string awh::Operating_System::account(wstring_view sid) const noexcept {
+	string awh::os::account(wstring_view sid) noexcept {
 		// Переменная результата
 		string result = "";
 		// Если идентификатор пользователя передан
@@ -2517,13 +2533,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Метод вывода идентификатора пользователя/группы
+	 * @brief Функция вывода идентификатора пользователя/группы
 	 *
 	 * @param name название пользователя/группы
 	 * @return     полученный идентификатор пользователя/группы
 	 *
 	 */
-	wstring awh::Operating_System::account(string_view name) const noexcept {
+	wstring awh::os::account(string_view name) noexcept {
 		// Переменная результата
 		wstring result = L"";
 		// Если имя пользователя/группы передано
@@ -2594,13 +2610,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return result;
 	}
 	/**
-	 * @brief Получение списка групп пользователя
+	 * @brief Функция получения списка групп пользователя
 	 *
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
 	 *
 	 */
-	vector <wstring> awh::Operating_System::groups(string_view user) const noexcept {
+	vector <wstring> awh::os::groups(string_view user) noexcept {
 		// Переменная результата
 		vector <wstring> result;
 		// Если имя пользователя передано
@@ -2779,20 +2795,20 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * @brief Шаблон метода извлечения настроек ядра операционной системы
+	 * @brief Шаблон функции извлечения настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных выводимого результата
 	 *
 	 */
 	template <typename T>
 	/**
-	 * @brief Метод извлечения настроек ядра операционной системы
+	 * @brief Функция извлечения настроек ядра операционной системы
 	 *
 	 * @param name название записи для получения настроек
 	 * @return     полученное значение записи
 	 *
 	 */
-	T awh::Operating_System::sysctl(string_view name) const noexcept {
+	T awh::os::sysctl(string_view name) noexcept {
 		// Переменная результата (для скалярных типов выполняется нулевая инициализация)
 		T result{};
 		// Если название записи передано правильно
@@ -2812,69 +2828,75 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	/**
 	 * Объявляем прототипы для извлечения значений настроек ядра операционной системы
 	 */
-	template int8_t awh::Operating_System::sysctl <int8_t> (string_view) const noexcept;
-	template uint8_t awh::Operating_System::sysctl <uint8_t> (string_view) const noexcept;
-	template int16_t awh::Operating_System::sysctl <int16_t> (string_view) const noexcept;
-	template uint16_t awh::Operating_System::sysctl <uint16_t> (string_view) const noexcept;
-	template int32_t awh::Operating_System::sysctl <int32_t> (string_view) const noexcept;
-	template uint32_t awh::Operating_System::sysctl <uint32_t> (string_view) const noexcept;
-	template int64_t awh::Operating_System::sysctl <int64_t> (string_view) const noexcept;
-	template uint64_t awh::Operating_System::sysctl <uint64_t> (string_view) const noexcept;
-	template float awh::Operating_System::sysctl <float> (string_view) const noexcept;
-	template double awh::Operating_System::sysctl <double> (string_view) const noexcept;
-	template string awh::Operating_System::sysctl <string> (string_view) const noexcept;
+	template int8_t awh::os::sysctl <int8_t> (string_view) noexcept;
+	template uint8_t awh::os::sysctl <uint8_t> (string_view) noexcept;
+	template int16_t awh::os::sysctl <int16_t> (string_view) noexcept;
+	template uint16_t awh::os::sysctl <uint16_t> (string_view) noexcept;
+	template int32_t awh::os::sysctl <int32_t> (string_view) noexcept;
+	template uint32_t awh::os::sysctl <uint32_t> (string_view) noexcept;
+	template int64_t awh::os::sysctl <int64_t> (string_view) noexcept;
+	template uint64_t awh::os::sysctl <uint64_t> (string_view) noexcept;
+	template float awh::os::sysctl <float> (string_view) noexcept;
+	template double awh::os::sysctl <double> (string_view) noexcept;
+	template string awh::os::sysctl <string> (string_view) noexcept;
 	/**
 	 * Если размер и знаковый размер являются самостоятельными видами
 	 *
 	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
+	 *
 	 */
 	#if defined(__APPLE__) || defined(__MACH__)
-		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
-		template ssize_t awh::Operating_System::sysctl <ssize_t> (string_view) const noexcept;
+		// Явное порождение функции для size_t
+		template size_t awh::os::sysctl <size_t> (string_view) noexcept;
+		// Явное порождение функции для ssize_t
+		template ssize_t awh::os::sysctl <ssize_t> (string_view) noexcept;
 	#endif
 	/**
 	 * Объявляем прототипы для извлечения списка значений настроек ядра операционной системы
 	 */
-	template vector <int8_t> awh::Operating_System::sysctl <vector <int8_t>> (string_view) const noexcept;
-	template vector <uint8_t> awh::Operating_System::sysctl <vector <uint8_t>> (string_view) const noexcept;
-	template vector <int16_t> awh::Operating_System::sysctl <vector <int16_t>> (string_view) const noexcept;
-	template vector <uint16_t> awh::Operating_System::sysctl <vector <uint16_t>> (string_view) const noexcept;
-	template vector <int32_t> awh::Operating_System::sysctl <vector <int32_t>> (string_view) const noexcept;
-	template vector <uint32_t> awh::Operating_System::sysctl <vector <uint32_t>> (string_view) const noexcept;
-	template vector <int64_t> awh::Operating_System::sysctl <vector <int64_t>> (string_view) const noexcept;
-	template vector <uint64_t> awh::Operating_System::sysctl <vector <uint64_t>> (string_view) const noexcept;
-	template vector <float> awh::Operating_System::sysctl <vector <float>> (string_view) const noexcept;
-	template vector <double> awh::Operating_System::sysctl <vector <double>> (string_view) const noexcept;
-	template vector <string> awh::Operating_System::sysctl <vector <string>> (string_view) const noexcept;
+	template vector <int8_t> awh::os::sysctl <vector <int8_t>> (string_view) noexcept;
+	template vector <uint8_t> awh::os::sysctl <vector <uint8_t>> (string_view) noexcept;
+	template vector <int16_t> awh::os::sysctl <vector <int16_t>> (string_view) noexcept;
+	template vector <uint16_t> awh::os::sysctl <vector <uint16_t>> (string_view) noexcept;
+	template vector <int32_t> awh::os::sysctl <vector <int32_t>> (string_view) noexcept;
+	template vector <uint32_t> awh::os::sysctl <vector <uint32_t>> (string_view) noexcept;
+	template vector <int64_t> awh::os::sysctl <vector <int64_t>> (string_view) noexcept;
+	template vector <uint64_t> awh::os::sysctl <vector <uint64_t>> (string_view) noexcept;
+	template vector <float> awh::os::sysctl <vector <float>> (string_view) noexcept;
+	template vector <double> awh::os::sysctl <vector <double>> (string_view) noexcept;
+	template vector <string> awh::os::sysctl <vector <string>> (string_view) noexcept;
 	/**
 	 * Если размер и знаковый размер являются самостоятельными видами
 	 *
 	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
+	 *
 	 */
 	#if defined(__APPLE__) || defined(__MACH__)
-		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
-		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (string_view) const noexcept;
+		// Явное порождение функции для вектора значений size_t
+		template vector <size_t> awh::os::sysctl <vector <size_t>> (string_view) noexcept;
+		// Явное порождение функции для вектора значений ssize_t
+		template vector <ssize_t> awh::os::sysctl <vector <ssize_t>> (string_view) noexcept;
 	#endif
 	/**
-	 * @brief Шаблон метода установки настроек ядра операционной системы
+	 * @brief Шаблон функции установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных для установки
 	 *
 	 */
 	template <typename T>
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, const T value) const noexcept {
+	bool awh::os::sysctl(string_view name, const T value) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 			/**
@@ -2903,36 +2925,39 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	/**
 	 * Объявляем прототипы для установки значений настроек ядра операционной системы
 	 */
-	template bool awh::Operating_System::sysctl <int8_t> (string_view, const int8_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint8_t> (string_view, const uint8_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int16_t> (string_view, const int16_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint16_t> (string_view, const uint16_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int32_t> (string_view, const int32_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint32_t> (string_view, const uint32_t) const noexcept;
-	template bool awh::Operating_System::sysctl <int64_t> (string_view, const int64_t) const noexcept;
-	template bool awh::Operating_System::sysctl <uint64_t> (string_view, const uint64_t) const noexcept;
-	template bool awh::Operating_System::sysctl <float> (string_view, const float) const noexcept;
-	template bool awh::Operating_System::sysctl <double> (string_view, const double) const noexcept;
+	template bool awh::os::sysctl <int8_t> (string_view, const int8_t) noexcept;
+	template bool awh::os::sysctl <uint8_t> (string_view, const uint8_t) noexcept;
+	template bool awh::os::sysctl <int16_t> (string_view, const int16_t) noexcept;
+	template bool awh::os::sysctl <uint16_t> (string_view, const uint16_t) noexcept;
+	template bool awh::os::sysctl <int32_t> (string_view, const int32_t) noexcept;
+	template bool awh::os::sysctl <uint32_t> (string_view, const uint32_t) noexcept;
+	template bool awh::os::sysctl <int64_t> (string_view, const int64_t) noexcept;
+	template bool awh::os::sysctl <uint64_t> (string_view, const uint64_t) noexcept;
+	template bool awh::os::sysctl <float> (string_view, const float) noexcept;
+	template bool awh::os::sysctl <double> (string_view, const double) noexcept;
 	/**
 	 * Если размер и знаковый размер являются самостоятельными видами
 	 *
 	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
+	 *
 	 */
 	#if defined(__APPLE__) || defined(__MACH__)
-		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
-		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const ssize_t) const noexcept;
+		// Явное порождение функции установки для size_t
+		template bool awh::os::sysctl <size_t> (string_view, const size_t) noexcept;
+		// Явное порождение функции установки для ssize_t
+		template bool awh::os::sysctl <ssize_t> (string_view, const ssize_t) noexcept;
 	#endif
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, string_view value) const noexcept {
+	bool awh::os::sysctl(string_view name, string_view value) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty())
 			// Выполняем установку буфера бинарных данных
@@ -2941,14 +2966,14 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, const char * value) const noexcept {
+	bool awh::os::sysctl(string_view name, const char * value) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty())
 			// Выполняем установку буфера бинарных данных
@@ -2957,21 +2982,21 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	/**
-	 * @brief Шаблон метода установки настроек ядра операционной системы
+	 * @brief Шаблон функции установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных списка для установки
 	 *
 	 */
 	template <typename T>
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, const vector <T> & items) const noexcept {
+	bool awh::os::sysctl(string_view name, const vector <T> & items) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 			/**
@@ -3020,36 +3045,39 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	/**
 	 * Объявляем прототипы для установки списка значений настроек ядра операционной системы
 	 */
-	template bool awh::Operating_System::sysctl <int8_t> (string_view, const vector <int8_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint8_t> (string_view, const vector <uint8_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int16_t> (string_view, const vector <int16_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint16_t> (string_view, const vector <uint16_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int32_t> (string_view, const vector <int32_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint32_t> (string_view, const vector <uint32_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <int64_t> (string_view, const vector <int64_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <uint64_t> (string_view, const vector <uint64_t> &) const noexcept;
-	template bool awh::Operating_System::sysctl <float> (string_view, const vector <float> &) const noexcept;
-	template bool awh::Operating_System::sysctl <double> (string_view, const vector <double> &) const noexcept;
+	template bool awh::os::sysctl <int8_t> (string_view, const vector <int8_t> &) noexcept;
+	template bool awh::os::sysctl <uint8_t> (string_view, const vector <uint8_t> &) noexcept;
+	template bool awh::os::sysctl <int16_t> (string_view, const vector <int16_t> &) noexcept;
+	template bool awh::os::sysctl <uint16_t> (string_view, const vector <uint16_t> &) noexcept;
+	template bool awh::os::sysctl <int32_t> (string_view, const vector <int32_t> &) noexcept;
+	template bool awh::os::sysctl <uint32_t> (string_view, const vector <uint32_t> &) noexcept;
+	template bool awh::os::sysctl <int64_t> (string_view, const vector <int64_t> &) noexcept;
+	template bool awh::os::sysctl <uint64_t> (string_view, const vector <uint64_t> &) noexcept;
+	template bool awh::os::sysctl <float> (string_view, const vector <float> &) noexcept;
+	template bool awh::os::sysctl <double> (string_view, const vector <double> &) noexcept;
 	/**
 	 * Если размер и знаковый размер являются самостоятельными видами
 	 *
 	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
+	 *
 	 */
 	#if defined(__APPLE__) || defined(__MACH__)
-		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
-		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const vector <ssize_t> &) const noexcept;
+		// Явное порождение функции установки вектора size_t
+		template bool awh::os::sysctl <size_t> (string_view, const vector <size_t> &) noexcept;
+		// Явное порождение функции установки вектора ssize_t
+		template bool awh::os::sysctl <ssize_t> (string_view, const vector <ssize_t> &) noexcept;
 	#endif
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, const vector <string> & items) const noexcept {
+	bool awh::os::sysctl(string_view name, const vector <string> & items) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
@@ -3072,14 +3100,14 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
+	 * @brief Функция установки настроек ядра операционной системы
 	 *
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
 	 *
 	 */
-	bool awh::Operating_System::sysctl(string_view name, const vector <const char *> & items) const noexcept {
+	bool awh::os::sysctl(string_view name, const vector <const char *> & items) noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
@@ -3103,13 +3131,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	}
 #endif
 /**
- * @brief Метод запуска внешнего приложения
+ * @brief Функция запуска внешнего приложения
  *
  * @param cmd       команда запуска
  * @param multiline данные должны вернутся многострочные
  *
  */
-string awh::Operating_System::exec(string_view cmd, const bool multiline) const noexcept {
+string awh::os::exec(string_view cmd, const bool multiline) noexcept {
 	// Полученный результат
 	string result = "";
 	// Если комманда запуска приложения передана правильно
@@ -3120,7 +3148,7 @@ string awh::Operating_System::exec(string_view cmd, const bool multiline) const 
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Создаем буфер для чтения результата
 			char buffer[128];
-			// Создаем пайп для чтения результата работы Operating_System
+			// Создаем пайп для чтения результата работы модуля os
 			FILE * stream = ::popen(cmd.data(), "r");
 			// Если пайп открыт
 			if(stream != nullptr){
@@ -3144,7 +3172,7 @@ string awh::Operating_System::exec(string_view cmd, const bool multiline) const 
 		#else
 			// Создаем буфер для чтения результата
 			wchar_t buffer[128];
-			// Создаем пайп для чтения результата работы Operating_System
+			// Создаем пайп для чтения результата работы модуля os
 			FILE * stream = ::_wpopen(::convert(cmd).c_str(), L"rt");
 			// Если пайп открыт
 			if(stream){

@@ -37,9 +37,6 @@
  *
  */
 class OSFixture : public testing::Test {
-	protected:
-		// Объект работы с операционной системой
-		std::unique_ptr <awh::os_t> _os;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

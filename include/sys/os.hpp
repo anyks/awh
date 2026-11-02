@@ -14,12 +14,12 @@
  *
  * \~russian
  * @brief Заголовочный файл модуля работы с операционной системой —
- *        класс Operating_System для определения семейства и версии ОС, получения информации о процессоре и памяти,
+ *        пространство имён os для определения семейства и версии ОС, получения информации о процессоре и памяти,
  *        управления лимитами процесса, привилегиями и системными параметрами
  *
  * \~english
  * @brief Header file of the module for working with the operating system —
- *        the Operating_System class for determining the family and the version of the OS, getting information about the processor and the memory,
+ *        the os namespace for determining the family and the version of the OS, getting information about the processor and the memory,
  *        managing the limits of the process, the privileges and the system parameters
  *
  * \~
@@ -386,17 +386,6 @@
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * \~russian
-	 * @brief Файловый разделитель Windows
-	 *
-	 * \~english
-	 * @brief Windows file separator
-	 *
-	 * \~
-	 */
-	#define AWH_FS_SEPARATOR "\\"
-
-	/**
-	 * \~russian
 	 * @brief Заменяем переменную AWH ERROR
 	 *
 	 * @note Заголовков MS Windows здесь нет намеренно: телу макроса объявление в точке
@@ -445,7 +434,14 @@
 	 *
 	 * \~
 	 */
+
+	/**
+	 * Идентификатор пользователя
+	 */
 	typedef uint16_t uid_t;
+	/**
+	 * Идентификатор группы пользователя
+	 */
 	typedef uint16_t gid_t;
 
 	/**
@@ -515,10 +511,23 @@
 		 *
 		 * \~
 		 */
-		typedef unsigned char u_char;
-		typedef unsigned short u_short;
+
+		/**
+		 * Тип целого происхождения BSD
+		 */
 		typedef unsigned int u_int;
+		/**
+		 * Тип длинного целого происхождения BSD
+		 */
 		typedef unsigned long u_long;
+		/**
+		 * Тип байта происхождения BSD
+		 */
+		typedef unsigned char u_char;
+		/**
+		 * Тип короткого целого происхождения BSD
+		 */
+		typedef unsigned short u_short;
 	/**
 	 * \~russian
 	 * @brief Если компилятор не является MSVC
@@ -619,17 +628,6 @@
 	 * \~
 	 */
 	#define AWH_ERROR() (errno)
-
-	/**
-	 * \~russian
-	 * @brief Файловый разделитель UNIX-подобных систем
-	 *
-	 * \~english
-	 * @brief File separator for UNIX-like systems
-	 *
-	 * \~
-	 */
-	#define AWH_FS_SEPARATOR "/"
 #endif
 
 /**
@@ -655,638 +653,641 @@ namespace awh {
 
 	/**
 	 * \~russian
-	 * @brief Класс работы с операционной системой
+	 * @brief Пространство имён работы с операционной системой
 	 *
 	 * \~english
-	 * @brief Class for working with the operating system
+	 * @brief Namespace for working with the operating system
 	 *
 	 * \~
 	 */
-	typedef class __AWH_SHARED_EXPORT__ Operating_System {
-		public:
-			/**
-			 * \~russian
-			 * @brief Режимы извлечения потребления памяти
-			 *
-			 * \~english
-			 * @brief Modes of getting the memory consumption
-			 *
-			 * \~
-			 */
-			enum class rss_t : uint8_t {
-				CURRENT = 0x00, // Текущее потребление памяти
-				MAXIMUM = 0x01  // Максимальное потребление памяти
-			};
-			/**
-			 * \~russian
-			 * @brief Архитектура процессора на котором запущено приложение
-			 *
-			 * \~english
-			 * @brief Architecture of the processor the application is running on
-			 *
-			 * \~
-			 */
-			enum class cpu_t : uint8_t {
-				NONE    = 0x00, // Архитектура процессора не установлена
-				E2K     = 0x01, // Архитектура процессора принадлежит к Эльбрус (e2k)
-				X86     = 0x02, // Архитектура процессора принадлежит к i386
-				ARM     = 0x03, // Архитектура процессора принадлежит к ARM32
-				PPC     = 0x04, // Архитектура процессора принадлежит к PowerPC
-				MIPS    = 0x05, // Архитектура процессора принадлежит к MIPS
-				ARM64   = 0x06, // Архитектура процессора принадлежит к ARM64
-				AMD64   = 0x07, // Архитектура процессора принадлежит к AMD64
-				UNKNOWN = 0x08  // Архитектура процессора не определена
-			};
-			/**
-			 * \~russian
-			 * @brief Семейство поддерживаемых операционных систем
-			 *
-			 * \~english
-			 * @brief Family of the supported operating systems
-			 *
-			 * \~
-			 */
-			enum class family_t : uint8_t {
-				NONE    = 0x00, // Операционная система не определена
-				UNIX    = 0x01, // Операционная система Unix
-				LINUX   = 0x02, // Операционная система Linux
-				WIND32  = 0x03, // Операционная система Windows 32bit
-				WIND64  = 0x04, // Операционная система Windows 64bit
-				MACOSX  = 0x05, // Операционная система macOS
-				NETBSD  = 0x06, // Операционная система NetBSD
-				OPENBSD = 0x07, // Операционная система OpenBSD
-				FREEBSD = 0x08, // Операционная система FreeBSD
-				DFLYBSD = 0x09, // Операционная система DragonFly BSD
-				SOLARIS = 0x0A, // Операционная система Sun Solaris
-				ILLUMOS = 0x0B  // Операционная система (OpenIndiana, SmartOS, OmniOS)
-			};
-		public:
-			/**
-			 * \~russian
-			 * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
-			 *
-			 * @return результат проверки
-			 *
-			 * \~english
-			 * @brief isAdmin Method of checking whether the application is running under the superuser
-			 * @return result of the check
-			 *
-			 * \~
-			 */
-			bool isAdmin() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод определения операционной системы
-			 *
-			 * @return семейство операционных систем
-			 *
-			 * \~english
-			 * @brief Method of determining the operating system
-			 * @return family of the operating systems
-			 *
-			 * \~
-			 */
-			family_t family() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод определение архитектуры процессора
-			 *
-			 * @return архитектура процессора
-			 *
-			 * \~english
-			 * @brief Method of determining the architecture of the processor
-			 * @return architecture of the processor
-			 *
-			 * \~
-			 */
-			cpu_t architecture() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод определения текущего расхода памяти
-			 *
-			 * @param mode режим потребления памяти
-			 * @return     размер расхода памяти
-			 *
-			 * \~english
-			 * @brief Method of determining the current memory consumption
-			 * @param mode mode of the memory consumption
-			 * @return     size of the memory consumption
-			 *
-			 * \~
-			 */
-			size_t rss(const rss_t mode) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод вывода статистики расхода памяти
-			 *
-			 * \~english
-			 * @brief Method of reporting the statistics of the memory consumption
-			 *
-			 * \~
-			 */
-			void printStatsMemory() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод очистки выделенной памяти
-			 *
-			 * \~english
-			 * @brief Method of releasing the allocated memory
-			 *
-			 * \~
-			 */
-			void releaseFreeMemory() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод резервирования нужного размера памяти для всего приложения
-			 *
-			 * @param size размер резервированной памяти
-			 * @return     результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of reserving the required size of memory for the whole application
-			 * @param size size of the reserved memory
-			 * @return     result of performing the operation
-			 *
-			 * \~
-			 */
-			bool warmup(const size_t size) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод блокировки возвращения оперативной памяти системе
-			 *
-			 * @param mode флаг активации/деактивации
-			 * @return     результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of blocking the return of the main memory to the system
-			 * @param mode flag of enabling/disabling
-			 * @return     result of performing the operation
-			 *
-			 * \~
-			 */
-			bool disableReturnMemory(const bool mode) const noexcept;
+	namespace os {
+		/**
+		 * \~russian
+		 * @brief Режимы извлечения потребления памяти
+		 *
+		 * \~english
+		 * @brief Modes of getting the memory consumption
+		 *
+		 * \~
+		 */
+		enum class rss_t : uint8_t {
+			CURRENT = 0x00, // Текущее потребление памяти
+			MAXIMUM = 0x01  // Максимальное потребление памяти
+		};
+		/**
+		 * \~russian
+		 * @brief Архитектура процессора на котором запущено приложение
+		 *
+		 * \~english
+		 * @brief Architecture of the processor the application is running on
+		 *
+		 * \~
+		 */
+		enum class cpu_t : uint8_t {
+			NONE    = 0x00, // Архитектура процессора не установлена
+			E2K     = 0x01, // Архитектура процессора принадлежит к Эльбрус (e2k)
+			X86     = 0x02, // Архитектура процессора принадлежит к i386
+			ARM     = 0x03, // Архитектура процессора принадлежит к ARM32
+			PPC     = 0x04, // Архитектура процессора принадлежит к PowerPC
+			MIPS    = 0x05, // Архитектура процессора принадлежит к MIPS
+			ARM64   = 0x06, // Архитектура процессора принадлежит к ARM64
+			AMD64   = 0x07, // Архитектура процессора принадлежит к AMD64
+			UNKNOWN = 0x08  // Архитектура процессора не определена
+		};
+		/**
+		 * \~russian
+		 * @brief Семейство поддерживаемых операционных систем
+		 *
+		 * \~english
+		 * @brief Family of the supported operating systems
+		 *
+		 * \~
+		 */
+		enum class family_t : uint8_t {
+			NONE    = 0x00, // Операционная система не определена
+			UNIX    = 0x01, // Операционная система Unix
+			LINUX   = 0x02, // Операционная система Linux
+			WIND32  = 0x03, // Операционная система Windows 32bit
+			WIND64  = 0x04, // Операционная система Windows 64bit
+			MACOSX  = 0x05, // Операционная система macOS
+			NETBSD  = 0x06, // Операционная система NetBSD
+			OPENBSD = 0x07, // Операционная система OpenBSD
+			FREEBSD = 0x08, // Операционная система FreeBSD
+			DFLYBSD = 0x09, // Операционная система DragonFly BSD
+			SOLARIS = 0x0A, // Операционная система Sun Solaris
+			ILLUMOS = 0x0B  // Операционная система (OpenIndiana, SmartOS, OmniOS)
+		};
+		/**
+		 * \~russian
+		 * @brief Функция проверки запуска приложения под суперпользователем
+		 *
+		 * @return результат проверки
+		 *
+		 * \~english
+		 * @brief Function for checking whether an application is being run with superuser privileges
+		 *
+		 * @return result of the check
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool isAdmin() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция определения операционной системы
+		 *
+		 * @return семейство операционных систем
+		 *
+		 * \~english
+		 * @brief Function of determining the operating system
+		 *
+		 * @return family of the operating systems
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ family_t family() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция определения архитектуры процессора
+		 *
+		 * @return архитектура процессора
+		 *
+		 * \~english
+		 * @brief Function of determining the architecture of the processor
+		 *
+		 * @return architecture of the processor
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ cpu_t architecture() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция определения текущего расхода памяти
+		 *
+		 * @param mode режим потребления памяти
+		 * @return     размер расхода памяти
+		 *
+		 * \~english
+		 * @brief Function of determining the current memory consumption
+		 *
+		 * @param mode mode of the memory consumption
+		 * @return     size of the memory consumption
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t rss(const rss_t mode) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция вывода статистики расхода памяти
+		 *
+		 * \~english
+		 * @brief Function of reporting the statistics of the memory consumption
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void printStatsMemory() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция очистки выделенной памяти
+		 *
+		 * \~english
+		 * @brief Function of releasing the allocated memory
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void releaseFreeMemory() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция резервирования нужного размера памяти для всего приложения
+		 *
+		 * @param size размер резервированной памяти
+		 * @return     результат выполнения операции
+		 *
+		 * \~english
+		 * @brief Function of reserving the required size of memory for the whole application
+		 *
+		 * @param size size of the reserved memory
+		 * @return     result of performing the operation
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool warmup(const size_t size) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция блокировки возвращения оперативной памяти системе
+		 *
+		 * @param mode флаг активации/деактивации
+		 * @return     результат выполнения операции
+		 *
+		 * \~english
+		 * @brief Function of blocking the return of the main memory to the system
+		 *
+		 * @param mode flag of enabling/disabling
+		 * @return     result of performing the operation
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool disableReturnMemory(const bool mode) noexcept;
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения идентификатора текущего пользователя
-			 *
-			 * @return идентификатор текущего пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the identifier of the current user
-			 * @return identifier of the current user
-			 *
-			 * \~
-			 */
-			uid_t user() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения группы текущего пользователя
-			 *
-			 * @return идентификатор группы текущего пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the group of the current user
-			 * @return identifier of the group of the current user
-			 *
-			 * \~
-			 */
-			gid_t group() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения списка групп текущего пользователя
-			 *
-			 * @return список групп текущего пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the list of groups of the current user
-			 * @return list of groups of the current user
-			 *
-			 * \~
-			 */
-			vector <gid_t> groups() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения имени пользователя по его идентификатору
-			 *
-			 * @param uid идентификатор пользователя
-			 * @return    имя запрашиваемого пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the name of a user by their identifier
-			 * @param uid identifier of the user
-			 * @return    name of the requested user
-			 *
-			 * \~
-			 */
-			string user(const uid_t uid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения группы пользователя по её идентификатору
-			 *
-			 * @param gid идентификатор группы пользователя
-			 * @return    название группы пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the group of a user by its identifier
-			 * @param gid identifier of the group of the user
-			 * @return    name of the group of the user
-			 *
-			 * \~
-			 */
-			string group(const gid_t gid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения идентификатора группы пользователя
-			 *
-			 * @param name название группы пользователя
-			 * @return     идентификатор группы пользователя либо (gid_t) -1, если группа не найдена
-			 *
-			 * \~english
-			 * @brief Method of getting the identifier of the group of a user
-			 * @param name name of the group of the user
-			 * @return     identifier of the group of the user or (gid_t) -1 if the group is not found
-			 *
-			 * \~
-			 */
-			gid_t group(string_view name) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод вывода идентификатора пользователя
-			 *
-			 * @param name имя пользователя
-			 * @return     полученный идентификатор пользователя либо (uid_t) -1, если пользователь не найден
-			 *
-			 * \~english
-			 * @brief Method of yielding the identifier of a user
-			 * @param name name of the user
-			 * @return     the obtained identifier of the user or (uid_t) -1 if the user is not found
-			 *
-			 * \~
-			 */
-			uid_t uid(string_view name) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод вывода идентификатора группы пользователя
-			 *
-			 * @param name имя пользователя
-			 * @return     полученный идентификатор группы пользователя либо (gid_t) -1, если пользователь не найден
-			 *
-			 * \~english
-			 * @brief Method of yielding the identifier of the group of a user
-			 * @param name name of the user
-			 * @return     the obtained identifier of the group of the user or (gid_t) -1 if the user is not found
-			 *
-			 * \~
-			 */
-			gid_t gid(string_view name) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Получение списка групп пользователя
-			 *
-			 * @param user имя пользователя чьи группы следует получить
-			 * @return     список групп пользователя
-			 *
-			 * \~english
-			 * @brief Getting the list of groups of a user
-			 * @param user name of the user whose groups should be obtained
-			 * @return     list of groups of the user
-			 *
-			 * \~
-			 */
-			vector <gid_t> groups(string_view user) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод запуска приложения от имени указанного пользователя
-			 *
-			 * @param uid идентификатор пользователя
-			 * @return    результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of running the application on behalf of the specified user
-			 * @param uid identifier of the user
-			 * @return    result of performing the operation
-			 *
-			 * \~
-			 */
-			bool chown(const uid_t uid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод запуска приложения от имени указанного пользователя
-			 *
-			 * @param uid идентификатор пользователя
-			 * @param gid идентификатор группы пользователя
-			 * @return    результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of running the application on behalf of the specified user
-			 * @param uid identifier of the user
-			 * @param gid identifier of the group of the user
-			 * @return    result of performing the operation
-			 *
-			 * \~
-			 */
-			bool chown(const uid_t uid, const gid_t gid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод запуска приложения от имени указанного пользователя
-			 *
-			 * @param user  название пользователя
-			 * @param group название группы пользователя
-			 * @return      результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of running the application on behalf of the specified user
-			 * @param user  name of the user
-			 * @param group name of the group of the user
-			 * @return      result of performing the operation
-			 *
-			 * \~
-			 */
-			bool chown(string_view user, string_view group = "") const noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения идентификатора текущего пользователя
+		 *
+		 * @return идентификатор текущего пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the identifier of the current user
+		 *
+		 * @return identifier of the current user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uid_t user() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения группы текущего пользователя
+		 *
+		 * @return идентификатор группы текущего пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the group of the current user
+		 *
+		 * @return identifier of the group of the current user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ gid_t group() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения списка групп текущего пользователя
+		 *
+		 * @return список групп текущего пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the list of groups of the current user
+		 *
+		 * @return list of groups of the current user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ vector <gid_t> groups() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения имени пользователя по его идентификатору
+		 *
+		 * @param uid идентификатор пользователя
+		 * @return    имя запрашиваемого пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the name of a user by their identifier
+		 *
+		 * @param uid identifier of the user
+		 * @return    name of the requested user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string user(const uid_t uid) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения группы пользователя по её идентификатору
+		 *
+		 * @param gid идентификатор группы пользователя
+		 * @return    название группы пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the group of a user by its identifier
+		 *
+		 * @param gid identifier of the group of the user
+		 * @return    name of the group of the user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string group(const gid_t gid) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения идентификатора группы пользователя
+		 *
+		 * @param name название группы пользователя
+		 * @return     идентификатор группы пользователя либо (gid_t) -1, если группа не найдена
+		 *
+		 * \~english
+		 * @brief Function of getting the identifier of the group of a user
+		 *
+		 * @param name name of the group of the user
+		 * @return     identifier of the group of the user or (gid_t) -1 if the group is not found
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ gid_t group(string_view name) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция вывода идентификатора пользователя
+		 *
+		 * @param name имя пользователя
+		 * @return     полученный идентификатор пользователя либо (uid_t) -1, если пользователь не найден
+		 *
+		 * \~english
+		 * @brief Function of yielding the identifier of a user
+		 *
+		 * @param name name of the user
+		 * @return     the obtained identifier of the user or (uid_t) -1 if the user is not found
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uid_t uid(string_view name) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция вывода идентификатора группы пользователя
+		 *
+		 * @param name имя пользователя
+		 * @return     полученный идентификатор группы пользователя либо (gid_t) -1, если пользователь не найден
+		 *
+		 * \~english
+		 * @brief Function of yielding the identifier of the group of a user
+		 *
+		 * @param name name of the user
+		 * @return     the obtained identifier of the group of the user or (gid_t) -1 if the user is not found
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ gid_t gid(string_view name) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения списка групп пользователя
+		 *
+		 * @param user имя пользователя чьи группы следует получить
+		 * @return     список групп пользователя
+		 *
+		 * \~english
+		 * @brief Function for retrieving a list of a user's groups
+		 *
+		 * @param user name of the user whose groups should be obtained
+		 * @return     list of groups of the user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ vector <gid_t> groups(string_view user) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция запуска приложения от имени указанного пользователя
+		 *
+		 * @param uid идентификатор пользователя
+		 * @return    результат выполнения операции
+		 *
+		 * \~english
+		 * @brief Function of running the application on behalf of the specified user
+		 *
+		 * @param uid identifier of the user
+		 * @return    result of performing the operation
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool chown(const uid_t uid) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция запуска приложения от имени указанного пользователя
+		 *
+		 * @param uid идентификатор пользователя
+		 * @param gid идентификатор группы пользователя
+		 * @return    результат выполнения операции
+		 *
+		 * \~english
+		 * @brief Function of running the application on behalf of the specified user
+		 *
+		 * @param uid identifier of the user
+		 * @param gid identifier of the group of the user
+		 * @return    result of performing the operation
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool chown(const uid_t uid, const gid_t gid) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция запуска приложения от имени указанного пользователя
+		 *
+		 * @param user  название пользователя
+		 * @param group название группы пользователя
+		 * @return      результат выполнения операции
+		 *
+		 * \~english
+		 * @brief Function of running the application on behalf of the specified user
+		 *
+		 * @param user  name of the user
+		 * @param group name of the group of the user
+		 * @return      result of performing the operation
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool chown(string_view user, string_view group = "") noexcept;
 	/**
 	 * Для операционной системы MS Windows
 	 */
 	#else
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения идентификатора текущего пользователя
-			 *
-			 * @return идентификатор текущего пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the identifier of the current user
-			 * @return identifier of the current user
-			 *
-			 * \~
-			 */
-			wstring user() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения списка групп текущего пользователя
-			 *
-			 * @return список групп текущего пользователя
-			 *
-			 * \~english
-			 * @brief Method of getting the list of groups of the current user
-			 * @return list of groups of the current user
-			 *
-			 * \~
-			 */
-			vector <wstring> groups() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения названия пользователя/группы по идентификатору
-			 *
-			 * @param sid идентификатор пользователя/группы
-			 * @return    имя запрашиваемого пользователя/группы
-			 *
-			 * \~english
-			 * @brief Method of getting the name of a user/group by its identifier
-			 * @param sid identifier of the user/group
-			 * @return    name of the requested user/group
-			 *
-			 * \~
-			 */
-			string account(wstring_view sid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод вывода идентификатора пользователя/группы
-			 *
-			 * @param name название пользователя/группы
-			 * @return     полученный идентификатор пользователя/группы
-			 *
-			 * \~english
-			 * @brief Method of yielding the identifier of a user/group
-			 * @param name name of the user/group
-			 * @return     the obtained identifier of the user/group
-			 *
-			 * \~
-			 */
-			wstring account(string_view name) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Получение списка групп пользователя
-			 *
-			 * @param user имя пользователя чьи группы следует получить
-			 * @return     список групп пользователя
-			 *
-			 * \~english
-			 * @brief Getting the list of groups of a user
-			 * @param user name of the user whose groups should be obtained
-			 * @return     list of groups of the user
-			 *
-			 * \~
-			 */
-			vector <wstring> groups(string_view user) const noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения идентификатора текущего пользователя
+		 *
+		 * @return идентификатор текущего пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the identifier of the current user
+		 *
+		 * @return identifier of the current user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ wstring user() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения списка групп текущего пользователя
+		 *
+		 * @return список групп текущего пользователя
+		 *
+		 * \~english
+		 * @brief Function of getting the list of groups of the current user
+		 *
+		 * @return list of groups of the current user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ vector <wstring> groups() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения названия пользователя/группы по идентификатору
+		 *
+		 * @param sid идентификатор пользователя/группы
+		 * @return    имя запрашиваемого пользователя/группы
+		 *
+		 * \~english
+		 * @brief Function of getting the name of a user/group by its identifier
+		 *
+		 * @param sid identifier of the user/group
+		 * @return    name of the requested user/group
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string account(wstring_view sid) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция вывода идентификатора пользователя/группы
+		 *
+		 * @param name название пользователя/группы
+		 * @return     полученный идентификатор пользователя/группы
+		 *
+		 * \~english
+		 * @brief Function of yielding the identifier of a user/group
+		 *
+		 * @param name name of the user/group
+		 * @return     the obtained identifier of the user/group
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ wstring account(string_view name) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения списка групп пользователя
+		 *
+		 * @param user имя пользователя чьи группы следует получить
+		 * @return     список групп пользователя
+		 *
+		 * \~english
+		 * @brief Function for retrieving a list of a user's groups
+		 *
+		 * @param user name of the user whose groups should be obtained
+		 * @return     list of groups of the user
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ vector <wstring> groups(string_view user) noexcept;
 	#endif
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		public:
-			/**
-			 * \~russian
-			 * @brief Шаблон метода извлечения настроек ядра операционной системы
-			 *
-			 * @tparam T Тип данных выводимого результата
-			 *
-			 * \~english
-			 * @brief Template of the method of getting the settings of the kernel of the operating system
-			 * @tparam T Data type of the yielded result
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод извлечения настроек ядра операционной системы
-			 *
-			 * @param name название записи для получения настроек
-			 * @return     полученное значение записи
-			 *
-			 * \~english
-			 * @brief Method of getting the settings of the kernel of the operating system
-			 * @param name name of the record to get the settings of
-			 * @return     the obtained value of the record
-			 *
-			 * \~
-			 */
-			T sysctl(string_view name) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Шаблон метода установки настроек ядра операционной системы
-			 *
-			 * @tparam T Тип данных для установки
-			 *
-			 * \~english
-			 * @brief Template of the method of setting the settings of the kernel of the operating system
-			 * @tparam T Data type to set
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param value значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param value value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, const T value) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param value значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param value value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, string_view value) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param value значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param value value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, const char * value) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Шаблон метода установки настроек ядра операционной системы
-			 *
-			 * @tparam T Тип данных списка для установки
-			 *
-			 * \~english
-			 * @brief Template of the method of setting the settings of the kernel of the operating system
-			 * @tparam T Data type of the list to set
-			 *
-			 * \~
-			 */
-			template <typename T>
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param items значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param items value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, const vector <T> & items) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param items значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param items value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, const vector <string> & items) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name  название записи для установки настроек
-			 * @param items значение записи для установки настроек
-			 * @return      результат выполнения установки
-			 *
-			 * \~english
-			 * @brief Method of setting the settings of the kernel of the operating system
-			 * @param name  name of the record to set the settings of
-			 * @param items value of the record to set the settings of
-			 * @return      result of performing the setting
-			 *
-			 * \~
-			 */
-			bool sysctl(string_view name, const vector <const char *> & items) const noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции извлечения настроек ядра операционной системы
+		 *
+		 * @tparam T Тип данных выводимого результата
+		 *
+		 * \~english
+		 * @brief Template of the function of getting the settings of the kernel of the operating system
+		 *
+		 * @tparam T Data type of the yielded result
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция извлечения настроек ядра операционной системы
+		 *
+		 * @param name название записи для получения настроек
+		 * @return     полученное значение записи
+		 *
+		 * \~english
+		 * @brief Function of getting the settings of the kernel of the operating system
+		 *
+		 * @param name name of the record to get the settings of
+		 * @return     the obtained value of the record
+		 *
+		 * \~
+		 */
+		T sysctl(string_view name) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции установки настроек ядра операционной системы
+		 *
+		 * @tparam T Тип данных для установки
+		 *
+		 * \~english
+		 * @brief Template of the function of setting the settings of the kernel of the operating system
+		 *
+		 * @tparam T Data type to set
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param value значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param value value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		bool sysctl(string_view name, const T value) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param value значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param value value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool sysctl(string_view name, string_view value) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param value значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param value value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool sysctl(string_view name, const char * value) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции установки настроек ядра операционной системы
+		 *
+		 * @tparam T Тип данных списка для установки
+		 *
+		 * \~english
+		 * @brief Template of the function of setting the settings of the kernel of the operating system
+		 *
+		 * @tparam T Data type of the list to set
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param items значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param items value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		bool sysctl(string_view name, const vector <T> & items) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param items значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param items value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool sysctl(string_view name, const vector <string> & items) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки настроек ядра операционной системы
+		 *
+		 * @param name  название записи для установки настроек
+		 * @param items значение записи для установки настроек
+		 * @return      результат выполнения установки
+		 *
+		 * \~english
+		 * @brief Function of setting the settings of the kernel of the operating system
+		 *
+		 * @param name  name of the record to set the settings of
+		 * @param items value of the record to set the settings of
+		 * @return      result of performing the setting
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool sysctl(string_view name, const vector <const char *> & items) noexcept;
 	#endif
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод запуска внешнего приложения
-			 *
-			 * @param cmd       команда запуска
-			 * @param multiline данные должны вернутся многострочные
-			 *
-			 * \~english
-			 * @brief Method of running an external application
-			 * @param cmd       command of the run
-			 * @param multiline the data must come back multiline
-			 *
-			 * \~
-			 */
-			string exec(string_view cmd, const bool multiline = true) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			explicit Operating_System() noexcept = default;
-	} os_t;
+		/**
+		 * \~russian
+		 * @brief Функция запуска внешнего приложения
+		 *
+		 * @param cmd       команда запуска
+		 * @param multiline данные должны вернутся многострочные
+		 *
+		 * \~english
+		 * @brief Function of running an external application
+		 *
+		 * @param cmd       command of the run
+		 * @param multiline the data must come back multiline
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string exec(string_view cmd, const bool multiline = true) noexcept;
+	}
 };

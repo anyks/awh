@@ -147,7 +147,7 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/s
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
 ##
-# Ход «fs_t» зовёт «os_t» при смене владельца файла, и без «src/sys/os.cpp» связывание
+# Ход «fs_t» зовёт «os» при смене владельца файла, и без «src/sys/os.cpp» связывание
 # отказывает на средствах опознания пользователя и группы
 ##
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"

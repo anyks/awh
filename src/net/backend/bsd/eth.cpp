@@ -84,10 +84,8 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
-				// Выполняем инициализацию объекта работы с операционной системы
-				os_t os;
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
-				if(!os.isAdmin()){
+				if(!os::isAdmin()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -110,16 +108,16 @@ namespace options {
 					 */
 					#if defined(__APPLE__) || defined(__MACH__)
 						// Устанавливаем максимальное количество подключений
-						os.sysctl("kern.ipc.somaxconn", 49152);
+						os::sysctl("kern.ipc.somaxconn", 49152);
 						/**
 						 * Для хостов 10G было бы неплохо увеличить это значение,
 						 * т.к. 4G, похоже, является пределом для некоторых установок macOS
 						 */
-						os.sysctl("kern.ipc.maxsockbuf", 16777216);
+						os::sysctl("kern.ipc.maxsockbuf", 16777216);
 						// Увеличиваем максимальный размер буферов для отправки
-						os.sysctl("net.inet.tcp.sendspace", 1042560);
+						os::sysctl("net.inet.tcp.sendspace", 1042560);
 						// Увеличиваем максимальный размер буферов для чтения
-						os.sysctl("net.inet.tcp.recvspace", 1042560);
+						os::sysctl("net.inet.tcp.recvspace", 1042560);
 						/**
 						 * Увеличиваем множитель масштабирования окна: у macOS он равен 3, что
 						 * держит окно в пределах четверти мегабайта и режет пропускную
@@ -131,10 +129,10 @@ namespace options {
 						 *          мало", - имелось в виду именно это имя, усечённое при переносе
 						 *
 						 */
-						os.sysctl("net.inet.tcp.win_scale_factor", 8);
+						os::sysctl("net.inet.tcp.win_scale_factor", 8);
 						// Увеличиваем максимумы автонастройки macOS TCP
-						os.sysctl("net.inet.tcp.autorcvbufmax", 33554432);
-						os.sysctl("net.inet.tcp.autosndbufmax", 33554432);
+						os::sysctl("net.inet.tcp.autorcvbufmax", 33554432);
+						os::sysctl("net.inet.tcp.autosndbufmax", 33554432);
 						/**
 						 * Увеличиваем начальное окно для подключений внутри машины
 						 *
@@ -142,7 +140,7 @@ namespace options {
 						 *          на macOS 26.5 отвечает unknown oid
 						 *
 						 */
-						os.sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
+						os::sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
 					/**
 					 * Для операционной системы FreeBSD
 					 *
@@ -151,12 +149,12 @@ namespace options {
 					 */
 					#elif defined(__FreeBSD__)
 						// Активируем контроль работы временной марки и масштабируемого окна
-						os.sysctl("net.inet.tcp.rfc1323", 1);
+						os::sysctl("net.inet.tcp.rfc1323", 1);
 						// Устанавливаем максимальное количество подключений
-						os.sysctl("kern.ipc.somaxconn", 49152);
+						os::sysctl("kern.ipc.somaxconn", 49152);
 						// Активируем автоматическую отправку и получение
-						os.sysctl("net.inet.tcp.sendbuf_auto", 1);
-						os.sysctl("net.inet.tcp.recvbuf_auto", 1);
+						os::sysctl("net.inet.tcp.sendbuf_auto", 1);
+						os::sysctl("net.inet.tcp.recvbuf_auto", 1);
 						/**
 						 * Увеличиваем размер шага автонастройки
 						 *
@@ -165,7 +163,7 @@ namespace options {
 						 *          настройкой там больше не задаётся
 						 *
 						 */
-						os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
+						os::sysctl("net.inet.tcp.sendbuf_inc", 8192);
 						/**
 						 * Активируем на хостах тестирования/измерений
 						 *
@@ -174,34 +172,34 @@ namespace options {
 						 *          в пути снято из ядра вместе с настройкой
 						 *
 						 */
-						os.sysctl("net.inet.tcp.hostcache.expire", 1);
+						os::sysctl("net.inet.tcp.hostcache.expire", 1);
 						/**
 						 * Для хостов 10G было бы неплохо увеличить это значение,
 						 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
 						 */
-						os.sysctl("kern.ipc.maxsockbuf", 16777216);
+						os::sysctl("kern.ipc.maxsockbuf", 16777216);
 						// Увеличиваем максимальный размер буферов для отправки
-						os.sysctl("net.inet.tcp.sendspace", 1042560);
+						os::sysctl("net.inet.tcp.sendspace", 1042560);
 						// Увеличиваем максимальный размер буферов для чтения
-						os.sysctl("net.inet.tcp.recvspace", 1042560);
+						os::sysctl("net.inet.tcp.recvspace", 1042560);
 						// Увеличиваем максимальный размер буферов для отправки
-						os.sysctl("net.inet.tcp.sendbuf_max", 16777216);
+						os::sysctl("net.inet.tcp.sendbuf_max", 16777216);
 						// Увеличиваем максимальный размер буферов для чтения
-						os.sysctl("net.inet.tcp.recvbuf_max", 16777216);
+						os::sysctl("net.inet.tcp.recvbuf_max", 16777216);
 						/**
 						 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.inet.tcp.cc.available
 						 */
-						const string & algorithm = os.sysctl <string> ("net.inet.tcp.cc.available");
+						const string & algorithm = os::sysctl <string> ("net.inet.tcp.cc.available");
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
 							if(fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
-								os.sysctl("net.inet.tcp.cc.algorithm", "cubic");
+								os::sysctl("net.inet.tcp.cc.algorithm", "cubic");
 							// Если же найден алгоритм htcp
 							else if(fmk::exists("htcp", algorithm))
 								// Активируем выбранный нами алгоритм
-								os.sysctl("net.inet.tcp.cc.algorithm", "htcp");
+								os::sysctl("net.inet.tcp.cc.algorithm", "htcp");
 						}
 						/**
 						 * Выполняем выбор источника времени
@@ -225,17 +223,17 @@ namespace options {
 						 *          означает, что ядро сочло его негодным вовсе
 						 *
 						 */
-						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
+						const string & timecounter = os::sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен
 						if(!timecounter.empty()){
 							// Если доступен счётчик тактов с пониженной частотой
 							if(fmk::exists("TSC-low", timecounter))
 								// Выполняем выбор счётчика тактов с пониженной частотой
-								os.sysctl("kern.timecounter.hardware", "TSC-low");
+								os::sysctl("kern.timecounter.hardware", "TSC-low");
 							// Если же доступен счётчик тактов
 							else if(fmk::exists("TSC", timecounter))
 								// Выполняем выбор счётчика тактов
-								os.sysctl("kern.timecounter.hardware", "TSC");
+								os::sysctl("kern.timecounter.hardware", "TSC");
 						}
 					/**
 					 * Для операционной системы NetBSD
@@ -247,43 +245,43 @@ namespace options {
 					 */
 					#elif defined(__NetBSD__)
 						// Поднимаем общий потолок буферов сокета
-						os.sysctl("kern.sbmax", 16777216);
+						os::sysctl("kern.sbmax", 16777216);
 						// Активируем контроль работы временной марки и масштабируемого окна
-						os.sysctl("net.inet.tcp.rfc1323", 1);
+						os::sysctl("net.inet.tcp.rfc1323", 1);
 						// Разрешаем использование временных меток
-						os.sysctl("net.inet.tcp.timestamps", 1);
+						os::sysctl("net.inet.tcp.timestamps", 1);
 						// Разрешаем выборочные подтверждения
-						os.sysctl("net.inet.tcp.sack.enable", 1);
+						os::sysctl("net.inet.tcp.sack.enable", 1);
 						// Активируем автоматическую отправку и получение
-						os.sysctl("net.inet.tcp.sendbuf_auto", 1);
-						os.sysctl("net.inet.tcp.recvbuf_auto", 1);
+						os::sysctl("net.inet.tcp.sendbuf_auto", 1);
+						os::sysctl("net.inet.tcp.recvbuf_auto", 1);
 						// Увеличиваем размер шага автонастройки
-						os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
-						os.sysctl("net.inet.tcp.recvbuf_inc", 16384);
+						os::sysctl("net.inet.tcp.sendbuf_inc", 8192);
+						os::sysctl("net.inet.tcp.recvbuf_inc", 16384);
 						// Увеличиваем максимальный размер буферов для отправки
-						os.sysctl("net.inet.tcp.sendbuf_max", 16777216);
+						os::sysctl("net.inet.tcp.sendbuf_max", 16777216);
 						// Увеличиваем максимальный размер буферов для чтения
-						os.sysctl("net.inet.tcp.recvbuf_max", 16777216);
+						os::sysctl("net.inet.tcp.recvbuf_max", 16777216);
 						// Увеличиваем размеры буферов, устанавливаемых по умолчанию
-						os.sysctl("net.inet.tcp.sendspace", 1042560);
-						os.sysctl("net.inet.tcp.recvspace", 1042560);
+						os::sysctl("net.inet.tcp.sendspace", 1042560);
+						os::sysctl("net.inet.tcp.recvspace", 1042560);
 						// Увеличиваем начальное окно до предписанного RFC 6928
-						os.sysctl("net.inet.tcp.init_win", 10);
+						os::sysctl("net.inet.tcp.init_win", 10);
 						/**
 						 * Алгоритмы у NetBSD перечисляются в net.inet.tcp.congctl.available,
 						 * а выбор ведётся через net.inet.tcp.congctl.selected
 						 */
-						const string & algorithm = os.sysctl <string> ("net.inet.tcp.congctl.available");
+						const string & algorithm = os::sysctl <string> ("net.inet.tcp.congctl.available");
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
 							if(fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
-								os.sysctl("net.inet.tcp.congctl.selected", "cubic");
+								os::sysctl("net.inet.tcp.congctl.selected", "cubic");
 							// Если же найден алгоритм newreno
 							else if(fmk::exists("newreno", algorithm))
 								// Активируем выбранный нами алгоритм
-								os.sysctl("net.inet.tcp.congctl.selected", "newreno");
+								os::sysctl("net.inet.tcp.congctl.selected", "newreno");
 						}
 						/**
 						 * Выполняем выбор источника времени
@@ -308,11 +306,11 @@ namespace options {
 						 *          означает, что ядро сочло его негодным вовсе
 						 *
 						 */
-						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
+						const string & timecounter = os::sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен и счётчик тактов доступен
 						if(!timecounter.empty() && fmk::exists("TSC", timecounter))
 							// Выполняем выбор счётчика тактов
-							os.sysctl("kern.timecounter.hardware", "TSC");
+							os::sysctl("kern.timecounter.hardware", "TSC");
 					/**
 					 * Для операционной системы OpenBSD
 					 *
@@ -343,13 +341,13 @@ namespace options {
 						 *          Принятое у прочих систем 49152 сюда не годится
 						 *
 						 */
-						os.sysctl("kern.somaxconn", 32767);
+						os::sysctl("kern.somaxconn", 32767);
 						// Активируем контроль работы временной марки и масштабируемого окна
-						os.sysctl("net.inet.tcp.rfc1323", 1);
+						os::sysctl("net.inet.tcp.rfc1323", 1);
 						// Разрешаем выборочные подтверждения
-						os.sysctl("net.inet.tcp.sack", 1);
+						os::sysctl("net.inet.tcp.sack", 1);
 						// Активируем увеличенное начальное окно по RFC 3390
-						os.sysctl("net.inet.tcp.rfc3390", 2);
+						os::sysctl("net.inet.tcp.rfc3390", 2);
 					#endif
 				}
 			#endif

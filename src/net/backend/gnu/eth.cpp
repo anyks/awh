@@ -108,8 +108,6 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
-				// Выполняем инициализацию объекта работы с операционной системой
-				os_t os;
 				/**
 				 * Задаём правила освобождения памяти: обмен ведётся буферами, и переход на
 				 * отображение памяти при каждом крупном запросе обходится дороже удержания
@@ -134,7 +132,7 @@ namespace options {
 					::mallopt(M_TRIM_THRESHOLD, 128 * 1024);
 				#endif
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
-				if(!os.isAdmin()){
+				if(!os::isAdmin()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -151,36 +149,36 @@ namespace options {
 				// Если права суперпользователя получены
 				} else {
 					// Разрешаем масштабирование окна
-					os.sysctl("net.ipv4.tcp_window_scaling", 1);
+					os::sysctl("net.ipv4.tcp_window_scaling", 1);
 					// Разрешаем выборочные подтверждения
-					os.sysctl("net.ipv4.tcp_sack", 1);
+					os::sysctl("net.ipv4.tcp_sack", 1);
 					// Разрешаем использование временных меток
-					os.sysctl("net.ipv4.tcp_timestamps", 1);
+					os::sysctl("net.ipv4.tcp_timestamps", 1);
 					// Разрешаем повторное использование подключений в состоянии ожидания
-					os.sysctl("net.ipv4.tcp_tw_reuse", 1);
+					os::sysctl("net.ipv4.tcp_tw_reuse", 1);
 					// Включаем автоматическую настройку размера приёмного буфера
-					os.sysctl("net.ipv4.tcp_moderate_rcvbuf", 1);
+					os::sysctl("net.ipv4.tcp_moderate_rcvbuf", 1);
 					/**
 					 * Запрещаем сохранять итоги измерений подключения при его закрытии: иначе
 					 * одно неудачное подключение портит оценку всем последующим, идущим к той
 					 * же сети
 					 */
-					os.sysctl("net.ipv4.tcp_no_metrics_save", 1);
+					os::sysctl("net.ipv4.tcp_no_metrics_save", 1);
 					// Устанавливаем максимальное количество подключений
-					os.sysctl("net.core.somaxconn", 49152);
+					os::sysctl("net.core.somaxconn", 49152);
 					// Устанавливаем максимальное количество полуоткрытых подключений
-					os.sysctl("net.ipv4.tcp_max_syn_backlog", 49152);
+					os::sysctl("net.ipv4.tcp_max_syn_backlog", 49152);
 					// Увеличиваем очередь пакетов, не разобранных обработчиком протокола
-					os.sysctl("net.core.netdev_max_backlog", 30000);
+					os::sysctl("net.core.netdev_max_backlog", 30000);
 					/**
 					 * Для хостов 10G было бы неплохо увеличить это значение,
 					 * т.к. 4G, похоже, является пределом для некоторых установок Linux
 					 */
-					os.sysctl("net.core.rmem_max", 16777216);
-					os.sysctl("net.core.wmem_max", 16777216);
+					os::sysctl("net.core.rmem_max", 16777216);
+					os::sysctl("net.core.wmem_max", 16777216);
 					// Увеличиваем размеры буферов, устанавливаемых по умолчанию
-					os.sysctl("net.core.rmem_default", 1042560);
-					os.sysctl("net.core.wmem_default", 1042560);
+					os::sysctl("net.core.rmem_default", 1042560);
+					os::sysctl("net.core.wmem_default", 1042560);
 					/**
 					 * Пределы буферов самого TCP задаются набором из трёх чисел: наименьший
 					 * размер, размер по умолчанию и наибольший
@@ -192,34 +190,34 @@ namespace options {
 					 *          пробелом берёт на себя объект работы с операционной системой
 					 *
 					 */
-					os.sysctl("net.ipv4.tcp_rmem", vector <int32_t> {4096, 1042560, 16777216});
-					os.sysctl("net.ipv4.tcp_wmem", vector <int32_t> {4096, 1042560, 16777216});
+					os::sysctl("net.ipv4.tcp_rmem", vector <int32_t> {4096, 1042560, 16777216});
+					os::sysctl("net.ipv4.tcp_wmem", vector <int32_t> {4096, 1042560, 16777216});
 					// Активируем подбор наибольшего размера пакета, проходящего без дробления
-					os.sysctl("net.ipv4.tcp_mtu_probing", 1);
+					os::sysctl("net.ipv4.tcp_mtu_probing", 1);
 					/**
 					 * Выставляем справедливую очередь отправки: алгоритм bbr рассчитан именно
 					 * на неё и без неё работает вполсилы
 					 */
-					os.sysctl("net.core.default_qdisc", "fq");
+					os::sysctl("net.core.default_qdisc", "fq");
 					/**
 					 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений,
 					 * используя net.ipv4.tcp_available_congestion_control
 					 */
-					const string & algorithm = os.sysctl <string> ("net.ipv4.tcp_available_congestion_control");
+					const string & algorithm = os::sysctl <string> ("net.ipv4.tcp_available_congestion_control");
 					// Если выбран лучший доступны алгоритм
 					if(!algorithm.empty()){
 						// Если найден алгоритм bbr
 						if(fmk::exists("bbr", algorithm))
 							// Активируем выбранный нами алгоритм
-							os.sysctl("net.ipv4.tcp_congestion_control", "bbr");
+							os::sysctl("net.ipv4.tcp_congestion_control", "bbr");
 						// Если же найден алгоритм cubic
 						else if(fmk::exists("cubic", algorithm))
 							// Активируем выбранный нами алгоритм
-							os.sysctl("net.ipv4.tcp_congestion_control", "cubic");
+							os::sysctl("net.ipv4.tcp_congestion_control", "cubic");
 						// Если же найден алгоритм htcp
 						else if(fmk::exists("htcp", algorithm))
 							// Активируем выбранный нами алгоритм
-							os.sysctl("net.ipv4.tcp_congestion_control", "htcp");
+							os::sysctl("net.ipv4.tcp_congestion_control", "htcp");
 					}
 				}
 			#endif
