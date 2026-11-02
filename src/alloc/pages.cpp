@@ -45,9 +45,14 @@ awh::alloc::Pages::State::State() noexcept :
  *
  */
 awh::alloc::Pages::Pages() noexcept :
- _source(nullptr), _chunks(nullptr), _registry(nullptr), _root(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr), _unmerged(0),
- _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
- _delay(10), _block(0), _limit(0), _jammed(false), _pending(0), _state() {
+ _source(nullptr), _chunks(nullptr),
+ _registry(nullptr), _root(nullptr),
+ _enrolled(0), _large(nullptr),
+ _spare(nullptr), _unmerged(0),
+ _meta(nullptr), _metaLeft(0),
+ _metaChunks(nullptr), _confined(false),
+ _delay(10), _block(0), _limit(0),
+ _jammed(false), _pending(0), _state() {
 	// Обнуляем списки свободных областей
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -1195,8 +1200,19 @@ void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
 	if(pages > PAGES)
 		// Отвечаем отказом: куски у источника берутся одного размера
 		return nullptr;
-	// Ищем свободную область требуемого размера
-	span_t * span = this->search(pages);
+	/**
+	 * Ищем свободную область с запасом на удвоение
+	 *
+	 * Выдача, посаженная лучшей подгонкой впритык к препятствию, лишает роста на
+	 * месте: лестница удвоений копировала каждую ступень, пока место под очередную
+	 * не находилось с запасом. Запас спрашивается лишь для областей от восьми
+	 * страниц: мелкие разряды живут плотно, и точная подгонка бережёт место
+	 */
+	span_t * span = ((pages >= 8u) ? this->search(pages + pages) : nullptr);
+	// Если области с запасом не нашлось, ищем хотя бы требуемую
+	if(span == nullptr)
+		// Ищем свободную область требуемого размера
+		span = this->search(pages);
 	/**
 	 * Если подходящей области не нашлось, сливаем отложенное
 	 *
@@ -1208,7 +1224,11 @@ void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
 		// Сливаем отложенные области
 		this->compact();
 		// Повторяем поиск по слитым областям
-		span = this->search(pages);
+		span = ((pages >= 8u) ? this->search(pages + pages) : nullptr);
+		// Если области с запасом не нашлось, ищем хотя бы требуемую
+		if(span == nullptr)
+			// Ищем свободную область требуемого размера
+			span = this->search(pages);
 	}
 	// Если подходящей области не нашлось
 	if(span == nullptr){
@@ -1217,7 +1237,11 @@ void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
 			// Отвечаем отказом
 			return nullptr;
 		// Повторяем поиск
-		span = this->search(pages);
+		span = ((pages >= 8u) ? this->search(pages + pages) : nullptr);
+		// Если области с запасом не нашлось, ищем хотя бы требуемую
+		if(span == nullptr)
+			// Повторяем поиск без запаса
+			span = this->search(pages);
 		// Если и теперь области не нашлось
 		if(span == nullptr)
 			// Отвечаем отказом
