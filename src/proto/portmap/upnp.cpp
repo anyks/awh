@@ -49,49 +49,49 @@ namespace {
 	 * @return       название действия, отведённое договором
 	 *
 	 */
-	static constexpr const char * name(const proto::portmap::upnp_t::action_t action) noexcept {
+	static constexpr const char * name(const proto::portmap::upnp::action_t action) noexcept {
 		/**
 		 * Определяем действие службы соединения
 		 */
 		switch(static_cast <uint8_t> (action)){
 			// Если действием является заведение перенаправления порта
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::ADD):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::ADD):
 				// Выводим название действия службы
 				return "AddPortMapping";
 			// Если действием является снятие перенаправления порта
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::DELETE):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::DELETE):
 				// Выводим название действия службы
 				return "DeletePortMapping";
 			// Если действием является чтение внешнего адреса маршрутизатора
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::EXTERNAL):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::EXTERNAL):
 				// Выводим название действия службы
 				return "GetExternalIPAddress";
 			// Если действием является чтение перенаправления по порядковому номеру
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::ENTRY):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::ENTRY):
 				// Выводим название действия службы
 				return "GetGenericPortMappingEntry";
 			// Если действием является чтение перенаправления по внешнему порту
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::SPECIFIC):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::SPECIFIC):
 				// Выводим название действия службы
 				return "GetSpecificPortMappingEntry";
 			// Если действием является чтение состояния соединения маршрутизатора
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::STATUS):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::STATUS):
 				// Выводим название действия службы
 				return "GetStatusInfo";
 			// Если действием является проделывание пробоя заслона IPv6
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::PINHOLE):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::PINHOLE):
 				// Выводим название действия службы
 				return "AddPinhole";
 			// Если действием является заделывание пробоя заслона IPv6
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::UNPINHOLE):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::UNPINHOLE):
 				// Выводим название действия службы
 				return "DeletePinhole";
 			// Если действием является продление срока пробоя заслона IPv6
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::REPINHOLE):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::REPINHOLE):
 				// Выводим название действия службы
 				return "UpdatePinhole";
 			// Если действием является чтение состояния заслона IPv6
-			case static_cast <uint8_t> (proto::portmap::upnp_t::action_t::FIREWALL):
+			case static_cast <uint8_t> (proto::portmap::upnp::action_t::FIREWALL):
 				// Выводим название действия службы
 				return "GetFirewallStatus";
 		}
@@ -104,7 +104,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::proto::portmap::UPnP::Mapping::Mapping() noexcept :
+awh::proto::portmap::upnp::Mapping::Mapping() noexcept :
  enabled(true), proto(proto_t::NONE),
  lifeTime(0), externalPort(0),
  internalPort(0), remoteHost{""},
@@ -114,7 +114,7 @@ awh::proto::portmap::UPnP::Mapping::Mapping() noexcept :
  * @brief Конструктор
  *
  */
-awh::proto::portmap::UPnP::Pinhole::Pinhole() noexcept :
+awh::proto::portmap::upnp::Pinhole::Pinhole() noexcept :
  proto(proto_t::NONE), lifeTime(0),
  remotePort(0), internalPort(0),
  remoteHost{""}, internalClient{""} {}
@@ -125,7 +125,7 @@ awh::proto::portmap::UPnP::Pinhole::Pinhole() noexcept :
  * @return результат проверки
  *
  */
-bool awh::proto::portmap::UPnP::Request::valid() const noexcept {
+bool awh::proto::portmap::upnp::Request::valid() const noexcept {
 	// Выводим итог проверки собранного вызова на пригодность
 	return (!this->action.empty() && !this->header.empty() && !this->body.empty());
 }
@@ -133,16 +133,16 @@ bool awh::proto::portmap::UPnP::Request::valid() const noexcept {
  * @brief Конструктор
  *
  */
-awh::proto::portmap::UPnP::Request::Request() noexcept : body{""}, action{""}, header{""} {}
+awh::proto::portmap::upnp::Request::Request() noexcept : body{""}, action{""}, header{""} {}
 
 /**
- * @brief Метод определения договора перенаправления по обозначению
+ * @brief Функция определения договора перенаправления по обозначению
  *
  * @param text обозначение договора перенаправления порта
  * @return     определённый договор перенаправления порта
  *
  */
-awh::proto::portmap::UPnP::proto_t awh::proto::portmap::UPnP::proto(const string_view text) const noexcept {
+awh::proto::portmap::upnp::proto_t awh::proto::portmap::upnp::proto(const string_view text) noexcept {
 	/**
 	 * Если обозначением договора является UDP
 	 *
@@ -163,13 +163,13 @@ awh::proto::portmap::UPnP::proto_t awh::proto::portmap::UPnP::proto(const string
 	return proto_t::NONE;
 }
 /**
- * @brief Метод получения обозначения договора перенаправления
+ * @brief Функция получения обозначения договора перенаправления
  *
  * @param proto договор перенаправления порта
  * @return      обозначение договора, отведённое договором UPnP
  *
  */
-const char * awh::proto::portmap::UPnP::name(const proto_t proto) noexcept {
+const char * awh::proto::portmap::upnp::name(const proto_t proto) noexcept {
 	/**
 	 * Определяем договор перенаправления порта
 	 */
@@ -187,36 +187,13 @@ const char * awh::proto::portmap::UPnP::name(const proto_t proto) noexcept {
 	return "";
 }
 /**
- * @brief Метод получения кода ошибки, выданного службой
- *
- * @param response разобранный ответ службы
- * @return         код ошибки, выданный службой
- *
- */
-awh::proto::portmap::UPnP::result_t awh::proto::portmap::UPnP::result(const soap::response_t & response) const noexcept {
-	/**
-	 * Если служба отказом не отвечала
-	 */
-	if(!response.fault)
-		// Выводим код успешного выполнения просьбы
-		return result_t::SUCCESS;
-	/**
-	 * Выводим код ошибки, выданный службой, как он есть
-	 *
-	 * @note Неизвестный код подменяться известным не должен: договор оставляет
-	 *       место под коды изготовителя, и подмена скрыла бы причину отказа
-	 *
-	 */
-	return static_cast <result_t> (response.code);
-}
-/**
- * @brief Метод проверки осмысленности повторной просьбы с иным портом
+ * @brief Функция проверки осмысленности повторной просьбы с иным портом
  *
  * @param result код ошибки, выданный службой
  * @return       признак осмысленности повторной просьбы с иным портом
  *
  */
-bool awh::proto::portmap::UPnP::retriable(const result_t result) const noexcept {
+bool awh::proto::portmap::upnp::retriable(const result_t result) noexcept {
 	/**
 	 * Определяем код ошибки, выданный службой
 	 */
@@ -260,7 +237,7 @@ bool awh::proto::portmap::UPnP::retriable(const result_t result) const noexcept 
 	return false;
 }
 /**
- * @brief Метод извлечения опознавателя пробоя из ответа службы
+ * @brief Функция извлечения опознавателя пробоя из ответа службы
  *
  * @note Извлечение проверено на живом устройстве - см. замечание к сборке вызова
  *       проделывания пробоя
@@ -270,7 +247,7 @@ bool awh::proto::portmap::UPnP::retriable(const result_t result) const noexcept 
  * @return         признак успешного извлечения
  *
  */
-bool awh::proto::portmap::UPnP::unique(const soap::response_t & response, uint16_t & unique) const noexcept {
+bool awh::proto::portmap::upnp::unique(const soap::response_t & response, uint16_t & unique) noexcept {
 	/**
 	 * Если служба ответила отказом
 	 */
@@ -325,14 +302,14 @@ bool awh::proto::portmap::UPnP::unique(const soap::response_t & response, uint16
 	return true;
 }
 /**
- * @brief Метод извлечения внешнего адреса маршрутизатора из ответа службы
+ * @brief Функция извлечения внешнего адреса маршрутизатора из ответа службы
  *
  * @param response разобранный ответ службы
  * @param address  ссылка на извлечённый внешний адрес маршрутизатора
  * @return         признак успешного извлечения
  *
  */
-bool awh::proto::portmap::UPnP::address(const soap::response_t & response, string & address) const noexcept {
+bool awh::proto::portmap::upnp::address(const soap::response_t & response, string & address) noexcept {
 	/**
 	 * Если служба ответила отказом
 	 */
@@ -357,14 +334,14 @@ bool awh::proto::portmap::UPnP::address(const soap::response_t & response, strin
 	return true;
 }
 /**
- * @brief Метод извлечения перенаправления порта из ответа службы
+ * @brief Функция извлечения перенаправления порта из ответа службы
  *
  * @param response разобранный ответ службы
  * @param mapping  ссылка на извлечённое перенаправление порта
  * @return         признак успешного извлечения
  *
  */
-bool awh::proto::portmap::UPnP::mapping(const soap::response_t & response, mapping_t & mapping) const noexcept {
+bool awh::proto::portmap::upnp::mapping(const soap::response_t & response, mapping_t & mapping) noexcept {
 	/**
 	 * Если служба ответила отказом
 	 */
@@ -374,7 +351,7 @@ bool awh::proto::portmap::UPnP::mapping(const soap::response_t & response, mappi
 	// Выполняем сброс извлекаемого перенаправления порта
 	mapping = mapping_t();
 	// Запоминаем договор перенаправления порта
-	mapping.proto = this->proto(soap::value(response, "NewProtocol"));
+	mapping.proto = proto(soap::value(response, "NewProtocol"));
 	// Запоминаем внешний узел перенаправления
 	mapping.remoteHost.assign(soap::value(response, "NewRemoteHost"));
 	// Запоминаем внутренний адрес машины перенаправления
@@ -408,7 +385,7 @@ bool awh::proto::portmap::UPnP::mapping(const soap::response_t & response, mappi
 	return !mapping.internalClient.empty();
 }
 /**
- * @brief Метод сборки вызова чтения состояния заслона IPv6
+ * @brief Функция сборки вызова чтения состояния заслона IPv6
  *
  * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
  *       проделывания пробоя
@@ -417,7 +394,7 @@ bool awh::proto::portmap::UPnP::mapping(const soap::response_t & response, mappi
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::firewall(const string_view service) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::firewall(const string_view service) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	// Запоминаем название вызываемого действия службы
@@ -430,7 +407,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::firewall(const s
 	return result;
 }
 /**
- * @brief Метод извлечения состояния заслона IPv6 из ответа службы
+ * @brief Функция извлечения состояния заслона IPv6 из ответа службы
  *
  * @note Извлечение проверено на живом устройстве - см. замечание к сборке вызова
  *       проделывания пробоя
@@ -441,7 +418,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::firewall(const s
  * @return         признак успешного извлечения
  *
  */
-bool awh::proto::portmap::UPnP::firewall(const soap::response_t & response, bool & enabled, bool & allowed) const noexcept {
+bool awh::proto::portmap::upnp::firewall(const soap::response_t & response, bool & enabled, bool & allowed) noexcept {
 	/**
 	 * Если служба ответила отказом
 	 */
@@ -466,13 +443,36 @@ bool awh::proto::portmap::UPnP::firewall(const soap::response_t & response, bool
 	return true;
 }
 /**
- * @brief Метод сборки вызова чтения состояния соединения маршрутизатора
+ * @brief Функция получения кода ошибки, выданного службой
+ *
+ * @param response разобранный ответ службы
+ * @return         код ошибки, выданный службой
+ *
+ */
+awh::proto::portmap::upnp::result_t awh::proto::portmap::upnp::result(const soap::response_t & response) noexcept {
+	/**
+	 * Если служба отказом не отвечала
+	 */
+	if(!response.fault)
+		// Выводим код успешного выполнения просьбы
+		return result_t::SUCCESS;
+	/**
+	 * Выводим код ошибки, выданный службой, как он есть
+	 *
+	 * @note Неизвестный код подменяться известным не должен: договор оставляет
+	 *       место под коды изготовителя, и подмена скрыла бы причину отказа
+	 *
+	 */
+	return static_cast <result_t> (response.code);
+}
+/**
+ * @brief Функция сборки вызова чтения состояния соединения маршрутизатора
  *
  * @param service обозначение вида службы соединения
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::status(const string_view service) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::status(const string_view service) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	// Запоминаем название вызываемого действия службы
@@ -485,13 +485,13 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::status(const str
 	return result;
 }
 /**
- * @brief Метод сборки вызова чтения внешнего адреса маршрутизатора
+ * @brief Функция сборки вызова чтения внешнего адреса маршрутизатора
  *
  * @param service обозначение вида службы соединения
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::external(const string_view service) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::external(const string_view service) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	// Запоминаем название вызываемого действия службы
@@ -504,14 +504,14 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::external(const s
 	return result;
 }
 /**
- * @brief Метод сборки вызова чтения перенаправления по порядковому номеру
+ * @brief Функция сборки вызова чтения перенаправления по порядковому номеру
  *
  * @param service обозначение вида службы соединения
  * @param index   порядковый номер читаемого перенаправления
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::entry(const string_view service, const uint32_t index) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::entry(const string_view service, const uint32_t index) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	// Собираемый перечень доводов вызова действия
@@ -528,14 +528,14 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::entry(const stri
 	return result;
 }
 /**
- * @brief Метод сборки вызова заведения перенаправления порта
+ * @brief Функция сборки вызова заведения перенаправления порта
  *
  * @param service обозначение вида службы соединения
  * @param mapping параметры заводимого перенаправления порта
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string_view service, const mapping_t & mapping) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::add(const string_view service, const mapping_t & mapping) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	/**
@@ -627,7 +627,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 	return result;
 }
 /**
- * @brief Метод сборки вызова заделывания пробоя заслона IPv6
+ * @brief Функция сборки вызова заделывания пробоя заслона IPv6
  *
  * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
  *       проделывания пробоя
@@ -637,7 +637,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const string_view service, const uint16_t unique) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::unpinhole(const string_view service, const uint16_t unique) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	// Собираемый перечень доводов вызова действия
@@ -654,7 +654,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const 
 	return result;
 }
 /**
- * @brief Метод сборки вызова проделывания пробоя заслона IPv6
+ * @brief Функция сборки вызова проделывания пробоя заслона IPv6
  *
  * @note Собрано по договору UPnP IGD:2 и проверено на живом устройстве: MiniUPnPd 2.3.7
  *       с заслоном IPv6 на netfilter
@@ -664,7 +664,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const 
  * @return        собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const string_view service, const pinhole_t & pinhole) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::pinhole(const string_view service, const pinhole_t & pinhole) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	/**
@@ -781,7 +781,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 	return result;
 }
 /**
- * @brief Метод сборки вызова продления срока пробоя заслона IPv6
+ * @brief Функция сборки вызова продления срока пробоя заслона IPv6
  *
  * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
  *       проделывания пробоя
@@ -792,7 +792,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
  * @return         собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const string_view service, const uint16_t unique, const uint32_t lifeTime) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::repinhole(const string_view service, const uint16_t unique, const uint32_t lifeTime) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	/**
@@ -846,7 +846,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const 
 	return result;
 }
 /**
- * @brief Метод сборки вызова снятия перенаправления порта
+ * @brief Функция сборки вызова снятия перенаправления порта
  *
  * @param service      обозначение вида службы соединения
  * @param proto        договор снимаемого перенаправления порта
@@ -855,7 +855,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const 
  * @return             собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const string_view service, const proto_t proto, const uint16_t externalPort, const string_view remoteHost) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::remove(const string_view service, const proto_t proto, const uint16_t externalPort, const string_view remoteHost) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	/**
@@ -898,7 +898,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const str
 	return result;
 }
 /**
- * @brief Метод сборки вызова чтения перенаправления по внешнему порту
+ * @brief Функция сборки вызова чтения перенаправления по внешнему порту
  *
  * @param service      обозначение вида службы соединения
  * @param proto        договор читаемого перенаправления порта
@@ -907,7 +907,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const str
  * @return             собранный вызов действия службы
  *
  */
-awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::specific(const string_view service, const proto_t proto, const uint16_t externalPort, const string_view remoteHost) const noexcept {
+awh::proto::portmap::upnp::request_t awh::proto::portmap::upnp::specific(const string_view service, const proto_t proto, const uint16_t externalPort, const string_view remoteHost) noexcept {
 	// Собираемый вызов действия службы
 	request_t result;
 	/**
@@ -949,11 +949,6 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::specific(const s
 	// Выводим собранный вызов действия службы
 	return result;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::proto::portmap::UPnP::UPnP() noexcept = default;
 
 /**
  * @brief Функция получения описания кода ошибки службы перенаправления UPnP
@@ -962,77 +957,77 @@ awh::proto::portmap::UPnP::UPnP() noexcept = default;
  * @return       описание кода ошибки на английском языке
  *
  */
-const char * awh::proto::portmap::message(const upnp_t::result_t result) noexcept {
+const char * awh::proto::portmap::message(const upnp::result_t result) noexcept {
 	/**
 	 * Определяем код ошибки, выданный службой
 	 */
 	switch(static_cast <uint32_t> (result)){
 		// Если просьба выполнена
-		case static_cast <uint32_t> (upnp_t::result_t::SUCCESS):
+		case static_cast <uint32_t> (upnp::result_t::SUCCESS):
 			// Выводим описание кода ошибки
 			return "success";
 		// Если действие службе неизвестно
-		case static_cast <uint32_t> (upnp_t::result_t::INVALID_ACTION):
+		case static_cast <uint32_t> (upnp::result_t::INVALID_ACTION):
 			// Выводим описание кода ошибки
 			return "invalid action";
 		// Если доводы вызова построены ошибочно
-		case static_cast <uint32_t> (upnp_t::result_t::INVALID_ARGS):
+		case static_cast <uint32_t> (upnp::result_t::INVALID_ARGS):
 			// Выводим описание кода ошибки
 			return "invalid arguments";
 		// Если действие выполнить не удалось
-		case static_cast <uint32_t> (upnp_t::result_t::ACTION_FAILED):
+		case static_cast <uint32_t> (upnp::result_t::ACTION_FAILED):
 			// Выводим описание кода ошибки
 			return "action failed";
 		// Если действие отвергнуто настройкой маршрутизатора
-		case static_cast <uint32_t> (upnp_t::result_t::NOT_AUTHORIZED):
+		case static_cast <uint32_t> (upnp::result_t::NOT_AUTHORIZED):
 			// Выводим описание кода ошибки
 			return "action not authorized";
 		// Если порядковый номер перенаправления вне перечня
-		case static_cast <uint32_t> (upnp_t::result_t::INDEX_INVALID):
+		case static_cast <uint32_t> (upnp::result_t::INDEX_INVALID):
 			// Выводим описание кода ошибки
 			return "specified array index is invalid";
 		// Если перенаправления с такими признаками нет
-		case static_cast <uint32_t> (upnp_t::result_t::NO_SUCH_ENTRY):
+		case static_cast <uint32_t> (upnp::result_t::NO_SUCH_ENTRY):
 			// Выводим описание кода ошибки
 			return "no such entry in array";
 		// Если пустой внешний узел здесь не допускается
-		case static_cast <uint32_t> (upnp_t::result_t::WILDCARD_NOT_SRC):
+		case static_cast <uint32_t> (upnp::result_t::WILDCARD_NOT_SRC):
 			// Выводим описание кода ошибки
 			return "wildcard not permitted in source IP";
 		// Если пустой внешний порт здесь не допускается
-		case static_cast <uint32_t> (upnp_t::result_t::WILDCARD_NOT_EXT):
+		case static_cast <uint32_t> (upnp::result_t::WILDCARD_NOT_EXT):
 			// Выводим описание кода ошибки
 			return "wildcard not permitted in external port";
 		// Если перенаправление занято другой машиной
-		case static_cast <uint32_t> (upnp_t::result_t::CONFLICT):
+		case static_cast <uint32_t> (upnp::result_t::CONFLICT):
 			// Выводим описание кода ошибки
 			return "conflict in mapping entry";
 		// Если маршрутизатор требует равенства портов
-		case static_cast <uint32_t> (upnp_t::result_t::SAME_PORT_REQUIRED):
+		case static_cast <uint32_t> (upnp::result_t::SAME_PORT_REQUIRED):
 			// Выводим описание кода ошибки
 			return "same port values required";
 		// Если маршрутизатор заводит лишь бессрочные перенаправления
-		case static_cast <uint32_t> (upnp_t::result_t::ONLY_PERMANENT_LEASES):
+		case static_cast <uint32_t> (upnp::result_t::ONLY_PERMANENT_LEASES):
 			// Выводим описание кода ошибки
 			return "only permanent leases supported";
 		// Если маршрутизатор принимает лишь пустой внешний узел
-		case static_cast <uint32_t> (upnp_t::result_t::REMOTE_ONLY_WILDCARD):
+		case static_cast <uint32_t> (upnp::result_t::REMOTE_ONLY_WILDCARD):
 			// Выводим описание кода ошибки
 			return "remote host only supports wildcard";
 		// Если маршрутизатор принимает лишь пустой внешний порт
-		case static_cast <uint32_t> (upnp_t::result_t::EXT_ONLY_WILDCARD):
+		case static_cast <uint32_t> (upnp::result_t::EXT_ONLY_WILDCARD):
 			// Выводим описание кода ошибки
 			return "external port only supports wildcard";
 		// Если у маршрутизатора не осталось места под перенаправления
-		case static_cast <uint32_t> (upnp_t::result_t::NO_PORT_MAPS):
+		case static_cast <uint32_t> (upnp::result_t::NO_PORT_MAPS):
 			// Выводим описание кода ошибки
 			return "no port maps available";
 		// Если перенаправление занято иным средством
-		case static_cast <uint32_t> (upnp_t::result_t::CONFLICT_MECHANISM):
+		case static_cast <uint32_t> (upnp::result_t::CONFLICT_MECHANISM):
 			// Выводим описание кода ошибки
 			return "conflict with other mechanisms";
 		// Если пустой внутренний порт здесь не допускается
-		case static_cast <uint32_t> (upnp_t::result_t::WILDCARD_NOT_INT):
+		case static_cast <uint32_t> (upnp::result_t::WILDCARD_NOT_INT):
 			// Выводим описание кода ошибки
 			return "wildcard not permitted in internal port";
 	}

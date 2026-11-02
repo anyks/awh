@@ -957,8 +957,6 @@ namespace awh {
 				// Объект получения маршрута до внешней сети
 				eth::gateway_t _gateway;
 			private:
-				// Кодек службы перенаправления UPnP
-				proto::portmap::upnp_t _upnp;
 				// Кодек описания устройства UPnP
 				proto::portmap::device_t _device;
 			private:
@@ -1277,7 +1275,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				error_t reason(const proto::portmap::upnp_t::result_t result) const noexcept;
+				error_t reason(const proto::portmap::upnp::result_t result) const noexcept;
 			private:
 				/**
 				 * \~russian

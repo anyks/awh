@@ -766,33 +766,33 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::nat
  * @return       код причины отказа перенаправления
  *
  */
-awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upnp_t::result_t result) const noexcept {
+awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upnp::result_t result) const noexcept {
 	/**
 	 * Определяем код итога, выданный службой устройства
 	 */
 	switch(static_cast <uint32_t> (result)){
 		// Если просьба выполнена
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::SUCCESS):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::SUCCESS):
 			// Выводим отсутствие ошибки
 			return error_t::NONE;
 		// Если действие службе неизвестно
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::INVALID_ACTION):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::INVALID_ACTION):
 			// Выводим отказ по неподдерживаемому договору
 			return error_t::NOT_SUPPORTED;
 		// Если действие отвергнуто настройкой маршрутизатора
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::NOT_AUTHORIZED):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::NOT_AUTHORIZED):
 			// Выводим отказ по настройке маршрутизатора
 			return error_t::NOT_AUTHORIZED;
 		// Если у маршрутизатора не осталось места под перенаправления
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::NO_PORT_MAPS):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::NO_PORT_MAPS):
 			// Выводим отказ по исчерпанию места под перенаправления
 			return error_t::OUT_OF_RESOURCES;
 		// Если доводы вызова построены ошибочно
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::INVALID_ARGS):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::INVALID_ARGS):
 			// Выводим отказ по ошибочно построенному запросу
 			return error_t::MALFORMED;
 		// Если у маршрутизатора не осталось места под пробои заслона IPv6
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PINHOLE_EXHAUSTED):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::PINHOLE_EXHAUSTED):
 			// Выводим отказ по исчерпанию места под перенаправления
 			return error_t::OUT_OF_RESOURCES;
 		/**
@@ -802,20 +802,20 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upn
 		 *       средство: просить его снова тем же способом бесполезно
 		 *
 		 */
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::FIREWALL_DISABLED):
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PINHOLE_NOT_ALLOWED):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::FIREWALL_DISABLED):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::PINHOLE_NOT_ALLOWED):
 			// Выводим отказ по неподдерживаемому договору
 			return error_t::NOT_SUPPORTED;
 		// Если договор пробоя маршрутизатором не поддерживается
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PROTO_NOT_SUPPORTED):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::PROTO_NOT_SUPPORTED):
 			// Выводим отказ по неподдерживаемому договору
 			return error_t::NOT_SUPPORTED;
 		/**
 		 * Если пустые признаки пробоя заслона IPv6 не допускаются
 		 */
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::INT_PORT_NOT_WILDCARD):
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PROTO_NOT_WILDCARD):
-		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::SRC_NOT_WILDCARD):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::INT_PORT_NOT_WILDCARD):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::PROTO_NOT_WILDCARD):
+		case static_cast <uint32_t> (proto::portmap::upnp::result_t::SRC_NOT_WILDCARD):
 			// Выводим отказ по ошибочно построенному запросу
 			return error_t::MALFORMED;
 	}
@@ -1879,7 +1879,7 @@ void awh::unit::Portmap::described() noexcept {
  */
 bool awh::unit::Portmap::control() noexcept {
 	// Собираемый вызов действия службы
-	proto::portmap::upnp_t::request_t request;
+	proto::portmap::upnp::request_t request;
 	/**
 	 * Определяем просьбу, с которой ведётся обращение
 	 */
@@ -1887,7 +1887,7 @@ bool awh::unit::Portmap::control() noexcept {
 		// Если запрашивается внешний адрес маршрутизатора
 		case static_cast <uint8_t> (action_t::EXTERNAL):
 			// Выполняем сборку вызова запроса внешнего адреса
-			request = this->_upnp.external(this->_service);
+			request = proto::portmap::upnp::external(this->_service);
 		break;
 		/**
 		 * Если читается перечень заведённых перенаправлений
@@ -1899,7 +1899,7 @@ bool awh::unit::Portmap::control() noexcept {
 		 */
 		case static_cast <uint8_t> (action_t::LIST):
 			// Выполняем сборку вызова чтения перенаправления по порядковому номеру
-			request = this->_upnp.entry(this->_service, this->_index);
+			request = proto::portmap::upnp::entry(this->_service, this->_index);
 		break;
 		/**
 		 * Если заводится перенаправление порта либо продлевается срок заведённого
@@ -1917,7 +1917,7 @@ bool awh::unit::Portmap::control() noexcept {
 			 */
 			if((this->_family == family_t::IPV6) && (this->_action == action_t::RENEW)){
 				// Выполняем сборку вызова продления срока пробоя заслона IPv6
-				request = this->_upnp.repinhole(
+				request = proto::portmap::upnp::repinhole(
 					this->_service, this->_mapping.pinhole,
 					(this->_mapping.lifeTime > 0 ? this->_mapping.lifeTime : ::DEFAULT_LIFETIME)
 				);
@@ -1938,14 +1938,14 @@ bool awh::unit::Portmap::control() noexcept {
 				 */
 				if(this->_probe){
 					// Выполняем сборку вызова запроса состояния заслона IPv6
-					request = this->_upnp.firewall(this->_service);
+					request = proto::portmap::upnp::firewall(this->_service);
 					// Выходим из определения просьбы
 					break;
 				}
 				// Собираемый пробой заслона IPv6
-				proto::portmap::upnp_t::pinhole_t pinhole;
+				proto::portmap::upnp::pinhole_t pinhole;
 				// Запоминаем договор пробоя заслона
-				pinhole.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp_t::proto_t::TCP : proto::portmap::upnp_t::proto_t::UDP);
+				pinhole.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp::proto_t::TCP : proto::portmap::upnp::proto_t::UDP);
 				// Запоминаем внутренний порт машины, которой отдаются подключения
 				pinhole.internalPort = this->_mapping.internalPort;
 				/**
@@ -1971,14 +1971,14 @@ bool awh::unit::Portmap::control() noexcept {
 					// Выводим отрицательный результат начала вызова действия службы
 					return false;
 				// Выполняем сборку вызова проделывания пробоя заслона IPv6
-				request = this->_upnp.pinhole(this->_service, pinhole);
+				request = proto::portmap::upnp::pinhole(this->_service, pinhole);
 				// Выходим из определения просьбы
 				break;
 			}
 			// Собираемое перенаправление порта
-			proto::portmap::upnp_t::mapping_t mapping;
+			proto::portmap::upnp::mapping_t mapping;
 			// Запоминаем договор перенаправляемого порта
-			mapping.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp_t::proto_t::TCP : proto::portmap::upnp_t::proto_t::UDP);
+			mapping.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp::proto_t::TCP : proto::portmap::upnp::proto_t::UDP);
 			// Запоминаем внутренний порт перенаправления
 			mapping.internalPort = this->_mapping.internalPort;
 			// Запоминаем желаемый внешний порт перенаправления
@@ -2003,7 +2003,7 @@ bool awh::unit::Portmap::control() noexcept {
 				// Выводим отрицательный результат начала вызова действия службы
 				return false;
 			// Выполняем сборку вызова заведения перенаправления порта
-			request = this->_upnp.add(this->_service, mapping);
+			request = proto::portmap::upnp::add(this->_service, mapping);
 		} break;
 		// Если убирается заведённое перенаправление порта
 		case static_cast <uint8_t> (action_t::CLOSE):
@@ -2026,14 +2026,14 @@ bool awh::unit::Portmap::control() noexcept {
 					return false;
 				}
 				// Выполняем сборку вызова заделывания пробоя заслона IPv6
-				request = this->_upnp.unpinhole(this->_service, this->_mapping.pinhole);
+				request = proto::portmap::upnp::unpinhole(this->_service, this->_mapping.pinhole);
 				// Выходим из определения просьбы
 				break;
 			}
 			// Выполняем сборку вызова удаления перенаправления порта
-			request = this->_upnp.remove(
+			request = proto::portmap::upnp::remove(
 				this->_service,
-				((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp_t::proto_t::TCP : proto::portmap::upnp_t::proto_t::UDP),
+				((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp::proto_t::TCP : proto::portmap::upnp::proto_t::UDP),
 				(this->_mapping.externalPort > 0 ? this->_mapping.externalPort : this->_mapping.internalPort)
 			);
 		break;
@@ -2178,7 +2178,7 @@ void awh::unit::Portmap::controlled() noexcept {
 	 */
 	if(response.fault){
 		// Получаем код итога, выданный службой устройства
-		const proto::portmap::upnp_t::result_t result = this->_upnp.result(response);
+		const proto::portmap::upnp::result_t result = proto::portmap::upnp::result(response);
 		/**
 		 * Если перечень заведённых перенаправлений прочитан до конца
 		 *
@@ -2187,7 +2187,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		 *       поэтому не считается - перечень прочитан, пусть даже пустой
 		 *
 		 */
-		if((this->_action == action_t::LIST) && (result == proto::portmap::upnp_t::result_t::INDEX_INVALID)){
+		if((this->_action == action_t::LIST) && (result == proto::portmap::upnp::result_t::INDEX_INVALID)){
 			// Выполняем завершение обмена по этому договору
 			this->complete(type_t::UPNP);
 			// Выполняем функцию обратного вызова
@@ -2205,11 +2205,11 @@ void awh::unit::Portmap::controlled() noexcept {
 	 */
 	if(this->_action == action_t::LIST){
 		// Извлекаемое перенаправление порта
-		proto::portmap::upnp_t::mapping_t entry;
+		proto::portmap::upnp::mapping_t entry;
 		/**
 		 * Если перенаправление порта извлечь не удалось
 		 */
-		if(!this->_upnp.mapping(response, entry)){
+		if(!proto::portmap::upnp::mapping(response, entry)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2218,7 +2218,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		// Собираемое перенаправление порта для перечня
 		mapping_t mapping;
 		// Запоминаем договор перенаправляемого порта
-		mapping.proto = ((entry.proto == proto::portmap::upnp_t::proto_t::TCP) ? proto_t::TCP : proto_t::UDP);
+		mapping.proto = ((entry.proto == proto::portmap::upnp::proto_t::TCP) ? proto_t::TCP : proto_t::UDP);
 		// Запоминаем внешний порт перенаправления
 		mapping.externalPort = entry.externalPort;
 		// Запоминаем внутренний порт перенаправления
@@ -2273,7 +2273,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если внешний адрес маршрутизатора извлечь не удалось
 		 */
-		if(!this->_upnp.address(response, address)){
+		if(!proto::portmap::upnp::address(response, address)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2305,7 +2305,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если состояние заслона IPv6 извлечь не удалось
 		 */
-		if(!this->_upnp.firewall(response, enabled, allowed)){
+		if(!proto::portmap::upnp::firewall(response, enabled, allowed)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2351,7 +2351,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если опознаватель пробоя заслона извлечь не удалось
 		 */
-		if(!this->_upnp.unique(response, unique)){
+		if(!proto::portmap::upnp::unique(response, unique)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -3610,7 +3610,7 @@ awh::unit::Portmap::Portmap() noexcept :
  _probe(false), _announcer(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(), _router{""},
  _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(), _ifaces(), _gateway(),
- _upnp(), _device() {}
+ _device() {}
 /**
  * @brief Деструктор
  *
