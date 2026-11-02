@@ -53,42 +53,14 @@ class PortmapFixture : public testing::Test {
 		 */
 		void TearDown();
 	protected:
-		/**
-		 * @brief Фабричный метод создания кодека договора NAT-PMP
-		 *
-		 * @return сформированный объект кодека договора NAT-PMP
-		 *
-		 */
-		std::unique_ptr <awh::proto::portmap::natpmp_t> makeNatPmp() const noexcept;
-		/**
-		 * @brief Фабричный метод создания кодека договора PCP
-		 *
-		 * @return сформированный объект кодека договора PCP
-		 *
-		 */
-		std::unique_ptr <awh::proto::portmap::pcp_t> makePcp() const noexcept;
-		/**
-		 * @brief Фабричный метод создания кодека договора SSDP
-		 *
-		 * @return сформированный объект кодека договора SSDP
-		 *
-		 */
-		std::unique_ptr <awh::proto::portmap::ssdp_t> makeSsdp() const noexcept;
-		/**
+								/**
 		 * @brief Фабричный метод создания кодека описания устройства UPnP
 		 *
 		 * @return сформированный объект кодека описания устройства UPnP
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::device_t> makeDevice() const noexcept;
-		/**
-		 * @brief Фабричный метод создания кодека договора SOAP
-		 *
-		 * @return сформированный объект кодека договора SOAP
-		 *
-		 */
-		std::unique_ptr <awh::proto::portmap::soap_t> makeSoap() const noexcept;
-		/**
+				/**
 		 * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
 		 *
 		 * @return сформированный объект кодека действий службы перенаправления UPnP

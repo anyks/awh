@@ -38,18 +38,16 @@ using namespace awh::proto::portmap;
  *
  */
 TEST_F(PortmapFixture, PcpRequestMap) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Место под собираемое сообщение
-	uint8_t buffer[pcp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[pcp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	// Параметры запроса к маршрутизатору
-	pcp_t::request_t request;
+	pcp::request_t request;
 	// Устанавливаем действие договора
-	request.opcode = pcp_t::opcode_t::MAP;
+	request.opcode = pcp::opcode_t::MAP;
 	// Устанавливаем договор перенаправления порта
-	request.proto = pcp_t::proto_t::TCP;
+	request.proto = pcp::proto_t::TCP;
 	// Устанавливаем запрашиваемый срок жизни перенаправления
 	request.lifeTime = 3600;
 	// Устанавливаем внутренний порт перенаправления
@@ -61,11 +59,11 @@ TEST_F(PortmapFixture, PcpRequestMap) {
 	/**
 	 * Выполняем заполнение отличительной метки перенаправления
 	 */
-	for(size_t i = 0; i < pcp_t::NONCE_SIZE; i++)
+	for(size_t i = 0; i < pcp::NONCE_SIZE; i++)
 		// Записываем очередной октет отличительной метки
 		request.nonce[i] = static_cast <uint8_t> (i + 1);
 	// Выполняем сборку запроса к маршрутизатору
-	ASSERT_EQ(pcp->request(buffer, sizeof(buffer), request, error), static_cast <size_t> (60)) << message(error);
+	ASSERT_EQ(pcp::request(buffer, sizeof(buffer), request, error), static_cast <size_t> (60)) << message(error);
 	// Выполняем проверку издания договора
 	ASSERT_EQ(buffer[0], 2);
 	// Выполняем проверку действия договора без отметки ответа
@@ -83,6 +81,7 @@ TEST_F(PortmapFixture, PcpRequestMap) {
 	 *
 	 * @note Отдельного поля под адрес IPv4 договор не имеет: записывается он
 	 *       видом, отведённым под IPv4 в IPv6
+	 *
 	 */
 	ASSERT_EQ(buffer[18], 0xFF);
 	// Выполняем проверку приставки адреса, отведённой договором
@@ -112,9 +111,9 @@ TEST_F(PortmapFixture, PcpRequestMap) {
 		// Место под собираемое сообщение
 		uint8_t small[32] = {0};
 		// Выполняем сборку запроса в недостаточное место
-		ASSERT_EQ(pcp->request(small, sizeof(small), request, error), static_cast <size_t> (0));
+		ASSERT_EQ(pcp::request(small, sizeof(small), request, error), static_cast <size_t> (0));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::BUFFER_TOO_SMALL);
+		ASSERT_EQ(error, pcp::error_t::BUFFER_TOO_SMALL);
 	}
 }
 /**
@@ -122,18 +121,16 @@ TEST_F(PortmapFixture, PcpRequestMap) {
  *
  */
 TEST_F(PortmapFixture, PcpRequestPeer) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Место под собираемое сообщение
-	uint8_t buffer[pcp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[pcp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	// Параметры запроса к маршрутизатору
-	pcp_t::request_t request;
+	pcp::request_t request;
 	// Устанавливаем действие договора
-	request.opcode = pcp_t::opcode_t::PEER;
+	request.opcode = pcp::opcode_t::PEER;
 	// Устанавливаем договор перенаправления порта
-	request.proto = pcp_t::proto_t::UDP;
+	request.proto = pcp::proto_t::UDP;
 	// Устанавливаем запрашиваемый срок жизни перенаправления
 	request.lifeTime = 600;
 	// Устанавливаем внутренний порт перенаправления
@@ -143,7 +140,7 @@ TEST_F(PortmapFixture, PcpRequestPeer) {
 	// Записываем адрес узла, с которым ведётся сношение
 	this->encodeAddress(request.remote, "203.0.113.7");
 	// Выполняем сборку запроса к маршрутизатору
-	ASSERT_EQ(pcp->request(buffer, sizeof(buffer), request, error), static_cast <size_t> (80)) << message(error);
+	ASSERT_EQ(pcp::request(buffer, sizeof(buffer), request, error), static_cast <size_t> (80)) << message(error);
 	// Выполняем проверку действия договора без отметки ответа
 	ASSERT_EQ(buffer[1], 2);
 	// Выполняем проверку договора перенаправления порта
@@ -165,18 +162,16 @@ TEST_F(PortmapFixture, PcpRequestPeer) {
  *
  */
 TEST_F(PortmapFixture, PcpRequestAnnounce) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Место под собираемое сообщение
-	uint8_t buffer[pcp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[pcp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	// Параметры запроса к маршрутизатору
-	pcp_t::request_t request;
+	pcp::request_t request;
 	// Устанавливаем действие договора
-	request.opcode = pcp_t::opcode_t::ANNOUNCE;
+	request.opcode = pcp::opcode_t::ANNOUNCE;
 	// Выполняем сборку запроса к маршрутизатору
-	ASSERT_EQ(pcp->request(buffer, sizeof(buffer), request, error), pcp_t::HEADER_SIZE) << message(error);
+	ASSERT_EQ(pcp::request(buffer, sizeof(buffer), request, error), pcp::HEADER_SIZE) << message(error);
 	// Выполняем проверку действия договора без отметки ответа
 	ASSERT_EQ(buffer[1], 0);
 }
@@ -188,18 +183,16 @@ TEST_F(PortmapFixture, PcpRequestAnnounce) {
  *
  */
 TEST_F(PortmapFixture, PcpOptions) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Место под собираемое сообщение
-	uint8_t buffer[pcp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[pcp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	// Параметры запроса к маршрутизатору
-	pcp_t::request_t request;
+	pcp::request_t request;
 	// Устанавливаем действие договора
-	request.opcode = pcp_t::opcode_t::MAP;
+	request.opcode = pcp::opcode_t::MAP;
 	// Устанавливаем договор перенаправления порта
-	request.proto = pcp_t::proto_t::TCP;
+	request.proto = pcp::proto_t::TCP;
 	// Устанавливаем внутренний порт перенаправления
 	request.internalPort = 8080;
 	/**
@@ -207,9 +200,9 @@ TEST_F(PortmapFixture, PcpOptions) {
 	 */
 	{
 		// Создаём добавляемое дополнение запроса
-		pcp_t::opt_t option;
+		pcp::opt_t option;
 		// Устанавливаем код дополнения запроса
-		option.code = pcp_t::option_t::PREFER_FAILURE;
+		option.code = pcp::option_t::PREFER_FAILURE;
 		// Выполняем добавление дополнения к запросу
 		request.options.push_back(option);
 	}
@@ -218,23 +211,24 @@ TEST_F(PortmapFixture, PcpOptions) {
 	 */
 	{
 		// Создаём добавляемое дополнение запроса
-		pcp_t::opt_t option;
+		pcp::opt_t option;
 		// Устанавливаем код дополнения запроса
-		option.code = pcp_t::option_t::THIRD_PARTY;
+		option.code = pcp::option_t::THIRD_PARTY;
 		// Отводим место под адрес другой машины
-		option.data.resize(pcp_t::ADDRESS_SIZE, 0);
+		option.data.resize(pcp::ADDRESS_SIZE, 0);
 		// Записываем адрес другой машины
 		this->encodeAddress(option.data.data(), "192.168.1.1");
 		// Выполняем добавление дополнения к запросу
 		request.options.push_back(option);
 	}
 	// Выполняем сборку запроса к маршрутизатору
-	const size_t length = pcp->request(buffer, sizeof(buffer), request, error);
+	const size_t length = pcp::request(buffer, sizeof(buffer), request, error);
 	/**
 	 * Выполняем проверку размера собранного сообщения
 	 *
 	 * @note Шестьдесят октетов запроса, четыре на пустое дополнение и двадцать
 	 *       на дополнение с адресом
+	 *
 	 */
 	ASSERT_EQ(length, static_cast <size_t> (84)) << message(error);
 	// Выполняем проверку кода первого дополнения запроса
@@ -250,28 +244,29 @@ TEST_F(PortmapFixture, PcpOptions) {
 	 *
 	 * @note Сообщение отмечается ответом, чтобы разбор его принял: сличение
 	 *       ведётся по тем же полям, что кодек и собирал
+	 *
 	 */
 	{
 		// Отмечаем собранное сообщение ответом
 		buffer[1] |= 0x80;
 		// Разобранный ответ маршрутизатора
-		pcp_t::answer_t answer;
+		pcp::response_t response;
 		// Выполняем разбор собранного сообщения
-		ASSERT_TRUE(pcp->parse(buffer, length, answer, error)) << message(error);
+		ASSERT_TRUE(pcp::parse(buffer, length, response, error)) << message(error);
 		// Выполняем проверку количества разобранных дополнений
-		ASSERT_EQ(answer.options.size(), static_cast <size_t> (2));
+		ASSERT_EQ(response.options.size(), static_cast <size_t> (2));
 		// Выполняем проверку кода первого разобранного дополнения
-		ASSERT_EQ(answer.options[0].code, pcp_t::option_t::PREFER_FAILURE);
+		ASSERT_EQ(response.options[0].code, pcp::option_t::PREFER_FAILURE);
 		// Выполняем проверку пустоты содержимого первого дополнения
-		ASSERT_TRUE(answer.options[0].data.empty());
+		ASSERT_TRUE(response.options[0].data.empty());
 		// Выполняем проверку кода второго разобранного дополнения
-		ASSERT_EQ(answer.options[1].code, pcp_t::option_t::THIRD_PARTY);
+		ASSERT_EQ(response.options[1].code, pcp::option_t::THIRD_PARTY);
 		// Выполняем проверку размера содержимого второго дополнения
-		ASSERT_EQ(answer.options[1].data.size(), pcp_t::ADDRESS_SIZE);
+		ASSERT_EQ(response.options[1].data.size(), pcp::ADDRESS_SIZE);
 		// Извлекаемый адрес другой машины
 		uint32_t address = 0;
 		// Выполняем извлечение адреса другой машины
-		ASSERT_TRUE(this->decodeAddress(answer.options[1].data.data(), address));
+		ASSERT_TRUE(this->decodeAddress(response.options[1].data.data(), address));
 		// Выполняем проверку извлечённого адреса другой машины
 		ASSERT_EQ(address, static_cast <uint32_t> (0xC0A80101));
 	}
@@ -281,8 +276,6 @@ TEST_F(PortmapFixture, PcpOptions) {
  *
  */
 TEST_F(PortmapFixture, PcpResponseMap) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Ответ маршрутизатора о перенаправлении порта
 	uint8_t data[60] = {0};
 	// Записываем издание договора
@@ -298,7 +291,7 @@ TEST_F(PortmapFixture, PcpResponseMap) {
 	/**
 	 * Выполняем заполнение отличительной метки перенаправления
 	 */
-	for(size_t i = 0; i < pcp_t::NONCE_SIZE; i++)
+	for(size_t i = 0; i < pcp::NONCE_SIZE; i++)
 		// Записываем очередной октет отличительной метки
 		data[24 + i] = static_cast <uint8_t> (i + 1);
 	// Записываем договор перенаправления порта
@@ -322,29 +315,29 @@ TEST_F(PortmapFixture, PcpResponseMap) {
 	// Записываем внешний адрес, назначенный маршрутизатором
 	data[59] = 0x07;
 	// Разобранный ответ маршрутизатора
-	pcp_t::answer_t answer;
+	pcp::response_t response;
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(pcp->parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(pcp::parse(data, sizeof(data), response, error)) << message(error);
 	// Выполняем проверку действия договора
-	ASSERT_EQ(answer.opcode, pcp_t::opcode_t::MAP);
+	ASSERT_EQ(response.opcode, pcp::opcode_t::MAP);
 	// Выполняем проверку кода итога, выданного маршрутизатором
-	ASSERT_EQ(answer.result, pcp_t::result_t::SUCCESS);
+	ASSERT_EQ(response.result, pcp::result_t::SUCCESS);
 	// Выполняем проверку назначенного срока жизни перенаправления
-	ASSERT_EQ(answer.lifeTime, static_cast <uint32_t> (60));
+	ASSERT_EQ(response.lifeTime, static_cast <uint32_t> (60));
 	// Выполняем проверку времени работы маршрутизатора
-	ASSERT_EQ(answer.epoch, static_cast <uint32_t> (100));
+	ASSERT_EQ(response.epoch, static_cast <uint32_t> (100));
 	// Выполняем проверку договора перенаправления порта
-	ASSERT_EQ(answer.proto, pcp_t::proto_t::TCP);
+	ASSERT_EQ(response.proto, pcp::proto_t::TCP);
 	// Выполняем проверку внутреннего порта перенаправления
-	ASSERT_EQ(answer.internalPort, 8080);
+	ASSERT_EQ(response.internalPort, 8080);
 	// Выполняем проверку внешнего порта, назначенного маршрутизатором
-	ASSERT_EQ(answer.externalPort, 12345);
+	ASSERT_EQ(response.externalPort, 12345);
 	// Извлекаемый внешний адрес, назначенный маршрутизатором
 	uint32_t address = 0;
 	// Выполняем извлечение внешнего адреса
-	ASSERT_TRUE(this->decodeAddress(answer.external, address));
+	ASSERT_TRUE(this->decodeAddress(response.external, address));
 	// Выполняем проверку извлечённого внешнего адреса
 	ASSERT_EQ(address, static_cast <uint32_t> (0xCB007107));
 	/**
@@ -352,28 +345,29 @@ TEST_F(PortmapFixture, PcpResponseMap) {
 	 */
 	{
 		// Параметры отправленного запроса к маршрутизатору
-		pcp_t::request_t request;
+		pcp::request_t request;
 		// Устанавливаем действие договора
-		request.opcode = pcp_t::opcode_t::MAP;
+		request.opcode = pcp::opcode_t::MAP;
 		// Устанавливаем внутренний порт перенаправления
 		request.internalPort = 8080;
 		/**
 		 * Выполняем заполнение отличительной метки перенаправления
 		 */
-		for(size_t i = 0; i < pcp_t::NONCE_SIZE; i++)
+		for(size_t i = 0; i < pcp::NONCE_SIZE; i++)
 			// Записываем очередной октет отличительной метки
 			request.nonce[i] = static_cast <uint8_t> (i + 1);
 		// Выполняем проверку принадлежности ответа запросу
-		ASSERT_TRUE(pcp->belongs(answer, request));
+		ASSERT_TRUE(pcp::belongs(response, request));
 		/**
 		 * Выполняем проверку отклонения чужого ответа
 		 *
 		 * @note Без сличения отличительной метки посторонний, угадавший порт,
 		 *       подменил бы машине внешний адрес
+		 *
 		 */
 		request.nonce[0] = 0xFF;
 		// Выполняем проверку отклонения ответа с чужой отличительной меткой
-		ASSERT_FALSE(pcp->belongs(answer, request));
+		ASSERT_FALSE(pcp::belongs(response, request));
 	}
 }
 /**
@@ -381,12 +375,10 @@ TEST_F(PortmapFixture, PcpResponseMap) {
  *
  */
 TEST_F(PortmapFixture, PcpMalformed) {
-	// Создаём объект кодека договора PCP
-	const std::unique_ptr <pcp_t> pcp = this->makePcp();
 	// Разобранный ответ маршрутизатора
-	pcp_t::answer_t answer;
+	pcp::response_t response;
 	// Код причины отказа кодека
-	pcp_t::error_t error = pcp_t::error_t::NONE;
+	pcp::error_t error = pcp::error_t::NONE;
 	/**
 	 * Выполняем проверку отклонения сообщения короче заголовка
 	 */
@@ -394,9 +386,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Сообщение короче заголовка ответа
 		const uint8_t data[16] = {0x02, 0x81, 0x00, 0x00};
 		// Выполняем разбор сообщения короче заголовка
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::TRUNCATED);
+		ASSERT_EQ(error, pcp::error_t::TRUNCATED);
 	}
 	/**
 	 * Выполняем проверку отклонения неизвестного издания договора
@@ -409,9 +401,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем действие договора с отметкой ответа
 		data[1] = 0x81;
 		// Выполняем разбор ответа с неизвестным изданием договора
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::INVALID_VERSION);
+		ASSERT_EQ(error, pcp::error_t::INVALID_VERSION);
 	}
 	/**
 	 * Выполняем проверку отклонения сообщения, ответом не являющегося
@@ -424,9 +416,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем действие договора без отметки ответа
 		data[1] = 0x01;
 		// Выполняем разбор сообщения, ответом не являющегося
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::NOT_A_RESPONSE);
+		ASSERT_EQ(error, pcp::error_t::NOT_A_RESPONSE);
 	}
 	/**
 	 * Выполняем проверку отклонения неизвестного действия договора
@@ -439,9 +431,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем неизвестное действие договора с отметкой ответа
 		data[1] = 0x87;
 		// Выполняем разбор ответа с неизвестным действием договора
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::INVALID_OPCODE);
+		ASSERT_EQ(error, pcp::error_t::INVALID_OPCODE);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа короче содержимого действия
@@ -454,15 +446,16 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем действие договора с отметкой ответа
 		data[1] = 0x81;
 		// Выполняем разбор ответа короче содержимого действия
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::TRUNCATED);
+		ASSERT_EQ(error, pcp::error_t::TRUNCATED);
 	}
 	/**
 	 * Выполняем проверку отклонения дополнения, выходящего за границы сообщения
 	 *
 	 * @note Проверка обязательна: без неё длина, взятая из сообщения, увела бы
 	 *       чтение за отведённое место
+	 *
 	 */
 	{
 		// Ответ с дополнением, выходящим за границы сообщения
@@ -476,9 +469,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем размер содержимого дополнения больше остатка сообщения
 		data[63] = 0x40;
 		// Выполняем разбор ответа с испорченным дополнением
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::MALFORMED_OPTION);
+		ASSERT_EQ(error, pcp::error_t::MALFORMED_OPTION);
 	}
 	/**
 	 * Выполняем проверку отклонения обрубленного заголовка дополнения
@@ -491,9 +484,9 @@ TEST_F(PortmapFixture, PcpMalformed) {
 		// Записываем действие договора с отметкой ответа
 		data[1] = 0x81;
 		// Выполняем разбор ответа с обрубленным заголовком дополнения
-		ASSERT_FALSE(pcp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(pcp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, pcp_t::error_t::MALFORMED_OPTION);
+		ASSERT_EQ(error, pcp::error_t::MALFORMED_OPTION);
 	}
 }
 /**
@@ -502,7 +495,7 @@ TEST_F(PortmapFixture, PcpMalformed) {
  */
 TEST_F(PortmapFixture, PcpAddress) {
 	// Место под записываемый адрес
-	uint8_t address[pcp_t::ADDRESS_SIZE] = {0};
+	uint8_t address[pcp::ADDRESS_SIZE] = {0};
 	// Выполняем запись адреса IPv4 видом, отведённым договором
 	this->encodeAddress(address, "192.168.1.42");
 	// Выполняем проверку приставки, отмечающей адрес IPv4
@@ -520,10 +513,11 @@ TEST_F(PortmapFixture, PcpAddress) {
 	 *
 	 * @note Маршрутизатор вправе назначить и настоящий адрес IPv6, и приводить
 	 *       его к IPv4 бессмысленно
+	 *
 	 */
 	{
 		// Настоящий адрес IPv6
-		uint8_t six[pcp_t::ADDRESS_SIZE] = {0x20, 0x01, 0x0D, 0xB8};
+		uint8_t six[pcp::ADDRESS_SIZE] = {0x20, 0x01, 0x0D, 0xB8};
 		// Выполняем извлечение адреса IPv4 из настоящего адреса IPv6
 		ASSERT_FALSE(this->decodeAddress(six, value));
 	}
@@ -534,16 +528,17 @@ TEST_F(PortmapFixture, PcpAddress) {
  */
 TEST_F(PortmapFixture, PcpTimeout) {
 	// Выполняем проверку срока ожидания первой попытки
-	ASSERT_EQ(pcp_t::timeout(0), static_cast <uint32_t> (3000));
+	ASSERT_EQ(pcp::timeout(0), static_cast <uint32_t> (3000));
 	// Выполняем проверку срока ожидания второй попытки
-	ASSERT_EQ(pcp_t::timeout(1), static_cast <uint32_t> (6000));
+	ASSERT_EQ(pcp::timeout(1), static_cast <uint32_t> (6000));
 	// Выполняем проверку срока ожидания третьей попытки
-	ASSERT_EQ(pcp_t::timeout(2), static_cast <uint32_t> (12000));
+	ASSERT_EQ(pcp::timeout(2), static_cast <uint32_t> (12000));
 	/**
 	 * Выполняем проверку ограничения срока ожидания сверху
 	 *
 	 * @note Верхний предел договором задан твёрдо: расти сроку ожидания дальше
 	 *       незачем, а без ограничения он вышел бы за разрядность числа
+	 *
 	 */
-	ASSERT_EQ(pcp_t::timeout(200), pcp_t::MAX_TIMEOUT);
+	ASSERT_EQ(pcp::timeout(200), pcp::MAX_TIMEOUT);
 }

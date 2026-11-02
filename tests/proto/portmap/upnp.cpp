@@ -85,6 +85,7 @@ TEST_F(PortmapFixture, UpnpAdd) {
 	 *
 	 * @note Пустое значение означает «с любого узла», и именно его принимает
 	 *       подавляющее большинство маршрутизаторов
+	 *
 	 */
 	ASSERT_NE(request.body.find("<NewRemoteHost></NewRemoteHost>"), std::string::npos);
 	/**
@@ -210,12 +211,10 @@ TEST_F(PortmapFixture, UpnpActions) {
 TEST_F(PortmapFixture, UpnpAnswer) {
 	// Создаём объект кодека действий службы перенаправления
 	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
-	// Создаём объект кодека договора SOAP
-	const std::unique_ptr <soap_t> soap = this->makeSoap();
 	// Разобранный ответ службы
-	soap_t::answer_t answer;
+	soap::response_t response;
 	// Код причины отказа кодека
-	soap_t::error_t error = soap_t::error_t::NONE;
+	soap::error_t error = soap::error_t::NONE;
 	/**
 	 * Выполняем проверку извлечения внешнего адреса маршрутизатора
 	 */
@@ -228,11 +227,11 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 			"</u:GetExternalIPAddressResponse>"
 			"</s:Body></s:Envelope>";
 		// Выполняем разбор ответа службы
-		ASSERT_TRUE(soap->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемый внешний адрес маршрутизатора
 		std::string address;
 		// Выполняем извлечение внешнего адреса маршрутизатора
-		ASSERT_TRUE(upnp->address(answer, address));
+		ASSERT_TRUE(upnp->address(response, address));
 		// Выполняем проверку извлечённого внешнего адреса маршрутизатора
 		ASSERT_EQ(address, "203.0.113.7");
 	}
@@ -241,6 +240,7 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 	 *
 	 * @note Пустой адрес маршрутизатор выдаёт и тогда, когда соединения с внешней
 	 *       сетью у него нет вовсе: принимать такой ответ за успех недопустимо
+	 *
 	 */
 	{
 		// Ответ службы с пустым внешним адресом маршрутизатора
@@ -251,11 +251,11 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 			"</u:GetExternalIPAddressResponse>"
 			"</s:Body></s:Envelope>";
 		// Выполняем разбор ответа службы
-		ASSERT_TRUE(soap->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемый внешний адрес маршрутизатора
 		std::string address;
 		// Выполняем проверку отклонения извлечения пустого внешнего адреса
-		ASSERT_FALSE(upnp->address(answer, address));
+		ASSERT_FALSE(upnp->address(response, address));
 	}
 	/**
 	 * Выполняем проверку извлечения перенаправления порта
@@ -276,16 +276,17 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 			"</u:GetGenericPortMappingEntryResponse>"
 			"</s:Body></s:Envelope>";
 		// Выполняем разбор ответа службы
-		ASSERT_TRUE(soap->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемое перенаправление порта
 		upnp_t::mapping_t mapping;
 		// Выполняем извлечение перенаправления порта
-		ASSERT_TRUE(upnp->mapping(answer, mapping));
+		ASSERT_TRUE(upnp->mapping(response, mapping));
 		/**
 		 * Выполняем проверку договора перенаправления порта
 		 *
 		 * @note Обозначение договора записано в нижнем регистре: службы записывают
 		 *       его вольно, и сличение ведётся без учёта регистра
+		 *
 		 */
 		ASSERT_EQ(mapping.proto, upnp_t::proto_t::TCP);
 		// Выполняем проверку внешнего порта перенаправления
@@ -306,6 +307,7 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 	 *
 	 * @note Внутренний адрес есть у всякого перенаправления: без него подключения
 	 *       отдавать некому
+	 *
 	 */
 	{
 		// Ответ службы без перенаправления порта
@@ -316,11 +318,11 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 			"</u:GetStatusInfoResponse>"
 			"</s:Body></s:Envelope>";
 		// Выполняем разбор ответа службы
-		ASSERT_TRUE(soap->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 		// Извлекаемое перенаправление порта
 		upnp_t::mapping_t mapping;
 		// Выполняем проверку отклонения извлечения перенаправления порта
-		ASSERT_FALSE(upnp->mapping(answer, mapping));
+		ASSERT_FALSE(upnp->mapping(response, mapping));
 	}
 }
 /**
@@ -334,8 +336,6 @@ TEST_F(PortmapFixture, UpnpAnswer) {
 TEST_F(PortmapFixture, UpnpResult) {
 	// Создаём объект кодека действий службы перенаправления
 	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
-	// Создаём объект кодека договора SOAP
-	const std::unique_ptr <soap_t> soap = this->makeSoap();
 	// Отказ службы о занятости перенаправления
 	const std::string data =
 		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>"
@@ -345,15 +345,15 @@ TEST_F(PortmapFixture, UpnpResult) {
 		"</UPnPError></detail></s:Fault>"
 		"</s:Body></s:Envelope>";
 	// Разобранный ответ службы
-	soap_t::answer_t answer;
+	soap::response_t response;
 	// Код причины отказа кодека
-	soap_t::error_t error = soap_t::error_t::NONE;
+	soap::error_t error = soap::error_t::NONE;
 	// Выполняем разбор отказа службы
-	ASSERT_TRUE(soap->parse(data, answer, error)) << message(error);
+	ASSERT_TRUE(soap::parse(data, response, error)) << message(error);
 	// Выполняем проверку кода ошибки, выданного службой
-	ASSERT_EQ(upnp->result(answer), upnp_t::result_t::CONFLICT);
+	ASSERT_EQ(upnp->result(response), upnp_t::result_t::CONFLICT);
 	// Выполняем проверку описания кода ошибки, выданного службой
-	ASSERT_STREQ(message(upnp->result(answer)), "conflict in mapping entry");
+	ASSERT_STREQ(message(upnp->result(response)), "conflict in mapping entry");
 	/**
 	 * Выполняем проверку осмысленности повторной просьбы с иным портом
 	 */
@@ -372,6 +372,7 @@ TEST_F(PortmapFixture, UpnpResult) {
 	 *
 	 * @note Неизвестный код подменяться известным не должен: договор оставляет
 	 *       место под коды изготовителя, и подмена скрыла бы причину отказа
+	 *
 	 */
 	{
 		// Отказ службы с кодом ошибки изготовителя
@@ -381,11 +382,11 @@ TEST_F(PortmapFixture, UpnpResult) {
 			"<UPnPError xmlns=\"urn:schemas-upnp-org:control-1-0\"><errorCode>801</errorCode></UPnPError>"
 			"</detail></s:Fault></s:Body></s:Envelope>";
 		// Выполняем разбор отказа службы
-		ASSERT_TRUE(soap->parse(vendor, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(vendor, response, error)) << message(error);
 		// Выполняем проверку сохранения кода ошибки изготовителя
-		ASSERT_EQ(static_cast <uint32_t> (upnp->result(answer)), static_cast <uint32_t> (801));
+		ASSERT_EQ(static_cast <uint32_t> (upnp->result(response)), static_cast <uint32_t> (801));
 		// Выполняем проверку описания неизвестного кода ошибки
-		ASSERT_STREQ(message(upnp->result(answer)), "unknown error code");
+		ASSERT_STREQ(message(upnp->result(response)), "unknown error code");
 	}
 	/**
 	 * Выполняем проверку кода успешного выполнения просьбы
@@ -397,11 +398,11 @@ TEST_F(PortmapFixture, UpnpResult) {
 			"<u:AddPortMappingResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\"/>"
 			"</s:Body></s:Envelope>";
 		// Выполняем разбор ответа службы
-		ASSERT_TRUE(soap->parse(success, answer, error)) << message(error);
+		ASSERT_TRUE(soap::parse(success, response, error)) << message(error);
 		// Выполняем проверку кода успешного выполнения просьбы
-		ASSERT_EQ(upnp->result(answer), upnp_t::result_t::SUCCESS);
+		ASSERT_EQ(upnp->result(response), upnp_t::result_t::SUCCESS);
 		// Выполняем проверку названия действия, на которое получен ответ
-		ASSERT_EQ(answer.action, "AddPortMapping");
+		ASSERT_EQ(response.action, "AddPortMapping");
 	}
 }
 
@@ -443,6 +444,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 	 *
 	 * @note Здесь это отличается от заведения перенаправления, где то же поле несёт
 	 *       название договора: договор пробоя передаётся числом
+	 *
 	 */
 	ASSERT_NE(request.body.find("<Protocol>6</Protocol>"), std::string::npos);
 	// Выполняем проверку наличия внутреннего порта машины
@@ -455,6 +457,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 	 * Выполняем проверку наличия пустого порта узла, с которого пропускаются подключения
 	 *
 	 * @note Нулевой порт означает «с любого порта»
+	 *
 	 */
 	ASSERT_NE(request.body.find("<RemotePort>0</RemotePort>"), std::string::npos);
 	/**
@@ -464,6 +467,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 	 *       передавать их ровно в том порядке, в каком они объявлены. Устройство
 	 *       вправе отвергнуть вызов с переставленными доводами, и порядок этот
 	 *       произвольным не является
+	 *
 	 */
 	{
 		// Перечень доводов вызова в том порядке, в каком их объявляет описание службы
@@ -512,6 +516,7 @@ TEST_F(PortmapFixture, UpnpPinhole) {
 		 *
 		 * @note Бессрочных пробоев договор не заводит вовсе, и нулевой срок означал бы
 		 *       просьбу, которую устройство отвергнет
+		 *
 		 */
 		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
 		// Восстанавливаем срок жизни пробоя заслона
@@ -581,6 +586,7 @@ TEST_F(PortmapFixture, UpnpRepinhole) {
 	 * @note Приставка в имени довода обязательна: её объявляет описание службы, и
 	 *       без неё устройство срока попросту не увидит. У проделывания пробоя тот
 	 *       же по смыслу довод именуется без приставки
+	 *
 	 */
 	ASSERT_NE(request.body.find("<NewLeaseTime>7200</NewLeaseTime>"), std::string::npos);
 	// Выполняем проверку отсутствия довода срока без приставки
@@ -595,6 +601,7 @@ TEST_F(PortmapFixture, UpnpRepinhole) {
 	 * @note Договор отводит сроку промежуток от одной секунды до суток, и просьба за
 	 *       его пределами отвергается устройством. Отвергать её здесь дешевле: иначе
 	 *       за отказом пришлось бы ходить к устройству
+	 *
 	 */
 	{
 		// Выполняем проверку отклонения сборки с нулевым сроком жизни пробоя
@@ -605,11 +612,13 @@ TEST_F(PortmapFixture, UpnpRepinhole) {
 		ASSERT_TRUE(upnp->repinhole(WAN_SERVICE6, 42, upnp_t::MAX_LIFETIME).valid());
 	}
 }
+/**
+ * @brief Проверка чтения состояния заслона
+ *
+ */
 TEST_F(PortmapFixture, UpnpFirewall) {
 	// Создаём объект кодека действий службы перенаправления
 	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
-	// Создаём объект кодека договора SOAP
-	const std::unique_ptr <soap_t> soap = this->makeSoap();
 	// Выполняем сборку вызова чтения состояния заслона IPv6
 	const upnp_t::request_t request = upnp->firewall(WAN_SERVICE6);
 	// Выполняем проверку пригодности собранного вызова
@@ -617,7 +626,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 	// Выполняем проверку названия вызываемого действия службы
 	ASSERT_EQ(request.action, "GetFirewallStatus");
 	// Код причины отказа кодека
-	soap_t::error_t error = soap_t::error_t::NONE;
+	soap::error_t error = soap::error_t::NONE;
 	/**
 	 * Выполняем проверку извлечения состояния заслона IPv6
 	 */
@@ -631,15 +640,15 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<InboundPinholeAllowed>1</InboundPinholeAllowed>"
 			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Признак того, что заслон IPv6 включён
 		bool enabled = false;
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = false;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 включён
 		ASSERT_TRUE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 разрешены
@@ -651,6 +660,7 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 	 * @note Отключённый заслон и запрет пробоев при включённом заслоне - разные
 	 *       положения, и различать их обязано именно это действие: на саму просьбу о
 	 *       пробое устройство ответило бы отказом, по которому причина уже не видна
+	 *
 	 */
 	{
 		// Разбираемый ответ службы заслона IPv6
@@ -662,15 +672,15 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<InboundPinholeAllowed>0</InboundPinholeAllowed>"
 			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Признак того, что заслон IPv6 включён
 		bool enabled = true;
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = true;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 отключён
 		ASSERT_FALSE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 запрещены
@@ -689,15 +699,15 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<InboundPinholeAllowed>0</InboundPinholeAllowed>"
 			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Признак того, что заслон IPv6 включён
 		bool enabled = false;
 		// Признак того, что пробои заслона IPv6 разрешены
 		bool allowed = true;
 		// Выполняем извлечение состояния заслона IPv6
-		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		ASSERT_TRUE(upnp->firewall(response, enabled, allowed));
 		// Выполняем проверку того, что заслон IPv6 включён
 		ASSERT_TRUE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 запрещены
@@ -715,13 +725,13 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<UniqueID>65000</UniqueID>"
 			"</u:AddPinholeResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Извлекаемый опознаватель пробоя заслона
 		uint16_t unique = 0;
 		// Выполняем извлечение опознавателя пробоя заслона
-		ASSERT_TRUE(upnp->unique(answer, unique));
+		ASSERT_TRUE(upnp->unique(response, unique));
 		// Выполняем проверку извлечённого опознавателя пробоя заслона
 		ASSERT_EQ(unique, 65000);
 	}
@@ -746,13 +756,13 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 				"<UniqueID>").append(value).append("</UniqueID>"
 				"</u:AddPinholeResponse></s:Body></s:Envelope>");
 			// Разобранный ответ службы устройства
-			soap_t::answer_t answer;
+			soap::response_t response;
 			// Выполняем разбор ответа службы устройства
-			ASSERT_TRUE(soap->parse(text, answer, error));
+			ASSERT_TRUE(soap::parse(text, response, error));
 			// Извлекаемый опознаватель пробоя заслона
 			uint16_t unique = 0;
 			// Выполняем проверку отклонения извлечения негодного опознавателя
-			ASSERT_FALSE(upnp->unique(answer, unique));
+			ASSERT_FALSE(upnp->unique(response, unique));
 		}
 		// Разбираемый ответ службы заслона IPv6 с предельным опознавателем
 		const std::string text =
@@ -762,13 +772,13 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<UniqueID>65535</UniqueID>"
 			"</u:AddPinholeResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Извлекаемый опознаватель пробоя заслона
 		uint16_t unique = 0;
 		// Выполняем проверку извлечения предельного опознавателя пробоя
-		ASSERT_TRUE(upnp->unique(answer, unique));
+		ASSERT_TRUE(upnp->unique(response, unique));
 		// Выполняем проверку извлечённого опознавателя пробоя заслона
 		ASSERT_EQ(unique, 65535);
 	}
@@ -783,9 +793,9 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 			"<s:Body><u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
 			"</u:AddPinholeResponse></s:Body></s:Envelope>";
 		// Разобранный ответ службы устройства
-		soap_t::answer_t answer;
+		soap::response_t response;
 		// Выполняем разбор ответа службы устройства
-		ASSERT_TRUE(soap->parse(text, answer, error));
+		ASSERT_TRUE(soap::parse(text, response, error));
 		// Извлекаемый опознаватель пробоя заслона
 		uint16_t unique = 0;
 		/**
@@ -793,7 +803,8 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		 *
 		 * @note Без опознавателя пробой заделать нечем, и принимать такой ответ за
 		 *       успех недопустимо
+		 *
 		 */
-		ASSERT_FALSE(upnp->unique(answer, unique));
+		ASSERT_FALSE(upnp->unique(response, unique));
 	}
 }

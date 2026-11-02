@@ -37,16 +37,14 @@ using namespace awh::proto::portmap;
  *
  */
 TEST_F(PortmapFixture, NatPmpRequestAddress) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Место под собираемое сообщение
-	uint8_t buffer[natpmp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[natpmp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	// Выполняем сборку запроса внешнего адреса маршрутизатора
-	ASSERT_EQ(natpmp->address(buffer, sizeof(buffer), error), static_cast <size_t> (2));
+	ASSERT_EQ(natpmp::address(buffer, sizeof(buffer), error), static_cast <size_t> (2));
 	// Выполняем проверку кода причины отказа кодека
-	ASSERT_EQ(error, natpmp_t::error_t::NONE);
+	ASSERT_EQ(error, natpmp::error_t::NONE);
 	// Выполняем проверку издания договора
 	ASSERT_EQ(buffer[0], 0);
 	// Выполняем проверку кода действия запроса
@@ -58,9 +56,9 @@ TEST_F(PortmapFixture, NatPmpRequestAddress) {
 		// Место под собираемое сообщение
 		uint8_t small[1] = {0};
 		// Выполняем сборку запроса в недостаточное место
-		ASSERT_EQ(natpmp->address(small, sizeof(small), error), static_cast <size_t> (0));
+		ASSERT_EQ(natpmp::address(small, sizeof(small), error), static_cast <size_t> (0));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::BUFFER_TOO_SMALL);
+		ASSERT_EQ(error, natpmp::error_t::BUFFER_TOO_SMALL);
 	}
 }
 /**
@@ -68,16 +66,14 @@ TEST_F(PortmapFixture, NatPmpRequestAddress) {
  *
  */
 TEST_F(PortmapFixture, NatPmpRequestMapping) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Место под собираемое сообщение
-	uint8_t buffer[natpmp_t::MAX_MESSAGE_SIZE] = {0};
+	uint8_t buffer[natpmp::MAX_MESSAGE_SIZE] = {0};
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	// Параметры просьбы о перенаправлении порта
-	natpmp_t::request_t request;
+	natpmp::request_t request;
 	// Устанавливаем договор перенаправления порта
-	request.proto = natpmp_t::proto_t::TCP;
+	request.proto = natpmp::proto_t::TCP;
 	// Устанавливаем внутренний порт перенаправления
 	request.internalPort = 8080;
 	// Устанавливаем желаемый внешний порт перенаправления
@@ -85,9 +81,9 @@ TEST_F(PortmapFixture, NatPmpRequestMapping) {
 	// Устанавливаем запрашиваемый срок жизни перенаправления
 	request.lifeTime = 3600;
 	// Выполняем сборку просьбы о перенаправлении порта
-	ASSERT_EQ(natpmp->mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
+	ASSERT_EQ(natpmp::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
 	// Выполняем проверку кода причины отказа кодека
-	ASSERT_EQ(error, natpmp_t::error_t::NONE);
+	ASSERT_EQ(error, natpmp::error_t::NONE);
 	// Выполняем проверку издания договора
 	ASSERT_EQ(buffer[0], 0);
 	// Выполняем проверку кода действия, отвечающего договору TCP
@@ -117,16 +113,17 @@ TEST_F(PortmapFixture, NatPmpRequestMapping) {
 	 *
 	 * @note Отдельного действия для удаления договор не имеет: перенаправление
 	 *       убирается той же просьбой с нулевым сроком жизни
+	 *
 	 */
 	{
 		// Устанавливаем договор перенаправления порта
-		request.proto = natpmp_t::proto_t::UDP;
+		request.proto = natpmp::proto_t::UDP;
 		// Обнуляем желаемый внешний порт перенаправления
 		request.externalPort = 0;
 		// Обнуляем запрашиваемый срок жизни перенаправления
 		request.lifeTime = 0;
 		// Выполняем сборку просьбы об удалении перенаправления
-		ASSERT_EQ(natpmp->mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
+		ASSERT_EQ(natpmp::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
 		// Выполняем проверку кода действия, отвечающего договору UDP
 		ASSERT_EQ(buffer[1], 1);
 		// Выполняем проверку обнулённого внешнего порта перенаправления
@@ -141,11 +138,11 @@ TEST_F(PortmapFixture, NatPmpRequestMapping) {
 	 */
 	{
 		// Сбрасываем договор перенаправления порта
-		request.proto = natpmp_t::proto_t::NONE;
+		request.proto = natpmp::proto_t::NONE;
 		// Выполняем сборку просьбы с неопределённым договором
-		ASSERT_EQ(natpmp->mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (0));
+		ASSERT_EQ(natpmp::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (0));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::INVALID_OPCODE);
+		ASSERT_EQ(error, natpmp::error_t::INVALID_OPCODE);
 	}
 }
 /**
@@ -153,8 +150,6 @@ TEST_F(PortmapFixture, NatPmpRequestMapping) {
  *
  */
 TEST_F(PortmapFixture, NatPmpResponseAddress) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Ответ маршрутизатора с внешним адресом 203.0.113.7
 	const uint8_t data[12] = {
 		0x00, 0x80, 0x00, 0x00,
@@ -162,27 +157,25 @@ TEST_F(PortmapFixture, NatPmpResponseAddress) {
 		0xCB, 0x00, 0x71, 0x07
 	};
 	// Разобранный ответ маршрутизатора
-	natpmp_t::answer_t answer;
+	natpmp::response_t response;
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp->parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(natpmp::parse(data, sizeof(data), response, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
-	ASSERT_EQ(answer.kind, natpmp_t::kind_t::ADDRESS);
+	ASSERT_EQ(response.kind, natpmp::kind_t::ADDRESS);
 	// Выполняем проверку кода итога, выданного маршрутизатором
-	ASSERT_EQ(answer.result, natpmp_t::result_t::SUCCESS);
+	ASSERT_EQ(response.result, natpmp::result_t::SUCCESS);
 	// Выполняем проверку времени работы маршрутизатора
-	ASSERT_EQ(answer.epoch, static_cast <uint32_t> (0x1234));
+	ASSERT_EQ(response.epoch, static_cast <uint32_t> (0x1234));
 	// Выполняем проверку внешнего адреса маршрутизатора
-	ASSERT_EQ(answer.address, static_cast <uint32_t> (0xCB007107));
+	ASSERT_EQ(response.address, static_cast <uint32_t> (0xCB007107));
 }
 /**
  * @brief Проверка разбора ответа о перенаправлении порта
  *
  */
 TEST_F(PortmapFixture, NatPmpResponseMapping) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Ответ маршрутизатора о перенаправлении порта TCP
 	const uint8_t data[16] = {
 		0x00, 0x82, 0x00, 0x00,
@@ -191,29 +184,30 @@ TEST_F(PortmapFixture, NatPmpResponseMapping) {
 		0x00, 0x00, 0x0E, 0x10
 	};
 	// Разобранный ответ маршрутизатора
-	natpmp_t::answer_t answer;
+	natpmp::response_t response;
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp->parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(natpmp::parse(data, sizeof(data), response, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
-	ASSERT_EQ(answer.kind, natpmp_t::kind_t::MAPPING);
+	ASSERT_EQ(response.kind, natpmp::kind_t::MAPPING);
 	// Выполняем проверку договора перенаправления порта
-	ASSERT_EQ(answer.proto, natpmp_t::proto_t::TCP);
+	ASSERT_EQ(response.proto, natpmp::proto_t::TCP);
 	// Выполняем проверку кода итога, выданного маршрутизатором
-	ASSERT_EQ(answer.result, natpmp_t::result_t::SUCCESS);
+	ASSERT_EQ(response.result, natpmp::result_t::SUCCESS);
 	// Выполняем проверку внутреннего порта перенаправления
-	ASSERT_EQ(answer.internalPort, 8080);
+	ASSERT_EQ(response.internalPort, 8080);
 	/**
 	 * Выполняем проверку внешнего порта, назначенного маршрутизатором
 	 *
 	 * @note Назначенный порт с запрошенным не совпадает намеренно: запрошенный
 	 *       порт для маршрутизатора лишь пожелание, и объявлять другим следует
 	 *       именно назначенный
+	 *
 	 */
-	ASSERT_EQ(answer.externalPort, 12345);
+	ASSERT_EQ(response.externalPort, 12345);
 	// Выполняем проверку срока жизни перенаправления
-	ASSERT_EQ(answer.lifeTime, static_cast <uint32_t> (3600));
+	ASSERT_EQ(response.lifeTime, static_cast <uint32_t> (3600));
 }
 /**
  * @brief Проверка разбора отказа маршрутизатора
@@ -224,8 +218,6 @@ TEST_F(PortmapFixture, NatPmpResponseMapping) {
  *
  */
 TEST_F(PortmapFixture, NatPmpResponseRefused) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Отказ маршрутизатора выполнить просьбу
 	const uint8_t data[16] = {
 		0x00, 0x82, 0x00, 0x02,
@@ -234,34 +226,37 @@ TEST_F(PortmapFixture, NatPmpResponseRefused) {
 		0x00, 0x00, 0x00, 0x00
 	};
 	// Разобранный ответ маршрутизатора
-	natpmp_t::answer_t answer;
+	natpmp::response_t response;
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp->parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(natpmp::parse(data, sizeof(data), response, error)) << message(error);
 	// Выполняем проверку отсутствия отказа кодека
-	ASSERT_EQ(error, natpmp_t::error_t::NONE);
+	ASSERT_EQ(error, natpmp::error_t::NONE);
 	// Выполняем проверку кода итога, выданного маршрутизатором
-	ASSERT_EQ(answer.result, natpmp_t::result_t::NOT_AUTHORIZED);
+	ASSERT_EQ(response.result, natpmp::result_t::NOT_AUTHORIZED);
 	/**
 	 * Выполняем проверку сохранения кода итога, кодеку неизвестного
 	 *
 	 * @note Неизвестный код подменяться известным не должен: договор оставляет
 	 *       место под новые коды, и подмена скрыла бы настоящую причину отказа
+	 *
 	 */
 	{
 		// Отказ маршрутизатора с кодом итога, кодеку неизвестным
 		uint8_t unknown[16] = {0};
-		// Выполняем копирование ответа маршрутизатора
+		/**
+		 * Выполняем копирование ответа маршрутизатора
+		 */
 		for(size_t i = 0; i < sizeof(unknown); i++)
 			// Выполняем копирование очередного октета ответа
 			unknown[i] = data[i];
 		// Устанавливаем код итога, кодеку неизвестный
 		unknown[3] = 0x63;
 		// Выполняем разбор ответа маршрутизатора
-		ASSERT_TRUE(natpmp->parse(unknown, sizeof(unknown), answer, error)) << message(error);
+		ASSERT_TRUE(natpmp::parse(unknown, sizeof(unknown), response, error)) << message(error);
 		// Выполняем проверку сохранения кода итога, кодеку неизвестного
-		ASSERT_EQ(static_cast <uint16_t> (answer.result), static_cast <uint16_t> (0x63));
+		ASSERT_EQ(static_cast <uint16_t> (response.result), static_cast <uint16_t> (0x63));
 	}
 }
 /**
@@ -269,12 +264,10 @@ TEST_F(PortmapFixture, NatPmpResponseRefused) {
  *
  */
 TEST_F(PortmapFixture, NatPmpMalformed) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Разобранный ответ маршрутизатора
-	natpmp_t::answer_t answer;
+	natpmp::response_t response;
 	// Код причины отказа кодека
-	natpmp_t::error_t error = natpmp_t::error_t::NONE;
+	natpmp::error_t error = natpmp::error_t::NONE;
 	/**
 	 * Выполняем проверку отклонения сообщения короче заголовка
 	 */
@@ -282,9 +275,9 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
 		// Сообщение короче заголовка ответа
 		const uint8_t data[3] = {0x00, 0x80, 0x00};
 		// Выполняем разбор сообщения короче заголовка
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
+		ASSERT_EQ(error, natpmp::error_t::TRUNCATED);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа с внешним адресом короче положенного
@@ -293,9 +286,9 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
 		// Ответ с внешним адресом короче положенного
 		const uint8_t data[8] = {0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34};
 		// Выполняем разбор ответа короче положенного
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
+		ASSERT_EQ(error, natpmp::error_t::TRUNCATED);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа о перенаправлении короче положенного
@@ -304,9 +297,9 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
 		// Ответ о перенаправлении короче положенного
 		const uint8_t data[12] = {0x00, 0x82, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x1F, 0x90, 0x30, 0x39};
 		// Выполняем разбор ответа короче положенного
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
+		ASSERT_EQ(error, natpmp::error_t::TRUNCATED);
 	}
 	/**
 	 * Выполняем проверку отклонения неизвестного издания договора
@@ -315,23 +308,24 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
 		// Ответ с неизвестным изданием договора
 		const uint8_t data[12] = {0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0xCB, 0x00, 0x71, 0x07};
 		// Выполняем разбор ответа с неизвестным изданием договора
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::INVALID_VERSION);
+		ASSERT_EQ(error, natpmp::error_t::INVALID_VERSION);
 	}
 	/**
 	 * Выполняем проверку отклонения сообщения, ответом не являющегося
 	 *
 	 * @note На порт ответов приходят и чужие запросы, разосланные по сети:
 	 *       принимать их за ответы недопустимо
+	 *
 	 */
 	{
 		// Запрос, ответом не являющийся
 		const uint8_t data[12] = {0x00, 0x02, 0x00, 0x00, 0x1F, 0x90, 0x1F, 0x90, 0x00, 0x00, 0x0E, 0x10};
 		// Выполняем разбор сообщения, ответом не являющегося
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::NOT_A_RESPONSE);
+		ASSERT_EQ(error, natpmp::error_t::NOT_A_RESPONSE);
 	}
 	/**
 	 * Выполняем проверку отклонения неизвестного кода действия
@@ -340,9 +334,9 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
 		// Ответ с неизвестным кодом действия
 		const uint8_t data[16] = {0x00, 0x87, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x1F, 0x90, 0x30, 0x39, 0x00, 0x00, 0x0E, 0x10};
 		// Выполняем разбор ответа с неизвестным кодом действия
-		ASSERT_FALSE(natpmp->parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(natpmp::parse(data, sizeof(data), response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, natpmp_t::error_t::INVALID_OPCODE);
+		ASSERT_EQ(error, natpmp::error_t::INVALID_OPCODE);
 	}
 }
 /**
@@ -353,21 +347,20 @@ TEST_F(PortmapFixture, NatPmpMalformed) {
  *
  */
 TEST_F(PortmapFixture, NatPmpTimeout) {
-	// Создаём объект кодека договора NAT-PMP
-	const std::unique_ptr <natpmp_t> natpmp = this->makeNatPmp();
 	// Выполняем проверку срока ожидания первой попытки
-	ASSERT_EQ(natpmp_t::timeout(0), static_cast <uint32_t> (250));
+	ASSERT_EQ(natpmp::timeout(0), static_cast <uint32_t> (250));
 	// Выполняем проверку срока ожидания второй попытки
-	ASSERT_EQ(natpmp_t::timeout(1), static_cast <uint32_t> (500));
+	ASSERT_EQ(natpmp::timeout(1), static_cast <uint32_t> (500));
 	// Выполняем проверку срока ожидания третьей попытки
-	ASSERT_EQ(natpmp_t::timeout(2), static_cast <uint32_t> (1000));
+	ASSERT_EQ(natpmp::timeout(2), static_cast <uint32_t> (1000));
 	// Выполняем проверку срока ожидания последней попытки
-	ASSERT_EQ(natpmp_t::timeout(natpmp_t::MAX_ATTEMPTS - 1), static_cast <uint32_t> (64000));
+	ASSERT_EQ(natpmp::timeout(natpmp::MAX_ATTEMPTS - 1), static_cast <uint32_t> (64000));
 	/**
 	 * Выполняем проверку ограничения срока ожидания
 	 *
 	 * @note Без ограничения сдвиг вышел бы за разрядность числа, а срок
 	 *       ожидания стал бы бессмысленным
+	 *
 	 */
-	ASSERT_EQ(natpmp_t::timeout(200), natpmp_t::timeout(natpmp_t::MAX_ATTEMPTS - 1));
+	ASSERT_EQ(natpmp::timeout(200), natpmp::timeout(natpmp::MAX_ATTEMPTS - 1));
 }

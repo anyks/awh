@@ -34,10 +34,8 @@ using namespace awh::proto::portmap;
  *
  */
 TEST_F(PortmapFixture, SsdpSearch) {
-	// Создаём объект кодека договора SSDP
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Выполняем сборку запроса обнаружения устройств
-	const std::string request = ssdp->search(ssdp_t::TARGET_GATEWAY);
+	const std::string request = ssdp::search(ssdp::TARGET_GATEWAY);
 	// Выполняем проверку строки действия запроса
 	ASSERT_EQ(request.compare(0, 19, "M-SEARCH * HTTP/1.1"), 0);
 	// Выполняем проверку наличия группового адреса обнаружения устройств
@@ -47,12 +45,13 @@ TEST_F(PortmapFixture, SsdpSearch) {
 	// Выполняем проверку наличия отведённого устройству срока на ответ
 	ASSERT_NE(request.find("MX: 2\r\n"), std::string::npos);
 	// Выполняем проверку наличия обозначения искомой службы
-	ASSERT_NE(request.find(std::string("ST: ").append(ssdp_t::TARGET_GATEWAY).append("\r\n")), std::string::npos);
+	ASSERT_NE(request.find(std::string("ST: ").append(ssdp::TARGET_GATEWAY).append("\r\n")), std::string::npos);
 	/**
 	 * Выполняем проверку завершения заголовка запроса пустой строкой
 	 *
 	 * @note Без пустой строки устройство считает заголовок незавершённым и ответа
 	 *       не даёт вовсе
+	 *
 	 */
 	ASSERT_EQ(request.compare(request.length() - 4, 4, "\r\n\r\n"), 0);
 	/**
@@ -60,10 +59,11 @@ TEST_F(PortmapFixture, SsdpSearch) {
 	 *
 	 * @note Адрес IPv6 обязан быть заключён в угловые скобки: без них двоеточия
 	 *       адреса не отличить от разделителя порта
+	 *
 	 */
 	{
 		// Выполняем сборку запроса обнаружения устройств для сети IPv6
-		const std::string six = ssdp->search(ssdp_t::TARGET_GATEWAY, 3, ssdp_t::MULTICAST_ADDRESS6);
+		const std::string six = ssdp::search(ssdp::TARGET_GATEWAY, 3, ssdp::MULTICAST_ADDRESS6);
 		// Выполняем проверку наличия группового адреса сети IPv6
 		ASSERT_NE(six.find("HOST: [FF02::C]:1900\r\n"), std::string::npos);
 		// Выполняем проверку наличия отведённого устройству срока на ответ
@@ -75,10 +75,11 @@ TEST_F(PortmapFixture, SsdpSearch) {
 	 * @note Групп обнаружения в сети IPv6 две, и поле обязано называть ту, на которую
 	 *       запрос и рассылается: договор велит устройству сличать их, отвергая запрос
 	 *       с чужим адресом
+	 *
 	 */
 	{
 		// Выполняем сборку запроса обнаружения устройств на группу площадки
-		const std::string site = ssdp->search(ssdp_t::TARGET_GATEWAY, 3, ssdp_t::MULTICAST_ADDRESS6_SITE);
+		const std::string site = ssdp::search(ssdp::TARGET_GATEWAY, 3, ssdp::MULTICAST_ADDRESS6_SITE);
 		// Выполняем проверку наличия группового адреса площадки сети IPv6
 		ASSERT_NE(site.find("HOST: [FF05::C]:1900\r\n"), std::string::npos);
 		// Выполняем проверку отсутствия группового адреса связи сети IPv6
@@ -89,10 +90,11 @@ TEST_F(PortmapFixture, SsdpSearch) {
 	 *
 	 * @note Зона принадлежит машине отправителя, а не сети: записанная в поле, она
 	 *       сделала бы адрес несовпадающим с тем, что видит устройство
+	 *
 	 */
 	{
 		// Выполняем сборку запроса обнаружения устройств с зоной группового адреса
-		const std::string zoned = ssdp->search(ssdp_t::TARGET_GATEWAY, 3, "FF02::C%en0");
+		const std::string zoned = ssdp::search(ssdp::TARGET_GATEWAY, 3, "FF02::C%en0");
 		// Выполняем проверку наличия группового адреса без зоны
 		ASSERT_NE(zoned.find("HOST: [FF02::C]:1900\r\n"), std::string::npos);
 		// Выполняем проверку отсутствия зоны группового адреса
@@ -101,15 +103,13 @@ TEST_F(PortmapFixture, SsdpSearch) {
 	/**
 	 * Выполняем проверку отклонения сборки без обозначения искомой службы
 	 */
-	ASSERT_TRUE(ssdp->search("").empty());
+	ASSERT_TRUE(ssdp::search("").empty());
 }
 /**
  * @brief Проверка разбора ответа устройства на запрос обнаружения
  *
  */
 TEST_F(PortmapFixture, SsdpResponse) {
-	// Создаём объект кодека договора SSDP
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Ответ маршрутизатора на запрос обнаружения
 	const std::string data =
 		"HTTP/1.1 200 OK\r\n"
@@ -122,30 +122,31 @@ TEST_F(PortmapFixture, SsdpResponse) {
 		"USN: uuid:12345678-1234-1234-1234-123456789012::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 		"\r\n";
 	// Разобранное сообщение договора
-	ssdp_t::answer_t answer;
+	ssdp::response_t response;
 	// Код причины отказа кодека
-	ssdp_t::error_t error = ssdp_t::error_t::NONE;
+	ssdp::error_t error = ssdp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(ssdp->parse(data, answer, error)) << message(error);
+	ASSERT_TRUE(ssdp::parse(data, response, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
-	ASSERT_EQ(answer.kind, ssdp_t::kind_t::RESPONSE);
+	ASSERT_EQ(response.kind, ssdp::kind_t::RESPONSE);
 	// Выполняем проверку обозначения службы, о которой сообщает устройство
-	ASSERT_EQ(answer.target, ssdp_t::TARGET_GATEWAY);
+	ASSERT_EQ(response.target, ssdp::TARGET_GATEWAY);
 	// Выполняем проверку адреса описания устройства
-	ASSERT_EQ(answer.location, "http://192.168.1.1:5000/rootDesc.xml");
+	ASSERT_EQ(response.location, "http://192.168.1.1:5000/rootDesc.xml");
 	// Выполняем проверку сведений об устройстве
-	ASSERT_EQ(answer.server, "Linux/3.4 UPnP/1.1 MiniUPnPd/2.3");
+	ASSERT_EQ(response.server, "Linux/3.4 UPnP/1.1 MiniUPnPd/2.3");
 	// Выполняем проверку срока годности полученных сведений
-	ASSERT_EQ(answer.maxAge, static_cast <uint32_t> (1800));
+	ASSERT_EQ(response.maxAge, static_cast <uint32_t> (1800));
 	// Выполняем проверку пригодности обнаруженного устройства
-	ASSERT_TRUE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
+	ASSERT_TRUE(ssdp::suitable(response, ssdp::TARGET_GATEWAY));
 	/**
 	 * Выполняем проверку отклонения устройства с чужой службой
 	 *
 	 * @note Ответ приходит от всякого устройства сети: без сличения обозначения
 	 *       службы за маршрутизатор сошла бы, скажем, домашняя колонка
+	 *
 	 */
-	ASSERT_FALSE(ssdp->suitable(answer, "urn:schemas-upnp-org:device:MediaRenderer:1"));
+	ASSERT_FALSE(ssdp::suitable(response, "urn:schemas-upnp-org:device:MediaRenderer:1"));
 }
 /**
  * @brief Проверка разбора ответа с вольностями в написании
@@ -160,8 +161,6 @@ TEST_F(PortmapFixture, SsdpResponse) {
  *
  */
 TEST_F(PortmapFixture, SsdpLenient) {
-	// Создаём объект кодека договора SSDP
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Ответ маршрутизатора с вольностями в написании
 	const std::string data =
 		"HTTP/1.0 200 OK\n"
@@ -172,31 +171,29 @@ TEST_F(PortmapFixture, SsdpLenient) {
 		"USN: uuid:abcdefgh::upnp:rootdevice\n"
 		"\n";
 	// Разобранное сообщение договора
-	ssdp_t::answer_t answer;
+	ssdp::response_t response;
 	// Код причины отказа кодека
-	ssdp_t::error_t error = ssdp_t::error_t::NONE;
+	ssdp::error_t error = ssdp::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(ssdp->parse(data, answer, error)) << message(error);
+	ASSERT_TRUE(ssdp::parse(data, response, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
-	ASSERT_EQ(answer.kind, ssdp_t::kind_t::RESPONSE);
+	ASSERT_EQ(response.kind, ssdp::kind_t::RESPONSE);
 	// Выполняем проверку адреса описания устройства
-	ASSERT_EQ(answer.location, "http://192.168.0.1:80/desc.xml");
+	ASSERT_EQ(response.location, "http://192.168.0.1:80/desc.xml");
 	// Выполняем проверку срока годности полученных сведений
-	ASSERT_EQ(answer.maxAge, static_cast <uint32_t> (120));
+	ASSERT_EQ(response.maxAge, static_cast <uint32_t> (120));
 	// Выполняем проверку пригодности обнаруженного устройства
-	ASSERT_TRUE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
+	ASSERT_TRUE(ssdp::suitable(response, ssdp::TARGET_GATEWAY));
 }
 /**
  * @brief Проверка разбора оповещений устройства
  *
  */
 TEST_F(PortmapFixture, SsdpNotify) {
-	// Создаём объект кодека договора SSDP
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Разобранное сообщение договора
-	ssdp_t::answer_t answer;
+	ssdp::response_t response;
 	// Код причины отказа кодека
-	ssdp_t::error_t error = ssdp_t::error_t::NONE;
+	ssdp::error_t error = ssdp::error_t::NONE;
 	/**
 	 * Выполняем проверку разбора объявления устройства в сети
 	 */
@@ -212,21 +209,22 @@ TEST_F(PortmapFixture, SsdpNotify) {
 			"USN: uuid:12345678::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 			"\r\n";
 		// Выполняем разбор оповещения устройства
-		ASSERT_TRUE(ssdp->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(ssdp::parse(data, response, error)) << message(error);
 		// Выполняем проверку вида полученного сообщения
-		ASSERT_EQ(answer.kind, ssdp_t::kind_t::NOTIFY);
+		ASSERT_EQ(response.kind, ssdp::kind_t::NOTIFY);
 		// Выполняем проверку вида оповещения устройства
-		ASSERT_EQ(answer.notice, ssdp_t::notice_t::ALIVE);
+		ASSERT_EQ(response.notice, ssdp::notice_t::ALIVE);
 		// Выполняем проверку обозначения службы, о которой сообщает устройство
-		ASSERT_EQ(answer.target, ssdp_t::TARGET_GATEWAY);
+		ASSERT_EQ(response.target, ssdp::TARGET_GATEWAY);
 		// Выполняем проверку пригодности обнаруженного устройства
-		ASSERT_TRUE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
+		ASSERT_TRUE(ssdp::suitable(response, ssdp::TARGET_GATEWAY));
 	}
 	/**
 	 * Выполняем проверку разбора прощания устройства
 	 *
 	 * @note Прощание адреса описания не несёт, и требовать его незачем: ушедшее
 	 *       устройство описывать нечем
+	 *
 	 */
 	{
 		// Оповещение устройства об уходе из сети
@@ -238,16 +236,17 @@ TEST_F(PortmapFixture, SsdpNotify) {
 			"USN: uuid:12345678::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 			"\r\n";
 		// Выполняем разбор оповещения устройства
-		ASSERT_TRUE(ssdp->parse(data, answer, error)) << message(error);
+		ASSERT_TRUE(ssdp::parse(data, response, error)) << message(error);
 		// Выполняем проверку вида оповещения устройства
-		ASSERT_EQ(answer.notice, ssdp_t::notice_t::BYEBYE);
+		ASSERT_EQ(response.notice, ssdp::notice_t::BYEBYE);
 		/**
 		 * Выполняем проверку непригодности покидающего сеть устройства
 		 *
 		 * @note Обозначение службы у прощания то же самое: без учёта вида
 		 *       оповещения ушедшее устройство сошло бы за пригодное
+		 *
 		 */
-		ASSERT_FALSE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
+		ASSERT_FALSE(ssdp::suitable(response, ssdp::TARGET_GATEWAY));
 	}
 }
 /**
@@ -255,16 +254,14 @@ TEST_F(PortmapFixture, SsdpNotify) {
  *
  */
 TEST_F(PortmapFixture, SsdpMalformed) {
-	// Создаём объект кодека договора SSDP
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Разобранное сообщение договора
-	ssdp_t::answer_t answer;
+	ssdp::response_t response;
 	// Код причины отказа кодека
-	ssdp_t::error_t error = ssdp_t::error_t::NONE;
+	ssdp::error_t error = ssdp::error_t::NONE;
 	// Выполняем разбор пустого сообщения
-	ASSERT_FALSE(ssdp->parse("", answer, error));
+	ASSERT_FALSE(ssdp::parse("", response, error));
 	// Выполняем проверку кода причины отказа кодека
-	ASSERT_EQ(error, ssdp_t::error_t::EMPTY);
+	ASSERT_EQ(error, ssdp::error_t::EMPTY);
 	/**
 	 * Выполняем проверку отклонения сообщения, договору не принадлежащего
 	 */
@@ -272,23 +269,24 @@ TEST_F(PortmapFixture, SsdpMalformed) {
 		// Сообщение, договору не принадлежащее
 		const std::string data = "GET / HTTP/1.1\r\nHOST: 192.168.1.1\r\n\r\n";
 		// Выполняем разбор сообщения, договору не принадлежащего
-		ASSERT_FALSE(ssdp->parse(data, answer, error));
+		ASSERT_FALSE(ssdp::parse(data, response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, ssdp_t::error_t::UNKNOWN_METHOD);
+		ASSERT_EQ(error, ssdp::error_t::UNKNOWN_METHOD);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа устройства с отказом
 	 *
 	 * @note Отказ здесь не испорченное сообщение, а осмысленный ответ: устройство
 	 *       обнаружено, но искомой службы не имеет
+	 *
 	 */
 	{
 		// Ответ устройства с отказом
 		const std::string data = "HTTP/1.1 404 Not Found\r\n\r\n";
 		// Выполняем разбор ответа устройства с отказом
-		ASSERT_FALSE(ssdp->parse(data, answer, error));
+		ASSERT_FALSE(ssdp::parse(data, response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, ssdp_t::error_t::BAD_STATUS);
+		ASSERT_EQ(error, ssdp::error_t::BAD_STATUS);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа без обозначения службы
@@ -300,15 +298,16 @@ TEST_F(PortmapFixture, SsdpMalformed) {
 			"LOCATION: http://192.168.1.1:5000/rootDesc.xml\r\n"
 			"\r\n";
 		// Выполняем разбор ответа без обозначения службы
-		ASSERT_FALSE(ssdp->parse(data, answer, error));
+		ASSERT_FALSE(ssdp::parse(data, response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, ssdp_t::error_t::MISSING_TARGET);
+		ASSERT_EQ(error, ssdp::error_t::MISSING_TARGET);
 	}
 	/**
 	 * Выполняем проверку отклонения ответа без адреса описания устройства
 	 *
 	 * @note Без адреса описания обнаруженное устройство бесполезно: перечень его
 	 *       служб взять неоткуда
+	 *
 	 */
 	{
 		// Ответ устройства без адреса описания
@@ -317,9 +316,9 @@ TEST_F(PortmapFixture, SsdpMalformed) {
 			"ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 			"\r\n";
 		// Выполняем разбор ответа без адреса описания устройства
-		ASSERT_FALSE(ssdp->parse(data, answer, error));
+		ASSERT_FALSE(ssdp::parse(data, response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, ssdp_t::error_t::MISSING_LOCATION);
+		ASSERT_EQ(error, ssdp::error_t::MISSING_LOCATION);
 	}
 	/**
 	 * Выполняем проверку отклонения сообщения длиннее допустимого договором
@@ -328,25 +327,26 @@ TEST_F(PortmapFixture, SsdpMalformed) {
 		// Сообщение длиннее допустимого договором
 		std::string data = "HTTP/1.1 200 OK\r\nSERVER: ";
 		// Выполняем дополнение сообщения до превышения предела
-		data.append(ssdp_t::MAX_MESSAGE_SIZE, 'x');
+		data.append(ssdp::MAX_MESSAGE_SIZE, 'x');
 		// Выполняем разбор сообщения длиннее допустимого договором
-		ASSERT_FALSE(ssdp->parse(data, answer, error));
+		ASSERT_FALSE(ssdp::parse(data, response, error));
 		// Выполняем проверку кода причины отказа кодека
-		ASSERT_EQ(error, ssdp_t::error_t::TOO_LARGE);
+		ASSERT_EQ(error, ssdp::error_t::TOO_LARGE);
 	}
 	/**
 	 * Выполняем проверку разбора собственного запроса обнаружения
 	 *
 	 * @note Разосланный запрос приходит и на свою же машину: отличать его от
 	 *       ответа необходимо, иначе он сойдёт за обнаруженное устройство
+	 *
 	 */
 	{
 		// Выполняем разбор собственного запроса обнаружения
-		ASSERT_TRUE(ssdp->parse(ssdp->search(ssdp_t::TARGET_GATEWAY), answer, error)) << message(error);
+		ASSERT_TRUE(ssdp::parse(ssdp::search(ssdp::TARGET_GATEWAY), response, error)) << message(error);
 		// Выполняем проверку вида полученного сообщения
-		ASSERT_EQ(answer.kind, ssdp_t::kind_t::SEARCH);
+		ASSERT_EQ(response.kind, ssdp::kind_t::SEARCH);
 		// Выполняем проверку непригодности собственного запроса обнаружения
-		ASSERT_FALSE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
+		ASSERT_FALSE(ssdp::suitable(response, ssdp::TARGET_GATEWAY));
 	}
 }
 
@@ -359,8 +359,6 @@ TEST_F(PortmapFixture, SsdpMalformed) {
  *
  */
 TEST_F(PortmapFixture, SsdpHeaderInjection) {
-	// Объект кодека договора обнаружения устройств
-	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
 	// Перечень доводов, к записи в заголовок непригодных
 	const char * hostile[] = {
 		"ssdp:all\r\nX-Injected: yes",
@@ -374,16 +372,16 @@ TEST_F(PortmapFixture, SsdpHeaderInjection) {
 	 */
 	for(const char * item : hostile){
 		// Выполняем проверку отклонения непригодного обозначения искомой службы
-		ASSERT_TRUE(ssdp->search(item).empty()) << item;
+		ASSERT_TRUE(ssdp::search(item).empty()) << item;
 		// Выполняем проверку отклонения непригодного группового адреса
-		ASSERT_TRUE(ssdp->search(ssdp_t::TARGET_GATEWAY, ssdp_t::DEFAULT_DELAY, item).empty()) << item;
+		ASSERT_TRUE(ssdp::search(ssdp::TARGET_GATEWAY, ssdp::DEFAULT_DELAY, item).empty()) << item;
 	}
 	/**
 	 * Выполняем проверку того, что пригодная просьба собирается целиком
 	 */
 	{
 		// Выполняем сборку просьбы обнаружения устройств
-		const std::string request = ssdp->search(ssdp_t::TARGET_GATEWAY);
+		const std::string request = ssdp::search(ssdp::TARGET_GATEWAY);
 		// Выполняем проверку того, что просьба собрана
 		ASSERT_FALSE(request.empty());
 		/**
@@ -391,9 +389,12 @@ TEST_F(PortmapFixture, SsdpHeaderInjection) {
 		 *
 		 * @note Строк ровно семь: строка действия, пять заголовков и пустая строка,
 		 *       завершающая заголовки. Лишняя строка означала бы врезку доводом
+		 *
 		 */
 		size_t breaks = 0;
-		// Выполняем подсчёт концов строк собранной просьбы
+		/**
+		 * Выполняем подсчёт концов строк собранной просьбы
+		 */
 		for(size_t offset = request.find("\r\n"); offset != std::string::npos; offset = request.find("\r\n", offset + 2)) breaks++;
 		// Выполняем проверку количества строк собранной просьбы
 		ASSERT_EQ(breaks, static_cast <size_t> (7));

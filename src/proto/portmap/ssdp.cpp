@@ -22,10 +22,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/lib.hpp>
-#include <proto/portmap/ssdp.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/macro/lib.hpp>
+#include <proto/portmap/ssdp.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,7 +47,6 @@ namespace {
 	 *
 	 */
 	constexpr const char * BREAK = "\r\n";
-
 	/**
 	 * @brief Срок годности сведений, принимаемый при отсутствии указания
 	 *
@@ -58,11 +57,11 @@ namespace {
 	constexpr uint32_t DEFAULT_MAX_AGE = 0x708;
 
 	/**
-	 * @brief Метод проверки пригодности значения к записи в заголовок обмена
+	 * @brief Функция проверки пригодности значения к записи в заголовок обмена
 	 *
 	 * @details Заголовок обмена отделяется от следующего концом строки, и знак этот
 	 *          внутри значения заголовка разбивает просьбу надвое: за местом разрыва
-	 *          встаёт то, что вписал туда выдавший значение
+	 *          встаёт то, что вписал туда выдавший значение.
 	 *
 	 * @note Отвергаются все управляющие знаки, а не одни лишь концы строки: договор
 	 *       обмена дозволяет значению заголовка знаки видимые, пробел и знак
@@ -72,7 +71,7 @@ namespace {
 	 * @return      признак пригодности значения к записи в заголовок
 	 *
 	 */
-	static bool printable(const string_view value) noexcept {
+	static __AWH_INLINE__ bool printable(const string_view value) noexcept {
 		/**
 		 * Выполняем перебор всех знаков проверяемого значения
 		 */
@@ -89,130 +88,72 @@ namespace {
 		// Выводим пригодность значения к записи в заголовок обмена
 		return true;
 	}
-
 };
 
 /**
  * @brief Конструктор
  *
  */
-awh::proto::portmap::SSDP::Answer::Answer() noexcept :
+awh::proto::portmap::ssdp::Response::Response() noexcept :
  kind(kind_t::NONE), notice(notice_t::NONE), maxAge(DEFAULT_MAX_AGE) {}
 
 /**
- * @brief Метод сборки запроса обнаружения устройств
+ * @brief Функция проверки пригодности обнаруженного устройства
  *
- * @param target обозначение искомой службы
- * @param delay  отведённый устройству срок на ответ в секундах
- * @param six    признак сборки запроса для сети IPv6
- * @return       собранный текст запроса
+ * @param response разобранное сообщение договора
+ * @param target   обозначение искомой службы
+ * @return         признак пригодности обнаруженного устройства
  *
  */
-string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t delay, const string_view group) const noexcept {
-	// Собираемый текст запроса
-	string result;
+bool awh::proto::portmap::ssdp::suitable(const response_t & response, const string_view target) noexcept {
 	/**
-	 * Если обозначение искомой службы не передано
+	 * Если сообщение ответом либо оповещением не является
 	 */
-	if(target.empty()){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (delay), group}, awh::log::flag_t::WARNING, message(error_t::MISSING_TARGET));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error_t::MISSING_TARGET));
-		#endif
-		// Выводим пустой текст запроса
-		return result;
-	}
+	if((response.kind != kind_t::RESPONSE) && (response.kind != kind_t::NOTIFY))
+		// Выводим признак непригодности обнаруженного устройства
+		return false;
 	/**
-	 * Если обозначение искомой службы либо групповой адрес к записи в заголовок непригодны
+	 * Если устройство покидает сеть
+	 */
+	if(response.notice == notice_t::BYEBYE)
+		// Выводим признак непригодности обнаруженного устройства
+		return false;
+	/**
+	 * Если адреса описания устройства сообщение не несёт
+	 */
+	if(response.location.empty())
+		// Выводим признак непригодности обнаруженного устройства
+		return false;
+	/**
+	 * Если поиск вёлся по всем устройствам сети
+	 */
+	if(target.empty() || (target.compare(TARGET_ALL) == 0))
+		// Выводим признак пригодности обнаруженного устройства
+		return true;
+	/**
+	 * Выводим итог сличения обозначения службы с искомым
 	 *
-	 * @warning Оба довода записываются значениями заголовков как есть, и конец строки
-	 *          в них разбил бы просьбу надвое: за местом разрыва встал бы заголовок,
-	 *          вписанный вызывающим, а не собранный нами
-	 */
-	if(!::printable(target) || !::printable(group)){
-		// Записываем ошибку в лог
-		awh::log::print("%s", awh::log::flag_t::WARNING, "search target or group is not printable");
-		// Выводим пустой текст запроса
-		return result;
-	}
-	// Отводим место под собираемый текст запроса
-	result.reserve(0x100);
-	// Записываем строку действия запроса
-	result.append("M-SEARCH * HTTP/1.1").append(::BREAK);
-	/**
-	 * Записываем групповой адрес и порт обнаружения устройств
+	 * @note Сличение ведётся без учёта регистра: обозначения службы устройства
+	 *       записывают вольно, а отвергать маршрутизатор из-за разницы в написании
+	 *       незачем
 	 *
-	 * @note Адрес записывается тот же, на который запрос и рассылается: договор
-	 *       велит устройству сличать их, отвергая запрос с чужим адресом
 	 */
-	result.append("HOST: ");
-	/**
-	 * Отсекаем зону группового адреса
-	 *
-	 * @note Зона принадлежит машине отправителя, а не сети: для устройства она смысла
-	 *       не имеет, а записанная в поле сделала бы адрес несовпадающим
-	 */
-	const string_view address = group.substr(0, group.find('%'));
-	/**
-	 * Если запрос собирается для сети IPv6
-	 *
-	 * @note Адрес IPv6 в поле обязан быть заключён в квадратные скобки: без них
-	 *       двоеточия адреса не отличить от разделителя порта
-	 */
-	if(address.find(':') != string_view::npos)
-		// Записываем групповой адрес сети IPv6
-		result.append("[").append(address).append("]");
-	// Записываем групповой адрес сети IPv4
-	else result.append(address);
-	// Записываем порт обнаружения устройств
-	result.append(":").append(std::to_string(PORT)).append(::BREAK);
-	/**
-	 * Записываем указание на немедленную рассылку запроса
-	 *
-	 * @note Указание отведено договором как есть, вместе с кавычками: оно
-	 *       досталось договору от расширения HTTP и своего содержания не имеет
-	 */
-	result.append("MAN: \"ssdp:discover\"").append(::BREAK);
-	/**
-	 * Записываем отведённый устройству срок на ответ
-	 *
-	 * @note Нулевой срок заменяется принятым по умолчанию: договор велит сроку быть не
-	 *       меньше секунды, а ноль означал бы ответ всех устройств разом - ради того
-	 *       разнесения ответов во времени срок и заведён
-	 */
-	result.append("MX: ").append(std::to_string(static_cast <uint32_t> (delay > 0 ? delay : DEFAULT_DELAY))).append(::BREAK);
-	// Записываем обозначение искомой службы
-	result.append("ST: ").append(target).append(::BREAK);
-	// Записываем сведения о самом обращающемся
-	result.append("USER-AGENT: ").append(AWH_NAME).append("/").append(AWH_VERSION).append(" UPnP/1.1").append(::BREAK);
-	// Записываем завершение заголовка запроса
-	result.append(::BREAK);
-	// Выводим собранный текст запроса
-	return result;
+	return fmk::compare(response.target, target);
 }
 /**
- * @brief Метод разбора сообщения договора
+ * @brief Функция разбора сообщения договора
  *
- * @param text   разбираемое сообщение
- * @param answer ссылка на разобранное сообщение
- * @param error  ссылка на код причины отказа
- * @return       признак успешного разбора
+ * @param text     разбираемое сообщение
+ * @param response ссылка на разобранное сообщение
+ * @param error    ссылка на код причины отказа
+ * @return         признак успешного разбора
  *
  */
-bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer, error_t & error) const noexcept {
+bool awh::proto::portmap::ssdp::parse(const string_view text, response_t & response, error_t & error) noexcept {
 	// Выполняем сброс кода причины отказа
 	error = error_t::NONE;
 	// Выполняем сброс разобранного сообщения
-	answer = answer_t();
+	response = response_t();
 	/**
 	 * Если разбираемое сообщение пусто
 	 */
@@ -225,10 +166,18 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 * @note Отказ разбора записывается лишь при отладке намеренно: на групповой
 		 *       адрес приходят оповещения всех устройств сети вперемешку с мусором,
 		 *       и запись о каждом из них засоряла бы журнал
+		 *
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -244,7 +193,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -256,70 +212,73 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 	 *       вперемешку и ответы устройств, и их оповещения, и собственный запрос,
 	 *       вернувшийся с группового адреса. Различить их можно лишь по приставке
 	 *       строки действия: у ответа она начинается изданием договора
+	 *
 	 */
-	const bool response = ((text.length() > 5) && (text.compare(0, 5, "HTTP/") == 0));
+	const bool result = ((text.length() > 5) && (text.compare(0, 5, "HTTP/") == 0));
 	// Создаём объект разбора сообщения договора HTTP
-	http::parser_http_t parser((response ? http::direct_t::RESPONSE : http::direct_t::REQUEST));
+	http::parser_http_t parser((result ? http::direct_t::RESPONSE : http::direct_t::REQUEST));
 	/**
 	 * Устанавливаем обработчик полей заголовка сообщения
 	 *
 	 * @note Поля разбираются готовым разборщиком договора HTTP: договор SSDP им и
 	 *       построен, и заводить под него собственный разбор незачем
+	 *
 	 */
-	parser.on(http::parser_http_t::header_callback_t([&answer](const uint32_t, const string_view name, const string_view value, const http::parser_t::part_t) noexcept -> bool {
+	parser.on(http::parser_http_t::header_callback_t([&response](const uint32_t, const string_view name, const string_view value, const http::parser_t::part_t) noexcept -> bool {
 		/**
 		 * Если полем является обозначение искомой службы
 		 *
 		 * @note Обозначение службы приходит в разных полях: в ответе оно записано
 		 *       полем искомого, а в оповещении - полем сообщаемого
+		 *
 		 */
-		if(awh::fmk::compare(name, "ST") || awh::fmk::compare(name, "NT"))
+		if(fmk::compare(name, "ST") || fmk::compare(name, "NT"))
 			// Запоминаем обозначение службы, о которой сообщает устройство
-			answer.target.assign(value);
+			response.target.assign(value);
 		/**
 		 * Если полем является обозначение самого устройства
 		 */
-		else if(awh::fmk::compare(name, "USN"))
+		else if(fmk::compare(name, "USN"))
 			// Запоминаем обозначение самого устройства и его службы
-			answer.usn.assign(value);
+			response.usn.assign(value);
 		/**
 		 * Если полем является адрес описания устройства
 		 */
-		else if(awh::fmk::compare(name, "LOCATION"))
+		else if(fmk::compare(name, "LOCATION"))
 			// Запоминаем адрес описания устройства
-			answer.location.assign(value);
+			response.location.assign(value);
 		/**
 		 * Если полем являются сведения об устройстве
 		 */
-		else if(awh::fmk::compare(name, "SERVER"))
+		else if(fmk::compare(name, "SERVER"))
 			// Запоминаем сведения об устройстве и его встроенной программе
-			answer.server.assign(value);
+			response.server.assign(value);
 		/**
 		 * Если полем является вид оповещения устройства
 		 */
-		else if(awh::fmk::compare(name, "NTS")) {
+		else if(fmk::compare(name, "NTS")) {
 			/**
 			 * Если устройство объявилось в сети
 			 */
-			if(awh::fmk::compare(value, "ssdp:alive"))
+			if(fmk::compare(value, "ssdp:alive"))
 				// Запоминаем вид оповещения устройства
-				answer.notice = notice_t::ALIVE;
+				response.notice = notice_t::ALIVE;
 			/**
 			 * Если устройство покидает сеть
 			 */
-			else if(awh::fmk::compare(value, "ssdp:byebye"))
+			else if(fmk::compare(value, "ssdp:byebye"))
 				// Запоминаем вид оповещения устройства
-				answer.notice = notice_t::BYEBYE;
+				response.notice = notice_t::BYEBYE;
 			/**
 			 * Если устройство сменило свои сведения
 			 */
-			else if(awh::fmk::compare(value, "ssdp:update"))
+			else if(fmk::compare(value, "ssdp:update"))
 				// Запоминаем вид оповещения устройства
-				answer.notice = notice_t::UPDATE;
+				response.notice = notice_t::UPDATE;
 		/**
 		 * Если полем является срок годности полученных сведений
 		 */
-		} else if(awh::fmk::compare(name, "CACHE-CONTROL")) {
+		} else if(fmk::compare(name, "CACHE-CONTROL")) {
 			// Выполняем поиск указания срока годности сведений
 			const size_t pos = value.find('=');
 			/**
@@ -333,21 +292,23 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 				 *
 				 * @note Пробелы вокруг знака равенства договором не отведены, но
 				 *       устройства их ставят: терять из-за этого срок годности незачем
+				 *
 				 */
 				while(!life.empty() && ((life.front() == ' ') || (life.front() == '\t')))
 					// Выполняем переход к следующему знаку указания
 					life.remove_prefix(1);
 				// Получаем указанный срок годности сведений
-				const uint32_t maxAge = awh::fmk::atoi <uint32_t> (life);
+				const uint32_t maxAge = fmk::atoi <uint32_t> (life);
 				/**
 				 * Если указанный срок годности сведений разобран
 				 *
 				 * @note Нулевой срок означает, что разбор не удался: устройство,
 				 *       пропадающее в тот же миг, смысла не имеет
+				 *
 				 */
 				if(maxAge > 0)
 					// Запоминаем срок годности полученных сведений
-					answer.maxAge = maxAge;
+					response.maxAge = maxAge;
 			}
 		}
 		// Выводим признак продолжения разбора сообщения
@@ -366,7 +327,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (parser.error())}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -382,7 +350,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -390,14 +365,15 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 	/**
 	 * Если разобранное сообщение является ответом устройства
 	 */
-	if(response){
+	if(result){
 		// Запоминаем вид полученного сообщения
-		answer.kind = kind_t::RESPONSE;
+		response.kind = kind_t::RESPONSE;
 		/**
 		 * Если устройство ответило отказом
 		 *
 		 * @note Отказ здесь не испорченное сообщение, а осмысленный ответ: устройство
 		 *       обнаружено, но искомой службы не имеет либо занято
+		 *
 		 */
 		if(static_cast <const http::response_t *> (parser.message().provider.get())->code != 200){
 			// Запоминаем код причины отказа
@@ -407,7 +383,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <const http::response_t *> (parser.message().provider.get())->code}, awh::log::flag_t::WARNING, message(error));
+				log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -425,7 +408,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			case static_cast <uint8_t> (http::method_t::NOTIFY):
 				// Запоминаем вид полученного сообщения
-				answer.kind = kind_t::NOTIFY;
+				response.kind = kind_t::NOTIFY;
 			break;
 			/**
 			 * Если запрос является запросом обнаружения устройств
@@ -433,10 +416,11 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 * @note Собственный запрос приходит обратно и на свою же машину: разбирать
 			 *       его следует, чтобы отличить от ответа, но пригодным устройством он
 			 *       не является
+			 *
 			 */
 			case static_cast <uint8_t> (http::method_t::MSEARCH):
 				// Запоминаем вид полученного сообщения
-				answer.kind = kind_t::SEARCH;
+				response.kind = kind_t::SEARCH;
 			break;
 			/**
 			 * Если действие в сообщении договору не принадлежит
@@ -449,7 +433,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (static_cast <const http::request_t *> (parser.message().provider.get())->method)}, awh::log::flag_t::WARNING, message(error));
+					log::debug("%s", __PRETTY_FUNCTION__, {
+						text,
+						static_cast <uint16_t> (response.kind),
+						static_cast <uint16_t> (response.notice),
+						response.maxAge, response.usn,
+						response.target, response.server,
+						response.location,
+					}, log::flag_t::WARNING, message(error));
 				#endif
 				// Выводим признак неудачного разбора
 				return false;
@@ -461,12 +452,13 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 	 *
 	 * @note Оповещение об уходе адреса описания не несёт, и требовать его незачем:
 	 *       ушедшее устройство описывать нечем
+	 *
 	 */
-	if((answer.kind == kind_t::RESPONSE) || ((answer.kind == kind_t::NOTIFY) && (answer.notice != notice_t::BYEBYE))){
+	if((response.kind == kind_t::RESPONSE) || ((response.kind == kind_t::NOTIFY) && (response.notice != notice_t::BYEBYE))){
 		/**
 		 * Если в сообщении нет обозначения службы
 		 */
-		if(answer.target.empty()){
+		if(response.target.empty()){
 			// Запоминаем код причины отказа
 			error = error_t::MISSING_TARGET;
 			/**
@@ -474,7 +466,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.usn}, awh::log::flag_t::WARNING, message(error));
+				log::debug("%s", __PRETTY_FUNCTION__, {
+				text,
+				static_cast <uint16_t> (response.kind),
+				static_cast <uint16_t> (response.notice),
+				response.maxAge, response.usn,
+				response.target, response.server,
+				response.location,
+			}, log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -484,8 +483,9 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 *
 		 * @note Без адреса описания обнаруженное устройство бесполезно: перечень
 		 *       его служб взять неоткуда
+		 *
 		 */
-		if(answer.location.empty()){
+		if(response.location.empty()){
 			// Запоминаем код причины отказа
 			error = error_t::MISSING_LOCATION;
 			/**
@@ -493,7 +493,14 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.target}, awh::log::flag_t::WARNING, message(error));
+				log::debug("%s", __PRETTY_FUNCTION__, {
+					text,
+					static_cast <uint16_t> (response.kind),
+					static_cast <uint16_t> (response.notice),
+					response.maxAge, response.usn,
+					response.target, response.server,
+					response.location,
+				}, log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -503,89 +510,154 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 	return true;
 }
 /**
- * @brief Метод проверки пригодности обнаруженного устройства
+ * @brief Функция сборки запроса обнаружения устройств
  *
- * @param answer разобранное сообщение договора
  * @param target обозначение искомой службы
- * @return       признак пригодности обнаруженного устройства
+ * @param delay  отведённый устройству срок на ответ в секундах
+ * @param six    признак сборки запроса для сети IPv6
+ * @return       собранный текст запроса
  *
  */
-bool awh::proto::portmap::SSDP::suitable(const answer_t & answer, const string_view target) const noexcept {
+string awh::proto::portmap::ssdp::search(const string_view target, const uint8_t delay, const string_view group) noexcept {
+	// Собираемый текст запроса
+	string result = "";
 	/**
-	 * Если сообщение ответом либо оповещением не является
+	 * Если обозначение искомой службы не передано
 	 */
-	if((answer.kind != kind_t::RESPONSE) && (answer.kind != kind_t::NOTIFY))
-		// Выводим признак непригодности обнаруженного устройства
-		return false;
+	if(target.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {target, static_cast <uint16_t> (delay), group}, log::flag_t::WARNING, message(error_t::MISSING_TARGET));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error_t::MISSING_TARGET));
+		#endif
+		// Выводим пустой текст запроса
+		return result;
+	}
 	/**
-	 * Если устройство покидает сеть
-	 */
-	if(answer.notice == notice_t::BYEBYE)
-		// Выводим признак непригодности обнаруженного устройства
-		return false;
-	/**
-	 * Если адреса описания устройства сообщение не несёт
-	 */
-	if(answer.location.empty())
-		// Выводим признак непригодности обнаруженного устройства
-		return false;
-	/**
-	 * Если поиск вёлся по всем устройствам сети
-	 */
-	if(target.empty() || (target.compare(TARGET_ALL) == 0))
-		// Выводим признак пригодности обнаруженного устройства
-		return true;
-	/**
-	 * Выводим итог сличения обозначения службы с искомым
+	 * Если обозначение искомой службы либо групповой адрес к записи в заголовок непригодны
 	 *
-	 * @note Сличение ведётся без учёта регистра: обозначения службы устройства
-	 *       записывают вольно, а отвергать маршрутизатор из-за разницы в написании
-	 *       незачем
+	 * @warning Оба довода записываются значениями заголовков как есть, и конец строки
+	 *          в них разбил бы просьбу надвое: за местом разрыва встал бы заголовок,
+	 *          вписанный вызывающим, а не собранный нами
+	 *
 	 */
-	return awh::fmk::compare(answer.target, target);
+	if(!::printable(target) || !::printable(group)){
+		// Записываем ошибку в лог
+		log::print("%s", log::flag_t::WARNING, "search target or group is not printable");
+		// Выводим пустой текст запроса
+		return result;
+	}
+	// Отводим место под собираемый текст запроса
+	result.reserve(0x100);
+	// Записываем строку действия запроса
+	result.append("M-SEARCH * HTTP/1.1").append(::BREAK);
+	/**
+	 * Записываем групповой адрес и порт обнаружения устройств
+	 *
+	 * @note Адрес записывается тот же, на который запрос и рассылается: договор
+	 *       велит устройству сличать их, отвергая запрос с чужим адресом
+	 *
+	 */
+	result.append("HOST: ");
+	/**
+	 * Отсекаем зону группового адреса
+	 *
+	 * @note Зона принадлежит машине отправителя, а не сети: для устройства она смысла
+	 *       не имеет, а записанная в поле сделала бы адрес несовпадающим
+	 *
+	 */
+	const string_view address = group.substr(0, group.find('%'));
+	/**
+	 * Если запрос собирается для сети IPv6
+	 *
+	 * @note Адрес IPv6 в поле обязан быть заключён в квадратные скобки: без них
+	 *       двоеточия адреса не отличить от разделителя порта
+	 *
+	 */
+	if(address.find(':') != string_view::npos)
+		// Записываем групповой адрес сети IPv6
+		result.append("[").append(address).append("]");
+	// Записываем групповой адрес сети IPv4
+	else result.append(address);
+	// Записываем порт обнаружения устройств
+	result.append(":").append(std::to_string(PORT)).append(::BREAK);
+	/**
+	 * Записываем указание на немедленную рассылку запроса
+	 *
+	 * @note Указание отведено договором как есть, вместе с кавычками: оно
+	 *       досталось договору от расширения HTTP и своего содержания не имеет
+	 *
+	 */
+	result.append("MAN: \"ssdp:discover\"").append(::BREAK);
+	/**
+	 * Записываем отведённый устройству срок на ответ
+	 *
+	 * @note Нулевой срок заменяется принятым по умолчанию: договор велит сроку быть не
+	 *       меньше секунды, а ноль означал бы ответ всех устройств разом - ради того
+	 *       разнесения ответов во времени срок и заведён
+	 *
+	 */
+	result.append("MX: ").append(std::to_string(static_cast <uint32_t> (delay > 0 ? delay : DEFAULT_DELAY))).append(::BREAK);
+	// Записываем обозначение искомой службы
+	result.append("ST: ").append(target).append(::BREAK);
+	// Записываем сведения о самом обращающемся
+	result.append("USER-AGENT: ").append(AWH_NAME).append("/").append(AWH_VERSION).append(" UPnP/1.1").append(::BREAK);
+	// Записываем завершение заголовка запроса
+	result.append(::BREAK);
+	// Выводим собранный текст запроса
+	return result;
 }
+
 /**
- * @brief Метод получения описания кода причины отказа кодека SSDP
+ * @brief Функция получения описания кода причины отказа кодека SSDP
  *
  * @param error код причины отказа кодека
  * @return      описание кода причины отказа на английском языке
  *
  */
-const char * awh::proto::portmap::message(const ssdp_t::error_t error) noexcept {
+const char * awh::proto::portmap::message(const ssdp::error_t error) noexcept {
 	/**
 	 * Определяем код причины отказа кодека
 	 */
 	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (ssdp_t::error_t::NONE):
+		case static_cast <uint8_t> (ssdp::error_t::NONE):
 			// Выводим описание кода причины отказа
 			return "no error";
 		// Если разбираемое сообщение пусто
-		case static_cast <uint8_t> (ssdp_t::error_t::EMPTY):
+		case static_cast <uint8_t> (ssdp::error_t::EMPTY):
 			// Выводим описание кода причины отказа
 			return "message is empty";
 		// Если сообщение длиннее допустимого договором
-		case static_cast <uint8_t> (ssdp_t::error_t::TOO_LARGE):
+		case static_cast <uint8_t> (ssdp::error_t::TOO_LARGE):
 			// Выводим описание кода причины отказа
 			return "message exceeds the protocol size limit";
 		// Если сообщение построено ошибочно
-		case static_cast <uint8_t> (ssdp_t::error_t::MALFORMED):
+		case static_cast <uint8_t> (ssdp::error_t::MALFORMED):
 			// Выводим описание кода причины отказа
 			return "malformed message";
 		// Если действие в сообщении договору не принадлежит
-		case static_cast <uint8_t> (ssdp_t::error_t::UNKNOWN_METHOD):
+		case static_cast <uint8_t> (ssdp::error_t::UNKNOWN_METHOD):
 			// Выводим описание кода причины отказа
 			return "unknown request method";
 		// Если устройство ответило отказом
-		case static_cast <uint8_t> (ssdp_t::error_t::BAD_STATUS):
+		case static_cast <uint8_t> (ssdp::error_t::BAD_STATUS):
 			// Выводим описание кода причины отказа
 			return "device responded with an error status";
 		// Если в сообщении нет обозначения службы
-		case static_cast <uint8_t> (ssdp_t::error_t::MISSING_TARGET):
+		case static_cast <uint8_t> (ssdp::error_t::MISSING_TARGET):
 			// Выводим описание кода причины отказа
 			return "search target is missing";
 		// Если в сообщении нет адреса описания устройства
-		case static_cast <uint8_t> (ssdp_t::error_t::MISSING_LOCATION):
+		case static_cast <uint8_t> (ssdp::error_t::MISSING_LOCATION):
 			// Выводим описание кода причины отказа
 			return "device description location is missing";
 	}

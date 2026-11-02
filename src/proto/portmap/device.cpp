@@ -22,9 +22,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <proto/portmap/device.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <proto/portmap/device.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -45,26 +45,26 @@ namespace {
 	 * @brief Наибольшая глубина обхода вложенных устройств
 	 *
 	 * @details Устройства вкладываются друг в друга, и договор глубину не ограничивает.
-	 * Предел обязателен: описание берётся у устройства, о котором заранее ничего не
-	 * известно, и глубоко вложенным деревом оно способно занять всю память
+	 *          Предел обязателен: описание берётся у устройства, о котором заранее ничего не
+	 *          известно, и глубоко вложенным деревом оно способно занять всю память.
 	 *
 	 */
 	constexpr uint32_t MAX_DEPTH = 0x10;
 
 	/**
-	 * @brief Метод поиска вложенного узла по местному имени
+	 * @brief Функция поиска вложенного узла по местному имени
 	 *
 	 * @details Сличение ведётся лишь по местному имени, без учёта пространства имён.
-	 * Так и задумано: описание получено у одного определённого устройства по адресу
-	 * из обнаружения, чужой разметке взяться в нём неоткуда, а устройства пространство
-	 * имён описания то опускают, то пишут с опечаткой
+	 *          Так и задумано: описание получено у одного определённого устройства по адресу
+	 *          из обнаружения, чужой разметке взяться в нём неоткуда, а устройства пространство
+	 *          имён описания то опускают, то пишут с опечаткой.
 	 *
 	 * @param node  узел, среди вложенных которого ведётся поиск
 	 * @param local местное имя искомого узла
 	 * @return      найденный узел дерева разметки
 	 *
 	 */
-	codec::xml::node_t child(const codec::xml::node_t & node, const string_view local) noexcept {
+	static __AWH_INLINE__ codec::xml::node_t child(const codec::xml::node_t & node, const string_view local) noexcept {
 		/**
 		 * Выполняем перебор всех непосредственно вложенных узлов
 		 */
@@ -86,18 +86,33 @@ namespace {
 		return codec::xml::node_t();
 	}
 	/**
-	 * @brief Метод получения содержимого вложенного узла по местному имени
+	 * @brief Функция получения содержимого вложенного узла по местному имени
 	 *
 	 * @param node  узел, среди вложенных которого ведётся поиск
 	 * @param local местное имя искомого узла
 	 * @return      содержимое найденного узла либо пустая строка
 	 *
 	 */
-	string text(const codec::xml::node_t & node, const string_view local) noexcept {
+	static __AWH_INLINE__ string text(const codec::xml::node_t & node, const string_view local) noexcept {
 		// Выводим содержимое обнаруженного узла дерева разметки
 		return ::child(node, local).text();
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::proto::portmap::Device::Service::Service() noexcept :
+ id{""}, type{""}, spec{""}, event{""}, control{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::proto::portmap::Device::Description::Description() noexcept :
+ udn{""}, base{""}, type{""},
+ name{""}, model{""}, manufacturer{""} {}
 
 /**
  * @brief Метод разбора описания устройства
@@ -124,13 +139,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -146,13 +161,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -170,17 +185,16 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
-				"%s", __PRETTY_FUNCTION__,
-				{document.errorLocation().line, document.errorLocation().column},
-				awh::log::flag_t::WARNING, codec::xml::message(document.error())
+			log::debug(
+				"%s", __PRETTY_FUNCTION__, {text},
+				log::flag_t::WARNING, codec::xml::message(document.error())
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(document.error()));
+			log::print("%s", log::flag_t::WARNING, codec::xml::message(document.error()));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -198,13 +212,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {root.name().local}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -224,27 +238,27 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.base}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
+	// Запоминаем обозначение самого устройства
+	description.udn = ::text(device, "UDN");
 	// Запоминаем обозначение вида устройства
 	description.type = ::text(device, "deviceType");
+	// Запоминаем обозначение изделия
+	description.model = ::text(device, "modelName");
 	// Запоминаем понятное человеку название устройства
 	description.name = ::text(device, "friendlyName");
 	// Запоминаем изготовителя устройства
 	description.manufacturer = ::text(device, "manufacturer");
-	// Запоминаем обозначение изделия
-	description.model = ::text(device, "modelName");
-	// Запоминаем обозначение самого устройства
-	description.udn = ::text(device, "UDN");
 	/**
 	 * Если обозначения у устройства нет
 	 *
@@ -260,19 +274,19 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.type}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	/**
-	 * @brief Метод обхода устройства и всех вложенных в него устройств
+	 * @brief Функция обхода устройства и всех вложенных в него устройств
 	 *
 	 * @param node  узел обходимого устройства
 	 * @param depth текущая глубина вложенности устройства
@@ -308,16 +322,16 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 					continue;
 				// Собираемая служба устройства
 				service_t service;
-				// Запоминаем обозначение вида службы
-				service.type = ::text(item, "serviceType");
 				// Запоминаем обозначение самой службы
 				service.id = ::text(item, "serviceId");
+				// Запоминаем адрес описания действий службы
+				service.spec = ::text(item, "SCPDURL");
+				// Запоминаем обозначение вида службы
+				service.type = ::text(item, "serviceType");
 				// Запоминаем адрес управления службой
 				service.control = ::text(item, "controlURL");
 				// Запоминаем адрес подписки на события службы
 				service.event = ::text(item, "eventSubURL");
-				// Запоминаем адрес описания действий службы
-				service.spec = ::text(item, "SCPDURL");
 				/**
 				 * Если у службы нет обозначения вида либо адреса управления
 				 *
@@ -370,13 +384,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.udn}, awh::log::flag_t::WARNING, message(error));
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
+			log::print("%s", log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -404,7 +418,7 @@ const awh::proto::portmap::Device::service_t * awh::proto::portmap::Device::serv
 		 *       записывают вольно, а отвергать пригодную службу из-за разницы в
 		 *       написании незачем
 		 */
-		if(awh::fmk::compare(service.type, type))
+		if(fmk::compare(service.type, type))
 			// Выводим обнаруженную службу устройства
 			return &service;
 	}
@@ -426,7 +440,7 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 	 */
 	if(address.empty())
 		// Выводим пустой адрес управления службой
-		return string();
+		return "";
 	/**
 	 * Выполняем очистку объекта работы с адресами ресурсов
 	 *
@@ -450,16 +464,16 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to parse the device description address");
+			log::debug("%s", __PRETTY_FUNCTION__, {location, address}, log::flag_t::WARNING, "unable to parse the device description address");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, "unable to parse the device description address");
+			log::print("%s", log::flag_t::WARNING, "unable to parse the device description address");
 		#endif
 		// Выводим пустой адрес управления службой
-		return string();
+		return "";
 	}
 	/**
 	 * Выполняем разрешение адреса управления относительно основания
@@ -473,22 +487,23 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to resolve the service control address");
+			log::debug("%s", __PRETTY_FUNCTION__, {location, address}, log::flag_t::WARNING, "unable to resolve the service control address");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, "unable to resolve the service control address");
+			log::print("%s", log::flag_t::WARNING, "unable to resolve the service control address");
 		#endif
 		// Выводим пустой адрес управления службой
-		return string();
+		return "";
 	}
 	// Выводим собранный полный адрес управления службой
 	return this->_uri.print();
 }
+
 /**
- * @brief Метод получения описания кода причины отказа кодека описания устройства
+ * @brief Функция получения описания кода причины отказа кодека описания устройства
  *
  * @param error код причины отказа кодека
  * @return      описание кода причины отказа на английском языке

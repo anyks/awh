@@ -43,13 +43,12 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../net/uri.hpp"
+#include "../../sys/macro/global.hpp"
 #include "../../codec/xml/document.hpp"
-#include <sys/macro/global.hpp>
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -66,7 +65,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён протоколов
 	 *
-	 *
 	 * \~english
 	 * @brief Protocols namespace
 	 *
@@ -76,7 +74,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён договоров перенаправления портов
-		 *
 		 *
 		 * \~english
 		 * @brief Port forwarding protocols namespace
@@ -89,26 +86,45 @@ namespace awh {
 			 * @brief Класс кодека описания устройства UPnP
 			 *
 			 * @details Разбирает описание устройства, полученное по адресу из обнаружения,
-			 * и выдаёт перечень его служб вместе с адресами управления ими. Обмена кодек
-			 * не ведёт: получить описание обязан вызывающий
+			 *          и выдаёт перечень его служб вместе с адресами управления ими. Обмена кодек
+			 *          не ведёт: получить описание обязан вызывающий.
 			 *
 			 * @note Устройство описывает себя деревом: внутри корневого устройства заведены
-			 * вложенные, и нужная служба перенаправления лежит не в корне, а двумя уровнями
-			 * ниже. Кодек обходит дерево целиком и сводит все службы в один перечень
+			 *       вложенные, и нужная служба перенаправления лежит не в корне, а двумя уровнями
+			 *       ниже. Кодек обходит дерево целиком и сводит все службы в один перечень
 			 *
 			 * \~english
 			 * @brief Class of the codec of the description of a UPnP device
+			 *
 			 * @details Parses the description of a device obtained at the address from the discovery,
-			 * and issues the list of its services together with the addresses of the control of them. The codec does not
-			 * conduct the exchange: the caller is obliged to obtain the description
+			 *          and issues the list of its services together with the addresses of the control of them. The codec does not
+			 *          conduct the exchange: the caller is obliged to obtain the description.
+			 *
 			 * @note A device describes itself as a tree: inside the root device the nested ones are created,
-			 * and the needed forwarding service lies not in the root but two levels
-			 * lower. The codec traverses the whole tree and brings all the services into a single list
+			 *       and the needed forwarding service lies not in the root but two levels
+			 *       lower. The codec traverses the whole tree and brings all the services into a single list
 			 *
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Device {
 				public:
+					/**
+					 * \~russian
+					 * @brief Наибольший размер разбираемого описания устройства
+					 *
+					 * @note Предел обязателен: описание берётся у устройства, о котором
+					 *       заранее ничего не известно, и доверять его размеру нельзя
+					 *
+					 * \~english
+					 * @brief Largest size of the description of a device being parsed
+					 *
+					 * @note The limit is obligatory: the description is taken from a device about which
+					 *       nothing is known beforehand, and its size cannot be trusted
+					 *
+					 * \~
+					 */
+					static constexpr size_t MAX_DESCRIPTION_SIZE = 0x100000;
+
 					/**
 					 * \~russian
 					 * @brief Обозначение пространства имён описания устройства
@@ -119,21 +135,6 @@ namespace awh {
 					 * \~
 					 */
 					static constexpr const char * NAMESPACE = "urn:schemas-upnp-org:device-1-0";
-					/**
-					 * \~russian
-					 * @brief Наибольший размер разбираемого описания устройства
-					 *
-					 * @note Предел обязателен: описание берётся у устройства, о котором
-					 * заранее ничего не известно, и доверять его размеру нельзя
-					 *
-					 * \~english
-					 * @brief Largest size of the description of a device being parsed
-					 * @note The limit is obligatory: the description is taken from a device about which
-					 * nothing is known beforehand, and its size cannot be trusted
-					 *
-					 * \~
-					 */
-					static constexpr size_t MAX_DESCRIPTION_SIZE = 0x100000;
 					/**
 					 * \~russian
 					 * @brief Обозначение искомой службы соединения по адресу IP
@@ -169,19 +170,21 @@ namespace awh {
 					 * @brief Обозначение вида службы заслона IPv6
 					 *
 					 * @details Служба эта заведована пробоями заслона IPv6, а не
-					 * перенаправлениями: преобразования адресов в сети IPv6 нет, и
-					 * подключения сквозь заслон разрешает она
+					 *          перенаправлениями: преобразования адресов в сети IPv6 нет, и
+					 *          подключения сквозь заслон разрешает она.
 					 *
 					 * @note Служба необязательна, и выдаёт её далеко не всякое устройство:
-					 * договором UPnP IGD она заведена лишь во второй его редакции
+					 *       договором UPnP IGD она заведена лишь во второй его редакции
 					 *
 					 * \~english
 					 * @brief Designation of the kind of the IPv6 firewall service
+					 *
 					 * @details This service is in charge of the IPv6 firewall pinholes rather than of the
-					 * forwardings: there is no address translation in an IPv6 network, and
-					 * it is what permits the connections through the firewall
+					 *          forwardings: there is no address translation in an IPv6 network, and
+					 *          it is what permits the connections through the firewall.
+					 *
 					 * @note The service is optional, and far from every device provides it:
-					 * by the UPnP IGD protocol it has been introduced only in its second edition
+					 *       by the UPnP IGD protocol it has been introduced only in its second edition
 					 *
 					 * \~
 					 */
@@ -231,15 +234,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						explicit Service() noexcept :
-						 id{""}, type{""},
-						 spec{""}, event{""}, control{""} {}
+						explicit Service() noexcept;
 					} service_t;
 					/**
 					 * \~russian
@@ -256,12 +256,13 @@ namespace awh {
 						 * Обозначение самого устройства
 						 *
 						 * @note Обозначение это у устройства единственное и неизменное:
-						 * им устройство и опознаётся между обнаружениями
+						 *       им устройство и опознаётся между обнаружениями
 						 *
 						 * \~english
 						 * Designation of the device itself
+						 *
 						 * @note This designation of a device is a single and unchanging one:
-						 * it is by it that the device is recognized between the discoveries
+						 *       it is by it that the device is recognized between the discoveries
 						 *
 						 * \~
 						 */
@@ -271,12 +272,13 @@ namespace awh {
 						 * Основание для сборки относительных адресов
 						 *
 						 * @warning Объявляется устройством не всегда, и полагаться на него
-						 * нельзя: при отсутствии основанием служит сам адрес описания
+						 *          нельзя: при отсутствии основанием служит сам адрес описания
 						 *
 						 * \~english
 						 * Base for the assembly of the relative addresses
+						 *
 						 * @warning It is not always announced by a device, and it cannot be relied
-						 * upon: in its absence the address of the description itself serves as the base
+						 *          upon: in its absence the address of the description itself serves as the base
 						 *
 						 * \~
 						 */
@@ -295,15 +297,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						explicit Description() noexcept :
-						 udn{""}, base{""}, type{""},
-						 name{""}, model{""}, manufacturer{""} {}
+						explicit Description() noexcept;
 					} description_t;
 				private:
 					// Объект работы с адресами ресурсов
@@ -314,8 +313,8 @@ namespace awh {
 					 * @brief Метод разбора описания устройства
 					 *
 					 * @details Обходит дерево описания целиком и сводит службы всех вложенных
-					 * устройств в один перечень: нужная служба перенаправления лежит не в
-					 * корне, а двумя уровнями ниже
+					 *          устройств в один перечень: нужная служба перенаправления лежит не в
+					 *          корне, а двумя уровнями ниже.
 					 *
 					 * @param text        разбираемое описание устройства
 					 * @param description ссылка на разобранное описание устройства
@@ -324,9 +323,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the description of a device
+					 *
 					 * @details Traverses the whole tree of the description and brings the services of all the nested
-					 * devices into a single list: the needed forwarding service lies not in the
-					 * root but two levels lower
+					 *          devices into a single list: the needed forwarding service lies not in the
+					 *          root but two levels lower.
+					 *
 					 * @param text        description of the device being parsed
 					 * @param description reference to the parsed description of the device
 					 * @param error       reference to the code of the reason of the refusal
@@ -346,6 +347,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a service of a device by the designation of the kind
+					 *
 					 * @param description parsed description of the device
 					 * @param type        designation of the sought kind of the service
 					 * @return            found service of the device or an empty pointer
@@ -359,8 +361,8 @@ namespace awh {
 					 * @brief Метод сборки полного адреса управления службой
 					 *
 					 * @details Адрес управления устройства записывают путём, а не полным
-					 * адресом. Собирается он относительно объявленного основания, а при его
-					 * отсутствии - относительно самого адреса описания
+					 *          адресом. Собирается он относительно объявленного основания, а при его
+					 *          отсутствии - относительно самого адреса описания.
 					 *
 					 * @param description разобранное описание устройства
 					 * @param location    адрес, по которому получено описание устройства
@@ -369,9 +371,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the full address of the control of a service
+					 *
 					 * @details The control address of a device is written as a path rather than as a full
-					 * address. It is assembled relative to the announced base, and in its
-					 * absence — relative to the address of the description itself
+					 *          address. It is assembled relative to the announced base, and in its
+					 *          absence — relative to the address of the description itself.
+					 *
 					 * @param description parsed description of the device
 					 * @param location    address at which the description of the device has been obtained
 					 * @param address     address of the control of the service being assembled
@@ -385,7 +389,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -396,13 +399,14 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод получения описания кода причины отказа кодека описания устройства
+			 * @brief Функция получения описания кода причины отказа кодека описания устройства
 			 *
 			 * @param error код причины отказа кодека
 			 * @return      описание кода причины отказа на английском языке
 			 *
 			 * \~english
-			 * @brief Method of getting the description of a code of the reason of a refusal of the codec of the description of a device
+			 * @brief Function of getting the description of a code of the reason of a refusal of the codec of the description of a device
+			 *
 			 * @param error code of the reason of the refusal of the codec
 			 * @return      description of the code of the reason of the refusal in the English language
 			 *

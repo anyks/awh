@@ -28,8 +28,7 @@
  * @brief Метод настройки тестового окружения
  *
  */
-void PortmapFixture::SetUp(){
-}
+void PortmapFixture::SetUp(){}
 
 /**
  * @brief Метод очистки тестового окружения
@@ -37,36 +36,6 @@ void PortmapFixture::SetUp(){
  */
 void PortmapFixture::TearDown() {}
 
-/**
- * @brief Фабричный метод создания кодека договора NAT-PMP
- *
- * @return сформированный объект кодека договора NAT-PMP
- *
- */
-std::unique_ptr <awh::proto::portmap::natpmp_t> PortmapFixture::makeNatPmp() const noexcept {
-	// Создаём и возвращаем объект кодека договора NAT-PMP
-	return std::make_unique <awh::proto::portmap::natpmp_t> ();
-}
-/**
- * @brief Фабричный метод создания кодека договора PCP
- *
- * @return сформированный объект кодека договора PCP
- *
- */
-std::unique_ptr <awh::proto::portmap::pcp_t> PortmapFixture::makePcp() const noexcept {
-	// Создаём и возвращаем объект кодека договора PCP
-	return std::make_unique <awh::proto::portmap::pcp_t> ();
-}
-/**
- * @brief Фабричный метод создания кодека договора SSDP
- *
- * @return сформированный объект кодека договора SSDP
- *
- */
-std::unique_ptr <awh::proto::portmap::ssdp_t> PortmapFixture::makeSsdp() const noexcept {
-	// Создаём и возвращаем объект кодека договора SSDP
-	return std::make_unique <awh::proto::portmap::ssdp_t> ();
-}
 /**
  * @brief Фабричный метод создания кодека описания устройства UPnP
  *
@@ -76,16 +45,6 @@ std::unique_ptr <awh::proto::portmap::ssdp_t> PortmapFixture::makeSsdp() const n
 std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() const noexcept {
 	// Создаём и возвращаем объект кодека описания устройства UPnP
 	return std::make_unique <awh::proto::portmap::device_t> ();
-}
-/**
- * @brief Фабричный метод создания кодека договора SOAP
- *
- * @return сформированный объект кодека договора SOAP
- *
- */
-std::unique_ptr <awh::proto::portmap::soap_t> PortmapFixture::makeSoap() const noexcept {
-	// Создаём и возвращаем объект кодека договора SOAP
-	return std::make_unique <awh::proto::portmap::soap_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека действий службы перенаправления UPnP

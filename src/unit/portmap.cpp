@@ -165,6 +165,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		 * @note Событие обмена удаляется по завершении обращения, но выданное ему
 		 *       чтение способно прийти уже после удаления: сличать следует, а не
 		 *       принимать всякое событие за оставшийся договор
+		 *
 		 */
 		if(type == type_t::NONE)
 			// Завершаем обработку ответа
@@ -176,6 +177,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		 *
 		 * @note Под видом опроса AUTO договоров ведётся несколько разом, и ответ
 		 *       опоздавшего договора приходит уже после принятого: его следует отбросить
+		 *
 		 */
 		if(!exchange.waiting)
 			// Завершаем обработку ответа
@@ -198,13 +200,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 			 */
 			case static_cast <uint8_t> (type_t::PCP): {
 				// Код причины отказа кодека
-				proto::portmap::pcp_t::error_t error = proto::portmap::pcp_t::error_t::NONE;
+				proto::portmap::pcp::error_t error = proto::portmap::pcp::error_t::NONE;
 				// Разобранный ответ маршрутизатора
-				proto::portmap::pcp_t::answer_t answer;
+				proto::portmap::pcp::response_t response;
 				/**
 				 * Если ответ маршрутизатора разобрать не удалось
 				 */
-				if(!this->_pcp.parse(data, size, answer, error)){
+				if(!proto::portmap::pcp::parse(data, size, response, error)){
 					// Выполняем завершение обмена отказом
 					this->failure(type, error_t::MALFORMED);
 					// Завершаем обработку ответа
@@ -217,8 +219,9 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *       ответа на свою просьбу: договор предписывает именно так, и ответ
 				 *       на чужую просьбу приходит от того же маршрутизатора. Обмена сверка
 				 *       не прерывает - об утрате состояния она лишь объявляет
+				 *
 				 */
-				this->lost(type, answer.epoch);
+				this->lost(type, response.epoch);
 				/**
 				 * Если ответ отправленной просьбе не принадлежит
 				 *
@@ -226,8 +229,9 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *       просьбу. Сличает их кодек: он сверяет и действие, и отличительную
 				 *       метку, и внутренний порт. Отказом это не считается - ждём своего
 				 *       ответа
+				 *
 				 */
-				if(!this->_pcp.belongs(answer, this->_inquiry)){
+				if(!proto::portmap::pcp::belongs(response, this->_inquiry)){
 					/**
 					 * Выполняем продолжение прерванного ожидания ответа
 					 *
@@ -236,6 +240,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					 *       повторно на этом шаге нечего, а иного срабатывания не будет.
 					 *       Продолжается ожидание остатком, а не заново - сколько бы чужих
 					 *       ответов ни пришло, отказ наступит в свой черёд
+					 *
 					 */
 					this->_io->rearmTimeout(eid, event::action_t::READ);
 					// Ожидаем ответа на свою просьбу
@@ -244,9 +249,9 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				/**
 				 * Если маршрутизатор ответил отказом
 				 */
-				if(answer.result != proto::portmap::pcp_t::result_t::SUCCESS){
+				if(response.result != proto::portmap::pcp::result_t::SUCCESS){
 					// Выполняем завершение обмена отказом
-					this->failure(type, this->reason(answer.result));
+					this->failure(type, this->reason(response.result));
 					// Завершаем обработку ответа
 					return;
 				}
@@ -259,12 +264,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *       не то перенаправление, которое убиралось. Продление же назначает
 				 *       новый срок, и выдать вызывающему запрошенный вместо назначенного
 				 *       значило бы соврать о том, до каких пор перенаправление живёт
+				 *
 				 */
 				if((this->_action == action_t::OPEN) || (this->_action == action_t::RENEW)){
 					// Запоминаем назначенный маршрутизатором внешний порт
-					this->_mapping.externalPort = answer.externalPort;
+					this->_mapping.externalPort = response.externalPort;
 					// Запоминаем назначенный маршрутизатором срок жизни перенаправления
-					this->_mapping.lifeTime = answer.lifeTime;
+					this->_mapping.lifeTime = response.lifeTime;
 				}
 			} break;
 			/**
@@ -272,23 +278,25 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 			 */
 			case static_cast <uint8_t> (type_t::UPNP): {
 				// Код причины отказа кодека
-				proto::portmap::ssdp_t::error_t error = proto::portmap::ssdp_t::error_t::NONE;
+				proto::portmap::ssdp::error_t error = proto::portmap::ssdp::error_t::NONE;
 				// Разобранное сообщение договора
-				proto::portmap::ssdp_t::answer_t answer;
+				proto::portmap::ssdp::response_t response;
 				/**
 				 * Если сообщение договора разобрать не удалось
 				 *
 				 * @note Отказ здесь обмена не прерывает: на групповой адрес приходят и
 				 *       сообщения посторонних устройств, и негодное следует пропускать,
 				 *       продолжая ждать пригодного до истечения срока
+				 *
 				 */
-				if(!this->_ssdp.parse(string_view(reinterpret_cast <const char *> (data), size), answer, error)){
+				if(!proto::portmap::ssdp::parse(string_view(reinterpret_cast <const char *> (data), size), response, error)){
 					/**
 					 * Выполняем продолжение прерванного ожидания ответа
 					 *
 					 * @note Рассылка ведётся на групповой адрес, и ответы посторонних
 					 *       устройств приходят по ней всякий раз: не продолжи мы ожидание,
 					 *       первое же чужое сообщение оставило бы отыскание без срока
+					 *
 					 */
 					this->_io->rearmTimeout(eid, event::action_t::READ);
 					// Ожидаем ответа пригодного устройства
@@ -297,20 +305,21 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				/**
 				 * Если ответ устройству доступа в сеть не отвечает
 				 */
-				if(!this->_ssdp.suitable(answer, proto::portmap::ssdp_t::TARGET_GATEWAY)){
+				if(!proto::portmap::ssdp::suitable(response, proto::portmap::ssdp::TARGET_GATEWAY)){
 					// Выполняем продолжение прерванного ожидания ответа
 					this->_io->rearmTimeout(eid, event::action_t::READ);
 					// Ожидаем ответа пригодного устройства
 					return;
 				}
 				// Запоминаем адрес описания отысканного устройства
-				this->_location = answer.location;
+				this->_location = response.location;
 				/**
 				 * Сбрасываем счёт выполненных попыток обращения
 				 *
 				 * @note Признак ожидания при этом не снимается: устройство лишь отыскано, а
 				 *       обмен по договору продолжается потоковым событием, и срок ожидания
 				 *       нужен и ему
+				 *
 				 */
 				exchange.attempt = 0;
 				/**
@@ -318,6 +327,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *
 				 * @note Устройство отыскано, и рассылка больше не нужна: ответы прочих
 				 *       устройств сети к делу не относятся
+				 *
 				 */
 				if(exchange.eid > 0){
 					// Выполняем удаление события рассылки
@@ -339,13 +349,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 			 */
 			case static_cast <uint8_t> (type_t::NAT_PMP): {
 				// Код причины отказа кодека
-				proto::portmap::natpmp_t::error_t error = proto::portmap::natpmp_t::error_t::NONE;
+				proto::portmap::natpmp::error_t error = proto::portmap::natpmp::error_t::NONE;
 				// Разобранный ответ маршрутизатора
-				proto::portmap::natpmp_t::answer_t answer;
+				proto::portmap::natpmp::response_t response;
 				/**
 				 * Если ответ маршрутизатора разобрать не удалось
 				 */
-				if(!this->_natpmp.parse(data, size, answer, error)){
+				if(!proto::portmap::natpmp::parse(data, size, response, error)){
 					// Выполняем завершение обмена отказом
 					this->failure(type, error_t::MALFORMED);
 					// Завершаем обработку ответа
@@ -357,14 +367,15 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 * @note Сверяется отсчёт у каждого разобранного ответа, как и по договору
 				 *       PCP: отсчёт несут оба вида ответа этого договора - и о внешнем
 				 *       адресе, и о перенаправлении
+				 *
 				 */
-				this->lost(type, answer.epoch);
+				this->lost(type, response.epoch);
 				/**
 				 * Если маршрутизатор ответил отказом
 				 */
-				if(answer.result != proto::portmap::natpmp_t::result_t::SUCCESS){
+				if(response.result != proto::portmap::natpmp::result_t::SUCCESS){
 					// Выполняем завершение обмена отказом
-					this->failure(type, this->reason(answer.result));
+					this->failure(type, this->reason(response.result));
 					// Завершаем обработку ответа
 					return;
 				}
@@ -375,7 +386,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					/**
 					 * Если вид полученного сообщения запросу не отвечает
 					 */
-					if(answer.kind != proto::portmap::natpmp_t::kind_t::ADDRESS){
+					if(response.kind != proto::portmap::natpmp::kind_t::ADDRESS){
 						// Выполняем завершение обмена отказом
 						this->failure(type, error_t::MALFORMED);
 						// Завершаем обработку ответа
@@ -386,8 +397,9 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					 *
 					 * @note Кодек выдаёт адрес числом, старший октет которого является первым
 					 *       октетом адреса, и порядок размещения здесь именно такой
+					 *
 					 */
-					this->_addr.v4(answer.address, net_addr_t::endian_t::BIG);
+					this->_addr.v4(response.address, net_addr_t::endian_t::BIG);
 					// Выполняем завершение обмена по этому договору
 					this->complete(type);
 					// Выполняем функцию обратного вызова
@@ -398,7 +410,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				/**
 				 * Если вид полученного сообщения запросу не отвечает
 				 */
-				if(answer.kind != proto::portmap::natpmp_t::kind_t::MAPPING){
+				if(response.kind != proto::portmap::natpmp::kind_t::MAPPING){
 					// Выполняем завершение обмена отказом
 					this->failure(type, error_t::MALFORMED);
 					// Завершаем обработку ответа
@@ -413,9 +425,11 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *          и прийти он может на чужую просьбу
 				 *
 				 * @note Отказом это не считается - ждём своего ответа, как и по договору PCP
+				 *
 				 */
-				if((answer.internalPort != this->_mapping.internalPort) ||
-				   (answer.proto != ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::natpmp_t::proto_t::TCP : proto::portmap::natpmp_t::proto_t::UDP))){
+				if((response.internalPort != this->_mapping.internalPort) ||
+				   (response.proto != ((this->_mapping.proto == proto_t::TCP) ?
+				    proto::portmap::natpmp::proto_t::TCP : proto::portmap::natpmp::proto_t::UDP))){
 					// Выполняем продолжение прерванного ожидания ответа
 					this->_io->rearmTimeout(eid, event::action_t::READ);
 					// Ожидаем ответа на свою просьбу
@@ -430,12 +444,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 *       не то перенаправление, которое убиралось. Продление же назначает
 				 *       новый срок, и выдать вызывающему запрошенный вместо назначенного
 				 *       значило бы соврать о том, до каких пор перенаправление живёт
+				 *
 				 */
 				if((this->_action == action_t::OPEN) || (this->_action == action_t::RENEW)){
 					// Запоминаем назначенный маршрутизатором внешний порт
-					this->_mapping.externalPort = answer.externalPort;
+					this->_mapping.externalPort = response.externalPort;
 					// Запоминаем назначенный маршрутизатором срок жизни перенаправления
-					this->_mapping.lifeTime = answer.lifeTime;
+					this->_mapping.lifeTime = response.lifeTime;
 				}
 			} break;
 		}
@@ -444,6 +459,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		 *
 		 * @note Завершение обмена сбрасывает просьбу, а разбирать, какой обратный вызов
 		 *       звать, следует по той просьбе, что подавалась
+		 *
 		 */
 		const action_t action = this->_action;
 		// Выполняем завершение обмена по этому договору
@@ -474,13 +490,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -519,7 +535,6 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, const event::action_t ac
 	exchange.attempt++;
 	/**
 	 * Если срок ожидания истёк у потокового события обмена с устройством UPnP
-	 *
 	 */
 	if((this->_stream > 0) && (eid == this->_stream)){
 		/**
@@ -533,6 +548,7 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, const event::action_t ac
 			 *          означает «переподключаться», а отрицательным попытка
 			 *          прерывается. Счёт попыток ведётся выше, и, исчерпав их, модуль
 			 *          завершает обмен отказом - тем череда и прекращается
+			 *
 			 */
 			case static_cast <uint8_t> (event::action_t::RECONNECT):
 				// Разрешаем событию повторить попытку подключения к устройству
@@ -544,6 +560,7 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, const event::action_t ac
 			 *       заводит новую попытку по обрыву, а не по молчанию. Не повторить
 			 *       запрос здесь значило бы оставить обмен без итога вовсе - ни ответа,
 			 *       ни отказа
+			 *
 			 */
 			case static_cast <uint8_t> (event::action_t::READ): {
 				// Если повторить текущий шаг обмена не удалось
@@ -560,6 +577,7 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, const event::action_t ac
 		 * @note Новую попытку подключения событие заводит само: неудавшееся подключение
 		 *       движок прерывает и заводит срок ожидания повторной попытки, а по нему
 		 *       приходит уже действие переподключения
+		 *
 		 */
 		return false;
 	}
@@ -570,6 +588,7 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, const event::action_t ac
 	 *       кодек договора, а у UPnP на этом шаге просьбы нет вовсе - есть рассылка,
 	 *       и заводит её отдельный метод. Повтор ей нужен не меньше прочих: рассылка
 	 *       эта дейтаграммная и групповая, а такую потерять проще всего
+	 *
 	 */
 	if(type == type_t::UPNP){
 		/**
@@ -616,6 +635,7 @@ awh::unit::Portmap::type_t awh::unit::Portmap::belongs(const event::id_t eid) co
 	 * @note Обмен по этому договору ведётся двумя событиями: рассылка отыскивает
 	 *       устройство, а потоковое событие читает описание и вызывает действие
 	 *       службы - и оба принадлежат одному договору
+	 *
 	 */
 	if((eid == this->_exchangeUPNP.eid) || ((this->_stream > 0) && (eid == this->_stream)))
 		// Выводим договор UPnP
@@ -658,43 +678,43 @@ awh::unit::Portmap::exchange_t & awh::unit::Portmap::exchange(const type_t type)
  * @return       код причины отказа перенаправления
  *
  */
-awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::pcp_t::result_t result) const noexcept {
+awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::pcp::result_t result) const noexcept {
 	/**
 	 * Определяем код итога, выданный маршрутизатором
 	 */
 	switch(static_cast <uint8_t> (result)){
 		// Если просьба выполнена
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::SUCCESS):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::SUCCESS):
 			// Выводим отсутствие ошибки
 			return error_t::NONE;
 		// Если издание договора не поддерживается
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::UNSUPP_VERSION):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::UNSUPP_VERSION):
 		// Если действие не поддерживается
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::UNSUPP_OPCODE):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::UNSUPP_OPCODE):
 		// Если дополнение запроса не поддерживается
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::UNSUPP_OPTION):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::UNSUPP_OPTION):
 		// Если договор перенаправления не поддерживается
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::UNSUPP_PROTOCOL):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::UNSUPP_PROTOCOL):
 			// Выводим отказ по неподдерживаемому договору
 			return error_t::NOT_SUPPORTED;
 		// Если просьба отвергнута настройкой маршрутизатора
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::NOT_AUTHORIZED):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::NOT_AUTHORIZED):
 			// Выводим отказ по настройке маршрутизатора
 			return error_t::NOT_AUTHORIZED;
 		// Если маршрутизатор не имеет связи с внешней сетью
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::NETWORK_FAILURE):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::NETWORK_FAILURE):
 			// Выводим отказ по отсутствию связи с внешней сетью
 			return error_t::NETWORK_FAILURE;
 		// Если у маршрутизатора не осталось места под перенаправления
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::NO_RESOURCES):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::NO_RESOURCES):
 		// Если машина исчерпала отведённую ей долю перенаправлений
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::USER_EX_QUOTA):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::USER_EX_QUOTA):
 			// Выводим отказ по исчерпанию места под перенаправления
 			return error_t::OUT_OF_RESOURCES;
 		// Если запрос либо дополнение запроса построены ошибочно
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::MALFORMED_REQUEST):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::MALFORMED_REQUEST):
 		// Если дополнение запроса построено ошибочно
-		case static_cast <uint8_t> (proto::portmap::pcp_t::result_t::MALFORMED_OPTION):
+		case static_cast <uint8_t> (proto::portmap::pcp::result_t::MALFORMED_OPTION):
 			// Выводим отказ по ошибочно построенному запросу
 			return error_t::MALFORMED;
 	}
@@ -708,31 +728,31 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::pcp
  * @return       код причины отказа перенаправления
  *
  */
-awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::natpmp_t::result_t result) const noexcept {
+awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::natpmp::result_t result) const noexcept {
 	/**
 	 * Определяем код итога, выданный маршрутизатором
 	 */
 	switch(static_cast <uint16_t> (result)){
 		// Если просьба выполнена
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::SUCCESS):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::SUCCESS):
 			// Выводим отсутствие ошибки
 			return error_t::NONE;
 		// Если издание договора не поддерживается
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::UNSUPPORTED_VERSION):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::UNSUPPORTED_VERSION):
 		// Если действие не поддерживается
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::UNSUPPORTED_OPCODE):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::UNSUPPORTED_OPCODE):
 			// Выводим отказ по неподдерживаемому договору
 			return error_t::NOT_SUPPORTED;
 		// Если просьба отвергнута настройкой маршрутизатора
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::NOT_AUTHORIZED):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::NOT_AUTHORIZED):
 			// Выводим отказ по настройке маршрутизатора
 			return error_t::NOT_AUTHORIZED;
 		// Если маршрутизатор не имеет связи с внешней сетью
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::NETWORK_FAILURE):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::NETWORK_FAILURE):
 			// Выводим отказ по отсутствию связи с внешней сетью
 			return error_t::NETWORK_FAILURE;
 		// Если у маршрутизатора не осталось места под перенаправления
-		case static_cast <uint16_t> (proto::portmap::natpmp_t::result_t::OUT_OF_RESOURCES):
+		case static_cast <uint16_t> (proto::portmap::natpmp::result_t::OUT_OF_RESOURCES):
 			// Выводим отказ по исчерпанию места под перенаправления
 			return error_t::OUT_OF_RESOURCES;
 	}
@@ -780,6 +800,7 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upn
 		 *
 		 * @note Отказ этот означает не ошибку просьбы, а отключённое устройством
 		 *       средство: просить его снова тем же способом бесполезно
+		 *
 		 */
 		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::FIREWALL_DISABLED):
 		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PINHOLE_NOT_ALLOWED):
@@ -829,6 +850,7 @@ bool awh::unit::Portmap::client(const event::id_t eid, uint8_t * address) noexce
 	 * @note Объект работы с адресами переводит записи между разновидностями сам: адрес
 	 *       IPv4 он отдаёт отображением на пространство IPv6, а настоящий адрес IPv6 -
 	 *       как есть, и оба вида договор принимает без различия
+	 *
 	 */
 	const auto & result = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 	// Выполняем копирование полученного адреса
@@ -865,10 +887,11 @@ bool awh::unit::Portmap::discover() noexcept {
 		 * @note Обмен ведётся целиком одной разновидностью, и адрес другой к
 		 *       маршрутизатору не приведёт: событие обмена заводится разновидностью
 		 *       настройки, и отправка по чужому адресу отказала бы уже в системе
+		 *
 		 */
 		if(this->_addr.type() != ((this->_family == family_t::IPV6) ? net_addr_t::type_t::IPV6 : net_addr_t::type_t::IPV4)){
 			// Записываем в лог сообщение о непригодном адресе маршрутизатора
-			awh::log::print("Router address \"%s\" does not match the network family in use", awh::log::flag_t::WARNING, this->_router.c_str());
+			log::print("Router address \"%s\" does not match the network family in use", log::flag_t::WARNING, this->_router.c_str());
 			// Выводим отрицательный результат отыскания маршрутизатора
 			return false;
 		}
@@ -877,6 +900,7 @@ bool awh::unit::Portmap::discover() noexcept {
 		 *
 		 * @note Адрес снимается готовым объектом, а не собирается по числу: разбирать
 		 *       его вид и раскладывать октеты объект работы с адресами умеет сам
+		 *
 		 */
 		this->_address = this->_addr.source();
 		// Выводим результат отыскания маршрутизатора
@@ -890,6 +914,7 @@ bool awh::unit::Portmap::discover() noexcept {
 	 * @note Разновидность отыскиваемого маршрута задаётся размещённым адресом: система
 	 *       держит таблицы маршрутов раздельно, и маршрут разновидности обмена берётся
 	 *       из своей
+	 *
 	 */
 	if(this->_family == family_t::IPV6)
 		// Выполняем размещение адреса маршрутизатора записью IPv6
@@ -908,6 +933,7 @@ bool awh::unit::Portmap::discover() noexcept {
 	 * @note Устройство нужно рассылке SSDP в сети IPv6, и берётся оно отсюда: маршрут
 	 *       до внешней сети ведёт через маршрутизатор, а он и есть то устройство, с
 	 *       которым ведётся обмен
+	 *
 	 */
 	this->_link = route.ifname;
 	/**
@@ -915,6 +941,7 @@ bool awh::unit::Portmap::discover() noexcept {
 	 *
 	 * @note Адрес маршрута перенимается целиком, а не по числу: разновидность его
 	 *       задаёт сам маршрут, и разбирать её вызывающему незачем
+	 *
 	 */
 	this->_address = ::move(route.gateway);
 	// Выводим результат отыскания маршрутизатора
@@ -944,6 +971,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	 *
 	 * @note Устройство подписки в сети IPv4 задаётся неопределённым адресом: система
 	 *       выбирает его сама по таблице маршрутов
+	 *
 	 */
 	if(!six)
 		// Выполняем вступление в группу обнаружения устройств
@@ -955,6 +983,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	 *
 	 * @note Выбор устройства подписки оставляется системе: с исправно заведённой сетью
 	 *       IPv6 она справляется с этим сама
+	 *
 	 */
 	if(iface.empty())
 		// Выполняем вступление в группу обнаружения устройств
@@ -967,6 +996,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	 *       подписка на чужой связи оставила бы рассылку без ответа. Неопределённый
 	 *       адрес система принимает и сама, когда путь IPv6 у неё есть, но
 	 *       полагаться на её выбор здесь незачем - устройство уже назначено
+	 *
 	 */
 	const unique_ptr <net::addr_t> address = this->_ifaces.getAddress(iface, event::family_t::IPV6);
 	// Если адрес сетевого устройства получить не удалось
@@ -995,7 +1025,7 @@ bool awh::unit::Portmap::local(const string & host) noexcept {
 	 */
 	if(!this->_addr.parse(host) || (this->_addr.own() != net_addr_t::own_t::LAN)){
 		// Записываем в лог сообщение о непригодном адресе устройства
-		awh::log::print("Device address \"%s\" does not belong to the local network", awh::log::flag_t::WARNING, host.c_str());
+		log::print("Device address \"%s\" does not belong to the local network", log::flag_t::WARNING, host.c_str());
 		// Выводим признак того, что адрес локальной сети не принадлежит
 		return false;
 	}
@@ -1016,12 +1046,13 @@ string awh::unit::Portmap::authority(const string & host, const uint16_t port) c
 	 *
 	 * @note Проверка ведётся по самой записи, а не по разновидности обмена: узел этот
 	 *       назван устройством, и записан он так, как записан
+	 *
 	 */
 	if(host.find(':') != string::npos)
 		// Выводим узел записью IPv6, взятой в квадратные скобки
-		return awh::fmk::format("[%s]:%u", host.c_str(), port);
+		return fmk::format("[%s]:%u", host.c_str(), port);
 	// Выводим узел обычной записью
-	return awh::fmk::format("%s:%u", host.c_str(), port);
+	return fmk::format("%s:%u", host.c_str(), port);
 }
 /**
  * @brief Метод отыскания устройства UPnP рассылкой SSDP
@@ -1038,20 +1069,22 @@ bool awh::unit::Portmap::search() noexcept {
 	 * Если обмен ведётся сетью IPv4
 	 *
 	 * @note Группа обнаружения в сети IPv4 одна, и перебирать здесь нечего
+	 *
 	 */
 	if(this->_family != family_t::IPV6)
 		// Выполняем отыскание устройства рассылкой на группу обнаружения
-		return this->search(proto::portmap::ssdp_t::MULTICAST_ADDRESS);
+		return this->search(proto::portmap::ssdp::MULTICAST_ADDRESS);
 	/**
 	 * Группы обнаружения устройств сети IPv6
 	 *
 	 * @details Групп в сети IPv6 две: одна принадлежит связи, другая - площадке.
 	 *          Устройство доступа в сеть лежит на той же связи и обычно отвечает в
 	 *          первую, но объявлять себя лишь во второй ему не запрещено
+	 *
 	 */
 	static constexpr const char * GROUPS[] = {
-		proto::portmap::ssdp_t::MULTICAST_ADDRESS6,
-		proto::portmap::ssdp_t::MULTICAST_ADDRESS6_SITE
+		proto::portmap::ssdp::MULTICAST_ADDRESS6,
+		proto::portmap::ssdp::MULTICAST_ADDRESS6_SITE
 	};
 	// Получаем количество групп обнаружения устройств
 	constexpr size_t count = (sizeof(GROUPS) / sizeof(GROUPS[0]));
@@ -1066,6 +1099,7 @@ bool awh::unit::Portmap::search() noexcept {
 	 *
 	 * @note Первая попытка достаётся ближней группе: устройство доступа в сеть лежит на
 	 *       той же связи, и отвечает оно обычно в неё
+	 *
 	 */
 	const size_t offset = static_cast <size_t> (this->_exchangeUPNP.attempt);
 	/**
@@ -1100,6 +1134,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 * @note Групповой адрес сети IPv6 принадлежит связи, и без указания устройства
 		 *       он неоднозначен: система такую рассылку отвергает, не имея, каким
 		 *       устройством её вести
+		 *
 		 */
 		string target(group.begin(), group.end());
 		/**
@@ -1109,6 +1144,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 *       заведённой сетью IPv6 зона не заботит - она выбирает устройство сама
 		 *       по таблице маршрутов. Отменять рассылку значило бы отказывать там, где
 		 *       она прошла бы
+		 *
 		 */
 		if(six && !this->iface().empty())
 			// Выполняем дописывание зоны группового адреса
@@ -1124,6 +1160,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 *
 		 * @note Устройство задаётся и рассылке IPv4: сеть бывает не одна, и рассылать
 		 *       просьбу следует той, где лежит маршрутизатор
+		 *
 		 */
 		if(!this->iface().empty()){
 			/**
@@ -1140,6 +1177,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 			 * @note Отказ этот прежде не разбирался вовсе, и рассылка при нём уходила
 			 *       устройством, выбранным таблицей маршрутов, - о чём вызывающий не
 			 *       узнавал никак
+			 *
 			 */
 			if(!this->_io->setIface(this->_exchangeUPNP.eid, this->iface()) && !this->_iface.empty()){
 				// Выполняем удаление события рассылки
@@ -1169,6 +1207,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 *       Предел этот берётся настройкой (setHops), потому что держащему устройство
 		 *       доступа на самой машине нужен предел иной - LOOPBACK, не выпускающий
 		 *       просьбу наружу вовсе
+		 *
 		 */
 		if(!this->_io->setHops(this->_exchangeUPNP.eid, this->_hops)){
 			// Выполняем удаление события рассылки
@@ -1181,7 +1220,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если порт обнаружения устройств установить не удалось
 		 */
-		if(!this->_io->setTargetPort(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::PORT)){
+		if(!this->_io->setTargetPort(this->_exchangeUPNP.eid, proto::portmap::ssdp::PORT)){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
@@ -1225,10 +1264,11 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 * @note Отказ обмен не прерывает: ответ на просьбу обнаружения устройство шлёт
 		 *       одному спросившему, а не в группу, и приходит он обычным чтением
 		 *       события. Членство нужно лишь для объявлений, которых модуль не ждёт
+		 *
 		 */
 		if(!this->membership(target, six))
 			// Записываем в лог сообщение о неудавшемся вступлении в группу обнаружения
-			awh::log::print("Joining the discovery group \"%s\" failed, awaiting the unicast answer", awh::log::flag_t::WARNING, target.c_str());
+			log::print("Joining the discovery group \"%s\" failed, awaiting the unicast response", log::flag_t::WARNING, target.c_str());
 		/**
 		 * Если запустить событие рассылки не удалось
 		 */
@@ -1241,7 +1281,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 			return false;
 		}
 		// Выполняем сборку просьбы обнаружения устройства доступа в сеть
-		const string & message = this->_ssdp.search(proto::portmap::ssdp_t::TARGET_GATEWAY, proto::portmap::ssdp_t::DEFAULT_DELAY, group);
+		const string & message = proto::portmap::ssdp::search(proto::portmap::ssdp::TARGET_GATEWAY, proto::portmap::ssdp::DEFAULT_DELAY, group);
 		/**
 		 * Если просьбу разослать не удалось
 		 */
@@ -1268,13 +1308,13 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {group}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {group}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат начала отыскания устройства
@@ -1308,6 +1348,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 * @note Разновидность берётся у самого адреса, а не у настройки: адрес этот
 		 *       назван устройством в ответе на рассылку, и подключаться к нему следует
 		 *       той разновидностью, какой он записан
+		 *
 		 */
 		const bool six = (this->_addr.parse(address) && (this->_addr.type() == net_addr_t::type_t::IPV6));
 		// Выполняем заведение потокового события обмена
@@ -1341,6 +1382,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *
 		 * @note Без него неудачная попытка подключения висит столько, сколько отведёт
 		 *       система, и обмен молчит вместо того, чтобы завершиться отказом
+		 *
 		 */
 		this->_io->setTimeout(this->_stream, event::action_t::CONNECT, this->_delay);
 		/**
@@ -1350,6 +1392,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *       когда оно событию ещё и разрешено действием. Мало и этого - согласие
 		 *       спрашивается ещё и у подписки на истечение срока, и там смысл ответа
 		 *       обратный прочим действиям: отрицательным попытка прерывается
+		 *
 		 */
 		this->_io->setAction(this->_stream, event::action_t::RECONNECT, event::mode_t::ENABLED);
 		/**
@@ -1358,6 +1401,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 * @note Без неё берётся пять секунд, а ждать столько незачем: неудачей здесь
 		 *       оборачивается потерянное рукопожатие, и лечится она новой попыткой, а
 		 *       не терпением
+		 *
 		 */
 		this->_io->setTimeout(this->_stream, event::action_t::RECONNECT, RECONNECT_DELAY);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
@@ -1401,13 +1445,13 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {address, port}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {address, port}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат заведения потокового события обмена
@@ -1433,6 +1477,7 @@ void awh::unit::Portmap::prepare() noexcept {
 	 *
 	 * @note Тело копится подпиской, а не берётся у объекта разбора по завершении: ответ
 	 *       приходит кусками, и собрать его иначе неоткуда
+	 *
 	 */
 	this->_parser.on(http::parser_http_t::data_callback_t([this](const uint32_t, const void * data, const size_t size, const bool) noexcept -> bool {
 		// Выполняем накопление полученного тела ответа
@@ -1462,6 +1507,7 @@ void awh::unit::Portmap::connected(const event::id_t eid, const bool ok) noexcep
 	 * @note Обмен здесь не завершается: об этом же извещает и срок ожидания
 	 *       подключения, приходящий следом, и повтор ведётся там - по общему счёту
 	 *       попыток, как и для прочих договоров
+	 *
 	 */
 	if(!ok)
 		// Завершаем обработку подключения
@@ -1510,6 +1556,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 *
 		 * @note Предел обязателен: ответ берётся у устройства, о котором заранее ничего
 		 *       не известно, и доверять его размеру нельзя
+		 *
 		 */
 		if((this->_payload.length() + size) > proto::portmap::device_t::MAX_DESCRIPTION_SIZE){
 			// Выполняем завершение обмена отказом
@@ -1525,6 +1572,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 *       потокового события обмена. Подавать ему заново весь накопленный ответ на
 		 *       каждый пришедший кусок значило бы разбирать ответ столько раз, сколько
 		 *       кусков пришло
+		 *
 		 */
 		this->_parser.parse(data, size);
 		/**
@@ -1533,6 +1581,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 * @note Завершённость определяется итоговым состоянием разбора, а не стадией
 		 *       END: стадия объявляется и на конце блока заголовков, и лишь состояние
 		 *       COMPLETE говорит о том, что сообщение прочитано целиком
+		 *
 		 */
 		if(this->_parser.status() != http::parser_http_t::status_t::COMPLETE){
 			/**
@@ -1543,6 +1592,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 			 *       устройство, оборвавшее передачу посередине, держало бы обмен молча и
 			 *       без конца. Продолжается ожидание остатком - предел кладётся на ответ
 			 *       целиком, а не на каждый его кусок порознь
+			 *
 			 */
 			this->_io->rearmTimeout(eid, event::action_t::READ);
 			// Ожидаем поступления остатка ответа
@@ -1557,6 +1607,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 *       принять, и часть устройств соединение закрывает всегда. Дальше идти по
 		 *       живому соединению можно лишь с его согласия, а без него событие
 		 *       заводится заново
+		 *
 		 */
 		this->_connected = this->_parser.message().flags.keepAlive;
 		/**
@@ -1565,6 +1616,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 * @note Счёт ведётся на попытки подряд, а не на весь обмен: чтение перечня
 		 *       требует обращения на каждое перенаправление, и накопленные за весь
 		 *       обход неудачи обрывали бы его тем скорее, чем перечень длиннее
+		 *
 		 */
 		this->exchange(type_t::UPNP).attempt = 0;
 		/**
@@ -1593,6 +1645,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 * @note Договор UPnP предписывает отдавать отказ службы кодом 500 с конвертом
 		 *       SOAP Fault в теле: причину отказа несёт тело, а не код ответа, и
 		 *       читать его следует так же, как удачный ответ
+		 *
 		 */
 		if((code != 200) && !((code == 500) && (this->_stage == stage_t::CONTROL))){
 			// Выполняем завершение обмена отказом
@@ -1624,13 +1677,13 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1669,6 +1722,7 @@ bool awh::unit::Portmap::describe() noexcept {
 	 * @note Полная проверка требовала бы сличения с адресом отправителя ответа, но
 	 *       чтение датаграммного события его не выдаёт: договор `read_t` несёт лишь
 	 *       данные. Оттого проверяется происхождение адреса, а не его совпадение
+	 *
 	 */
 	if(!this->local(host))
 		// Выводим отрицательный результат начала чтения описания устройства
@@ -1682,7 +1736,7 @@ bool awh::unit::Portmap::describe() noexcept {
 		// Устанавливаем путь запроса описания устройства по умолчанию
 		path.assign(1, '/');
 	// Выполняем сборку запроса описания устройства
-	this->_request = awh::fmk::format(
+	this->_request = fmk::format(
 		"GET %s HTTP/1.1\r\n"
 		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
@@ -1721,6 +1775,7 @@ void awh::unit::Portmap::described() noexcept {
 		 * @note Тот же повод, обнаруженный по службе заслона IPv6, ниже уже объявляется
 		 *       неподдерживаемым договором: разница выходила лишь из того, каким путём
 		 *       отсутствие службы обнаружено
+		 *
 		 */
 		this->failure(type_t::UPNP, ((error == proto::portmap::device_t::error_t::EMPTY_SERVICE) ? error_t::NOT_SUPPORTED : error_t::MALFORMED));
 		// Завершаем разбор описания устройства
@@ -1733,6 +1788,7 @@ void awh::unit::Portmap::described() noexcept {
 	 *       адресов там нет, и подключения сквозь заслон разрешает отдельная служба.
 	 *       Внешний адрес и перечень служба соединения выдаёт и по связи IPv6, и они
 	 *       ведутся ею же
+	 *
 	 */
 	const bool pinhole = ((this->_family == family_t::IPV6) && ((this->_action == action_t::OPEN) || (this->_action == action_t::CLOSE) || (this->_action == action_t::RENEW)));
 	/**
@@ -1746,7 +1802,7 @@ void awh::unit::Portmap::described() noexcept {
 		 */
 		if(service == nullptr){
 			// Записываем в лог сообщение об отсутствии службы заслона IPv6
-			awh::log::print("Device does not provide the IPv6 firewall service", awh::log::flag_t::WARNING);
+			log::print("Device does not provide the IPv6 firewall service", log::flag_t::WARNING);
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::NOT_SUPPORTED);
 			// Завершаем разбор описания устройства
@@ -1761,6 +1817,7 @@ void awh::unit::Portmap::described() noexcept {
 		 *
 		 * @note Спрашивается оно лишь перед проделыванием: заделывание пробоя от
 		 *       состояния заслона не зависит, а лишний шаг обмена его только затянет
+		 *
 		 */
 		this->_probe = (this->_action == action_t::OPEN);
 		/**
@@ -1778,6 +1835,7 @@ void awh::unit::Portmap::described() noexcept {
 	 * @note Служба соединения бывает двух видов, и какой из них несёт устройство,
 	 *       заранее неизвестно: соединение по адресу IP встречается чаще, но на
 	 *       подключении по договору PPP устройство несёт лишь второй
+	 *
 	 */
 	for(const char * type : {
 		proto::portmap::device_t::SERVICE_WAN_IP,
@@ -1837,6 +1895,7 @@ bool awh::unit::Portmap::control() noexcept {
 		 * @note Перечня служба разом не выдаёт: перенаправления читаются по одному,
 		 *       наращивая порядковый номер, пока служба не ответит отказом о выходе за
 		 *       перечень
+		 *
 		 */
 		case static_cast <uint8_t> (action_t::LIST):
 			// Выполняем сборку вызова чтения перенаправления по порядковому номеру
@@ -1849,6 +1908,7 @@ bool awh::unit::Portmap::control() noexcept {
 		 *       продлевает перенаправление повторной просьбой о его заведении, и
 		 *       собирается она той же сборкой. Отдельное действие есть лишь у службы
 		 *       заслона IPv6, где заведение заново выдало бы новый опознаватель
+		 *
 		 */
 		case static_cast <uint8_t> (action_t::OPEN):
 		case static_cast <uint8_t> (action_t::RENEW): {
@@ -1874,6 +1934,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 * @note Спрашивается оно тем же ходом обмена, что и просьба о пробое:
 				 *       ответ на вопрос уводит сюда же, снимая признак, и следующая
 				 *       сборка выдаёт уже саму просьбу
+				 *
 				 */
 				if(this->_probe){
 					// Выполняем сборку вызова запроса состояния заслона IPv6
@@ -1892,6 +1953,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 *
 				 * @note Бессрочных пробоев договор не заводит, и нулевой срок здесь
 				 *       заменяется отведённым по умолчанию
+				 *
 				 */
 				pinhole.lifeTime = (this->_mapping.lifeTime > 0 ? this->_mapping.lifeTime : ::DEFAULT_LIFETIME);
 				// Запоминаем внешний узел, подключения с которого пропускаются
@@ -1901,6 +1963,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 *
 				 * @note Преобразования адресов в сети IPv6 нет, и подставить адрес
 				 *       маршрутизатор не может: указывать его обязан просящий
+				 *
 				 */
 				pinhole.internalClient = this->_io->getAddress(this->_stream, event::address_t::IPV6);
 				// Если внутренний адрес машины получить не удалось
@@ -1932,6 +1995,7 @@ bool awh::unit::Portmap::control() noexcept {
 			 *       берётся у подключённого события обмена: оно уже установило связь с
 			 *       устройством, и его адрес - это ровно тот, по которому устройство
 			 *       машину и видит
+			 *
 			 */
 			mapping.internalClient = this->_io->getAddress(this->_stream, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4));
 			// Если внутренний адрес машины получить не удалось
@@ -1949,6 +2013,7 @@ bool awh::unit::Portmap::control() noexcept {
 			 * @note Пробой заделывается по опознавателю, выданному при его проделывании:
 			 *       одним и тем же признакам отвечает несколько пробоев, и снимать их
 			 *       следует поимённо
+			 *
 			 */
 			if(this->_family == family_t::IPV6){
 				/**
@@ -1956,7 +2021,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 */
 				if(this->_mapping.pinhole == 0){
 					// Записываем в лог сообщение о незаданном опознавателе пробоя
-					awh::log::print("Firewall pinhole identifier is missing", awh::log::flag_t::WARNING);
+					log::print("Firewall pinhole identifier is missing", log::flag_t::WARNING);
 					// Выводим отрицательный результат начала вызова действия службы
 					return false;
 				}
@@ -1973,6 +2038,7 @@ bool awh::unit::Portmap::control() noexcept {
 			);
 		break;
 	}
+	// Если собранный вызов действия негоден
 	if(!request.valid())
 		// Выводим отрицательный результат начала вызова действия службы
 		return false;
@@ -2002,6 +2068,7 @@ bool awh::unit::Portmap::control() noexcept {
 	 *
 	 * @note Просьба несёт внутренний адрес машины и её порты, и отправлять её
 	 *       узлу, названному кем угодно ответившим на рассылку, недопустимо
+	 *
 	 */
 	if(!this->local(host))
 		// Выводим отрицательный результат начала вызова действия службы
@@ -2015,7 +2082,7 @@ bool awh::unit::Portmap::control() noexcept {
 		// Устанавливаем путь вызова действия службы по умолчанию
 		path.assign(1, '/');
 	// Выполняем сборку вызова действия службы
-	this->_request = awh::fmk::format(
+	this->_request = fmk::format(
 		"POST %s HTTP/1.1\r\n"
 		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
@@ -2041,6 +2108,7 @@ bool awh::unit::Portmap::control() noexcept {
 	 * @note Запрос отправляется с полем `Connection: keep-alive`, и устройство
 	 *       соединение держит. Закрыть его оно всё же вправе, и тогда отправка
 	 *       отказывает - событие в этом случае заводится заново
+	 *
 	 */
 	if(this->_connected && (this->_stream > 0)){
 		// Выполняем подготовку объекта разбора к чтению ответа устройства
@@ -2068,6 +2136,7 @@ bool awh::unit::Portmap::repeat() noexcept {
 	 * @note Тем обращение и уводится на заведение нового события: подключение, с
 	 *       которого ответа не дождались, к делу больше не годится, а уничтожает
 	 *       старое событие само заведение нового
+	 *
 	 */
 	this->_connected = false;
 	/**
@@ -2092,13 +2161,13 @@ bool awh::unit::Portmap::repeat() noexcept {
  */
 void awh::unit::Portmap::controlled() noexcept {
 	// Код причины отказа кодека
-	proto::portmap::soap_t::error_t error = proto::portmap::soap_t::error_t::NONE;
+	proto::portmap::soap::error_t error = proto::portmap::soap::error_t::NONE;
 	// Разобранный ответ службы устройства
-	proto::portmap::soap_t::answer_t answer;
+	proto::portmap::soap::response_t response;
 	/**
 	 * Если ответ службы устройства разобрать не удалось
 	 */
-	if(!this->_soap.parse(this->_payload, answer, error)){
+	if(!proto::portmap::soap::parse(this->_payload, response, error)){
 		// Выполняем завершение обмена отказом
 		this->failure(type_t::UPNP, error_t::MALFORMED);
 		// Завершаем разбор ответа службы устройства
@@ -2107,15 +2176,16 @@ void awh::unit::Portmap::controlled() noexcept {
 	/**
 	 * Если служба устройства ответила отказом
 	 */
-	if(answer.fault){
+	if(response.fault){
 		// Получаем код итога, выданный службой устройства
-		const proto::portmap::upnp_t::result_t result = this->_upnp.result(answer);
+		const proto::portmap::upnp_t::result_t result = this->_upnp.result(response);
 		/**
 		 * Если перечень заведённых перенаправлений прочитан до конца
 		 *
 		 * @note Конца перечня служба иначе не объявляет: отказ о выходе за перечень и
 		 *       есть признак того, что перенаправления кончились. Отказом обмена он
 		 *       поэтому не считается - перечень прочитан, пусть даже пустой
+		 *
 		 */
 		if((this->_action == action_t::LIST) && (result == proto::portmap::upnp_t::result_t::INDEX_INVALID)){
 			// Выполняем завершение обмена по этому договору
@@ -2139,7 +2209,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если перенаправление порта извлечь не удалось
 		 */
-		if(!this->_upnp.mapping(answer, entry)){
+		if(!this->_upnp.mapping(response, entry)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2173,10 +2243,11 @@ void awh::unit::Portmap::controlled() noexcept {
 		 * @note Конец перечня служба объявляет отказом о выходе за него, и устройство,
 		 *       отвечающее успехом без конца, обход тем самым не завершает. Прочитанное
 		 *       при этом не пропадает: перечень выдаётся тем, что успели собрать
+		 *
 		 */
 		if(this->_index >= MAX_MAPPINGS){
 			// Записываем в лог сообщение о превышении предельной длины перечня
-			awh::log::print("Port mappings list exceeded the limit of %u entries", awh::log::flag_t::WARNING, MAX_MAPPINGS);
+			log::print("Port mappings list exceeded the limit of %u entries", log::flag_t::WARNING, MAX_MAPPINGS);
 			// Выполняем завершение обмена по этому договору
 			this->complete(type_t::UPNP);
 			// Выполняем функцию обратного вызова
@@ -2202,7 +2273,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если внешний адрес маршрутизатора извлечь не удалось
 		 */
-		if(!this->_upnp.address(answer, address)){
+		if(!this->_upnp.address(response, address)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2222,6 +2293,7 @@ void awh::unit::Portmap::controlled() noexcept {
 	 *          просить о пробое. Отключённый заслон и запрет пробоев объявляются
 	 *          здесь прямо, а на саму просьбу устройство ответило бы отказом, по
 	 *          которому причина уже не видна
+	 *
 	 */
 	if(this->_probe){
 		// Признак того, что заслон IPv6 у маршрутизатора включён
@@ -2233,7 +2305,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если состояние заслона IPv6 извлечь не удалось
 		 */
-		if(!this->_upnp.firewall(answer, enabled, allowed)){
+		if(!this->_upnp.firewall(response, enabled, allowed)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2244,11 +2316,12 @@ void awh::unit::Portmap::controlled() noexcept {
 		 *
 		 * @note Отказ этот означает не ошибку просьбы, а отключённое устройством
 		 *       средство: просить его снова тем же способом бесполезно
+		 *
 		 */
 		if(!enabled || !allowed){
 			// Записываем в лог сообщение о недоступности пробоев заслона IPv6
-			awh::log::print(
-				"IPv6 firewall is %s", awh::log::flag_t::WARNING,
+			log::print(
+				"IPv6 firewall is %s", log::flag_t::WARNING,
 				(enabled ? "enabled but inbound pinholes are not allowed" : "disabled")
 			);
 			// Выполняем завершение обмена отказом
@@ -2270,6 +2343,7 @@ void awh::unit::Portmap::controlled() noexcept {
 	 *
 	 * @note Опознаватель проделанного пробоя запоминается в перенаправлении и выдаётся
 	 *       вместе с ним: заделать пробой без опознавателя нечем
+	 *
 	 */
 	if((this->_family == family_t::IPV6) && (this->_action == action_t::OPEN)){
 		// Извлекаемый опознаватель пробоя заслона IPv6
@@ -2277,7 +2351,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		/**
 		 * Если опознаватель пробоя заслона извлечь не удалось
 		 */
-		if(!this->_upnp.unique(answer, unique)){
+		if(!this->_upnp.unique(response, unique)){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем разбор ответа службы устройства
@@ -2290,6 +2364,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		 *
 		 * @note Назначенного срока служба в ответе не выдаёт, и остаётся запрошенный:
 		 *       устройство вправе отвести и меньший, но узнать его негде
+		 *
 		 */
 		if(this->_mapping.lifeTime == 0)
 			// Запоминаем срок жизни пробоя, отведённый по умолчанию
@@ -2302,6 +2377,7 @@ void awh::unit::Portmap::controlled() noexcept {
 	 *       проделывании пробоя: нулевой срок просьбе передан не был - его заменила
 	 *       сборка вызова, - и выдать вызывающему нуль значило бы соврать о том, до
 	 *       каких пор пробой живёт
+	 *
 	 */
 	if((this->_family == family_t::IPV6) && (this->_action == action_t::RENEW) && (this->_mapping.lifeTime == 0))
 		// Запоминаем срок жизни пробоя, отведённый по умолчанию
@@ -2356,7 +2432,7 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		/**
 		 * Если порт маршрутизатора установить не удалось
 		 */
-		if(!this->_io->setTargetPort(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp_t::PORT : proto::portmap::natpmp_t::PORT))){
+		if(!this->_io->setTargetPort(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp::PORT : proto::portmap::natpmp::PORT))){
 			// Выполняем удаление события обмена
 			this->_io->destroy(exchange.eid);
 			// Сбрасываем идентификатор события обмена
@@ -2412,13 +2488,13 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат заведения события обмена
@@ -2462,12 +2538,13 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 		 *
 		 * @note Событие пересоздаётся на каждую попытку: назначение получателя на
 		 *       запущенном событии не действует
+		 *
 		 */
 		if(!this->datagram(type))
 			// Выводим отрицательный результат отправки просьбы
 			return false;
 		// Место под собираемое сообщение
-		uint8_t buffer[proto::portmap::pcp_t::MAX_MESSAGE_SIZE] = {0};
+		uint8_t buffer[proto::portmap::pcp::MAX_MESSAGE_SIZE] = {0};
 		// Размер собранного сообщения
 		size_t size = 0;
 		/**
@@ -2479,20 +2556,21 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 			 */
 			case static_cast <uint8_t> (type_t::PCP): {
 				// Код причины отказа кодека
-				proto::portmap::pcp_t::error_t error = proto::portmap::pcp_t::error_t::NONE;
+				proto::portmap::pcp::error_t error = proto::portmap::pcp::error_t::NONE;
 				/**
 				 * Собираемая просьба маршрутизатору
 				 *
 				 * @note Просьба держится обменом, а не остаётся здесь: ответ сличается с
 				 *       ней средствами кодека, и сличать его иначе не с чем
+				 *
 				 */
-				proto::portmap::pcp_t::request_t & request = this->_inquiry;
+				proto::portmap::pcp::request_t & request = this->_inquiry;
 				// Выполняем очистку собираемой просьбы маршрутизатору
-				request = proto::portmap::pcp_t::request_t();
+				request = proto::portmap::pcp::request_t();
 				// Запоминаем действие договора
-				request.opcode = proto::portmap::pcp_t::opcode_t::MAP;
+				request.opcode = proto::portmap::pcp::opcode_t::MAP;
 				// Запоминаем договор перенаправляемого порта
-				request.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::pcp_t::proto_t::TCP : proto::portmap::pcp_t::proto_t::UDP);
+				request.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::pcp::proto_t::TCP : proto::portmap::pcp::proto_t::UDP);
 				// Запоминаем внутренний порт перенаправления
 				request.internalPort = this->_mapping.internalPort;
 				// Запоминаем желаемый внешний порт перенаправления
@@ -2504,13 +2582,15 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 				 *
 				 * @note Метка берётся у обмена, а не собирается здесь: повтор просьбы с
 				 *       другой меткой договор счёл бы просьбой о другом перенаправлении
+				 *
 				 */
-				::memcpy(&request.nonce[0], this->_nonce.data(), proto::portmap::pcp_t::NONCE_SIZE);
+				::memcpy(&request.nonce[0], this->_nonce.data(), proto::portmap::pcp::NONCE_SIZE);
 				/**
 				 * Если внутренний адрес машины получить не удалось
 				 *
 				 * @note Договор предписывает указывать в просьбе адрес обращающейся машины,
 				 *       и маршрутизатор сличает его с адресом отправителя дейтаграммы
+				 *
 				 */
 				if(!this->client(exchange.eid, &request.client[0])){
 					// Выполняем прекращение заведённого события обмена
@@ -2519,28 +2599,28 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 					return false;
 				}
 				// Выполняем сборку просьбы маршрутизатору
-				size = this->_pcp.request(&buffer[0], sizeof(buffer), request, error);
+				size = proto::portmap::pcp::request(&buffer[0], sizeof(buffer), request, error);
 			} break;
 			/**
 			 * Если просьба отправляется по договору NAT-PMP
 			 */
 			case static_cast <uint8_t> (type_t::NAT_PMP): {
 				// Код причины отказа кодека
-				proto::portmap::natpmp_t::error_t error = proto::portmap::natpmp_t::error_t::NONE;
+				proto::portmap::natpmp::error_t error = proto::portmap::natpmp::error_t::NONE;
 				/**
 				 * Если запрашивается внешний адрес маршрутизатора
 				 */
 				if(this->_action == action_t::EXTERNAL)
 					// Выполняем сборку просьбы о внешнем адресе маршрутизатора
-					size = this->_natpmp.address(&buffer[0], sizeof(buffer), error);
+					size = proto::portmap::natpmp::address(&buffer[0], sizeof(buffer), error);
 				/**
 				 * Если заводится либо убирается перенаправление порта
 				 */
 				else {
 					// Собираемая просьба маршрутизатору
-					proto::portmap::natpmp_t::request_t request;
+					proto::portmap::natpmp::request_t request;
 					// Запоминаем договор перенаправляемого порта
-					request.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::natpmp_t::proto_t::TCP : proto::portmap::natpmp_t::proto_t::UDP);
+					request.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::natpmp::proto_t::TCP : proto::portmap::natpmp::proto_t::UDP);
 					// Запоминаем внутренний порт перенаправления
 					request.internalPort = this->_mapping.internalPort;
 					/**
@@ -2548,12 +2628,13 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 					 *
 					 * @note Убирается перенаправление той же просьбой с нулевым сроком жизни
 					 *       и нулевым внешним портом: отдельного действия договор не имеет
+					 *
 					 */
 					request.externalPort = ((this->_action == action_t::CLOSE) ? 0 : this->_mapping.externalPort);
 					// Запоминаем запрашиваемый срок жизни перенаправления
 					request.lifeTime = ((this->_action == action_t::CLOSE) ? 0 : this->_mapping.lifeTime);
 					// Выполняем сборку просьбы маршрутизатору
-					size = this->_natpmp.mapping(&buffer[0], sizeof(buffer), request, error);
+					size = proto::portmap::natpmp::mapping(&buffer[0], sizeof(buffer), request, error);
 				}
 			} break;
 		}
@@ -2588,13 +2669,13 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат отправки просьбы
@@ -2625,6 +2706,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *       дейтаграммным договорам, а UPnP отыскивает устройство рассылкой SSDP и
 	 *       обходится без него. Сеть, где таблица маршрутов шлюза не выдаёт, для UPnP
 	 *       поэтому не помеха, и закрывать ему дорогу отказом прочих неверно
+	 *
 	 */
 	const bool routed = this->discover();
 	/**
@@ -2643,8 +2725,9 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *       предписывает одну и ту же метку для просьбы и всех её повторов. Метка,
 	 *       переданная вызывающим, имеет старшинство - ею снимается перенаправление,
 	 *       заведённое в прошлый запуск
+	 *
 	 */
-	if(mapping.nonce.size() == proto::portmap::pcp_t::NONCE_SIZE)
+	if(mapping.nonce.size() == proto::portmap::pcp::NONCE_SIZE)
 		// Запоминаем метку, переданную вызывающим
 		this->_nonce = mapping.nonce;
 	/**
@@ -2652,7 +2735,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 */
 	else {
 		// Выделяем место под отличительную метку перенаправления
-		this->_nonce.resize(proto::portmap::pcp_t::NONCE_SIZE, 0);
+		this->_nonce.resize(proto::portmap::pcp::NONCE_SIZE, 0);
 		// Выполняем заполнение отличительной метки перенаправления
 		::nonce(this->_nonce.data(), this->_nonce.size());
 	}
@@ -2669,6 +2752,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *
 	 * @note Перечень выдаёт лишь договор UPnP, и опрашивать прочие бессмысленно: их
 	 *       молчание обмен только затянет, а ответить им нечего
+	 *
 	 */
 	const bool listing = (action == action_t::LIST);
 	/**
@@ -2678,6 +2762,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *       на просьбу о перенаправлении, и спрашивать его отдельно негде. Заводить
 	 *       перенаправление ради одного лишь адреса неверно, и просьба эта договору не
 	 *       передаётся - её выполняют NAT-PMP и UPnP
+	 *
 	 */
 	if(routed && !listing && (action != action_t::EXTERNAL) && ((this->_type == type_t::PCP) || (this->_type == type_t::AUTO))){
 		// Выполняем отправку просьбы по договору PCP
@@ -2695,6 +2780,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 		 *
 		 * @note Метка выдаётся и тогда, когда ответил другой договор: лишней она не
 		 *       будет - прочие договоры её не имеют и просто не смотрят
+		 *
 		 */
 		if(this->_exchangePCP.waiting && (action == action_t::OPEN))
 			// Запоминаем отличительную метку отправленной просьбы
@@ -2707,6 +2793,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *       него служба заслона отказала бы наверняка. Опрашивать её впустую незачем:
 	 *       под видом опроса AUTO пробой в такой сети заделывает договор PCP, и её
 	 *       отказ лишь затянул бы обмен и запутал бы вызывающего
+	 *
 	 */
 	const bool unnamed = ((this->_family == family_t::IPV6) && ((action == action_t::CLOSE) || (action == action_t::RENEW)) && (mapping.pinhole == 0));
 	/**
@@ -2714,6 +2801,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *
 	 * @note Отыскание маршрутизатора договору UPnP не нужно: устройство отыскивается
 	 *       рассылкой SSDP, и заданный настройкой адрес маршрутизатора здесь ни при чём
+	 *
 	 */
 	if(!unnamed && ((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO)))
 		// Выполняем отыскание устройства рассылкой SSDP
@@ -2724,6 +2812,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 * @note Разновидности IPv6 договор не имеет вовсе: RFC 6886 описан только для
 	 *       IPv4, и опрашивать им маршрутизатор в сети IPv6 незачем - ответить ему
 	 *       нечем, а общий срок опроса это только затянет
+	 *
 	 */
 	if(routed && !listing && (this->_family != family_t::IPV6) && ((this->_type == type_t::NAT_PMP) || (this->_type == type_t::AUTO)))
 		// Выполняем отправку просьбы по договору NAT-PMP
@@ -2749,13 +2838,14 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 	// Отсчёт времени работы маршрутизатора по нужному договору
 	epoch_t & record = ((type == type_t::PCP) ? this->_epochPCP : this->_epochNATPMP);
 	// Получаем время получения ответа по часам этой машины
-	const uint64_t stamp = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+	const uint64_t stamp = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 	/**
 	 * Если отсчёт получен впервые
 	 *
 	 * @note Сверять первый отсчёт не с чем: он лишь запоминается, и утратой это не
 	 *       считается. Тем же ходом обходится и запуск после перезагрузки маршрутизатора -
 	 *       заводить нам к этому времени ещё нечего
+	 *
 	 */
 	if(!record.filled){
 		// Запоминаем полученный отсчёт
@@ -2772,6 +2862,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 	 *
 	 * @note Считается в секундах и с защитой от хода часов вспять: перевод времени
 	 *       машины назад дал бы отрицательную разницу, а она здесь беззнаковая
+	 *
 	 */
 	const uint64_t elapsed = ((stamp > record.stamp) ? ((stamp - record.stamp) / 1000) : 0);
 	// Определяем прирост отсчёта маршрутизатора
@@ -2783,6 +2874,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 	 *          сверяется с допуском RFC 6886: прощается одна шестнадцатая прошедшего
 	 *          времени и ещё две секунды сверху - столько расходятся часы двух машин,
 	 *          но не столько теряет перезагрузившийся маршрутизатор
+	 *
 	 */
 	const bool result = ((epoch < record.value) || ((growth + 2) < (elapsed - (elapsed / 16))));
 	// Запоминаем значение отсчёта
@@ -2810,11 +2902,11 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем сообщение в лог
-				awh::log::debug(
+				log::debug(
 					"Router has lost its port mapping state (protocol: %u)",
 					__PRETTY_FUNCTION__,
 					{static_cast <uint16_t> (type)},
-					awh::log::flag_t::WARNING,
+					log::flag_t::WARNING,
 					static_cast <uint16_t> (type)
 				);
 			/**
@@ -2822,7 +2914,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 			 */
 			#else
 				// Записываем сообщение в лог
-				awh::log::print("Router has lost its port mapping state (protocol: %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (type));
+				log::print("Router has lost its port mapping state (protocol: %u)", log::flag_t::WARNING, static_cast <uint16_t> (type));
 			#endif
 		}
 	}
@@ -2844,6 +2936,7 @@ void awh::unit::Portmap::accepted([[maybe_unused]] const event::id_t eid, const 
 	 *
 	 * @note Закрывается самое давнее событие, а не отвергается новое: объявление,
 	 *       пришедшее только что, ближе к делу, чем то, что молчит дольше всех
+	 *
 	 */
 	if(this->_announcers.size() >= MAX_ANNOUNCERS){
 		// Выполняем удаление самого давнего события отправителя объявлений
@@ -2880,6 +2973,7 @@ void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, 
 	 * @note Отбор ведётся по внешнему адресу, а не по принадлежности местной сети:
 	 *       петля местной сетью не считается, а объявление по ней приходит от службы,
 	 *       работающей на этой же машине, - отбрасывать его значило бы отвергать своё
+	 *
 	 */
 	const string & host = this->_io->getTarget(eid);
 	// Если отправитель объявления принадлежит внешней сети, выходим
@@ -2889,36 +2983,39 @@ void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, 
 	 *
 	 * @note Объявления обоих договоров приходят на один и тот же порт, и разделяются
 	 *       они изданием в первом октете сообщения - как и обычные ответы
+	 *
 	 */
 	switch(data[0]){
 		/**
 		 * Если объявление разослано по договору NAT-PMP
 		 */
-		case proto::portmap::natpmp_t::VERSION: {
+		case proto::portmap::natpmp::VERSION: {
 			// Код причины отказа кодека
-			proto::portmap::natpmp_t::error_t error = proto::portmap::natpmp_t::error_t::NONE;
+			proto::portmap::natpmp::error_t error = proto::portmap::natpmp::error_t::NONE;
 			// Разобранное объявление маршрутизатора
-			proto::portmap::natpmp_t::answer_t answer;
+			proto::portmap::natpmp::response_t response;
 			// Если объявление разобрать не удалось, выходим
-			if(!this->_natpmp.parse(data, size, answer, error)) return;
+			if(!proto::portmap::natpmp::parse(data, size, response, error)) return;
 			/**
 			 * Если объявление удачным не является, выходим
 			 *
 			 * @note Объявление о неудаче договор не рассылает вовсе, и пришедшее с
 			 *       кодом отказа объявлением не является
+			 *
 			 */
-			if(answer.result != proto::portmap::natpmp_t::result_t::SUCCESS) return;
+			if(response.result != proto::portmap::natpmp::result_t::SUCCESS) return;
 			// Если объявлен не внешний адрес маршрутизатора, выходим
-			if(answer.kind != proto::portmap::natpmp_t::kind_t::ADDRESS) return;
+			if(response.kind != proto::portmap::natpmp::kind_t::ADDRESS) return;
 			// Выполняем сверку отсчёта времени работы маршрутизатора
-			this->lost(type_t::NAT_PMP, answer.epoch);
+			this->lost(type_t::NAT_PMP, response.epoch);
 			/**
 			 * Выполняем размещение объявленного внешнего адреса маршрутизатора
 			 *
 			 * @note Кодек выдаёт адрес числом, старший октет которого является первым
 			 *       октетом адреса, - как и у ответа на запрос внешнего адреса
+			 *
 			 */
-			this->_addr.v4(answer.address, net_addr_t::endian_t::BIG);
+			this->_addr.v4(response.address, net_addr_t::endian_t::BIG);
 			// Выполняем получение идентификатора функции обратного вызова
 			const callback_t::id_t fid = this->_callback.id("external");
 			/**
@@ -2928,6 +3025,7 @@ void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, 
 			 *       спрошенный: адрес это один и тот же, и заводить под объявленный
 			 *       отдельный вызов значило бы обязать вызывающего разбирать одно и то
 			 *       же дважды
+			 *
 			 */
 			if(this->_callback.is(fid))
 				// Выполняем функцию обратного вызова
@@ -2936,22 +3034,23 @@ void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, 
 		/**
 		 * Если объявление разослано по договору PCP
 		 */
-		case proto::portmap::pcp_t::VERSION: {
+		case proto::portmap::pcp::VERSION: {
 			// Код причины отказа кодека
-			proto::portmap::pcp_t::error_t error = proto::portmap::pcp_t::error_t::NONE;
+			proto::portmap::pcp::error_t error = proto::portmap::pcp::error_t::NONE;
 			// Разобранное объявление маршрутизатора
-			proto::portmap::pcp_t::answer_t answer;
+			proto::portmap::pcp::response_t response;
 			// Если объявление разобрать не удалось, выходим
-			if(!this->_pcp.parse(data, size, answer, error)) return;
+			if(!proto::portmap::pcp::parse(data, size, response, error)) return;
 			/**
 			 * Если полученное действие объявлением не является, выходим
 			 *
 			 * @note На этот порт приходят лишь объявления, но действие проверяется
 			 *       всё равно: порт открыт всей сети, и прислать туда вправе что угодно
+			 *
 			 */
-			if(answer.opcode != proto::portmap::pcp_t::opcode_t::ANNOUNCE) return;
+			if(response.opcode != proto::portmap::pcp::opcode_t::ANNOUNCE) return;
 			// Выполняем сверку отсчёта времени работы маршрутизатора
-			this->lost(type_t::PCP, answer.epoch);
+			this->lost(type_t::PCP, response.epoch);
 		} break;
 	}
 }
@@ -2972,6 +3071,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 *
 		 * @note События эти заведены движком, а закрывать их обязан модуль: время их
 		 *       жизни движку не принадлежит
+		 *
 		 */
 		for(const event::id_t oid : this->_announcers)
 			// Выполняем удаление события отправителя объявлений
@@ -2997,6 +3097,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 * @note Договор описан только для IPv4, и объявлений в сети IPv6 он не
 		 *       рассылает вовсе. Приём при этом не отменяется: тем же гнездом приходят
 		 *       объявления договора PCP, у которого разновидность IPv6 есть
+		 *
 		 */
 		// Выполняем заведение события приёма объявлений
 		this->_announcer = this->_io->event(event::node_t::SERVER, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
@@ -3008,6 +3109,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 * @note Привязка ведётся неопределённым адресом намеренно: объявление
 		 *       рассылается на групповой адрес, и принять его гнездо, привязанное к
 		 *       адресу самой машины, не сумело бы
+		 *
 		 */
 		if(!this->_io->setAddress(this->_announcer, (six ? event::address_t::IPV6 : event::address_t::IPV4), (six ? "::" : "0.0.0.0"))){
 			// Выполняем удаление события приёма объявлений
@@ -3020,7 +3122,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		/**
 		 * Если порт приёма объявлений установить не удалось
 		 */
-		if(!this->_io->setSourcePort(this->_announcer, proto::portmap::natpmp_t::ANNOUNCE_PORT)){
+		if(!this->_io->setSourcePort(this->_announcer, proto::portmap::natpmp::ANNOUNCE_PORT)){
 			// Выполняем удаление события приёма объявлений
 			this->_io->destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
@@ -3038,6 +3140,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 * @note Переиспользование адреса и порта здесь обязательно: порт этот
 		 *       договорный, и занимает его всякая работающая на машине служба
 		 *       перенаправления - без переиспользования приём не завёлся бы рядом с ней
+		 *
 		 */
 		if(!this->_io->setOptions(this->_announcer, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
 			// Выполняем удаление события приёма объявлений
@@ -3076,6 +3179,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 *
 		 * @note Отступление это от рассылки обнаружения SSDP, где членство заводится: там
 		 *       групповой адрес свой, договорный, и без подписки на него не придёт ничего
+		 *
 		 */
 		// Выводим положительный результат включения приёма объявлений
 		return true;
@@ -3088,13 +3192,13 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {mode}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {mode}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат включения приёма объявлений
@@ -3113,6 +3217,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 	 *
 	 * @note Отказом под видом опроса AUTO завершается всё обращение: договор здесь не
 	 *       назван, а значит не начат ни один из них - прекращать следует все разом
+	 *
 	 */
 	if((type == type_t::AUTO) || (type == type_t::NONE))
 		// Выполняем прекращение всех ведущихся обменов
@@ -3150,6 +3255,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 	 *
 	 * @note Под видом опроса AUTO договоров ведётся несколько разом, и отказ одного из
 	 *       них ещё не означает отказа обращения: оно завершается, когда откажут все
+	 *
 	 */
 	if(this->_exchangePCP.waiting || this->_exchangeUPNP.waiting || this->_exchangeNATPMP.waiting)
 		// Завершаем обработку отказа
@@ -3173,11 +3279,11 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"Port mapping failed (protocol: %u, reason: %u)",
 				__PRETTY_FUNCTION__,
 				{static_cast <uint16_t> (type), static_cast <uint16_t> (error)},
-				awh::log::flag_t::WARNING,
+				log::flag_t::WARNING,
 				static_cast <uint16_t> (type), static_cast <uint16_t> (error)
 			);
 		/**
@@ -3185,7 +3291,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Port mapping failed (protocol: %u, reason: %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (type), static_cast <uint16_t> (error));
+			log::print("Port mapping failed (protocol: %u, reason: %u)", log::flag_t::WARNING, static_cast <uint16_t> (type), static_cast <uint16_t> (error));
 		#endif
 	}
 }
@@ -3371,6 +3477,7 @@ bool awh::unit::Portmap::external() noexcept {
 	 * @note Действия запроса внешнего адреса договор не имеет: адрес выдаётся в ответе
 	 *       на просьбу о перенаправлении, и спрашивать его отдельно негде. Заводить
 	 *       перенаправление ради одного лишь адреса неверно
+	 *
 	 */
 	if(this->_type == type_t::PCP){
 		// Выполняем завершение обмена отказом
@@ -3383,6 +3490,7 @@ bool awh::unit::Portmap::external() noexcept {
 	 *
 	 * @note Разновидности IPv6 договор не имеет, и внешний адрес в такой сети выдаёт
 	 *       лишь UPnP
+	 *
 	 */
 	if((this->_family == family_t::IPV6) && (this->_type == type_t::NAT_PMP)){
 		// Выполняем завершение обмена отказом
@@ -3406,6 +3514,7 @@ bool awh::unit::Portmap::list() noexcept {
 	 * @note Перечень заведённых перенаправлений выдаёт лишь этот договор: у NAT-PMP и
 	 *       PCP чтения заведённого нет вовсе, и опрос AUTO тут ничего не спасает -
 	 *       спрашивать нечего у двух договоров из трёх
+	 *
 	 */
 	if((this->_type != type_t::UPNP) && (this->_type != type_t::AUTO)){
 		// Выполняем завершение обмена отказом
@@ -3478,10 +3587,11 @@ bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
 	 *
 	 * @note Продлевается пробой по опознавателю, выданному при его проделывании, и
 	 *       без него служба заслона отказала бы наверняка
+	 *
 	 */
 	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP) && (mapping.pinhole == 0)){
 		// Записываем в лог сообщение о незаданном опознавателе пробоя
-		awh::log::print("Firewall pinhole identifier is missing", awh::log::flag_t::WARNING);
+		log::print("Firewall pinhole identifier is missing", log::flag_t::WARNING);
 		// Выполняем завершение обмена отказом
 		this->failure(this->_type, error_t::MALFORMED);
 		// Выводим отрицательный результат отправки просьбы
@@ -3499,8 +3609,8 @@ awh::unit::Portmap::Portmap() noexcept :
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _index(0),
  _probe(false), _announcer(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(), _router{""},
- _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(), _ifaces(), _gateway(), _pcp(),
- _ssdp(), _soap(), _upnp(), _device(), _natpmp() {}
+ _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(), _ifaces(), _gateway(),
+ _upnp(), _device() {}
 /**
  * @brief Деструктор
  *
@@ -3513,6 +3623,7 @@ awh::unit::Portmap::~Portmap() noexcept {
 	 *
 	 * @note Приём обменами не заводится и ими не прекращается: держится он всё время
 	 *       работы модуля, и закрыть его больше негде
+	 *
 	 */
 	this->announce(false);
 }

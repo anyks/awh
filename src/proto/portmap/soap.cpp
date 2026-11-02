@@ -22,8 +22,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <proto/portmap/soap.hpp>
 #include <sys/log.hpp>
+#include <proto/portmap/soap.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -50,18 +50,18 @@ namespace {
 	constexpr const char * ANSWER_SUFFIX = "Response";
 
 	/**
-	 * @brief Метод поиска вложенного узла по местному имени
+	 * @brief Функция поиска вложенного узла по местному имени
 	 *
 	 * @details Сличение ведётся лишь по местному имени, без учёта пространства имён.
-	 * Так и задумано: ответ получен у одной определённой службы по её же адресу
-	 * управления, а приставки пространств имён устройства записывают вольно
+	 *          Так и задумано: ответ получен у одной определённой службы по её же адресу
+	 *          управления, а приставки пространств имён устройства записывают вольно.
 	 *
 	 * @param node  узел, среди вложенных которого ведётся поиск
 	 * @param local местное имя искомого узла
 	 * @return      найденный узел дерева разметки
 	 *
 	 */
-	codec::xml::node_t child(const codec::xml::node_t & node, const string_view local) noexcept {
+	static __AWH_INLINE__ codec::xml::node_t child(const codec::xml::node_t & node, const string_view local) noexcept {
 		/**
 		 * Выполняем перебор всех непосредственно вложенных узлов
 		 */
@@ -83,13 +83,13 @@ namespace {
 		return codec::xml::node_t();
 	}
 	/**
-	 * @brief Метод получения первого вложенного узла разметки
+	 * @brief Функция получения первого вложенного узла разметки
 	 *
 	 * @param node узел, среди вложенных которого ведётся поиск
 	 * @return     первый вложенный узел разметки
 	 *
 	 */
-	codec::xml::node_t first(const codec::xml::node_t & node) noexcept {
+	static __AWH_INLINE__ codec::xml::node_t first(const codec::xml::node_t & node) noexcept {
 		/**
 		 * Выполняем перебор всех непосредственно вложенных узлов
 		 */
@@ -105,13 +105,13 @@ namespace {
 		return codec::xml::node_t();
 	}
 	/**
-	 * @brief Метод проверки пригодности значения к записи в заголовок обмена
+	 * @brief Функция проверки пригодности значения к записи в заголовок обмена
 	 *
 	 * @details Заголовок обмена HTTP отделяется от следующего концом строки, и знак
 	 *          этот внутри значения заголовка разбивает запрос надвое: за местом
 	 *          разрыва встаёт то, что вписал туда выдавший значение. Обозначение
 	 *          службы приходит описанием устройства из сети, а описание это выдаёт
-	 *          сам маршрутизатор - доверять ему построение нашего же запроса нельзя
+	 *          сам маршрутизатор - доверять ему построение нашего же запроса нельзя.
 	 *
 	 * @note Отвергаются все управляющие знаки, а не одни лишь концы строки: договор
 	 *       обмена дозволяет значению заголовка знаки видимые, пробел и знак
@@ -121,7 +121,7 @@ namespace {
 	 * @return      признак пригодности значения к записи в заголовок
 	 *
 	 */
-	static bool printable(const string_view value) noexcept {
+	static __AWH_INLINE__ bool printable(const string_view value) noexcept {
 		/**
 		 * Выполняем перебор всех знаков проверяемого значения
 		 */
@@ -141,7 +141,344 @@ namespace {
 };
 
 /**
- * @brief Метод сборки вызова действия службы
+ * @brief Конструктор
+ *
+ */
+awh::proto::portmap::soap::Argument::Argument() noexcept :
+ name{""}, value{""} {}
+/**
+ * @brief Конструктор
+ *
+ * @param name  название довода
+ * @param value значение довода
+ *
+ */
+awh::proto::portmap::soap::Argument::Argument(const string_view name, const string_view value) noexcept :
+ name{name}, value{value} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::proto::portmap::soap::Response::Response() noexcept : fault(false), code(0) {}
+
+/**
+ * @brief Функция сборки обозначения вызываемого действия службы
+ *
+ * @param service обозначение вида службы, у которой вызывается действие
+ * @param action  название вызываемого действия службы
+ * @return        собранное обозначение вызываемого действия службы
+ *
+ */
+string awh::proto::portmap::soap::action(const string_view service, const string_view action) noexcept {
+	// Собираемое обозначение вызываемого действия службы
+	string result = "";
+	/**
+	 * Если обозначение службы либо название действия не переданы
+	 */
+	if(service.empty() || action.empty())
+		// Выводим пустое обозначение вызываемого действия службы
+		return result;
+	/**
+	 * Если обозначение службы либо название действия к записи в заголовок непригодны
+	 *
+	 * @warning Обозначение службы берётся из описания устройства, полученного из сети:
+	 *          конец строки в нём разбил бы наш же запрос надвое, а за местом разрыва
+	 *          встало бы то, что вписал туда выдавший описание
+	 *
+	 */
+	if(!::printable(service) || !::printable(action)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			log::debug("%s", __PRETTY_FUNCTION__, {service, action}, log::flag_t::WARNING, "service or action is not printable");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			log::print("%s", log::flag_t::WARNING, "service or action is not printable");
+		#endif
+		// Выводим пустое обозначение вызываемого действия службы
+		return result;
+	}
+	// Отводим место под собираемое обозначение
+	result.reserve(service.length() + action.length() + 3);
+	/**
+	 * Выполняем сборку обозначения вызываемого действия службы
+	 *
+	 * @note Кавычки договором отведены как есть: без них часть служб обозначение
+	 *       не распознаёт и отвечает отказом
+	 *
+	 */
+	result.append("\"").append(service).append("#").append(action).append("\"");
+	// Выводим собранное обозначение вызываемого действия службы
+	return result;
+}
+/**
+ * @brief Функция получения значения из разобранного ответа службы
+ *
+ * @param response разобранный ответ службы
+ * @param name     название искомого значения
+ * @return         значение из ответа службы либо пустая последовательность
+ *
+ */
+string_view awh::proto::portmap::soap::value(const response_t & response, const string_view name) noexcept {
+	/**
+	 * Выполняем перебор всех значений, выданных службой
+	 */
+	for(const argument_t & argument : response.arguments){
+		/**
+		 * Если название значения совпадает с искомым
+		 */
+		if(argument.name.compare(name) == 0)
+			// Выводим обнаруженное значение из ответа службы
+			return argument.value;
+	}
+	// Выводим пустую последовательность знаков
+	return "";
+}
+/**
+ * @brief Функция разбора ответа службы
+ *
+ * @param text     разбираемый ответ службы
+ * @param response ссылка на разобранный ответ службы
+ * @param error    ссылка на код причины отказа
+ * @return         признак успешного разбора
+ *
+ */
+bool awh::proto::portmap::soap::parse(const string_view text, response_t & response, error_t & error) noexcept {
+	// Выполняем сброс кода причины отказа
+	error = error_t::NONE;
+	// Выполняем сброс разобранного ответа службы
+	response = response_t();
+	/**
+	 * Если разбираемый ответ пуст
+	 */
+	if(text.empty()){
+		// Запоминаем код причины отказа
+		error = error_t::EMPTY;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	/**
+	 * Если разбираемый ответ длиннее допустимого
+	 */
+	if(text.length() > MAX_ANSWER_SIZE){
+		// Запоминаем код причины отказа
+		error = error_t::TOO_LARGE;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Объект дерева разметки ответа службы
+	codec::xml::document_t document;
+	/**
+	 * Если разбор ответа службы выполнить не удалось
+	 */
+	if(!document.parse(text)){
+		// Запоминаем код причины отказа
+		error = error_t::MALFORMED;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug(
+				"%s", __PRETTY_FUNCTION__, {text},
+				log::flag_t::WARNING, codec::xml::message(document.error())
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, codec::xml::message(document.error()));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Получаем конверт ответа службы
+	const codec::xml::node_t envelope = document.element();
+	/**
+	 * Если конвертом ответ службы не является
+	 */
+	if(!envelope.valid() || (envelope.name().local.compare("Envelope") != 0)){
+		// Запоминаем код причины отказа
+		error = error_t::MISSING_ENVELOPE;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Получаем тело ответа службы
+	const codec::xml::node_t body = ::child(envelope, "Body");
+	/**
+	 * Если тела в конверте ответа нет
+	 */
+	if(!body.valid()){
+		// Запоминаем код причины отказа
+		error = error_t::MISSING_BODY;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Получаем отказ службы, если он в теле ответа записан
+	const codec::xml::node_t fault = ::child(body, "Fault");
+	/**
+	 * Если служба ответила отказом
+	 *
+	 * @note Отказ разбирается успешно: сообщение построено верно, а причина отказа
+	 *       лежит в коде ошибки. Отличать отказ службы от испорченного ответа
+	 *       необходимо - отказ означает, что служба до нас дошла и нас поняла
+	 *
+	 */
+	if(fault.valid()){
+		// Запоминаем признак того, что служба ответила отказом
+		response.fault = true;
+		// Запоминаем название ответа службы
+		response.action.assign(fault.name().local);
+		/**
+		 * Получаем описание отказа службы
+		 *
+		 * @note Код ошибки UPnP лежит не в самом отказе, а в его подробностях: сам
+		 *       договор SOAP видов отказа не задаёт, и UPnP заводит свой
+		 *
+		 */
+		const codec::xml::node_t detail = ::child(::child(fault, "detail"), "UPnPError");
+		/**
+		 * Если подробности отказа службы записаны
+		 */
+		if(detail.valid()){
+			// Запоминаем описание ошибки, выданное службой
+			response.description = ::child(detail, "errorDescription").text();
+			/**
+			 * Выполняем разбор кода ошибки, выданного службой
+			 *
+			 * @note Разбор числом ведётся с проверкой: отсутствие кода и код нуль
+			 *       следует различать, а не считать одним и тем же
+			 *
+			 */
+			if(!::child(detail, "errorCode").value(response.code))
+				// Сбрасываем код ошибки, выданный службой
+				response.code = 0;
+		/**
+		 * Если подробностей отказа службы нет
+		 */
+		} else {
+			// Запоминаем описание отказа, выданное службой
+			response.description = ::child(fault, "faultstring").text();
+		}
+		// Выводим признак успешного разбора
+		return true;
+	}
+	// Получаем ответ службы на вызов действия
+	const codec::xml::node_t result = ::first(body);
+	/**
+	 * Если в теле ответа нет ни ответа службы, ни отказа
+	 */
+	if(!result.valid()){
+		// Запоминаем код причины отказа
+		error = error_t::MISSING_ANSWER;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::WARNING, message(error));
+		#endif
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Получаем название ответа службы
+	const string_view name = result.name().local;
+	/**
+	 * Если название ответа записано с приставкой ответа на вызов действия
+	 *
+	 * @note Приставка отбрасывается намеренно: так название в разобранном ответе
+	 *       совпадает с названием вызванного действия, и сличать их можно напрямую
+	 *
+	 */
+	if((name.length() > std::char_traits <char>::length(::ANSWER_SUFFIX)) &&
+	   (name.compare(name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX), std::char_traits <char>::length(::ANSWER_SUFFIX), ::ANSWER_SUFFIX) == 0))
+		// Запоминаем название действия без приставки ответа
+		response.action.assign(name.substr(0, name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX)));
+	// Запоминаем название ответа службы как есть
+	else response.action.assign(name);
+	/**
+	 * Выполняем перебор всех значений, выданных службой
+	 */
+	for(codec::xml::node_t item = result.first(); item.valid(); item = item.next()){
+		/**
+		 * Если вложенный узел узлом разметки не является
+		 */
+		if(item.kind() != codec::xml::kind_t::ELEMENT)
+			// Выполняем переход к следующему вложенному узлу
+			continue;
+		// Выполняем добавление очередного значения к разобранному ответу
+		response.arguments.emplace_back(item.name().local, item.text());
+	}
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Функция сборки вызова действия службы
  *
  * @param service   обозначение вида службы, у которой вызывается действие
  * @param action    название вызываемого действия службы
@@ -149,7 +486,7 @@ namespace {
  * @return          собранный текст вызова действия службы
  *
  */
-string awh::proto::portmap::SOAP::request(const string_view service, const string_view action, const vector <argument_t> & arguments) const noexcept {
+string awh::proto::portmap::soap::request(const string_view service, const string_view action, const vector <argument_t> & arguments) noexcept {
 	/**
 	 * Если обозначение службы либо название действия не переданы
 	 */
@@ -159,22 +496,23 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, message(error_t::INVALID_ACTION));
+			log::debug("%s", __PRETTY_FUNCTION__, {service, action}, log::flag_t::WARNING, message(error_t::INVALID_ACTION));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error_t::INVALID_ACTION));
+			log::print("%s", log::flag_t::WARNING, message(error_t::INVALID_ACTION));
 		#endif
 		// Выводим пустой текст вызова действия службы
-		return string();
+		return "";
 	}
 	/**
 	 * Настройки записи текста разметки
 	 *
 	 * @note Запись ведётся плотной намеренно: отступы добавляют между узлами
 	 *       пробельное содержимое, а часть служб принимает его за значение довода
+	 *
 	 */
 	codec::xml::writer_t::settings_t settings;
 	/**
@@ -184,6 +522,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 	 *       на письме, однако службы устройств писались под чужую поверку, которая
 	 *       пустой довод записывает парой меток. Часть встроенных программ
 	 *       самозакрывающуюся метку не разбирает и отвечает отказом
+	 *
 	 */
 	settings.collapse = false;
 	// Создаём объект записи текста разметки
@@ -203,6 +542,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 	 *
 	 * @note Доводы записываются без пространства имён: договор UPnP велит именовать
 	 *       их местными именами внутри узла действия
+	 *
 	 */
 	for(const argument_t & argument : arguments)
 		// Выполняем запись очередного довода вызова действия
@@ -222,361 +562,63 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, codec::xml::message(writer.error()));
+			log::debug("%s", __PRETTY_FUNCTION__, {service, action}, log::flag_t::WARNING, codec::xml::message(writer.error()));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(writer.error()));
+			log::print("%s", log::flag_t::WARNING, codec::xml::message(writer.error()));
 		#endif
 		// Выводим пустой текст вызова действия службы
-		return string();
+		return "";
 	}
 	// Выводим собранный текст вызова действия службы
 	return writer.text();
 }
+
 /**
- * @brief Метод сборки обозначения вызываемого действия службы
- *
- * @param service обозначение вида службы, у которой вызывается действие
- * @param action  название вызываемого действия службы
- * @return        собранное обозначение вызываемого действия службы
- *
- */
-string awh::proto::portmap::SOAP::action(const string_view service, const string_view action) const noexcept {
-	// Собираемое обозначение вызываемого действия службы
-	string result;
-	/**
-	 * Если обозначение службы либо название действия не переданы
-	 */
-	if(service.empty() || action.empty())
-		// Выводим пустое обозначение вызываемого действия службы
-		return result;
-	/**
-	 * Если обозначение службы либо название действия к записи в заголовок непригодны
-	 *
-	 * @warning Обозначение службы берётся из описания устройства, полученного из сети:
-	 *          конец строки в нём разбил бы наш же запрос надвое, а за местом разрыва
-	 *          встало бы то, что вписал туда выдавший описание
-	 */
-	if(!::printable(service) || !::printable(action)){
-		// Выводим сообщение об ошибке
-		awh::log::print("%s", awh::log::flag_t::WARNING, "service or action is not printable");
-		// Выводим пустое обозначение вызываемого действия службы
-		return result;
-	}
-	// Отводим место под собираемое обозначение
-	result.reserve(service.length() + action.length() + 3);
-	/**
-	 * Выполняем сборку обозначения вызываемого действия службы
-	 *
-	 * @note Кавычки договором отведены как есть: без них часть служб обозначение
-	 *       не распознаёт и отвечает отказом
-	 */
-	result.append("\"").append(service).append("#").append(action).append("\"");
-	// Выводим собранное обозначение вызываемого действия службы
-	return result;
-}
-/**
- * @brief Метод разбора ответа службы
- *
- * @param text   разбираемый ответ службы
- * @param answer ссылка на разобранный ответ службы
- * @param error  ссылка на код причины отказа
- * @return       признак успешного разбора
- *
- */
-bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer, error_t & error) const noexcept {
-	// Выполняем сброс кода причины отказа
-	error = error_t::NONE;
-	// Выполняем сброс разобранного ответа службы
-	answer = answer_t();
-	/**
-	 * Если разбираемый ответ пуст
-	 */
-	if(text.empty()){
-		// Запоминаем код причины отказа
-		error = error_t::EMPTY;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	/**
-	 * Если разбираемый ответ длиннее допустимого
-	 */
-	if(text.length() > MAX_ANSWER_SIZE){
-		// Запоминаем код причины отказа
-		error = error_t::TOO_LARGE;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Объект дерева разметки ответа службы
-	codec::xml::document_t document;
-	/**
-	 * Если разбор ответа службы выполнить не удалось
-	 */
-	if(!document.parse(text)){
-		// Запоминаем код причины отказа
-		error = error_t::MALFORMED;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug(
-				"%s", __PRETTY_FUNCTION__,
-				{document.errorLocation().line, document.errorLocation().column},
-				awh::log::flag_t::WARNING, codec::xml::message(document.error())
-			);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(document.error()));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Получаем конверт ответа службы
-	const codec::xml::node_t envelope = document.element();
-	/**
-	 * Если конвертом ответ службы не является
-	 */
-	if(!envelope.valid() || (envelope.name().local.compare("Envelope") != 0)){
-		// Запоминаем код причины отказа
-		error = error_t::MISSING_ENVELOPE;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().local}, awh::log::flag_t::WARNING, message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Получаем тело ответа службы
-	const codec::xml::node_t body = ::child(envelope, "Body");
-	/**
-	 * Если тела в конверте ответа нет
-	 */
-	if(!body.valid()){
-		// Запоминаем код причины отказа
-		error = error_t::MISSING_BODY;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Получаем отказ службы, если он в теле ответа записан
-	const codec::xml::node_t fault = ::child(body, "Fault");
-	/**
-	 * Если служба ответила отказом
-	 *
-	 * @note Отказ разбирается успешно: сообщение построено верно, а причина отказа
-	 *       лежит в коде ошибки. Отличать отказ службы от испорченного ответа
-	 *       необходимо - отказ означает, что служба до нас дошла и нас поняла
-	 */
-	if(fault.valid()){
-		// Запоминаем признак того, что служба ответила отказом
-		answer.fault = true;
-		// Запоминаем название ответа службы
-		answer.action.assign(fault.name().local);
-		/**
-		 * Получаем описание отказа службы
-		 *
-		 * @note Код ошибки UPnP лежит не в самом отказе, а в его подробностях: сам
-		 *       договор SOAP видов отказа не задаёт, и UPnP заводит свой
-		 */
-		const codec::xml::node_t detail = ::child(::child(fault, "detail"), "UPnPError");
-		/**
-		 * Если подробности отказа службы записаны
-		 */
-		if(detail.valid()){
-			// Запоминаем описание ошибки, выданное службой
-			answer.description = ::child(detail, "errorDescription").text();
-			/**
-			 * Выполняем разбор кода ошибки, выданного службой
-			 *
-			 * @note Разбор числом ведётся с проверкой: отсутствие кода и код нуль
-			 *       следует различать, а не считать одним и тем же
-			 */
-			if(!::child(detail, "errorCode").value(answer.code))
-				// Сбрасываем код ошибки, выданный службой
-				answer.code = 0;
-		/**
-		 * Если подробностей отказа службы нет
-		 */
-		} else {
-			// Запоминаем описание отказа, выданное службой
-			answer.description = ::child(fault, "faultstring").text();
-		}
-		// Выводим признак успешного разбора
-		return true;
-	}
-	// Получаем ответ службы на вызов действия
-	const codec::xml::node_t response = ::first(body);
-	/**
-	 * Если в теле ответа нет ни ответа службы, ни отказа
-	 */
-	if(!response.valid()){
-		// Запоминаем код причины отказа
-		error = error_t::MISSING_ANSWER;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
-		#endif
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Получаем название ответа службы
-	const string_view name = response.name().local;
-	/**
-	 * Если название ответа записано с приставкой ответа на вызов действия
-	 *
-	 * @note Приставка отбрасывается намеренно: так название в разобранном ответе
-	 *       совпадает с названием вызванного действия, и сличать их можно напрямую
-	 */
-	if((name.length() > std::char_traits <char>::length(::ANSWER_SUFFIX)) &&
-	   (name.compare(name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX), std::char_traits <char>::length(::ANSWER_SUFFIX), ::ANSWER_SUFFIX) == 0))
-		// Запоминаем название действия без приставки ответа
-		answer.action.assign(name.substr(0, name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX)));
-	// Запоминаем название ответа службы как есть
-	else answer.action.assign(name);
-	/**
-	 * Выполняем перебор всех значений, выданных службой
-	 */
-	for(codec::xml::node_t item = response.first(); item.valid(); item = item.next()){
-		/**
-		 * Если вложенный узел узлом разметки не является
-		 */
-		if(item.kind() != codec::xml::kind_t::ELEMENT)
-			// Выполняем переход к следующему вложенному узлу
-			continue;
-		// Выполняем добавление очередного значения к разобранному ответу
-		answer.arguments.emplace_back(item.name().local, item.text());
-	}
-	// Выводим признак успешного разбора
-	return true;
-}
-/**
- * @brief Метод получения значения из разобранного ответа службы
- *
- * @param answer разобранный ответ службы
- * @param name   название искомого значения
- * @return       значение из ответа службы либо пустая последовательность
- *
- */
-string_view awh::proto::portmap::SOAP::value(const answer_t & answer, const string_view name) const noexcept {
-	/**
-	 * Выполняем перебор всех значений, выданных службой
-	 */
-	for(const argument_t & argument : answer.arguments){
-		/**
-		 * Если название значения совпадает с искомым
-		 */
-		if(argument.name.compare(name) == 0)
-			// Выводим обнаруженное значение из ответа службы
-			return argument.value;
-	}
-	// Выводим пустую последовательность знаков
-	return string_view();
-}
-/**
- * @brief Метод получения описания кода причины отказа кодека SOAP
+ * @brief Функция получения описания кода причины отказа кодека SOAP
  *
  * @param error код причины отказа кодека
  * @return      описание кода причины отказа на английском языке
  *
  */
-const char * awh::proto::portmap::message(const soap_t::error_t error) noexcept {
+const char * awh::proto::portmap::message(const soap::error_t error) noexcept {
 	/**
 	 * Определяем код причины отказа кодека
 	 */
 	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (soap_t::error_t::NONE):
+		case static_cast <uint8_t> (soap::error_t::NONE):
 			// Выводим описание кода причины отказа
 			return "no error";
 		// Если разбираемый ответ пуст
-		case static_cast <uint8_t> (soap_t::error_t::EMPTY):
+		case static_cast <uint8_t> (soap::error_t::EMPTY):
 			// Выводим описание кода причины отказа
-			return "SOAP answer is empty";
+			return "SOAP response is empty";
 		// Если ответ длиннее допустимого
-		case static_cast <uint8_t> (soap_t::error_t::TOO_LARGE):
+		case static_cast <uint8_t> (soap::error_t::TOO_LARGE):
 			// Выводим описание кода причины отказа
-			return "SOAP answer is too large";
+			return "SOAP response is too large";
 		// Если ответ построен ошибочно
-		case static_cast <uint8_t> (soap_t::error_t::MALFORMED):
+		case static_cast <uint8_t> (soap::error_t::MALFORMED):
 			// Выводим описание кода причины отказа
-			return "malformed SOAP answer";
+			return "malformed SOAP response";
 		// Если в ответе нет конверта договора
-		case static_cast <uint8_t> (soap_t::error_t::MISSING_ENVELOPE):
+		case static_cast <uint8_t> (soap::error_t::MISSING_ENVELOPE):
 			// Выводим описание кода причины отказа
 			return "SOAP envelope is missing";
 		// Если в конверте ответа нет тела
-		case static_cast <uint8_t> (soap_t::error_t::MISSING_BODY):
+		case static_cast <uint8_t> (soap::error_t::MISSING_BODY):
 			// Выводим описание кода причины отказа
 			return "SOAP body is missing";
 		// Если в теле ответа нет ни ответа службы, ни отказа
-		case static_cast <uint8_t> (soap_t::error_t::MISSING_ANSWER):
+		case static_cast <uint8_t> (soap::error_t::MISSING_ANSWER):
 			// Выводим описание кода причины отказа
 			return "SOAP body contains neither a response nor a fault";
 		// Если название действия построено ошибочно
-		case static_cast <uint8_t> (soap_t::error_t::INVALID_ACTION):
+		case static_cast <uint8_t> (soap::error_t::INVALID_ACTION):
 			// Выводим описание кода причины отказа
 			return "invalid service action name";
 	}
