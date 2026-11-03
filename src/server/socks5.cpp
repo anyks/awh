@@ -86,11 +86,16 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <server/socks5.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <server/socks5.hpp>
+
+/**
+ * Подключаем внутренний заголовочный файл
+ */
+#include "../net/internal/eth.inc"
 
 /**
  * Используем стандартное пространство имён
@@ -232,26 +237,25 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Метод проверки наличия UDP-сервера в списке активных событий
+	 * @brief Функция проверки наличия UDP-сервера в списке активных событий
 	 *
 	 * @param events список идентификаторов UDP-серверов
 	 * @param eid    идентификатор события
 	 * @return       результат проверки
 	 *
 	 */
-	bool udpEventHas(const unordered_set <event::id_t> & events, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ bool udpEventHas(const unordered_set <event::id_t> & events, const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатора события в множестве
 		return (events.count(eid) > 0);
 	}
-
 	/**
-	 * @brief Метод удаления UDP-сервера из списка активных событий
+	 * @brief Функция удаления UDP-сервера из списка активных событий
 	 *
 	 * @param events список идентификаторов UDP-серверов
 	 * @param eid    идентификатор события
 	 *
 	 */
-	void udpEventRemove(vector <event::id_t> & events, unordered_set <event::id_t> & eventSet, const event::id_t eid) noexcept {
+	static __AWH_INLINE__ void udpEventRemove(vector <event::id_t> & events, unordered_set <event::id_t> & eventSet, const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатора события в списке
 		auto i = ::find(events.begin(), events.end(), eid);
 		// Если идентификатор события найден
@@ -5719,8 +5723,9 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
  * @brief Конструктор
  *
  */
-awh::server::Socks5::Socks5() noexcept :
- server_t(), _eth(), _client(), _socks5() {
+awh::server::Socks5::Socks5() noexcept : server_t() {
+	// Выполняем настройку сетевых параметров операционной системы
+	net::netboost();
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -5742,8 +5747,9 @@ awh::server::Socks5::Socks5() noexcept :
  * @param dns объект DNS-резолвера
  *
  */
-awh::server::Socks5::Socks5(unit::dns_t * dns) noexcept :
- server_t(dns), _eth(), _client(), _socks5() {
+awh::server::Socks5::Socks5(unit::dns_t * dns) noexcept : server_t(dns) {
+	// Выполняем настройку сетевых параметров операционной системы
+	net::netboost();
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -5763,4 +5769,4 @@ awh::server::Socks5::Socks5(unit::dns_t * dns) noexcept :
  * @brief Деструктор
  *
  */
-awh::server::Socks5::~Socks5() noexcept {}
+awh::server::Socks5::~Socks5() noexcept = default;

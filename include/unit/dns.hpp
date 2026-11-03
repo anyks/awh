@@ -42,13 +42,13 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
+#include "../net/addr.hpp"
 #include "../sys/locker.hpp"
 #include "../container/binbox.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -59,7 +59,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -124,6 +123,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the payload buffer
+				 *
 				 * @details Used for storing the data of a DNS request or a DNS response.
 				 *
 				 * \~
@@ -137,7 +137,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -147,7 +146,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -165,6 +163,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class of an active packet while performing the DNS requests
+				 *
 				 * @details Stores the information about the current DNS request, including the lifetime, the number of the attempts and the payload.
 				 *
 				 * \~
@@ -187,6 +186,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Move assignment operator of the parameters of the packet
+						 *
 						 * @param packet object of the parameters of the packet
 						 * @return       current parameters of the packet
 						 *
@@ -202,6 +202,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Copy assignment operator of the parameters of the packet
+						 *
 						 * @param packet object of the parameters of the packet
 						 * @return        current parameters of the packet
 						 *
@@ -240,7 +241,6 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
@@ -250,7 +250,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -267,6 +266,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class for managing the queue of the event identifiers
+				 *
 				 * @details Used for storing the identifiers of the events of the DNS resolver which can be reused.
 				 *
 				 * \~
@@ -295,6 +295,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the size of the queue of the event identifiers
+						 *
 						 * @return size of the queue of the event identifiers
 						 *
 						 * \~
@@ -309,6 +310,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of adding an event identifier to the queue
+						 *
 						 * @param eid event identifier to be added to the queue
 						 *
 						 * \~
@@ -324,6 +326,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of extracting an event identifier from the queue
+						 *
 						 * @param eid event identifier to be extracted from the queue
 						 * @return    result of extracting the identifier
 						 *
@@ -339,6 +342,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of removing an event identifier from the queue
+						 *
 						 * @param eid event identifier to be removed from the queue
 						 *
 						 * \~
@@ -349,7 +353,6 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
@@ -359,7 +362,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -377,6 +379,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class for managing the list of the DNS servers
+				 *
 				 * @details Stores the list of the DNS servers for performing the requests,
 				 *          supports the round-robin distribution of the load and the initialization from the environment variables.
 				 *
@@ -418,6 +421,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of resetting the list of the DNS servers
+						 *
 						 * @param family family of the IP addresses IPv4/IPv6
 						 *
 						 * \~
@@ -433,6 +437,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the current DNS server
+						 *
 						 * @param family family of the IP addresses IPv4/IPv6
 						 * @return       DNS server object for performing the request
 						 *
@@ -448,6 +453,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of adding a DNS server to the list
+						 *
 						 * @param server DNS server object to be added to the list
 						 *
 						 * \~
@@ -458,7 +464,6 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
@@ -468,7 +473,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -487,6 +491,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure for managing the state of the DNS resolver
+				 *
 				 * @details Stores the settings of the DNS resolver, including the prefix for the environment variables,
 				 *          the port, the timeout, the queue of the event identifiers and the list of the DNS servers.
 				 *
@@ -515,7 +520,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -525,7 +529,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -544,6 +547,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure for managing the queue and the state of the DNS requests
+				 *
 				 * @details Stores the number of the attempts of a DNS request, the maximum number of the packets in the queue,
 				 *          the queue of the packets waiting to be sent, the active DNS requests waiting for a response,
 				 *          and the correspondence between the event identifier and the request identifier.
@@ -565,7 +569,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -575,7 +578,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -607,6 +609,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of saving the dump of the DNS cache into a file
+				 *
 				 * @param tid    timer identifier of the DNS resolver
 				 * @param status status of the timer event of the DNS resolver
 				 *
@@ -622,6 +625,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the stale records of the DNS cache
+				 *
 				 * @param tid    timer identifier of the DNS resolver
 				 * @param status status of the timer event of the DNS resolver
 				 *
@@ -639,6 +643,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the loading events of the local hosts
+				 *
 				 * @param      identifier of the loading event of the local hosts
 				 * @param data data of the loading event of the local hosts
 				 * @param size data size of the loading event of the local hosts
@@ -657,6 +662,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the responses of the DNS server
+				 *
 				 * @param eid  event identifier of the reading from the DNS resolver
 				 * @param data data of the reading event from the DNS resolver
 				 * @param size data size of the reading event from the DNS resolver
@@ -675,6 +681,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the expiration of the timeout of a DNS request
+				 *
 				 * @param eid    event identifier of the DNS resolver
 				 * @param action action type for the expired timeout
 				 * @param delay  duration of the timeout in milliseconds
@@ -693,6 +700,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the errors of the events of the DNS resolver
+				 *
 				 * @param eid         event identifier of the DNS resolver
 				 * @param error       error code of the event of the DNS resolver
 				 * @param description error description of the event of the DNS resolver
@@ -707,9 +715,9 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -721,11 +729,11 @@ namespace awh {
 				 * @brief Метод установки числа попыток DNS-запроса
 				 *
 				 * @par Намеренные решения
-				 * Попытка здесь - **дополнительная**, а не общее число обращений: вопрос
-				 * задаётся сам собой, а попытка есть разрешение задать его заново, когда
-				 * срок ожидания вышел. Оттого при трёх попытках сервер опрашивается
-				 * четырежды - первый раз и трижды снова, - а полное время ожидания
-				 * вызывающего есть срок, умноженный на число попыток плюс одно
+				 *      Попытка здесь - **дополнительная**, а не общее число обращений: вопрос
+				 *      задаётся сам собой, а попытка есть разрешение задать его заново, когда
+				 *      срок ожидания вышел. Оттого при трёх попытках сервер опрашивается
+				 *      четырежды - первый раз и трижды снова, - а полное время ожидания
+				 *      вызывающего есть срок, умноженный на число попыток плюс одно
 				 *
 				 * @note Повтором это не является. Повтор - когда ответ получен, а вопрос
 				 *       задаётся ещё раз; попытка же случается лишь тогда, когда ответа
@@ -735,15 +743,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of the attempts of a DNS request
+				 *
 				 * @par Deliberate decisions
-				 * An attempt here is an **additional** one, not the total number of calls: the question
-				 * is asked by itself, while an attempt is the permission to ask it anew once
-				 * the waiting term has run out. Because of that with three attempts the server is polled
-				 * four times — once and then three times again — while the full waiting time of the
-				 * caller is the term multiplied by the number of attempts plus one
+				 *      An attempt here is an **additional** one, not the total number of calls: the question
+				 *      is asked by itself, while an attempt is the permission to ask it anew once
+				 *      the waiting term has run out. Because of that with three attempts the server is polled
+				 *      four times — once and then three times again — while the full waiting time of the
+				 *      caller is the term multiplied by the number of attempts plus one
+				 *
 				 * @note This is not a repetition. A repetition is when the answer has been received while the question
 				 *       is asked once more; an attempt, on the other hand, happens only when no answer
 				 *       has arrived at all
+				 *
 				 * @param attempts number of the attempts of the DNS request
 				 *
 				 * \~
@@ -758,6 +769,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the packets in the queue waiting for a request to a DNS server to be performed
+				 *
 				 * @param count maximum number of the packets
 				 *
 				 * \~
@@ -773,6 +785,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of encoding an international domain name
+				 *
 				 * @param domain domain name to be encoded
 				 * @return       result of the work of the encoding
 				 *
@@ -788,6 +801,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of decoding an international domain name
+				 *
 				 * @param domain domain name to be decoded
 				 * @return       result of the work of the decoding
 				 *
@@ -804,6 +818,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resorting the addresses in the cache for a domain name
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name corresponding to the IP address
 				 *
@@ -829,6 +844,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the black list
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 *
 				 * \~
@@ -843,6 +859,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an IP address from the black list
+				 *
 				 * @param ip address to be removed from the black list
 				 *
 				 * \~
@@ -856,6 +873,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an IP address from the black list
+				 *
 				 * @param ip address to be removed from the black list
 				 *
 				 * \~
@@ -870,6 +888,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an IP address from the black list
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param ip     address to be removed from the black list
 				 *
@@ -885,6 +904,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the black list
+				 *
 				 * @param ip address to be added to the black list
 				 *
 				 * \~
@@ -898,6 +918,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the black list
+				 *
 				 * @param ip address to be added to the black list
 				 *
 				 * \~
@@ -912,6 +933,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the black list
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param ip     address to be added to the black list
 				 *
@@ -928,6 +950,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of an IP address in the black list
+				 *
 				 * @param ip address to be checked for the presence in the black list
 				 * @return   result of checking the presence of the IP address in the black list
 				 *
@@ -943,6 +966,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of an IP address in the black list
+				 *
 				 * @param ip address to be checked for the presence in the black list
 				 * @return   result of checking the presence of the IP address in the black list
 				 *
@@ -959,6 +983,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of an IP address in the black list
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param ip     address to be checked for the presence in the black list
 				 * @return       result of checking the presence of the IP address in the black list
@@ -985,6 +1010,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the cache
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 *
 				 * \~
@@ -999,6 +1025,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the cache for the specified domain name
+				 *
 				 * @param domain domain name for which the clearing of the cache is performed
 				 *
 				 * \~
@@ -1013,6 +1040,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the cache for the specified domain name
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name for which the clearing of the cache is performed
 				 *
@@ -1030,6 +1058,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting an IP address from the cache
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name corresponding to the IP address
 				 * @return       IP address located in the cache
@@ -1048,6 +1077,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting an IP address from the cache
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name corresponding to the IP address
 				 * @param value  IP address located in the cache
@@ -1067,6 +1097,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the cache
+				 *
 				 * @param domain domain name corresponding to the IP address
 				 * @param ip     address to be added to the cache
 				 * @param ttl    lifetime of the cache of the domain name (in seconds)
@@ -1084,6 +1115,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the cache
+				 *
 				 * @param domain domain name corresponding to the IP address
 				 * @param ip     address to be added to the cache
 				 * @param ttl    lifetime of the cache of the domain name (in seconds)
@@ -1102,6 +1134,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an IP address to the cache
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name corresponding to the IP address
 				 * @param ip     address to be added to the cache
@@ -1119,6 +1152,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the safety of the work of the threads
+				 *
 				 * @param mode flag of the thread safety mode
 				 *
 				 * \~
@@ -1133,6 +1167,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the prefix of the environment variable
+				 *
 				 * @param prefix prefix of the environment variable to be set
 				 *
 				 * \~
@@ -1147,6 +1182,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the path to the file of the local hosts
+				 *
 				 * @param filename path to the /etc/hosts file or its counterpart
 				 *
 				 * \~
@@ -1162,6 +1198,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the path to the file of the dump of the cache
+				 *
 				 * @param filename path to the file of the dump of the cache
 				 * @param interval interval of saving the dump of the cache in milliseconds
 				 *
@@ -1177,6 +1214,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout for waiting for a response from the DNS server
+				 *
 				 * @param delay time of waiting for a response from the DNS server (in milliseconds)
 				 *
 				 * \~
@@ -1192,6 +1230,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the DNS resolvers for performing the requests to the DNS servers
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @return       number of the DNS resolvers
 				 *
@@ -1209,6 +1248,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of initializing the DNS resolvers
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param count  number of the DNS resolvers to be initialized
 				 * @return       result of performing the operation
@@ -1225,6 +1265,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the UDP port of the DNS server
+				 *
 				 * @return UDP port of the DNS server
 				 *
 				 * \~
@@ -1238,6 +1279,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the UDP port of the DNS server
+				 *
 				 * @param port UDP port of the DNS server
 				 *
 				 * \~
@@ -1252,6 +1294,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the DNS server
+				 *
 				 * @param server address of the DNS server to be set
 				 *
 				 * \~
@@ -1265,6 +1308,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the DNS server
+				 *
 				 * @param server address of the DNS server to be set
 				 *
 				 * \~
@@ -1279,6 +1323,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the DNS server
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param server address of the DNS server to be set
 				 *
@@ -1294,6 +1339,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of a DNS server
+				 *
 				 * @param server address of the DNS server to be added
 				 *
 				 * \~
@@ -1307,6 +1353,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of a DNS server
+				 *
 				 * @param server address of the DNS server to be added
 				 *
 				 * \~
@@ -1321,6 +1368,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of a DNS server
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param server address of the DNS server to be added
 				 *
@@ -1336,6 +1384,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the DNS servers
+				 *
 				 * @param servers addresses of the DNS servers to be set
 				 *
 				 * \~
@@ -1349,6 +1398,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the DNS servers
+				 *
 				 * @param servers addresses of the DNS servers to be set
 				 *
 				 * \~
@@ -1363,6 +1413,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the DNS servers
+				 *
 				 * @param family  family of the IP addresses IPv4/IPv6
 				 * @param servers addresses of the DNS servers to be set
 				 *
@@ -1378,6 +1429,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param source network address for performing the request
 				 *
 				 * \~
@@ -1391,6 +1443,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param source network address for performing the request
 				 *
 				 * \~
@@ -1405,6 +1458,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param source network address for performing the request
 				 *
@@ -1451,24 +1505,30 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of generating the identifier of a DNS request
+				 *
 				 * @par Deliberate decisions
+				 *
 				 * **The number is issued randomly rather than sequentially.** Previously there was
 				 * an incrementing counter here, and it was replaced by a random issuance silently, without
 				 * an explanation — that is why the decision is recorded here, so that it is no longer changed
 				 * quietly in either direction.
+				 *
 				 * The argument is not in the protocol as such, although RFC 5452 does require randomness.
 				 * The argument is in the design of the resolver itself: the exchange events are created once and
 				 * live for the whole term of the work, being reused through a queue of the free ones. The port
 				 * is issued to each of them by the kernel once, and all the questions over the whole time go out from the
 				 * same ports.
+				 *
 				 * Hence the consequence: the port ceases to be a secret after the very first exchange, and
 				 * the only thing that separates a forged response from an accepted one is the number of the
 				 * question. With a counter, whoever has learnt the port knows the next number as well, while an accepted
 				 * forgery settles in the cache for the whole lifetime of the record, poisoning it for all the
 				 * services of the application at once — the cache is common to the process deliberately.
+				 *
 				 * Were the event a disposable one, the port would change with every question and would give its own
 				 * sixteen bits — then a counter would be tolerable. With long-living
 				 * events those bits go to the adversary for free.
+				 *
 				 * @warning The price of the randomness is a coincidence of the numbers of the simultaneously
 				 *          waiting questions. The range is a sixteen-bit one, and by the
 				 *          birthday paradox a coincidence comes not at
@@ -1476,6 +1536,7 @@ namespace awh {
 				 *          simultaneous ones give seven per cent. That is why the number is checked
 				 *          before being registered — without the check a question was lost silently,
 				 *          while a foreign one was sent out again in its place
+				 *
 				 * @return unique identifier of the DNS request
 				 *
 				 * \~
@@ -1493,6 +1554,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reverse DNS resolution (searching for a domain name by an IP address)
+				 *
 				 * @param id    identifier of the DNS request
 				 * @param ip    address for the reverse DNS request
 				 * @param alive term of waiting for a response (in milliseconds)
@@ -1512,6 +1574,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reverse DNS resolution (searching for a domain name by an IP address)
+				 *
 				 * @param id    identifier of the DNS request
 				 * @param ip    address for the reverse DNS request
 				 * @param alive term of waiting for a response (in milliseconds)
@@ -1532,6 +1595,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reverse DNS resolution (searching for a domain name by an IP address)
+				 *
 				 * @param id     identifier of the DNS request
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param ip     address for the reverse DNS request
@@ -1554,6 +1618,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of performing an arbitrary DNS request
+				 *
 				 * @param id     identifier of the DNS request
 				 * @param record type of the DNS record which is to be obtained
 				 * @param domain domain name
@@ -1575,6 +1640,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resolving a domain name
+				 *
 				 * @param id     identifier of the DNS request
 				 * @param domain domain name
 				 * @param alive  term of waiting for a response (in milliseconds)
@@ -1595,6 +1661,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resolving a domain name
+				 *
 				 * @param id     identifier of the DNS request
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param domain domain name
@@ -1609,7 +1676,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
 				 *
@@ -1622,9 +1688,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -1634,7 +1700,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -1650,6 +1715,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 *
 				 * \~
@@ -1658,7 +1724,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

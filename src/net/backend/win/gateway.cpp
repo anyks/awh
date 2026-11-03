@@ -56,6 +56,7 @@
  * @note Нужен ради `CLSIDFromString`: названия сетевых устройств MS Windows несёт
  *       опознавателем вида COM, и разбор строки в двоичный вид живёт именно здесь.
  *       Оснастка MinGW тянула этот заголовок попутно, MSVC - нет
+ *
  */
 #include <objbase.h>
 #include <sys/log.hpp>
@@ -77,6 +78,11 @@ static constexpr const char * __AWH_GATEWAY_BACKEND__ = "MS Windows gateway back
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция переноса адреса набора в запись системы
 	 *
 	 * @param addr переносимый адрес набора
@@ -84,7 +90,7 @@ namespace {
 	 * @return     признак успешного переноса
 	 *
 	 */
-	bool __awh_to_sockaddr__(const awh::net::addr_t * addr, SOCKADDR_INET & out) noexcept {
+	bool __awh_to_sockaddr__(const net::addr_t * addr, SOCKADDR_INET & out) noexcept {
 		// Если адрес не передан
 		if(addr == nullptr)
 			// Выводим признак неуспешного переноса
@@ -98,7 +104,7 @@ namespace {
 				// Устанавливаем семейство адреса
 				out.Ipv4.sin_family = AF_INET;
 				// Устанавливаем сам адрес
-				out.Ipv4.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (addr)->address;
+				out.Ipv4.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 				// Выводим признак успешного переноса
 				return true;
 			}
@@ -107,9 +113,9 @@ namespace {
 				// Устанавливаем семейство адреса
 				out.Ipv6.sin6_family = AF_INET6;
 				// Устанавливаем сам адрес
-				::memcpy(&out.Ipv6.sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (addr)->address[0], sizeof(struct in6_addr));
+				::memcpy(&out.Ipv6.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(struct in6_addr));
 				// Устанавливаем номер устройства зоны адреса
-				out.Ipv6.sin6_scope_id = static_cast <ULONG> (awh_cast <const awh::net::addr_net_ipv6_t *> (addr)->zone);
+				out.Ipv6.sin6_scope_id = static_cast <ULONG> (awh_cast <const net::addr_net_ipv6_t *> (addr)->zone);
 				// Выводим признак успешного переноса
 				return true;
 			}
@@ -125,7 +131,7 @@ namespace {
 	 * @return   перенесённый адрес набора
 	 *
 	 */
-	unique_ptr <awh::net::addr_t> __awh_from_sockaddr__(const SOCKADDR_INET & in) noexcept {
+	unique_ptr <net::addr_t> __awh_from_sockaddr__(const SOCKADDR_INET & in) noexcept {
 		/**
 		 * Определяем семейство переносимого адреса
 		 */
@@ -133,20 +139,20 @@ namespace {
 			// Если переносится адрес IPv4
 			case AF_INET: {
 				// Заводим переносимый адрес
-				unique_ptr <awh::net::addr_t> result = make_unique <awh::net::addr_net_ipv4_t> ();
+				unique_ptr <net::addr_t> result = make_unique <net::addr_net_ipv4_t> ();
 				// Устанавливаем сам адрес
-				awh_cast <awh::net::addr_net_ipv4_t *> (result.get())->address = in.Ipv4.sin_addr.s_addr;
+				awh_cast <net::addr_net_ipv4_t *> (result.get())->address = in.Ipv4.sin_addr.s_addr;
 				// Выводим перенесённый адрес
 				return result;
 			}
 			// Если переносится адрес IPv6
 			case AF_INET6: {
 				// Заводим переносимый адрес
-				unique_ptr <awh::net::addr_t> result = make_unique <awh::net::addr_net_ipv6_t> ();
+				unique_ptr <net::addr_t> result = make_unique <net::addr_net_ipv6_t> ();
 				// Устанавливаем сам адрес
-				::memcpy(&awh_cast <awh::net::addr_net_ipv6_t *> (result.get())->address[0], &in.Ipv6.sin6_addr, sizeof(struct in6_addr));
+				::memcpy(&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0], &in.Ipv6.sin6_addr, sizeof(struct in6_addr));
 				// Устанавливаем номер устройства зоны адреса
-				awh_cast <awh::net::addr_net_ipv6_t *> (result.get())->zone = static_cast <uint32_t> (in.Ipv6.sin6_scope_id);
+				awh_cast <net::addr_net_ipv6_t *> (result.get())->zone = static_cast <uint32_t> (in.Ipv6.sin6_scope_id);
 				// Выводим перенесённый адрес
 				return result;
 			}
@@ -223,7 +229,7 @@ namespace {
 	 * @return      результат поиска маршрута
 	 *
 	 */
-	bool __awh_lookup__(awh::eth::gateway_t::route_t & route) noexcept {
+	bool __awh_lookup__(eth::gateway::route_t & route) noexcept {
 		// Семейство адресов, в каком идёт поиск
 		const ADDRESS_FAMILY family = (route.destination->size == 4 ? AF_INET : AF_INET6);
 		// Искомый адрес назначения в виде записи системы
@@ -231,7 +237,7 @@ namespace {
 		// Если перевести адрес назначения не удалось
 		if(!::__awh_to_sockaddr__(route.destination.get(), destination)){
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			awh::log::print("%s: only IPv4 and IPv6 destinations are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			log::print("%s: only IPv4 and IPv6 destinations are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 			// Выводим отрицательный результат поиска
 			return false;
 		}
@@ -256,10 +262,11 @@ namespace {
 			 *
 			 * @note У наречий POSIX то же место отвечало не мусором, а чтением за границей
 			 *       выделенной памяти: там адрес лежит по указателю, а не в объединении
+			 *
 			 */
 			if(byGateway && (route.gateway->size != route.destination->size)){
 				// Выводим в журнал сообщение о несличимой паре адресов
-				awh::log::print("%s: destination and gateway belong to different address families", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+				log::print("%s: destination and gateway belong to different address families", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 				// Выводим отрицательный результат поиска
 				return false;
 			}
@@ -294,7 +301,7 @@ namespace {
 			// Если опознаватель устройства получить не удалось
 			if(!::__awh_ifluid__(route.ifname, luid)){
 				// Выводим в журнал сообщение о ненайденном устройстве
-				awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+				log::print("%s: interface \"%s\" was not found", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
 				// Выводим отрицательный результат поиска
 				return false;
 			}
@@ -310,7 +317,7 @@ namespace {
 		// Если снять таблицу маршрутов не удалось
 		if(::GetIpForwardTable2(family, &table) != NO_ERROR){
 			// Выводим в журнал сообщение о невозможности снять таблицу
-			awh::log::print("%s: route table could not be read", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			log::print("%s: route table could not be read", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 			// Выводим отрицательный результат поиска
 			return false;
 		}
@@ -470,13 +477,13 @@ namespace {
 	 * @return      результат получения устройства
 	 *
 	 */
-	bool __awh_ifroute__(const awh::eth::gateway_t::route_t & route, NET_LUID & luid) noexcept {
+	bool __awh_ifroute__(const eth::gateway::route_t & route, NET_LUID & luid) noexcept {
 		// Если название устройства передано - берём устройство по названию
 		if(!route.ifname.empty()){
 			// Если опознаватель устройства получить не удалось
 			if(!::__awh_ifluid__(route.ifname, luid)){
 				// Выводим в журнал сообщение о ненайденном устройстве
-				awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+				log::print("%s: interface \"%s\" was not found", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
 				// Выводим отрицательный результат получения
 				return false;
 			}
@@ -484,11 +491,11 @@ namespace {
 			return true;
 		}
 		// Тот конец пути, по какому спрашивается устройство
-		const awh::net::addr_t * addr = ((route.gateway != nullptr) ? route.gateway.get() : route.destination.get());
+		const net::addr_t * addr = ((route.gateway != nullptr) ? route.gateway.get() : route.destination.get());
 		// Если конца пути нет вовсе
 		if(addr == nullptr){
 			// Выводим в журнал сообщение о недостаточном описании пути
-			awh::log::print("%s: neither interface nor gateway is given, the route cannot be resolved", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			log::print("%s: neither interface nor gateway is given, the route cannot be resolved", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 			// Выводим отрицательный результат получения
 			return false;
 		}
@@ -497,7 +504,7 @@ namespace {
 		// Если перевести конец пути не удалось
 		if(!::__awh_to_sockaddr__(addr, target)){
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			awh::log::print("%s: only IPv4 and IPv6 addresses are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			log::print("%s: only IPv4 and IPv6 addresses are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 			// Выводим отрицательный результат получения
 			return false;
 		}
@@ -510,7 +517,7 @@ namespace {
 		// Если путь найти не удалось
 		if(code != NO_ERROR){
 			// Выводим в журнал сообщение о ненайденном устройстве пути
-			awh::log::print("%s: interface could not be resolved from the route, error %lu", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
+			log::print("%s: interface could not be resolved from the route, error %lu", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
 			// Выводим отрицательный результат получения
 			return false;
 		}
@@ -522,7 +529,14 @@ namespace {
 };
 
 /**
- * @brief Метод получения пути к заданному адресу
+ * @brief Конструктор
+ *
+ */
+awh::eth::gateway::Route::Route() noexcept :
+ ifname{""}, prefix(0), gateway(nullptr), destination(nullptr) {}
+
+/**
+ * @brief Функция получения пути к заданному адресу
  *
  * @param route описание пути, куда заносится ответ системы
  * @return      результат выполнения получения
@@ -536,7 +550,7 @@ namespace {
  *       устройств, и порядок разрешения одинаковых по длине префиксов
  *
  */
-bool awh::eth::Gateway::get(route_t & route) const noexcept {
+bool awh::eth::gateway::get(route_t & route) noexcept {
 	/**
 	 * Сличаем вид шлюза с видом адреса назначения
 	 *
@@ -544,17 +558,18 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	 *          оба поля объявлены общим основанием `net::addr_t`, заполняются
 	 *          потребителем порознь, и запретить их несличимую пару языком нечем
 	 *
-	 * @warning Заслона этого здесь не было вовсе, и метод отвечал УСПЕХОМ на пару
+	 * @warning Заслона этого здесь не было вовсе, и функция отвечала УСПЕХОМ на пару
 	 *          «шлюз IPv6, назначение IPv4». У систем POSIX та же пара даёт выход за
 	 *          границу и ловится надзирателем, а у MS Windows `SOCKADDR_INET` есть
 	 *          объединение - места хватает всегда, и порча оборачивается не отказом,
 	 *          а мусорным ответом, принимаемым потребителем за истину. Ловится
 	 *          проверкой GatewayMismatchedKindTest
+	 *
 	 */
 	if((route.gateway != nullptr) && (route.destination != nullptr) &&
 	   (route.gateway->size != route.destination->size)){
 		// Выводим в журнал сообщение о несличимой паре адресов
-		awh::log::print("%s: destination and gateway belong to different address families", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination and gateway belong to different address families", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Работать с маршрутом по несличимой паре нечем
 		return false;
 	}
@@ -569,6 +584,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	 * @warning Прежде здесь стоял отказ, и он расходился с прочими движками: проверка
 	 *          GatewayGetDefaultIPv4NullDestination падала на всякой машине Windows.
 	 *          Семейство берётся у шлюза, потому что иного указателя тут нет вовсе
+	 *
 	 */
 	if((route.destination == nullptr) && (route.gateway != nullptr)){
 		/**
@@ -590,12 +606,12 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	// Если адрес назначения не передан и завести его было не из чего
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
-		awh::log::print("%s: destination address is not initialized", awh::log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination address is not initialized", log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат получения
 		return false;
 	}
 	/**
-	 * Разделяем два вопроса, какие метод обязан различать
+	 * Разделяем два вопроса, какие функция обязана различать
 	 *
 	 * @details Назван лишь пустой адрес - спрашивается маршрут ПО УМОЛЧАНИЮ, и на него
 	 *          отвечает сама система. Названы адрес, шлюз либо устройство - спрашивается
@@ -603,12 +619,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	 *          нельзя: он выдаёт путь, каким машина пошла бы к адресу, и после сноса
 	 *          заданного маршрута честно отвечает маршрутом по умолчанию
 	 *
-	 * @warning Различия этого прежде не было, и метод отвечал успехом ВСЕГДА, пока в
+	 * @warning Различия этого прежде не было, и функция отвечала успехом ВСЕГДА, пока в
 	 *          системе есть маршрут по умолчанию. Проверить снос им было нельзя вовсе:
 	 *          GatewayRemoveByInterfaceIPv4 находила снесённый маршрут. Условия
 	 *          совпадения взяты у эталонного бэкенда BSD дословно - шлюз, назначение и
 	 *          устройство сличаются лишь тогда, когда названы; длина префикса не
 	 *          сличается, потому что спрашивающий её обычно не знает
+	 *
 	 */
 	// Признак того, что назначение не названо
 	bool emptyDestination = true;
@@ -624,7 +641,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			break;
 			// Для адреса IPv6
 			case 16: {
-				// Обходим все октеты адреса назначения
+				/**
+				 * Обходим все октеты адреса назначения
+				 */
 				for(uint8_t i = 0; i < 16; i++){
 					// Если очередной октет ненулевой
 					if(awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[i] != 0){
@@ -651,7 +670,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 				break;
 				// Для адреса IPv6
 				case 16: {
-					// Обходим все октеты адреса шлюза
+					/**
+					 * Обходим все октеты адреса шлюза
+					 */
 					for(uint8_t i = 0; i < 16; i++){
 						// Если очередной октет ненулевой
 						if(awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[i] != 0){
@@ -668,7 +689,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 * Наличие ЗАДАННОГО маршрута спрашивается поиском по таблице
 		 *
 		 * @warning Одного лишь названного назначения для этого НЕДОСТАТОЧНО, и прежде
-		 *          сюда уходило оно тоже. Метод отвечает на вопрос «каким путём система
+		 *          сюда уходило оно тоже. Функция отвечает на вопрос «каким путём система
 		 *          отправит пакет», а адрес, своей записи в таблице не имеющий,
 		 *          разрешается маршрутом по умолчанию - точное же сличение объявляло
 		 *          его недостижимым. Расхождение с эталоном вскрылось прогоном набора
@@ -680,6 +701,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 *       сличением, а при неназванном шлюзе и неназванном устройстве спрашивается
 		 *       само ядро запросом `RTM_GET`, отвечающее подбором по наидлиннейшей
 		 *       приставке. Отвечает ему здесь `GetBestRoute2` ниже
+		 *
 		 */
 		if(!emptyGateway || !route.ifname.empty())
 			// Выводим результат поиска маршрута в таблице системы
@@ -690,7 +712,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	// Если перенести адрес назначения не удалось
 	if(!::__awh_to_sockaddr__(route.destination.get(), destination)){
 		// Выводим в журнал сообщение о неподдерживаемом виде адреса
-		awh::log::print("%s: only IPv4 and IPv6 destinations are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: only IPv4 and IPv6 destinations are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат получения
 		return false;
 	}
@@ -725,12 +747,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	 *          система подбором по наидлиннейшей приставке, и неназванное - когда записи
 	 *          нулевого префикса в таблице не нашлось вовсе. Ответ этот вернее пустого
 	 *          в обоих
+	 *
 	 */
 	const DWORD code = ::GetBestRoute2(nullptr, 0, nullptr, &destination, 0, &row, &source);
 	// Если путь к адресу назначения найти не удалось
 	if(code != NO_ERROR){
 		// Выводим в журнал сообщение о ненайденном пути
-		awh::log::print("%s: route could not be resolved, error %lu", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
+		log::print("%s: route could not be resolved, error %lu", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
 		// Выводим отрицательный результат получения
 		return false;
 	}
@@ -744,7 +767,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	return true;
 }
 /**
- * @brief Метод прокладки пути сети
+ * @brief Функция прокладки пути сети
  *
  * @param route описание прокладываемого пути
  * @return      результат выполнения прокладки
@@ -753,7 +776,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  *          завершение процесса, и убирать его следует за собой
  *
  */
-bool awh::eth::Gateway::add(const route_t & route) const noexcept {
+bool awh::eth::gateway::add(const route_t & route) noexcept {
 	/**
 	 * Пара адресов обязана быть сличимой
 	 *
@@ -769,15 +792,14 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	if((route.gateway != nullptr) && (route.destination != nullptr) &&
 	   (route.gateway->size != route.destination->size)){
 		// Выводим в журнал сообщение о несличимой паре адресов
-		awh::log::print("%s: destination and gateway belong to different address families", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination and gateway belong to different address families", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Работать с маршрутом по несличимой паре нечем
 		return false;
 	}
-
 	// Если адрес назначения не передан
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
-		awh::log::print("%s: destination address is not initialized", awh::log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination address is not initialized", log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат прокладки
 		return false;
 	}
@@ -788,7 +810,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	// Если перенести адрес назначения не удалось
 	if(!::__awh_to_sockaddr__(route.destination.get(), row.DestinationPrefix.Prefix)){
 		// Выводим в журнал сообщение о неподдерживаемом виде адреса
-		awh::log::print("%s: only IPv4 and IPv6 destinations are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: only IPv4 and IPv6 destinations are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат прокладки
 		return false;
 	}
@@ -809,7 +831,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	 */
 	if(route.prefix > ((route.destination->size == 4) ? 32 : 128)){
 		// Выводим в журнал сообщение о недопустимой длине префикса
-		awh::log::print("%s: prefix length %u is out of range for the %s destination", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
+		log::print("%s: prefix length %u is out of range for the %s destination", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
 		// Выводим отрицательный результат прокладки
 		return false;
 	}
@@ -818,7 +840,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	// Если шлюз пути передан и перенести его не удалось
 	if((route.gateway != nullptr) && !::__awh_to_sockaddr__(route.gateway.get(), row.NextHop)){
 		// Выводим в журнал сообщение о неподдерживаемом виде адреса
-		awh::log::print("%s: only IPv4 and IPv6 gateways are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: only IPv4 and IPv6 gateways are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат прокладки
 		return false;
 	}
@@ -839,12 +861,12 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		// Выводим положительный результат прокладки
 		return true;
 	// Выводим в журнал сообщение о невозможности прокладки пути
-	awh::log::print("%s: route could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
+	log::print("%s: route could not be created, error %lu", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
 	// Выводим отрицательный результат прокладки
 	return false;
 }
 /**
- * @brief Метод снятия пути сети
+ * @brief Функция снятия пути сети
  *
  * @param route описание снимаемого пути
  * @return      результат выполнения снятия
@@ -853,7 +875,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
  *       описание должно отвечать тому, каким путь прокладывался
  *
  */
-bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
+bool awh::eth::gateway::remove(const route_t & route) noexcept {
 	/**
 	 * Пара адресов обязана быть сличимой
 	 *
@@ -869,15 +891,14 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	if((route.gateway != nullptr) && (route.destination != nullptr) &&
 	   (route.gateway->size != route.destination->size)){
 		// Выводим в журнал сообщение о несличимой паре адресов
-		awh::log::print("%s: destination and gateway belong to different address families", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination and gateway belong to different address families", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Работать с маршрутом по несличимой паре нечем
 		return false;
 	}
-
 	// Если адрес назначения не передан
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
-		awh::log::print("%s: destination address is not initialized", awh::log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: destination address is not initialized", log::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат снятия
 		return false;
 	}
@@ -888,7 +909,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	// Если перенести адрес назначения не удалось
 	if(!::__awh_to_sockaddr__(route.destination.get(), row.DestinationPrefix.Prefix)){
 		// Выводим в журнал сообщение о неподдерживаемом виде адреса
-		awh::log::print("%s: only IPv4 and IPv6 destinations are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		log::print("%s: only IPv4 and IPv6 destinations are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат снятия
 		return false;
 	}
@@ -909,7 +930,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	 */
 	if(route.prefix > ((route.destination->size == 4) ? 32 : 128)){
 		// Выводим в журнал сообщение о недопустимой длине префикса
-		awh::log::print("%s: prefix length %u is out of range for the %s destination", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
+		log::print("%s: prefix length %u is out of range for the %s destination", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
 		// Выводим отрицательный результат снятия
 		return false;
 	}
@@ -930,7 +951,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		// Если перенести шлюз пути не удалось
 		if(!::__awh_to_sockaddr__(route.gateway.get(), row.NextHop)){
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			awh::log::print("%s: only IPv4 and IPv6 gateways are supported", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			log::print("%s: only IPv4 and IPv6 gateways are supported", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 			// Выводим отрицательный результат снятия
 			return false;
 		}
@@ -947,7 +968,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		// Выводим положительный результат снятия
 		return true;
 	// Выводим в журнал сообщение о невозможности снятия пути
-	awh::log::print("%s: route could not be removed, error %lu", awh::log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
+	log::print("%s: route could not be removed, error %lu", log::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
 	// Выводим отрицательный результат снятия
 	return false;
 }

@@ -34,14 +34,14 @@
 #pragma once
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
+#include "../net/addr.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -52,7 +52,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -100,6 +99,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class for managing the list of the NTP servers
+				 *
 				 * @details Contains the methods for initializing, resetting and getting the current NTP server from the list.
 				 *
 				 * \~
@@ -140,6 +140,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of resetting the list of the NTP servers
+						 *
 						 * @param family family of the IP addresses IPv4/IPv6
 						 *
 						 * \~
@@ -155,6 +156,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the current NTP server
+						 *
 						 * @param family family of the IP addresses IPv4/IPv6
 						 * @return       NTP server object for performing the request
 						 *
@@ -170,6 +172,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of adding an NTP server to the list
+						 *
 						 * @param server NTP server object to be added to the list
 						 *
 						 * \~
@@ -180,7 +183,6 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
@@ -190,7 +192,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -207,6 +208,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure for managing the state of the NTP client
+				 *
 				 * @details Contains the parameters for performing the requests to the NTP servers and for storing the state of the NTP client.
 				 *
 				 * \~
@@ -228,7 +230,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -239,7 +240,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
@@ -249,17 +249,27 @@ namespace awh {
 				} client_t;
 				/**
 				 * \~russian
+				 * @brief Упаковка структуры для управления передачей данных при выполнении запросов NTP-клиента
+				 *
+				 * \~english
+				 * @brief Packing structure for managing the data transfer while performing the requests of the NTP client
+				 *
+				 * \~
+				 */
+				__AWH_PACK_BEGIN__
+				/**
+				 * \~russian
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
 				 * @details Содержит параметры для управления передачей данных при выполнении запросов NTP-клиента.
 				 *
 				 * \~english
 				 * @brief Structure for managing the data transfer while performing the requests of the NTP client
+				 *
 				 * @details Contains the parameters for managing the data transfer while performing the requests of the NTP client.
 				 *
 				 * \~
 				 */
-				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Флаг ожидания ответа от NTP-сервера
 					bool waiting;
@@ -277,7 +287,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -287,7 +296,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -332,12 +340,12 @@ namespace awh {
 				 *          пришедшее бывает не ответом на заданный вопрос: отклик сервера
 				 *          прежнего, чужой пакет, подложный ответ со стороны. Отбросить
 				 *          такое обмен обязан, но отбросить пакет и прекратить ожидание -
-				 *          разные вещи
+				 *          разные вещи.
 				 *
 				 *          Движок же прекращает: приход данных ожидание чтения завершает, и
 				 *          решает он это раньше, чем пакет разобран. Оттого чужой пакет
 				 *          прежде обрывал обмен, а вызывающий получал отказ по вопросу,
-				 *          ответ на который был ещё в пути
+				 *          ответ на который был ещё в пути.
 				 *
 				 * @note Ожидание продолжается **остатком**, а не сроком полным: иначе поток
 				 *       чужих пакетов отодвигал бы отказ без конца, а подложными пакетами
@@ -347,18 +355,22 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of continuing to wait for one's own response
+				 *
 				 * @details A datagram exchange accepts anything from anyone, and
 				 *          what arrives is sometimes not the answer to the question that has been asked: a response of a
 				 *          previous server, a foreign packet, a forged response from the outside. The exchange
 				 *          is obliged to discard such a thing, but discarding a packet and terminating the waiting are
-				 *          different things
+				 *          different things.
+				 *
 				 *          The engine, however, does terminate it: the arrival of data completes the read waiting, and
 				 *          it decides that earlier than the packet is parsed. Because of that a foreign packet
 				 *          used to break the exchange, while the caller received a refusal on a question
-				 *          the answer to which was still on its way
+				 *          the answer to which was still on its way.
+				 *
 				 * @note The waiting is continued with the **remainder**, not with the full term: otherwise a stream
 				 *       of foreign packets would postpone the refusal endlessly, and with forged packets
 				 *       the exchange could be held open for as long as one likes
+				 *
 				 * @param eid event identifier of the reading
 				 *
 				 * \~
@@ -374,6 +386,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the responses of the NTP server to the requests of the NTP client
+				 *
 				 * @param eid  event identifier of the reading
 				 * @param data data received from the NTP server
 				 * @param size size of the received data
@@ -392,6 +405,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the expiration of the timeout of an NTP request
+				 *
 				 * @param eid    event identifier of the NTP client
 				 * @param action action type for the expired timeout
 				 * @param delay  duration of the timeout in milliseconds
@@ -410,6 +424,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of initializing the event of the NTP client
+				 *
 				 * @param family family of the protocols (for example: IPv4 or IPv6)
 				 * @return       result of initializing the event of the NTP client
 				 *
@@ -426,6 +441,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -440,6 +456,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout for waiting for a response from the NTP server
+				 *
 				 * @param delay time of waiting for a response from the NTP server (in milliseconds)
 				 *
 				 * \~
@@ -451,11 +468,11 @@ namespace awh {
 				 * @brief Метод установки количества попыток получения ответа от NTP-сервера
 				 *
 				 * @par Намеренные решения
-				 * Попытка здесь - **дополнительная**, а не общее число обращений: вопрос
-				 * задаётся сам собой, а попытка есть разрешение задать его заново, когда
-				 * срок ожидания вышел. Оттого при трёх попытках сервер опрашивается
-				 * четырежды - первый раз и трижды снова, - а полное время ожидания
-				 * вызывающего есть срок, умноженный на число попыток плюс одно
+				 *      Попытка здесь - **дополнительная**, а не общее число обращений: вопрос
+				 *      задаётся сам собой, а попытка есть разрешение задать его заново, когда
+				 *      срок ожидания вышел. Оттого при трёх попытках сервер опрашивается
+				 *      четырежды - первый раз и трижды снова, - а полное время ожидания
+				 *      вызывающего есть срок, умноженный на число попыток плюс одно
 				 *
 				 * @note Повтором это не является. Повтор - когда ответ получен, а вопрос
 				 *       задаётся ещё раз; попытка же случается лишь тогда, когда ответа
@@ -465,15 +482,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of attempts to receive a response from the NTP server
+				 *
 				 * @par Deliberate decisions
-				 * An attempt here is an **additional** one, not the total number of calls: the question
-				 * is asked by itself, while an attempt is the permission to ask it anew once
-				 * the waiting term has run out. Because of that with three attempts the server is polled
-				 * four times — once and then three times again — while the full waiting time of the
-				 * caller is the term multiplied by the number of attempts plus one
+				 *      An attempt here is an **additional** one, not the total number of calls: the question
+				 *      is asked by itself, while an attempt is the permission to ask it anew once
+				 *      the waiting term has run out. Because of that with three attempts the server is polled
+				 *      four times — once and then three times again — while the full waiting time of the
+				 *      caller is the term multiplied by the number of attempts plus one
+				 *
 				 * @note This is not a repetition. A repetition is when the answer has been received while the question
 				 *       is asked once more; an attempt, on the other hand, happens only when no answer
 				 *       has arrived at all
+				 *
 				 * @param attempts number of attempts to receive a response from the NTP server
 				 *
 				 * \~
@@ -488,6 +508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the prefix of the environment variable
+				 *
 				 * @param prefix prefix of the environment variable to be set
 				 *
 				 * \~
@@ -502,6 +523,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event type
+				 *
 				 * @return event type
 				 *
 				 * \~
@@ -515,6 +537,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the unit type of the event
+				 *
 				 * @return unit type of the event
 				 *
 				 * \~
@@ -528,6 +551,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of the event
+				 *
 				 * @return address family
 				 *
 				 * \~
@@ -541,6 +565,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event status
+				 *
 				 * @return event status
 				 *
 				 * \~
@@ -555,6 +580,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the NTP server
+				 *
 				 * @return port of the NTP server
 				 *
 				 * \~
@@ -568,6 +594,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the NTP server
+				 *
 				 * @param port port of the NTP server to be set
 				 *
 				 * \~
@@ -582,6 +609,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the NTP server
+				 *
 				 * @param server address of the NTP server to be set
 				 *
 				 * \~
@@ -595,6 +623,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the NTP server
+				 *
 				 * @param server address of the NTP server to be set
 				 *
 				 * \~
@@ -609,6 +638,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the NTP server
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param server address of the NTP server to be set
 				 *
@@ -624,6 +654,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of an NTP server
+				 *
 				 * @param server address of the NTP server to be added
 				 *
 				 * \~
@@ -637,6 +668,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of an NTP server
+				 *
 				 * @param server address of the NTP server to be added
 				 *
 				 * \~
@@ -651,6 +683,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address of an NTP server
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param server address of the NTP server to be added
 				 *
@@ -666,6 +699,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the NTP servers
+				 *
 				 * @param servers addresses of the NTP servers to be set
 				 *
 				 * \~
@@ -679,6 +713,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the NTP servers
+				 *
 				 * @param servers addresses of the NTP servers to be set
 				 *
 				 * \~
@@ -693,6 +728,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the list of the addresses of the NTP servers
+				 *
 				 * @param family  family of the IP addresses IPv4/IPv6
 				 * @param servers addresses of the NTP servers to be set
 				 *
@@ -708,6 +744,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local address for performing the request
+				 *
 				 * @param source network address for performing the request
 				 *
 				 * \~
@@ -721,6 +758,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local address for performing the request
+				 *
 				 * @param source network address for performing the request
 				 *
 				 * \~
@@ -735,6 +773,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local address for performing the request
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param source network address for performing the request
 				 *
@@ -751,6 +790,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of synchronizing the time with an NTP server
+				 *
 				 * @param version version of the NTP protocol for performing the request
 				 * @return        result of performing the request
 				 *
@@ -761,7 +801,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -775,9 +814,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -788,7 +827,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -798,7 +836,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

@@ -156,8 +156,6 @@ namespace {
 		state_t state;
 		// Блок передаваемых данных
 		static vector <uint8_t> chunk(STREAM_CHUNK, 0x5A);
-		// Создаём движок событий
-		awh::engine::io_t io;
 		// Получаем свободный порт
 		const uint16_t number = port();
 		// Ограничиваем общую подготовку подключения
@@ -177,36 +175,36 @@ namespace {
 				state.failure = "connection-closed";
 		};
 		// Создаём слушающее событие
-		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем подготовку сервера
-		if((server == 0) || !io.setSourcePort(server, number) || !io.initialize() || !io.setOptions(server, options()) || !io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"))
+		if((server == 0) || !awh::engine::setSourcePort(server, number) || !awh::engine::initialize() || !awh::engine::setOptions(server, options()) || !awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"))
 			// Запоминаем отказ подготовки
 			state.failure = "server-setup";
 		// Подписываем сервер на ошибки
-		io.on(server, error);
+		awh::engine::on(server, error);
 		// Настраиваем принятую сторону до открытия измеряемого окна
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state, &error, &closed]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&state, &error, &closed]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Не допускаем второе подключение
 			if(state.peer != 0){
 				// Отмечаем нарушение сценария
 				state.failure = "unexpected-accept";
 				// Освобождаем лишнее событие
-				io.destroy(cid);
+				awh::engine::destroy(cid);
 				// Завершаем обработку
 				return;
 			}
 			// Сохраняем принятую сторону для проверки готовности
 			state.peer = cid;
 			// Проверяем обязательные опции
-			if(!io.setOptions(cid, options()))
+			if(!awh::engine::setOptions(cid, options()))
 				// Запоминаем отказ настройки
 				state.failure = "peer-options";
 			// Подписываем приёмник на ошибки
-			io.on(cid, error);
+			awh::engine::on(cid, error);
 			// Подписываем приёмник на разрыв связи
-			io.on(cid, closed);
+			awh::engine::on(cid, closed);
 			// Считаем принятый объём без разбора полезной нагрузки
-			io.on(cid, [&state]([[maybe_unused]] const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [&state]([[maybe_unused]] const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Не продолжаем подсчёт после отказа или при очистке
 				if(state.closing || (state.failure != nullptr))
 					// Завершаем обработку
@@ -225,21 +223,21 @@ namespace {
 			});
 		}));
 		// Проверяем запуск сервера
-		if((state.failure == nullptr) && (!io.commit(server) || !io.listen(server, BACKLOG) || !io.launch(server)))
+		if((state.failure == nullptr) && (!awh::engine::commit(server) || !awh::engine::listen(server, BACKLOG) || !awh::engine::launch(server)))
 			// Запоминаем отказ запуска
 			state.failure = "server-launch";
 		// Создаём клиента
-		const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t client = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем подготовку клиента
-		if((state.failure == nullptr) && ((client == 0) || !io.setTargetPort(client, number) || !io.setOptions(client, options() | awh::event::options::HARD_CLOSE) || !io.setAddress(client, awh::event::address_t::IPV4, "0.0.0.0") || !io.setTarget(client, "127.0.0.1")))
+		if((state.failure == nullptr) && ((client == 0) || !awh::engine::setTargetPort(client, number) || !awh::engine::setOptions(client, options() | awh::event::options::HARD_CLOSE) || !awh::engine::setAddress(client, awh::event::address_t::IPV4, "0.0.0.0") || !awh::engine::setTarget(client, "127.0.0.1")))
 			// Запоминаем отказ подготовки
 			state.failure = "client-setup";
 		// Подписываем клиента на ошибки
-		io.on(client, error);
+		awh::engine::on(client, error);
 		// Подписываем клиента на разрыв связи
-		io.on(client, closed);
+		awh::engine::on(client, closed);
 		// Подтверждаем подключение без преждевременного запуска отправки
-		io.on(client, static_cast <awh::engine::callback::connect_t> ([&state]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		awh::engine::on(client, static_cast <awh::engine::callback::connect_t> ([&state]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Сохраняем отказ подключения
 			if(!ok && (state.failure == nullptr))
 				// Прерываем подготовку
@@ -248,7 +246,7 @@ namespace {
 			state.ready = ok;
 		}));
 		// Учитываем каждое подтверждение записи, включая частичные записи блока
-		io.on(client, static_cast <awh::engine::callback::write_t> ([&io, &state](const awh::event::id_t eid, const size_t size) noexcept -> void {
+		awh::engine::on(client, static_cast <awh::engine::callback::write_t> ([&state](const awh::event::id_t eid, const size_t size) noexcept -> void {
 			// Не продолжаем отправку после отказа или при очистке
 			if(state.closing || (state.failure != nullptr))
 				// Завершаем обработку
@@ -279,7 +277,7 @@ namespace {
 				// Учитываем новый блок до вызова движка
 				state.queued += STREAM_CHUNK;
 				// Проверяем принятие всего блока в очередь движка
-				if(io.send(eid, chunk.data(), STREAM_CHUNK) != STREAM_CHUNK)
+				if(awh::engine::send(eid, chunk.data(), STREAM_CHUNK) != STREAM_CHUNK)
 					// Не допускаем тихую потерю хвоста
 					state.failure = "send-failed";
 			}
@@ -287,7 +285,7 @@ namespace {
 			::complete(state);
 		}));
 		// Проверяем запуск клиента
-		if((state.failure == nullptr) && (!io.commit(client) || !io.connect(client) || !io.launch(client)))
+		if((state.failure == nullptr) && (!awh::engine::commit(client) || !awh::engine::connect(client) || !awh::engine::launch(client)))
 			// Запоминаем отказ запуска
 			state.failure = "client-launch";
 		/**
@@ -295,7 +293,7 @@ namespace {
 		 */
 		while((state.failure == nullptr) && (!state.ready || (state.peer == 0))){
 			// Продвигаем подготовку с конечным ожиданием
-			if(!io.poll(250))
+			if(!awh::engine::poll(250))
 				// Запоминаем отказ опроса
 				state.failure = "setup-poll";
 			// Ограничиваем подготовку подключения
@@ -318,7 +316,7 @@ namespace {
 			// Учитываем первый блок
 			state.queued = STREAM_CHUNK;
 			// Проверяем принятие первого блока
-			if(io.send(client, chunk.data(), STREAM_CHUNK) != STREAM_CHUNK)
+			if(awh::engine::send(client, chunk.data(), STREAM_CHUNK) != STREAM_CHUNK)
 				// Прерываем неполную отправку
 				state.failure = "send-failed";
 		}
@@ -327,7 +325,7 @@ namespace {
 		 */
 		while((state.failure == nullptr) && !state.stop){
 			// Продвигаем обмен с конечным ожиданием
-			if(!io.poll(250))
+			if(!awh::engine::poll(250))
 				// Прерываем отказавший опрос
 				state.failure = "transfer-poll";
 			// Ограничиваем передачу, включая зависший приёмник
@@ -357,7 +355,7 @@ namespace {
 		// Отделяем ожидаемые закрытия от ошибок передачи
 		state.closing = true;
 		// Проверяем очистку всех событий, включая ошибочную подготовку
-		if(!io.deinitialize()){
+		if(!awh::engine::deinitialize()){
 			// Не публикуем результат при отказе очистки
 			result = outcome_t{};
 			// Запоминаем отказ очистки

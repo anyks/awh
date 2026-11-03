@@ -20,10 +20,10 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <unit/timer.hpp>
 #include <sys/log.hpp>
+#include <unit/timer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -59,7 +59,7 @@ void awh::unit::Timer::state(const event::id_t eid, const event::status_t status
 					callback(eid);
 			}
 			// Если узел таймера является таймаутом
-			if(this->_io->node(eid) == event::node_t::TIMEOUT)
+			if(engine::node(eid) == event::node_t::TIMEOUT)
 				// Удаляем таймер из списка активных таймеров
 				this->clear(eid);
 		} break;
@@ -86,9 +86,9 @@ void awh::unit::Timer::clear() noexcept {
 		// Удаляем функцию обратного вызова для события таймера
 		this->_callback.erase(eid);
 		// Снимаем функцию обратного вызова на событие таймера
-		this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+		engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
 		// Удаляем событие таймера
-		this->_io->destroy(eid);
+		engine::destroy(eid);
 	}
 	// Очищаем список активных таймеров
 	this->_timers.clear();
@@ -103,9 +103,9 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 	// Удаляем функцию обратного вызова для события таймера
 	this->_callback.erase(eid);
 	// Снимаем функцию обратного вызова на событие таймера
-	this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+	engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
 	// Удаляем событие таймера
-	this->_io->destroy(eid);
+	engine::destroy(eid);
 	// Удаляем идентификатор таймера из списка активных таймеров
 	this->_timers.erase(eid);
 }
@@ -118,19 +118,19 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
  */
 awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
-	event::id_t result = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
+	event::id_t result = engine::event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Если событие таймера успешно создано
 	if(result > 0){
 		// Добавляем новое событие таймера
-		this->_io->setTimeout(result, event::action_t::NONE, delay);
+		engine::setTimeout(result, event::action_t::NONE, delay);
 		// Выполняем фиксацию настроек события таймера
-		if(this->_io->commit(result)){
+		if(engine::commit(result)){
 			// Устанавливаем функцию обратного вызова на событие таймера
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 			// Запускаем работу события таймера
-			if(!this->_io->launch(result)){
+			if(!engine::launch(result)){
 				// Удаляем событие таймера
-				this->_io->destroy(result);
+				engine::destroy(result);
 				// Обнуляем результат
 				result = 0;
 				/**
@@ -138,20 +138,20 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
-					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
+					log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					awh::log::print("Timer event could not be launched", awh::log::flag_t::WARNING);
+					log::print("Timer event could not be launched", log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор таймера в список активных таймеров
 			} else this->_timers.emplace(result);
 		// Если событие таймера не может быть запущено
 		} else {
 			// Удаляем событие таймера
-			this->_io->destroy(result);
+			engine::destroy(result);
 			// Обнуляем результат
 			result = 0;
 			/**
@@ -159,13 +159,13 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
-				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
+				log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				awh::log::print("Timer event could not be created", awh::log::flag_t::WARNING);
+				log::print("Timer event could not be created", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -181,19 +181,19 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
  */
 awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
-	event::id_t result = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
+	event::id_t result = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Если событие таймера успешно создано
 	if(result > 0){
 		// Добавляем новое событие таймера
-		this->_io->setTimeout(result, event::action_t::NONE, delay);
+		engine::setTimeout(result, event::action_t::NONE, delay);
 		// Выполняем фиксацию настроек события таймера
-		if(this->_io->commit(result)){
+		if(engine::commit(result)){
 			// Устанавливаем функцию обратного вызова на событие таймера
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 			// Запускаем работу события таймера
-			if(!this->_io->launch(result)){
+			if(!engine::launch(result)){
 				// Удаляем событие таймера
-				this->_io->destroy(result);
+				engine::destroy(result);
 				// Обнуляем результат
 				result = 0;
 				/**
@@ -201,20 +201,20 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
-					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
+					log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					awh::log::print("Timer event could not be launched", awh::log::flag_t::WARNING);
+					log::print("Timer event could not be launched", log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор таймера в список активных таймеров
 			} else this->_timers.emplace(result);
 		// Если событие таймера не может быть запущено
 		} else {
 			// Удаляем событие таймера
-			this->_io->destroy(result);
+			engine::destroy(result);
 			// Обнуляем результат
 			result = 0;
 			/**
@@ -222,13 +222,13 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
-				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
+				log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				awh::log::print("Timer event could not be created", awh::log::flag_t::WARNING);
+				log::print("Timer event could not be created", log::flag_t::WARNING);
 			#endif
 		}
 	}

@@ -157,18 +157,16 @@ namespace {
 		outcome_t result;
 		// Состояние текущего цикла и общие счётчики
 		state_t state;
-		// Создаём движок событий
-		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Создаём событие сервера
-		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем создание и настройку сервера
-		if((server == 0) || !io.setSourcePort(server, number) || !io.initialize() || !io.setOptions(server, options()) || !io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"))
+		if((server == 0) || !awh::engine::setSourcePort(server, number) || !awh::engine::initialize() || !awh::engine::setOptions(server, options()) || !awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"))
 			// Запоминаем отказ подготовки
 			state.failure = "server-setup";
 		// Подтверждаем принятие именно текущего цикла
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Не допускаем второй peer и приём вне активного цикла
 			if((state.client == 0) || (state.peer != 0) || (state.failure != nullptr)){
 				// Сохраняем первый отказ
@@ -176,7 +174,7 @@ namespace {
 					// Отмечаем нарушение последовательности
 					state.failure = "unexpected-accept";
 				// Освобождаем лишнее подключение
-				io.destroy(cid);
+				awh::engine::destroy(cid);
 				// Прекращаем обработку
 				return;
 			}
@@ -186,7 +184,7 @@ namespace {
 			state.accepted++;
 		}));
 		// Запускаем слушающий сервер только после успешной подготовки
-		if((state.failure == nullptr) && (!io.commit(server) || !io.listen(server, BACKLOG) || !io.launch(server)))
+		if((state.failure == nullptr) && (!awh::engine::commit(server) || !awh::engine::listen(server, BACKLOG) || !awh::engine::launch(server)))
 			// Запоминаем отказ запуска
 			state.failure = "server-launch";
 		// Момент начала измеряемой части
@@ -211,16 +209,16 @@ namespace {
 			// Устанавливаем общий срок подключения и освобождения
 			const auto tick = std::chrono::steady_clock::now();
 			// Создаём очередного клиента
-			state.client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			state.client = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем все настройки текущего клиента
-			if((state.client == 0) || !io.setTargetPort(state.client, number) || !io.setOptions(state.client, options() | awh::event::options::HARD_CLOSE) || !io.setAddress(state.client, awh::event::address_t::IPV4, "0.0.0.0") || !io.setTarget(state.client, "127.0.0.1")){
+			if((state.client == 0) || !awh::engine::setTargetPort(state.client, number) || !awh::engine::setOptions(state.client, options() | awh::event::options::HARD_CLOSE) || !awh::engine::setAddress(state.client, awh::event::address_t::IPV4, "0.0.0.0") || !awh::engine::setTarget(state.client, "127.0.0.1")){
 				// Запоминаем отказ подготовки
 				state.failure = "client-setup";
 				// Прекращаем прогон
 				break;
 			}
 			// Проверяем исход подключения и принадлежность текущему циклу
-			io.on(state.client, static_cast <awh::engine::callback::connect_t> ([&state](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			awh::engine::on(state.client, static_cast <awh::engine::callback::connect_t> ([&state](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Не засчитываем отказ или повторный callback
 				if(!ok || (eid != state.client) || state.ready){
 					// Сохраняем первый отказ
@@ -236,7 +234,7 @@ namespace {
 				state.connected++;
 			}));
 			// Проверяем запуск неблокирующего подключения
-			if(!io.commit(state.client) || !io.connect(state.client) || !io.launch(state.client))
+			if(!awh::engine::commit(state.client) || !awh::engine::connect(state.client) || !awh::engine::launch(state.client))
 				// Запоминаем отказ запуска
 				state.failure = "client-launch";
 			/**
@@ -244,7 +242,7 @@ namespace {
 			 */
 			while((state.failure == nullptr) && (!state.ready || (state.peer == 0))){
 				// Проверяем результат конечного опроса
-				if(!io.poll(POLL_TIMEOUT))
+				if(!awh::engine::poll(POLL_TIMEOUT))
 					// Запоминаем отказ опроса
 					state.failure = "poll-failed";
 				// Проверяем общий срок текущего цикла
@@ -257,9 +255,9 @@ namespace {
 				// Прекращаем прогон
 				break;
 			// Запрашиваем освобождение клиента
-			const bool clientClosed = io.destroy(state.client);
+			const bool clientClosed = awh::engine::destroy(state.client);
 			// Запрашиваем освобождение принятой стороны независимо от первого исхода
-			const bool peerClosed = io.destroy(state.peer);
+			const bool peerClosed = awh::engine::destroy(state.peer);
 			// Проверяем оба запроса освобождения
 			if(!clientClosed || !peerClosed)
 				// Запоминаем отказ закрытия
@@ -267,9 +265,9 @@ namespace {
 			/**
 			 * Дожидаемся удаления обоих узлов, не подменяя его пометкой DESTROYED
 			 */
-			while((state.failure == nullptr) && ((io.status(state.client) != awh::event::status_t::NONE) || (io.status(state.peer) != awh::event::status_t::NONE))){
+			while((state.failure == nullptr) && ((awh::engine::status(state.client) != awh::event::status_t::NONE) || (awh::engine::status(state.peer) != awh::event::status_t::NONE))){
 				// Продвигаем отложенное освобождение без ожидания новых подключений
-				if(!io.poll(0))
+				if(!awh::engine::poll(0))
 					// Запоминаем отказ опроса
 					state.failure = "close-poll-failed";
 				// Ограничиваем также стадию освобождения
@@ -314,7 +312,7 @@ namespace {
 			collect(result);
 		}
 		// Освобождаем также остатки ошибочного цикла
-		if(!io.deinitialize()){
+		if(!awh::engine::deinitialize()){
 			// Отбрасываем результат при отказе очистки
 			result = outcome_t{};
 			// Запоминаем отказ очистки

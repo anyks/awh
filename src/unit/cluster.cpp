@@ -23,6 +23,7 @@
  * Стандартные заголовочные файлы
  */
 #include <deque>
+#include <limits>
 #include <thread>
 #include <cerrno>
 #include <cstdio>
@@ -30,7 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <csignal>
-#include <limits>
+
 /**
  * Подключаем заголовочный файл модуля разбора чисел
  *
@@ -73,10 +74,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/lib.hpp>
-#include <unit/cluster.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/macro/lib.hpp>
+#include <unit/cluster.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -525,11 +526,11 @@ void awh::unit::Cluster::create() noexcept {
 			#if !defined(_WIN32) && !defined(_WIN64)
 			for(auto & [pid, worker] : this->_workers){
 				// Если служебный канал заведён, фиксируем и запускаем его
-				if((worker->cid != 0) && !(this->_io->commit(worker->cid) && this->_io->launch(worker->cid)))
+				if((worker->cid != 0) && !(engine::commit(worker->cid) && engine::launch(worker->cid)))
 					// Записываем ошибку в лог
 					log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, pid);
 				// Выполняем фиксацию и запуск работы события
-				if(!(this->_io->commit(worker->eid) && this->_io->launch(worker->eid))){
+				if(!(engine::commit(worker->eid) && engine::launch(worker->eid))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -635,11 +636,11 @@ void awh::unit::Cluster::release(const event::id_t eid) noexcept {
 			// Если воркер найден и служебный канал ему заведён
 			if((j != this->_workers.end()) && (j->second->cid != 0)){
 				// Сбрасываем функцию обратного вызова на чтение служебного канала
-				this->_io->on(j->second->cid, static_cast <engine::callback::read_t> (nullptr));
+				engine::on(j->second->cid, static_cast <engine::callback::read_t> (nullptr));
 				// Удаляем соответствие идентификатора служебного события и идентификатора процесса
 				this->_controls.erase(j->second->cid);
 				// Уничтожаем служебное событие
-				this->_io->destroy(j->second->cid);
+				engine::destroy(j->second->cid);
 				// Обнуляем идентификатор служебного события
 				j->second->cid = 0;
 			}
@@ -654,11 +655,11 @@ void awh::unit::Cluster::release(const event::id_t eid) noexcept {
 	 *       снятии мастером. Соответствие идентификаторов росло без конца
 	 */
 	// Сбрасываем функцию обратного вызова на изменение статуса, чтобы не реагировать на DESTROYED при ручном закрытии события
-	this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+	engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
 	// Удаляем соответствие идентификатора события и идентификатора процесса
 	this->_matching.erase(eid);
 	// Уничтожаем событие (закрывает сокет, что уведомляет дочерний процесс о завершении работы)
-	this->_io->destroy(eid);
+	engine::destroy(eid);
 }
 /**
  * @brief Метод запуска/остановки работы кластера
@@ -700,22 +701,22 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			// Сбрасываем счётчик подряд идущих быстрых падений при запуске кластера
 			this->_rebirth.restarts = 0;
 			// Создаём событие пробуждения до запуска дочерних процессов (отложенная обработка сигнала SIGCHLD)
-			this->_wakeup = this->_io->event(event::node_t::NOTIFY, event::family_t::USER);
+			this->_wakeup = engine::event(event::node_t::NOTIFY, event::family_t::USER);
 			// Если событие пробуждения создано и его настройки зафиксированы
-			if((this->_wakeup != 0) && this->_io->commit(this->_wakeup)){
+			if((this->_wakeup != 0) && engine::commit(this->_wakeup)){
 				// Устанавливаем функцию обратного вызова на чтение для отложенной обработки завершившихся процессов
-				this->_io->on(this->_wakeup, static_cast <engine::callback::read_t> (std::bind(&cluster_t::reap, this, _1, _2, _3)));
+				engine::on(this->_wakeup, static_cast <engine::callback::read_t> (std::bind(&cluster_t::reap, this, _1, _2, _3)));
 				// Запускаем работу события пробуждения
-				if(!this->_io->launch(this->_wakeup)){
+				if(!engine::launch(this->_wakeup)){
 					// Уничтожаем событие пробуждения
-					this->_io->destroy(this->_wakeup);
+					engine::destroy(this->_wakeup);
 					// Обнуляем идентификатор события пробуждения
 					this->_wakeup = 0;
 				}
 			// Если событие пробуждения создать не удалось
 			} else if(this->_wakeup != 0) {
 				// Уничтожаем событие пробуждения
-				this->_io->destroy(this->_wakeup);
+				engine::destroy(this->_wakeup);
 				// Обнуляем идентификатор события пробуждения
 				this->_wakeup = 0;
 			}
@@ -756,7 +757,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			// Если событие пробуждения создано — уничтожаем его
 			if(this->_wakeup != 0){
 				// Уничтожаем событие пробуждения
-				this->_io->destroy(this->_wakeup);
+				engine::destroy(this->_wakeup);
 				// Обнуляем идентификатор события пробуждения
 				this->_wakeup = 0;
 			}
@@ -790,7 +791,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		// Устанавливаем время создания процесса
 		worker->life = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 		// Добавляем новые события для обмена сообщениями между процессами
-		const auto & events = this->_io->events(event::family_t::UDS, this->_type);
+		const auto & events = engine::events(event::family_t::UDS, this->_type);
 		// Если события не созданы
 		if((events[0] == 0) || (events[1] == 0)){
 			/**
@@ -819,7 +820,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		 *          и разметка обернулась бы своим протоколом передачи внутри кластера,
 		 *          платой на каждом пользовательском сообщении. Разбор - в CLUSTER-LINK.md
 		 */
-		const auto & controls = this->_io->events(event::family_t::UDS, event::type_t::SEQPACKET);
+		const auto & controls = engine::events(event::family_t::UDS, event::type_t::SEQPACKET);
 		// Если служебный канал не заведён
 		if((controls[0] == 0) || (controls[1] == 0)){
 			// Записываем ошибку в лог
@@ -827,15 +828,15 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			// Если первый конец служебного канала заведён
 			if(controls[0] != 0)
 				// Уничтожаем первый конец служебного канала
-				this->_io->destroy(controls[0]);
+				engine::destroy(controls[0]);
 			// Если второй конец служебного канала заведён
 			if(controls[1] != 0)
 				// Уничтожаем второй конец служебного канала
-				this->_io->destroy(controls[1]);
+				engine::destroy(controls[1]);
 			// Уничтожаем оба конца пользовательского канала
-			this->_io->destroy(events[0]);
+			engine::destroy(events[0]);
 			// Уничтожаем второй конец пользовательского канала
-			this->_io->destroy(events[1]);
+			engine::destroy(events[1]);
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
@@ -895,11 +896,11 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 */
 						for(auto i = this->_workers.begin(); i != this->_workers.end();){
 							// Уничтожаем событие других дочерних процессов
-							this->_io->destroy(i->second->eid);
+							engine::destroy(i->second->eid);
 							// Если служебный канал другого дочернего процесса заведён
 							if(i->second->cid != 0)
 								// Уничтожаем служебное событие другого дочернего процесса
-								this->_io->destroy(i->second->cid);
+								engine::destroy(i->second->cid);
 							// Удаляем воркера из списка активных воркеров
 							i = this->_workers.erase(i);
 						}
@@ -932,18 +933,18 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					// Уничтожаем унаследованное событие пробуждения (дочерний процесс не пожинает завершившиеся процессы)
 					if(this->_wakeup != 0){
 						// Уничтожаем событие пробуждения
-						this->_io->destroy(this->_wakeup);
+						engine::destroy(this->_wakeup);
 						// Обнуляем идентификатор события пробуждения
 						this->_wakeup = 0;
 					}
 					// Уничтожаем событие родительского процесса
-					this->_io->destroy(events[0]);
+					engine::destroy(events[0]);
 					// Уничтожаем служебное событие родительского процесса
-					this->_io->destroy(controls[0]);
+					engine::destroy(controls[0]);
 					// Выполняем переинициализацию асинхронного движка ввода-вывода
-					this->_io->reinitialize();
+					engine::reinitialize();
 					// Устанавливаем опции события
-					if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+					if(!engine::setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -959,15 +960,15 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						#endif
 					}
 					// Устанавливаем функцию обратного вызова на событие записи сообщений
-					this->_io->on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+					engine::on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 					// Устанавливаем функцию обратного вызова на событие чтения сообщений
-					this->_io->on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+					engine::on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие изменения состояния
-					this->_io->on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+					engine::on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+					engine::on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-					this->_io->on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+					engine::on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
 					/**
 					 * Заводим свой конец служебного канала
 					 *
@@ -975,7 +976,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					 *       служебного канала не касаются вовсе, и разметка его наружу не
 					 *       выходит
 					 */
-					this->_io->on(controls[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+					engine::on(controls[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 					// Устанавливаем идентификатор события для обмена сообщениями между процессами
 					worker->eid = events[1];
 					// Устанавливаем идентификатор служебного события
@@ -987,7 +988,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					// Добавляем нового воркера в список активных воркеров
 					auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
 					// Выполняем фиксацию и запуск работы события
-					if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
+					if(engine::commit(ret.first->second->eid) && engine::launch(ret.first->second->eid)){
 						/**
 						 * Заводим служебный канал вслед за пользовательским
 						 *
@@ -997,11 +998,11 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 *          отказом второстепенного канала значило бы менять
 						 *          поведение кластера там, где связи никто и не просил
 						 */
-						if(!(this->_io->commit(this->_control) && this->_io->launch(this->_control))){
+						if(!(engine::commit(this->_control) && engine::launch(this->_control))){
 							// Записываем ошибку в лог
 							log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
 							// Уничтожаем свой конец служебного канала
-							this->_io->destroy(this->_control);
+							engine::destroy(this->_control);
 							// Обнуляем идентификатор служебного канала
 							this->_control = 0;
 							// Обнуляем идентификатор служебного события воркера
@@ -1061,13 +1062,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			// Если процесс является родительским
 			default: {
 				// Уничтожаем событие дочернего процесса
-				this->_io->destroy(events[1]);
+				engine::destroy(events[1]);
 				// Уничтожаем служебное событие дочернего процесса
-				this->_io->destroy(controls[1]);
+				engine::destroy(controls[1]);
 				// Устанавливаем функцию обратного вызова на чтение служебного канала
-				this->_io->on(controls[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+				engine::on(controls[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 				// Устанавливаем опции события
-				if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+				if(!engine::setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1083,15 +1084,15 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					#endif
 				}
 				// Устанавливаем функцию обратного вызова на событие записи сообщений
-				this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+				engine::on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 				// Устанавливаем функцию обратного вызова на событие чтения сообщений
-				this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+				engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 				// Устанавливаем функцию обратного вызова на событие изменения состояния
-				this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+				engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+				engine::on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 				// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-				this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+				engine::on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
 				// Устанавливаем идентификатор события для обмена сообщениями между процессами
 				worker->eid = events[0];
 				// Устанавливаем идентификатор служебного события
@@ -1105,11 +1106,11 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				// Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
 				if(!deferred){
 					// Выполняем фиксацию и запуск работы служебного канала
-					if(!(this->_io->commit(ret.first->second->cid) && this->_io->launch(ret.first->second->cid)))
+					if(!(engine::commit(ret.first->second->cid) && engine::launch(ret.first->second->cid)))
 						// Записываем ошибку в лог
 						log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, ret.first->first);
 					// Выполняем фиксацию и запуск работы события
-					if(!(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid))){
+					if(!(engine::commit(ret.first->second->eid) && engine::launch(ret.first->second->eid))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1163,7 +1164,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			// Снимаем имя пользовательского канала из окружения
 			::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
 			// Уничтожаем событие пользовательского канала
-			this->_io->destroy(eid);
+			engine::destroy(eid);
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
@@ -1176,9 +1177,9 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		// Если порождение процесса не удалось
 		if(pid == 0){
 			// Уничтожаем событие родительского процесса
-			this->_io->destroy(eid);
+			engine::destroy(eid);
 			// Уничтожаем служебное событие родительского процесса
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
@@ -1231,7 +1232,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
  */
 awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const event::type_t type, const bool service) noexcept {
 	// Добавляем новые события для обмена сообщениями между процессами
-	const auto & events = this->_io->events(event::family_t::PIPE, type);
+	const auto & events = engine::events(event::family_t::PIPE, type);
 	// Если события не созданы
 	if((events[0] == 0) || (events[1] == 0)){
 		// Записываем ошибку в лог
@@ -1251,7 +1252,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	 *       уже не отдаст
 	 *
 	 */
-	const string & pipe = this->_io->getTarget(events[1]);
+	const string & pipe = engine::getTarget(events[1]);
 	// Если имя канала обмена сообщениями получено
 	/**
 	 * Имя канала обязано дойти до порождаемого процесса
@@ -1268,14 +1269,14 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 		log::print("Cluster %s pipe name %s, the worker is not spawned", log::flag_t::CRITICAL, (service ? "control" : "worker"),
 		 (pipe.empty() ? "could not be obtained" : "could not be passed to the child process"));
 		// Уничтожаем оба конца канала обмена сообщениями
-		this->_io->destroy(events[1]);
+		engine::destroy(events[1]);
 		// Уничтожаем событие родительского процесса
-		this->_io->destroy(events[0]);
+		engine::destroy(events[0]);
 		// Выводим отсутствие заведённого события
 		return 0;
 	}
 	// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
-	this->_io->destroy(events[1]);
+	engine::destroy(events[1]);
 	/**
 	 * Свой конец канала доводится до ожидания подключения ПРЕЖДЕ порождения процесса
 	 *
@@ -1291,7 +1292,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	 *       процессу по наследству вызовом fork, уже связанной с обеих сторон
 	 */
 	// Устанавливаем опции события
-	if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+	if(!engine::setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 		// Записываем ошибку в лог
 		log::print("Error setting cluster worker event options", log::flag_t::WARNING);
 	/**
@@ -1302,22 +1303,22 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 	 */
 	if(service)
 		// Устанавливаем функцию обратного вызова на чтение служебного канала
-		this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 	// Если канал является пользовательским
 	else {
 		// Устанавливаем функцию обратного вызова на событие записи сообщений
-		this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+		engine::on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+		engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+		engine::on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-		this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+		engine::on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
 	}
 	// Выполняем фиксацию и запуск работы события: конец канала переходит к ожиданию подключения
-	if(!(this->_io->commit(events[0]) && this->_io->launch(events[0]))){
+	if(!(engine::commit(events[0]) && engine::launch(events[0]))){
 		// Записываем ошибку в лог запуска события
 		log::print("Cluster %s event could not be launched", log::flag_t::CRITICAL, (service ? "control" : "worker"));
 		/**
@@ -1333,7 +1334,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 		 */
 		::SetEnvironmentVariableW(variable, nullptr);
 		// Уничтожаем событие родительского процесса
-		this->_io->destroy(events[0]);
+		engine::destroy(events[0]);
 		// Выводим отсутствие заведённого события
 		return 0;
 	}
@@ -1388,7 +1389,7 @@ awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const e
 		 */
 		while((rounds++ < 200) && !::WaitNamedPipeW(channel.c_str(), 0))
 			// Выполняем холостой оборот цикла событий
-			this->_io->poll(0);
+			engine::poll(0);
 		/**
 		 * Исчерпание оборотов ожидания обязано быть слышно
 		 *
@@ -1709,7 +1710,7 @@ bool awh::unit::Cluster::attach() noexcept {
 	 */
 	::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
 	// Заводим событие обмена сообщениями с мастером
-	const event::id_t eid = this->_io->event(event::node_t::IPC, event::family_t::PIPE, this->_type);
+	const event::id_t eid = engine::event(event::node_t::IPC, event::family_t::PIPE, this->_type);
 	// Если событие завести не удалось
 	if(eid == 0){
 		// Записываем ошибку в лог
@@ -1718,17 +1719,17 @@ bool awh::unit::Cluster::attach() noexcept {
 		return false;
 	}
 	// Устанавливаем имя канала обмена сообщениями событию
-	this->_io->setTarget(eid, awh::fmk::convert(wstring(buffer)));
+	engine::setTarget(eid, awh::fmk::convert(wstring(buffer)));
 	// Устанавливаем функцию обратного вызова на событие записи сообщений
-	this->_io->on(eid, static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+	engine::on(eid, static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие чтения сообщений
-	this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+	engine::on(eid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие изменения состояния
-	this->_io->on(eid, static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+	engine::on(eid, static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	this->_io->on(eid, static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+	engine::on(eid, static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-	this->_io->on(eid, static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+	engine::on(eid, static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
 	/**
 	 * Открываем свой конец служебного канала
 	 *
@@ -1751,13 +1752,13 @@ bool awh::unit::Cluster::attach() noexcept {
 			// Снимаем имя служебного канала из окружения
 			::SetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", nullptr);
 			// Заводим событие служебного канала
-			cid = this->_io->event(event::node_t::IPC, event::family_t::PIPE, event::type_t::SEQPACKET);
+			cid = engine::event(event::node_t::IPC, event::family_t::PIPE, event::type_t::SEQPACKET);
 			// Если событие служебного канала заведено
 			if(cid != 0){
 				// Устанавливаем имя служебного канала событию
-				this->_io->setTarget(cid, awh::fmk::convert(wstring(control)));
+				engine::setTarget(cid, awh::fmk::convert(wstring(control)));
 				// Устанавливаем функцию обратного вызова на чтение служебного канала
-				this->_io->on(cid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+				engine::on(cid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 			}
 		// Если имени служебного канала в окружении нет
 		} else log::print("Cluster control channel name is not set, the worker is deaf to the master", log::flag_t::CRITICAL);
@@ -1791,7 +1792,7 @@ bool awh::unit::Cluster::attach() noexcept {
 	 *       уничтожается само событие - соответствие ищется по его номеру
 	 *
 	 */
-	if(!(this->_io->commit(eid) && this->_io->connect({eid}) && this->_io->launch(eid))){
+	if(!(engine::commit(eid) && engine::connect({eid}) && engine::launch(eid))){
 		// Записываем ошибку в лог
 		log::print("Cluster worker event could not be launched", log::flag_t::CRITICAL);
 		// Удаляем соответствие идентификатора события идентификатору процесса
@@ -1799,11 +1800,11 @@ bool awh::unit::Cluster::attach() noexcept {
 		// Удаляем воркера из списка активных воркеров
 		this->_workers.erase(ret.first);
 		// Уничтожаем событие обмена сообщениями с мастером
-		this->_io->destroy(eid);
+		engine::destroy(eid);
 		// Если служебное событие заведено
 		if(cid != 0){
 			// Уничтожаем служебное событие
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Обнуляем идентификатор служебного канала
 			this->_control = 0;
 		}
@@ -1813,11 +1814,11 @@ bool awh::unit::Cluster::attach() noexcept {
 	// Если служебное событие заведено
 	if(cid != 0){
 		// Выполняем фиксацию, подключение и запуск работы служебного события
-		if(!(this->_io->commit(cid) && this->_io->connect({cid}) && this->_io->launch(cid))){
+		if(!(engine::commit(cid) && engine::connect({cid}) && engine::launch(cid))){
 			// Записываем ошибку в лог
 			log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
 			// Уничтожаем служебное событие
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Обнуляем идентификатор служебного канала
 			this->_control = 0;
 			// Обнуляем идентификатор служебного события воркера
@@ -2062,7 +2063,7 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 				 * (один системный вызов), чтобы фактическая обработка завершившихся процессов выполнилась
 				 * в потоке цикла событий (см. метод reap).
 				 */
-				self->_io->send(self->_wakeup, &marker, sizeof(marker));
+				engine::send(self->_wakeup, &marker, sizeof(marker));
 			}
 		}
 	}
@@ -2100,7 +2101,7 @@ void __stdcall awh::unit::Cluster::child(void * ctx, [[maybe_unused]] uint8_t ti
 			 * петли событий. Безопасно триггерим событие пробуждения, чтобы разбор
 			 * выполнился в потоке петли (см. метод reap)
 			 */
-			self->_io->send(self->_wakeup, &marker, sizeof(marker));
+			engine::send(self->_wakeup, &marker, sizeof(marker));
 		}
 	}
 }
@@ -2148,7 +2149,7 @@ size_t awh::unit::Cluster::dispatch(const event::id_t eid, const control_t type,
 		// Копируем тело служебного сообщения в буфер
 		::memcpy(message.data() + sizeof(envelope), buffer, size);
 	// Отправляем служебное сообщение целиком одним обращением
-	return this->_io->send(eid, message.data(), message.size());
+	return engine::send(eid, message.data(), message.size());
 }
 /**
  * @brief Метод извещения работников о входе либо выбытии узла
@@ -2264,17 +2265,17 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 	 */
 	#else
 		// Заводим пару обмена для прямой связи работников
-		const auto & events = this->_io->events(event::family_t::UDS, this->_type);
+		const auto & events = engine::events(event::family_t::UDS, this->_type);
 		// Если пара обмена не заведена
 		if((events[0] == 0) || (events[1] == 0)){
 			// Уничтожаем заведённые концы пары
 			if(events[0] != 0)
 				// Уничтожаем первый конец пары
-				this->_io->destroy(events[0]);
+				engine::destroy(events[0]);
 			// Если второй конец пары заведён
 			if(events[1] != 0)
 				// Уничтожаем второй конец пары
-				this->_io->destroy(events[1]);
+				engine::destroy(events[1]);
 			// Отказываем в заведении связи
 			return deny(reason_t::FAILED);
 		}
@@ -2288,12 +2289,12 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 		 *          Снять оба снимка подряд и лишь затем отправить два сообщения нельзя -
 		 *          метки разошлись бы с сообщениями
 		 */
-		if(!(this->_io->commit(events[0]) && this->_io->snapshot(events[0], i->second->cid, snapshot) &&
+		if(!(engine::commit(events[0]) && engine::snapshot(events[0], i->second->cid, snapshot) &&
 		 (this->dispatch(i->second->cid, control_t::GRANT, peer, snapshot.data(), snapshot.size()) > 0))){
 			// Уничтожаем оба конца пары: раздать их не удалось
-			this->_io->destroy(events[0]);
+			engine::destroy(events[0]);
 			// Уничтожаем второй конец пары
-			this->_io->destroy(events[1]);
+			engine::destroy(events[1]);
 			// Отказываем в заведении связи
 			return deny(reason_t::FAILED);
 		}
@@ -2304,7 +2305,7 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 		 *          известить его о разрыве обязаны мы: сам он о нём не узнает, покуда
 		 *          не попробует что-нибудь отправить
 		 */
-		if(!(this->_io->commit(events[1]) && this->_io->snapshot(events[1], j->second->cid, snapshot) &&
+		if(!(engine::commit(events[1]) && engine::snapshot(events[1], j->second->cid, snapshot) &&
 		 (this->dispatch(j->second->cid, control_t::GRANT, initiator, snapshot.data(), snapshot.size()) > 0))){
 			/**
 			 * Извещаем заказавшего узла РАЗРЫВОМ, а не отказом
@@ -2315,9 +2316,9 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 			 */
 			this->dispatch(i->second->cid, control_t::DROP, peer);
 			// Уничтожаем оба конца пары
-			this->_io->destroy(events[0]);
+			engine::destroy(events[0]);
 			// Уничтожаем второй конец пары
-			this->_io->destroy(events[1]);
+			engine::destroy(events[1]);
 			// Записываем ошибку в лог
 			log::print("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", log::flag_t::CRITICAL, initiator, peer);
 			// Выходим из функции
@@ -2328,9 +2329,9 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 		 *
 		 * @note Держать их у себя значило бы перехватывать обмен, предназначенный не нам
 		 */
-		this->_io->destroy(events[0]);
+		engine::destroy(events[0]);
 		// Уничтожаем второй конец пары
-		this->_io->destroy(events[1]);
+		engine::destroy(events[1]);
 	#endif
 	// Запоминаем заведённую связь у заказавшего узла
 	this->_links[initiator].emplace(peer);
@@ -2552,21 +2553,21 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 					// Если в теле сообщения приехало имя канала
 					} else {
 						// Заводим событие своего конца канала связи
-						link = this->_io->event(event::node_t::IPC, event::family_t::PIPE, this->_type);
+						link = engine::event(event::node_t::IPC, event::family_t::PIPE, this->_type);
 						// Если событие связи заведено
 						if(link != 0){
 							// Устанавливаем имя канала связи событию
-							this->_io->setTarget(link, string(reinterpret_cast <const char *> (body), length));
+							engine::setTarget(link, string(reinterpret_cast <const char *> (body), length));
 							// Устанавливаем функцию обратного вызова на событие чтения сообщений
-							this->_io->on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
+							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 							// Устанавливаем функцию обратного вызова на событие изменения состояния
-							this->_io->on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на закрытие связи
-							this->_io->on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+							engine::on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
 							// Выполняем фиксацию, подключение и запуск работы события связи
-							if(!(this->_io->commit(link) && this->_io->connect({link}) && this->_io->launch(link))){
+							if(!(engine::commit(link) && engine::connect({link}) && engine::launch(link))){
 								// Уничтожаем событие связи
-								this->_io->destroy(link);
+								engine::destroy(link);
 								// Сбрасываем идентификатор события связи
 								link = 0;
 							}
@@ -2581,28 +2582,28 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				 */
 				#else
 					// Заводим пустое событие под подъём приехавшего конца пары
-					link = this->_io->event(event::node_t::IPC, event::family_t::UDS, this->_type);
+					link = engine::event(event::node_t::IPC, event::family_t::UDS, this->_type);
 					// Если событие связи заведено
 					if(link != 0){
 						// Поднимаем приехавший конец пары
-						if(this->_io->restore(link, body, length)){
+						if(engine::restore(link, body, length)){
 							// Устанавливаем функцию обратного вызова на событие чтения сообщений
-							this->_io->on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
+							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 							// Устанавливаем функцию обратного вызова на событие изменения состояния
-							this->_io->on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на закрытие связи
-							this->_io->on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+							engine::on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
 							// Запускаем работу события связи
-							if(!this->_io->launch(link)){
+							if(!engine::launch(link)){
 								// Уничтожаем событие связи
-								this->_io->destroy(link);
+								engine::destroy(link);
 								// Сбрасываем идентификатор события связи
 								link = 0;
 							}
 						// Если поднять приехавший конец пары не удалось
 						} else {
 							// Уничтожаем событие связи
-							this->_io->destroy(link);
+							engine::destroy(link);
 							// Сбрасываем идентификатор события связи
 							link = 0;
 						}
@@ -2644,7 +2645,7 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 					// Забываем соответствие события связи и узла
 					this->_matchingPeers.erase(i->second);
 					// Уничтожаем событие связи
-					this->_io->destroy(i->second);
+					engine::destroy(i->second);
 					// Забываем заведённую было связь
 					this->_peers.erase(i);
 				}
@@ -2660,7 +2661,7 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 					// Забываем соответствие события связи и узла
 					this->_matchingPeers.erase(i->second);
 					// Уничтожаем событие связи
-					this->_io->destroy(i->second);
+					engine::destroy(i->second);
 					// Забываем разорванную связь
 					this->_peers.erase(i);
 				}
@@ -3610,7 +3611,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				// Если указанный процесс найден
 				if(i != this->_workers.end())
 					// Отправляем сообщение родительскому процессу
-					return this->_io->send(i->second->eid, buffer, size);
+					return engine::send(i->second->eid, buffer, size);
 			// Если родительский процесс умер
 			} else {
 				/**
@@ -3724,7 +3725,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 			// Если указанный процесс найден
 			if(i != this->_workers.end())
 				// Отправляем сообщение дочернему процессу
-				return this->_io->send(i->second->eid, buffer, size);
+				return engine::send(i->second->eid, buffer, size);
 		// Если процесс является дочерним
 		} else {
 			/**
@@ -3764,7 +3765,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 				 */
 				for(const auto & [pid, worker] : this->_workers)
 					// Отправляем сообщение дочернему процессу
-					result += this->_io->send(worker->eid, buffer, size);
+					result += engine::send(worker->eid, buffer, size);
 				// Возвращаем результат
 				return result;
 			}
@@ -3833,7 +3834,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Заводим пару обмена для прямой связи
-		const auto & events = this->_io->events(event::family_t::PIPE, this->_type);
+		const auto & events = engine::events(event::family_t::PIPE, this->_type);
 		// Если пара обмена не заведена
 		if((events[0] == 0) || (events[1] == 0)){
 			// Записываем ошибку в лог
@@ -3841,11 +3842,11 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 			// Если первый конец пары заведён
 			if(events[0] != 0)
 				// Уничтожаем первый конец пары
-				this->_io->destroy(events[0]);
+				engine::destroy(events[0]);
 			// Если второй конец пары заведён
 			if(events[1] != 0)
 				// Уничтожаем второй конец пары
-				this->_io->destroy(events[1]);
+				engine::destroy(events[1]);
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -3855,26 +3856,26 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		 * @note Уничтоженное событие имени уже не отдаст, а имя это - единственная точка
 		 *       встречи для соседа
 		 */
-		const string & name = this->_io->getTarget(events[1]);
+		const string & name = engine::getTarget(events[1]);
 		// Если имя канала связи получить не удалось
 		if(name.empty()){
 			// Записываем ошибку в лог
 			log::print("Cluster link channel name could not be obtained", log::flag_t::CRITICAL);
 			// Уничтожаем первый конец пары
-			this->_io->destroy(events[0]);
+			engine::destroy(events[0]);
 			// Уничтожаем второй конец пары
-			this->_io->destroy(events[1]);
+			engine::destroy(events[1]);
 			// Выводим отрицательный результат
 			return false;
 		}
 		// Уничтожаем второй конец пары: к нему сосед выйдет по имени
-		this->_io->destroy(events[1]);
+		engine::destroy(events[1]);
 		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
+		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+		engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на закрытие связи
-		this->_io->on(events[0], static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+		engine::on(events[0], static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
 		/**
 		 * Выполняем фиксацию и запуск своего конца канала связи
 		 *
@@ -3883,11 +3884,11 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		 *       дойдёт до него, - а это не один оборот цикла событий, и конец успеет
 		 *       встать в ожидание сам
 		 */
-		if(!(this->_io->commit(events[0]) && this->_io->launch(events[0]))){
+		if(!(engine::commit(events[0]) && engine::launch(events[0]))){
 			// Записываем ошибку в лог
 			log::print("Cluster link channel could not be launched", log::flag_t::CRITICAL);
 			// Уничтожаем свой конец пары
-			this->_io->destroy(events[0]);
+			engine::destroy(events[0]);
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -3904,7 +3905,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		// Забываем заведённую было связь
 		this->_peers.erase(pid);
 		// Уничтожаем свой конец пары: заказ до мастера не дошёл
-		this->_io->destroy(events[0]);
+		engine::destroy(events[0]);
 		// Выводим отрицательный результат
 		return false;
 	/**
@@ -3942,7 +3943,7 @@ bool awh::unit::Cluster::unlink(const pid_t pid) noexcept {
 	// Забываем соответствие события связи и узла
 	this->_matchingPeers.erase(i->second);
 	// Уничтожаем событие связи
-	this->_io->destroy(i->second);
+	engine::destroy(i->second);
 	// Забываем разорванную связь
 	this->_peers.erase(i);
 	// Извещаем мастера о разрыве связи
@@ -3963,7 +3964,7 @@ size_t awh::unit::Cluster::transmit(const pid_t pid, const void * buffer, const 
 	// Если связь с названным узлом заведена
 	if(i != this->_peers.end())
 		// Отправляем сообщение соседу напрямую
-		return this->_io->send(i->second, buffer, size);
+		return engine::send(i->second, buffer, size);
 	/**
 	 * Если включён режим отладки
 	 */
@@ -4121,7 +4122,7 @@ size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t 
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Извлекаем размер буфера события
-			return this->_io->getBufferSize(i->second->eid, action);
+			return engine::getBufferSize(i->second->eid, action);
 	// Если процесс является дочерним
 	} else {
 		// Выполняем поиск процесса по идентификатору
@@ -4129,7 +4130,7 @@ size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t 
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Извлекаем размер буфера события
-			return this->_io->getBufferSize(i->second->eid, action);
+			return engine::getBufferSize(i->second->eid, action);
 	}
 	// Возвращаем значение по умолчанию
 	return 0;
@@ -4151,7 +4152,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Устанавливаем размер буфера события
-			return this->_io->setBufferSize(i->second->eid, action, size);
+			return engine::setBufferSize(i->second->eid, action, size);
 	// Если процесс является дочерним
 	} else {
 		// Выполняем поиск процесса по идентификатору
@@ -4159,7 +4160,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
 		// Если указанный процесс найден
 		if(i != this->_workers.end())
 			// Устанавливаем размер буфера события
-			return this->_io->setBufferSize(i->second->eid, action, size);
+			return engine::setBufferSize(i->second->eid, action, size);
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -4256,7 +4257,7 @@ awh::unit::Cluster::~Cluster() noexcept {
 	// Если событие пробуждения создано — уничтожаем его
 	if(this->_wakeup != 0){
 		// Уничтожаем событие пробуждения
-		this->_io->destroy(this->_wakeup);
+		engine::destroy(this->_wakeup);
 		// Обнуляем идентификатор события пробуждения
 		this->_wakeup = 0;
 	}

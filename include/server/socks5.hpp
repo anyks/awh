@@ -330,9 +330,6 @@ namespace awh {
 					explicit UDP_Server() noexcept;
 				} udp_server_t;
 			private:
-				// Объект работы с сетью
-				eth_t _eth;
-			private:
 				// Объект UDP-серверов для SOCKS5-прокси
 				udp_server_t _udp;
 			private:

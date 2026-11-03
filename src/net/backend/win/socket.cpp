@@ -23,7 +23,7 @@
  *          принимаются указателем на char вместо void
  *
  * @note Расхождения, какие снисходительностью не лечатся, помечены `@note` у самого
- *       метода: скрывать их за общим видом нельзя, вызывающая сторона вправе знать,
+ *       функции: скрывать их за общим видом нельзя, вызывающая сторона вправе знать,
  *       чего система не умеет вовсе
  *
  * @copyright Copyright © 2026
@@ -205,7 +205,7 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		Muted_State() noexcept {
+		explicit Muted_State() noexcept {
 			// Гасим замок при заведении
 			this->enabled = false;
 		}
@@ -383,7 +383,7 @@ namespace {
 	/**
 	 * @brief Подъём средств сокетов системы на загрузке слоя
 	 *
-	 * @note Заведён отдельным объектом, а не одними лишь обращениями из методов:
+	 * @note Заведён отдельным объектом, а не одними лишь обращениями из функций:
 	 *       обращения покрывают заведение сокета, но не покрывают обращений к
 	 *       средствам системы в обход слоя - разбор имён, сведения об устройствах,
 	 *       - а те требуют поднятых средств ровно так же
@@ -394,7 +394,7 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		Winsock() noexcept {
+		explicit Winsock() noexcept {
 			// Выполняем подъём средств сокетов системы
 			::__awh_winsock__();
 		}
@@ -904,12 +904,12 @@ namespace {
 };
 
 /**
- * @brief Метод установки режима безопасной работы с потоками
+ * @brief Функция установки режима безопасной работы с потоками
  *
  * @param mode режим безопасной работы с потоками
  *
  */
-void awh::eth::Socket::threadSafety(const bool mode) noexcept {
+void awh::eth::socket::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасной работы с потоками
 	::__awh_socket_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	/**
@@ -926,13 +926,13 @@ void awh::eth::Socket::threadSafety(const bool mode) noexcept {
 	win::qos::threadSafety(mode);
 }
 /**
- * @brief Метод получения кода ошибки сокета
+ * @brief Функция получения кода ошибки сокета
  *
  * @param sock сокет для получения кода ошибки
  * @return     код ошибки сокета
  *
  */
-int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
+int32_t awh::eth::socket::getError(const net::socket_t sock) noexcept {
 	// Переменная результата
 	int32_t result = -1;
 	// Размер кода ошибки
@@ -960,18 +960,18 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения срока ожидания сокета
- *
- * @param sock  сокет для получения срока ожидания
- * @param event событие сокета
- * @return      срок ожидания в миллисекундах
+ * @brief Функция получения срока ожидания сокета
  *
  * @note Срок ожидания у MS Windows задаётся числом миллисекунд типа DWORD, а не
  *       структурой timeval, как то предписано POSIX. Расхождение это уровня самой
  *       системы, и приведение к общему виду ведётся здесь
  *
+ * @param sock  сокет для получения срока ожидания
+ * @param event событие сокета
+ * @return      срок ожидания в миллисекундах
+ *
  */
-uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+uint32_t awh::eth::socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Срок ожидания, снятый у системы
 	DWORD msec = 0;
 	// Размер срока ожидания
@@ -1007,12 +1007,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 	return static_cast <uint32_t> (msec);
 }
 /**
- * @brief Метод установки срока ожидания сокета
- *
- * @param sock  сокет для установки срока ожидания
- * @param event событие сокета
- * @param msec  срок ожидания в миллисекундах
- * @return      результат выполнения установки
+ * @brief Функция установки срока ожидания сокета
  *
  * @note Нулевой срок означает ожидание бессрочное - так же, как и у систем POSIX
  *
@@ -1035,8 +1030,13 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
  *          к приёму и звать приём лишь по готовности - тогда снятие по сроку очереди
  *          гнезда не касается вовсе. Сама настройка при этом остаётся запасным пределом
  *
+ * @param sock  сокет для установки срока ожидания
+ * @param event событие сокета
+ * @param msec  срок ожидания в миллисекундах
+ * @return      результат выполнения установки
+ *
  */
-bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
+bool awh::eth::socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) noexcept {
 	// Срок ожидания в понимании системы
 	DWORD timeout = static_cast <DWORD> (msec);
 	// Имя опции срока ожидания
@@ -1071,12 +1071,12 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	return true;
 }
 /**
- * @brief Метод получения свободного места в буфере сокета
+ * @brief Функция получения свободного места в буфере сокета
  *
  * @details Свободное место считается так же, как у наречий POSIX: вместимость буфера
  *          за вычетом занятого в нём места.
  *
- * @warning Метод отвечал прежде «неизвестно» ОБЕИМ сторонам, а доводом тому стояло, что
+ * @warning Функция отвечала прежде «неизвестно» ОБЕИМ сторонам, а доводом тому стояло, что
  *          «MS Windows занятое место буферов не сообщает». Про буфер ОТПРАВКИ это верно -
  *          ни `SO_NWRITE`, ни `SIOCOUTQ` у системы нет, - но про буфер ПРИЁМА неверно:
  *          запрос `FIONREAD` там есть и работает. Проверено щупом на стенде: по приходе
@@ -1090,7 +1090,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
  * @return      свободное место в буфере сокета, либо -1, если оно неизвестно
  *
  */
-int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+int32_t awh::eth::socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Если спрашивается место буфера отправки - оно системе неизвестно
 	if(event != net::socket_event_t::READ)
 		// Выводим признак того, что свободное место неизвестно
@@ -1125,7 +1125,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 		pending = static_cast <u_long> (waiting);
 	}
 	// Получаем вместимость буфера сокета
-	const int32_t size = this->getBufferSize(sock, event);
+	const int32_t size = awh::eth::socket::getBufferSize(sock, event);
 	// Если вместимость буфера получить не удалось
 	if(size <= 0)
 		// Выводим признак того, что свободное место неизвестно
@@ -1134,14 +1134,14 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 	return ((static_cast <u_long> (size) > pending) ? static_cast <int32_t> (static_cast <u_long> (size) - pending) : 0);
 }
 /**
- * @brief Метод получения размера накопителя сокета
+ * @brief Функция получения размера накопителя сокета
  *
  * @param sock  сокет для получения размера накопителя
  * @param event событие сокета
  * @return      размер накопителя сокета
  *
  */
-int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+int32_t awh::eth::socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Размер накопителя сокета
 	int32_t result = 0;
 	// Размер значения размера накопителя
@@ -1208,7 +1208,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 	return 0;
 }
 /**
- * @brief Метод установки размера накопителя сокета
+ * @brief Функция установки размера накопителя сокета
  *
  * @note Ответ снимается у системы повторным опросом, а не берётся из просьбы: система
  *       вправе отвести накопитель иного размера, и знать надлежит отведённый
@@ -1219,7 +1219,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
  * @return      установленный размер накопителя сокета
  *
  */
-int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
+int32_t awh::eth::socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) noexcept {
 	// Имя опции размера накопителя
 	const int32_t option = ((event == net::socket_event_t::READ) ? SO_RCVBUF : SO_SNDBUF);
 	// Если размер накопителя установить не удалось
@@ -1242,7 +1242,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 		 */
 		if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE)
 			// Выводим действительный размер накопителя канала
-			return this->getBufferSize(sock, event);
+			return awh::eth::socket::getBufferSize(sock, event);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1268,10 +1268,10 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 		return 0;
 	}
 	// Возвращаем размер накопителя, отведённый системой
-	return this->getBufferSize(sock, event);
+	return awh::eth::socket::getBufferSize(sock, event);
 }
 /**
- * @brief Метод установки числа переходов пакета
+ * @brief Функция установки числа переходов пакета
  *
  * @param sock     сокет для установки числа переходов
  * @param family   семейство адресов
@@ -1280,11 +1280,11 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
  * @return         результат выполнения установки
  *
  */
-bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept {
+bool awh::eth::socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) noexcept {
 	/**
 	 * Если способ доставки не определён - отвечаем отказом
 	 *
-	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами методы
+	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами функции
 	 *          движка возвращают его там, где способ установить не удалось. Выбирать
 	 *          имя настройки нечему, и ответ здесь - отказ.
 	 *
@@ -1359,7 +1359,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	return true;
 }
 /**
- * @brief Метод получения числа переходов пакета
+ * @brief Функция получения числа переходов пакета
  *
  * @param sock     сокет для получения числа переходов
  * @param family   семейство адресов
@@ -1367,11 +1367,11 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
  * @return         число переходов пакета
  *
  */
-uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
+uint8_t awh::eth::socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) noexcept {
 	/**
 	 * Если способ доставки не определён - отвечаем отказом
 	 *
-	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами методы
+	 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами функции
 	 *          движка возвращают его там, где способ установить не удалось. Выбирать
 	 *          имя настройки нечему, и ответ здесь - отказ.
 	 *
@@ -1447,7 +1447,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	return static_cast <uint8_t> (value);
 }
 /**
- * @brief Метод установки поддержания подключения в живых
+ * @brief Функция установки поддержания подключения в живых
  *
  * @note Число попыток у MS Windows задать нельзя вовсе: SIO_KEEPALIVE_VALS принимает
  *       лишь время простоя и промежуток между попытками, а число их система держит
@@ -1461,7 +1461,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
  * @return      результат выполнения установки
  *
  */
-bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept {
+bool awh::eth::socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) noexcept {
 	// Признак поддержания подключения в живых
 	DWORD mode = 1;
 	// Если признак поддержания подключения установить не удалось
@@ -1588,7 +1588,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	return true;
 }
 /**
- * @brief Метод установки сетевого устройства групповой рассылки
+ * @brief Функция установки сетевого устройства групповой рассылки
  *
  * @note Устройство задаётся номером, а не названием: у MS Windows опции с названием
  *       устройства нет вовсе, и перевод названия в номер ведётся здесь -
@@ -1600,7 +1600,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
  * @return       результат выполнения установки
  *
  */
-bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
+bool awh::eth::socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) noexcept {
 	// Если название сетевого устройства не передано
 	if(ifname.empty())
 		// Возвращаем отрицательный результат установки
@@ -1714,7 +1714,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 	return true;
 }
 /**
- * @brief Метод получения способа обнаружения MTU
+ * @brief Функция получения способа обнаружения MTU
  *
  * @note Способов у MS Windows четыре против десяти у самой библиотеки, и приводятся
  *       они к общему виду здесь: IP_PMTUDISC_DONT отвечает DONT, IP_PMTUDISC_DO - DO,
@@ -1725,7 +1725,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
  * @return       способ обнаружения MTU
  *
  */
-awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept {
+awh::event::mtu_discover_t awh::eth::socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) noexcept {
 	/**
 	 * Обнаружение MTU есть у семейств сетевых и только у них
 	 *
@@ -1800,7 +1800,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	return event::mtu_discover_t::NONE;
 }
 /**
- * @brief Метод установки способа обнаружения MTU
+ * @brief Функция установки способа обнаружения MTU
  *
  * @note Способы, ответа у системы не имеющие, отказом не отвечают молча: о них
  *       заносится предупреждение, а сама установка не ведётся
@@ -1811,7 +1811,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
  * @return       результат выполнения установки
  *
  */
-bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
+bool awh::eth::socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) noexcept {
 	/**
 	 * Обнаружение MTU есть у семейств СЕТЕВЫХ и только у них
 	 *
@@ -1912,7 +1912,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	return true;
 }
 /**
- * @brief Метод проверки готовности средств сокетов системы
+ * @brief Функция проверки готовности средств сокетов системы
  *
  * @details Подъём ведётся здесь же, а не одной лишь проверкой уже поднятого: спросить
  *          систему, годна ли она заводить сокеты, иначе как подняв средства, нельзя -
@@ -1924,7 +1924,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  * @return результат проверки готовности средств сокетов системы
  *
  */
-bool awh::eth::Socket::ready() const noexcept {
+bool awh::eth::socket::ready() noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
 		/**
@@ -1951,7 +1951,7 @@ bool awh::eth::Socket::ready() const noexcept {
 	return true;
 }
 /**
- * @brief Метод заведения сокета
+ * @brief Функция заведения сокета
  *
  * @note Из опций заведение принимает одну - закрытие сокета при запуске стороннего
  *       образа: ей отвечает признак `WSA_FLAG_NO_HANDLE_INHERIT`. Прочие накладываются
@@ -1970,7 +1970,7 @@ bool awh::eth::Socket::ready() const noexcept {
  * @return        заведённый сокет
  *
  */
-awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
+awh::net::socket_t awh::eth::socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
 		/**
@@ -2395,7 +2395,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	return static_cast <net::socket_t> (result);
 }
 /**
- * @brief Метод получения опций, принимаемых при создании сокета
+ * @brief Функция получения опций, принимаемых при создании сокета
  *
  * @note Заведением накладывается одна опция - закрытие сокета при запуске стороннего
  *       образа, - и в набор она попадает лишь тогда, когда её просили. Прочие
@@ -2405,7 +2405,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
  * @return        подмножество опций, наложенных при создании сокета
  *
  */
-uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
+uint16_t awh::eth::socket::inborn(const uint16_t options) noexcept {
 	// Результат работы функции
 	uint16_t result = event::options::NONE;
 	/**
@@ -2427,7 +2427,7 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
 	return result;
 }
 /**
- * @brief Метод заведения пары сокетов для обмена сообщениями между процессами
+ * @brief Функция заведения пары сокетов для обмена сообщениями между процессами
  *
  * @details Соответствия socketpair у MS Windows нет вовсе, и пара строится в обход:
  *          заводится слушатель на петлевом устройстве с нулевым портом, к нему
@@ -2471,14 +2471,14 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
  * @return       пара заведённых сокетов
  *
  */
-array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+array <awh::net::socket_t, 2> awh::eth::socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) noexcept {
 	// Имя заведённого канала, вызывающей стороне не нужное
 	string name;
 	// Выводим пару связанных концов обмена
-	return this->ipc(family, type, proto, name);
+	return awh::eth::socket::ipc(family, type, proto, name);
 }
 /**
- * @brief Метод открытия своего конца именованного канала по его имени
+ * @brief Функция открытия своего конца именованного канала по его имени
  *
  * @details Обращение это выходит на канал, заведённый встречной стороной, а не
  *          заводит своего: имя канала приходит извне - порождённый работник кластера
@@ -2499,7 +2499,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
  * @return     описатель открытого конца канала
  *
  */
-awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept {
+awh::net::socket_t awh::eth::socket::channel(const string & name) noexcept {
 	// Если имя канала не передано
 	if(name.empty()){
 		/**
@@ -2705,7 +2705,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	return reinterpret_cast <net::socket_t> (result);
 }
 /**
- * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+ * @brief Функция создания пары связанных концов обмена с выдачей имени канала
  *
  * @param family семейство адресов
  * @param type   тип сокета
@@ -2714,7 +2714,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
  * @return       пара связанных концов обмена
  *
  */
-array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) const noexcept {
+array <awh::net::socket_t, 2> awh::eth::socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) noexcept {
 	// Выполняем сброс имени заведённого канала
 	name.clear();
 	// Переменная результата
@@ -2773,7 +2773,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 */
 		for(net::socket_t & sock : result)
 			// Выполняем заведение сокета по заданным доводам
-			sock = this->issue(family, type, proto);
+			sock = awh::eth::socket::issue(family, type, proto);
 		// Возвращаем заведённые сокеты
 		return result;
 	}
@@ -3256,7 +3256,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	return result;
 }
 /**
- * @brief Метод получения класса обслуживания в заголовке IP-пакета
+ * @brief Функция получения класса обслуживания в заголовке IP-пакета
  *
  * @warning Отдаётся здесь запрошенное, а не показание системы. Настройка IP_TOS у MS
  *          Windows существует, но с версии Windows XP SP2 не исполняется: запись
@@ -3269,12 +3269,12 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
  * @return       класс обслуживания
  *
  */
-awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
+awh::event::dscp_t awh::eth::socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family) noexcept {
 	// Выводим запрошенный для сокета класс обслуживания
 	return win::qos::mark(sock);
 }
 /**
- * @brief Метод установки класса обслуживания в заголовке IP-пакета
+ * @brief Функция установки класса обслуживания в заголовке IP-пакета
  *
  * @note Отметка ставится сразу, если сокет уже соединён - подсистема берёт назначение
  *       у него самого. Иначе она запоминается и будет применена, едва назначение
@@ -3289,12 +3289,12 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
  * @return       результат выполнения установки
  *
  */
-bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family, const event::dscp_t dscp) const noexcept {
+bool awh::eth::socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family, const event::dscp_t dscp) noexcept {
 	// Выводим результат установки класса обслуживания сокету
 	return win::qos::mark(sock, dscp);
 }
 /**
- * @brief Метод получения признака перегрузки в заголовке IP-пакета
+ * @brief Функция получения признака перегрузки в заголовке IP-пакета
  *
  * @note У систем POSIX признак этот занимает два младших разряда того же октета, где
  *       стоит класс обслуживания, и читается вместе с ним настройкой IP_TOS. MS
@@ -3307,7 +3307,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
  * @return       признак перегрузки
  *
  */
-awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept {
+awh::event::ecn_t awh::eth::socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
 		// Выводим отсутствие признака перегрузки
@@ -3371,7 +3371,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	return static_cast <event::ecn_t> (value & 0x03);
 }
 /**
- * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
+ * @brief Функция отправки датаграммы с меткой перегрузки в управляющих данных
  *
  * @details Метка едет вместе со своей датаграммой, а не ставится настройкой сокета: у
  *          датаграммных серверов сокет один на все соединения, и датаграмма, полежавшая
@@ -3400,7 +3400,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
  * @return        количество отправленных октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept {
+ssize_t awh::eth::socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) noexcept {
 	/**
 	 * Если метить датаграмму не требуется - отправляем обычным обращением
 	 *
@@ -3508,7 +3508,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	return static_cast <ssize_t> (bytes);
 }
 /**
- * @brief Метод установки признака перегрузки в заголовке IP-пакета
+ * @brief Функция установки признака перегрузки в заголовке IP-пакета
  *
  * @note Читать прежнее значение перед записью, как то делают эталонные бэкенды, здесь
  *       не нужно: класс обслуживания настройкой этой не задевается вовсе
@@ -3528,9 +3528,9 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  *          обращается лишь для потоковых сокетов, где управляющих данных нет вовсе.
  *
  *          Отказом настройка при этом НЕ отвечает, оттого несоответствие молчаливое:
- *          внешний потребитель, позвавший метод на датаграммном сокете, получит успех
- *          и непомеченные датаграммы. Возврат метода здесь не изменён намеренно -
- *          отказ развёл бы договор метода по системам
+ *          внешний потребитель, позвавший функцию на датаграммном сокете, получит успех
+ *          и непомеченные датаграммы. Возврат функции здесь не изменён намеренно -
+ *          отказ развёл бы договор функции по системам
  *
  * @par Намеренные решения
  *
@@ -3539,7 +3539,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  *
  * | способ пометки | принятый октет TOS |
  * |---|---|
- * | настройка сокета `IP_ECN` (этот метод) | **0** |
+ * | настройка сокета `IP_ECN` (эта функция) | **0** |
  * | метка на датаграмму управляющими данными (`WSASendMsg`) | **2** |
  *
  * Замер повторён дважды - по петле и по настоящему устройству машины, - итог тот же.
@@ -3565,7 +3565,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  * @return       результат выполнения установки
  *
  */
-bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept {
+bool awh::eth::socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
 		// Выводим отрицательный результат установки
@@ -3628,7 +3628,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 	return true;
 }
 /**
- * @brief Метод включения либо выключения выдачи сведений о принятых пакетах
+ * @brief Функция включения либо выключения выдачи сведений о принятых пакетах
  *
  * @details Выдача эта прикладывает к каждому принятому пакету его сопутствующие
  *          сведения - число переходов, какое пакет ещё вправе сделать, устройство,
@@ -3657,7 +3657,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
  * @return       результат выполнения переключения
  *
  */
-bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+bool awh::eth::socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
 		// Выводим отрицательный результат переключения
@@ -3760,7 +3760,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	return (first && second);
 }
 /**
- * @brief Метод переключения настройки сокета
+ * @brief Функция переключения настройки сокета
  *
  * @details Часть настроек у MS Windows зовётся иначе, чем у систем POSIX, часть
  *          достигается вовсе не настройкой сокета, а часть недостижима
@@ -3793,7 +3793,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат выполнения переключения
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
+bool awh::eth::socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
 		// Выводим отрицательный результат переключения
@@ -4313,7 +4313,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	return true;
 }
 /**
- * @brief Метод входа в группу рассылки либо выхода из неё
+ * @brief Функция входа в группу рассылки либо выхода из неё
  *
  * @note Устройство у IPv6 задаётся системе не адресом, а номером, и перевод адреса в
  *       номер ведётся здесь - тем же порядком, каким его ведут эталонные слои.
@@ -4327,7 +4327,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
  * @return       результат выполнения
  *
  */
-bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
+bool awh::eth::socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) noexcept {
 	// Если сокет либо адреса не переданы
 	if((sock == net::invalid_socket_t) || (group == nullptr) || (source == nullptr)){
 		/**

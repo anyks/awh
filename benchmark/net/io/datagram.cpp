@@ -264,26 +264,25 @@ namespace {
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера
-		const awh::event::id_t server = io.event(
+		const awh::event::id_t server = awh::engine::event(
 			awh::event::node_t::SERVER, awh::event::family_t::IPV4,
 			awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 		);
 		// Устанавливаем порт события сервера
-		io.setSourcePort(server, number);
+		awh::engine::setSourcePort(server, number);
 		// Добавляем событие предельного срока прогона
-		const awh::event::id_t deadline = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+		const awh::event::id_t deadline = awh::engine::event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 		// Если инициализация движка не выполнена
-		if(!io.initialize())
+		if(!awh::engine::initialize())
 			// Выводим пустые итоги прогона
 			return result;
 		// Устанавливаем опции события сервера
-		io.setOptions(server, options());
+		awh::engine::setOptions(server, options());
 		// Устанавливаем адрес события сервера
-		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
+		awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		/**
 		 * Расширяем приёмный буфер события сервера
 		 *
@@ -309,11 +308,11 @@ namespace {
 		 *       первой пришедшей датаграммой, и сторона сервера узнаёт об
 		 *       отправителе только отсюда
 		 */
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &accepted](
+		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted](
 			[[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid
 		) noexcept -> void {
 			// Устанавливаем опции события сессии отправителя
-			io.setOptions(cid, options());
+			awh::engine::setOptions(cid, options());
 			// Создаём состояние сессии отправителя
 			accepted.push_back(unique_ptr <sender_t> (new sender_t));
 			// Запоминаем идентификатор события сессии отправителя
@@ -322,21 +321,21 @@ namespace {
 			 * Устанавливаем функцию обратного вызова на чтение из сессии отправителя:
 			 * сервер возвращает принятые октеты как есть
 			 */
-			io.on(cid, [&io](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Отправляем принятые октеты обратно отправителю
-				io.send(eid, data, size);
+				awh::engine::send(eid, data, size);
 			});
 		}));
 		// Выполняем фиксацию настроек события сервера
-		io.commit(server);
+		awh::engine::commit(server);
 		/**
 		 * Расширяем приёмный буфер события сервера
 		 *
 		 * @warning Идёт ПОСЛЕ фиксации намеренно, см. пояснение у стороны отправителя
 		 */
-		io.setBufferSize(server, awh::event::action_t::READ, DATAGRAM_BUFFER);
+		awh::engine::setBufferSize(server, awh::event::action_t::READ, DATAGRAM_BUFFER);
 		// Выполняем запуск события сервера
-		io.launch(server);
+		awh::engine::launch(server);
 		// Список отправителей
 		vector <unique_ptr <sender_t>> clients;
 		// Резервируем место под отправителей
@@ -350,32 +349,32 @@ namespace {
 			// Получаем состояние отправителя
 			sender_t * sender = clients.back().get();
 			// Добавляем новое событие отправителя
-			sender->id = io.event(
+			sender->id = awh::engine::event(
 				awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 				awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 			);
 			// Устанавливаем порт назначения события отправителя
-			io.setTargetPort(sender->id, number);
+			awh::engine::setTargetPort(sender->id, number);
 			// Устанавливаем опции события отправителя
-			io.setOptions(sender->id, options());
+			awh::engine::setOptions(sender->id, options());
 			// Устанавливаем локальный адрес события отправителя
-			io.setAddress(sender->id, awh::event::address_t::IPV4, "0.0.0.0");
+			awh::engine::setAddress(sender->id, awh::event::address_t::IPV4, "0.0.0.0");
 			// Устанавливаем адрес назначения события отправителя
-			io.setTarget(sender->id, "127.0.0.1");
+			awh::engine::setTarget(sender->id, "127.0.0.1");
 			/**
 			 * Устанавливаем функцию обратного вызова на чтение из события отправителя
 			 *
 			 * @note Накопления принятых октетов здесь нет намеренно: датаграмма
 			 *       приходит целиком, и всякий вызов отклика есть ровно один обмен
 			 */
-			io.on(sender->id, [&io, &state]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			awh::engine::on(sender->id, [&state]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
 				// Если обмен следует продолжать
 				if(::account(state))
 					// Отправляем следующую датаграмму
-					io.send(eid, payload, ECHO_PAYLOAD);
+					awh::engine::send(eid, payload, ECHO_PAYLOAD);
 			});
 			// Выполняем фиксацию настроек события отправителя
-			io.commit(sender->id);
+			awh::engine::commit(sender->id);
 			/**
 			 * Расширяем приёмный буфер события отправителя
 			 *
@@ -384,18 +383,18 @@ namespace {
 			 *          вызов стоял до фиксации и уходил в дескриптор -1: настройка
 			 *          не применялась ВОВСЕ, отказ виден был лишь записью журнала
 			 */
-			io.setBufferSize(sender->id, awh::event::action_t::READ, DATAGRAM_BUFFER);
+			awh::engine::setBufferSize(sender->id, awh::event::action_t::READ, DATAGRAM_BUFFER);
 			// Выполняем запуск события отправителя
-			io.launch(sender->id);
+			awh::engine::launch(sender->id);
 			// Отправляем первую датаграмму, начиная обмен
-			io.send(sender->id, payload, ECHO_PAYLOAD);
+			awh::engine::send(sender->id, payload, ECHO_PAYLOAD);
 		}
 		// Устанавливаем предельный срок прогона
-		io.setTimeout(deadline, awh::event::action_t::NONE, DEADLINE);
+		awh::engine::setTimeout(deadline, awh::event::action_t::NONE, DEADLINE);
 		/**
 		 * Устанавливаем функцию обратного вызова на событие предельного срока
 		 */
-		io.on(deadline, [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		awh::engine::on(deadline, [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Если предельный срок прогона истёк
 			if(status == awh::event::status_t::SUCCESS){
 				// Отмечаем прогон упёршимся в предельный срок
@@ -405,20 +404,20 @@ namespace {
 			}
 		});
 		// Выполняем фиксацию настроек события предельного срока
-		io.commit(deadline);
+		awh::engine::commit(deadline);
 		// Выполняем запуск события предельного срока
-		io.launch(deadline);
+		awh::engine::launch(deadline);
 		/**
 		 * Запускаем опрос событий до выполнения требуемого количества обменов
 		 */
-		while(!state.stop && io.poll());
+		while(!state.stop && awh::engine::poll());
 		// Если прогон упёрся в предельный срок
 		if(state.expired){
 			// Закрываем окно замера, оставшееся открытым
 			awh::benchmark::counting(false);
 			awh::benchmark::syscall::counting(false);
 			// Уничтожаем все события движка
-			io.deinitialize();
+			awh::engine::deinitialize();
 			// Выводим пустые итоги прогона: обмен не состоялся
 			return result;
 		}
@@ -431,7 +430,7 @@ namespace {
 		// Собираем показатели учёта
 		collect(result);
 		// Уничтожаем все события движка
-		io.deinitialize();
+		awh::engine::deinitialize();
 		// Выводим итоги прогона сценария
 		return result;
 	}

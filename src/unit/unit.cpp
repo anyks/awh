@@ -27,10 +27,10 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <unit/unit.hpp>
 #include <sys/log.hpp>
+#include <unit/unit.hpp>
 
 /**
  * Если мы работаем с компилятором MinGW в MS Windows
@@ -236,22 +236,17 @@ namespace {
 	 * @brief Флаг запуска работы базы событий
 	 *
 	 */
-	atomic_bool __awh_working__ = false;
+	static atomic_bool __awh_working__ = false;
 	/**
 	 * @brief Идентификатор юнита который запустил работу цикла событий
 	 *
 	 */
-	atomic_uint64_t __awh_launcher__ = 0;
+	static atomic_uint64_t __awh_launcher__ = 0;
 	/**
 	 * @brief Количество ссылок юнитов на базу событий
 	 *
 	 */
-	atomic_uint16_t __awh_count_refs__ = 0;
-	/**
-	 * @brief Объект рабочей базы событий
-	 *
-	 */
-	unique_ptr <awh::engine::io_t> __awh_event_base__ = nullptr;
+	static atomic_uint16_t __awh_count_refs__ = 0;
 };
 
 /**
@@ -270,34 +265,34 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] has been terminated, goodbye!", awh::log::flag_t::INFO, ::getpid());
+				log::print("Child process [%u] has been terminated, goodbye!", log::flag_t::INFO, ::getpid());
 				// Выходим из приложения
 				::_exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGFPE");
+				log::print("Child process [%u] was terminated by [%s] signal", log::flag_t::WARNING, ::getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGILL");
+				log::print("Child process [%u] was terminated by [%s] signal", log::flag_t::WARNING, ::getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGTERM");
+				log::print("Child process [%u] was terminated by [%s] signal", log::flag_t::WARNING, ::getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGSEGV");
+				log::print("Child process [%u] was terminated by [%s] signal", log::flag_t::WARNING, ::getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Записываем в лог сообщение об завершении работы процесса
-				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGABRT");
+				log::print("Child process [%u] was terminated by [%s] signal", log::flag_t::WARNING, ::getpid(), "SIGABRT");
 			break;
 		}
 		// Выходим принудительно из приложения
@@ -322,7 +317,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
  */
 bool awh::unit::Unit::kick() noexcept {
 	// Выполняем принудительный пинок базе событий
-	return ::__awh_event_base__->kick();
+	return engine::kick();
 }
 /**
  * @brief Метод определения мастер-процесса
@@ -350,7 +345,7 @@ bool awh::unit::Unit::working() const noexcept {
  */
 void awh::unit::Unit::clear() noexcept {
 	// Выполняем очистку базы событий
-	::__awh_event_base__->clear();
+	engine::clear();
 }
 /**
  * @brief Метод реинициализации базы событий
@@ -358,19 +353,19 @@ void awh::unit::Unit::clear() noexcept {
  */
 void awh::unit::Unit::reinit() noexcept {
 	// Выполняем реинициализацию базы событий, если реинициализация не выполнена
-	if(!::__awh_event_base__->reinitialize()){
+	if(!engine::reinitialize()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Event database reinitialization failed: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+			log::print("Event database reinitialization failed: %s", log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 }
@@ -382,7 +377,7 @@ void awh::unit::Unit::reinit() noexcept {
  */
 size_t awh::unit::Unit::events() const noexcept {
 	// Возвращаем количество событий в базе событий
-	return ::__awh_event_base__->eventsCount();
+	return engine::eventsCount();
 }
 /**
  * @brief Метод остановки юнита
@@ -421,7 +416,7 @@ void awh::unit::Unit::stop() noexcept {
 				// Выполняем остановку работы цикла базы событий
 				::__awh_working__.store(false, std::memory_order_release);
 				// Разблокируем работу базы событий
-				::__awh_event_base__->kick();
+				engine::kick();
 			// Если базу событий запустил не этот юнит
 			} else {
 				// Устанавливаем флаг статуса остановки работы юнита
@@ -439,13 +434,13 @@ void awh::unit::Unit::stop() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -496,7 +491,7 @@ void awh::unit::Unit::start() noexcept {
 				/**
 				 * Выполняем опрос базы событий
 				 */
-				if(!::__awh_event_base__->poll(this->_timeout)){
+				if(!engine::poll(this->_timeout)){
 					// Если таймаут установлен очень низкий
 					if((this->_timeout > -1) && (this->_timeout <= 10))
 						/**
@@ -527,13 +522,13 @@ void awh::unit::Unit::start() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -549,7 +544,7 @@ void awh::unit::Unit::start() noexcept {
  */
 bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
 	// Пересоздаём дескриптор события, сохраняя само событие (его идентификатор, коллбэки, параметры)
-	return ::__awh_event_base__->rebuild(eid);
+	return engine::rebuild(eid);
 }
 /**
  * @brief Метод получения типа события
@@ -560,7 +555,7 @@ bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
  */
 awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
 	// Возвращаем тип события
-	return ::__awh_event_base__->type(eid);
+	return engine::type(eid);
 }
 /**
  * @brief Метод получения типа узла события
@@ -571,7 +566,7 @@ awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
  */
 awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
 	// Возвращаем тип узла события
-	return ::__awh_event_base__->node(eid);
+	return engine::node(eid);
 }
 /**
  * @brief Метод получения семейства события
@@ -582,7 +577,7 @@ awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
  */
 awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
 	// Возвращаем семейство адресов
-	return ::__awh_event_base__->family(eid);
+	return engine::family(eid);
 }
 /**
  * @brief Метод получения статуса события
@@ -593,7 +588,7 @@ awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexce
  */
 awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
 	// Возвращаем статус события
-	return ::__awh_event_base__->status(eid);
+	return engine::status(eid);
 }
 /**
  * @brief Метод получения протокола события
@@ -604,7 +599,7 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
  */
 awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noexcept {
 	// Возвращаем протокол события
-	return ::__awh_event_base__->protocol(id);
+	return engine::protocol(id);
 }
 /**
  * @brief Метод получения типа внутренних таймеров
@@ -614,7 +609,7 @@ awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noe
  */
 awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
 	// Возвращаем тип таймера для событий сетевого движка
-	return ::__awh_event_base__->getInternalTimer();
+	return engine::getInternalTimer();
 }
 /**
  * @brief Метод установки типа внутренних таймеров
@@ -624,7 +619,7 @@ awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
  */
 void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
 	// Устанавливаем тип таймера для событий сетевого движка
-	::__awh_event_base__->setInternalTimer(timer);
+	engine::setInternalTimer(timer);
 }
 /**
  * @brief Метод установки пропускной способности события
@@ -635,7 +630,7 @@ void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
  */
 void awh::unit::Unit::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Выполняем установку пропускной способности события для события
-	::__awh_event_base__->bandwidth(limiting, bandwidth);
+	engine::bandwidth(limiting, bandwidth);
 }
 /**
  * @brief Метод установки времени блокировки базы событий в ожидании событий
@@ -699,25 +694,23 @@ awh::unit::Unit::Unit() noexcept :
  _pid(::getpid()), _timeout(-1), _stopped(false),
  _intercep(event::mode_t::DISABLED),
  _status(event::status_t::NONE), _signals(),
- _callback(), _io(nullptr) {
+ _callback() {
 	// Если база событий не инициализированна
-	if(::__awh_event_base__ == nullptr){
-		// Выполняем создание базы событий
-		::__awh_event_base__ = make_unique <engine::io_t> ();
-		// Инициализируем базу событий, если база событий не инициализированна
-		if(!::__awh_event_base__->initialize()){
+	if(!engine::isInitialized()){
+		// Инициализируем базу событий
+		if(!engine::initialize()){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Event database could not be initialized: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("Event database could not be initialized: %s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -725,8 +718,6 @@ awh::unit::Unit::Unit() noexcept :
 	}
 	// Увеличиваем количество ссылок на базу событий
 	::__awh_count_refs__.fetch_add(1, memory_order_relaxed);
-	// Запоминаем объект базы событий
-	this->_io = ::__awh_event_base__.get();
 }
 /**
  * @brief Деструктор
@@ -741,8 +732,6 @@ awh::unit::Unit::~Unit() noexcept {
 		// Останавливаем работу цикла обработки базы событий
 		this->stop();
 		// Выполняем деинициализацию базы событий
-		::__awh_event_base__->deinitialize();
-		// Выполняем удаление базы событий
-		::__awh_event_base__.reset(nullptr);
+		engine::deinitialize();
 	}
 }

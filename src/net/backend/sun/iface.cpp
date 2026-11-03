@@ -1334,7 +1334,7 @@ namespace iface {
 		 * @details Поток отдаёт обыкновенному чтению столько, сколько накопилось: два
 		 *          кадра склеиваются в одно чтение, и границы между ними теряются.
 		 *          Режим RMSGD велит отдавать РОВНО ОДНО сообщение за чтение, а остаток
-		 *          придержать до следующего - кадр к кадру, как их и клало устройство
+		 *          придержать до следующего - кадр к кадру, как их и клало устройство.
 		 *
 		 * @warning Без этого разбор принимает склейку за один кадр: заголовок снимается
 		 *          у первого, а второй уходит в мусор вместе с ним. Проверено разбором
@@ -1390,15 +1390,38 @@ namespace iface {
 	}
 
 	/**
-	 * @brief Признак выполненной одноразовой настройки блокировки
-	 *
-	 */
-	static once_flag __awh_iface_tunnel_once__;
-	/**
 	 * @brief Перечень связей, розданных туннелям этого процесса
 	 *
 	 */
 	static std::set <string> __awh_iface_tunnel_taken__;
+	
+	/**
+	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
+	 *
+	 * @tparam MutexType тип активного мьютекса
+	 */
+	template <typename MutexType>
+	/**
+	 * @brief Структура состояния блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем.
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 *
+	 */
+	struct muted_state_t : public lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
+
 	/**
 	 * @brief Учёт связей, розданных туннелям этого процесса
 	 *
@@ -1418,7 +1441,7 @@ namespace iface {
 	 *          ветвление, и оно же умеет блокировки отключать
 	 *
 	 */
-	static lock_state_t <std::mutex> __awh_iface_tunnel_lock__;
+	static muted_state_t <std::mutex> __awh_iface_tunnel_lock__;
 	/**
 	 * @brief Режим безопасности работы потоков
 	 *
@@ -1555,7 +1578,7 @@ namespace iface {
 };
 
 /**
- * @brief Метод удаления сетевого интерфейса
+ * @brief Функция удаления сетевого интерфейса
  *
  * @details Приёма SIOCIFDESTROY у Sun Solaris и illumos нет: устройства передачи
  *          данных сносит отдельная системная библиотека, причём разными вызовами
@@ -1571,7 +1594,7 @@ namespace iface {
  * @return     результат удаления сетевого интерфейса
  *
  */
-bool awh::eth::Interface::destroy(string_view name) const noexcept {
+bool awh::eth::iface::destroy(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -1673,7 +1696,6 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 					string bridge(label);
 					/**
 					 * Отбрасываем завершающие цифры имени устройства
-					 *
 					 */
 					while(!bridge.empty() && (::isdigit(static_cast <uint8_t> (bridge.back())) != 0))
 						// Отбрасываем последний символ имени
@@ -1739,12 +1761,12 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения списка сетевых интерфейсов системы
+ * @brief Функция получения списка сетевых интерфейсов системы
  *
  * @return список сетевых интерфейсов системы
  *
  */
-unordered_set <string> awh::eth::Interface::available() const noexcept {
+unordered_set <string> awh::eth::iface::available() noexcept {
 	// Переменная результата
 	unordered_set <string> result;
 	/**
@@ -1801,13 +1823,13 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки доступности сетевого интерфейса
+ * @brief Функция проверки доступности сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки доступности сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
+bool awh::eth::iface::isAvailable(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -1869,13 +1891,13 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки туннельного сетевого интерфейса
+ * @brief Функция проверки туннельного сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки туннельного сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
+bool awh::eth::iface::isTunnel(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если имя интерфейса задано
@@ -1916,13 +1938,13 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки туннельного сетевого интерфейса по адресу
+ * @brief Функция проверки туннельного сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки туннельного сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isTunnel(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если адрес передан
@@ -1967,13 +1989,13 @@ bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки виртуального сетевого интерфейса
+ * @brief Функция проверки виртуального сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки виртуального сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
+bool awh::eth::iface::isVirtual(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если имя интерфейса задано
@@ -2014,13 +2036,13 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки виртуального сетевого интерфейса по адресу
+ * @brief Функция проверки виртуального сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки виртуального сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isVirtual(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если адрес передан
@@ -2065,13 +2087,13 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения имени сетевого интерфейса по адресу
+ * @brief Функция получения имени сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     имя сетевого интерфейса
  *
  */
-string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
+string awh::eth::iface::name(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если адрес не передан
@@ -2182,14 +2204,14 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод создания сетевого интерфейса
+ * @brief Функция создания сетевого интерфейса
  *
  * @param type тип сетевого интерфейса
  * @param name имя сетевого интерфейса
  * @return     дескриптор созданного сетевого интерфейса
  *
  */
-awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string & name) const noexcept {
+awh::net::socket_t awh::eth::iface::create(const event::eth_t type, string & name) noexcept {
 	// Переменная результата
 	net::socket_t result = net::invalid_socket_t;
 	/**
@@ -2463,13 +2485,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	return result;
 }
 /**
- * @brief Метод получения MTU сетевого интерфейса
+ * @brief Функция получения MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     MTU сетевого интерфейса
  *
  */
-uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
+uint32_t awh::eth::iface::mtu(string_view name) noexcept {
 	// Если название сетевого интерфейса передано
 	if(!name.empty()){
 		/**
@@ -2568,14 +2590,14 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	return 0;
 }
 /**
- * @brief Метод установки MTU сетевого интерфейса
+ * @brief Функция установки MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @param mtu  размер MTU интерфейса
  * @return     результат установки MTU сетевого интерфейса
  *
  */
-bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::mtu(string_view name, const uint32_t mtu) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2671,13 +2693,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 	return result;
 }
 /**
- * @brief Метод получения установленных флагов сетевого интерфейса
+ * @brief Функция получения установленных флагов сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     флаги сетевого интерфейса
  *
  */
-unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view name) const noexcept {
+unordered_set <awh::event::eth_flag_t> awh::eth::iface::flags(string_view name) noexcept {
 	// Переменная результата
 	unordered_set <event::eth_flag_t> result;
 	// Если название сетевого интерфейса передано
@@ -2795,7 +2817,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	return result;
 }
 /**
- * @brief Метод установки флага сетевого интерфейса
+ * @brief Функция установки флага сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @param flag флаг сетевого интерфейса
@@ -2803,7 +2825,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
  * @return     результат установки флага сетевого интерфейса
  *
  */
-bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+bool awh::eth::iface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -3012,7 +3034,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	return result;
 }
 /**
- * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
+ * @brief Функция снятия адреса сетевого устройства и пути к тому концу связи
  *
  * @details Снятие ведётся ОБНУЛЕНИЕМ адреса тем же запросом, каким он ставился:
  *          отдельного приёма снятия у Sun Solaris и illumos нет. Установлено щупом
@@ -3029,7 +3051,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
  * @return     результат выполнения снятия
  *
  */
-bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept {
+bool awh::eth::iface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого устройства и снимаемый адрес переданы
@@ -3061,7 +3083,7 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
 			 * @details Запросы SIOCSLIF* берут семейство у САМОГО сокета, а не у
 			 *          передаваемой структуры: сокет AF_INET отвечает на всякий запрос
 			 *          с адресом IPv6 отказом «семейство адресов не поддержано
-			 *          семейством протокола»
+			 *          семейством протокола».
 			 *
 			 */
 			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
@@ -3221,7 +3243,7 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод установки IP-адреса на сетевой интерфейс
+ * @brief Функция установки IP-адреса на сетевой интерфейс
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3230,7 +3252,7 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
  * @return       результат установки IP-адреса
  *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3331,14 +3353,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод получения IP-адреса сетевого интерфейса
+ * @brief Функция получения IP-адреса сетевого интерфейса
  *
  * @param name   имя сетевого интерфейса
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       IP-адрес сетевого интерфейса
  *
  */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, const event::family_t family) const noexcept {
+unique_ptr <awh::net::addr_t> awh::eth::iface::getAddress(string_view name, const event::family_t family) noexcept {
 	// Переменная результата
 	unique_ptr <awh::net::addr_t> result = nullptr;
 	// Если название сетевого интерфейса передано
@@ -3465,7 +3487,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	return result;
 }
 /**
- * @brief Метод установки параметров сетевого интерфейса точка-точка
+ * @brief Функция установки параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3474,7 +3496,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
  * @return       результат установки параметров сетевого интерфейса точка-точка
  *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3534,7 +3556,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			 *
 			 * @details На основном логическом интерфейсе живёт адрес канальной связи,
 			 *          заведённый системой, и подменить его нельзя. Под свой адрес IPv6
-			 *          система велит заводить отдельный логический интерфейс
+			 *          система велит заводить отдельный логический интерфейс.
 			 *
 			 * @warning Адреса IPv4 ложатся на основной интерфейс прямо, и заводить им
 			 *          логический незачем: лишний интерфейс пришлось бы ещё и сносить
@@ -3575,7 +3597,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод изменения параметров сетевого интерфейса точка-точка
+ * @brief Функция изменения параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для получения
@@ -3584,7 +3606,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  * @return       результат изменения параметров сетевого интерфейса точка-точка
  *
  */
-bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+bool awh::eth::iface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -3698,6 +3720,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				 * Метка завершения поиска
 				 */
 				End:
+			// Если список сетевых интерфейсов получить не удалось
 			} else {
 				/**
 				 * Если включён режим отладки
@@ -3736,7 +3759,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	return result;
 }
 /**
- * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
+ * @brief Функция комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3745,12 +3768,12 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
-	return this->configure(name, ip, nullptr, prefix, mtu);
+	return configure(name, ip, nullptr, prefix, mtu);
 }
 /**
- * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
+ * @brief Функция комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3760,7 +3783,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3935,32 +3958,14 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 	return result;
 }
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
  *
  */
-void awh::eth::Interface::threadSafety(const bool mode) noexcept {
+void awh::eth::iface::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
 	::iface::__awh_iface_tunnel_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	// Активируем работу мьютекса блокировки потока при работе с учётом розданных связей
 	::iface::__awh_iface_tunnel_lock__.enabled = (::iface::__awh_iface_tunnel_safety__ == event::mode_t::ENABLED);
 }
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Interface::Interface() noexcept {
-	/**
-	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
-	 */
-	std::call_once(::iface::__awh_iface_tunnel_once__, []() noexcept {
-		// Активируем работу мьютекса блокировки потока при работе с учётом розданных связей
-		::iface::__awh_iface_tunnel_lock__.enabled = (::iface::__awh_iface_tunnel_safety__ == event::mode_t::ENABLED);
-	});
-}
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Interface::~Interface() noexcept = default;

@@ -13,12 +13,12 @@
  * @site https://anyks.com
  *
  * \~russian
- * @brief Заголовочный файл модуля работы с сетевым уровнем Ethernet — класс Ethernet,
+ * @brief Заголовочный файл модуля работы с сетевым уровнем Ethernet — семейный заголовок,
  *        объединяющий работу с сетевыми интерфейсами, шлюзами, маршрутами,
  *        пробросом портов и сокетами канального уровня
  *
  * \~english
- * @brief Header file of the module of working with the Ethernet network level — the Ethernet class,
+ * @brief Header file of the module of working with the Ethernet network level — the family header,
  *        uniting the work with the network interfaces, the gateways, the routes,
  *        the port forwarding and the sockets of the link level
  *
@@ -34,13 +34,9 @@
 #pragma once
 
 /**
- * Наши модули
+ * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и OpenIndiana
  */
-
-/**
- * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
- */
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun) || defined(DOXYGEN)
 	/**
 	 * Подключаем заголовочный модуль SCTP протокола
 	 */
@@ -54,109 +50,4 @@
 #include "iface.hpp"
 #include "socket.hpp"
 #include "gateway.hpp"
-#include <sys/macro/global.hpp>
-
-/**
- * \~russian
- * @brief Основное пространство имён
- *
- *
- * \~english
- * @brief Main namespace
- *
- * \~
- */
-namespace awh {
-	/**
-	 * Используем стандартное пространство имён
-	 */
-	using namespace std;
-
-	/**
-	 * \~russian
-	 * @brief Класс для работы с сетевым уровнем Ethernet
-	 *
-	 * @details Сводит воедино средства работы с сетью на уровне системы - те, что
-	 *          лежат ниже отдельного подключения и касаются машины целиком:
-	 *          сетевые устройства и их настройки, адреса и маршруты, шлюзы,
-	 *          проброс портов, свойства сокетов.
-	 *
-	 *          Собственной работы класс не ведёт и служит лишь общей точкой
-	 *          доступа: за каждое направление отвечает свой вложенный объект, к
-	 *          которому и обращаются напрямую. Заведён он затем, чтобы движку
-	 *          хватало одной ссылки вместо полудюжины.
-	 *
-	 * @note Средства протокола с управлением потоком доступны лишь на Linux и
-	 *       FreeBSD - на прочих системах соответствующего объекта попросту нет, и
-	 *       обращение к нему не соберётся
-	 *
-	 * @warning Многое здесь меняет настройки **всей машины**, а не одного
-	 *          подключения: поднятие устройства, правка маршрутов, проброс портов.
-	 *          Права на такое нужны надзорные, а последствия переживают завершение
-	 *          процесса - выставленное следует снимать за собой
-	 *
-	 * \~english
-	 * @brief Class for working with the Ethernet network level
-	 *
-	 * @details Brings together the means of working with the network at the level of the system — those that
-	 *          lie below a separate connection and concern the machine entirely:
-	 *          the network devices and their settings, the addresses and the routes, the gateways,
-	 *          the port forwarding, the properties of the sockets.
-	 *
-	 *          The class performs no work of its own and serves only as a common point of
-	 *          access: each direction is answered for by its own nested object, which
-	 *          is addressed directly. It is started so that one reference would be enough
-	 *          for the engine instead of half a dozen.
-	 *
-	 * @note The means of the protocol with the flow control are available only on Linux and
-	 *       FreeBSD — on the other systems the corresponding object is simply absent, and
-	 *       an address to it will not be built
-	 *
-	 * @warning Much of what is here changes the settings of the **whole machine**, and not of one
-	 *          connection: bringing a device up, correcting the routes, forwarding the ports.
-	 *          The rights for such things are supervisory ones, and the consequences outlive the completion
-	 *          of the process — what has been set should be removed after oneself
-	 *
-	 * \~
-	 */
-	typedef class __AWH_SHARED_EXPORT__ Ethernet {
-		public:
-			// Объект работы с сетевыми адресами
-			eth::addr_t addr;
-			// Объект управления сетевым интерфейсом
-			eth::iface_t iface;
-			/**
-			 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
-			 */
-			#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
-				// Объект управления протоколом передачи с управлением потоком
-				eth::sctp_t sctp;
-			#endif
-			// Объект управления сокетами
-			eth::socket_t socket;
-			// Объект управления шлюзами
-			eth::gateway_t gateway;
-		public:
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			explicit Ethernet() noexcept;
-			/**
-			 * \~russian
-			 * @brief Деструктор
-			 *
-			 *
-			 * \~english
-			 * @brief Destructor
-			 *
-			 * \~
-			 */
-			~Ethernet() noexcept;
-	} eth_t;
-};
+#include "../../sys/macro/global.hpp"

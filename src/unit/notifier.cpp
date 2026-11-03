@@ -20,10 +20,10 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <unit/notifier.hpp>
 #include <sys/log.hpp>
+#include <unit/notifier.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -113,25 +113,25 @@ void awh::unit::Notifier::available(const event::id_t eid, const event::status_t
  */
 awh::event::id_t awh::unit::Notifier::create() noexcept {
 	// Выполняем создание события уведомителя
-	event::id_t result = this->_io->event(event::node_t::NOTIFY, event::family_t::USER);
+	event::id_t result = engine::event(event::node_t::NOTIFY, event::family_t::USER);
 	// Если событие уведомителя успешно создано
 	if(result > 0){
 		// Выполняем фиксацию настроек события сервера
-		if(this->_io->commit(result)){
+		if(engine::commit(result)){
 			// Устанавливаем функцию обратного вызова на событие записи сообщений
-			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения сообщений
-			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
+			engine::on(result, static_cast <engine::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие изменения состояния
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
+			engine::on(result, static_cast <engine::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
+			engine::on(result, static_cast <engine::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
 			// Запускаем работу события уведомителя
-			if(!this->_io->launch(result)){
+			if(!engine::launch(result)){
 				// Удаляем событие уведомителя
-				this->_io->destroy(result);
+				engine::destroy(result);
 				// Обнуляем результат
 				result = 0;
 				/**
@@ -139,20 +139,20 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
-					awh::log::debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+					log:::debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log:::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					awh::log::print("Notifier event could not be launched", awh::log::flag_t::WARNING);
+					log:::print("Notifier event could not be launched", log:::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор события уведомителя в список событий уведомителя
 			} else this->_events.emplace(result);
 		// Если событие уведомителя не может быть создано
 		} else {
 			// Удаляем событие уведомителя
-			this->_io->destroy(result);
+			engine::destroy(result);
 			// Обнуляем результат
 			result = 0;
 			/**
@@ -160,13 +160,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
-				awh::log::debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log:::debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log:::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				awh::log::print("Notifier event could not be created", awh::log::flag_t::WARNING);
+				log:::print("Notifier event could not be created", log:::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -181,7 +181,7 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
  */
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие уведомителя
-	this->_io->destroy(eid);
+	engine::destroy(eid);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -212,7 +212,7 @@ void awh::unit::Notifier::callback(const callback_t & callback) noexcept {
  */
 size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Триггерим событие уведомителя
-	return this->_io->send(eid, buffer, size);
+	return engine::send(eid, buffer, size);
 }
 /**
  * @brief Конструктор
@@ -233,17 +233,17 @@ awh::unit::Notifier::~Notifier() noexcept {
 		 */
 		for(const auto & eid : events){
 			// Снимаем функцию обратного вызова на событие чтения сообщений
-			this->_io->on(eid, static_cast <engine::callback::read_t> (nullptr));
+			engine::on(eid, static_cast <engine::callback::read_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие записи сообщений
-			this->_io->on(eid, static_cast <engine::callback::write_t> (nullptr));
+			engine::on(eid, static_cast <engine::callback::write_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			engine::on(eid, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения состояния
-			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+			engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие доступности очереди сообщений
-			this->_io->on(eid, static_cast <engine::callback::available_t> (nullptr));
+			engine::on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие уведомителя
-			this->_io->destroy(eid);
+			engine::destroy(eid);
 		}
 	}
 }

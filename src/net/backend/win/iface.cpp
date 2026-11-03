@@ -76,6 +76,17 @@ static constexpr const char * __AWH_IFACE_BACKEND__ = "MS Windows interface back
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Выбранный драйвер туннельных устройств, общий на процесс
+	 *
+	 */
+	static eth::iface::driver_t __awh_driver__ = eth::iface::driver_t::AUTO;
+
+	/**
 	 * @brief Функция опознания устройства, за каким числится адрес
 	 *
 	 * @details Ответ системы «объект уже существует» говорит лишь о занятости адреса, а
@@ -96,9 +107,9 @@ namespace {
 	 * @return        описание держателя адреса либо пустая строка
 	 *
 	 */
-	static std::string __awh_iface_holder__(const SOCKADDR_INET & address, const ADDRESS_FAMILY family) noexcept {
+	static string __awh_iface_holder__(const SOCKADDR_INET & address, const ADDRESS_FAMILY family) noexcept {
 		// Результат опознания держателя адреса
-		std::string result;
+		string result;
 		// Таблица адресов машины
 		MIB_UNICASTIPADDRESS_TABLE * table = nullptr;
 		// Если получить таблицу адресов не удалось
@@ -173,7 +184,7 @@ namespace {
 	 *          названия устройств в нижнем регистре и живут. Посимвольное сличение
 	 *          не совпадало оттого НИКОГДА: установлено прогоном, набор терял
 	 *          `IoBroadcastTest`, а привязка события к устройству отвечала отказом
-	 *          «устройство не найдено» при живом устройстве
+	 *          «устройство не найдено» при живом устройстве.
 	 *
 	 * @note Свёртка регистра здесь своя, ASCII, а не средствами языка: `tolower`
 	 *       зависит от местности, а GUID - данные протокольные, и разбирать их по
@@ -221,14 +232,14 @@ namespace {
 	 * @details Объём, потребный под перечень, заранее не известен, и система сообщает
 	 *          его сама отказом ERROR_BUFFER_OVERFLOW. Опрос потому ведётся дважды:
 	 *          первый раз ради объёма, второй ради самого перечня. Между ними
-	 *          устройство вправе появиться, оттого попыток отводится несколько
+	 *          устройство вправе появиться, оттого попыток отводится несколько.
 	 *
 	 * @param buffer буфер, в котором остаётся перечень устройств
 	 * @param family семейство адресов, какое требуется опросить
 	 * @return       указатель на первое устройство перечня, либо nullptr при отказе
 	 *
 	 */
-	PIP_ADAPTER_ADDRESSES __awh_adapters__(std::vector <uint8_t> & buffer, const ULONG family = AF_UNSPEC) noexcept {
+	PIP_ADAPTER_ADDRESSES __awh_adapters__(vector <uint8_t> & buffer, const ULONG family = AF_UNSPEC) noexcept {
 		/**
 		 * Состав запрашиваемых сведений
 		 *
@@ -259,7 +270,6 @@ namespace {
 		// Возвращаем признак отказа опроса
 		return nullptr;
 	}
-
 	/**
 	 * @brief Функция перевода широкой записи в однобайтовую
 	 *
@@ -267,27 +277,26 @@ namespace {
 	 * @return      переведённая запись
 	 *
 	 */
-	[[maybe_unused]] std::string __awh_narrow__(const wchar_t * value) noexcept {
+	[[maybe_unused]] string __awh_narrow__(const wchar_t * value) noexcept {
 		// Если запись не передана
 		if((value == nullptr) || (value[0] == L'\0'))
 			// Возвращаем пустой результат
-			return std::string();
+			return "";
 		// Получаем объём, потребный под переведённую запись
 		const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, value, -1, nullptr, 0, nullptr, nullptr);
 		// Если объём получить не удалось
 		if(size <= 1)
 			// Возвращаем пустой результат
-			return std::string();
+			return "";
 		// Отводим место под переведённую запись
-		std::vector <char> buffer(static_cast <size_t> (size), 0);
+		vector <char> buffer(static_cast <size_t> (size), 0);
 		// Выполняем перевод записи
 		if(::WideCharToMultiByte(CP_UTF8, 0, value, -1, buffer.data(), size, nullptr, nullptr) <= 0)
 			// Возвращаем пустой результат
-			return std::string();
+			return "";
 		// Возвращаем переведённую запись без завершающего нуля
-		return std::string(buffer.data());
+		return string(buffer.data());
 	}
-
 	/**
 	 * @brief Функция получения местного номера устройства по его названию
 	 *
@@ -305,7 +314,7 @@ namespace {
 			// Выводим признак того, что устройство не найдено
 			return false;
 		// Буфер под перечень сетевых устройств
-		std::vector <uint8_t> buffer;
+		vector <uint8_t> buffer;
 		// Выполняем опрос перечня сетевых устройств
 		PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 		// Если перечень устройств получить не удалось
@@ -330,22 +339,22 @@ namespace {
 };
 
 /**
- * @brief Метод получения перечня доступных сетевых устройств
+ * @brief Функция получения перечня доступных сетевых устройств
  *
  * @return перечень названий доступных сетевых устройств
  *
  */
-unordered_set <string> awh::eth::Interface::available() const noexcept {
+unordered_set <string> awh::eth::iface::available() noexcept {
 	// Переменная результата
 	unordered_set <string> result;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: unable to get list of network interfaces", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
 		return result;
 	}
@@ -361,21 +370,20 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 	// Возвращаем собранный перечень устройств
 	return result;
 }
-
 /**
- * @brief Метод проверки доступности сетевого устройства
+ * @brief Функция проверки доступности сетевого устройства
  *
  * @param name название сетевого устройства
  * @return     признак доступности сетевого устройства
  *
  */
-bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
+bool awh::eth::iface::isAvailable(string_view name) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Возвращаем признак недоступности устройства
 		return false;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
@@ -394,27 +402,26 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	// Возвращаем признак недоступности устройства
 	return false;
 }
-
 /**
- * @brief Метод получения размера кадра сетевого устройства
+ * @brief Функция получения размера кадра сетевого устройства
  *
  * @param name название сетевого устройства
  * @return     размер кадра сетевого устройства
  *
  */
-uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
+uint32_t awh::eth::iface::mtu(string_view name) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Возвращаем пустой размер кадра
 		return 0;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: unable to get list of network interfaces", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой размер кадра
 		return 0;
 	}
@@ -430,9 +437,8 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Возвращаем пустой размер кадра
 	return 0;
 }
-
 /**
- * @brief Метод получения признаков сетевого устройства
+ * @brief Функция получения признаков сетевого устройства
  *
  * @param name название сетевого устройства
  * @return     перечень признаков сетевого устройства
@@ -454,7 +460,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
  *       означает «система о нём не сообщает», а не «признак снят»
  *
  */
-unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view name) const noexcept {
+unordered_set <awh::event::eth_flag_t> awh::eth::iface::flags(string_view name) noexcept {
 	// Переменная результата
 	unordered_set <event::eth_flag_t> result;
 	// Если название сетевого устройства не передано
@@ -462,13 +468,13 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 		// Возвращаем пустой перечень признаков
 		return result;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: unable to get list of network interfaces", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой перечень признаков
 		return result;
 	}
@@ -513,12 +519,8 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	// Возвращаем собранный перечень признаков
 	return result;
 }
-
 /**
- * @brief Метод проверки того, что сетевое устройство является туннелем
- *
- * @param name название сетевого устройства
- * @return     признак того, что устройство является туннелем
+ * @brief Функция проверки того, что сетевое устройство является туннелем
  *
  * @note Опрос устройств туннели узнаёт не полностью. Вид IF_TYPE_TUNNEL система
  *       выставляет своим встроенным туннелям, а устройствам сторонних драйверов -
@@ -531,8 +533,11 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
  *       стороннего драйвера от иного виртуального устройства не отличим, и признак
  *       этот для него будет отрицательным
  *
+ * @param name название сетевого устройства
+ * @return     признак того, что устройство является туннелем
+ *
  */
-bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
+bool awh::eth::iface::isTunnel(string_view name) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Возвращаем признак того, что устройство туннелем не является
@@ -542,7 +547,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 		// Возвращаем признак того, что устройство является туннелем
 		return true;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
@@ -561,21 +566,20 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	// Возвращаем признак того, что устройство туннелем не является
 	return false;
 }
-
 /**
- * @brief Метод получения адреса сетевого устройства
- *
- * @param name   название сетевого устройства
- * @param family семейство адресов
- * @return       адрес сетевого устройства
+ * @brief Функция получения адреса сетевого устройства
  *
  * @note Выбор адреса повторяет эталонные бэкенды: у IPv4 берётся первый найденный, у
  *       IPv6 предпочитается глобальный адресу канальной связи. Довод тот же - адрес
  *       канальной связи за пределы сегмента не уходит, и отдавать его вызывающей
  *       стороне, когда есть глобальный, значило бы отдавать заведомо непригодный
  *
+ * @param name   название сетевого устройства
+ * @param family семейство адресов
+ * @return       адрес сетевого устройства
+ *
  */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, const event::family_t family) const noexcept {
+unique_ptr <awh::net::addr_t> awh::eth::iface::getAddress(string_view name, const event::family_t family) noexcept {
 	// Переменная результата
 	unique_ptr <net::addr_t> result = nullptr;
 	// Если название сетевого устройства не передано
@@ -583,13 +587,13 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 		// Возвращаем пустой результат
 		return result;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: unable to get list of network interfaces", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
 		return result;
 	}
@@ -666,25 +670,24 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	// Возвращаем найденный адрес устройства
 	return result;
 }
-
 /**
- * @brief Метод получения названия сетевого устройства по его адресу
+ * @brief Функция получения названия сетевого устройства по его адресу
  *
  * @param addr адрес сетевого устройства
  * @return     название сетевого устройства
  *
  */
-string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
+string awh::eth::iface::name(const net::addr_t * addr) noexcept {
 	// Если адрес устройства не передан
 	if(addr == nullptr)
 		// Возвращаем пустой результат
-		return string();
+		return "";
 	/**
 	 * Отсеиваем неназначенный адрес
 	 *
 	 * @details Адрес из одних нулей (`0.0.0.0`, `::`, нулевой MAC) означает «любой», а
 	 *          не адрес какого-то устройства: искать по нему нечего, и ответом обязана
-	 *          быть пустота
+	 *          быть пустота.
 	 *
 	 * @note Замером у MS Windows дефекта НЕ показано, хотя условие для него на стенде
 	 *       было - семь связей без назначенного адреса: перебор идёт по
@@ -693,6 +696,7 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	 *       без адреса выдавалась с нулевым адресом - розыск возвращал её имя (найдено
 	 *       соседней сессией на Solaris и OpenIndiana). Заслон ставится ради ЕДИНОГО
 	 *       договора движков, а не по измеренному здесь отказу
+	 *
 	 */
 	switch(addr->size){
 		// Для адреса IPv4
@@ -700,45 +704,49 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 			// Если адрес не назначен
 			if(awh_cast <const net::addr_net_ipv4_t *> (addr)->address == 0)
 				// Возвращаем пустой результат
-				return string();
+				return "";
 		} break;
 		// Для адреса IPv6
 		case 16: {
 			// Признак того, что адрес состоит из одних нулей
 			bool empty = true;
-			// Перебираем октеты переданного адреса
+			/**
+			 * Перебираем октеты переданного адреса
+			 */
 			for(uint8_t i = 0; (i < 16) && empty; i++)
 				// Запоминаем, остаётся ли адрес пустым
 				empty = (awh_cast <const net::addr_net_ipv6_t *> (addr)->address[i] == 0);
 			// Если адрес не назначен
 			if(empty)
 				// Возвращаем пустой результат
-				return string();
+				return "";
 		} break;
 		// Для адреса канального уровня
 		case 6: {
 			// Признак того, что адрес состоит из одних нулей
 			bool empty = true;
-			// Перебираем октеты переданного адреса
+			/**
+			 * Перебираем октеты переданного адреса
+			 */
 			for(uint8_t i = 0; (i < 6) && empty; i++)
 				// Запоминаем, остаётся ли адрес пустым
 				empty = (awh_cast <const net::addr_mac_t *> (addr)->address[i] == 0);
 			// Если адрес не назначен
 			if(empty)
 				// Возвращаем пустой результат
-				return string();
+				return "";
 		} break;
 	}
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: unable to get list of network interfaces", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
-		return string();
+		return "";
 	}
 	/**
 	 * Выполняем перебор всех сетевых устройств машины
@@ -753,10 +761,10 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 		 *
 		 * @details Лежит он у MS Windows не среди адресов устройства, а отдельным полем
 		 *          самого устройства, и в переборе адресов ему места нет вовсе: перебор
-		 *          этот идёт по адресам сетевым
+		 *          этот идёт по адресам сетевым.
 		 *
 		 * @warning Ветви этой прежде не было НИ ОДНОЙ, тогда как проверка на пустоту
-		 *          аппаратного адреса выше стояла - то есть довод такого рода метод
+		 *          аппаратного адреса выше стояла - то есть довод такого рода функция
 		 *          принимал, разбирал и молча не находил никогда, отвечая пустым
 		 *          названием при живом устройстве. Эталон же (`bsd/iface.cpp:271`) по
 		 *          аппаратному адресу устройство ищет
@@ -814,14 +822,10 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 		}
 	}
 	// Возвращаем пустой результат
-	return string();
+	return "";
 }
-
 /**
- * @brief Метод проверки того, что сетевое устройство является виртуальным
- *
- * @param name название сетевого устройства
- * @return     признак того, что устройство является виртуальным
+ * @brief Функция проверки того, что сетевое устройство является виртуальным
  *
  * @note Признака «устройство виртуально» система не отдаёт вовсе, и ответ собирается
  *       по виду устройства: туннели, петлевое устройство и программные соединения
@@ -829,14 +833,17 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
  *       иным он у MS Windows быть не может - виртуальность там не свойство устройства,
  *       а свойство драйвера, который его завёл
  *
+ * @param name название сетевого устройства
+ * @return     признак того, что устройство является виртуальным
+ *
  */
-bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
+bool awh::eth::iface::isVirtual(string_view name) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Возвращаем признак того, что устройство виртуальным не является
 		return false;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
@@ -855,12 +862,12 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 		 * Определяем вид сетевого устройства
 		 */
 		switch(adapter->IfType){
+			// Если устройство является программным соединением
+			case IF_TYPE_PPP:
 			// Если устройство является туннелем
 			case IF_TYPE_TUNNEL:
 			// Если устройство является петлевым
 			case IF_TYPE_SOFTWARE_LOOPBACK:
-			// Если устройство является программным соединением
-			case IF_TYPE_PPP:
 			/**
 			 * Если устройство объявлено сборным видом «виртуальное»
 			 *
@@ -879,13 +886,8 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	// Возвращаем признак того, что устройство виртуальным не является
 	return false;
 }
-
 /**
- * @brief Метод установки размера кадра сетевого устройства
- *
- * @param name название сетевого устройства
- * @param mtu  размер кадра сетевого устройства
- * @return     результат выполнения установки
+ * @brief Функция установки размера кадра сетевого устройства
  *
  * @note Размер кадра задаётся порознь для IPv4 и IPv6: у MS Windows это две разные
  *       записи настроек одного устройства, тогда как у систем POSIX размер этот один
@@ -895,14 +897,18 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
  * @warning Настройка эта требует надзорных прав. Их отсутствие отвечает отказом
  *          ERROR_ACCESS_DENIED, и отказ этот заносится в журнал, а не скрывается
  *
+ * @param name название сетевого устройства
+ * @param mtu  размер кадра сетевого устройства
+ * @return     результат выполнения установки
+ *
  */
-bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::mtu(string_view name, const uint32_t mtu) noexcept {
 	// Если название сетевого устройства не передано либо размер кадра пуст
 	if(name.empty() || (mtu == 0))
 		// Возвращаем отрицательный результат установки
 		return false;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
@@ -938,13 +944,14 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 			// Устанавливаем размер кадра устройства
 			row.NlMtu = static_cast <ULONG> (mtu);
 			/**
-			 * Поле это система требует обнулить перед записью
+			 * Обнуляем срок достижимости устройства
+			 *
+			 * @details Поле это система требует обнулить перед записью.
 			 *
 			 * @note Требование описано самой системой: SetIpInterfaceEntry отвечает
 			 *       отказом ERROR_INVALID_PARAMETER, если оставить снятое значение
 			 *
 			 */
-			// Обнуляем срок достижимости устройства
 			row.SitePrefixLength = 0;
 			// Выполняем запись настроек устройства
 			const DWORD code = ::SetIpInterfaceEntry(&row);
@@ -953,7 +960,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				// Запоминаем положительный результат установки
 				result = true;
 			// Если записать настройки устройства не удалось
-			else awh::log::print("%s: interface MTU could not be set, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+			else log::print("%s: interface MTU could not be set, error %lu", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 		}
 		// Завершаем перебор устройств
 		break;
@@ -961,14 +968,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 	// Возвращаем результат выполнения установки
 	return result;
 }
-
 /**
- * @brief Метод установки режима безопасной работы с потоками
+ * @brief Функция установки режима безопасной работы с потоками
  *
  * @details Своего общего на процесс учёта у слоя нет: перечень устройств спрашивается у
  *          системы всякий раз заново, и оберегать здесь нечего. А вот у туннельных
  *          устройств учёт есть - реестр заведённых устройств живёт на весь процесс, -
- *          и режим этот доводится до него
+ *          и режим этот доводится до него.
  *
  * @note Тем слой этот отличается от bsd и gnu, где реализация пуста: у MS Windows
  *       туннельные устройства заводятся не описателем, а драйвером, и описатели их
@@ -977,21 +983,16 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
  * @param mode устанавливаемый режим безопасной работы с потоками
  *
  */
-void awh::eth::Interface::threadSafety(const bool mode) noexcept {
+void awh::eth::iface::threadSafety(const bool mode) noexcept {
 	// Приводим замки туннельных устройств к установленному режиму
 	win::tunnel::threadSafety(mode);
 }
-
 /**
- * @brief Метод создания сетевого устройства
- *
- * @param type вид создаваемого сетевого устройства
- * @param name название создаваемого сетевого устройства
- * @return     дескриптор созданного сетевого устройства
+ * @brief Функция создания сетевого устройства
  *
  * @details Встроенного туннельного устройства у MS Windows нет вовсе, и приносит его
  *          сторонний драйвер. Их два: Wintun переносит пакеты сетевого уровня, а
- *          tap-windows6 - кадры канального уровня вместе с аппаратными адресами
+ *          tap-windows6 - кадры канального уровня вместе с аппаратными адресами.
  *
  * @note Каким драйвером заводить устройство, задаётся настройкой driver. Значение
  *       AUTO, установленное изначально, поручает выбор самому модулю: кадры
@@ -1026,12 +1027,16 @@ void awh::eth::Interface::threadSafety(const bool mode) noexcept {
  * Записано вслед за сличением состава разборов с эталоном 03.09.2026: неразъяснённый
  * отказ аудиты открывают заново, принимая ограничение системы за недоделку.
  *
+ * @param type вид создаваемого сетевого устройства
+ * @param name название создаваемого сетевого устройства
+ * @return     дескриптор созданного сетевого устройства
+ *
  */
-awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string & name) const noexcept {
+awh::net::socket_t awh::eth::iface::create(const event::eth_t type, string & name) noexcept {
 	// Если создаётся устройство неподдерживаемого вида
 	if((type != event::eth_t::TUN) && (type != event::eth_t::TAP)){
 		// Выводим в журнал сообщение о неподдерживаемом виде устройства
-		awh::log::print("%s: only TUN and TAP devices can be created", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: only TUN and TAP devices can be created", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим пустой дескриптор
 		return net::invalid_socket_t;
 	}
@@ -1040,7 +1045,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	/**
 	 * Определяем установленный драйвер туннельных устройств
 	 */
-	switch(static_cast <uint8_t> (this->_driver)){
+	switch(static_cast <uint8_t> (__awh_driver__)){
 		// Если драйвер задан вызывающим явно
 		case static_cast <uint8_t> (driver_t::WINTUN):
 			// Запоминаем заданный драйвер
@@ -1072,21 +1077,23 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 			// Если ни одного драйвера на машине не нашлось
 			else {
 				// Выводим в журнал сообщение об отсутствии драйверов
-				awh::log::print("%s: neither Wintun nor tap-windows6 is available on this machine", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+				log::print("%s: neither Wintun nor tap-windows6 is available on this machine", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
 		}
 	}
 	/**
-	 * Закрепляем сделанный выбор драйвера
+	 * Выполняем создание туннельного устройства выбранным драйвером
+	 *
+	 * @note Закрепляем сделанный выбор драйвера
 	 *
 	 * @details Выбор, поручённый модулю значением AUTO, делался в местной переменной, а
 	 *          поле оставалось прежним - и `driver()` отдавал AUTO даже после того, как
 	 *          устройство завелось. Узнать, каким драйвером оно заведено на деле,
 	 *          вызывающему было нечем: годность драйверов наружу не выведена, а два
 	 *          драйвера у MS Windows несут разное - Wintun пакеты сетевого уровня, а
-	 *          tap-windows6 кадры канального
+	 *          tap-windows6 кадры канального.
 	 *
 	 * @note Закрепляется лишь выбор, СДЕЛАННЫЙ ЗДЕСЬ: драйвер, названный вызывающим
 	 *       явно, и без того лежит в поле, а переписывать его значением того же смысла
@@ -1102,46 +1109,45 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	 *          при том, что ради этого перебора значение AUTO и заведено
 	 *
 	 */
-	// Выполняем создание туннельного устройства выбранным драйвером
 	const net::socket_t result = win::tunnel::create(type, driver, name);
 	// Если устройство заведено и выбор драйвера был поручен модулю
-	if((result != net::invalid_socket_t) && (this->_driver == driver_t::AUTO))
+	if((result != net::invalid_socket_t) && (__awh_driver__ == driver_t::AUTO))
 		// Запоминаем драйвер, каким устройство заведено на деле
-		this->_driver = static_cast <driver_t> (static_cast <uint8_t> (driver));
+		__awh_driver__ = static_cast <driver_t> (static_cast <uint8_t> (driver));
 	// Выводим дескриптор заведённого туннельного устройства
 	return result;
 }
 /**
- * @brief Метод получения драйвера туннельных устройств
+ * @brief Функция получения драйвера туннельных устройств
  *
  * @return драйвер, каким заводятся туннельные устройства
  *
  */
-awh::eth::Interface::driver_t awh::eth::Interface::driver() const noexcept {
+awh::eth::iface::driver_t awh::eth::iface::driver() noexcept {
 	// Выводим установленный драйвер туннельных устройств
-	return this->_driver;
+	return __awh_driver__;
 }
 /**
- * @brief Метод установки драйвера туннельных устройств
+ * @brief Функция установки драйвера туннельных устройств
  *
  * @param driver драйвер туннельных устройств для установки
  *
  */
-void awh::eth::Interface::driver(const driver_t driver) noexcept {
+void awh::eth::iface::driver(const driver_t driver) noexcept {
 	// Выполняем установку драйвера туннельных устройств
-	this->_driver = driver;
+	__awh_driver__ = driver;
 }
 /**
- * @brief Метод удаления сетевого устройства
- *
- * @param name название удаляемого сетевого устройства
- * @return     результат выполнения удаления
+ * @brief Функция удаления сетевого устройства
  *
  * @note Удаляются здесь лишь устройства, заведённые этим же приложением: сторонние
  *       заводит установщик драйвера, и снимать их приложению не положено
  *
+ * @param name название удаляемого сетевого устройства
+ * @return     результат выполнения удаления
+ *
  */
-bool awh::eth::Interface::destroy(string_view name) const noexcept {
+bool awh::eth::iface::destroy(string_view name) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Выводим отрицательный результат удаления
@@ -1151,21 +1157,15 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	// Если устройство среди заведённых не значится
 	if(sock == net::invalid_socket_t){
 		// Выводим в журнал сообщение о невозможности удаления устройства
-		awh::log::print("%s: interface \"%s\" was not created by this application and cannot be removed", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		log::print("%s: interface \"%s\" was not created by this application and cannot be removed", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат удаления
 		return false;
 	}
 	// Выполняем удаление найденного устройства
 	return win::tunnel::destroy(sock);
 }
-
 /**
- * @brief Метод установки адреса сетевого устройства
- *
- * @param name   название сетевого устройства
- * @param ip     устанавливаемый адрес
- * @param prefix длина префикса сети
- * @return       результат выполнения установки
+ * @brief Функция установки адреса сетевого устройства
  *
  * @note Адрес добавляется к устройству, а не замещает прежние: у MS Windows за
  *       устройством числится перечень адресов, и понятия «единственного» адреса нет
@@ -1178,8 +1178,13 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
  *
  * @warning Установка требует надзорных прав и переживает завершение процесса
  *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param prefix длина префикса сети
+ * @return       результат выполнения установки
+ *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 	// Если название устройства либо адрес не переданы
 	if(name.empty() || (ip == nullptr))
 		// Выводим отрицательный результат установки
@@ -1206,7 +1211,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 */
 	if(prefix > ((ip->size == 4) ? 32 : 128)){
 		// Выводим в журнал сообщение о недопустимой длине префикса
-		awh::log::print("%s: Prefix length %u is out of range for the %s address", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, static_cast <uint32_t> (prefix), ((ip->size == 4) ? "IPv4" : "IPv6"));
+		log::print("%s: Prefix length %u is out of range for the %s address", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, static_cast <uint32_t> (prefix), ((ip->size == 4) ? "IPv4" : "IPv6"));
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1215,7 +1220,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	// Если сетевое устройство найти не удалось
 	if(!::__awh_luid__(name, luid)){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		log::print("%s: interface \"%s\" was not found", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1259,7 +1264,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Если семейство адреса определить не удалось
 		default: {
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			awh::log::print("%s: only IPv4 and IPv6 addresses can be assigned to an interface", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			log::print("%s: only IPv4 and IPv6 addresses can be assigned to an interface", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 			// Выводим отрицательный результат установки
 			return false;
 		}
@@ -1280,7 +1285,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 *          системы «уже есть», движок считал дело сделанным - и устройство оставалось
 	 *          БЕЗ АДРЕСА вовсе. Отправлять с него нечем: путь к встречной стороне проложен,
 	 *          сосед недостижим, и система отвечает отправителю «ресурс временно недоступен»
-	 *          бесконечно
+	 *          бесконечно.
 	 *
 	 * @note Установлено щупом на Windows ARM64 20.08.2026: адрес 10.77.0.1 числился за
 	 *       ОТКЛЮЧЁННЫМ устройством «Подключение по локальной сети» в состоянии Deprecated,
@@ -1289,6 +1294,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 *
 	 * @warning Сличается именно ЗАПИСЬ ПО НАШЕМУ НОМЕРУ устройства, а не наличие адреса в
 	 *          системе: второе как раз и вводило в заблуждение
+	 *
 	 */
 	if(code == ERROR_OBJECT_ALREADY_EXISTS){
 		// Запись адреса для сличения
@@ -1306,27 +1312,22 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Выполняем опознание устройства, за каким числится адрес
 		const string & holder = ::__awh_iface_holder__(row.Address, row.Address.si_family);
 		// Выводим в журнал сообщение о занятости адреса другим устройством
-		awh::log::print("%s: address is already assigned to another interface (%s), \"%s\" left without it", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, (holder.empty() ? "holder unknown" : holder.c_str()), string(name).c_str());
+		log::print("%s: address is already assigned to another interface (%s), \"%s\" left without it", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, (holder.empty() ? "holder unknown" : holder.c_str()), string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
 	// Выводим в журнал сообщение о невозможности установки адреса
-	awh::log::print("%s: interface address could not be assigned, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	log::print("%s: interface address could not be assigned, error %lu", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }
 /**
- * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
- *
- * @param name название сетевого устройства
- * @param ip   снимаемый адрес
- * @param peer адрес того конца связи, путь к которому снимается
- * @return     результат выполнения снятия
+ * @brief Функция снятия адреса сетевого устройства и пути к тому концу связи
  *
  * @details Снимает ровно то, что поставила установка адреса, и снимает молча: отказ
  *          системы записью в журнал не сопровождается. Причина в том, что снятие идёт
  *          при свёртывании туннеля, когда устройство может быть уже снесено вместе со
- *          всем, что за ним числилось, - и отказ «нет такого объекта» здесь законен
+ *          всем, что за ним числилось, - и отказ «нет такого объекта» здесь законен.
  *
  * @warning Снятие ОБЯЗАТЕЛЬНО у MS Windows и не нужно у систем POSIX: устройство
  *          драйвера tap-windows6 живёт в системе постоянно, приложением не сносится, и
@@ -1335,8 +1336,13 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  *          оставались на устройстве от прежних прогонов, и следующее устройство,
  *          заведённое драйвером Wintun, оставалось без адреса вовсе
  *
+ * @param name название сетевого устройства
+ * @param ip   снимаемый адрес
+ * @param peer адрес того конца связи, путь к которому снимается
+ * @return     результат выполнения снятия
+ *
  */
-bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept {
+bool awh::eth::iface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) noexcept {
 	// Если название сетевого устройства либо адрес не переданы
 	if(name.empty() || (ip == nullptr))
 		// Выводим отрицательный результат снятия
@@ -1382,7 +1388,7 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
 			 *       отрицательный ответ - при живом адресе на устройстве
 			 *
 			 * @warning Несовпадение это молчаливо: адрес остаётся на устройстве и переживает
-			 *          прогон ровно так же, как описано у самого метода
+			 *          прогон ровно так же, как описано у самой функции
 			 *
 			 */
 			row.Address.Ipv6.sin6_scope_id = static_cast <ULONG> (awh_cast <const net::addr_net_ipv6_t *> (ip)->zone);
@@ -1438,13 +1444,7 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод установки адреса сетевого устройства связи точка-точка
- *
- * @param name   название сетевого устройства
- * @param ip     устанавливаемый адрес
- * @param peer   адрес того конца связи
- * @param prefix длина префикса сети
- * @return       результат выполнения установки
+ * @brief Функция установки адреса сетевого устройства связи точка-точка
  *
  * @note Понятия адреса того конца у MS Windows нет: система не держит при адресе
  *       устройства второго адреса, как то заведено у систем POSIX полем ifa_dstaddr.
@@ -1455,10 +1455,16 @@ bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, c
  * @warning Установка требует надзорных прав. Проложенный путь переживает завершение
  *          процесса и снимается вместе с устройством
  *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param peer   адрес того конца связи
+ * @param prefix длина префикса сети
+ * @return       результат выполнения установки
+ *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
 	// Если установить адрес устройства не удалось
-	if(!this->setAddress(name, ip, prefix))
+	if(!eth::iface::setAddress(name, ip, prefix))
 		// Выводим отрицательный результат установки
 		return false;
 	// Если адрес того конца связи не передан
@@ -1506,7 +1512,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Если семейство адреса определить не удалось
 		default: {
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			awh::log::print("%s: only IPv4 and IPv6 peer addresses are supported", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			log::print("%s: only IPv4 and IPv6 peer addresses are supported", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 			// Выводим отрицательный результат установки
 			return false;
 		}
@@ -1522,18 +1528,12 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Выводим положительный результат установки
 		return true;
 	// Выводим в журнал сообщение о невозможности прокладки пути
-	awh::log::print("%s: route to the peer could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	log::print("%s: route to the peer could not be created, error %lu", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }
 /**
- * @brief Метод получения адреса сетевого устройства вместе с адресом того конца связи
- *
- * @param name   название сетевого устройства
- * @param ip     заполняемый адрес устройства
- * @param peer   заполняемый адрес того конца связи
- * @param prefix заполняемая длина префикса сети
- * @return       результат выполнения получения
+ * @brief Функция получения адреса сетевого устройства вместе с адресом того конца связи
  *
  * @note Семейство искомого адреса задаётся заранее подготовленным объектом ip:
  *       четыре байта означают IPv4, шестнадцать - IPv6. Так же устроены и эталонные
@@ -1544,14 +1544,20 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  *          смысл несёт проложенный к нему путь, но путь этот адресом устройства не
  *          является и выдаваться за него не должен
  *
+ * @param name   название сетевого устройства
+ * @param ip     заполняемый адрес устройства
+ * @param peer   заполняемый адрес того конца связи
+ * @param prefix заполняемая длина префикса сети
+ * @return       результат выполнения получения
+ *
  */
-bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, [[maybe_unused]] unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+bool awh::eth::iface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, [[maybe_unused]] unique_ptr <net::addr_t> & peer, uint8_t & prefix) noexcept {
 	// Если название устройства либо заполняемый адрес не переданы
 	if(name.empty() || (ip == nullptr))
 		// Выводим отрицательный результат получения
 		return false;
 	// Буфер под перечень сетевых устройств
-	std::vector <uint8_t> buffer;
+	vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
 	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
 	// Если перечень устройств получить не удалось
@@ -1619,12 +1625,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	return result;
 }
 /**
- * @brief Метод установки признака сетевого устройства
- *
- * @param name название сетевого устройства
- * @param flag устанавливаемый признак
- * @param mode режим включения либо выключения признака
- * @return     результат выполнения установки
+ * @brief Функция установки признака сетевого устройства
  *
  * @note Правится здесь один признак поднятия устройства: у MS Windows он и есть
  *       единственный, каким приложение вправе распоряжаться. Прочие признаки система
@@ -1635,8 +1636,13 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @warning Установка требует надзорных прав и действует на всю машину: устройство
  *          останется поднятым либо опущенным и после завершения процесса
  *
+ * @param name название сетевого устройства
+ * @param flag устанавливаемый признак
+ * @param mode режим включения либо выключения признака
+ * @return     результат выполнения установки
+ *
  */
-bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+bool awh::eth::iface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) noexcept {
 	// Если название сетевого устройства не передано
 	if(name.empty())
 		// Выводим отрицательный результат установки
@@ -1644,7 +1650,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если правится признак, каким система распоряжаться не даёт
 	if(flag != event::eth_flag_t::UP){
 		// Выводим в журнал сообщение о неподдерживаемом признаке
-		awh::log::print("%s: only the UP flag can be changed, MS Windows derives the rest from the driver", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: only the UP flag can be changed, MS Windows derives the rest from the driver", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1653,7 +1659,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если сетевое устройство найти не удалось
 	if(!::__awh_luid__(name, luid)){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		log::print("%s: interface \"%s\" was not found", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1662,7 +1668,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если порядковый номер устройства по местному номеру получить не удалось
 	if(::ConvertInterfaceLuidToIndex(&luid, &index) != NO_ERROR){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		awh::log::print("%s: interface \"%s\" has no index", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		log::print("%s: interface \"%s\" has no index", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1678,6 +1684,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	 *          «не найдено». Подъём устройства под MS Windows не работал НИКОГДА и ни для
 	 *          какого устройства - выдал себя дефект только проверкой переноса пакета
 	 *          через туннель 20.08.2026. Замены в виде SetIfEntry2 в заголовках MinGW нет
+	 *
 	 */
 	MIB_IFROW row{};
 	// Устанавливаем порядковый номер устройства
@@ -1685,7 +1692,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если снять нынешние настройки устройства не удалось
 	if(::GetIfEntry(&row) != NO_ERROR){
 		// Выводим в журнал сообщение о невозможности опроса устройства
-		awh::log::print("%s: interface state could not be read", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		log::print("%s: interface state could not be read", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1698,12 +1705,16 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 		// Выводим положительный результат установки
 		return true;
 	// Выводим в журнал сообщение о невозможности записи настроек
-	awh::log::print("%s: interface state could not be changed, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	log::print("%s: interface state could not be changed, error %lu", log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }
 /**
- * @brief Метод полной настройки сетевого устройства
+ * @brief Функция полной настройки сетевого устройства
+ *
+ * @note Устройство поднимать здесь не приходится: у MS Windows оно поднимается само,
+ *       едва драйвер сообщил системе о подключении. Попытка поднять уже поднятое
+ *       отвечает отказом, и потому её здесь нет вовсе
  *
  * @param name   название сетевого устройства
  * @param ip     устанавливаемый адрес
@@ -1711,25 +1722,21 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
  * @param mtu    размер кадра устройства, ноль означает «не трогать»
  * @return       результат выполнения настройки
  *
- * @note Устройство поднимать здесь не приходится: у MS Windows оно поднимается само,
- *       едва драйвер сообщил системе о подключении. Попытка поднять уже поднятое
- *       отвечает отказом, и потому её здесь нет вовсе
- *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Если установить адрес устройства не удалось
-	if(!this->setAddress(name, ip, prefix))
+	if(!eth::iface::setAddress(name, ip, prefix))
 		// Выводим отрицательный результат настройки
 		return false;
 	// Если размер кадра задан и установить его не удалось
-	if((mtu > 0) && !this->mtu(name, mtu))
+	if((mtu > 0) && !eth::iface::mtu(name, mtu))
 		// Выводим отрицательный результат настройки
 		return false;
 	// Выводим положительный результат настройки
 	return true;
 }
 /**
- * @brief Метод полной настройки сетевого устройства связи точка-точка
+ * @brief Функция полной настройки сетевого устройства связи точка-точка
  *
  * @param name   название сетевого устройства
  * @param ip     устанавливаемый адрес
@@ -1739,20 +1746,20 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @return       результат выполнения настройки
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Если установить адрес устройства не удалось
-	if(!this->setAddress(name, ip, peer, prefix))
+	if(!eth::iface::setAddress(name, ip, peer, prefix))
 		// Выводим отрицательный результат настройки
 		return false;
 	// Если размер кадра задан и установить его не удалось
-	if((mtu > 0) && !this->mtu(name, mtu))
+	if((mtu > 0) && !eth::iface::mtu(name, mtu))
 		// Выводим отрицательный результат настройки
 		return false;
 	// Выводим положительный результат настройки
 	return true;
 }
 /**
- * @brief Метод проверки того, что устройство с заданным адресом является туннелем
+ * @brief Функция проверки того, что устройство с заданным адресом является туннелем
  *
  * @param addr адрес искомого сетевого устройства
  * @return     признак того, что устройство является туннелем
@@ -1761,30 +1768,30 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  *       по названию, - со всеми её оговорками
  *
  */
-bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isTunnel(const net::addr_t * addr) noexcept {
 	// Если адрес сетевого устройства не передан
 	if(addr == nullptr)
 		// Выводим признак того, что устройство туннелем не является
 		return false;
 	// Выполняем поиск названия устройства по его адресу
-	const string & name = this->name(addr);
+	const string & name = eth::iface::name(addr);
 	// Выводим признак того, чем найденное устройство является
-	return (!name.empty() ? this->isTunnel(name) : false);
+	return (!name.empty() ? eth::iface::isTunnel(name) : false);
 }
 /**
- * @brief Метод проверки того, что устройство с заданным адресом является виртуальным
+ * @brief Функция проверки того, что устройство с заданным адресом является виртуальным
  *
  * @param addr адрес искомого сетевого устройства
  * @return     признак того, что устройство является виртуальным
  *
  */
-bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isVirtual(const net::addr_t * addr) noexcept {
 	// Если адрес сетевого устройства не передан
 	if(addr == nullptr)
 		// Выводим признак того, что устройство виртуальным не является
 		return false;
 	// Выполняем поиск названия устройства по его адресу
-	const string & name = this->name(addr);
+	const string & name = eth::iface::name(addr);
 	// Выводим признак того, чем найденное устройство является
-	return (!name.empty() ? this->isVirtual(name) : false);
+	return (!name.empty() ? eth::iface::isVirtual(name) : false);
 }

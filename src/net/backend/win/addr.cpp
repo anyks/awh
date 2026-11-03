@@ -137,12 +137,19 @@ namespace {
 		 */
 		outward_t() noexcept : filled(false), deadline(0), address{}, mac{}, zone(0) {}
 	};
+
 	/**
-	 * @brief Состояние блокировок, погашенное при заведении
+	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
+	 *
+	 * @tparam MutexType тип активного мьютекса
+	 */
+	template <typename MutexType = std::mutex>
+	/**
+	 * @brief Структура состояния блокировок, погашенное при заведении
 	 *
 	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
 	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
-	 *          за захват замка на каждом обращении незачем
+	 *          за захват замка на каждом обращении незачем.
 	 *
 	 * @note Гашение стоит здесь, а не отдельной строкой рядом с объявлением: на уровне
 	 *       пространства имён оператор не пишется вовсе - там разрешены одни объявления.
@@ -152,7 +159,6 @@ namespace {
 	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
 	 *
 	 */
-	template <typename MutexType = std::mutex>
 	struct muted_state_t : public awh::lock_state_t <MutexType> {
 		/**
 		 * @brief Конструктор
@@ -165,11 +171,12 @@ namespace {
 	};
 	// Замок, оберегающий запомненные сведения
 	static muted_state_t <std::shared_mutex> __awh_outward_mutex__;
+
 	/**
 	 * @brief Признак безопасной работы с потоками
 	 *
 	 * @details Умолчание ОТКЛЮЧЕНО намеренно: работа в один поток - обычный расклад,
-	 *          и платить за захват замка на каждом обращении незачем
+	 *          и платить за захват замка на каждом обращении незачем.
 	 *
 	 * @note Лежит здесь, а не в `eth.cpp`, как лежал прежде: замок, каким он
 	 *       распоряжается, живёт в этом же файле, а из чужой единицы трансляции
@@ -178,7 +185,11 @@ namespace {
 	 *
 	 */
 	static awh::event::mode_t __awh_thread_safety__ = awh::event::mode_t::DISABLED;
-	// Запомненные сведения порознь для IPv4 и IPv6
+
+	/**
+	 * @brief Запомненные сведения порознь для IPv4 и IPv6
+	 *
+	 */
 	static outward_t __awh_outward__[2];
 
 	/**
@@ -191,7 +202,7 @@ namespace {
 	 *          названия устройств в нижнем регистре и живут. Посимвольное сличение
 	 *          не совпадало оттого НИКОГДА: установлено прогоном, набор терял
 	 *          `IoBroadcastTest`, а привязка события к устройству отвечала отказом
-	 *          «устройство не найдено» при живом устройстве
+	 *          «устройство не найдено» при живом устройстве.
 	 *
 	 * @note Свёртка регистра здесь своя, ASCII, а не средствами языка: `tolower`
 	 *       зависит от местности, а GUID - данные протокольные, и разбирать их по
@@ -270,7 +281,7 @@ namespace {
 	 *
 	 * @details Пустые адрес и аппаратный адрес разом означают не «устройство не
 	 *          найдено», а осознанный отказ от выбора: запись читается как «любой
-	 *          адрес», и устройство отбирает система при привязке сокета
+	 *          адрес», и устройство отбирает система при привязке сокета.
 	 *
 	 * @param source описание источника обмена
 	 * @return       признак отсутствия приметы для подбора
@@ -301,7 +312,7 @@ namespace {
 	 * @brief Функция проверки годности адреса IPv6 источником обмена
 	 *
 	 * @details Годным считается любой адрес IPv6, кроме канального и петли. Канальный
-	 *          без зоны устройства бессмыслен, петля же за пределы машины не выходит
+	 *          без зоны устройства бессмыслен, петля же за пределы машины не выходит.
 	 *
 	 * @param source описание источника обмена
 	 * @return       признак годности адреса
@@ -401,7 +412,7 @@ namespace {
 	 *
 	 * @details Нужна там, где устройство пути по умолчанию годного адреса не дало: на
 	 *          машине без пути IPv6 наружу путём оказывается туннель, держащий один
-	 *          лишь канальный адрес
+	 *          лишь канальный адрес.
 	 *
 	 * @param source описание источника обмена
 	 *
@@ -457,7 +468,25 @@ namespace {
 };
 
 /**
- * @brief Метод заполнения источника обмена по названию сетевого устройства
+ * @brief Функция установки режима безопасной работы с потоками
+ *
+ * @warning Прежде обращение это лежало в `eth.cpp` и ставило один признак, не включая
+ *          НИЧЕГО: замок склада внешних адресов живёт здесь, и из той единицы
+ *          трансляции добраться до него было нечем. Склад оставался без замка при
+ *          всяком положении переключателя
+ *
+ * @param mode устанавливаемый режим безопасной работы с потоками
+ *
+ */
+void awh::eth::addr::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Приводим замок склада внешних адресов к установленному режиму
+	::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+
+/**
+ * @brief Функция заполнения источника обмена по названию сетевого устройства
  *
  * @param source описание источника обмена
  *
@@ -468,7 +497,7 @@ namespace {
  *       а следом к таблице путей, здесь довольно одного опроса
  *
  */
-void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(net::src_t & source) noexcept {
 	// Если описание источника обмена не передано
 	if(source.ip == nullptr)
 		// Выходим из функции
@@ -479,16 +508,17 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	 * @details Пустое название означает не отказ, а просьбу выбрать устройство
 	 *          самому - то, которым машина выходит во внешнюю сеть. Ровно так
 	 *          поступают эталонные бэкенды: у них пустое название уводит разбор к
-	 *          подбору по пути умолчания
+	 *          подбору по пути умолчания.
 	 *
 	 * @note Прежде пустое название уводило из функции молча, и источник оставался
 	 *       незаполненным: свой адрес объявлялся нулём, а название устройства -
 	 *       пустым. Установлено прогоном: набор терял `IoBroadcastTest`, где
 	 *       устройство выхода спрашивают именно так
+	 *
 	 */
 	if(source.iface.empty()){
 		// Выполняем подбор устройства выхода во внешнюю сеть
-		this->fillSource(event::node_t::NONE, source);
+		eth::addr::fillSource(event::node_t::NONE, source);
 		// Выходим из функции
 		return;
 	}
@@ -554,7 +584,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	}
 }
 /**
- * @brief Метод заполнения источника обмена по заданной сети
+ * @brief Функция заполнения источника обмена по заданной сети
  *
  * @param net    адрес сети, среди которой отыскивается устройство
  * @param source описание источника обмена
@@ -564,7 +594,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
  *       эталонными бэкендами виду
  *
  */
-void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(const net::addr_t * net, net::src_t & source) noexcept {
 	/**
 	 * Несличимая пара источника и сети отвечает пустотой
 	 *
@@ -576,6 +606,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 	 *          Проверка AddressFillSourceMismatchedKindTest ловит это лишь на машине,
 	 *          где устройство подходящего семейства вообще есть, - оттого стенд x86-64
 	 *          молчал, а ARM64 отказал
+	 *
 	 */
 	if((net == nullptr) || (source.ip == nullptr) || (net->size != source.ip->size))
 		// Заполнять источник несличимой парой нечем
@@ -591,6 +622,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 	 *          префикса нулевая: маска сличения обращается в нуль, и сличение нуля с
 	 *          нулём выходит верным всегда. Проверка EthSuiteTest падала оттого на
 	 *          всякой машине Windows, а вина ложилась на устройство маршрутов
+	 *
 	 */
 	switch(net->size){
 		// Для адреса IPv4
@@ -604,7 +636,9 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		case 16: {
 			// Признак того, что адрес состоит из одних нулей
 			bool empty = true;
-			// Перебираем октеты переданного адреса
+			/**
+			 * Перебираем октеты переданного адреса
+			 */
 			for(uint8_t i = 0; (i < 16) && empty; i++)
 				// Запоминаем, остаётся ли адрес пустым
 				empty = (awh_cast <const net::addr_net_ipv6_t *> (net)->address[i] == 0);
@@ -662,6 +696,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 	 * @note Отказ оглашается: соседнее место этого же файла при том же самом отказе пишет
 	 *       предупреждение, и молчать здесь значило бы разводить один отказ на два разных
 	 *       поведения
+	 *
 	 */
 	if(adapters == nullptr){
 		// Выводим в журнал сообщение о невозможности опроса устройств
@@ -702,6 +737,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				 *          неопределённое. Найдено надзирателем undefined у наречий
 				 *          POSIX: «shift exponent -2 is negative». Довод приходит от
 				 *          потребителя, ограничивать его выше по течению нечем
+				 *
 				 */
 				const uint32_t mask = (
 					(prefix == 0) ? 0 :
@@ -782,16 +818,16 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		}
 	}
 	// Выполняем подбор устройства без оглядки на сеть
-	this->fillSource(event::node_t::NONE, source);
+	eth::addr::fillSource(event::node_t::NONE, source);
 }
 /**
- * @brief Метод заполнения источника обмена по виду узла
+ * @brief Функция заполнения источника обмена по виду узла
  *
  * @param node   вид узла обмена
  * @param source описание источника обмена
  *
  */
-void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(const event::node_t node, net::src_t & source) noexcept {
 	// Если описание источника обмена не передано
 	if(source.ip == nullptr)
 		// Выходим из функции
@@ -813,7 +849,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				// Выходим из функции
 				return;
 			// Описание пути по умолчанию
-			gateway_t::route_t route{};
+			gateway::route_t route{};
 			// Если адрес является адресом IPv4
 			if(source.ip->size == 4){
 				// Заводим адрес шлюза пути
@@ -831,11 +867,11 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				// Выходим из функции
 				return;
 			// Если объект работы с путями задан и путь по умолчанию получен
-			if((this->_gateway != nullptr) && this->_gateway->get(route) && !route.ifname.empty()){
+			if(gateway::get(route) && !route.ifname.empty()){
 				// Запоминаем название сетевого устройства
 				source.iface = ::move(route.ifname);
 				// Выполняем получение адреса и аппаратного адреса устройства
-				this->fillSource(source);
+				eth::addr::fillSource(source);
 			}
 			// Если адрес является адресом IPv4
 			if(source.ip->size == 4){
@@ -960,7 +996,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						// Запоминаем название сетевого устройства
 						source.iface = adapter->AdapterName;
 					// Выполняем получение адреса устройства
-					this->fillSource(source);
+					eth::addr::fillSource(source);
 					// Выходим из функции
 					return;
 				}
@@ -1000,22 +1036,4 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			}
 		} break;
 	}
-}
-
-/**
- * @brief Метод установки режима безопасной работы с потоками
- *
- * @warning Прежде обращение это лежало в `eth.cpp` и ставило один признак, не включая
- *          НИЧЕГО: замок склада внешних адресов живёт здесь, и из той единицы
- *          трансляции добраться до него было нечем. Склад оставался без замка при
- *          всяком положении переключателя
- *
- * @param mode устанавливаемый режим безопасной работы с потоками
- *
- */
-void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
-	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-	// Приводим замок склада внешних адресов к установленному режиму
-	::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }

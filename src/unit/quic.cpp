@@ -23,10 +23,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/addr.hpp>
-#include <unit/quic.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/addr.hpp>
+#include <unit/quic.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -61,6 +61,7 @@ awh::unit::QuicServer::Session::Session() noexcept :
  connection(nullptr), connected(false), dest(0),
  tunnel(quic::connection_t::INVALID_STREAM), datagram{""},
  handed(false), marking(event::ecn_t::NOT_ECT) {}
+
 /**
  * @brief Конструктор параметров кластера
  *
@@ -78,7 +79,7 @@ awh::unit::QuicServer::ClusterParams::ClusterParams() noexcept :
  */
 uint64_t awh::unit::QuicServer::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
-	return awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+	return fmk:::timestamp <uint64_t> (fmk:::chrono_t::MILLISECONDS);
 }
 /**
  * @brief Метод формирования адреса удалённого эндпоинта сессии
@@ -89,13 +90,13 @@ uint64_t awh::unit::QuicServer::date() const noexcept {
  */
 string awh::unit::QuicServer::peer(const event::id_t oid) const noexcept {
 	// Извлекаем адрес удалённого эндпоинта сессии
-	string result = this->_io->getAddress(oid, event::address_t::IPV4);
+	string result = engine::getAddress(oid, event::address_t::IPV4);
 	// Если адрес IPv4 не получен
 	if(result.empty())
 		// Извлекаем адрес удалённого эндпоинта сессии в семействе IPv6
-		result = this->_io->getAddress(oid, event::address_t::IPV6);
+		result = engine::getAddress(oid, event::address_t::IPV6);
 	// Выводим адрес удалённого эндпоинта вместе с портом
-	return (result + ":" + std::to_string(this->_io->getSourcePort(oid)));
+	return (result + ":" + std::to_string(engine::getSourcePort(oid)));
 }
 /**
  * @brief Метод установки адреса удалённого эндпоинта соединению из движка
@@ -108,11 +109,11 @@ void awh::unit::QuicServer::endpoint(const event::id_t oid, quic::connection_t *
 	// Структура сетевого адреса удалённого эндпоинта сессии
 	unique_ptr <net::addr_t> addr = nullptr;
 	// Если структура адреса удалённого эндпоинта в семействе IPv4 не получена
-	if(!this->_io->getAddress(oid, event::address_t::IPV4, addr))
+	if(!engine::getAddress(oid, event::address_t::IPV4, addr))
 		// Извлекаем структуру адреса удалённого эндпоинта в семействе IPv6
-		this->_io->getAddress(oid, event::address_t::IPV6, addr);
+		engine::getAddress(oid, event::address_t::IPV6, addr);
 	// Устанавливаем адрес удалённого эндпоинта соединению штатной структурой адреса и портом источника
-	connection->address(addr.get(), this->_io->getSourcePort(oid));
+	connection->address(addr.get(), engine::getSourcePort(oid));
 }
 /**
  * @brief Метод определения сессии принятой датаграммы (RFC 9000 §17.2)
@@ -139,9 +140,9 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC security context is not set", log:::flag_t::CRITICAL);
 		// Уничтожаем сессию соединения
-		this->_io->destroy(oid);
+		engine::destroy(oid);
 		// Выходим из метода
 		return;
 	}
@@ -169,20 +170,20 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	// Устанавливаем общий ключ вывода токенов сброса без сохранения состояния
 	session.connection->resetKey(this->_resetKey);
 	// Устанавливаем функцию обратного вызова на чтение датаграмм сессии
-	this->_io->on(oid, static_cast <engine::callback::read_t> (std::bind(&QuicServer::read, this, _1, _2, _3)));
+	engine::on(oid, static_cast <engine::callback::read_t> (std::bind(&QuicServer::read, this, _1, _2, _3)));
 	/**
 	 * Устанавливаем функцию обратного вызова на инъекцию объединённых данных сессии:
 	 * перенаправленные из события-источника байты отправляются туннельным потоком
 	 * сессии с шифрованием на уровне соединения, а не пишутся сырьём в сокет (splice)
 	 */
-	this->_io->on(oid, static_cast <engine::callback::inject_t> (std::bind(&QuicServer::inject, this, _1, _2, _3)));
+	engine::on(oid, static_cast <engine::callback::inject_t> (std::bind(&QuicServer::inject, this, _1, _2, _3)));
 	/**
 	 * Устанавливаем функцию обратного вызова источника исходящих датаграмм сессии:
 	 * движок вытягивает датаграммы ровно тогда, когда готов их отправить, поэтому
 	 * при переполнении очереди они не теряются, а маркировка ECN накладывается
 	 * на ту датаграмму, к которой относится
 	 */
-	this->_io->on(oid, static_cast <engine::callback::source_t> (std::bind(&QuicServer::source, this, _1, _2, _3)));
+	engine::on(oid, static_cast <engine::callback::source_t> (std::bind(&QuicServer::source, this, _1, _2, _3)));
 	/**
 	 * Помечаем исходящие датаграммы соединения поддержкой ECN (RFC 9000 §13.4.1)
 	 *
@@ -227,7 +228,7 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 		 * Извлекаем метаданные принятой датаграммы с события сервера: маркировка
 		 * снимается с заголовка IP-пакета при приёме, а сессии её не хранят
 		 */
-		const net::dgram_info_t info = this->_io->getTrafficInfo(this->_eid);
+		const net::dgram_info_t info = engine::getTrafficInfo(this->_eid);
 		// Выполняем обработку входящей датаграммы с маркировкой перегрузки
 		session->connection->read(data, size, this->date(), info.congestion);
 	// Выполняем обработку входящей датаграммы
@@ -345,13 +346,13 @@ void awh::unit::QuicServer::reroute(const event::id_t oid, session_t & session) 
 	 */
 	for(auto & cid : added)
 		// Привязываем идентификатор соединения к сессии
-		this->_io->bind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
+		engine::bind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
 	/**
 	 * Перебираем выведенные из обращения идентификаторы соединения
 	 */
 	for(auto & cid : removed)
 		// Снимаем идентификатор соединения с сессии
-		this->_io->unbind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
+		engine::unbind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
 }
 /**
  * @brief Метод выдачи собранных данных потоков приложения
@@ -486,7 +487,7 @@ bool awh::unit::QuicServer::flush(const event::id_t oid, session_t & session) no
 			return false;
 	}
 	// Заводим вытягивание исходящих датаграмм сетевым движком
-	this->_io->send(oid, nullptr, 0);
+	engine::send(oid, nullptr, 0);
 	// Выводим положительный результат
 	return true;
 }
@@ -605,7 +606,7 @@ void awh::unit::QuicServer::forward(const event::id_t dest, string_view data) no
 		 * отправляются его туннельным потоком через функцию инъекции, иначе (TCP/UDP) -
 		 * пишутся сырыми байтами в сокет
 		 */
-		this->_io->relay(dest, data.data(), data.size());
+		engine::relay(dest, data.data(), data.size());
 }
 /**
  * @brief Метод отправки сброса без сохранения состояния (RFC 9000 §10.3)
@@ -640,11 +641,11 @@ bool awh::unit::QuicServer::drop(const event::id_t oid, const uint8_t * data, co
 		// Выводим отрицательный результат
 		return false;
 	// Если отправка пакета сброса удалённому эндпоинту не выполнена
-	if(this->_io->send(oid, reset.data(), reset.size()) == 0)
+	if(engine::send(oid, reset.data(), reset.size()) == 0)
 		// Выводим отрицательный результат
 		return false;
 	// Записываем в лог сообщение об отправке сброса без сохранения состояния
-	awh::log::print("QUIC stateless reset is sent: ID=%u", awh::log::flag_t::INFO, oid);
+	log:::print("QUIC stateless reset is sent: ID=%u", log:::flag_t::INFO, oid);
 	// Выводим положительный результат
 	return true;
 }
@@ -666,9 +667,9 @@ void awh::unit::QuicServer::mark(const event::id_t oid, session_t & session, con
 	 *       данные отправки, и она едет вместе со своей датаграммой. Метка сокета
 	 *       здесь не годится - сокет один на все соединения сервера
 	 */
-	if(!this->_io->setExplicitCongestionNotification(oid, this->_family, marking)){
+	if(!engine::setExplicitCongestionNotification(oid, this->_family, marking)){
 		// Записываем предупреждение в лог
-		awh::log::print("QUIC outgoing datagrams marking is not applied: ID=%u", awh::log::flag_t::WARNING, oid);
+		log:::print("QUIC outgoing datagrams marking is not applied: ID=%u", log:::flag_t::WARNING, oid);
 		// Выходим из метода - установленная маркировка неизвестна
 		return;
 	}
@@ -703,7 +704,7 @@ void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
 		// Выполняем функцию обратного вызова о завершённом соединении
 		this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", oid, error);
 	// Уничтожаем событие сессии вместе с его ключами маршрутизации
-	this->_io->destroy(oid);
+	engine::destroy(oid);
 }
 /**
  * @brief Метод установки шаблона контекста безопасности соединений
@@ -843,18 +844,18 @@ void awh::unit::QuicServer::launch(const event::status_t status) noexcept {
 			// Если событие интервала таймеров соединений создано
 			if(this->_tid != 0){
 				// Уничтожаем событие интервала таймеров соединений
-				this->_io->destroy(this->_tid);
+				engine::destroy(this->_tid);
 				// Сбрасываем идентификатор события интервала таймеров соединений
 				this->_tid = 0;
 			}
 			// Если событие сервера создано
 			if(this->_eid != 0){
 				// Снимаем функцию обратного вызова определения сессии
-				this->_io->on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
+				engine::on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
 				// Снимаем функцию обратного вызова на создание сессии соединения
-				this->_io->on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
+				engine::on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
 				// Уничтожаем событие сервера
-				this->_io->destroy(this->_eid);
+				engine::destroy(this->_eid);
 				// Сбрасываем идентификатор события сервера
 				this->_eid = 0;
 			}
@@ -885,13 +886,13 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 		// Выводим идентификатор созданного ранее события сервера
 		return this->_eid;
 	// Добавляем событие сервера поверх UDP (транспорт QUIC работает поверх дейтаграммного UDP-сокета)
-	this->_eid = this->_io->event(event::node_t::SERVER, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	this->_eid = engine::event(event::node_t::SERVER, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Добавляем событие интервала таймеров соединений
-	this->_tid = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
+	this->_tid = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Если события не созданы
 	if((this->_eid == 0) || (this->_tid == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC server events are not created", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC server events are not created", log:::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -914,11 +915,11 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	 *          по чему
 	 *
 	 */
-	if(this->_ecn && !this->_io->availableExplicitCongestionNotification(this->_family)){
+	if(this->_ecn && !engine::availableExplicitCongestionNotification(this->_family)){
 		// Снимаем уведомление о перегрузке пути, так-как отметок система не выдаёт
 		this->_ecn = false;
 		// Сообщаем, что уведомление о перегрузке пути на этой системе недоступно
-		awh::log::print("QUIC explicit congestion notification is not supported by the system for the selected address family", awh::log::flag_t::WARNING);
+		log:::print("QUIC explicit congestion notification is not supported by the system for the selected address family", log:::flag_t::WARNING);
 	}
 	/**
 	 * Если общий ключ вывода токенов сброса не задан приложением: генерируем его
@@ -926,15 +927,15 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	 */
 	if(this->_resetKey.empty() && !quic::resetKey(this->_resetKey))
 		// Записываем предупреждение в лог - сброс без сохранения состояния недоступен
-		awh::log::print("QUIC stateless reset key is not generated", awh::log::flag_t::WARNING);
+		log:::print("QUIC stateless reset key is not generated", log:::flag_t::WARNING);
 	// Устанавливаем интервал проверки таймеров соединений
-	this->_io->setTimeout(this->_tid, event::action_t::NONE, 25);
+	engine::setTimeout(this->_tid, event::action_t::NONE, 25);
 	/**
 	 * Устанавливаем опции события сервера: извлечение метаданных датаграмм
 	 * включается только при уведомлении о перегрузке - оно переводит приём на
 	 * разбор служебных сообщений и обходится дороже
 	 */
-	this->_io->setOptions(this->_eid, static_cast <uint16_t> (
+	engine::setOptions(this->_eid, static_cast <uint16_t> (
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR |
 		event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC |
 		(this->_ecn ? event::options::DGRAM_INFO : 0)
@@ -944,11 +945,11 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	 * адресуется идентификатором соединения, а не четвёркой сокета, поэтому
 	 * смена адреса клиента его не разрывает
 	 */
-	this->_io->on(this->_eid, static_cast <engine::callback::origin_t> (std::bind(&QuicServer::origin, this, _1, _2, _3, _4)));
+	engine::on(this->_eid, static_cast <engine::callback::origin_t> (std::bind(&QuicServer::origin, this, _1, _2, _3, _4)));
 	// Устанавливаем функцию обратного вызова на создание сессии соединения
-	this->_io->on(this->_eid, static_cast <engine::callback::accept_t> (std::bind(&QuicServer::accept, this, _1, _2)));
+	engine::on(this->_eid, static_cast <engine::callback::accept_t> (std::bind(&QuicServer::accept, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие интервала таймеров соединений
-	this->_io->on(this->_tid, static_cast <engine::callback::status_t> (std::bind(&QuicServer::tick, this, _1, _2)));
+	engine::on(this->_tid, static_cast <engine::callback::status_t> (std::bind(&QuicServer::tick, this, _1, _2)));
 	// Выводим идентификатор созданного события сервера
 	return this->_eid;
 }
@@ -971,7 +972,7 @@ bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
 			// Возвращаем положительный результат - фиксация отложена в дочерние процессы
 			return true;
 		// Выполняем фиксацию настроек события сервера и события интервала таймеров соединений
-		return (this->_io->commit(this->_eid) && this->_io->commit(this->_tid));
+		return (engine::commit(this->_eid) && engine::commit(this->_tid));
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -1000,7 +1001,7 @@ bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
 		// Возвращаем значение по умолчанию
 		return false;
 	// Если запуск события сервера и события интервала таймеров соединений не выполнен
-	if(!this->_io->launch(this->_eid) || !this->_io->launch(this->_tid))
+	if(!engine::launch(this->_eid) || !engine::launch(this->_tid))
 		// Возвращаем значение по умолчанию
 		return false;
 	/**
@@ -1048,7 +1049,7 @@ bool awh::unit::QuicServer::pause(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем приостановку работы события сервера
-		return this->_io->pause(this->_eid);
+		return engine::pause(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1063,7 +1064,7 @@ bool awh::unit::QuicServer::resume(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем возобновление работы события сервера
-		return this->_io->resume(this->_eid);
+		return engine::resume(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1147,7 +1148,7 @@ bool awh::unit::QuicServer::splice(const event::id_t eid, const event::id_t dest
 	 */
 	if(this->_sessions.find(dest) != this->_sessions.end())
 		// Объединяем внешнее событие-источник с сессией-приёмником на уровне движка
-		return this->_io->splice(eid, dest);
+		return engine::splice(eid, dest);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1213,16 +1214,16 @@ void awh::unit::QuicServer::destroy(const event::id_t eid) noexcept {
 	// Если событие интервала таймеров соединений создано
 	if(this->_tid != 0){
 		// Уничтожаем событие интервала таймеров соединений
-		this->_io->destroy(this->_tid);
+		engine::destroy(this->_tid);
 		// Сбрасываем идентификатор события интервала таймеров соединений
 		this->_tid = 0;
 	}
 	// Снимаем функцию обратного вызова определения сессии
-	this->_io->on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
+	engine::on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
 	// Снимаем функцию обратного вызова на создание сессии соединения
-	this->_io->on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
+	engine::on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
 	// Уничтожаем событие сервера
-	this->_io->destroy(this->_eid);
+	engine::destroy(this->_eid);
 	// Сбрасываем идентификатор события сервера
 	this->_eid = 0;
 }
@@ -1237,7 +1238,7 @@ uint16_t awh::unit::QuicServer::getOptions(const event::id_t eid) const noexcept
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение опций для события сервера
-		return this->_io->getOptions(this->_eid);
+		return engine::getOptions(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1253,7 +1254,7 @@ bool awh::unit::QuicServer::setOptions(const event::id_t eid, const uint16_t opt
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опций для события сервера
-		return this->_io->setOptions(this->_eid, options);
+		return engine::setOptions(this->_eid, options);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1270,7 +1271,7 @@ bool awh::unit::QuicServer::setOption(const event::id_t eid, const uint16_t opti
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опции для события сервера
-		return this->_io->setOption(this->_eid, option, mode);
+		return engine::setOption(this->_eid, option, mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1285,7 +1286,7 @@ awh::net::dgram_info_t awh::unit::QuicServer::getTrafficInfo(const event::id_t e
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события сервера
-		return this->_io->getTrafficInfo(this->_eid);
+		return engine::getTrafficInfo(this->_eid);
 	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
@@ -1300,7 +1301,7 @@ uint8_t awh::unit::QuicServer::getCountHops(const event::id_t eid) const noexcep
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события сервера
-		return this->_io->getCountHops(this->_eid);
+		return engine::getCountHops(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1316,7 +1317,7 @@ bool awh::unit::QuicServer::setCountHops(const event::id_t eid, const uint8_t ho
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события сервера
-		return this->_io->setCountHops(this->_eid, hops);
+		return engine::setCountHops(this->_eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1331,7 +1332,7 @@ awh::event::hops_t awh::unit::QuicServer::getHops(const event::id_t eid) const n
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события сервера
-		return this->_io->getHops(this->_eid);
+		return engine::getHops(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::hops_t::LOOPBACK;
 }
@@ -1347,7 +1348,7 @@ bool awh::unit::QuicServer::setHops(const event::id_t eid, const event::hops_t h
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события сервера
-		return this->_io->setHops(this->_eid, hops);
+		return engine::setHops(this->_eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1362,7 +1363,7 @@ string awh::unit::QuicServer::getIface(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события сервера
-		return this->_io->getIface(this->_eid);
+		return engine::getIface(this->_eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -1378,7 +1379,7 @@ bool awh::unit::QuicServer::setIface(const event::id_t eid, string_view name) no
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события сервера
-		return this->_io->setIface(this->_eid, name);
+		return engine::setIface(this->_eid, name);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1393,7 +1394,7 @@ uint16_t awh::unit::QuicServer::getPort(const event::id_t eid) const noexcept {
 	// Если событие актуально (для события сервера - порт прослушивания, для сессии - порт пира)
 	if(this->isActual(eid))
 		// Выполняем получение порта для актуального события (унаследованный кластером идентификатор приводится к собственному)
-		return this->_io->getSourcePort(this->actual(eid));
+		return engine::getSourcePort(this->actual(eid));
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1413,7 +1414,7 @@ bool awh::unit::QuicServer::setPort(const event::id_t eid, const uint16_t port) 
 			// Сохраняем порт прослушивания сервера
 			this->_listenPort = port;
 		// Выполняем установку порта сервера для события сервера
-		return this->_io->setSourcePort(this->_eid, port);
+		return engine::setSourcePort(this->_eid, port);
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -1430,7 +1431,7 @@ string awh::unit::QuicServer::getAddress(const event::id_t eid, const event::add
 	// Если событие актуально (для события сервера - адрес прослушивания, для сессии - адрес пира)
 	if(this->isActual(eid))
 		// Выполняем получение адреса для актуального события (унаследованный кластером идентификатор приводится к собственному)
-		return this->_io->getAddress(this->actual(eid), address);
+		return engine::getAddress(this->actual(eid), address);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -1454,7 +1455,7 @@ bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::addre
 			this->_listenHost = value;
 		}
 		// Выполняем установку адреса сервера для события сервера
-		return this->_io->setAddress(this->_eid, address, value);
+		return engine::setAddress(this->_eid, address, value);
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -1472,7 +1473,7 @@ bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::addre
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса сервера для события сервера
-		return this->_io->setAddress(this->_eid, address, value);
+		return engine::setAddress(this->_eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1489,7 +1490,7 @@ bool awh::unit::QuicServer::getAddress(const event::id_t eid, const event::addre
 	// Если событие актуально (для события сервера - адрес прослушивания, для сессии - адрес пира)
 	if(this->isActual(eid))
 		// Выполняем получение адреса для актуального события (унаследованный кластером идентификатор приводится к собственному)
-		return this->_io->getAddress(this->actual(eid), address, value);
+		return engine::getAddress(this->actual(eid), address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1504,7 +1505,7 @@ uint16_t awh::unit::QuicServer::getMaximumTransmissionUnit(const event::id_t eid
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события сервера
-		return this->_io->getMaximumTransmissionUnit(this->_eid);
+		return engine::getMaximumTransmissionUnit(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1520,7 +1521,7 @@ bool awh::unit::QuicServer::setMaximumTransmissionUnit(const event::id_t eid, co
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события сервера
-		return this->_io->setMaximumTransmissionUnit(this->_eid, mtu);
+		return engine::setMaximumTransmissionUnit(this->_eid, mtu);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1535,7 +1536,7 @@ awh::event::mtu_discover_t awh::unit::QuicServer::getMaximumTransmissionUnitDisc
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима обнаружения MTU для события сервера
-		return this->_io->getMaximumTransmissionUnitDiscover(this->_eid, this->_io->family(this->_eid));
+		return engine::getMaximumTransmissionUnitDiscover(this->_eid, engine::family(this->_eid));
 	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
@@ -1551,7 +1552,7 @@ bool awh::unit::QuicServer::setMaximumTransmissionUnitDiscover(const event::id_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима обнаружения MTU для события сервера
-		return this->_io->setMaximumTransmissionUnitDiscover(this->_eid, this->_io->family(this->_eid), mode);
+		return engine::setMaximumTransmissionUnitDiscover(this->_eid, engine::family(this->_eid), mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1566,7 +1567,7 @@ awh::event::delivery_mode_t awh::unit::QuicServer::getDelivery(const event::id_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов сервера для события сервера
-		return this->_io->getDelivery(this->_eid);
+		return engine::getDelivery(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
@@ -1582,7 +1583,7 @@ bool awh::unit::QuicServer::setDelivery(const event::id_t eid, const event::deli
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов сервера для события сервера
-		return this->_io->setDelivery(this->_eid, delivery);
+		return engine::setDelivery(this->_eid, delivery);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1598,7 +1599,7 @@ size_t awh::unit::QuicServer::getBufferSize(const event::id_t eid, const event::
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера сервера для события сервера
-		return this->_io->getBufferSize(this->_eid, action);
+		return engine::getBufferSize(this->_eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1615,7 +1616,7 @@ bool awh::unit::QuicServer::setBufferSize(const event::id_t eid, const event::ac
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера сервера для события сервера
-		return this->_io->setBufferSize(this->_eid, action, size);
+		return engine::setBufferSize(this->_eid, action, size);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1630,7 +1631,7 @@ awh::event::usage_t awh::unit::QuicServer::getUsageReadTimeout(const event::id_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события сервера
-		return this->_io->getUsageReadTimeout(this->_eid);
+		return engine::getUsageReadTimeout(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
@@ -1645,7 +1646,7 @@ void awh::unit::QuicServer::setUsageReadTimeout(const event::id_t eid, const eve
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима использования таймаута на чтение события для события сервера
-		this->_io->setUsageReadTimeout(this->_eid, usage);
+		engine::setUsageReadTimeout(this->_eid, usage);
 }
 /**
  * @brief Метод получения таймаута сервера
@@ -1659,7 +1660,7 @@ uint32_t awh::unit::QuicServer::getTimeout(const event::id_t eid, const event::a
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для сервера
-		return this->_io->getTimeout(this->_eid, action);
+		return engine::getTimeout(this->_eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1675,7 +1676,7 @@ void awh::unit::QuicServer::setTimeout(const event::id_t eid, const event::actio
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров таймаута для сервера
-		this->_io->setTimeout(this->_eid, action, timeout);
+		engine::setTimeout(this->_eid, action, timeout);
 }
 /**
  * @brief Метод установки пропускной способности сервера
@@ -1690,7 +1691,7 @@ bool awh::unit::QuicServer::bandwidth(const event::id_t eid, const event::limiti
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для сервера
-		return this->_io->bandwidth(this->_eid, limiting, bandwidth);
+		return engine::bandwidth(this->_eid, limiting, bandwidth);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1708,7 +1709,7 @@ bool awh::unit::QuicServer::keepAlive(const event::id_t eid, const int32_t cnt, 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для сервера
-		return this->_io->keepAlive(this->_eid, cnt, idle, intvl);
+		return engine::keepAlive(this->_eid, cnt, idle, intvl);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1723,7 +1724,7 @@ awh::event::dscp_t awh::unit::QuicServer::getDifferentiatedServicesCodePoint(con
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для сервера
-		return this->_io->getDifferentiatedServicesCodePoint(this->_eid, this->_io->family(this->_eid));
+		return engine::getDifferentiatedServicesCodePoint(this->_eid, engine::family(this->_eid));
 	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
@@ -1739,7 +1740,7 @@ bool awh::unit::QuicServer::setDifferentiatedServicesCodePoint(const event::id_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для сервера
-		return this->_io->setDifferentiatedServicesCodePoint(this->_eid, this->_io->family(this->_eid), dscp);
+		return engine::setDifferentiatedServicesCodePoint(this->_eid, engine::family(this->_eid), dscp);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1758,7 +1759,7 @@ bool awh::unit::QuicServer::membership(const event::id_t eid, const event::mode_
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для сервера
-		return this->_io->membership(this->_eid, mode, group, source, port);
+		return engine::membership(this->_eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1777,7 +1778,7 @@ bool awh::unit::QuicServer::membership(const event::id_t eid, const event::mode_
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для сервера
-		return this->_io->membership(this->_eid, mode, group, source, port);
+		return engine::membership(this->_eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2247,11 +2248,11 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 					// Если унаследованное событие сервера создано
 					if(this->_eid != 0){
 						// Снимаем функцию обратного вызова определения сессии
-						this->_io->on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
+						engine::on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
 						// Снимаем функцию обратного вызова на создание сессии соединения
-						this->_io->on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
+						engine::on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
 						// Уничтожаем унаследованное событие сервера
-						this->_io->destroy(this->_eid);
+						engine::destroy(this->_eid);
 						// Запоминаем унаследованный идентификатор для приведения обращений фасада к собственному событию (см. actual())
 						this->_inheritedEid = this->_eid;
 						// Сбрасываем идентификатор события сервера
@@ -2260,7 +2261,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 					// Если унаследованное событие интервала таймеров соединений создано
 					if(this->_tid != 0){
 						// Уничтожаем унаследованное событие интервала таймеров соединений
-						this->_io->destroy(this->_tid);
+						engine::destroy(this->_tid);
 						// Сбрасываем идентификатор события интервала таймеров соединений
 						this->_tid = 0;
 					}
@@ -2319,11 +2320,11 @@ void awh::unit::QuicServer::message(const pid_t pid, const uint8_t * data, const
 				// Восстанавливаем адрес прослушивания на собственном сокете
 				if(!this->_listenHost.empty())
 					// Устанавливаем сохранённый адрес прослушивания сервера
-					this->_io->setAddress(this->_eid, this->_listenType, this->_listenHost);
+					engine::setAddress(this->_eid, this->_listenType, this->_listenHost);
 				// Устанавливаем выделенный родительским процессом порт прослушивания
-				this->_io->setSourcePort(this->_eid, port);
+				engine::setSourcePort(this->_eid, port);
 				// Привязываем собственный сокет и таймер дочернего процесса (SO_REUSEPORT установлен в issue())
-				if(this->_io->commit(this->_eid) && this->_io->commit(this->_tid)){
+				if(engine::commit(this->_eid) && engine::commit(this->_tid)){
 					// Сбрасываем флаг ожидания выделенного порта прослушивания
 					this->_awaitingPort = false;
 					/**
@@ -2476,13 +2477,13 @@ void awh::unit::QuicServer::clusterCount(const uint16_t count) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {count}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2727,22 +2728,22 @@ awh::unit::QuicServer::~QuicServer() noexcept {
 	 */
 	for(auto & item : this->_sessions){
 		// Снимаем функцию обратного вызова на чтение датаграмм сессии
-		this->_io->on(item.first, static_cast <engine::callback::read_t> (nullptr));
+		engine::on(item.first, static_cast <engine::callback::read_t> (nullptr));
 		// Снимаем функцию обратного вызова источника исходящих датаграмм
-		this->_io->on(item.first, static_cast <engine::callback::source_t> (nullptr));
+		engine::on(item.first, static_cast <engine::callback::source_t> (nullptr));
 		// Уничтожаем событие сессии вместе с его ключами маршрутизации
-		this->_io->destroy(item.first);
+		engine::destroy(item.first);
 	}
 	// Очищаем список сессий соединений
 	this->_sessions.clear();
 	// Если событие интервала таймеров соединений создано
 	if(this->_tid != 0)
 		// Уничтожаем событие интервала таймеров соединений
-		this->_io->destroy(this->_tid);
+		engine::destroy(this->_tid);
 	// Если событие сервера создано
 	if(this->_eid != 0)
 		// Уничтожаем событие сервера
-		this->_io->destroy(this->_eid);
+		engine::destroy(this->_eid);
 }
 
 /**
@@ -2753,7 +2754,7 @@ awh::unit::QuicServer::~QuicServer() noexcept {
  */
 uint64_t awh::unit::QuicClient::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
-	return awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+	return fmk:::timestamp <uint64_t> (fmk:::chrono_t::MILLISECONDS);
 }
 /**
  * @brief Метод обработки принятой датаграммы соединения
@@ -2774,7 +2775,7 @@ void awh::unit::QuicClient::read([[maybe_unused]] const event::id_t eid, const u
 		 * Извлекаем метаданные принятой датаграммы с события клиента: маркировка
 		 * снимается с заголовка IP-пакета при приёме
 		 */
-		const net::dgram_info_t info = this->_io->getTrafficInfo(this->_eid);
+		const net::dgram_info_t info = engine::getTrafficInfo(this->_eid);
 		// Выполняем обработку входящей датаграммы с маркировкой перегрузки
 		this->_connection->read(data, size, this->date(), info.congestion);
 	// Выполняем обработку входящей датаграммы
@@ -2877,7 +2878,7 @@ void awh::unit::QuicClient::connected([[maybe_unused]] const event::id_t eid, co
 	 */
 	if(this->_connection->connect() != quic::status_t::OK){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC connection is not started", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC connection is not started", log:::flag_t::CRITICAL);
 		// Выходим из метода
 		return;
 	}
@@ -3012,7 +3013,7 @@ void awh::unit::QuicClient::flush() noexcept {
 			return;
 	}
 	// Заводим вытягивание исходящих датаграмм сетевым движком
-	this->_io->send(this->_eid, nullptr, 0);
+	engine::send(this->_eid, nullptr, 0);
 }
 /**
  * @brief Метод выдачи исходящей датаграммы соединения сетевому движку
@@ -3118,7 +3119,7 @@ void awh::unit::QuicClient::forward(string_view data) noexcept {
 		 * отправляются его туннельным потоком через функцию инъекции, иначе (TCP/UDP) -
 		 * пишутся сырыми байтами в сокет
 		 */
-		this->_io->relay(this->_dest, data.data(), data.size());
+		engine::relay(this->_dest, data.data(), data.size());
 }
 /**
  * @brief Метод применения маркировки соединения к сокету события клиента
@@ -3132,9 +3133,9 @@ void awh::unit::QuicClient::mark(const event::ecn_t marking) noexcept {
 		// Выходим из метода - смена маркировки не требуется
 		return;
 	// Если смена маркировки исходящих датаграмм не выполнена
-	if(!this->_io->setExplicitCongestionNotification(this->_eid, this->_family, marking)){
+	if(!engine::setExplicitCongestionNotification(this->_eid, this->_family, marking)){
 		// Записываем предупреждение в лог
-		awh::log::print("QUIC outgoing datagrams marking is not applied", awh::log::flag_t::WARNING);
+		log:::print("QUIC outgoing datagrams marking is not applied", log:::flag_t::WARNING);
 		// Выходим из метода - установленная на сокете маркировка неизвестна
 		return;
 	}
@@ -3228,20 +3229,20 @@ void awh::unit::QuicClient::launch(const event::status_t status) noexcept {
 			// Если событие интервала таймеров соединения создано
 			if(this->_tid != 0){
 				// Уничтожаем событие интервала таймеров соединения
-				this->_io->destroy(this->_tid);
+				engine::destroy(this->_tid);
 				// Сбрасываем идентификатор события интервала таймеров соединения
 				this->_tid = 0;
 			}
 			// Если событие клиента создано
 			if(this->_eid != 0){
 				// Снимаем функцию обратного вызова на чтение датаграмм соединения
-				this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+				engine::on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
 				// Снимаем функцию обратного вызова источника исходящих датаграмм
-				this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
+				engine::on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 				// Снимаем функцию обратного вызова на завершение подключения к серверу
-				this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
+				engine::on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
 				// Уничтожаем событие клиента
-				this->_io->destroy(this->_eid);
+				engine::destroy(this->_eid);
 				// Сбрасываем идентификатор события клиента
 				this->_eid = 0;
 			}
@@ -3270,7 +3271,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC security context is not set", log:::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -3279,13 +3280,13 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 		// Выводим идентификатор созданного ранее события клиента
 		return this->_eid;
 	// Добавляем событие клиента поверх UDP (транспорт QUIC работает поверх дейтаграммного UDP-сокета)
-	this->_eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	this->_eid = engine::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Добавляем событие интервала таймеров соединения
-	this->_tid = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
+	this->_tid = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Если события не созданы
 	if((this->_eid == 0) || (this->_tid == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC client events are not created", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC client events are not created", log:::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -3308,52 +3309,52 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	 *          по чему
 	 *
 	 */
-	if(this->_ecn && !this->_io->availableExplicitCongestionNotification(this->_family)){
+	if(this->_ecn && !engine::availableExplicitCongestionNotification(this->_family)){
 		// Снимаем уведомление о перегрузке пути, так-как отметок система не выдаёт
 		this->_ecn = false;
 		// Сообщаем, что уведомление о перегрузке пути на этой системе недоступно
-		awh::log::print("QUIC explicit congestion notification is not supported by the system for the selected address family", awh::log::flag_t::WARNING);
+		log:::print("QUIC explicit congestion notification is not supported by the system for the selected address family", log:::flag_t::WARNING);
 	}
 	// Сбрасываем флаг выполненного оповещения о завершённом соединении
 	this->_notified = false;
 	// Устанавливаем интервал проверки таймеров соединения
-	this->_io->setTimeout(this->_tid, event::action_t::NONE, 25);
+	engine::setTimeout(this->_tid, event::action_t::NONE, 25);
 	/**
 	 * Устанавливаем опции события клиента: извлечение метаданных датаграмм
 	 * включается только при уведомлении о перегрузке - оно переводит приём на
 	 * разбор служебных сообщений и обходится дороже
 	 */
-	this->_io->setOptions(this->_eid, static_cast <uint16_t> (
+	engine::setOptions(this->_eid, static_cast <uint16_t> (
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR |
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC |
 		(this->_ecn ? event::options::DGRAM_INFO : 0)
 	));
 	// Если локальный адрес события клиента не установлен
-	if(!this->_io->setAddress(this->_eid, ((this->_family == event::family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), ((this->_family == event::family_t::IPV6) ? "::" : "0.0.0.0"))){
+	if(!engine::setAddress(this->_eid, ((this->_family == event::family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), ((this->_family == event::family_t::IPV6) ? "::" : "0.0.0.0"))){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC client address is not set", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC client address is not set", log:::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
 	// Устанавливаем функцию обратного вызова на чтение датаграмм соединения
-	this->_io->on(this->_eid, static_cast <engine::callback::read_t> (std::bind(&QuicClient::read, this, _1, _2, _3)));
+	engine::on(this->_eid, static_cast <engine::callback::read_t> (std::bind(&QuicClient::read, this, _1, _2, _3)));
 	/**
 	 * Устанавливаем функцию обратного вызова на инъекцию объединённых данных соединения:
 	 * перенаправленные из события-источника байты отправляются туннельным потоком
 	 * соединения с шифрованием на уровне соединения, а не пишутся сырьём в сокет (splice)
 	 */
-	this->_io->on(this->_eid, static_cast <engine::callback::inject_t> (std::bind(&QuicClient::inject, this, _2, _3)));
+	engine::on(this->_eid, static_cast <engine::callback::inject_t> (std::bind(&QuicClient::inject, this, _2, _3)));
 	/**
 	 * Устанавливаем функцию обратного вызова источника исходящих датаграмм соединения:
 	 * движок вытягивает датаграммы ровно тогда, когда готов их отправить, поэтому
 	 * при переполнении очереди они не теряются, а маркировка ECN накладывается
 	 * на ту датаграмму, к которой относится
 	 */
-	this->_io->on(this->_eid, static_cast <engine::callback::source_t> (std::bind(&QuicClient::source, this, _1, _2, _3)));
+	engine::on(this->_eid, static_cast <engine::callback::source_t> (std::bind(&QuicClient::source, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на завершение подключения к серверу
-	this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (std::bind(&QuicClient::connected, this, _1, _2)));
+	engine::on(this->_eid, static_cast <engine::callback::connect_t> (std::bind(&QuicClient::connected, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие интервала таймеров соединения
-	this->_io->on(this->_tid, static_cast <engine::callback::status_t> (std::bind(&QuicClient::tick, this, _1, _2)));
+	engine::on(this->_tid, static_cast <engine::callback::status_t> (std::bind(&QuicClient::tick, this, _1, _2)));
 	// Выводим идентификатор созданного события клиента
 	return this->_eid;
 }
@@ -3368,7 +3369,7 @@ bool awh::unit::QuicClient::commit(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем фиксацию настроек события клиента и события интервала таймеров соединения
-		return (this->_io->commit(this->_eid) && this->_io->commit(this->_tid));
+		return (engine::commit(this->_eid) && engine::commit(this->_tid));
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3383,7 +3384,7 @@ bool awh::unit::QuicClient::launch(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем запуск события клиента и события интервала таймеров соединения
-		return (this->_io->launch(this->_eid) && this->_io->launch(this->_tid));
+		return (engine::launch(this->_eid) && engine::launch(this->_tid));
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3398,7 +3399,7 @@ bool awh::unit::QuicClient::pause(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем приостановку работы события клиента
-		return this->_io->pause(this->_eid);
+		return engine::pause(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3413,7 +3414,7 @@ bool awh::unit::QuicClient::resume(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем возобновление работы события клиента
-		return this->_io->resume(this->_eid);
+		return engine::resume(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3428,7 +3429,7 @@ bool awh::unit::QuicClient::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем отключение клиента от удалённого сервера
-		return this->_io->disconnect(this->_eid);
+		return engine::disconnect(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3447,7 +3448,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
+		log:::print("QUIC security context is not set", log:::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -3483,7 +3484,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 		// Устанавливаем сохранённый токен проверки адреса соединению
 		this->_connection->token(this->_token);
 	// Выполняем подключение к удалённому серверу
-	return this->_io->connect(this->_eid);
+	return engine::connect(this->_eid);
 }
 /**
  * @brief Метод подключения клиента к удалённому серверу
@@ -3511,7 +3512,7 @@ bool awh::unit::QuicClient::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение данных от удалённого сервера
-		return this->_io->recv(this->_eid);
+		return engine::recv(this->_eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3581,7 +3582,7 @@ bool awh::unit::QuicClient::splice(const event::id_t eid, const event::id_t dest
 		 * источник байты будут инъецированы в туннельный поток соединения, минуя
 		 * выдачу приложению (см. inject). Так обеспечивается симметрия с сервером
 		 */
-		return this->_io->splice(eid, dest);
+		return engine::splice(eid, dest);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3605,18 +3606,18 @@ void awh::unit::QuicClient::destroy(const event::id_t eid) noexcept {
 	// Если событие интервала таймеров соединения создано
 	if(this->_tid != 0){
 		// Уничтожаем событие интервала таймеров соединения
-		this->_io->destroy(this->_tid);
+		engine::destroy(this->_tid);
 		// Сбрасываем идентификатор события интервала таймеров соединения
 		this->_tid = 0;
 	}
 	// Снимаем функцию обратного вызова на чтение датаграмм соединения
-	this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+	engine::on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
 	// Снимаем функцию обратного вызова источника исходящих датаграмм
-	this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
+	engine::on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 	// Снимаем функцию обратного вызова на завершение подключения к серверу
-	this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
+	engine::on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
 	// Уничтожаем событие клиента
-	this->_io->destroy(this->_eid);
+	engine::destroy(this->_eid);
 	// Сбрасываем идентификатор события клиента
 	this->_eid = 0;
 }
@@ -3631,7 +3632,7 @@ uint16_t awh::unit::QuicClient::getOptions(const event::id_t eid) const noexcept
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение опций для события клиента
-		return this->_io->getOptions(this->_eid);
+		return engine::getOptions(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3647,7 +3648,7 @@ bool awh::unit::QuicClient::setOptions(const event::id_t eid, const uint16_t opt
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опций для события клиента
-		return this->_io->setOptions(this->_eid, options);
+		return engine::setOptions(this->_eid, options);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3664,7 +3665,7 @@ bool awh::unit::QuicClient::setOption(const event::id_t eid, const uint16_t opti
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опции для события клиента
-		return this->_io->setOption(this->_eid, option, mode);
+		return engine::setOption(this->_eid, option, mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3679,7 +3680,7 @@ awh::net::dgram_info_t awh::unit::QuicClient::getTrafficInfo(const event::id_t e
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события клиента
-		return this->_io->getTrafficInfo(this->_eid);
+		return engine::getTrafficInfo(this->_eid);
 	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
@@ -3694,7 +3695,7 @@ uint8_t awh::unit::QuicClient::getCountHops(const event::id_t eid) const noexcep
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события клиента
-		return this->_io->getCountHops(this->_eid);
+		return engine::getCountHops(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3710,7 +3711,7 @@ bool awh::unit::QuicClient::setCountHops(const event::id_t eid, const uint8_t ho
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события клиента
-		return this->_io->setCountHops(this->_eid, hops);
+		return engine::setCountHops(this->_eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3725,7 +3726,7 @@ awh::event::hops_t awh::unit::QuicClient::getHops(const event::id_t eid) const n
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события клиента
-		return this->_io->getHops(this->_eid);
+		return engine::getHops(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::hops_t::LOOPBACK;
 }
@@ -3741,7 +3742,7 @@ bool awh::unit::QuicClient::setHops(const event::id_t eid, const event::hops_t h
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события клиента
-		return this->_io->setHops(this->_eid, hops);
+		return engine::setHops(this->_eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3756,7 +3757,7 @@ string awh::unit::QuicClient::getIface(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события клиента
-		return this->_io->getIface(this->_eid);
+		return engine::getIface(this->_eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -3772,7 +3773,7 @@ bool awh::unit::QuicClient::setIface(const event::id_t eid, string_view name) no
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события клиента
-		return this->_io->setIface(this->_eid, name);
+		return engine::setIface(this->_eid, name);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3787,7 +3788,7 @@ uint16_t awh::unit::QuicClient::getSourcePort(const event::id_t eid) const noexc
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение внутреннего порта для события клиента
-		return this->_io->getSourcePort(this->_eid);
+		return engine::getSourcePort(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3803,7 +3804,7 @@ bool awh::unit::QuicClient::setSourcePort(const event::id_t eid, const uint16_t 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку внутреннего порта для события клиента
-		return this->_io->setSourcePort(this->_eid, port);
+		return engine::setSourcePort(this->_eid, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3818,7 +3819,7 @@ uint16_t awh::unit::QuicClient::getTargetPort(const event::id_t eid) const noexc
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение порта удалённого сервера для события клиента
-		return this->_io->getTargetPort(this->_eid);
+		return engine::getTargetPort(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3838,7 +3839,7 @@ bool awh::unit::QuicClient::setTargetPort(const event::id_t eid, const uint16_t 
 	// Запоминаем порт удалённого сервера для установки адреса эндпоинта соединению
 	this->_targetPort = port;
 	// Выполняем установку порта удалённого сервера для события клиента
-	return this->_io->setTargetPort(this->_eid, port);
+	return engine::setTargetPort(this->_eid, port);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -3851,7 +3852,7 @@ string awh::unit::QuicClient::getTarget(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
-		return this->_io->getTarget(this->_eid);
+		return engine::getTarget(this->_eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -3875,7 +3876,7 @@ bool awh::unit::QuicClient::setTarget(const event::id_t eid, string_view target)
 		// Запоминаем структуру сетевого адреса удалённого сервера для установки адреса эндпоинта соединению
 		this->_target = resolver.source();
 	// Выполняем установку адреса хоста целевой машины для события клиента
-	return this->_io->setTarget(this->_eid, target);
+	return engine::setTarget(this->_eid, target);
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -3917,7 +3918,7 @@ bool awh::unit::QuicClient::setTarget(const event::id_t eid, const net::addr_t *
 		}
 	}
 	// Выполняем установку адреса хоста целевой машины для события клиента
-	return this->_io->setTarget(this->_eid, target);
+	return engine::setTarget(this->_eid, target);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -3931,7 +3932,7 @@ bool awh::unit::QuicClient::getTarget(const event::id_t eid, unique_ptr <net::ad
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
-		return this->_io->getTarget(this->_eid, target);
+		return engine::getTarget(this->_eid, target);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3947,7 +3948,7 @@ string awh::unit::QuicClient::getAddress(const event::id_t eid, const event::add
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
-		return this->_io->getAddress(this->_eid, address);
+		return engine::getAddress(this->_eid, address);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -3964,7 +3965,7 @@ bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::addre
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
-		return this->_io->setAddress(this->_eid, address, value);
+		return engine::setAddress(this->_eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3981,7 +3982,7 @@ bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::addre
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
-		return this->_io->setAddress(this->_eid, address, value);
+		return engine::setAddress(this->_eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -3998,7 +3999,7 @@ bool awh::unit::QuicClient::getAddress(const event::id_t eid, const event::addre
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
-		return this->_io->getAddress(this->_eid, address, value);
+		return engine::getAddress(this->_eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4013,7 +4014,7 @@ uint16_t awh::unit::QuicClient::getMaximumTransmissionUnit(const event::id_t eid
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события клиента
-		return this->_io->getMaximumTransmissionUnit(this->_eid);
+		return engine::getMaximumTransmissionUnit(this->_eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -4029,7 +4030,7 @@ bool awh::unit::QuicClient::setMaximumTransmissionUnit(const event::id_t eid, co
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события клиента
-		return this->_io->setMaximumTransmissionUnit(this->_eid, mtu);
+		return engine::setMaximumTransmissionUnit(this->_eid, mtu);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4044,7 +4045,7 @@ awh::event::mtu_discover_t awh::unit::QuicClient::getMaximumTransmissionUnitDisc
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима обнаружения MTU для события клиента
-		return this->_io->getMaximumTransmissionUnitDiscover(this->_eid, this->_io->family(this->_eid));
+		return engine::getMaximumTransmissionUnitDiscover(this->_eid, engine::family(this->_eid));
 	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
@@ -4060,7 +4061,7 @@ bool awh::unit::QuicClient::setMaximumTransmissionUnitDiscover(const event::id_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима обнаружения MTU для события клиента
-		return this->_io->setMaximumTransmissionUnitDiscover(this->_eid, this->_io->family(this->_eid), mode);
+		return engine::setMaximumTransmissionUnitDiscover(this->_eid, engine::family(this->_eid), mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4075,7 +4076,7 @@ awh::event::delivery_mode_t awh::unit::QuicClient::getDelivery(const event::id_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов клиента для события клиента
-		return this->_io->getDelivery(this->_eid);
+		return engine::getDelivery(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
@@ -4091,7 +4092,7 @@ bool awh::unit::QuicClient::setDelivery(const event::id_t eid, const event::deli
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов клиента для события клиента
-		return this->_io->setDelivery(this->_eid, delivery);
+		return engine::setDelivery(this->_eid, delivery);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4107,7 +4108,7 @@ size_t awh::unit::QuicClient::getBufferSize(const event::id_t eid, const event::
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера клиента для события клиента
-		return this->_io->getBufferSize(this->_eid, action);
+		return engine::getBufferSize(this->_eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -4124,7 +4125,7 @@ bool awh::unit::QuicClient::setBufferSize(const event::id_t eid, const event::ac
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера клиента для события клиента
-		return this->_io->setBufferSize(this->_eid, action, size);
+		return engine::setBufferSize(this->_eid, action, size);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4139,7 +4140,7 @@ awh::event::usage_t awh::unit::QuicClient::getUsageReadTimeout(const event::id_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события клиента
-		return this->_io->getUsageReadTimeout(this->_eid);
+		return engine::getUsageReadTimeout(this->_eid);
 	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
@@ -4154,7 +4155,7 @@ void awh::unit::QuicClient::setUsageReadTimeout(const event::id_t eid, const eve
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима использования таймаута на чтение события для события клиента
-		this->_io->setUsageReadTimeout(this->_eid, usage);
+		engine::setUsageReadTimeout(this->_eid, usage);
 }
 /**
  * @brief Метод получения таймаута клиента
@@ -4168,7 +4169,7 @@ uint32_t awh::unit::QuicClient::getTimeout(const event::id_t eid, const event::a
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для клиента
-		return this->_io->getTimeout(this->_eid, action);
+		return engine::getTimeout(this->_eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -4184,7 +4185,7 @@ void awh::unit::QuicClient::setTimeout(const event::id_t eid, const event::actio
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров таймаута для клиента
-		this->_io->setTimeout(this->_eid, action, timeout);
+		engine::setTimeout(this->_eid, action, timeout);
 }
 /**
  * @brief Метод установки пропускной способности клиента
@@ -4199,7 +4200,7 @@ bool awh::unit::QuicClient::bandwidth(const event::id_t eid, const event::limiti
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для клиента
-		return this->_io->bandwidth(this->_eid, limiting, bandwidth);
+		return engine::bandwidth(this->_eid, limiting, bandwidth);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4217,7 +4218,7 @@ bool awh::unit::QuicClient::keepAlive(const event::id_t eid, const int32_t cnt, 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для клиента
-		return this->_io->keepAlive(this->_eid, cnt, idle, intvl);
+		return engine::keepAlive(this->_eid, cnt, idle, intvl);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4232,7 +4233,7 @@ awh::event::dscp_t awh::unit::QuicClient::getDifferentiatedServicesCodePoint(con
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для клиента
-		return this->_io->getDifferentiatedServicesCodePoint(this->_eid, this->_io->family(this->_eid));
+		return engine::getDifferentiatedServicesCodePoint(this->_eid, engine::family(this->_eid));
 	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
@@ -4248,7 +4249,7 @@ bool awh::unit::QuicClient::setDifferentiatedServicesCodePoint(const event::id_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для клиента
-		return this->_io->setDifferentiatedServicesCodePoint(this->_eid, this->_io->family(this->_eid), dscp);
+		return engine::setDifferentiatedServicesCodePoint(this->_eid, engine::family(this->_eid), dscp);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4267,7 +4268,7 @@ bool awh::unit::QuicClient::membership(const event::id_t eid, const event::mode_
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
-		return this->_io->membership(this->_eid, mode, group, source, port);
+		return engine::membership(this->_eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4286,7 +4287,7 @@ bool awh::unit::QuicClient::membership(const event::id_t eid, const event::mode_
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
-		return this->_io->membership(this->_eid, mode, group, source, port);
+		return engine::membership(this->_eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4506,15 +4507,15 @@ awh::unit::QuicClient::~QuicClient() noexcept {
 	// Если событие интервала таймеров соединения создано
 	if(this->_tid != 0)
 		// Уничтожаем событие интервала таймеров соединения
-		this->_io->destroy(this->_tid);
+		engine::destroy(this->_tid);
 	// Если событие клиента создано
 	if(this->_eid != 0){
 		// Снимаем функцию обратного вызова на чтение датаграмм соединения
-		this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+		engine::on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
 		// Снимаем функцию обратного вызова источника исходящих датаграмм
-		this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
+		engine::on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 		// Уничтожаем событие клиента
-		this->_io->destroy(this->_eid);
+		engine::destroy(this->_eid);
 	}
 	// Освобождаем объект соединения
 	this->_connection.reset(nullptr);

@@ -79,7 +79,7 @@ namespace awh {
 		 *
 		 * @details Заводит на маршрутизаторе перенаправление внешнего порта на внутренний,
 		 *          убирает заведённое и спрашивает внешний адрес. Обмен ведётся без блокировки
-		 *          потока: просьба лишь отправляется, а итог приходит функцией обратного вызова
+		 *          потока: просьба лишь отправляется, а итог приходит функцией обратного вызова.
 		 *
 		 * @note Договоров перенаправления три, и они друг друга не заменяют: NAT-PMP и PCP
 		 *       отвечают дейтаграммой напрямую маршрутизатору, UPnP же требует поиска устройства
@@ -170,7 +170,7 @@ namespace awh {
 		 *
 		 * @details Creates on the router a forwarding of an external port to an internal one,
 		 *          removes what has been created and asks for the external address. The exchange is conducted without blocking
-		 *          the thread: the request is merely sent, while the result arrives through a callback function
+		 *          the thread: the request is merely sent, while the result arrives through a callback function.
 		 *
 		 * @note There are three forwarding protocols, and they do not replace one another: NAT-PMP and PCP
 		 *       answer with a datagram directly to the router, while UPnP requires a discovery of the device
@@ -257,7 +257,7 @@ namespace awh {
 				 * @details Приём объявлений открыт всей сети, и своё событие заводится на
 				 *          каждого отправителя. Предел здесь обязателен: без него всякий узел сети
 				 *          прибавлял бы модулю событий, сколько ему вздумается, - довольно менять
-				 *          порт отправки. Дойдя до предела, самое давнее событие закрывается
+				 *          порт отправки. Дойдя до предела, самое давнее событие закрывается.
 				 *
 				 * @note Обмену с маршрутизатором предел не мешает: маршрутизатор рассылает
 				 *       объявления одним и тем же гнездом, и событие у него одно
@@ -952,10 +952,6 @@ namespace awh {
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
-				// Объект работы с сетевыми устройствами
-				eth::iface_t _ifaces;
-				// Объект получения маршрута до внешней сети
-				eth::gateway_t _gateway;
 			private:
 				// Кодек описания устройства UPnP
 				proto::portmap::device_t _device;

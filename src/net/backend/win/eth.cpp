@@ -25,7 +25,7 @@
  *          `gateway.cpp`, `tunnel.cpp`, `qos.cpp` и `addr.cpp`
  *
  * @note Заглушек в слое НЕ ОСТАЛОСЬ: метка `@todo Windows`, которой они помечались,
- *       не стоит больше ни у одного метода, и поиск по ней выдаёт лишь это описание.
+ *       не стоит больше ни у одной функции, и поиск по ней выдаёт лишь это описание.
  *       Тела опираются на GetAdaptersAddresses для устройств, GetIpForwardTable2 для
  *       маршрутов и на те же setsockopt/getsockopt, что и прочие системы, с иным
  *       набором имён опций
@@ -50,11 +50,24 @@
  */
 #include <sys/log.hpp>
 #include <net/eth/eth.hpp>
+#include "../../internal/eth.inc"
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Функция применения сетевой оптимизации операционной системы
+ *
+ * @note На MS Windows прежний сетевой слой дополнительных настроек не выполнял
+ *
+ */
+void awh::net::netboost() noexcept {
+	/**
+	 * Дополнительные настройки сети не требуются
+	 */
+}
 
 /**
  * @brief Название бэкенда для записей в журнале
@@ -64,6 +77,7 @@ using namespace std;
  *       в отладочной сборке метка законно остаётся невостребованной, и clang честно
  *       жалуется на неё [-Wunused-const-variable]. Убирать метку нельзя - в выпускной
  *       сборке она нужна
+ *
  */
 
 [[maybe_unused]] static constexpr const char * __AWH_ETH_BACKEND__ = "MS Windows ETH backend";
@@ -86,7 +100,21 @@ namespace {
 	 *
 	 */
 	#pragma pack(push, 1)
-		struct tcp_hdr_min {
+		/**
+		 * @brief Структура заголовка датаграммы UDP пакета
+		 *
+		 */
+		typedef struct UDP_Header {
+			uint16_t sport;  // Порт источника
+			uint16_t dport;  // Порт назначения
+			uint16_t length; // Длина датаграммы
+			uint16_t sum;    // Контрольная сумма
+		} udp_hdr_min_t;
+		/**
+		 * @brief Структура заголовка TCP пакета
+		 *
+		 */
+		typedef struct TCP_Header {
 			uint16_t sport;  // Порт источника
 			uint16_t dport;  // Порт назначения
 			uint32_t seq;    // Порядковый номер
@@ -96,17 +124,7 @@ namespace {
 			uint16_t window; // Размер окна
 			uint16_t sum;    // Контрольная сумма
 			uint16_t urgent; // Указатель важности
-		};
-		/**
-		 * @brief Заголовок датаграммы UDP
-		 *
-		 */
-		struct udp_hdr_min {
-			uint16_t sport;  // Порт источника
-			uint16_t dport;  // Порт назначения
-			uint16_t length; // Длина датаграммы
-			uint16_t sum;    // Контрольная сумма
-		};
+		} tcp_hdr_min_t;
 	#pragma pack(pop)
 
 	/**
@@ -119,7 +137,7 @@ namespace {
 	 * @note Правило это описано RFC 1071 и от системы не зависит вовсе
 	 *
 	 */
-	uint16_t checksum16(const void * data, size_t length) noexcept {
+	static __AWH_INLINE__ uint16_t checksum16(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
 		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
 		// Инициализируем сумму
@@ -149,7 +167,7 @@ namespace {
 };
 
 /**
- * @brief Метод проверки принадлежности IP-адреса подсети
+ * @brief Функция проверки принадлежности IP-адреса подсети
  *
  * @param ip     проверяемый IP-адрес в хостовом порядке
  * @param net    сетевой адрес подсети в хостовом порядке
@@ -161,7 +179,7 @@ namespace {
  *       систем в точности
  *
  */
-bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept {
+bool awh::eth::addr::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) noexcept {
 	// Если префикс равен нулю, то любой IP-адрес принадлежит подсети
 	if(prefix == 0)
 		// Возвращаем результат проверки
@@ -177,14 +195,14 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 	 *
 	 * @note Префиксу от 32 и выше отвечает маска из одних единиц, то есть сличение
 	 *       адресов целиком, - тот же ответ, что и у прочих систем
+	 *
 	 */
 	const uint32_t mask = ((prefix >= 32) ? 0xFFFFFFFFU : (~((1U << (32 - prefix)) - 1)));
 	// Проверяем принадлежность IP-адреса подсети
 	return ((ip & mask) == (net & mask));
 }
-
 /**
- * @brief Метод вычисления контрольной суммы транспортного уровня
+ * @brief Функция вычисления контрольной суммы транспортного уровня
  *
  * @param family    семейство протоколов (IPv4 или IPv6)
  * @param protocol  протокол транспортного уровня
@@ -201,7 +219,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
  *       каких у MS Windows нет: они заведены выше в наименьшем виде
  *
  */
-uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
+uint16_t awh::eth::addr::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) noexcept {
 	// Переменная результата
 	uint16_t result = 0;
 	// Если входные данные негодны, выводим пустой результат
@@ -227,12 +245,12 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			// Если протокол определён как TCP
 			case static_cast <uint8_t> (event::protocol_t::TCP):
 				// Запоминаем смещение поля контрольной суммы в заголовке TCP
-				checksumOffset = offsetof(struct tcp_hdr_min, sum);
+				checksumOffset = offsetof(tcp_hdr_min_t, sum);
 			break;
 			// Если протокол определён как UDP
 			case static_cast <uint8_t> (event::protocol_t::UDP):
 				// Запоминаем смещение поля контрольной суммы в заголовке UDP
-				checksumOffset = offsetof(struct udp_hdr_min, sum);
+				checksumOffset = offsetof(udp_hdr_min_t, sum);
 			break;
 			// Для неподдерживаемого протокола
 			default: {
@@ -300,10 +318,10 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					struct in6_addr dst; // IP-адрес назначения
 					uint32_t length;     // Длина транспортного уровня
 					uint8_t zero[3];     // Зарезервировано, должно быть равно нулю
-					uint8_t next_hdr;    // Следующий заголовок
+					uint8_t nextHdr;    // Следующий заголовок
 				} hdr;
 				// Устанавливаем протокол транспортного уровня
-				hdr.next_hdr = ((static_cast <uint8_t> (protocol) == static_cast <uint8_t> (event::protocol_t::TCP)) ? IPPROTO_TCP : IPPROTO_UDP);
+				hdr.nextHdr = ((static_cast <uint8_t> (protocol) == static_cast <uint8_t> (event::protocol_t::TCP)) ? IPPROTO_TCP : IPPROTO_UDP);
 				// Устанавливаем нули в зарезервированное поле
 				hdr.zero[0] = hdr.zero[1] = hdr.zero[2] = 0;
 				// Устанавливаем IP-адрес источника
@@ -359,6 +377,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 		 *          смещению `checksumOffset`. Сняв заслон при откате, я получил падение
 		 *          набора на двухоктетной порции - и это ответ на вопрос выше числом:
 		 *          широкий договор без этого заслона попросту небезопасен
+		 *
 		 */
 		if((checksumOffset + sizeof(uint16_t)) <= length)
 			// Зануляем поле контрольной суммы в копии
@@ -390,9 +409,8 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 	// Возвращаем результат
 	return result;
 }
-
 /**
- * @brief Метод сравнения двух адресов IPv6 по префиксу
+ * @brief Функция сравнения двух адресов IPv6 по префиксу
  *
  * @param first  первый адрес IPv6
  * @param second второй адрес IPv6
@@ -403,7 +421,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
  *       систем в точности
  *
  */
-bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept {
+bool awh::eth::addr::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) noexcept {
 	// Если длина префикса равна нулю, адреса считаются равными
 	if(length == 0)
 		// Возвращаем результат сравнения
@@ -421,7 +439,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	 * @note Соседний `isInSubnet` этого же файла край проверяет и разбор к тому несёт;
 	 *       здесь тот же порядок. Эталонные наречия (`bsd/addr.cpp:1816`,
 	 *       `gnu/addr.cpp:1601`) края НЕ проверяют - они вылечили одного вызывающего
-	 *       сличением вида адресов, а сам метод остался открытым
+	 *       сличением вида адресов, а сама функция осталась открытой
 	 *
 	 * @note Префиксу от 128 и выше отвечает сличение адресов целиком - ответ тот же,
 	 *       что дало бы сличение по всем ста двадцати восьми разрядам
@@ -445,99 +463,3 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	// Возвращаем результат сравнения
 	return ((first[fullBytes] & mask) == (second[fullBytes] & mask));
 }
-
-/**
- * @brief Метод установки объекта управления шлюзами
- *
- * @param gateway объект управления шлюзами для установки
- *
- */
-void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
-	// Выполняем установку объекта управления шлюзами
-	this->_gateway = gateway;
-}
-
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Network_Address::Network_Address() noexcept :
- _iface(), _gateway(nullptr) {}
-
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Network_Address::~Network_Address() noexcept {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Interface::Interface() noexcept :
- _driver(driver_t::AUTO) {}
-
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Interface::~Interface() noexcept {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Socket::Socket() noexcept {}
-
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Socket::~Socket() noexcept {}
-
-/**
- * @brief Конструктор записи маршрута
- *
- * @note Тело у него общее со всеми системами: поля задаются пустыми, и системного в
- *       том нет ничего. Лежит оно здесь лишь оттого, что слой этот заменяет собой весь
- *       backend/bsd целиком, а не отдельные его части
- *
- */
-awh::eth::Gateway::Route::Route() noexcept :
- ifname{""}, prefix(0),
- gateway(nullptr), destination(nullptr) {}
-
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Gateway::Gateway() noexcept {}
-
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Gateway::~Gateway() noexcept {}
-
-/**
- * @brief Конструктор
- *
- * @note Средств протокола с управлением потоком у MS Windows нет вовсе, поэтому
- *       объекта sctp здесь, в отличие от FreeBSD, не заводится
- *
- */
-awh::Ethernet::Ethernet() noexcept :
- addr(), iface(), socket(),
- gateway() {
-	/**
-	 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
-	 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
-	 */
-	this->addr.gateway(&this->gateway);
-}
-
-/**
- * @brief Деструктор
- *
- */
-awh::Ethernet::~Ethernet() noexcept {}

@@ -71,7 +71,6 @@
 	#define AWH_SCTP_RECV_MODERN 1
 /**
  * Если современного набора вызовов приёма метаданных системе не дано
- *
  */
 #else
 	/**
@@ -159,14 +158,14 @@ namespace {
 };
 
 /**
- * @brief Метод получения статуса SCTP сокета
+ * @brief Функция получения статуса SCTP сокета
  *
  * @param sock   сетевой сокет
  * @param status объект для извлечения статуса инициализации SCTP сокета
  * @return       результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
+bool awh::eth::sctp::status(const net::socket_t sock, net::sctp::status_t & status) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Создаём объект статуса SCTP сокета
@@ -271,14 +270,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 	return result;
 }
 /**
- * @brief Метод инициализации SCTP сокета
+ * @brief Функция инициализации SCTP сокета
  *
  * @param sock    сетевой сокет
  * @param initmsg параметры инициализации SCTP сокета
  * @return        результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
+bool awh::eth::sctp::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Создаём объект инициализации SCTP сокета
@@ -311,14 +310,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 	return result;
 }
 /**
- * @brief Метод подписки на SCTP события
+ * @brief Функция подписки на SCTP события
  *
  * @param sock   сетевой сокет
  * @param events список событий SCTP для активации
  * @return       результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
+bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) noexcept {
 	// Если список событий для подписки пустой
 	if(events.empty()){
 		/**
@@ -492,14 +491,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 	return (resultModern && resultLegacy);
 }
 /**
- * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
+ * @brief Функция установки поддерживаемых алгоритмов аутентификации SCTP сокета
  *
  * @param sock  сетевой сокет
  * @param types список поддерживаемых алгоритмов аутентификации
  * @return      результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
+bool awh::eth::sctp::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если количество поддерживаемых алгоритмов аутентификации передано
@@ -561,7 +560,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 	return result;
 }
 /**
- * @brief Метод установки ключа аутентификации SCTP сокета
+ * @brief Функция установки ключа аутентификации SCTP сокета
  *
  * @param sock сетевой сокет
  * @param num  номер ключа аутентификации
@@ -569,7 +568,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept {
+bool awh::eth::sctp::authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если ключ аутентификации передан
@@ -613,7 +612,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 	return result;
 }
 /**
- * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
+ * @brief Функция активации/деактивации ключа аутентификации SCTP сокета
  *
  * @param sock сетевой сокет
  * @param mode режим установки типа сокета
@@ -622,7 +621,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
+bool awh::eth::sctp::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Создаём объект идентификатора ключа аутентификации
@@ -678,14 +677,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 	return result;
 }
 /**
- * @brief Метод установки чанков аутентификации SCTP сокета
+ * @brief Функция установки чанков аутентификации SCTP сокета
  *
  * @param sock   сетевой сокет
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+bool awh::eth::sctp::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если количество чанков аутентификации передано
@@ -805,7 +804,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 	return result;
 }
 /**
- * @brief Метод извлечения чанков аутентификации SCTP сокета
+ * @brief Функция извлечения чанков аутентификации SCTP сокета
  *
  * @param sock   сетевой сокет
  * @param origin источник события
@@ -814,7 +813,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
  * @return       результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
+bool awh::eth::sctp::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Максимум 256 типов чанков — более чем достаточно
@@ -972,7 +971,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 	return result;
 }
 /**
- * @brief Метод получения таймаута SCTP сокета
+ * @brief Функция получения таймаута SCTP сокета
  *
  * @param sock сетевой сокет
  * @param id   идентификатор ассоциации
@@ -981,7 +980,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
  * @return     значение таймаута в миллисекундах
  *
  */
-uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) const noexcept {
+uint32_t awh::eth::sctp::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) noexcept {
 	// Переменная результата
 	uint32_t result = 0;
 	/**
@@ -1119,7 +1118,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 	return result;
 }
 /**
- * @brief Метод установки таймаута SCTP сокета
+ * @brief Функция установки таймаута SCTP сокета
  *
  * @param sock    сетевой сокет
  * @param id      идентификатор ассоциации
@@ -1129,7 +1128,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
  * @return        результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) const noexcept {
+bool awh::eth::sctp::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -1269,7 +1268,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 	return result;
 }
 /**
- * @brief Метод опроса возможности протокола SCTP у текущей системы
+ * @brief Функция опроса возможности протокола SCTP у текущей системы
  *
  * @details Таблица опирается на признаки, объявленные системными заголовочными файлами,
  *          а не на перечень имён систем: возможность появляется у системы с новой её
@@ -1283,7 +1282,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
  * @return        результат опроса возможности
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::feature_t feature) const noexcept {
+bool awh::eth::sctp::supported(const net::sctp::feature_t feature) noexcept {
 	/**
 	 * Определяем опрашиваемую возможность протокола
 	 */
@@ -1292,14 +1291,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		case static_cast <uint8_t> (net::sctp::feature_t::AUTHENTICATION):
 			/**
 			 * Если системе известны имена ключа аутентификации
-			 *
 			 */
 			#if defined(SCTP_AUTH_KEY) && defined(SCTP_AUTH_ACTIVE_KEY)
 				// Возможность есть у ядра, но отвечаем по тому, включена ли она сейчас
 				return ::enabled("auth_enable");
 			/**
 			 * Если системе не известны имена ключа аутентификации
-			 *
 			 */
 			#else
 				// Выводим отрицательный результат
@@ -1309,14 +1306,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_RESET):
 			/**
 			 * Если система поддерживает перенастройку потоков связи
-			 *
 			 */
 			#if defined(SCTP_RESET_STREAMS)
 				// Выводим положительный результат
 				return true;
 			/**
 			 * Если система не поддерживает перенастройку потоков связи
-			 *
 			 */
 			#else
 				// Выводим отрицательный результат
@@ -1326,14 +1321,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		case static_cast <uint8_t> (net::sctp::feature_t::ASSOC_RESET):
 			/**
 			 * Если система поддерживает перенастройку самой связи
-			 *
 			 */
 			#if defined(SCTP_RESET_ASSOC)
 				// Выводим положительный результат
 				return true;
 			/**
 			 * Если система не поддерживает перенастройку самой связи
-			 *
 			 */
 			#else
 				// Выводим отрицательный результат
@@ -1343,14 +1336,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_CHANGE):
 			/**
 			 * Если система поддерживает смену состава потоков связи
-			 *
 			 */
 			#if defined(SCTP_ADD_STREAMS)
 				// Выводим положительный результат
 				return true;
 			/**
 			 * Если система не поддерживает смену состава потоков связи
-			 *
 			 */
 			#else
 				// Выводим отрицательный результат
@@ -1360,14 +1351,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		case static_cast <uint8_t> (net::sctp::feature_t::SENDER_DRY):
 			/**
 			 * Если система извещает об опустевшей очереди отправки
-			 *
 			 */
 			#if defined(SCTP_SENDER_DRY_EVENT)
 				// Выводим положительный результат
 				return true;
 			/**
 			 * Если система не извещает об опустевшей очереди отправки
-			 *
 			 */
 			#else
 				// Выводим отрицательный результат
@@ -1391,18 +1380,18 @@ bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::
 		// Если опрашивается явная граница записи при отправке по частям
 		case static_cast <uint8_t> (net::sctp::feature_t::PARTIAL_MESSAGE):
 			// Выводим результат опроса явной границы записи
-			return this->partial();
+			return partial();
 	}
 	// Выводим отрицательный результат: возможность не опознана
 	return false;
 }
 /**
- * @brief Метод проверки поддержки системой современного набора вызовов SCTP
+ * @brief Функция проверки поддержки системой современного набора вызовов SCTP
  *
  * @return результат проверки поддержки
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::modern() const noexcept {
+bool awh::eth::sctp::modern() noexcept {
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
@@ -1418,12 +1407,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::modern() const noexcept {
 	#endif
 }
 /**
- * @brief Метод проверки поддержки системой явной границы записи
+ * @brief Функция проверки поддержки системой явной границы записи
  *
  * @return результат проверки поддержки
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
+bool awh::eth::sctp::partial() noexcept {
 	/**
 	 * Если система несёт режим явной границы записи
 	 */
@@ -1439,14 +1428,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
 	#endif
 }
 /**
- * @brief Метод управления подпиской на метаданные принимаемых сообщений
+ * @brief Функция управления подпиской на метаданные принимаемых сообщений
  *
  * @param sock сетевой сокет
  * @param mode режим подписки на метаданные
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::socket_t sock, const bool mode) const noexcept {
+bool awh::eth::sctp::receiveInfo(const net::socket_t sock, const bool mode) noexcept {
 	/**
 	 * Если система несёт СОВРЕМЕННЫЙ набор вызовов приёма метаданных
 	 *
@@ -1516,14 +1505,14 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
 	#endif
 }
 /**
- * @brief Метод управления режимом явной границы записи
+ * @brief Функция управления режимом явной границы записи
  *
  * @param sock сетевой сокет
  * @param mode режим явной границы записи
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const bool mode) const noexcept {
+bool awh::eth::sctp::explicitEndOfRecord([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const bool mode) noexcept {
 	/**
 	 * Если система несёт режим явной границы записи
 	 */
@@ -1550,7 +1539,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe
 	#endif
 }
 /**
- * @brief Метод чтения сообщения SCTP вместе с метаданными
+ * @brief Функция чтения сообщения SCTP вместе с метаданными
  *
  * @param sock   сетевой сокет
  * @param buffer буфер принимаемых данных
@@ -1563,7 +1552,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe
  * @return       количество принятых октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) const noexcept {
+ssize_t awh::eth::sctp::receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) noexcept {
 	/**
 	 * Выполняем сброс флагов сообщения в системном виде
 	 *
@@ -1716,7 +1705,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 	return result;
 }
 /**
- * @brief Метод отправки сообщения SCTP вместе с метаданными
+ * @brief Функция отправки сообщения SCTP вместе с метаданными
  *
  * @param sock     сетевой сокет
  * @param buffer   буфер отправляемых данных
@@ -1728,7 +1717,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
  * @return         количество отправленных октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, [[maybe_unused]] const bool complete) const noexcept {
+ssize_t awh::eth::sctp::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, [[maybe_unused]] const bool complete) noexcept {
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
@@ -1899,7 +1888,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *          флагов у него нет вовсе, и сообщение придёт несколькими записями
 		 *          вместо одной. Обмен это не рвёт, и отменять отправку незачем.
 		 *
-		 * @warning Предупреждать отсюда НЕЛЬЗЯ: метод зовётся на всякий кусок, и на
+		 * @warning Предупреждать отсюда НЕЛЬЗЯ: функция зовётся на всякий кусок, и на
 		 *          четырёх мегабайтах вышло бы больше тысячи одинаковых строк в
 		 *          журнале. О понижении сообщает движок - один раз на узел, при
 		 *          заведении режима явной границы записи

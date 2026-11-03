@@ -180,7 +180,7 @@ namespace {
 		 * @details Запрос подаётся один, а таблицы ядро отдаёт все подряд - оттого
 		 *          выдача разбирается до конца даже после того, как искомая таблица
 		 *          найдена: недочитанный поток оставил бы устройство с непрочитанными
-		 *          сообщениями, а закрытие его посреди выдачи ядро расценивает отказом
+		 *          сообщениями, а закрытие его посреди выдачи ядро расценивает отказом.
 		 *
 		 * @param level  уровень искомой таблицы
 		 * @param name   название искомой таблицы
@@ -377,22 +377,45 @@ namespace {
 	/**
 	 * @brief Записи об адресах с выходом во внешнюю сеть: [0] - IPv4, [1] - IPv6
 	 *
-	 * @note Записи общие для всего процесса: метод определения адреса доступен
+	 * @note Записи общие для всего процесса: функция определения адреса доступна
 	 *       и в отрыве от сетевого движка, поэтому обращаться к нему могут из
 	 *       разных потоков одновременно.
 	 *
 	 */
 	static outward_t __awh_outward__[2];
 	/**
-	 * @brief Флаг одноразовой инициализации мьютекса записей об адресах
-	 *
-	 */
-	static once_flag __awh_init_once__;
-	/**
 	 * @brief Генератор случайных чисел для рандомизации DNS-серверов
 	 *
 	 */
 	static random_device __awh_randev__;
+
+	/**
+	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
+	 *
+	 * @tparam MutexType тип активного мьютекса
+	 */
+	template <typename MutexType>
+	/**
+	 * @brief Структура состояния блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем.
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 *
+	 */
+	struct muted_state_t : public lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
+
 	/**
 	 * @brief Блокировка доступа к записям об адресах с выходом во внешнюю сеть
 	 *
@@ -402,7 +425,7 @@ namespace {
 	 *       за время жизни записи.
 	 *
 	 */
-	static lock_state_t <std::shared_mutex> __awh_outward_mutex__;
+	static muted_state_t <std::shared_mutex> __awh_outward_mutex__;
 	/**
 	 * @brief Режим безопасности работы потоков
 	 *
@@ -836,24 +859,24 @@ namespace {
 };
 
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
  *
  */
-void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
+void awh::eth::addr::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	// Активируем работу мьютекса блокировки потока при работе с записями об адресах
 	::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
- * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
+ * @brief Функция заполнения источника сетевых адресов по имени сетевого интерфейса
  *
  * @param source объект источника сетевых адресов
  *
  */
-void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(net::src_t & source) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1036,7 +1059,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				} break;
 			}
 		// Загружаем данные по умолчанию
-		} else this->fillSource(event::node_t::NONE, source);
+		} else fillSource(event::node_t::NONE, source);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1057,13 +1080,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	}
 }
 /**
- * @brief Метод заполнения источника сетевых адресов по заданной сети
+ * @brief Функция заполнения источника сетевых адресов по заданной сети
  *
  * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
  * @param source объект источника сетевых адресов
  *
  */
-void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(const net::addr_t * net, net::src_t & source) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1079,7 +1102,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		 *          общим основанием `net::addr_t`, и запретить такую пару языком
 		 *          нечем - вид её несёт поле `size`, по нему и сличаем
 		 *
-		 * @note Достижимо это не одним ворошителем: движок зовёт метод с адресом,
+		 * @note Достижимо это не одним ворошителем: движок зовёт функцию с адресом,
 		 *       заданным потребителем (`fillSource(source->ip.get(), src)`), и вид
 		 *       его с семейством узла разойтись волен
 		 *
@@ -1198,11 +1221,11 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Пропускаем связь без адреса
 						continue;
 					// Проверяем принадлежность IP-адреса подсети
-					if(this->isInSubnet(ntohl(ip), htonl(network->address), network->prefix)){
+					if(isInSubnet(ntohl(ip), htonl(network->address), network->prefix)){
 						// Устанавливаем название сетевого интерфейса
 						source.iface = ifa->ifa_name;
 						// Получаем MAC-адрес сетевого интерфейса
-						this->fillSource(source);
+						fillSource(source);
 						// Устанавливаем хост сети
 						awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ip;
 						// Прерываем цикл поиска
@@ -1293,11 +1316,11 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Пропускаем связь без адреса
 						continue;
 					// Проверяем принадлежность IP-адреса подсети
-					if(this->ipv6PrefixEqual(ip.s6_addr, &network->address[0], network->prefix)){
+					if(ipv6PrefixEqual(ip.s6_addr, &network->address[0], network->prefix)){
 						// Устанавливаем название сетевого интерфейса
 						source.iface = ifa->ifa_name;
 						// Получаем MAC-адрес сетевого интерфейса
-						this->fillSource(source);
+						fillSource(source);
 						// Хост: просто копируем найденный адрес
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], ip.s6_addr, sizeof(ip.s6_addr));
 						// Проставляем зону адресу, которому она нужна
@@ -1330,13 +1353,13 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 	}
 }
 /**
- * @brief Метод заполнения источника сетевых адресов
+ * @brief Функция заполнения источника сетевых адресов
  *
  * @param node   тип узла события
  * @param source объект источника сетевых адресов
  *
  */
-void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t & source) const noexcept {
+void awh::eth::addr::fillSource(const event::node_t node, net::src_t & source) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1385,17 +1408,17 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *          от случая при выборе сервера.
 						 *
 						 */
-						gateway_t::route_t route{};
+						gateway::route_t route{};
 						// Выполняем инициализацию адреса шлюза маршрута
 						route.gateway = ::make_unique <net::addr_net_ipv4_t> ();
 						// Выполняем инициализацию адреса назначения маршрута
 						route.destination = ::make_unique <net::addr_net_ipv4_t> ();
 						// Если объект управления шлюзами задан и маршрут по умолчанию получен
-						if((this->_gateway != nullptr) && this->_gateway->get(route) && !route.ifname.empty()){
+						if(gateway::get(route) && !route.ifname.empty()){
 							// Устанавливаем название сетевого интерфейса
 							source.iface = ::move(route.ifname);
 							// Получаем адрес и MAC-адрес сетевого интерфейса
-							this->fillSource(source);
+							fillSource(source);
 							// Если адрес сетевого интерфейса получен
 							if(awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0)
 								// Запоминаем определённый адрес до устаревания записи
@@ -1411,17 +1434,17 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 * умолчанию, что и адрес IPv4. Довод к отказу от подключения к
 						 * серверам имён приведён у ветви IPv4
 						 */
-						gateway_t::route_t route{};
+						gateway::route_t route{};
 						// Выполняем инициализацию адреса шлюза маршрута
 						route.gateway = ::make_unique <net::addr_net_ipv6_t> ();
 						// Выполняем инициализацию адреса назначения маршрута
 						route.destination = ::make_unique <net::addr_net_ipv6_t> ();
 						// Если объект управления шлюзами задан и маршрут по умолчанию получен
-						if((this->_gateway != nullptr) && this->_gateway->get(route) && !route.ifname.empty()){
+						if(gateway::get(route) && !route.ifname.empty()){
 							// Устанавливаем название сетевого интерфейса
 							source.iface = ::move(route.ifname);
 							// Получаем адрес и MAC-адрес сетевого интерфейса
-							this->fillSource(source);
+							fillSource(source);
 						}
 						/**
 						 * Устройство пути по умолчанию годного адреса дать не смогло, и
@@ -1666,7 +1689,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									// Устанавливаем название сетевого интерфейса
 									source.iface = ifa->ifa_name;
 									// Получаем MAC-адрес сетевого интерфейса
-									this->fillSource(source);
+									fillSource(source);
 									// Прерываем цикл поиска
 									break;
 								}
@@ -1754,7 +1777,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									// Устанавливаем название сетевого интерфейса
 									source.iface = ifa->ifa_name;
 									// Получаем MAC-адрес сетевого интерфейса
-									this->fillSource(source);
+									fillSource(source);
 									// Прерываем цикл поиска
 									break;
 								}
@@ -1789,7 +1812,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									 *       обход, как и прежде
 									 *
 									 */
-									this->fillSource(source);
+									fillSource(source);
 									// Если адрес сетевого интерфейса разбором по имени не получен
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0){
 										// Копируем IP-адрес в результат
@@ -1841,7 +1864,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 	}
 }
 /**
- * @brief Метод проверки принадлежности IP-адреса подсети
+ * @brief Функция проверки принадлежности IP-адреса подсети
  *
  * @param ip     проверяемый IP-адрес в хостовом порядке
  * @param net    сетевой адрес подсети в хостовом порядке
@@ -1849,7 +1872,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
  * @return       результат проверки
  *
  */
-bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept {
+bool awh::eth::addr::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1897,7 +1920,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 	return false;
 }
 /**
- * @brief Метод сравнения двух IPv6-адресов по префиксу (в битах)
+ * @brief Функция сравнения двух IPv6-адресов по префиксу (в битах)
  *
  * @param first  Первый IPv6-адрес
  * @param second Второй IPv6-адрес
@@ -1905,7 +1928,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
  * @return       Результат сравнения
  *
  */
-bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept {
+bool awh::eth::addr::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1917,15 +1940,15 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		/**
 		 * Ограничиваем длину префикса разрядностью адреса IPv6
 		 *
-		 * @warning Метод берёт ГОЛЫЕ указатели и длину полем `uint8_t`, а длина эта
+		 * @warning Функция берёт ГОЛЫЕ указатели и длину полем `uint8_t`, а длина эта
 		 *          доходит до 255 при отведённых адресу шестнадцати октетах. Без края
 		 *          `memcmp` читает вдвое больше положенного, а взятие последнего
 		 *          октета бьёт мимо вовсе - надзиратель `address` отвечает на это
 		 *          `heap-buffer-overflow`
 		 *
-		 * @note Край стоит ИМЕННО ЗДЕСЬ, а не у вызывающих: метод объявлен открытым, и
+		 * @note Край стоит ИМЕННО ЗДЕСЬ, а не у вызывающих: функция объявлена открытой, и
 		 *       потребитель фреймворка волен позвать его напрямую с любой длиной.
-		 *       Оберегать свои края - дело самого метода, а не всякого, кто его зовёт
+		 *       Оберегать свои края - дело самой функции, а не всякого, кто его зовёт
 		 *
 		 * @note Прежде край держался у единственного вызывающего правкой поля `prefix`
 		 *       через `const_cast` - то есть изменением ЧУЖОГО объекта, помеченного
@@ -1972,7 +1995,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	return false;
 }
 /**
- * @brief Метод вычисления контрольной суммы транспортного уровня
+ * @brief Функция вычисления контрольной суммы транспортного уровня
  *
  * @param family    семейство протоколов (IPv4 или IPv6)
  * @param protocol  протокол транспортного уровня
@@ -1983,7 +2006,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
  * @return          вычисленная контрольная сумма
  *
  */
-uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
+uint16_t awh::eth::addr::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) noexcept {
 	// Переменная результата
 	uint16_t result = 0;
 	// Проверяем корректность входных данных
@@ -2182,31 +2205,3 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод установки объекта управления шлюзами
- *
- * @param gateway объект управления шлюзами для установки
- *
- */
-void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
-	// Выполняем установку объекта управления шлюзами
-	this->_gateway = gateway;
-}
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Network_Address::Network_Address() noexcept : _gateway(nullptr) {
-	/**
-	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
-	 */
-	std::call_once(::__awh_init_once__, []() noexcept {
-		// Активируем работу мьютекса блокировки потока при работе с записями об адресах
-		::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	});
-}
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Network_Address::~Network_Address() noexcept = default;

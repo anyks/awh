@@ -4574,6 +4574,12 @@ if (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
                 )
+
+                # Выполняем сборку приложения проверки многодомности SCTP
+                target_link_libraries(
+                    ${APP_NET_SCTP_MULTIHOME_NAME}
+                    ${AWH_LIB_NAME}
+                )
             endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
         endif()
     endif (${CMAKE_BUILD_SAMPLES})
@@ -5940,6 +5946,13 @@ else (CMAKE_SHARED_BUILD_LIB)
                 # Выполняем сборку приложения сервера переноса файла по SCTP
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                )
+
+                # Выполняем сборку приложения проверки многодомности SCTP
+                target_link_libraries(
+                    ${APP_NET_SCTP_MULTIHOME_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                 )

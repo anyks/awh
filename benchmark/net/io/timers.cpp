@@ -129,11 +129,10 @@ namespace {
 		// Количество сработавших таймеров
 		size_t fired = 0;
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io;
 		// Устанавливаем тип внутренних таймеров движка
-		io.setInternalTimer(mode);
+		awh::engine::setInternalTimer(mode);
 		// Если инициализация движка не выполнена
-		if(!io.initialize())
+		if(!awh::engine::initialize())
 			// Выводим пустые итоги прогона
 			return result;
 		// Включаем учёт выделений памяти
@@ -147,25 +146,25 @@ namespace {
 		 */
 		for(size_t i = 0; i < TIMER_COUNT; i++){
 			// Добавляем новое событие таймера
-			const awh::event::id_t id = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+			const awh::event::id_t id = awh::engine::event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 			// Устанавливаем дедлайн таймера с разбросом по диапазону
-			io.setTimeout(id, awh::event::action_t::NONE, (1 + static_cast <uint32_t> (i % TIMER_SPREAD)));
+			awh::engine::setTimeout(id, awh::event::action_t::NONE, (1 + static_cast <uint32_t> (i % TIMER_SPREAD)));
 			// Устанавливаем функцию обратного вызова на срабатывание таймера
-			io.on(id, static_cast <awh::engine::callback::status_t> ([&fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			awh::engine::on(id, static_cast <awh::engine::callback::status_t> ([&fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				// Если таймер сработал
 				if(status == awh::event::status_t::SUCCESS)
 					// Считаем сработавший таймер
 					fired++;
 			}));
 			// Выполняем фиксацию настроек события таймера
-			io.commit(id);
+			awh::engine::commit(id);
 			// Запускаем событие таймера
-			io.launch(id);
+			awh::engine::launch(id);
 		}
 		/**
 		 * Запускаем опрос событий до срабатывания всех таймеров
 		 */
-		while((fired < TIMER_COUNT) && io.poll());
+		while((fired < TIMER_COUNT) && awh::engine::poll());
 		// Запоминаем момент окончания замера
 		const auto finish = std::chrono::steady_clock::now();
 		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
@@ -178,7 +177,7 @@ namespace {
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выполняем деинициализацию движка
-		io.deinitialize();
+		awh::engine::deinitialize();
 		// Выводим итоги прогона сценария
 		return result;
 	}

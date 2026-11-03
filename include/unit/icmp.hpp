@@ -34,14 +34,14 @@
 #pragma once
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
+#include "../net/addr.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -52,7 +52,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -111,6 +110,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the response of a remote server to a request of the ICMP client
+				 *
 				 * @details Contains information about the size of the response, the execution time of the request,
 				 *          the sequence index of the request, the time to live of the packet (TTL) and the address of the remote server
 				 *          from which the response to the request of the ICMP client has arrived.
@@ -132,7 +132,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -150,6 +149,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure for managing the state of the ICMP client
+				 *
 				 * @details Contains information about the time of waiting for a response from the remote server, the event identifier of the ICMP client,
 				 *          the address of the remote server for performing the requests and the local address from which the request is performed.
 				 *
@@ -168,7 +168,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -186,6 +185,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure for managing the data transfer while performing ICMP requests
+				 *
 				 * @details Contains information about the current request identifier, the flag of waiting for a response from the remote server,
 				 *          the number of request repetitions, the sequence number of the last sent request
 				 *          and the timestamp of the beginning of the request.
@@ -206,7 +206,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -249,6 +248,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending an ICMP Echo request
+				 *
 				 * @param eid      event identifier of the ICMP client
 				 * @param id       identifier of the ICMP request
 				 * @param sequence sequence number of the request
@@ -287,6 +287,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the timeout of waiting for a response of the ICMP server
+				 *
 				 * @param eid    event identifier of the ICMP client
 				 * @param action action of the timer event of the ICMP client
 				 * @param delay  timer delay of the ICMP client
@@ -302,13 +303,13 @@ namespace awh {
 				 * @details Сокет ICMP сырой, и приходит на него **весь** ICMP машины: чужие
 				 *          отклики эха, извещения о недостижимости, обмен соседних опросов.
 				 *          Всё это к заданному вопросу касательства не имеет и отбрасывается,
-				 *          но отбрасывать пакет и прекращать ожидание - разные вещи
+				 *          но отбрасывать пакет и прекращать ожидание - разные вещи.
 				 *
 				 *          Движок же прекращает: приход данных ожидание чтения завершает, и
 				 *          решает он это раньше, чем пакет разобран. Оттого всякий чужой
 				 *          пакет прежде съедал ожидание, и опрос повисал навсегда, не дав ни
 				 *          ответа, ни отказа. На машине сколько-нибудь занятой ICMP такое не
-				 *          редкость, а обыденность
+				 *          редкость, а обыденность.
 				 *
 				 * @note Ожидание продолжается **остатком**, а не сроком полным: иначе поток
 				 *       чужих пакетов отодвигал бы отказ без конца
@@ -317,17 +318,21 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of continuing to wait for one's own response
+				 *
 				 * @details The ICMP socket is a raw one, and **all** the ICMP traffic of the machine arrives at it: other
 				 *          echo responses, unreachability notices, the exchange of the neighbour discovery.
 				 *          All of that has no relation to the question that has been asked and is discarded,
-				 *          but discarding a packet and terminating the waiting are different things
+				 *          but discarding a packet and terminating the waiting are different things.
+				 *
 				 *          The engine, however, does terminate it: the arrival of data completes the read waiting, and
 				 *          it decides that earlier than the packet is parsed. Because of that every foreign
 				 *          packet used to eat up the waiting, and the poll hung forever, giving neither
 				 *          a response nor a refusal. On a machine that is even slightly busy with ICMP such a thing is not
-				 *          a rarity but an everyday occurrence
+				 *          a rarity but an everyday occurrence.
+				 *
 				 * @note The waiting is continued with the **remainder**, not with the full term: otherwise a stream
 				 *       of foreign packets would postpone the refusal endlessly
+				 *
 				 * @param eid event identifier of the reading of the ICMP response
 				 *
 				 * \~
@@ -344,6 +349,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the responses of the remote server to the ICMP requests
+				 *
 				 * @param eid  event identifier of the reading of the ICMP response
 				 * @param mode processing mode of the event of the reading of the ICMP response
 				 * @param data data of the event of the reading of the ICMP response
@@ -362,6 +368,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of initializing the event of the ICMP client
+				 *
 				 * @param family family of the protocols (for example: IPv4 or IPv6)
 				 * @return       result of initializing the event of the ICMP client
 				 *
@@ -377,6 +384,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions (ping, timeout, datagram)
 				 *
 				 * \~
@@ -391,6 +399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout for waiting for a response from the server
+				 *
 				 * @param delay time of waiting for a response from the server (in milliseconds)
 				 *
 				 * \~
@@ -405,6 +414,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event type
+				 *
 				 * @return event type
 				 *
 				 * \~
@@ -418,6 +428,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the unit type of the event
+				 *
 				 * @return unit type of the event
 				 *
 				 * \~
@@ -431,6 +442,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of the event
+				 *
 				 * @return address family
 				 *
 				 * \~
@@ -444,6 +456,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event status
+				 *
 				 * @return event status
 				 *
 				 * \~
@@ -459,6 +472,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
 				 *
@@ -474,6 +488,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
 				 *
@@ -490,6 +505,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -507,6 +523,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param source network address for performing the request
 				 * @return       result of performing the setting
 				 *
@@ -522,6 +539,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param source network address for performing the request
 				 * @return       result of performing the setting
 				 *
@@ -538,6 +556,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network address from which the request will be performed
+				 *
 				 * @param family family of the IP addresses IPv4/IPv6
 				 * @param source network address for performing the request
 				 * @return       result of performing the setting
@@ -554,6 +573,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the identifier of the ICMP client for performing a request to a remote server
+				 *
 				 * @return identifier of the ICMP client for performing a request to a remote server
 				 *
 				 * \~
@@ -572,6 +592,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of performing pings of a remote server
 				 * @param id    identifier of the ICMP client for performing a request to a remote server
+				 *
 				 * @param count number of the requests to be performed
 				 * @param mode  mode of performing the requests
 				 * @return      result of performing the request
@@ -583,7 +604,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -597,9 +617,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -610,7 +630,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -620,7 +639,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

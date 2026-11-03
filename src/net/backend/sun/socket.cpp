@@ -95,14 +95,36 @@ namespace {
 	constexpr uint64_t AWH_IFACE_CACHE_TTL = 0x1388;
 
 	/**
-	 * @brief Флаг одноразовой инициализации мьютексов для кешей сетевых интерфейсов
+	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
+	 *
+	 * @tparam MutexType тип активного мьютекса
+	 */
+	template <typename MutexType>
+	/**
+	 * @brief Структура состояния блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем.
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
 	 *
 	 */
-	static once_flag __awh_init_once__;
+	struct muted_state_t : public lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
+
 	/**
 	 * Блокировка доступа к глобальному кешу сетевых интерфейсов
 	 */
-	static lock_state_t <std::shared_mutex> __awh_iface_cache_mutex__;
+	static muted_state_t <std::shared_mutex> __awh_iface_cache_mutex__;
 	/**
 	 * @brief Режим безопасности работы потоков
 	 *
@@ -173,7 +195,7 @@ namespace {
 	 */
 	static bool refreshIfaceCache(const uint64_t now) noexcept {
 		// Список собранных записей сетевых интерфейсов
-		vector <IfaceEntry> entries;
+		vector <iface_entry_t> entries;
 		// Список сетевых интерфейсов
 		struct ifaddrs * ptr = nullptr;
 		// Выполняем получение списка сетевых интерфейсов
@@ -195,7 +217,7 @@ namespace {
 				// Переходим к следующему интерфейсу
 				continue;
 			// Формируем запись сетевого интерфейса
-			IfaceEntry entry;
+			iface_entry_t entry;
 			// Устанавливаем имя интерфейса
 			entry.name = ifa->ifa_name;
 			// Устанавливаем семейство адреса
@@ -256,7 +278,7 @@ namespace {
 					/**
 					 * Перебираем закешированные интерфейсы
 					 */
-					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
+					for(const iface_entry_t & entry : ::__awh_iface_cache__.entries){
 						// Если найден активный IPv4-интерфейс с искомым именем
 						if((entry.family == AF_INET) && entry.up && fmk::compare(entry.name, name)){
 							// Сохраняем найденный IPv4-адрес
@@ -305,7 +327,7 @@ namespace {
 					/**
 					 * Перебираем закешированные интерфейсы
 					 */
-					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
+					for(const iface_entry_t & entry : ::__awh_iface_cache__.entries){
 						// Если найден активный IPv6-интерфейс с искомым адресом
 						if((entry.family == AF_INET6) && entry.up && (::memcmp(entry.address6.data(), address, entry.address6.size()) == 0))
 							// Возвращаем индекс найденного интерфейса
@@ -328,25 +350,25 @@ namespace {
 };
 
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
  *
  */
-void awh::eth::Socket::threadSafety(const bool mode) noexcept {
+void awh::eth::socket::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 	// Активируем работу мьютекса блокировки потока при работе с глобальным кешом сетевых интерфейсов
 	::__awh_iface_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
- * @brief Метод получения кода ошибки
+ * @brief Функция получения кода ошибки
  *
  * @param sock сетевой сокет
  * @return     код ошибки на сокете если присутствует
  *
  */
-int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
+int32_t awh::eth::socket::getError(const net::socket_t sock) noexcept {
 	// Переменная результата
 	int32_t result = -1;
 	// Размер кода ошибки
@@ -376,14 +398,14 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения таймаута сокета
+ * @brief Функция получения таймаута сокета
  *
  * @param sock  сетевой сокет
  * @param event событие сокета
  * @return      время таймаута в миллисекундах
  *
  */
-uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+uint32_t awh::eth::socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Создаём объект таймаута
 	struct timeval timeout{};
 	// Получаем размер объекта таймаута
@@ -452,7 +474,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 	);
 }
 /**
- * @brief Метод установки таймаута сокета
+ * @brief Функция установки таймаута сокета
  *
  * @param sock  сетевой сокет
  * @param event событие сокета
@@ -460,7 +482,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
  * @return      результат установки таймаута
  *
  */
-bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
+bool awh::eth::socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Создаём объект таймаута
@@ -532,7 +554,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	return result;
 }
 /**
- * @brief Метод получения свободного места в буфере сокета
+ * @brief Функция получения свободного места в буфере сокета
  *
  * @note Занятое место буфера ОТПРАВКИ Solaris и illumos не сообщают вовсе: ни параметра
  *       вроде SO_NWRITE, ни запроса вроде SIOCOUTQ там нет. Потребитель обязан обходиться
@@ -548,7 +570,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
  * @return      свободное место в буфере сокета либо -1, если оно неизвестно
  *
  */
-int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+int32_t awh::eth::socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Если сокет передан неверно
 	if(sock == net::invalid_socket_t)
 		// Выводим признак того, что свободное место неизвестно
@@ -564,7 +586,7 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 		// Выводим признак того, что свободное место неизвестно
 		return -1;
 	// Получаем вместимость буфера приёма
-	const int32_t size = this->getBufferSize(sock, event);
+	const int32_t size = getBufferSize(sock, event);
 	// Если вместимость буфера получить не удалось
 	if(size <= 0)
 		// Выводим признак того, что свободное место неизвестно
@@ -573,14 +595,14 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 	return ((size > pending) ? (size - pending) : 0);
 }
 /**
- * @brief Метод получения размера буфера
+ * @brief Функция получения размера буфера
  *
  * @param sock  сетевой сокет
  * @param event событие сокета
  * @return      размер буфера сокета
  *
  */
-int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+int32_t awh::eth::socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) noexcept {
 	// Переменная результата
 	int32_t result = 0;
 	/**
@@ -648,7 +670,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 	return result;
 }
 /**
- * @brief Метод установки размеров буфера
+ * @brief Функция установки размеров буфера
  *
  * @param sock  сетевой сокет
  * @param event событие сокета
@@ -656,7 +678,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
  * @return      установленный размер буфера сокета
  *
  */
-int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
+int32_t awh::eth::socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) noexcept {
 	// Переменная результата
 	int32_t result = -1;
 	/**
@@ -782,7 +804,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 	return result;
 }
 /**
- * @brief Метод установки сетевого интерфейса для multicast пакетов
+ * @brief Функция установки сетевого интерфейса для multicast пакетов
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -790,7 +812,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
+bool awh::eth::socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
@@ -944,7 +966,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 	return result;
 }
 /**
- * @brief Метод устанавливает постоянное подключение на сокет
+ * @brief Функция устанавливает постоянное подключение на сокет
  *
  * @param sock  сетевой сокет
  * @param cnt   максимальное количество попыток
@@ -953,7 +975,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
  * @return      результат работы функции
  *
  */
-bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept {
+bool awh::eth::socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если максимальное количество попыток передано неправильно
@@ -1114,14 +1136,14 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	return result;
 }
 /**
- * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ * @brief Функция получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       значение DSCP
  *
  */
-awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) const noexcept {
+awh::event::dscp_t awh::eth::socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) noexcept {
 	// Переменная результата
 	event::dscp_t result = event::dscp_t::CS0;
 	// Если сокет корректен
@@ -1206,7 +1228,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 	return result;
 }
 /**
- * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ * @brief Функция установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -1214,7 +1236,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept {
+bool awh::eth::socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -1225,7 +1247,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 		 * заменой только старших шести бит: запись целого октета сбросила бы
 		 * установленный признак перегрузки
 		 */
-		const int32_t tclass = ((static_cast <int32_t> (dscp) << 2) | static_cast <int32_t> (this->getExplicitCongestionNotification(sock, family)));
+		const int32_t tclass = ((static_cast <int32_t> (dscp) << 2) | static_cast <int32_t> (getExplicitCongestionNotification(sock, family)));
 		/**
 		 * Определяем семейство события
 		 */
@@ -1290,7 +1312,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 	return result;
 }
 /**
- * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ * @brief Функция получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
  *
  * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
  *       перегрузки принятых пакетов приходит отдельно для каждой
@@ -1301,7 +1323,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
  * @return       значение ECN
  *
  */
-awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept {
+awh::event::ecn_t awh::eth::socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) noexcept {
 	// Переменная результата
 	event::ecn_t result = event::ecn_t::NOT_ECT;
 	// Если сокет корректен
@@ -1374,7 +1396,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	return result;
 }
 /**
- * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
+ * @brief Функция отправки датаграммы с меткой перегрузки в управляющих данных
  *
  * @param sock    сетевой сокет
  * @param buffer  буфер отправляемых данных
@@ -1387,7 +1409,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
  * @return        количество отправленных октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept {
+ssize_t awh::eth::socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) noexcept {
 	/**
 	 * Если метить датаграмму не требуется - отправляем обычным обращением
 	 *
@@ -1469,7 +1491,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
 	return ::sendmsg(sock, &message, flags);
 }
 /**
- * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ * @brief Функция установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
  *
  * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
  *       октет заголовка, поэтому установка выполняется чтением текущего
@@ -1481,7 +1503,7 @@ ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept {
+bool awh::eth::socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -1492,7 +1514,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 		 * заменой только младших двух бит: запись целого октета сбросила бы
 		 * настроенный класс обслуживания
 		 */
-		const int32_t tclass = ((static_cast <int32_t> (this->getDifferentiatedServicesCodePoint(sock, family)) << 2) | static_cast <int32_t> (ecn));
+		const int32_t tclass = ((static_cast <int32_t> (getDifferentiatedServicesCodePoint(sock, family)) << 2) | static_cast <int32_t> (ecn));
 		/**
 		 * Определяем семейство события
 		 */
@@ -1507,7 +1529,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 				 * Отметка выставляется одинаково на всех системах, в том числе там, где
 				 * ядро признак перегрузки принятых IPv4-пакетов не выдаёт (NetBSD и
 				 * OpenBSD не имеют IP_RECVTOS). Прежде на этих системах отметка молча
-				 * не выставлялась, а метод отвечал согласием: установка признака
+				 * не выставлялась, а функция отвечала согласием: установка признака
 				 * расходилась с его последующим чтением, и потребитель узнать об этом
 				 * не мог. Довод был в том, что метить пакеты, не видя обратных отметок,
 				 * бесполезно, - но решение это принадлежит потребителю, а не установщику
@@ -1515,7 +1537,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 				 * availableExplicitCongestionNotification() и сам отключает ECN там,
 				 * где обратной связи не будет
 				 *
-				 * Класс обслуживания (DSCP) задаётся отдельно методом
+				 * Класс обслуживания (DSCP) задаётся отдельно функцией
 				 * setDifferentiatedServicesCodePoint(), и здесь он лишь сохраняется
 				 * нетронутым: оба поля делят один октет заголовка
 				 *
@@ -1577,7 +1599,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 	return result;
 }
 /**
- * @brief Метод активации/деактивации генерации информации о трафике
+ * @brief Функция активации/деактивации генерации информации о трафике
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -1585,7 +1607,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+bool awh::eth::socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -1862,7 +1884,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	return result;
 }
 /**
- * @brief Метод переключения опции сокета
+ * @brief Функция переключения опции сокета
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -1872,7 +1894,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
+bool awh::eth::socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -2052,7 +2074,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *          одного системного вызова на каждую установку опции.
 				 *
 				 * @note Неназванный протокол разыскивается у сокета по-прежнему:
-				 *       обращений к методу много, и не всякому из них протокол известен
+				 *       обращений к функции много, и не всякому из них протокол известен
 				 *
 				 */
 				int32_t protocol = 0;
@@ -2096,7 +2118,6 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
 						/**
 						 * Если системе не известен запрос SO_PROTOCOL
-						 *
 						 */
 						#else
 							// Спрашиваем протокол сокета запросом SO_PROTOTYPE
@@ -2418,6 +2439,9 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					act.sa_handler = (flags ? SIG_IGN : SIG_DFL);
 					// Устанавливаем обработку сигнала записи в оборванное соединение
 					if(!(result = !static_cast <bool> (::sigaction(SIGPIPE, &act, nullptr)))){
+				/**
+				 * Для систем Sun, отличных от illumos
+				 */
 				#else
 					/**
 					 * Глушим сигнал настройкой сокета, а на протоколах её не берущих - процессом
@@ -3026,14 +3050,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	return result;
 }
 /**
- * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ * @brief Функция получения обнаружения максимального размера пакета (MTU)
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       режим обнаружения максимального размера пакета (MTU)
  *
  */
-awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept {
+awh::event::mtu_discover_t awh::eth::socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) noexcept {
 	// Переменная результата
 	event::mtu_discover_t result = event::mtu_discover_t::NONE;
 	// Буфер для получения значения опции
@@ -3073,7 +3097,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	return result;
 }
 /**
- * @brief Метод установки обнаружения максимального размера пакета (MTU)
+ * @brief Функция установки обнаружения максимального размера пакета (MTU)
  *
  * @param sock   сетевой сокет
  * @param family семейство протоколов (IPv4 или IPv6)
@@ -3081,7 +3105,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
+bool awh::eth::socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Значение опции
@@ -3100,7 +3124,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	 * NetBSD имеет его только для IPv6, OpenBSD - ни для одного семейства. Правдивой
 	 * замены здесь нет: обнаружение пути ведёт ядро само по своим настройкам, и
 	 * приложению остаётся лишь узнать итог. Согласиться, ничего не сделав, значило бы
-	 * выдать невыполненное за выполненное, поэтому метод отвечает отказом и пишет
+	 * выдать невыполненное за выполненное, поэтому функция отвечает отказом и пишет
 	 * причину в журнал - потребитель узнаёт, что запрет фрагментации ему не достался,
 	 * и обходится осторожным размером датаграммы
 	 *
@@ -3223,7 +3247,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	return result;
 }
 /**
- * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+ * @brief Функция получения максимального количества хопов, через которые может пройти пакет
  *
  * @param sock     сетевой сокет
  * @param family   семейство протоколов (IPv4 или IPv6)
@@ -3231,7 +3255,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  * @return         максимальное количество хопов
  *
  */
-uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
+uint8_t awh::eth::socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) noexcept {
 	// Переменная результата
 	uint8_t result = 0;
 	/**
@@ -3248,7 +3272,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 * Если способ доставки не определён
 				 *
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
-				 *          методы движка возвращают его там, где способ установить не
+				 *          функции движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
 				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
@@ -3340,7 +3364,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 				 * Если способ доставки не определён
 				 *
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
-				 *          методы движка возвращают его там, где способ установить не
+				 *          функции движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
 				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
@@ -3431,7 +3455,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	return result;
 }
 /**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ * @brief Функция установки максимального количества хопов, через которые может пройти пакет
  *
  * @param sock     сетевой сокет
  * @param family   семейство протоколов (IPv4 или IPv6)
@@ -3440,7 +3464,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
  * @return         результат работы функции
  *
  */
-bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept {
+bool awh::eth::socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3457,7 +3481,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 * Если способ доставки не определён
 				 *
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
-				 *          методы движка возвращают его там, где способ установить не
+				 *          функции движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
 				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
@@ -3541,7 +3565,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 				 * Если способ доставки не определён
 				 *
 				 * @details `NONE` - НЕ способ доставки, а признак его отсутствия: сами
-				 *          методы движка возвращают его там, где способ установить не
+				 *          функции движка возвращают его там, где способ установить не
 				 *          удалось. Задавать предел переходов нечему, и ответ здесь -
 				 *          отказ, а не молчаливое приравнивание к одноадресной доставке.
 				 *
@@ -3622,7 +3646,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	return result;
 }
 /**
- * @brief Метод активации/деактивации мультикаст группы события
+ * @brief Функция активации/деактивации мультикаст группы события
  *
  * @param sock   сетевой сокет
  * @param mode   режим активации/деактивации
@@ -3631,7 +3655,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
+bool awh::eth::socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если переданные адреса не инициализированы
@@ -3866,7 +3890,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 	return result;
 }
 /**
- * @brief Метод проверки готовности средств сокетов системы
+ * @brief Функция проверки готовности средств сокетов системы
  *
  * @note Подъёма средств сокетов на процесс эта система не требует вовсе: они
  *       принадлежат ядру и годны всегда. Обращение это заведено ради одной лишь
@@ -3877,12 +3901,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
  * @return результат проверки готовности средств сокетов системы
  *
  */
-bool awh::eth::Socket::ready() const noexcept {
+bool awh::eth::socket::ready() noexcept {
 	// Сообщаем, что средства сокетов системы годны
 	return true;
 }
 /**
- * @brief Метод выдачи нового сокета
+ * @brief Функция выдачи нового сокета
  *
  * @param family семейство протоколов сокета
  * @param type   тип сокета
@@ -3890,7 +3914,7 @@ bool awh::eth::Socket::ready() const noexcept {
  * @return       созданный сокет
  *
  */
-awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, [[maybe_unused]] const uint16_t options) const noexcept {
+awh::net::socket_t awh::eth::socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, [[maybe_unused]] const uint16_t options) noexcept {
 	/**
 	 * Признаки, которые ядро принимает прямо при создании сокета
 	 *
@@ -4422,13 +4446,13 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	return net::invalid_socket_t;
 }
 /**
- * @brief Метод получения опций, принимаемых при создании сокета
+ * @brief Функция получения опций, принимаемых при создании сокета
  *
  * @param options набор опций события
  * @return        подмножество опций, наложенных при создании сокета
  *
  */
-uint16_t awh::eth::Socket::inborn([[maybe_unused]] const uint16_t options) const noexcept {
+uint16_t awh::eth::socket::inborn([[maybe_unused]] const uint16_t options) noexcept {
 	// Результат работы функции
 	uint16_t result = event::options::NONE;
 	/**
@@ -4457,7 +4481,7 @@ uint16_t awh::eth::Socket::inborn([[maybe_unused]] const uint16_t options) const
 	return result;
 }
 /**
- * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
+ * @brief Функция создания пары сокетов для межпроцессного взаимодействия (IPC)
  *
  * @param family семейство протоколов сокета
  * @param type   тип сокета
@@ -4465,7 +4489,7 @@ uint16_t awh::eth::Socket::inborn([[maybe_unused]] const uint16_t options) const
  * @return       созданный сокет
  *
  */
-array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+array <awh::net::socket_t, 2> awh::eth::socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) noexcept {
 	// Переменная результата
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,
@@ -4628,7 +4652,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 				 */
 				for(net::socket_t & socket : result)
 					// Создаём сокет по указанным параметрам
-					socket = this->issue(family, type, proto);
+					socket = issue(family, type, proto);
 			} break;
 		}
 	/**
@@ -4659,21 +4683,3 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Socket::Socket() noexcept {
-	/**
-	 * Выполняем одноразовую инициализацию мьютексов для кешей IGD и шлюза для всех экземпляров класса Port_Mapping
-	 */
-	std::call_once(::__awh_init_once__, []() noexcept {
-		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем сетевых интерфейсов
-		::__awh_iface_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	});
-}
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Socket::~Socket() noexcept = default;

@@ -13,12 +13,12 @@
  * @site https://anyks.com
  *
  * \~russian
- * @brief Заголовочный файл модуля низкоуровневой работы с сокетами — класс eth::Socket для установки опций сокета:
+ * @brief Заголовочный файл модуля низкоуровневой работы с сокетами — пространство имён eth::socket для установки опций сокета:
  *        неблокирующего режима, таймаутов, размеров буферов, keep-alive, TCP_NODELAY, TOS/DSCP,
  *        multicast и параметров переиспользования адреса
  *
  * \~english
- * @brief Header file of the module of the low level work with the sockets — the eth::Socket class for setting the options of a socket:
+ * @brief Header file of the module of the low level work with the sockets — the eth::socket namespace for setting the options of a socket:
  *        of the non-blocking mode, of the timeouts, of the sizes of the buffers, of the keep-alive, of the TCP_NODELAY, of the TOS/DSCP,
  *        of the multicast and of the parameters of the reuse of the address
  *
@@ -37,7 +37,7 @@
  * Наши модули
  */
 #include "../net.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -56,7 +56,7 @@ namespace awh {
 	 * @details У систем POSIX тип этот приходит заголовком sys/socket.h, а у MS Windows
 	 *          он объявлен заголовками сокетов, какие сюда намеренно не подключаются:
 	 *          заголовки эти уносят у потребителя библиотеки DELETE, NO_ERROR и прочие
-	 *          занятые имена, отчего и подключаются лишь в файлах реализации
+	 *          занятые имена, отчего и подключаются лишь в файлах реализации.
 	 *
 	 * @note Объявление это лежит в пространстве имён библиотеки и с объявлением самой
 	 *       системы не спорит: тип у обоих один и тот же
@@ -64,9 +64,18 @@ namespace awh {
 	 * \~english
 	 * @brief Size of the address of a network node
 	 *
+	 * @details In POSIX systems this type comes from the sys/socket.h header, while in MS Windows
+	 *          it is declared by the socket headers, which are deliberately not included here:
+	 *          those headers take away from the consumer of the library DELETE, NO_ERROR and other
+	 *          occupied names, and therefore they are included only in the implementation files.
+	 *
+	 * @note This declaration lies in the namespace of the library and does not argue with the declaration of
+	 *       the system itself: the type is one and the same for both
+	 *
 	 * \~
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
+		// Объявляем размер адреса сетевого узла для MS Windows
 		typedef int32_t socklen_t;
 	#endif
 	/**
@@ -86,751 +95,837 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Класс для работы с сокетами
+		 * @brief Пространство имён для работы с сокетами
 		 *
 		 * @details Собирает в одном месте настройки сокета - те самые свойства,
-		 * что задаются вызовом с длинным списком доводов и разнятся от системы
-		 * к системе. Здесь они прикрыты понятными именами, а различия систем
-		 * спрятаны внутрь
+		 *          что задаются вызовом с длинным списком доводов и разнятся от системы
+		 *          к системе. Здесь они прикрыты понятными именами, а различия систем
+		 *          спрятаны внутрь.
 		 *
-		 * Настройки делятся на несколько groups: пределы ожидания и размеры
-		 * накопителей, пометки качества обслуживания, пределы числа переходов,
-		 * участие в рассылке на группу, обнаружение наибольшего размера пакета
+		 *          Настройки делятся на несколько groups: пределы ожидания и размеры
+		 *          накопителей, пометки качества обслуживания, пределы числа переходов,
+		 *          участие в рассылке на группу, обнаружение наибольшего размера пакета.
 		 *
 		 * @note Поддержка настроек **зависит от системы**: часть из них есть не
-		 * всюду, и отрицательный итог нередко означает не сбой, а отсутствие
-		 * такой возможности. Итог проверять следует всегда
+		 *       всюду, и отрицательный итог нередко означает не сбой, а отсутствие
+		 *       такой возможности. Итог проверять следует всегда
 		 *
 		 * \~english
-		 * @brief Class for working with the sockets
+		 * @brief Namespace for working with the sockets
+		 *
 		 * @details Collects in one place the settings of a socket — those very properties
-		 * that are set by a call with a long list of arguments and differ from system
-		 * to system. Here they are covered by understandable names, and the differences of the systems
-		 * are hidden inside
-		 * The settings are divided into several groups: the limits of the waiting and the sizes
-		 * of the accumulators, the marks of the quality of the service, the limits of the number of the hops,
-		 * the participation in the multicast to a group, the discovery of the largest size of a packet
+		 *          that are set by a call with a long list of arguments and differ from system
+		 *          to system. Here they are covered by understandable names, and the differences of the systems
+		 *          are hidden inside.
+		 *
+		 *          The settings are divided into several groups: the limits of the waiting and the sizes
+		 *          of the accumulators, the marks of the quality of the service, the limits of the number of the hops,
+		 *          the participation in the multicast to a group, the discovery of the largest size of a packet.
+		 *
 		 * @note The support of the settings **depends on the system**: a part of them is absent
-		 * in some places, and a negative result not rarely means not a failure, but the absence of
-		 * such a possibility. The result should always be checked
+		 *       in some places, and a negative result not rarely means not a failure, but the absence of
+		 *       such a possibility. The result should always be checked
 		 *
 		 * \~
 		 */
-		typedef class __AWH_SHARED_EXPORT__ Socket {
-			public:
+		namespace socket {
+			/**
+			 * \~russian
+			 * @brief Функция установки безопасности работы потоков
+			 *
+			 * @warning Настройка эта **общая на весь процесс**, а не своя у каждого
+			 *          вызова. По умолчанию защита выключена - в расчёте на однопоточную
+			 *          работу, - и включать её следует до запуска второго потока
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 *
+			 * \~english
+			 * @brief Function of setting the thread safety of the work
+			 *
+			 * @warning This setting is a **common one for the whole process**, and not its own for every
+			 *          call. By default the protection is switched off — with the reckoning on a single-threaded
+			 *          work, — and it should be switched on before the start of the second thread
+			 *
+			 * @param mode flag of the thread safety mode
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void threadSafety(const bool mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения кода ошибки
+			 *
+			 * @details Забирает у сокета код последней ошибки, попутно его сбрасывая.
+			 *
+			 * @note Нужно это при неблокирующем подключении: сам вызов
+			 *       подключения там возвращается сразу, а удалось оно или нет,
+			 *       выясняется потом - как раз этим способом
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
+			 *
+			 * \~english
+			 * @brief Function of getting the code of an error
+			 *
+			 * @details Takes from a socket the code of the last error, resetting it along the way.
+			 *
+			 * @note This is needed at a non-blocking connection: the very call of
+			 *       the connection returns there at once, and whether it succeeded or not,
+			 *       is found out afterwards — exactly by this way
+			 *
+			 * @param sock network socket
+			 * @return     code of the error on the socket if present
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ int32_t getError(const net::socket_t sock) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения таймаута сокета
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @return      время таймаута в миллисекундах
+			 *
+			 * \~english
+			 * @brief Function of getting the timeout of a socket
+			 *
+			 * @param sock  network socket
+			 * @param event event of the socket
+			 * @return      time of the timeout in milliseconds
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ uint32_t getTimeout(const net::socket_t sock, const net::socket_event_t event) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки таймаута сокета
+			 *
+			 * @details Задаёт, сколько ждать при чтении или отправке, прежде чем
+			 *          прервать вызов.
+			 *
+			 * @warning Действует лишь на **блокирующие** сокеты. У неблокирующих
+			 *          вызовы и без того возвращаются сразу, а ожиданием ведает цикл
+			 *          событий - и там пределы задаются движком, а не здесь
+			 *
+			 * @warning У **MS Windows** срок приёма ТЕРЯЕТ дейтаграмму, пришедшую ровно
+			 *          в миг снятия блокирующего приёма по этому сроку. Стек засчитывает её
+			 *          отданной получателю, приём возвращает `WSAETIMEDOUT`, в очереди гнезда
+			 *          дейтаграммы уже нет, и потерю не отмечает ни один счётчик системы.
+			 *          Свойство доказано опытом: при подгонке прихода к самому истечению срока
+			 *          теряется от 1 до 25 дейтаграмм на 4000, при приходе в середину промежутка
+			 *          и при ожидании готовности через `select` - ни одной. Оттого приём опросом
+			 *          на блокирующем сокете обязан отсчитывать срок ДО обращения к приёму и
+			 *          звать приём лишь по готовности, а настройку эту держать запасным пределом
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param msec  время таймаута в миллисекундах
+			 * @return      результат установки таймаута
+			 *
+			 * \~english
+			 * @brief Function of setting the timeout of a socket
+			 *
+			 * @details Sets how long to wait at the reading or at the sending before
+			 *          interrupting the call.
+			 *
+			 * @warning Is in force only for the **blocking** sockets. For the non-blocking ones
+			 *          the calls return at once anyway, and the waiting is in charge of the loop of
+			 *          the events — and there the limits are set by the engine, and not here
+			 *
+			 * @warning On **MS Windows** the receive timeout LOSES a datagram that arrives
+			 *          exactly at the instant the blocking receive is cancelled by this timeout. The
+			 *          stack counts it as delivered to a consumer, the receive returns `WSAETIMEDOUT`,
+			 *          the datagram is no longer in the socket queue, and no counter of the system
+			 *          reports the loss. The property is proven by experiment: aligning the arrival
+			 *          with the very expiry of the timeout loses from 1 to 25 datagrams out of 4000,
+			 *          while an arrival in the middle of the interval and a wait through `select`
+			 *          lose none. Hence a polling receive on a blocking socket must count the timeout
+			 *          BEFORE the call to the receive and call it only on readiness, keeping this setting as a fallback limit
+			 *
+			 * @param sock  network socket
+			 * @param event event of the socket
+			 * @param msec  time of the timeout in milliseconds
+			 * @return      result of the setting of the timeout
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения размера буфера
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @return      размер буфера сокета
+			 *
+			 * \~english
+			 * @brief Function of getting the size of a buffer
+			 *
+			 * @param sock  network socket
+			 * @param event event of the socket
+			 * @return      size of the buffer of the socket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ int32_t getBufferSize(const net::socket_t sock, const net::socket_event_t event) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения свободного места в буфере сокета
+			 *
+			 * @details Возвращает СВОБОДНОЕ место, а не вместимость: `SO_SNDBUF` и `SO_RCVBUF`
+			 *          говорят, сколько буфер вмещает всего, тогда как обмен упирается в то,
+			 *          сколько в нём осталось незанятого. Забитый сокет не примет и байта
+			 *          при какой угодно вместимости.
+			 *
+			 * @note Для буфера отправки замер безопасно занижен: писатель у сокета один -
+			 *       сам движок, а ядро буфер только выгребает, поэтому свободного места
+			 *       между замером и отправкой может стать лишь больше. Для буфера приёма
+			 *       наоборот: место занимает встречная сторона, и замер стареет мгновенно
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета (чтение либо запись)
+			 * @return      свободное место в буфере либо -1, если система его не сообщает
+			 *
+			 * \~english
+			 * @brief Function of getting the free room in a buffer of a socket
+			 *
+			 * @details Returns the FREE room rather than the capacity: `SO_SNDBUF` and `SO_RCVBUF`
+			 *          tell how much the buffer holds in total, whereas the exchange runs into how much
+			 *          of it has remained unoccupied. A filled socket will not take even a byte
+			 *          at whatever capacity.
+			 *
+			 * @note For the sending buffer the measurement is safely underestimated: the writer of the socket is one —
+			 *       the engine itself, and the kernel only empties the buffer, therefore the free room
+			 *       between the measurement and the sending can only become larger. For the receiving buffer
+			 *       it is the other way round: the room is taken by the opposite side, and the measurement ages instantly
+			 *
+			 * @param sock  network socket
+			 * @param event event of the socket (the reading or the writing)
+			 * @return      free room in the buffer or -1, if the system does not report it
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ int32_t getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки размеров буфера
+			 *
+			 * @details Задаёт, сколько данных ядро придержит у себя - порознь на
+			 *          приём и на отправку.
+			 *
+			 * @note Система вправе выдать не то, что просят: запрошенный размер
+			 *       обычно удваивается под служебные нужды, а сверх общесистемного
+			 *       предела и вовсе урезается. Итог стоит перечитать
+			 *
+			 * @param sock  сетевой сокет
+			 * @param event событие сокета
+			 * @param size  размер буфера сокета
+			 * @return      установленный размер буфера сокета
+			 *
+			 * \~english
+			 * @brief Function of setting the sizes of a buffer
+			 *
+			 * @details Sets how much data the kernel will hold at itself — separately for
+			 *          the receiving and for the sending.
+			 *
+			 * @note The system is free to give not what is asked for: the requested size
+			 *       is usually doubled for the service needs, and beyond the system-wide
+			 *       limit is cut down altogether. The result is worth reading back
+			 *
+			 * @param sock  network socket
+			 * @param event event of the socket
+			 * @param size  size of the buffer of the socket
+			 * @return      the set size of the buffer of the socket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ int32_t setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки сетевого интерфейса для multicast пакетов
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param ifname имя сетевого интерфейса
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of setting the network interface for the multicast packets
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param ifname name of the network interface
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция устанавливает постоянное подключение на сокет
+			 *
+			 * @details Включает проверку живости: подключение, по которому долго
+			 *          нет обмена, будет опробовано служебными пакетами, и молчащий конец
+			 *          обнаружится сам.
+			 *
+			 * @note Без этого оборванное подключение может не обнаруживаться
+			 *       сколь угодно долго - обрыв в сети ничем себя не выдаёт, пока по
+			 *       подключению не пойдут данные
+			 *
+			 * @param sock  сетевой сокет
+			 * @param cnt   максимальное количество попыток
+			 * @param idle  время через которое происходит проверка подключения
+			 * @param intvl время между попытками
+			 * @return      результат работы функции
+			 *
+			 * \~english
+			 * @brief The function sets a permanent connection on a socket
+			 *
+			 * @details Switches on the check of the liveness: a connection over which there is long
+			 *          no exchange will be probed by the service packets, and a silent end
+			 *          will be discovered by itself.
+			 *
+			 * @note Without this a broken connection may not be discovered
+			 *       for however long — a break in the network gives itself away by nothing, until
+			 *       the data goes over the connection
+			 *
+			 * @param sock  network socket
+			 * @param cnt   maximum number of the attempts
+			 * @param idle  time after which the check of the connection happens
+			 * @param intvl time between the attempts
+			 * @return      result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       значение DSCP
+			 *
+			 * \~english
+			 * @brief Function of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @return       value of the DSCP
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ event::dscp_t getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param dscp   значение DSCP
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param dscp   value of the DSCP
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+			 *
+			 * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
+			 *       перегрузки принятых пакетов приходит отдельно для каждой
+			 *       датаграммы в метаданных дейтаграммного пакета
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       значение ECN
+			 *
+			 * \~english
+			 * @brief Function of getting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
+			 *
+			 * @note Yields the value set on the outgoing packets. The sign of
+			 *       the congestion of the received packets comes separately for every
+			 *       datagram in the metadata of the datagram packet
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @return       value of the ECN
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ event::ecn_t getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+			 *
+			 * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
+			 *       октет заголовка, поэтому установка выполняется чтением текущего
+			 *       значения с последующей заменой только младших двух бит
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param ecn    значение ECN
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of setting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
+			 *
+			 * @note The class of the service (DSCP) is preserved: both fields occupy one
+			 *       octet of the header, and therefore the setting is performed by the reading of the current
+			 *       value with the subsequent replacement of the lower two bits only
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param ecn    value of the ECN
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция отправки датаграммы с меткой перегрузки в управляющих данных
+			 *
+			 * @details Метка едет вместе с датаграммой, а не выставляется опцией сокета:
+			 *          датаграмма вправе полежать в очереди отправки, и опция к моменту
+			 *          её ухода принадлежала бы уже другому соединению - сокет у датаграммных
+			 *          серверов один на все соединения.
+			 *
+			 * @note Нулевая метка означает «не метить»: управляющие данные не строятся вовсе,
+			 *       и отправка идёт обычным обращением, как и прежде
+			 *
+			 * @note Ширина значения метки для IPv4 у систем разная, и молчанием расхождение
+			 *       не проявляется: FreeBSD берёт октет и отвергает целое, macOS берёт целое,
+			 *       а на октет отвечает успехом, теряя метку. NetBSD не принимает метку на
+			 *       IPv4 вовсе - там отправка идёт без неё
+			 *
+			 * @param sock    сетевой сокет
+			 * @param buffer  буфер отправляемых данных
+			 * @param size    размер буфера отправляемых данных
+			 * @param flags   флаги отправки
+			 * @param addr    адрес удалённого узла
+			 * @param length  размер адреса удалённого узла
+			 * @param family  семейство протоколов (IPv4 или IPv6)
+			 * @param traffic значение поля класса обслуживания вместе с меткой перегрузки
+			 * @return        количество отправленных октетов либо -1 при отказе
+			 *
+			 * \~english
+			 * @brief Function of sending a datagram with the marking of the congestion in the control data
+			 *
+			 * @details The marking travels together with the datagram instead of being set by an option
+			 *          of the socket: a datagram is entitled to lie in the queue of the sending, and by
+			 *          the moment of its departure the option would belong to another connection already -
+			 *          the socket of the datagram servers is one for all the connections.
+			 *
+			 * @note A zero marking means "do not mark": the control data are not built at all,
+			 *       and the sending goes by the ordinary call, as before
+			 *
+			 * @note The width of the value of the marking for IPv4 differs between the systems, and the
+			 *       divergence does not show itself by a silence: FreeBSD takes an octet and rejects an
+			 *       integer, macOS takes an integer and answers a success to an octet, losing the marking.
+			 *       NetBSD does not take the marking on IPv4 at all - there the sending goes without it
+			 *
+			 * @param sock    network socket
+			 * @param buffer  buffer of the data to be sent
+			 * @param size    size of the buffer of the data to be sent
+			 * @param flags   flags of the sending
+			 * @param addr    address of the remote node
+			 * @param length  size of the address of the remote node
+			 * @param family  family of the protocols (IPv4 or IPv6)
+			 * @param traffic value of the field of the class of the service together with the marking of the congestion
+			 * @return        number of the sent octets or -1 at a refusal
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ ssize_t datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция активации/деактивации генерации информации о трафике
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим активации или деактивации
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of the activation/deactivation of the generation of the information about the traffic
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param mode   mode of the activation or of the deactivation
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция переключения опции сокета
+			 *
+			 * @details Протокол принимается доводом, а не разыскивается у самого сокета.
+			 *          Часть опций приложима лишь к одному протоколу - `TCP_NO_DELAY`
+			 *          к TCP, - и прежде протокол читался настройкой `SO_PROTOCOL`,
+			 *          то есть обращением к ядру ради того, что вызывающему и без
+			 *          того известно: он этот сокет сам и заводил.
+			 *
+			 * @note Довод необязателен, и значение `NONE` означает «протокол не
+			 *       назван». Тогда он разыскивается у сокета по-прежнему: обращений
+			 *       к функции много, и обязать все их назвать протокол значило бы
+			 *       править места, которым он безразличен
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим активации или деактивации
+			 * @param option опция сокета
+			 * @param proto  протокол сокета, `NONE` - протокол не назван
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of switching an option of a socket
+			 *
+			 * @details The protocol is taken as an argument, and is not sought at the socket itself.
+			 *          A part of the options is applicable only to one protocol — `TCP_NO_DELAY`
+			 *          to TCP, — and formerly the protocol was read by the `SO_PROTOCOL` setting,
+			 *          that is by an address to the kernel for the sake of what the caller knows
+			 *          anyway: it started this socket itself.
+			 *
+			 * @note The argument is optional, and the value `NONE` means «the protocol is not
+			 *       named». Then it is sought at the socket as before: there are many addresses
+			 *       to the function, and to oblige all of them to name the protocol would mean
+			 *       correcting the places it is indifferent to
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param mode   mode of the activation or of the deactivation
+			 * @param option option of the socket
+			 * @param proto  protocol of the socket, `NONE` — the protocol is not named
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto = event::protocol_t::NONE) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @return       режим обнаружения максимального размера пакета (MTU)
+			 *
+			 * \~english
+			 * @brief Function of getting the discovery of the maximum size of a packet (MTU)
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @return       mode of the discovery of the maximum size of a packet (MTU)
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ event::mtu_discover_t getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param sock   сетевой сокет
+			 * @param family семейство протоколов (IPv4 или IPv6)
+			 * @param mode   режим обнаружения максимального размера пакета (MTU)
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of setting the discovery of the maximum size of a packet (MTU)
+			 *
+			 * @param sock   network socket
+			 * @param family family of the protocols (IPv4 or IPv6)
+			 * @param mode   mode of the discovery of the maximum size of a packet (MTU)
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param sock     сетевой сокет
+			 * @param family   семейство протоколов (IPv4 или IPv6)
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @return         максимальное количество хопов
+			 *
+			 * \~english
+			 * @brief Function of getting the maximum number of the hops a packet may pass through
+			 *
+			 * @param sock     network socket
+			 * @param family   family of the protocols (IPv4 or IPv6)
+			 * @param delivery mode of the transmission of the packets (unicast, multicast, broadcast)
+			 * @return         maximum number of the hops
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ uint8_t getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param sock     сетевой сокет
+			 * @param family   семейство протоколов (IPv4 или IPv6)
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @param hops     максимальное количество хопов
+			 * @return         результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of setting the maximum number of the hops a packet may pass through
+			 *
+			 * @param sock     network socket
+			 * @param family   family of the protocols (IPv4 or IPv6)
+			 * @param delivery mode of the transmission of the packets (unicast, multicast, broadcast)
+			 * @param hops     maximum number of the hops
+			 * @return         result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция активации/деактивации мультикаст группы события
+			 *
+			 * @details Записывает сокет в группу рассылки или выписывает из неё.
+			 *          Пакеты, разосланные на группу, доходят лишь до вписавшихся.
+			 *
+			 * @note Вписываться следует с указанием устройства: машина с
+			 *       несколькими устройствами иначе выберет его сама, и рассылка может
+			 *       прийти не с той стороны
+			 *
+			 * @param sock   сетевой сокет
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @return       результат работы функции
+			 *
+			 * \~english
+			 * @brief Function of the activation/deactivation of the multicast group of an event
+			 *
+			 * @details Enrolls a socket into a multicast group or strikes it out of one.
+			 *          The packets sent to the group reach only the enrolled ones
+			 *
+			 * @note One should enroll with the device specified: a machine with
+			 *       several devices will otherwise choose it by itself, and the multicast may
+			 *       come from the wrong side
+			 *
+			 * @param sock   network socket
+			 * @param mode   mode of the activation/deactivation
+			 * @param group  multicast group for the activation/deactivation
+			 * @param source address of the network interface the subscription is performed from
+			 * @return       result of the work of the function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция проверки готовности средств сокетов системы
+			 *
+			 * @details Отвечает, годна ли система заводить сокеты вообще. Средства
+			 *          эти у отдельных систем требуют подъёма на процесс, и подъём этот
+			 *          вправе не удаться: у MS Windows такое обращение (`WSAStartup`)
+			 *          отвечает отказом при недоступной версии либо нехватке средств, и
+			 *          всякое обращение к сокетам после этого отвечает отказом 10093.
+			 *
+			 * @details Спрашивают об этом на заведении движка, а не при выдаче
+			 *          сокета. Довод в том, КОГДА вызывающая сторона просит сеть: заводя
+			 *          движок, она сеть просит явно - и отказ обязан прийти прямо там, а не
+			 *          всплыть позже отдельными отказами каждого сокета, оставив приложение
+			 *          заведённым, но неработоспособным.
+			 *
+			 * @note У систем, подъёма не требующих, ответ утвердителен всегда:
+			 *       средства сокетов там принадлежат ядру и в подъёме не нуждаются
+			 *
+			 * @return результат проверки готовности средств сокетов системы
+			 *
+			 * \~english
+			 * @brief Function of checking the readiness of the means of the sockets of the system
+			 *
+			 * @details Answers whether the system is fit to start sockets at all. These means
+			 *          at some systems require a bring-up per process, and that bring-up
+			 *          is free to fail: on MS Windows such an address (`WSAStartup`)
+			 *          answers with a refusal at an unavailable version or at a shortage of the means, and
+			 *          every address to the sockets after that answers with the refusal 10093.
+			 *
+			 * @details This is asked at the starting of the engine, and not at the issuing of
+			 *          a socket. The argument is in WHEN the calling side asks for the network: starting
+			 *          the engine, it asks for the network explicitly — and the refusal is obliged to come right there, and not
+			 *          to surface later as separate refusals of every socket, leaving the application
+			 *          started, but inoperable.
+			 *
+			 * @note At the systems not requiring a bring-up the answer is affirmative always:
+			 *       the means of the sockets there belong to the kernel and need no bring-up
+			 *
+			 * @return result of the check of the readiness of the means of the sockets of the system
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool ready() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция выдачи нового сокета
+			 *
+			 * @details Часть опций события ядро принимает прямо при создании
+			 *          сокета, не требуя отдельных обращений: неблокирующий режим и
+			 *          закрытие при запуске стороннего образа. Набор опций передаётся
+			 *          сюда, чтобы этой возможностью воспользоваться.
+			 *
+			 * @note Опции, которые ядро при создании не принимает, функция
+			 *       пропускает молча - их накладывает вызывающая сторона обычным
+			 *       путём. На системах без такой возможности пропускаются все
+			 *
+			 * @param family  семейство протоколов сокета
+			 * @param type    тип сокета
+			 * @param proto   протокол сокета
+			 * @param options набор опций события
+			 * @return        созданный сокет
+			 *
+			 * \~english
+			 * @brief Function of issuing a new socket
+			 *
+			 * @details A part of the options of an event the kernel takes right at the creation of
+			 *          a socket, requiring no separate addresses: the non-blocking mode and
+			 *          the closing at the start of a foreign image. The set of the options is passed
+			 *          here so that this possibility would be used.
+			 *
+			 * @note The options the kernel does not take at the creation the function
+			 *       skips silently — they are applied by the calling side by the ordinary
+			 *       path. On the systems without such a possibility all of them are skipped
+			 *
+			 * @param family  family of the protocols of the socket
+			 * @param type    type of the socket
+			 * @param proto   protocol of the socket
+			 * @param options set of the options of the event
+			 * @return        the created socket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ net::socket_t issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options = event::options::NONE) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения опций, принимаемых при создании сокета
+			 *
+			 * @details Отвечает, какие из переданных опций ядро этой системы
+			 *          принимает прямо при создании сокета - то есть какие из них функция
+			 *          выдачи сокета уже наложил и накладывать повторно не следует.
+			 *
+			 * @note Знание это держится здесь намеренно: оно зависит от системы
+			 *       и от условной сборки, и повторять его на стороне движка означало бы
+			 *       завести второй источник правды, который разойдётся с первым
+			 *
+			 * @param options набор опций события
+			 * @return        подмножество опций, наложенных при создании сокета
+			 *
+			 * \~english
+			 * @brief Function of getting the options taken at the creation of a socket
+			 *
+			 * @details Answers which of the passed options the kernel of this system
+			 *          takes right at the creation of a socket — that is which of them the function
+			 *          of the issuing of a socket has already applied and should not apply once more.
+			 *
+			 * @note This knowledge is held here deliberately: it depends on the system
+			 *       and on the conditional build, and to repeat it at the side of the engine would mean
+			 *       starting a second source of the truth, which will diverge from the first one
+			 *
+			 * @param options set of the options of the event
+			 * @return        subset of the options applied at the creation of the socket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ uint16_t inborn(const uint16_t options) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция создания пары сокетов для межпроцессного взаимодействия (IPC)
+			 *
+			 * @details Заводит два связанных сокета: записанное в один
+			 *          вычитывается из другого. Обмен идёт внутри ядра, минуя сеть.
+			 *
+			 * @note Обычное применение - разделение процесса: пара заводится до
+			 *       разделения, после чего каждая сторона закрывает свой конец и
+			 *       остаётся связь между родителем и потомком
+			 *
+			 * @param family семейство протоколов сокета
+			 * @param type   тип сокета
+			 * @param proto  протокол сокета
+			 * @return       созданный сокет
+			 *
+			 * \~english
+			 * @brief Function of creating a pair of sockets for the interprocess communication (IPC)
+			 *
+			 * @details Starts two connected sockets: what is written into one
+			 *          is read out of the other. The exchange goes inside the kernel, bypassing the network.
+			 *
+			 * @note The usual application is the splitting of a process: the pair is started before
+			 *       the splitting, after which each side closes its own end and
+			 *       a connection between the parent and the child remains
+			 *
+			 * @param family family of the protocols of the socket
+			 * @param type   type of the socket
+			 * @param proto  protocol of the socket
+			 * @return       the created socket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) noexcept;
+			/**
+			 * Для операционной системы Microsoft Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 				/**
 				 * \~russian
-				 * @brief Метод установки безопасности работы потоков
+				 * @brief Функция открытия своего конца именованного канала по его имени
 				 *
-				 * @warning Настройка эта **общая на весь процесс**, а не своя у каждого
-				 * объекта. По умолчанию защита выключена - в расчёте на однопоточную
-				 * работу, - и включать её следует до запуска второго потока
+				 * @details Порождённому процессу описатель канала по наследству не
+				 *          переходит: он проходит точку входа заново, как запущенный
+				 *          отдельно. Достаётся ему одно лишь имя канала, и свой конец
+				 *          он открывает по нему сам - тем же порядком, каким у систем
+				 *          POSIX сторона подключается к сокету по его пути.
 				 *
-				 * @param mode флаг режима безопасности потоков
+				 * @note Открывается конец наложенным: обмен ведётся портом завершений,
+				 *       а описатель без наложения выстраивал бы обращения в очередь
+				 *
+				 * @param name имя открываемого канала
+				 * @return     описатель открытого конца канала
 				 *
 				 * \~english
-				 * @brief Method of setting the thread safety of the work
-				 * @warning This setting is a **common one for the whole process**, and not its own for every
-				 * object. By default the protection is switched off — with the reckoning on a single-threaded
-				 * work, — and it should be switched on before the start of the second thread
-				 * @param mode flag of the thread safety mode
+				 * @brief Function of the opening of one's own end of a named channel by its name
+				 *
+				 * @details To the spawned process the descriptor of the channel is not passed by
+				 *          inheritance: it passes the entry point anew, as one launched
+				 *          separately. Only the name of the channel is obtained by it, and its own end
+				 *          it opens by that name itself — in the same order in which in the POSIX systems a side
+				 *          connects to a socket by its path.
+				 *
+				 * @note The end is opened overlapped: the exchange is conducted by the completion port,
+				 *       while a descriptor without the overlap would line the calls up in a queue
+				 *
+				 * @param name name of the channel to be opened
+				 * @return     descriptor of the opened end of the channel
 				 *
 				 * \~
 				 */
-				void threadSafety(const bool mode) noexcept;
-			public:
+				__AWH_SHARED_EXPORT__ net::socket_t channel(const string & name) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод получения кода ошибки
-				 *
-				 * @details Забирает у сокета код последней ошибки, попутно его сбрасывая
-				 *
-				 * @note Нужно это при неблокирующем подключении: сам вызов
-				 * подключения там возвращается сразу, а удалось оно или нет,
-				 * выясняется потом - как раз этим способом
-				 *
-				 * @param sock сетевой сокет
-				 * @return     код ошибки на сокете если присутствует
-				 *
-				 * \~english
-				 * @brief Method of getting the code of an error
-				 * @details Takes from a socket the code of the last error, resetting it along the way
-				 * @note This is needed at a non-blocking connection: the very call of
-				 * the connection returns there at once, and whether it succeeded or not,
-				 * is found out afterwards — exactly by this way
-				 * @param sock network socket
-				 * @return     code of the error on the socket if present
-				 *
-				 * \~
-				 */
-				int32_t getError(const net::socket_t sock) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения таймаута сокета
-				 *
-				 * @param sock  сетевой сокет
-				 * @param event событие сокета
-				 * @return      время таймаута в миллисекундах
-				 *
-				 * \~english
-				 * @brief Method of getting the timeout of a socket
-				 * @param sock  network socket
-				 * @param event event of the socket
-				 * @return      time of the timeout in milliseconds
-				 *
-				 * \~
-				 */
-				uint32_t getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки таймаута сокета
-				 *
-				 * @details Задаёт, сколько ждать при чтении или отправке, прежде чем
-				 * прервать вызов
-				 *
-				 * @warning Действует лишь на **блокирующие** сокеты. У неблокирующих
-				 * вызовы и без того возвращаются сразу, а ожиданием ведает цикл
-				 * событий - и там пределы задаются движком, а не здесь
-				 *
-				 * @warning У **MS Windows** срок приёма ТЕРЯЕТ дейтаграмму, пришедшую ровно
-				 * в миг снятия блокирующего приёма по этому сроку. Стек засчитывает её
-				 * отданной получателю, приём возвращает `WSAETIMEDOUT`, в очереди гнезда
-				 * дейтаграммы уже нет, и потерю не отмечает ни один счётчик системы.
-				 * Свойство доказано опытом: при подгонке прихода к самому истечению срока
-				 * теряется от 1 до 25 дейтаграмм на 4000, при приходе в середину промежутка
-				 * и при ожидании готовности через `select` - ни одной. Оттого приём опросом
-				 * на блокирующем сокете обязан отсчитывать срок ДО обращения к приёму и
-				 * звать приём лишь по готовности, а настройку эту держать запасным пределом
-				 *
-				 * @param sock  сетевой сокет
-				 * @param event событие сокета
-				 * @param msec  время таймаута в миллисекундах
-				 * @return      результат установки таймаута
-				 *
-				 * \~english
-				 * @brief Method of setting the timeout of a socket
-				 * @details Sets how long to wait at the reading or at the sending before
-				 * interrupting the call
-				 * @warning Is in force only for the **blocking** sockets. For the non-blocking ones
-				 * the calls return at once anyway, and the waiting is in charge of the loop of
-				 * the events — and there the limits are set by the engine, and not here
-				 * @warning On **MS Windows** the receive timeout LOSES a datagram that arrives
-				 * exactly at the instant the blocking receive is cancelled by this timeout. The
-				 * stack counts it as delivered to a consumer, the receive returns `WSAETIMEDOUT`,
-				 * the datagram is no longer in the socket queue, and no counter of the system
-				 * reports the loss. The property is proven by experiment: aligning the arrival
-				 * with the very expiry of the timeout loses from 1 to 25 datagrams out of 4000,
-				 * while an arrival in the middle of the interval and a wait through `select`
-				 * lose none. Hence a polling receive on a blocking socket must count the timeout
-				 * BEFORE the call to the receive and call it only on readiness, keeping this
-				 * setting as a fallback limit
-				 * @param sock  network socket
-				 * @param event event of the socket
-				 * @param msec  time of the timeout in milliseconds
-				 * @return      result of the setting of the timeout
-				 *
-				 * \~
-				 */
-				bool setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения размера буфера
-				 *
-				 * @param sock  сетевой сокет
-				 * @param event событие сокета
-				 * @return      размер буфера сокета
-				 *
-				 * \~english
-				 * @brief Method of getting the size of a buffer
-				 * @param sock  network socket
-				 * @param event event of the socket
-				 * @return      size of the buffer of the socket
-				 *
-				 * \~
-				 */
-				int32_t getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения свободного места в буфере сокета
-				 *
-				 * @details Возвращает СВОБОДНОЕ место, а не вместимость: `SO_SNDBUF` и `SO_RCVBUF`
-				 *          говорят, сколько буфер вмещает всего, тогда как обмен упирается в то,
-				 *          сколько в нём осталось незанятого. Забитый сокет не примет и байта
-				 *          при какой угодно вместимости
-				 *
-				 * @note Для буфера отправки замер безопасно занижен: писатель у сокета один -
-				 *       сам движок, а ядро буфер только выгребает, поэтому свободного места
-				 *       между замером и отправкой может стать лишь больше. Для буфера приёма
-				 *       наоборот: место занимает встречная сторона, и замер стареет мгновенно
-				 *
-				 * @param sock  сетевой сокет
-				 * @param event событие сокета (чтение либо запись)
-				 * @return      свободное место в буфере либо -1, если система его не сообщает
-				 *
-				 * \~english
-				 * @brief Method of getting the free room in a buffer of a socket
-				 * @param sock  network socket
-				 * @param event event of the socket (the reading or the writing)
-				 * @return      free room in the buffer or -1, if the system does not report it
-				 *
-				 * \~
-				 */
-				int32_t getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки размеров буфера
-				 *
-				 * @details Задаёт, сколько данных ядро придержит у себя - порознь на
-				 * приём и на отправку
-				 *
-				 * @note Система вправе выдать не то, что просят: запрошенный размер
-				 * обычно удваивается под служебные нужды, а сверх общесистемного
-				 * предела и вовсе урезается. Итог стоит перечитать
-				 *
-				 * @param sock  сетевой сокет
-				 * @param event событие сокета
-				 * @param size  размер буфера сокета
-				 * @return      установленный размер буфера сокета
-				 *
-				 * \~english
-				 * @brief Method of setting the sizes of a buffer
-				 * @details Sets how much data the kernel will hold at itself — separately for
-				 * the receiving and for the sending
-				 * @note The system is free to give not what is asked for: the requested size
-				 * is usually doubled for the service needs, and beyond the system-wide
-				 * limit is cut down altogether. The result is worth reading back
-				 * @param sock  network socket
-				 * @param event event of the socket
-				 * @param size  size of the buffer of the socket
-				 * @return      the set size of the buffer of the socket
-				 *
-				 * \~
-				 */
-				int32_t setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод установки сетевого интерфейса для multicast пакетов
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param ifname имя сетевого интерфейса
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of setting the network interface for the multicast packets
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param ifname name of the network interface
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод устанавливает постоянное подключение на сокет
-				 *
-				 * @details Включает проверку живости: подключение, по которому долго
-				 * нет обмена, будет опробовано служебными пакетами, и молчащий конец
-				 * обнаружится сам
-				 *
-				 * @note Без этого оборванное подключение может не обнаруживаться
-				 * сколь угодно долго - обрыв в сети ничем себя не выдаёт, пока по
-				 * подключению не пойдут данные
-				 *
-				 * @param sock  сетевой сокет
-				 * @param cnt   максимальное количество попыток
-				 * @param idle  время через которое происходит проверка подключения
-				 * @param intvl время между попытками
-				 * @return      результат работы функции
-				 *
-				 * \~english
-				 * @brief The method sets a permanent connection on a socket
-				 * @details Switches on the check of the liveness: a connection over which there is long
-				 * no exchange will be probed by the service packets, and a silent end
-				 * will be discovered by itself
-				 * @note Without this a broken connection may not be discovered
-				 * for however long — a break in the network gives itself away by nothing, until
-				 * the data goes over the connection
-				 * @param sock  network socket
-				 * @param cnt   maximum number of the attempts
-				 * @param idle  time after which the check of the connection happens
-				 * @param intvl time between the attempts
-				 * @return      result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @return       значение DSCP
-				 *
-				 * \~english
-				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @return       value of the DSCP
-				 *
-				 * \~
-				 */
-				event::dscp_t getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param dscp   значение DSCP
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param dscp   value of the DSCP
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
-				 *
-				 * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
-				 *       перегрузки принятых пакетов приходит отдельно для каждой
-				 *       датаграммы в метаданных дейтаграммного пакета
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @return       значение ECN
-				 *
-				 * \~english
-				 * @brief Method of getting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
-				 * @note Yields the value set on the outgoing packets. The sign of
-				 *       the congestion of the received packets comes separately for every
-				 *       datagram in the metadata of the datagram packet
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @return       value of the ECN
-				 *
-				 * \~
-				 */
-				event::ecn_t getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
-				 *
-				 * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
-				 *       октет заголовка, поэтому установка выполняется чтением текущего
-				 *       значения с последующей заменой только младших двух бит
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param ecn    значение ECN
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of setting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
-				 * @note The class of the service (DSCP) is preserved: both fields occupy one
-				 *       octet of the header, and therefore the setting is performed by the reading of the current
-				 *       value with the subsequent replacement of the lower two bits only
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param ecn    value of the ECN
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
-				 *
-				 * @details Метка едет вместе с датаграммой, а не выставляется опцией сокета:
-				 *          датаграмма вправе полежать в очереди отправки, и опция к моменту
-				 *          её ухода принадлежала бы уже другому соединению - сокет у датаграммных
-				 *          серверов один на все соединения
-				 *
-				 * @note Нулевая метка означает «не метить»: управляющие данные не строятся вовсе,
-				 *       и отправка идёт обычным обращением, как и прежде
-				 * @note Ширина значения метки для IPv4 у систем разная, и молчанием расхождение
-				 *       не проявляется: FreeBSD берёт октет и отвергает целое, macOS берёт целое,
-				 *       а на октет отвечает успехом, теряя метку. NetBSD не принимает метку на
-				 *       IPv4 вовсе - там отправка идёт без неё
-				 *
-				 * @param sock   сетевой сокет
-				 * @param buffer буфер отправляемых данных
-				 * @param size   размер буфера отправляемых данных
-				 * @param flags  флаги отправки
-				 * @param addr   адрес удалённого узла
-				 * @param length размер адреса удалённого узла
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param traffic значение поля класса обслуживания вместе с меткой перегрузки
-				 * @return       количество отправленных октетов либо -1 при отказе
-				 *
-				 * \~english
-				 * @brief Method of sending a datagram with the marking of the congestion in the control data
-				 * @details The marking travels together with the datagram instead of being set by an option
-				 *          of the socket: a datagram is entitled to lie in the queue of the sending, and by
-				 *          the moment of its departure the option would belong to another connection already -
-				 *          the socket of the datagram servers is one for all the connections
-				 * @note A zero marking means "do not mark": the control data are not built at all,
-				 *       and the sending goes by the ordinary call, as before
-				 * @note The width of the value of the marking for IPv4 differs between the systems, and the
-				 *       divergence does not show itself by a silence: FreeBSD takes an octet and rejects an
-				 *       integer, macOS takes an integer and answers a success to an octet, losing the marking.
-				 *       NetBSD does not take the marking on IPv4 at all - there the sending goes without it
-				 * @param sock   network socket
-				 * @param buffer buffer of the data to be sent
-				 * @param size   size of the buffer of the data to be sent
-				 * @param flags  flags of the sending
-				 * @param addr   address of the remote node
-				 * @param length size of the address of the remote node
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param traffic value of the field of the class of the service together with the marking of the congestion
-				 * @return       number of the sent octets or -1 at a refusal
-				 *
-				 * \~
-				 */
-				ssize_t datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод активации/деактивации генерации информации о трафике
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param mode   режим активации или деактивации
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of the activation/deactivation of the generation of the information about the traffic
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param mode   mode of the activation or of the deactivation
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод переключения опции сокета
-				 *
-				 * @details Протокол принимается доводом, а не разыскивается у самого сокета.
-				 *          Часть опций приложима лишь к одному протоколу - `TCP_NO_DELAY`
-				 *          к TCP, - и прежде протокол читался настройкой `SO_PROTOCOL`,
-				 *          то есть обращением к ядру ради того, что вызывающему и без
-				 *          того известно: он этот сокет сам и заводил
-				 *
-				 * @note Довод необязателен, и значение `NONE` означает «протокол не
-				 *       назван». Тогда он разыскивается у сокета по-прежнему: обращений
-				 *       к методу много, и обязать все их назвать протокол значило бы
-				 *       править места, которым он безразличен
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param mode   режим активации или деактивации
-				 * @param option опция сокета
-				 * @param proto  протокол сокета, `NONE` - протокол не назван
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of switching an option of a socket
-				 * @details The protocol is taken as an argument, and is not sought at the socket itself.
-				 *          A part of the options is applicable only to one protocol — `TCP_NO_DELAY`
-				 *          to TCP, — and formerly the protocol was read by the `SO_PROTOCOL` setting,
-				 *          that is by an address to the kernel for the sake of what the caller knows
-				 *          anyway: it started this socket itself
-				 * @note The argument is optional, and the value `NONE` means «the protocol is not
-				 *       named». Then it is sought at the socket as before: there are many addresses
-				 *       to the method, and to oblige all of them to name the protocol would mean
-				 *       correcting the places it is indifferent to
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param mode   mode of the activation or of the deactivation
-				 * @param option option of the socket
-				 * @param proto  protocol of the socket, `NONE` — the protocol is not named
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto = event::protocol_t::NONE) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @return       режим обнаружения максимального размера пакета (MTU)
-				 *
-				 * \~english
-				 * @brief Method of getting the discovery of the maximum size of a packet (MTU)
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @return       mode of the discovery of the maximum size of a packet (MTU)
-				 *
-				 * \~
-				 */
-				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки обнаружения максимального размера пакета (MTU)
-				 *
-				 * @param sock   сетевой сокет
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param mode   режим обнаружения максимального размера пакета (MTU)
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of setting the discovery of the maximum size of a packet (MTU)
-				 * @param sock   network socket
-				 * @param family family of the protocols (IPv4 or IPv6)
-				 * @param mode   mode of the discovery of the maximum size of a packet (MTU)
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
-				 *
-				 * @param sock     сетевой сокет
-				 * @param family   семейство протоколов (IPv4 или IPv6)
-				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
-				 * @return         максимальное количество хопов
-				 *
-				 * \~english
-				 * @brief Method of getting the maximum number of the hops a packet may pass through
-				 * @param sock     network socket
-				 * @param family   family of the protocols (IPv4 or IPv6)
-				 * @param delivery mode of the transmission of the packets (unicast, multicast, broadcast)
-				 * @return         maximum number of the hops
-				 *
-				 * \~
-				 */
-				uint8_t getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
-				 *
-				 * @param sock     сетевой сокет
-				 * @param family   семейство протоколов (IPv4 или IPv6)
-				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
-				 * @param hops     максимальное количество хопов
-				 * @return         результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of setting the maximum number of the hops a packet may pass through
-				 * @param sock     network socket
-				 * @param family   family of the protocols (IPv4 or IPv6)
-				 * @param delivery mode of the transmission of the packets (unicast, multicast, broadcast)
-				 * @param hops     maximum number of the hops
-				 * @return         result of the work of the function
-				 *
-				 * \~
-				 */
-				bool setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод активации/деактивации мультикаст группы события
-				 *
-				 * @details Записывает сокет в группу рассылки или выписывает из неё.
-				 * Пакеты, разосланные на группу, доходят лишь до вписавшихся
-				 *
-				 * @note Вписываться следует с указанием устройства: машина с
-				 * несколькими устройствами иначе выберет его сама, и рассылка может
-				 * прийти не с той стороны
-				 *
-				 * @param sock   сетевой сокет
-				 * @param mode   режим активации/деактивации
-				 * @param group  мультикаст-группа для активации/деактивации
-				 * @param source адрес сетевого интерфейса с которого выполняется подписка
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Method of the activation/deactivation of the multicast group of an event
-				 * @details Enrolls a socket into a multicast group or strikes it out of one.
-				 * The packets sent to the group reach only the enrolled ones
-				 * @note One should enroll with the device specified: a machine with
-				 * several devices will otherwise choose it by itself, and the multicast may
-				 * come from the wrong side
-				 * @param sock   network socket
-				 * @param mode   mode of the activation/deactivation
-				 * @param group  multicast group for the activation/deactivation
-				 * @param source address of the network interface the subscription is performed from
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				bool membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод проверки готовности средств сокетов системы
-				 *
-				 * @details Отвечает, годна ли система заводить сокеты вообще. Средства
-				 * эти у отдельных систем требуют подъёма на процесс, и подъём этот
-				 * вправе не удаться: у MS Windows такое обращение (`WSAStartup`)
-				 * отвечает отказом при недоступной версии либо нехватке средств, и
-				 * всякое обращение к сокетам после этого отвечает отказом 10093
-				 *
-				 * @details Спрашивают об этом на заведении движка, а не при выдаче
-				 * сокета. Довод в том, КОГДА вызывающая сторона просит сеть: заводя
-				 * движок, она сеть просит явно - и отказ обязан прийти прямо там, а не
-				 * всплыть позже отдельными отказами каждого сокета, оставив приложение
-				 * заведённым, но неработоспособным
-				 *
-				 * @note У систем, подъёма не требующих, ответ утвердителен всегда:
-				 * средства сокетов там принадлежат ядру и в подъёме не нуждаются
-				 *
-				 * @return результат проверки готовности средств сокетов системы
-				 *
-				 * \~english
-				 * @brief Method of checking the readiness of the means of the sockets of the system
-				 * @details Answers whether the system is fit to start sockets at all. These means
-				 * at some systems require a bring-up per process, and that bring-up
-				 * is free to fail: on MS Windows such an address (`WSAStartup`)
-				 * answers with a refusal at an unavailable version or at a shortage of the means, and
-				 * every address to the sockets after that answers with the refusal 10093
-				 * @details This is asked at the starting of the engine, and not at the issuing of
-				 * a socket. The argument is in WHEN the calling side asks for the network: starting
-				 * the engine, it asks for the network explicitly — and the refusal is obliged to come right there, and not
-				 * to surface later as separate refusals of every socket, leaving the application
-				 * started, but inoperable
-				 * @note At the systems not requiring a bring-up the answer is affirmative always:
-				 * the means of the sockets there belong to the kernel and need no bring-up
-				 * @return result of the check of the readiness of the means of the sockets of the system
-				 *
-				 * \~
-				 */
-				bool ready() const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод выдачи нового сокета
-				 *
-				 * @details Часть опций события ядро принимает прямо при создании
-				 * сокета, не требуя отдельных обращений: неблокирующий режим и
-				 * закрытие при запуске стороннего образа. Набор опций передаётся
-				 * сюда, чтобы этой возможностью воспользоваться
-				 *
-				 * @note Опции, которые ядро при создании не принимает, метод
-				 * пропускает молча - их накладывает вызывающая сторона обычным
-				 * путём. На системах без такой возможности пропускаются все
-				 *
-				 * @param family  семейство протоколов сокета
-				 * @param type    тип сокета
-				 * @param proto   протокол сокета
-				 * @param options набор опций события
-				 * @return        созданный сокет
-				 *
-				 * \~english
-				 * @brief Method of issuing a new socket
-				 * @details A part of the options of an event the kernel takes right at the creation of
-				 * a socket, requiring no separate addresses: the non-blocking mode and
-				 * the closing at the start of a foreign image. The set of the options is passed
-				 * here so that this possibility would be used
-				 * @note The options the kernel does not take at the creation the method
-				 * skips silently — they are applied by the calling side by the ordinary
-				 * path. On the systems without such a possibility all of them are skipped
-				 * @param family  family of the protocols of the socket
-				 * @param type    type of the socket
-				 * @param proto   protocol of the socket
-				 * @param options set of the options of the event
-				 * @return        the created socket
-				 *
-				 * \~
-				 */
-				net::socket_t issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options = event::options::NONE) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения опций, принимаемых при создании сокета
-				 *
-				 * @details Отвечает, какие из переданных опций ядро этой системы
-				 * принимает прямо при создании сокета - то есть какие из них метод
-				 * выдачи сокета уже наложил и накладывать повторно не следует
-				 *
-				 * @note Знание это держится здесь намеренно: оно зависит от системы
-				 * и от условной сборки, и повторять его на стороне движка означало бы
-				 * завести второй источник правды, который разойдётся с первым
-				 *
-				 * @param options набор опций события
-				 * @return        подмножество опций, наложенных при создании сокета
-				 *
-				 * \~english
-				 * @brief Method of getting the options taken at the creation of a socket
-				 * @details Answers which of the passed options the kernel of this system
-				 * takes right at the creation of a socket — that is which of them the method
-				 * of the issuing of a socket has already applied and should not apply once more
-				 * @note This knowledge is held here deliberately: it depends on the system
-				 * and on the conditional build, and to repeat it at the side of the engine would mean
-				 * starting a second source of the truth, which will diverge from the first one
-				 * @param options set of the options of the event
-				 * @return        subset of the options applied at the creation of the socket
-				 *
-				 * \~
-				 */
-				uint16_t inborn(const uint16_t options) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
-				 *
-				 * @details Заводит два связанных сокета: записанное в один
-				 * вычитывается из другого. Обмен идёт внутри ядра, минуя сеть
-				 *
-				 * @note Обычное применение - разделение процесса: пара заводится до
-				 * разделения, после чего каждая сторона закрывает свой конец и
-				 * остаётся связь между родителем и потомком
-				 *
-				 * @param family семейство протоколов сокета
-				 * @param type   тип сокета
-				 * @param proto  протокол сокета
-				 * @return       созданный сокет
-				 *
-				 * \~english
-				 * @brief Method of creating a pair of sockets for the interprocess communication (IPC)
-				 * @details Starts two connected sockets: what is written into one
-				 * is read out of the other. The exchange goes inside the kernel, bypassing the network
-				 * @note The usual application is the splitting of a process: the pair is started before
-				 * the splitting, after which each side closes its own end and
-				 * a connection between the parent and the child remains
-				 * @param family family of the protocols of the socket
-				 * @param type   type of the socket
-				 * @param proto  protocol of the socket
-				 * @return       the created socket
-				 *
-				 * \~
-				 */
-				array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+				 * @brief Функция создания пары связанных концов обмена с выдачей имени канала
 				 *
 				 * @details Отличается от обычного создания пары одним: у семейства PIPE он
 				 *          отдаёт имя заведённого именованного канала. Имя это нужно тому,
 				 *          кто порождает процесс: описатель по наследству не передаётся, а
 				 *          имя переносимо и доходит до порождённого процесса окружением либо
-				 *          доводом запуска, и свой конец тот открывает по нему сам
+				 *          доводом запуска, и свой конец тот открывает по нему сам.
 				 *
 				 * @note Заводится имя однозначным: номер процесса, порядковый номер пары и
 				 *       показания высокоточного счётчика. Занятость имени отвергается самой
@@ -840,14 +935,28 @@ namespace awh {
 				 *
 				 * @note Прочим семействам имя не выдаётся: связанная пара у них безымянна
 				 *
-				 * @param family   семейство адресов
-				 * @param type     тип сокета
-				 * @param proto    протокол сокета
-				 * @param name     имя заведённого канала
-				 * @return         пара связанных концов обмена
+				 * @param family семейство адресов
+				 * @param type   тип сокета
+				 * @param proto  протокол сокета
+				 * @param name   имя заведённого канала
+				 * @return       пара связанных концов обмена
 				 *
 				 * \~english
-				 * @brief Method of the creation of a pair of the connected ends of the exchange with the issuing of the name of the channel
+				 * @brief Function of the creation of a pair of the connected ends of the exchange with the issuing of the name of the channel
+				 *
+				 * @details It differs from the ordinary creation of a pair in one thing: for the PIPE family it
+				 *          returns the name of the created named channel. This name is needed by the one
+				 *          who spawns the process: the descriptor is not passed by inheritance, while
+				 *          the name is portable and reaches the spawned process through the environment or
+				 *          a launch argument, and that one opens its own end by it itself.
+				 *
+				 * @note The name is started unambiguous: the number of the process, the ordinal number of the pair and
+				 *       the readings of a high-precision counter. The occupancy of the name is rejected by the
+				 *       system itself — the channel is started by the attribute of the first instance — and
+				 *       a coincidence turns into a refusal rather than a silent sharing of the channel
+				 *       with a foreign application
+				 *
+				 * @note To the other families the name is not issued: the connected pair is nameless with them
 				 *
 				 * @param family family of the addresses
 				 * @param type   type of the socket
@@ -857,56 +966,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод открытия своего конца именованного канала по его имени
-					 *
-					 * @details Порождённому процессу описатель канала по наследству не
-					 *          переходит: он проходит точку входа заново, как запущенный
-					 *          отдельно. Достаётся ему одно лишь имя канала, и свой конец
-					 *          он открывает по нему сам - тем же порядком, каким у систем
-					 *          POSIX сторона подключается к сокету по его пути
-					 *
-					 * @note Открывается конец наложенным: обмен ведётся портом завершений,
-					 *       а описатель без наложения выстраивал бы обращения в очередь
-					 *
-					 * @param name имя открываемого канала
-					 * @return     описатель открытого конца канала
-					 *
-					 * \~english
-					 * @brief Method of the opening of one's own end of a named channel by its name
-					 *
-					 * @param name name of the channel to be opened
-					 * @return     descriptor of the opened end of the channel
-					 *
-					 * \~
-					 */
-					net::socket_t channel(const string & name) const noexcept;
-				#endif
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Socket() noexcept;
-				/**
-				 * \~russian
-				 * @brief Деструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Destructor
-				 *
-				 * \~
-				 */
-				~Socket() noexcept;
-		} socket_t;
+				__AWH_SHARED_EXPORT__ array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) noexcept;
+			#endif
+		};
 	};
 };

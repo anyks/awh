@@ -273,23 +273,22 @@ namespace {
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера
-		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Устанавливаем порт события сервера
-		io.setSourcePort(server, number);
+		awh::engine::setSourcePort(server, number);
 		// Если инициализация движка не выполнена
-		if(!io.initialize())
+		if(!awh::engine::initialize())
 			// Выводим пустые итоги прогона
 			return result;
 		// Устанавливаем опции события сервера
-		io.setOptions(server, options());
+		awh::engine::setOptions(server, options());
 		// Устанавливаем адрес события сервера
-		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
+		awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			/**
 			 * Устанавливаем опции принятого подключения вместе с немедленным обрывом
 			 *
@@ -297,21 +296,21 @@ namespace {
 			 *       немедленного обрыва все они остались бы в TIME_WAIT на тридцать
 			 *       секунд, отравив последующие сценарии набора
 			 */
-			io.setOptions(cid, options() | awh::event::options::HARD_CLOSE);
+			awh::engine::setOptions(cid, options() | awh::event::options::HARD_CLOSE);
 			/**
 			 * Устанавливаем функцию обратного вызова на чтение из принятого подключения:
 			 * сервер возвращает принятые октеты как есть, разбор сообщения на его
 			 * стороне не нужен - границы восстанавливает принимающий клиент
 			 */
-			io.on(cid, [&io](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Отправляем принятые данные обратно клиенту
-				io.send(eid, data, size);
+				awh::engine::send(eid, data, size);
 			});
 			// Считаем принятое сервером подключение
 			state.accepted++;
 		}));
 		// Выполняем фиксацию настроек события сервера
-		io.commit(server);
+		awh::engine::commit(server);
 		/**
 		 * Переводим событие сервера в режим прослушивания
 		 *
@@ -322,9 +321,9 @@ namespace {
 		 *       двадцать четыре сценарию не хватает. Сверх предела движок
 		 *       принимает подключение и тут же закрывает его, сообщая об отмене
 		 */
-		io.listen(server, IDLE_WATCHED);
+		awh::engine::listen(server, IDLE_WATCHED);
 		// Запускаем событие сервера
-		io.launch(server);
+		awh::engine::launch(server);
 		// Список состояний клиентских подключений
 		vector <unique_ptr <connection_t>> clients;
 		// Резервируем память под состояния клиентских подключений
@@ -338,21 +337,21 @@ namespace {
 			// Получаем состояние созданного подключения
 			connection_t * connection = clients.back().get();
 			// Добавляем новое событие клиента
-			connection->id = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			connection->id = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Устанавливаем порт назначения события клиента
-			io.setTargetPort(connection->id, number);
+			awh::engine::setTargetPort(connection->id, number);
 			// Устанавливаем опции события клиента вместе с немедленным обрывом соединения
-			io.setOptions(connection->id, options() | awh::event::options::HARD_CLOSE);
+			awh::engine::setOptions(connection->id, options() | awh::event::options::HARD_CLOSE);
 			// Устанавливаем адрес привязки события клиента
-			io.setAddress(connection->id, awh::event::address_t::IPV4, "0.0.0.0");
+			awh::engine::setAddress(connection->id, awh::event::address_t::IPV4, "0.0.0.0");
 			// Устанавливаем адрес назначения события клиента
-			io.setTarget(connection->id, "127.0.0.1");
+			awh::engine::setTarget(connection->id, "127.0.0.1");
 			/**
 			 * Устанавливаем функцию обратного вызова на чтение из события клиента:
 			 * границы сообщения восстанавливаются накоплением принятых октетов,
 			 * поскольку поток TCP вправе доставить ответ по частям
 			 */
-			io.on(connection->id, [&io, &state, connection](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			awh::engine::on(connection->id, [&state, connection](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Накапливаем количество принятых октетов текущего сообщения
 				connection->received += size;
 				// Если сообщение принято не полностью
@@ -364,14 +363,14 @@ namespace {
 				// Если обмен следует продолжать
 				if(::account(state))
 					// Отправляем следующее сообщение обмена
-					io.send(eid, payload, ECHO_PAYLOAD);
+					awh::engine::send(eid, payload, ECHO_PAYLOAD);
 			});
 			// Выполняем фиксацию настроек события клиента
-			io.commit(connection->id);
+			awh::engine::commit(connection->id);
 			// Выполняем подключение клиента к серверу
-			io.connect(connection->id);
+			awh::engine::connect(connection->id);
 			// Запускаем событие клиента
-			io.launch(connection->id);
+			awh::engine::launch(connection->id);
 			// Если порция подключений подана не полностью, продолжаем её подачу
 			if((((i + 1) % IDLE_BATCH) != 0) && ((i + 1) < IDLE_WATCHED))
 				// Переходим к следующему подключению порции
@@ -383,7 +382,7 @@ namespace {
 			 */
 			while(state.accepted <= i){
 				// Если опрос событий завершился ошибкой
-				if(!io.poll(IDLE_POLL))
+				if(!awh::engine::poll(IDLE_POLL))
 					// Прекращаем прогон сценария
 					return result;
 				// Если порция подключений не установилась в отведённый срок
@@ -405,11 +404,11 @@ namespace {
 		 */
 		for(size_t i = 0; i < IDLE_ACTIVE; i++)
 			// Отправляем первое сообщение обмена
-			io.send(clients[i]->id, payload, ECHO_PAYLOAD);
+			awh::engine::send(clients[i]->id, payload, ECHO_PAYLOAD);
 		/**
 		 * Запускаем опрос событий до выполнения требуемого количества обменов
 		 */
-		while(!state.stop && io.poll());
+		while(!state.stop && awh::engine::poll());
 		// Устанавливаем количество выполненных операций
 		result.operations = state.done;
 		// Устанавливаем объём переданных данных с учётом обоих направлений обмена
@@ -419,7 +418,7 @@ namespace {
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выполняем деинициализацию движка
-		io.deinitialize();
+		awh::engine::deinitialize();
 		// Выводим итоги прогона сценария
 		return result;
 	}

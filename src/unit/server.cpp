@@ -25,10 +25,10 @@
 #include <algorithm>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <unit/server.hpp>
 #include <sys/log.hpp>
+#include <unit/server.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -98,13 +98,13 @@ void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {cid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {cid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -140,7 +140,7 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 					// Удаляем позицию клиента из индекса
 					this->_clientPositions.erase(k);
 				// Удаляем клиентское событие из IO-движка
-				this->_io->destroy(cid);
+				engine::destroy(cid);
 			}
 			// Удаляем список клиентов сервера
 			this->_serverClients.erase(i);
@@ -154,13 +154,13 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -199,13 +199,13 @@ void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, cid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {sid, cid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -357,7 +357,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				 */
 				for(const auto & event : this->_events)
 					// Удаляем событие сервера
-					this->_io->destroy(event.first);
+					engine::destroy(event.first);
 				// Очищаем внутренние индексы событий
 				this->_events.clear();
 				// Очищаем список клиентов сервера
@@ -456,21 +456,21 @@ void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noe
 			return;
 	#endif
 	// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-	this->_io->on(cid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
+	engine::on(cid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие записи данных клиенту
-	this->_io->on(cid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
+	engine::on(cid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие чтения данных клиента
-	this->_io->on(cid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, nullptr)));
+	engine::on(cid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиенту
-	this->_io->on(cid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
+	engine::on(cid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_io->on(cid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, nullptr)));
+	engine::on(cid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-	this->_io->on(cid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
+	engine::on(cid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие получения ошибок клиента
-	this->_io->on(cid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
+	engine::on(cid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-	this->_io->on(cid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, nullptr)));
+	engine::on(cid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, nullptr)));
 	// Регистрируем связь клиентского события с сервером
 	this->linkClient(eid, cid);
 	// Выполняем функцию обратного вызова
@@ -753,7 +753,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Запоминаем работника, готового обслуживать подключения
 		this->_handoverWorkers.push_back(pid);
 		// Записываем в лог сообщение о готовности работника обслуживать подключения
-		awh::log::print("Cluster worker process [%d] is ready to serve connections", awh::log::flag_t::INFO, pid);
+		log::print("Cluster worker process [%d] is ready to serve connections", log::flag_t::INFO, pid);
 	}
 	/**
 	 * @brief Метод передачи принятого подключения работнику кластера
@@ -796,17 +796,17 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Буфер снимка принятого подключения
 			vector <uint8_t> snapshot;
 			// Выполняем снятие снимка принятого подключения для процесса работника
-			if(!this->_io->snapshot(cid, dest, snapshot))
+			if(!engine::snapshot(cid, dest, snapshot))
 				// Переходим к работнику следующему
 				continue;
 			// Устройство передаваемого подключения
 			handover_t record{};
 			// Запоминаем семейство адресов подключения
-			record.family = static_cast <uint8_t> (this->_io->family(cid));
+			record.family = static_cast <uint8_t> (engine::family(cid));
 			// Запоминаем вид устройства обмена подключения
-			record.type = static_cast <uint8_t> (this->_io->type(cid));
+			record.type = static_cast <uint8_t> (engine::type(cid));
 			// Запоминаем протокол подключения
-			record.protocol = static_cast <uint8_t> (this->_io->protocol(cid));
+			record.protocol = static_cast <uint8_t> (engine::protocol(cid));
 			/**
 			 * Запоминаем порт встречной стороны подключения
 			 *
@@ -814,7 +814,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			 *       адресе спрашивают событие сервера, а подключение событием сервера
 			 *       не является - им они отвечают пустотой
 			 */
-			record.port = this->_io->getTargetPort(cid);
+			record.port = engine::getTargetPort(cid);
 			// Запоминаем размер снимка подключения
 			record.size = static_cast <uint32_t> (snapshot.size());
 			/**
@@ -826,7 +826,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			 *          отдаётся и потребителю - тем же обращением, каким он берётся
 			 *          у приёма своего
 			 */
-			const string target = this->_io->getAddress(cid, ((record.family == static_cast <uint8_t> (event::family_t::IPV6)) ? event::address_t::IPV6 : event::address_t::IPV4));
+			const string target = engine::getAddress(cid, ((record.family == static_cast <uint8_t> (event::family_t::IPV6)) ? event::address_t::IPV6 : event::address_t::IPV4));
 			// Запоминаем длину адреса встречной стороны подключения
 			record.length = static_cast <uint8_t> (target.size());
 			// Буфер сообщения передачи принятого подключения
@@ -850,7 +850,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			 *       свой описатель дальше, подключение не закрылось бы и после того,
 			 *       как работник его закроет
 			 */
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Выводим успешный результат: подключение отдано работнику
 			return true;
 		}
@@ -892,9 +892,9 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		 */
 		for(const auto & event : this->_events){
 			// Если устройство своего события совпадает с устройством подключения
-			if((static_cast <uint8_t> (this->_io->family(event.first)) == record.family) &&
-			 (static_cast <uint8_t> (this->_io->type(event.first)) == record.type) &&
-			 (static_cast <uint8_t> (this->_io->protocol(event.first)) == record.protocol)){
+			if((static_cast <uint8_t> (engine::family(event.first)) == record.family) &&
+			 (static_cast <uint8_t> (engine::type(event.first)) == record.type) &&
+			 (static_cast <uint8_t> (engine::protocol(event.first)) == record.protocol)){
 				// Запоминаем своё событие сервера
 				eid = event.first;
 				// Прерываем поиск
@@ -904,7 +904,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Если своего события сервера не нашлось
 		if(eid == 0){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster worker process [%d] has no server event for the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
+			log::print("Cluster worker process [%d] has no server event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -917,14 +917,14 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		 *          связанный обмен, - и потребителю событие отдаётся принятым
 		 *          подключением обычным путём
 		 */
-		const event::id_t cid = this->_io->event(
+		const event::id_t cid = engine::event(
 			event::node_t::CLIENT, static_cast <event::family_t> (record.family),
 			static_cast <event::type_t> (record.type), static_cast <event::protocol_t> (record.protocol)
 		);
 		// Если событие подключения завести не удалось
 		if(cid == 0){
 			// Записываем ошибку в лог
-			awh::log::print("Cluster worker process [%d] cannot create an event for the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
+			log::print("Cluster worker process [%d] cannot create an event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -935,31 +935,31 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		 *       отвечает отказом. Подключение при этом уже связано, и к установке
 		 *       связи адрес отношения не имеет - он лишь описывает встречную сторону
 		 */
-		if(!this->_io->setTargetPort(cid, record.port) || !this->_io->setTarget(cid, target)){
+		if(!engine::setTargetPort(cid, record.port) || !engine::setTarget(cid, target)){
 			// Удаляем заведённое событие подключения
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Записываем ошибку в лог
-			awh::log::print("Cluster worker process [%d] cannot set the target of the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
+			log::print("Cluster worker process [%d] cannot set the target of the connection received from the master", log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
 		// Выполняем подъём подключения из присланного снимка
-		if(!this->_io->restore(cid, snapshot, static_cast <size_t> (record.size))){
+		if(!engine::restore(cid, snapshot, static_cast <size_t> (record.size))){
 			// Удаляем заведённое событие подключения
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Записываем ошибку в лог
-			awh::log::print("Cluster worker process [%d] cannot restore the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
+			log::print("Cluster worker process [%d] cannot restore the connection received from the master", log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
 		// Отдаём подключение потребителю обычным путём принятого подключения
 		this->accept(eid, cid);
 		// Выполняем запуск работы подключения
-		if(!this->_io->launch(cid)){
+		if(!engine::launch(cid)){
 			// Удаляем заведённое событие подключения
-			this->_io->destroy(cid);
+			engine::destroy(cid);
 			// Записываем ошибку в лог
-			awh::log::print("Cluster worker process [%d] cannot start the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
+			log::print("Cluster worker process [%d] cannot start the connection received from the master", log::flag_t::CRITICAL, ::getpid());
 		}
 		// Выводим признак того, что сообщение было передачей подключения
 		return true;
@@ -1084,7 +1084,7 @@ bool awh::unit::Server::clearBlacklist(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем очистку чёрного списка события
-		return this->_io->blacklist.clear(eid);
+		return engine::clearControlList(eid, event::control_list_t::BLACK);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1099,7 +1099,7 @@ bool awh::unit::Server::clearWhitelist(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем очистку белого списка события
-		return this->_io->whitelist.clear(eid);
+		return engine::clearControlList(eid, event::control_list_t::WHITE);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1115,7 +1115,7 @@ bool awh::unit::Server::addToBlacklist(const event::id_t eid, string_view value)
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем добавление адреса в чёрный список события
-		return this->_io->blacklist.add(eid, value);
+		return engine::addToControlList(eid, event::control_list_t::BLACK, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1131,7 +1131,7 @@ bool awh::unit::Server::addToWhitelist(const event::id_t eid, string_view value)
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем добавление адреса в белый список события
-		return this->_io->whitelist.add(eid, value);
+		return engine::addToControlList(eid, event::control_list_t::WHITE, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1147,7 +1147,7 @@ bool awh::unit::Server::removeFromBlacklist(const event::id_t eid, string_view v
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем удаление адреса из чёрного списка события
-		return this->_io->blacklist.remove(eid, value);
+		return engine::removeFromControlList(eid, event::control_list_t::BLACK, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1163,7 +1163,7 @@ bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view v
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем удаление адреса из белого списка события
-		return this->_io->whitelist.remove(eid, value);
+		return engine::removeFromControlList(eid, event::control_list_t::WHITE, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1180,7 +1180,7 @@ const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFrom
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем чёрный список события
-		return this->_io->blacklist.get(eid);
+		return engine::getControlList(eid, event::control_list_t::BLACK);
 	// Возвращаем результат
 	return result;
 }
@@ -1197,7 +1197,7 @@ const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFrom
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем белый список события
-		return this->_io->whitelist.get(eid);
+		return engine::getControlList(eid, event::control_list_t::WHITE);
 	// Возвращаем результат
 	return result;
 }
@@ -1224,9 +1224,9 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 				// Если кластер активен, значит нам необходимо проверить опции сервера
 				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если не установлена опция переиспользования портов
-					if(!(this->_io->getOptions(eid) & event::options::REUSE_PORT))
+					if(!(engine::getOptions(eid) & event::options::REUSE_PORT))
 						// Выполняем установку опции для события сервера
-						this->_io->setOption(eid, event::options::REUSE_PORT, true);
+						engine::setOption(eid, event::options::REUSE_PORT, true);
 				}
 			#endif
 			/**
@@ -1259,9 +1259,9 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 				}
 			#endif
 			// Выполняем фиксацию параметров события
-			if(!(result = this->_io->commit(eid))){
+			if(!(result = engine::commit(eid))){
 				// Удаляем событие сервера
-				this->_io->destroy(eid);
+				engine::destroy(eid);
 				// Выполняем поиск идентификатора события сервера в списке событий сервера
 				auto i = this->_events.find(eid);
 				// Если идентификатор события сервера найден в списке событий сервера
@@ -1275,13 +1275,13 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Failed to commit server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
+						log::debug("Failed to commit server", __PRETTY_FUNCTION__, {eid}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Failed to commit server", awh::log::flag_t::CRITICAL);
+						log::print("Failed to commit server", log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1295,13 +1295,13 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1342,7 +1342,7 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 					return true;
 			#endif
 			// Выполняем запуск работы сервера
-			if(!(result = this->_io->launch(eid))){
+			if(!(result = engine::launch(eid))){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -1350,13 +1350,13 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
+						log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Failed to launch server", awh::log::flag_t::CRITICAL);
+						log::print("Failed to launch server", log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1370,13 +1370,13 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1393,7 +1393,7 @@ bool awh::unit::Server::pause(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем приостановку работы сервера
-		return this->_io->pause(eid);
+		return engine::pause(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1408,7 +1408,7 @@ bool awh::unit::Server::resume(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем возобновление работы сервера
-		return this->_io->resume(eid);
+		return engine::resume(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1430,23 +1430,23 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 		// Если событие сервера является актуальным
 		if(this->isActual(eid)){
 			// Если событие принадлежит к подключённому клиенту
-			if((result = (this->_io->node(eid) == event::node_t::PEER))){
+			if((result = (engine::node(eid) == event::node_t::PEER))){
 				// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-				this->_io->on(eid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, ctx)));
+				engine::on(eid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, ctx)));
 				// Устанавливаем функцию обратного вызова на событие записи данных клиенту
-				this->_io->on(eid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, ctx)));
+				engine::on(eid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, ctx)));
 				// Устанавливаем функцию обратного вызова на событие чтения данных клиента
-				this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, ctx)));
+				engine::on(eid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, ctx)));
 				// Устанавливаем функцию обратного вызова на событие неотправленных данных клиенту
-				this->_io->on(eid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, ctx)));
+				engine::on(eid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, ctx)));
 				// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-				this->_io->on(eid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, ctx)));
+				engine::on(eid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, ctx)));
 				// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-				this->_io->on(eid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, ctx)));
+				engine::on(eid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, ctx)));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок клиента
-				this->_io->on(eid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, ctx)));
+				engine::on(eid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, ctx)));
 				// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-				this->_io->on(eid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, ctx)));
+				engine::on(eid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, ctx)));
 			}
 		}
 	/**
@@ -1458,13 +1458,13 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, ctx}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, ctx}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1508,9 +1508,9 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 					return true;
 			#endif
 			// Выполняем прослушивание порта сервера для получения входящих подключений
-			if(!(result = this->_io->listen(eid, max))){
+			if(!(result = engine::listen(eid, max))){
 				// Удаляем событие сервера
-				this->_io->destroy(eid);
+				engine::destroy(eid);
 				// Выполняем поиск идентификатора события сервера в списке событий сервера
 				auto i = this->_events.find(eid);
 				// Если идентификатор события сервера найден в списке событий сервера
@@ -1524,13 +1524,13 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL);
+						log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid, max}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Failed to launch server", awh::log::flag_t::CRITICAL);
+						log::print("Failed to launch server", log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1544,13 +1544,13 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, max}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1567,7 +1567,7 @@ bool awh::unit::Server::recv(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение данных от клиента
-		return this->_io->recv(eid);
+		return engine::recv(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1584,7 +1584,7 @@ size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем отправку данных клиенту
-		return this->_io->send(eid, buffer, size);
+		return engine::send(eid, buffer, size);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1599,7 +1599,7 @@ void awh::unit::Server::source(const event::id_t eid, engine::callback::source_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Устанавливаем функцию обратного вызова источника данных
-		this->_io->on(eid, source);
+		engine::on(eid, source);
 }
 /**
  * @brief Метод объединения данных между сервером и другим событием
@@ -1613,7 +1613,7 @@ bool awh::unit::Server::splice(const event::id_t eid, const event::id_t dest) no
 	// Если событие сервера является актуальным
 	if(this->isActual(eid) || this->isActual(dest))
 		// Выполняем объединение данных между событием сервера и другим событием
-		return this->_io->splice(eid, dest);
+		return engine::splice(eid, dest);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1628,7 +1628,7 @@ uint16_t awh::unit::Server::getOptions(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение опций для события сервера
-		return this->_io->getOptions(eid);
+		return engine::getOptions(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1662,10 +1662,10 @@ bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options
 			// Если процесс является работником кластера
 			if((this->_cluster != nullptr) && this->_cluster->worker())
 				// Выполняем установку опций события, сняв переподключение
-				return this->_io->setOptions(eid, static_cast <uint16_t> (options & ~event::options::AUTO_RECONNECT));
+				return engine::setOptions(eid, static_cast <uint16_t> (options & ~event::options::AUTO_RECONNECT));
 		#endif
 		// Выполняем установку опций для события сервера
-		return this->_io->setOptions(eid, options);
+		return engine::setOptions(eid, options);
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -1696,7 +1696,7 @@ bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, 
 				return true;
 		#endif
 		// Выполняем установку опции для события сервера
-		return this->_io->setOption(eid, option, mode);
+		return engine::setOption(eid, option, mode);
 	}
 	// Возвращаем значение по умолчанию
 	return false;
@@ -1712,7 +1712,7 @@ awh::net::dgram_info_t awh::unit::Server::getTrafficInfo(const event::id_t eid) 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события сервера
-		return this->_io->getTrafficInfo(eid);
+		return engine::getTrafficInfo(eid);
 	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
@@ -1727,7 +1727,7 @@ uint8_t awh::unit::Server::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события сервера
-		return this->_io->getCountHops(eid);
+		return engine::getCountHops(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1743,7 +1743,7 @@ bool awh::unit::Server::setCountHops(const event::id_t eid, const uint8_t hops) 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события сервера
-		return this->_io->setCountHops(eid, hops);
+		return engine::setCountHops(eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1758,7 +1758,7 @@ awh::event::hops_t awh::unit::Server::getHops(const event::id_t eid) const noexc
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события сервера
-		return this->_io->getHops(eid);
+		return engine::getHops(eid);
 	// Возвращаем значение по умолчанию
 	return awh::event::hops_t::LOOPBACK;
 }
@@ -1774,7 +1774,7 @@ bool awh::unit::Server::setHops(const event::id_t eid, const event::hops_t hops)
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события сервера
-		return this->_io->setHops(eid, hops);
+		return engine::setHops(eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1789,7 +1789,7 @@ string awh::unit::Server::getIface(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события сервера
-		return this->_io->getIface(eid);
+		return engine::getIface(eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -1805,7 +1805,7 @@ bool awh::unit::Server::setIface(const event::id_t eid, string_view name) noexce
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события сервера
-		return this->_io->setIface(eid, name);
+		return engine::setIface(eid, name);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1820,7 +1820,7 @@ uint16_t awh::unit::Server::getPort(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение порта сервера для события сервера
-		return this->_io->getSourcePort(eid);
+		return engine::getSourcePort(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1836,7 +1836,7 @@ bool awh::unit::Server::setPort(const event::id_t eid, const uint16_t port) noex
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку порта сервера для события сервера
-		return this->_io->setSourcePort(eid, port);
+		return engine::setSourcePort(eid, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1852,7 +1852,7 @@ string awh::unit::Server::getAddress(const event::id_t eid, const event::address
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса сервера для события сервера
-		return this->_io->getAddress(eid, address);
+		return engine::getAddress(eid, address);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -1869,7 +1869,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса сервера для события сервера
-		return this->_io->setAddress(eid, address, value);
+		return engine::setAddress(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1886,7 +1886,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса сервера для события сервера
-		return this->_io->setAddress(eid, address, value);
+		return engine::setAddress(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1903,7 +1903,7 @@ bool awh::unit::Server::getAddress(const event::id_t eid, const event::address_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса сервера для события сервера
-		return this->_io->getAddress(eid, address, value);
+		return engine::getAddress(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1918,7 +1918,7 @@ uint16_t awh::unit::Server::getMaximumTransmissionUnit(const event::id_t eid) co
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события сервера
-		return this->_io->getMaximumTransmissionUnit(eid);
+		return engine::getMaximumTransmissionUnit(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1934,7 +1934,7 @@ bool awh::unit::Server::setMaximumTransmissionUnit(const event::id_t eid, const 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события сервера
-		return this->_io->setMaximumTransmissionUnit(eid, mtu);
+		return engine::setMaximumTransmissionUnit(eid, mtu);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1949,7 +1949,7 @@ awh::event::delivery_mode_t awh::unit::Server::getDelivery(const event::id_t eid
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов сервера для события сервера
-		return this->_io->getDelivery(eid);
+		return engine::getDelivery(eid);
 	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
@@ -1965,7 +1965,7 @@ bool awh::unit::Server::setDelivery(const event::id_t eid, const event::delivery
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов сервера для события сервера
-		return this->_io->setDelivery(eid, delivery);
+		return engine::setDelivery(eid, delivery);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1981,7 +1981,7 @@ size_t awh::unit::Server::getBufferSize(const event::id_t eid, const event::acti
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера сервера для события сервера
-		return this->_io->getBufferSize(eid, action);
+		return engine::getBufferSize(eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -1998,7 +1998,7 @@ bool awh::unit::Server::setBufferSize(const event::id_t eid, const event::action
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера сервера для события сервера
-		return this->_io->setBufferSize(eid, action, size);
+		return engine::setBufferSize(eid, action, size);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2013,7 +2013,7 @@ awh::event::usage_t awh::unit::Server::getUsageReadTimeout(const event::id_t eid
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события сервера
-		return this->_io->getUsageReadTimeout(eid);
+		return engine::getUsageReadTimeout(eid);
 	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
@@ -2028,7 +2028,7 @@ void awh::unit::Server::setUsageReadTimeout(const event::id_t eid, const event::
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима использования таймаута на чтение события для события сервера
-		this->_io->setUsageReadTimeout(eid, usage);
+		engine::setUsageReadTimeout(eid, usage);
 }
 /**
  * @brief Метод получения таймаута сервера
@@ -2042,7 +2042,7 @@ uint32_t awh::unit::Server::getTimeout(const event::id_t eid, const event::actio
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для сервера
-		return this->_io->getTimeout(eid, action);
+		return engine::getTimeout(eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -2058,7 +2058,7 @@ void awh::unit::Server::setTimeout(const event::id_t eid, const event::action_t 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров таймаута для сервера
-		this->_io->setTimeout(eid, action, timeout);
+		engine::setTimeout(eid, action, timeout);
 }
 /**
  * @brief Метод установки пропускной способности сервера
@@ -2073,7 +2073,7 @@ bool awh::unit::Server::bandwidth(const event::id_t eid, const event::limiting_t
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для сервера
-		return this->_io->bandwidth(eid, limiting, bandwidth);
+		return engine::bandwidth(eid, limiting, bandwidth);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2091,7 +2091,7 @@ bool awh::unit::Server::keepAlive(const event::id_t eid, const int32_t cnt, cons
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для сервера
-		return this->_io->keepAlive(eid, cnt, idle, intvl);
+		return engine::keepAlive(eid, cnt, idle, intvl);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2106,7 +2106,7 @@ awh::event::dscp_t awh::unit::Server::getDifferentiatedServicesCodePoint(const e
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для сервера
-		return this->_io->getDifferentiatedServicesCodePoint(eid, this->_io->family(eid));
+		return engine::getDifferentiatedServicesCodePoint(eid, engine::family(eid));
 	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
@@ -2122,7 +2122,7 @@ bool awh::unit::Server::setDifferentiatedServicesCodePoint(const event::id_t eid
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для сервера
-		return this->_io->setDifferentiatedServicesCodePoint(eid, this->_io->family(eid), dscp);
+		return engine::setDifferentiatedServicesCodePoint(eid, engine::family(eid), dscp);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2137,7 +2137,7 @@ awh::event::mtu_discover_t awh::unit::Server::getMaximumTransmissionUnitDiscover
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение обнаружения максимального размера пакета (MTU) для сервера
-		return this->_io->getMaximumTransmissionUnitDiscover(eid, this->_io->family(eid));
+		return engine::getMaximumTransmissionUnitDiscover(eid, engine::family(eid));
 	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
@@ -2153,7 +2153,7 @@ bool awh::unit::Server::setMaximumTransmissionUnitDiscover(const event::id_t eid
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку обнаружения максимального размера пакета (MTU) для сервера
-		return this->_io->setMaximumTransmissionUnitDiscover(eid, this->_io->family(eid), mode);
+		return engine::setMaximumTransmissionUnitDiscover(eid, engine::family(eid), mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2172,7 +2172,7 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для сервера
-		return this->_io->membership(eid, mode, group, source, port);
+		return engine::membership(eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2191,7 +2191,7 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для сервера
-		return this->_io->membership(eid, mode, group, source, port);
+		return engine::membership(eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -2207,7 +2207,7 @@ void awh::unit::Server::clear() noexcept {
 		 */
 		for(const auto & event : this->_events)
 			// Удаляем событие сервера
-			this->_io->destroy(event.first);
+			engine::destroy(event.first);
 		// Очищаем внутренние индексы событий
 		this->_events.clear();
 		// Очищаем список клиентов сервера
@@ -2269,13 +2269,13 @@ void awh::unit::Server::stop() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог запуска события
-				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог запуска события
-				awh::log::print("This operating system is not supported", awh::log::flag_t::CRITICAL);
+				log::print("This operating system is not supported", log::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -2397,13 +2397,13 @@ void awh::unit::Server::start() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог запуска события
-				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+				log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог запуска события
-				awh::log::print("This operating system is not supported", awh::log::flag_t::CRITICAL);
+				log::print("This operating system is not supported", log::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -2472,13 +2472,13 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 				// Удаляем все клиентские события данного сервера
 				this->unlinkServerClients(i->first);
 				// Удаляем событие сервера
-				this->_io->destroy(i->first);
+				engine::destroy(i->first);
 				// Удаляем идентификатор события сервера из списка событий
 				this->_events.erase(i);
 			// Если идентификатор относится к клиентскому событию
 			} else {
 				// Удаляем событие сервера
-				this->_io->destroy(i->first);
+				engine::destroy(i->first);
 				// Удаляем идентификатор клиентского события из индексов
 				this->unlinkClient(i->first);
 			}
@@ -2502,23 +2502,23 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 	 */
 	try {
 		// Добавляем новое событие сервера
-		result = this->_io->event(event::node_t::SERVER, family, type, protocol);
+		result = engine::event(event::node_t::SERVER, family, type, protocol);
 		// Если событие сервера успешно создано
 		if(result > 0){
 			// Устанавливаем функцию обратного вызова на событие изменения действий сервера
-			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
+			engine::on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие записи данных
-			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
+			engine::on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие разрешения подключения
-			this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
-			this->_io->on(result, static_cast <engine::callback::traffic_t> (std::bind(&server_t::traffic, this, _1, _2)));
+			engine::on(result, static_cast <engine::callback::traffic_t> (std::bind(&server_t::traffic, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
-			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
+			engine::on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
+			engine::on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
+			engine::on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
 			// Добавляем идентификатор события сервера в список событий сервера
 			this->_events.emplace(result, 0);
 		}
@@ -2531,13 +2531,13 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2645,13 +2645,13 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {count}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2832,38 +2832,38 @@ awh::unit::Server::~Server() noexcept {
 		 */
 		for(const auto & event : this->_events){
 			// Снимаем функцию обратного вызова на событие получения ошибок клиента
-			this->_io->on(event.first, static_cast <engine::callback::error_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения действий клиента
-			this->_io->on(event.first, static_cast <engine::callback::event_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::event_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие записи данных клиенту
-			this->_io->on(event.first, static_cast <engine::callback::write_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::write_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие неотправленных данных клиенту
-			this->_io->on(event.first, static_cast <engine::callback::spool_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::spool_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения статуса клиента
-			this->_io->on(event.first, static_cast <engine::callback::status_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::status_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-			this->_io->on(event.first, static_cast <engine::callback::available_t> (nullptr));
+			engine::on(event.first, static_cast <engine::callback::available_t> (nullptr));
 			/**
 			 * Определяем узел к которому относится событие
 			 */
-			switch(static_cast <uint8_t> (this->_io->node(event.first))){
+			switch(static_cast <uint8_t> (engine::node(event.first))){
 				// Если узел события является одноразовым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Снимаем функцию обратного вызова на событие чтения данных клиента
-					this->_io->on(event.first, static_cast <engine::callback::read_t> (nullptr));
+					engine::on(event.first, static_cast <engine::callback::read_t> (nullptr));
 					// Снимаем функцию обратного вызова на событие истечения таймаута клиента
-					this->_io->on(event.first, static_cast <engine::callback::timeout_t> (nullptr));
+					engine::on(event.first, static_cast <engine::callback::timeout_t> (nullptr));
 				} break;
 				// Если узел события является серверным узлом
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Снимаем функцию обратного вызова на событие разрешения подключения
-					this->_io->on(event.first, static_cast <engine::callback::accept_t> (nullptr));
+					engine::on(event.first, static_cast <engine::callback::accept_t> (nullptr));
 					// Снимаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
-					this->_io->on(event.first, static_cast <engine::callback::traffic_t> (nullptr));
+					engine::on(event.first, static_cast <engine::callback::traffic_t> (nullptr));
 				} break;
 			}
 			// Удаляем событие сервера
-			this->_io->destroy(event.first);
+			engine::destroy(event.first);
 		}
 		// Очищаем внутренние индексы событий
 		this->_events.clear();

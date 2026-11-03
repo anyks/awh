@@ -786,13 +786,13 @@ namespace iface {
 };
 
 /**
- * @brief Метод удаления сетевого интерфейса
+ * @brief Функция удаления сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат удаления сетевого интерфейса
  *
  */
-bool awh::eth::Interface::destroy(string_view name) const noexcept {
+bool awh::eth::iface::destroy(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -866,12 +866,12 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения списка сетевых интерфейсов системы
+ * @brief Функция получения списка сетевых интерфейсов системы
  *
  * @return список сетевых интерфейсов системы
  *
  */
-unordered_set <string> awh::eth::Interface::available() const noexcept {
+unordered_set <string> awh::eth::iface::available() noexcept {
 	// Переменная результата
 	unordered_set <string> result;
 	/**
@@ -928,13 +928,13 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки доступности сетевого интерфейса
+ * @brief Функция проверки доступности сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки доступности сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
+bool awh::eth::iface::isAvailable(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -996,13 +996,13 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки туннельного сетевого интерфейса
+ * @brief Функция проверки туннельного сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки туннельного сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
+bool awh::eth::iface::isTunnel(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если имя интерфейса задано
@@ -1043,13 +1043,13 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки туннельного сетевого интерфейса по адресу
+ * @brief Функция проверки туннельного сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки туннельного сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isTunnel(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если адрес передан
@@ -1094,13 +1094,13 @@ bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки виртуального сетевого интерфейса
+ * @brief Функция проверки виртуального сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки виртуального сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
+bool awh::eth::iface::isVirtual(string_view name) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если имя интерфейса задано
@@ -1141,13 +1141,13 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки виртуального сетевого интерфейса по адресу
+ * @brief Функция проверки виртуального сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки виртуального сетевого интерфейса
  *
  */
-bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
+bool awh::eth::iface::isVirtual(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если адрес передан
@@ -1192,13 +1192,13 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения имени сетевого интерфейса по адресу
+ * @brief Функция получения имени сетевого интерфейса по адресу
  *
  * @param addr адрес сетевого подключения
  * @return     имя сетевого интерфейса
  *
  */
-string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
+string awh::eth::iface::name(const net::addr_t * addr) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если адрес не передан
@@ -1309,14 +1309,14 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	return result;
 }
 /**
- * @brief Метод создания сетевого интерфейса
+ * @brief Функция создания сетевого интерфейса
  *
  * @param type тип сетевого интерфейса
  * @param name имя сетевого интерфейса
  * @return     дескриптор созданного сетевого интерфейса
  *
  */
-awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string & name) const noexcept {
+awh::net::socket_t awh::eth::iface::create(const event::eth_t type, string & name) noexcept {
 	// Переменная результата
 	net::socket_t result = net::invalid_socket_t;
 	/**
@@ -1747,7 +1747,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								// Закрываем дескриптор устройства прежде его сноса
 								::close(result);
 								// Сносим заведённое устройство: отдавать его под чужим именем нельзя
-								this->destroy(name);
+								destroy(name);
 								// Возвращаем результат
 								return net::invalid_socket_t;
 							}
@@ -1957,13 +1957,13 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	return result;
 }
 /**
- * @brief Метод получения MTU сетевого интерфейса
+ * @brief Функция получения MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     MTU сетевого интерфейса
  *
  */
-uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
+uint32_t awh::eth::iface::mtu(string_view name) noexcept {
 	// Если название сетевого интерфейса передано
 	if(!name.empty()){
 		/**
@@ -2041,14 +2041,14 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	return 0;
 }
 /**
- * @brief Метод установки MTU сетевого интерфейса
+ * @brief Функция установки MTU сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @param mtu  размер MTU интерфейса
  * @return     результат установки MTU сетевого интерфейса
  *
  */
-bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::mtu(string_view name, const uint32_t mtu) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2144,13 +2144,13 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 	return result;
 }
 /**
- * @brief Метод получения установленных флагов сетевого интерфейса
+ * @brief Функция получения установленных флагов сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @return     флаги сетевого интерфейса
  *
  */
-unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view name) const noexcept {
+unordered_set <awh::event::eth_flag_t> awh::eth::iface::flags(string_view name) noexcept {
 	// Переменная результата
 	unordered_set <event::eth_flag_t> result;
 	// Если название сетевого интерфейса передано
@@ -2268,7 +2268,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	return result;
 }
 /**
- * @brief Метод установки флага сетевого интерфейса
+ * @brief Функция установки флага сетевого интерфейса
  *
  * @param name имя сетевого интерфейса
  * @param flag флаг сетевого интерфейса
@@ -2276,7 +2276,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
  * @return     результат установки флага сетевого интерфейса
  *
  */
-bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+bool awh::eth::iface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2485,7 +2485,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	return result;
 }
 /**
- * @brief Метод установки IP-адреса на сетевой интерфейс
+ * @brief Функция установки IP-адреса на сетевой интерфейс
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -2494,7 +2494,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
  * @return       результат установки IP-адреса
  *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -2570,14 +2570,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод получения IP-адреса сетевого интерфейса
+ * @brief Функция получения IP-адреса сетевого интерфейса
  *
  * @param name   имя сетевого интерфейса
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       IP-адрес сетевого интерфейса
  *
  */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, const event::family_t family) const noexcept {
+unique_ptr <awh::net::addr_t> awh::eth::iface::getAddress(string_view name, const event::family_t family) noexcept {
 	// Переменная результата
 	unique_ptr <awh::net::addr_t> result = nullptr;
 	// Если название сетевого интерфейса передано
@@ -2704,7 +2704,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	return result;
 }
 /**
- * @brief Метод установки параметров сетевого интерфейса точка-точка
+ * @brief Функция установки параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -2713,7 +2713,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
  * @return       результат установки параметров сетевого интерфейса точка-точка
  *
  */
-bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
+bool awh::eth::iface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -2789,7 +2789,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	return result;
 }
 /**
- * @brief Метод изменения параметров сетевого интерфейса точка-точка
+ * @brief Функция изменения параметров сетевого интерфейса точка-точка
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для получения
@@ -2798,7 +2798,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  * @return       результат изменения параметров сетевого интерфейса точка-точка
  *
  */
-bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+bool awh::eth::iface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2950,13 +2950,13 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	return result;
 }
 /**
- * Метод снятия адреса заведён только для macOS
+ * Функция снятия адреса заведена только для macOS
  *
  * @details Прочие системы BSD снимают адрес вместе с самим устройством: у них есть
  *          `SIOCIFDESTROY`, и отдельного снятия им не нужно. У macOS устройство `utun`
  *          снести нечем - оно заводится управляющим сокетом ядра и исчезает само при
  *          его закрытии, - но исчезает НЕ СРАЗУ, и всё это время адрес числится за ним.
- *          Следующий туннель получает свой адрес за мертвецом
+ *          Следующий туннель получает свой адрес за мертвецом.
  *
  * @note Установлено щупом на рабочей машине 23.08.2026: сразу после сноса узла система
  *       по-прежнему числила адрес за «utun10», отчего второй оборот проверки жизненного
@@ -2965,7 +2965,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  */
 #if defined(__APPLE__)
 	/**
-	 * @brief Метод снятия адреса с сетевого интерфейса
+	 * @brief Функция снятия адреса с сетевого интерфейса
 	 *
 	 * @param name название сетевого интерфейса
 	 * @param ip   снимаемый адрес
@@ -2973,7 +2973,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	 * @return     результат снятия
 	 *
 	 */
-	bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, [[maybe_unused]] const net::addr_t * peer) const noexcept {
+	bool awh::eth::iface::delAddress(string_view name, const net::addr_t * ip, [[maybe_unused]] const net::addr_t * peer) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если название интерфейса и снимаемый адрес переданы
@@ -3067,7 +3067,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	}
 #endif
 /**
- * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
+ * @brief Функция комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3076,12 +3076,12 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
-	return this->configure(name, ip, nullptr, prefix, mtu);
+	return configure(name, ip, nullptr, prefix, mtu);
 }
 /**
- * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
+ * @brief Функция комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
  *
  * @param name   имя сетевого интерфейса
  * @param ip     адрес сетевого интерфейса для установки
@@ -3091,7 +3091,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) const noexcept {
+bool awh::eth::iface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3241,7 +3241,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 	return result;
 }
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @details Общего учёта, который приходилось бы защищать, у модуля на этой системе
  *          нет: перебор связей для туннелей ведёт только Solaris, и замок заведён
@@ -3254,18 +3254,8 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @param mode флаг режима безопасности потоков
  *
  */
-void awh::eth::Interface::threadSafety([[maybe_unused]] const bool mode) noexcept {
+void awh::eth::iface::threadSafety([[maybe_unused]] const bool mode) noexcept {
 	/**
 	 * Защищать на этой системе нечего
 	 */
 }
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Interface::Interface() noexcept = default;
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Interface::~Interface() noexcept = default;

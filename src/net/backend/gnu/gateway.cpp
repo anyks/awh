@@ -192,7 +192,7 @@ namespace routing {
 	 * @return      результат правки таблицы маршрутов
 	 *
 	 */
-	static __AWH_INLINE__ bool modify(const uint16_t type, const uint16_t flags, const eth::gateway_t::route_t & route) noexcept {
+	static __AWH_INLINE__ bool modify(const uint16_t type, const uint16_t flags, const eth::gateway::route_t & route) noexcept {
 		// Если адрес шлюза не инициализирован
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена
@@ -389,12 +389,12 @@ namespace routing {
  * @brief Конструктор
  *
  */
-awh::eth::Gateway::Route::Route() noexcept :
+awh::eth::gateway::Route::Route() noexcept :
  ifname{""}, prefix(0),
  gateway(nullptr), destination(nullptr) {}
 
 /**
- * @brief Метод получения маршрута для указанного адреса
+ * @brief Функция получения маршрута для указанного адреса
  *
  * @details Спрашивает у ядра, каким путём оно отправит пакет для заданного адреса, и
  *          дозаполняет объект маршрута ответом.
@@ -402,7 +402,7 @@ awh::eth::Gateway::Route::Route() noexcept :
  * @par Намеренные решения
  *
  *      **Выборка таблицы, а следом - запрос одного маршрута.** У Linux путей два, и
- *      здесь взяты ОБА, по очереди. Выборка целиком идёт первой затем, что метод
+ *      здесь взяты ОБА, по очереди. Выборка целиком идёт первой затем, что функция
  *      отвечает не только на вопрос «куда пойдёт пакет», но и на вопрос «каков маршрут
  *      по умолчанию», а его точечным запросом не задать: у маршрута по умолчанию адреса
  *      назначения нет вовсе.
@@ -420,7 +420,7 @@ awh::eth::Gateway::Route::Route() noexcept :
  * @return      результат получения маршрута
  *
  */
-bool awh::eth::Gateway::get(route_t & route) const noexcept {
+bool awh::eth::gateway::get(route_t & route) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -542,7 +542,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		/**
 		 * Если названный адрес своей записи в таблице не имеет - спрашиваем ЯДРО
 		 *
-		 * @details Метод отвечает на вопрос «каким путём пойдёт пакет», а таблица знает
+		 * @details Функция отвечает на вопрос «каким путём пойдёт пакет», а таблица знает
 		 *          лишь заведённые пути. Адрес, попадающий в сеть по её приставке,
 		 *          своей записи не имеет вовсе, и сличение `memcmp` по полю назначения
 		 *          его не находит - точное сличение отвечает лишь тем адресам, что в
@@ -661,7 +661,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	return result;
 }
 /**
- * @brief Метод добавления маршрута
+ * @brief Функция добавления маршрута
  *
  * @warning Правка таблицы маршрутов затрагивает **всю машину**, а не наш процесс:
  *          заведённый маршрут переживёт завершение работы, и убирать его следует за
@@ -671,28 +671,18 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  * @return      результат добавления маршрута
  *
  */
-bool awh::eth::Gateway::add(const route_t & route) const noexcept {
+bool awh::eth::gateway::add(const route_t & route) noexcept {
 	// Выполняем заведение маршрута
 	return ::routing::modify(RTM_NEWROUTE, (NLM_F_CREATE | NLM_F_EXCL), route);
 }
 /**
- * @brief Метод удаления маршрута
+ * @brief Функция удаления маршрута
  *
  * @param route удаляемый маршрут
  * @return      результат удаления маршрута
  *
  */
-bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
+bool awh::eth::gateway::remove(const route_t & route) noexcept {
 	// Выполняем снятие маршрута
 	return ::routing::modify(RTM_DELROUTE, 0, route);
 }
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Gateway::Gateway() noexcept = default;
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Gateway::~Gateway() noexcept = default;

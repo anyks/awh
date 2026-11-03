@@ -36,14 +36,13 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../net/io.hpp"
+#include "../net/engine.hpp"
 #include "../sys/signals.hpp"
 #include "../sys/callback.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -54,7 +53,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -92,24 +90,24 @@ namespace awh {
 				 *          рассылка не уходит в неисправную сеть, - и отказ этот приходит
 				 *          вызывающему сразу же, из той самой функции, которой обращение
 				 *          и начато. Просьба остановиться поступает тогда, когда цикла
-				 *          ещё нет, и остановить ей нечего
+				 *          ещё нет, и остановить ей нечего.
 				 *
 				 *          Признак этот просьбу и запоминает: запуск сверяется с ним и в
 				 *          цикл не входит вовсе. Без него запуск, следующий за отказом,
-				 *          уходил бы в ожидание навсегда - остановить его было бы уже
-				 *          некому
+				 *          уходил бы в ожидание навсегда - остановить его было бы уже некому.
 				 *
 				 * \~english
 				 * Flag of a stop request that has arrived before the loop has been started
+				 *
 				 * @details A call may fail even before entering the event loop — say,
 				 *          a broadcast does not go out into a faulty network — and that refusal
 				 *          reaches the caller immediately, from the very function by which the call
 				 *          has been started. The request to stop then arrives at a moment when the loop
-				 *          does not exist yet, and there is nothing for it to stop
+				 *          does not exist yet, and there is nothing for it to stop.
+				 *
 				 *          This flag is what remembers the request: the launch checks it and does not
 				 *          enter the loop at all. Without it, a launch following a refusal
-				 *          would go into waiting forever — there would be no one left
-				 *          to stop it
+				 *          would go into waiting forever — there would be no one left to stop it.
 				 *
 				 * \~
 				 */
@@ -126,9 +124,6 @@ namespace awh {
 			protected:
 				// Хранилище функций обратного вызова
 				callback_t _callback;
-			protected:
-				// Объект асинхронного сетевого движка
-				engine::io_t * _io;
 			private:
 				/**
 				 * \~russian
@@ -138,6 +133,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of printing the received signal
+				 *
 				 * @param sig signal identifier
 				 *
 				 * \~
@@ -152,6 +148,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forcibly kicking the event base
+				 *
 				 * @return result of performing the operation
 				 *
 				 * \~
@@ -166,6 +163,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of determining the master process
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -180,6 +178,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the work has been started
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -216,6 +215,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of events in the event base
+				 *
 				 * @return number of events
 				 *
 				 * \~
@@ -232,6 +232,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of stopping the unit
+				 *
 				 * @note The event base is common to the whole process. The event loop is actually stopped only by
 				 *       the launcher unit (the one that has started it): it resets the working flag and wakes the base up.
 				 *       The rest of the units merely move themselves into the DESTROYED status without touching the common loop.
@@ -251,6 +252,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching the unit
+				 *
 				 * @note The event base is common to the whole process. The event loop can be started by only one
 				 *       launcher unit: the capture is performed atomically (compare_exchange), and for it the call is
 				 *       blocking — the thread spins in the polling loop until the stop. The rest of the units,
@@ -273,8 +275,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of rebuilding an event: recreation of the underlying descriptor while preserving the event
+				 *
 				 * @note The descriptor is recreated, while the event itself (its identifier, callbacks,
 				 *       parameters) is preserved — the substitution of the descriptor is invisible to the application
+				 *
 				 * @param eid event identifier
 				 * @return    result of performing the rebuild
 				 *
@@ -291,6 +295,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event type
+				 *
 				 * @param eid event identifier
 				 * @return    event type
 				 *
@@ -306,6 +311,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the unit type of the event
+				 *
 				 * @param eid event identifier
 				 * @return    unit type of the event
 				 *
@@ -321,6 +327,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of the event
+				 *
 				 * @param eid event identifier
 				 * @return    address family
 				 *
@@ -336,6 +343,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event status
+				 *
 				 * @param eid event identifier
 				 * @return    event status
 				 *
@@ -351,6 +359,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event protocol
+				 *
 				 * @param id event identifier
 				 * @return   event protocol
 				 *
@@ -366,6 +375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of the internal timers
+				 *
 				 * @return timer type for the events of the network engine
 				 *
 				 * \~
@@ -379,6 +389,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the type of the internal timers
+				 *
 				 * @param timer timer type for the events of the network engine
 				 *
 				 * \~
@@ -394,6 +405,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the event
+				 *
 				 * @param limiting  mode of limiting the bandwidth of the event (egress or ingress)
 				 * @param bandwidth bandwidth of the event to be set (for example, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" or "auto")
 				 *
@@ -409,6 +421,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the blocking time of the event base while waiting for events
+				 *
 				 * @param timeout time of waiting for events in milliseconds
 				 *
 				 * \~
@@ -424,6 +437,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -439,6 +453,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of connecting a callback function
+				 *
 				 * @tparam T    callback function type
 				 * @tparam Args callback function arguments
 				 *
@@ -455,6 +470,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting a callback function
+				 *
 				 * @param name callback function identifier
 				 * @param args callback function arguments
 				 * @return     identifier of the added callback function
@@ -478,6 +494,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of connecting a callback function
+				 *
 				 * @tparam T    callback function type
 				 * @tparam Args callback function arguments
 				 *
@@ -494,6 +511,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting a callback function
+				 *
 				 * @param name callback function identifier
 				 * @param args callback function arguments
 				 * @return     identifier of the added callback function
@@ -517,6 +535,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of connecting a callback function
+				 *
 				 * @tparam T    callback function type
 				 * @tparam Args callback function arguments
 				 *
@@ -533,6 +552,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting a callback function
+				 *
 				 * @param name callback function identifier
 				 * @param args callback function arguments
 				 * @return     identifier of the added callback function
@@ -556,6 +576,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of connecting a callback function
+				 *
 				 * @tparam T    callback function type
 				 * @tparam Args callback function arguments
 				 *
@@ -572,6 +593,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting a callback function
+				 *
 				 * @param fid  callback function identifier
 				 * @param args callback function arguments
 				 * @return     identifier of the added callback function
@@ -596,6 +618,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of connecting a callback function
+				 *
 				 * @tparam A    function identifier type
 				 * @tparam B    callback function type
 				 * @tparam Args callback function arguments
@@ -613,6 +636,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting a callback function
+				 *
 				 * @param fid  callback function identifier
 				 * @param args callback function arguments
 				 * @return     identifier of the added callback function
@@ -636,6 +660,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating the interception of signals
+				 *
 				 * @param mode activation flag
 				 *
 				 * \~
@@ -645,7 +670,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -659,9 +683,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -672,7 +696,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -682,7 +705,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

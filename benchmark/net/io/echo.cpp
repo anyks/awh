@@ -272,7 +272,6 @@ namespace {
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io;
 		// Общий обработчик ошибок не допускает частично выполненную нагрузку
 		const awh::engine::callback::error_t error = [&state]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, [[maybe_unused]] const string & message) noexcept -> void {
 			// Отмечаем отказ движка независимо от режима проверки порогов
@@ -288,33 +287,33 @@ namespace {
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера
-		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Устанавливаем порт события сервера
-		io.setSourcePort(server, number);
+		awh::engine::setSourcePort(server, number);
 		// Добавляем общий предельный срок подготовки и измерения
-		const awh::event::id_t deadline = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+		const awh::event::id_t deadline = awh::engine::event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 		// Если инициализация движка не выполнена
-		if(!io.initialize())
+		if(!awh::engine::initialize())
 			// Выводим пустые итоги прогона
 			return result;
 		// Регистрируем отказ слушающего события
-		io.on(server, error);
+		awh::engine::on(server, error);
 		// Устанавливаем опции события сервера
-		io.setOptions(server, options());
+		awh::engine::setOptions(server, options());
 		// Устанавливаем адрес события сервера
-		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
+		awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Список состояний принятых сервером подключений
 		vector <unique_ptr <connection_t>> accepted;
 		// Резервируем память под состояния принятых подключений
 		accepted.reserve(connections);
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state, &accepted, &error, &closed]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&state, &accepted, &error, &closed]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Отслеживаем ошибки принятого подключения
-			io.on(cid, error);
+			awh::engine::on(cid, error);
 			// Отслеживаем преждевременное закрытие принятого подключения
-			io.on(cid, closed);
+			awh::engine::on(cid, closed);
 			// Устанавливаем опции принятого подключения
-			io.setOptions(cid, options());
+			awh::engine::setOptions(cid, options());
 			// Создаём состояние принятого подключения
 			accepted.push_back(unique_ptr <connection_t> (new connection_t));
 			// Устанавливаем идентификатор события принятого подключения
@@ -324,28 +323,28 @@ namespace {
 			 * сервер возвращает принятые октеты как есть, разбор сообщения на его
 			 * стороне не нужен - границы восстанавливает принимающий клиент
 			 */
-			io.on(cid, [&io, &state](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [&state](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Не отправляем хвост сообщений после закрытия окна
-				if(!state.stop && (io.send(eid, data, size) != size))
+				if(!state.stop && (awh::engine::send(eid, data, size) != size))
 					// Отмечаем неполную постановку ответа в очередь
 					::fail(state, "echo-send-failed");
 			});
 		}));
 		// Проверяем настройку и запуск слушающего события
-		if(!io.commit(server) || !io.listen(server, BACKLOG) || !io.launch(server))
+		if(!awh::engine::commit(server) || !awh::engine::listen(server, BACKLOG) || !awh::engine::launch(server))
 			// Не запускаем клиентов без рабочего сервера
 			::fail(state, "listener-setup-failed");
 		// Ограничиваем весь прогон одной минутой без часов в горячем пути
-		io.setTimeout(deadline, awh::event::action_t::NONE, 60000);
+		awh::engine::setTimeout(deadline, awh::event::action_t::NONE, 60000);
 		// Регистрируем завершение предельного срока
-		io.on(deadline, [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		awh::engine::on(deadline, [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Если предельный срок достигнут
 			if(status == awh::event::status_t::SUCCESS)
 				// Отклоняем неполный прогон вместо бесконечного ожидания
 				::fail(state, "deadline-expired");
 		});
 		// Проверяем запуск общего предельного срока
-		if(!io.commit(deadline) || !io.launch(deadline))
+		if(!awh::engine::commit(deadline) || !awh::engine::launch(deadline))
 			// Не допускаем неограниченное ожидание при отказе таймера
 			::fail(state, "deadline-setup-failed");
 		// Список состояний клиентских подключений
@@ -361,27 +360,27 @@ namespace {
 			// Получаем состояние созданного подключения
 			connection_t * connection = clients.back().get();
 			// Добавляем новое событие клиента
-			connection->id = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			connection->id = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Регистрируем отказ клиентского события
-			io.on(connection->id, error);
+			awh::engine::on(connection->id, error);
 			// Регистрируем преждевременное закрытие клиента
-			io.on(connection->id, closed);
+			awh::engine::on(connection->id, closed);
 			// Устанавливаем порт назначения события клиента
-			io.setTargetPort(connection->id, number);
+			awh::engine::setTargetPort(connection->id, number);
 			// Устанавливаем опции события клиента
-			io.setOptions(connection->id, options());
+			awh::engine::setOptions(connection->id, options());
 			// Устанавливаем адрес привязки события клиента
-			io.setAddress(connection->id, awh::event::address_t::IPV4, "0.0.0.0");
+			awh::engine::setAddress(connection->id, awh::event::address_t::IPV4, "0.0.0.0");
 			// Устанавливаем адрес назначения события клиента
-			io.setTarget(connection->id, "127.0.0.1");
+			awh::engine::setTarget(connection->id, "127.0.0.1");
 			// Устанавливаем функцию обратного вызова на подключение клиента
-			io.on(connection->id, static_cast <awh::engine::callback::connect_t> ([&io, &state](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			awh::engine::on(connection->id, static_cast <awh::engine::callback::connect_t> ([&state](const awh::event::id_t eid, const bool ok) noexcept -> void {
 				// Не продолжаем подготовку после первого отказа
 				if(state.stop)
 					// Оставляем очистку общему завершению
 					return;
 				// Проверяем подключение и первое сообщение прогрева
-				if(!ok || (io.send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD))
+				if(!ok || (awh::engine::send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD))
 					// Неподключённый клиент не должен исчезнуть из нагрузки
 					::fail(state, "client-connect-or-send-failed");
 			}));
@@ -390,7 +389,7 @@ namespace {
 			 * границы сообщения восстанавливаются накоплением принятых октетов,
 			 * поскольку поток TCP вправе доставить ответ по частям
 			 */
-			io.on(connection->id, [&io, &state, &accepted, connection, connections](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			awh::engine::on(connection->id, [&state, &accepted, connection, connections](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Хвост пачки после остановки не принадлежит измерению
 				if(state.stop)
 					// Не изменяем счётчики и не создаём новых отправок
@@ -417,13 +416,13 @@ namespace {
 					// Помечаем именно новый запрос, а не пришедший ответ прогрева
 					connection->measured = state.measuring;
 					// Проверяем полную постановку следующего сообщения
-					if(io.send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
+					if(awh::engine::send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
 						// Отклоняем потерянное продолжение обмена
 						::fail(state, "client-send-failed");
 				}
 			});
 			// Проверяем настройку, подключение и запуск клиента
-			if(!io.commit(connection->id) || !io.connect(connection->id) || !io.launch(connection->id))
+			if(!awh::engine::commit(connection->id) || !awh::engine::connect(connection->id) || !awh::engine::launch(connection->id))
 				// Не подменяем неполный состав меньшей нагрузкой
 				::fail(state, "client-setup-failed");
 		}
@@ -432,7 +431,7 @@ namespace {
 		 */
 		while(!state.stop && (state.ready < connections)){
 			// Проверяем успешность опроса, включая пробуждение предельным сроком
-			if(!io.poll())
+			if(!awh::engine::poll())
 				// Отказ опроса не должен превращаться в частичный результат
 				::fail(state, "warmup-poll-failed");
 		}
@@ -457,7 +456,7 @@ namespace {
 					// Оставляем очистку общему завершению
 					break;
 				// Первый общий запуск ещё не принадлежит измерению
-				if(io.send(connection->id, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
+				if(awh::engine::send(connection->id, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
 					// Не открываем окно при неполной постановке прогрева
 					::fail(state, "fleet-warmup-send-failed");
 			}
@@ -466,7 +465,7 @@ namespace {
 			 */
 			while(!state.stop){
 				// Проверяем опрос обеих фаз до целевого обмена или первого отказа
-				if(!io.poll())
+				if(!awh::engine::poll())
 					// Не выдаём неполный прогон за полный
 					::fail(state, "fleet-poll-failed");
 			}
@@ -489,7 +488,7 @@ namespace {
 			// Сообщаем причину отказа вне измеряемого окна
 			::fprintf(stderr, "ECHO_BENCH_FAIL: %s\n", state.failure);
 		// Выполняем деинициализацию движка
-		io.deinitialize();
+		awh::engine::deinitialize();
 		// Выводим итоги прогона сценария
 		return result;
 	}

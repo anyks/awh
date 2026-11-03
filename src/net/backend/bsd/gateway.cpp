@@ -382,17 +382,18 @@ namespace gw {
  * @brief Конструктор
  *
  */
-awh::eth::Gateway::Route::Route() noexcept :
- ifname{""}, prefix(0), gateway(nullptr), destination(nullptr) {}
+awh::eth::gateway::Route::Route() noexcept :
+ ifname{""}, prefix(0),
+ gateway(nullptr), destination(nullptr) {}
 
 /**
- * @brief Метод получения маршрута для указанного адреса
+ * @brief Функция получения маршрута для указанного адреса
  *
  * @param route объект для извлечения маршрута
  * @return      результат получения маршрута
  *
  */
-bool awh::eth::Gateway::get(route_t & route) const noexcept {
+bool awh::eth::gateway::get(route_t & route) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -997,13 +998,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	return result;
 }
 /**
- * @brief Метод добавления маршрута
+ * @brief Функция добавления маршрута
  *
  * @param route объект маршрута для добавления
  * @return      результат добавления маршрута
  *
  */
-bool awh::eth::Gateway::add(const route_t & route) const noexcept {
+bool awh::eth::gateway::add(const route_t & route) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -1574,13 +1575,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	return result;
 }
 /**
- * @brief Метод удаления маршрута
+ * @brief Функция удаления маршрута
  *
  * @param route объект маршрута для удаления
  * @return      результат удаления маршрута
  *
  */
-bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
+bool awh::eth::gateway::remove(const route_t & route) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -2274,13 +2275,3 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::eth::Gateway::Gateway() noexcept = default;
-/**
- * @brief Деструктор
- *
- */
-awh::eth::Gateway::~Gateway() noexcept = default;

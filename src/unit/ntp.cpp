@@ -26,6 +26,7 @@
 #include <array>
 #include <string>
 #include <chrono>
+#include <sys/macro/global.hpp>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -68,9 +69,9 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/macro/lib.hpp>
-#include <unit/ntp.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <unit/ntp.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -128,13 +129,12 @@ namespace {
 	 * @brief Генератор случайных чисел для перемешивания списка NTP-серверов
 	 *
 	 */
-	random_device __awh_randev__;
-
+	static random_device __awh_randev__;
 	/**
 	 * @brief Флаг одноразовой инициализации NTP-клиента
 	 *
 	 */
-	once_flag __awh_ntp_init_once__;
+	static once_flag __awh_ntp_init_once__;
 };
 
 /**
@@ -151,37 +151,33 @@ namespace servers {
 	 * @brief Индекс следующего доменного имени для разрешения
 	 *
 	 */
-	size_t hostnameIndex = 0;
-
+	static size_t hostnameIndex = 0;
 	/**
 	 * @brief Список доменных имён NTP-серверов для отложенного разрешения
 	 *
 	 */
-	vector <string> hostnames;
-
+	static vector <string> hostnames;
 	/**
 	 * @brief Общий список NTP-серверов
 	 *
 	 */
-	vector <unique_ptr <net::addr_t>> general;
-
+	static vector <unique_ptr <net::addr_t>> general;
 	/**
 	 * @brief Представления общего списка NTP-серверов по семействам IPv4-адресов
 	 *
 	 */
-	vector <const net::addr_t *> generalIPv4;
-
+	static vector <const net::addr_t *> generalIPv4;
 	/**
 	 * @brief Представления общего списка NTP-серверов по семействам IPv6-адресов
 	 *
 	 */
-	vector <const net::addr_t *> generalIPv6;
+	static vector <const net::addr_t *> generalIPv6;
 
 	/**
 	 * @brief Функция обновления представлений общего списка NTP-серверов
 	 *
 	 */
-	static void rebuildViews() noexcept {
+	static __AWH_INLINE__ void rebuildViews() noexcept {
 		/**
 		 * Очищаем представления общего списка NTP-серверов
 		 */
@@ -201,14 +197,13 @@ namespace servers {
 				generalIPv6.push_back(server.get());
 		}
 	}
-
 	/**
 	 * @brief Функция добавления NTP-сервера в список
 	 *
 	 * @param server NTP-сервер для добавления в список
 	 *
 	 */
-	static void push(const string & server) noexcept {
+	static __AWH_INLINE__ void push(const string & server) noexcept {
 		// Создаём объект IP-адреса для параметров NTP-сервера
 		struct addrinfo hints = {};
 		// Устанавливаем тип сокета для фильтрации адресов при разрешении имени
@@ -259,25 +254,23 @@ namespace servers {
 			rebuildViews();
 		}
 	}
-
 	/**
 	 * @brief Функция разрешения следующего доменного имени NTP-сервера
 	 *
 	 */
-	static void resolveNext() noexcept {
+	static __AWH_INLINE__ void resolveNext() noexcept {
 		// Если есть доменные имена для разрешения
 		if(hostnameIndex < hostnames.size())
 			// Разрешаем доменное имя NTP-сервера
 			push(hostnames[hostnameIndex++]);
 	}
-
 	/**
 	 * @brief Функция обеспечения наличия адресов NTP-серверов для семейства IP-адресов
 	 *
 	 * @param family семейство IP-адресов IPv4/IPv6
 	 *
 	 */
-	static void ensure(const event::family_t family) noexcept {
+	static __AWH_INLINE__ void ensure(const event::family_t family) noexcept {
 		/**
 		 * Определяем семейство события
 		 */
@@ -315,10 +308,13 @@ namespace ntp {
 	using namespace awh;
 
 	/**
+	 * Упаковываем структуру пакета NTP-запроса
+	 */
+	__AWH_PACK_BEGIN__
+	/**
 	 * @brief Структура пакетов NTP-запроса
 	 *
 	 */
-	__AWH_PACK_BEGIN__
 	typedef struct Packet {
 		/**
 		 * Восемь бит (li, vn и mode):
@@ -359,7 +355,7 @@ namespace ntp {
 		 * @brief Конструктор
 		 *
 		 */
-		Packet() noexcept :
+		explicit Packet() noexcept :
 		 mode(0), stratum(0), poll(0), precision(0),
 		 rootDelay(htonl(0)), rootDispersion(htonl(0)), refId(htonl(0)),
 		 refTimeStampSec(htonl(0)), refTimeStampSecFrac(htonl(0)),
@@ -378,7 +374,7 @@ namespace ntp {
 	 * @param xmitFrac дробная часть метки transmit запроса (сетевой порядок байтов)
 	 *
 	 */
-	static void request(packet_t & packet, const unit::NTP::version_t version, uint32_t & xmitSec, uint32_t & xmitFrac) noexcept {
+	static __AWH_INLINE__ void request(packet_t & packet, const unit::NTP::version_t version, uint32_t & xmitSec, uint32_t & xmitFrac) noexcept {
 		/**
 		 * Определяем версию протокола NTP для выполнения запроса
 		 */
@@ -407,13 +403,12 @@ namespace ntp {
 		// Устанавливаем дробную часть метки transmit в пакете запроса (RFC 5905: сервер копирует её в originate ответа)
 		packet.transmitedTimeStampSecFrac = xmitFrac = htonl(frac);
 	}
-
 	/**
 	 * @brief Функция проверки принадлежности NTP-ответа заданному вопросу
 	 *
 	 * @details Проверяется здесь одно: наш ли это ответ. Отказ отсюда означает, что
 	 *          пакет пришёл не по нашему вопросу, а значит ожидание не кончилось и
-	 *          обмен обрывать нельзя. Годность самого ответа проверяется отдельно
+	 *          обмен обрывать нельзя. Годность самого ответа проверяется отдельно.
 	 *
 	 * @param packet   объект пакета NTP-ответа
 	 * @param size     размер полученных данных
@@ -422,7 +417,7 @@ namespace ntp {
 	 * @return         результат проверки
 	 *
 	 */
-	static bool owned(const packet_t * packet, const size_t size, const uint32_t xmitSec, const uint32_t xmitFrac) noexcept {
+	static __AWH_INLINE__ bool owned(const packet_t * packet, const size_t size, const uint32_t xmitSec, const uint32_t xmitFrac) noexcept {
 		// Если пакет или его размер некорректны
 		if((packet == nullptr) || (size < sizeof(packet_t)))
 			// Возвращаем отрицательный результат
@@ -444,20 +439,19 @@ namespace ntp {
 		// Возвращаем положительный результат
 		return true;
 	}
-
 	/**
 	 * @brief Функция проверки годности своего ответа NTP-сервера
 	 *
 	 * @details Проверяется здесь ответ, чья принадлежность уже установлена: годен ли
 	 *          он к употреблению. Отказ отсюда - настоящий отказ обмена, а не повод
-	 *          ждать дальше: ответ пришёл, и ждать больше нечего
+	 *          ждать дальше: ответ пришёл, и ждать больше нечего.
 	 *
 	 * @param packet  пакет ответа NTP-сервера
 	 * @param version запрошенная версия протокола
 	 * @return        результат проверки
 	 *
 	 */
-	static bool validate(const packet_t * packet, const unit::NTP::version_t version) noexcept {
+	static __AWH_INLINE__ bool validate(const packet_t * packet, const unit::NTP::version_t version) noexcept {
 		// Если сервер вернул Kiss-o'-Death
 		if(packet->stratum == 0)
 			// Возвращаем отрицательный результат
@@ -473,7 +467,6 @@ namespace ntp {
 		// Возвращаем положительный результат
 		return true;
 	}
-
 	/**
 	 * @brief Функция получения времени из NTP-ответа в миллисекундах Unix epoch
 	 *
@@ -481,7 +474,7 @@ namespace ntp {
 	 * @return       время в миллисекундах
 	 *
 	 */
-	static uint64_t timestamp(const packet_t * packet) noexcept {
+	static __AWH_INLINE__ uint64_t timestamp(const packet_t * packet) noexcept {
 		// Получаем секунды и дробную часть метки передачи сервером
 		const uint32_t sec  = ntohl(packet->transmitedTimeStampSec);
 		const uint32_t frac = ntohl(packet->transmitedTimeStampSecFrac);
@@ -699,14 +692,6 @@ void awh::unit::NTP::error(const event::id_t eid, const event::error_t error, co
 	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
- * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
- *
- * @param eid  идентификатор события чтения
- * @param data данные, полученные от NTP-сервера
- * @param size размер полученных данных
- *
- */
-/**
  * @brief Метод продолжения ожидания своего ответа
  *
  * @param eid идентификатор события чтения
@@ -718,8 +703,16 @@ void awh::unit::NTP::keepWaiting(const event::id_t eid) noexcept {
 		// Выходим из функции
 		return;
 	// Выполняем продолжение прерванного чужим пакетом ожидания
-	this->_io->rearmTimeout(eid, event::action_t::READ);
+	engine::rearmTimeout(eid, event::action_t::READ);
 }
+/**
+ * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
+ *
+ * @param eid  идентификатор события чтения
+ * @param data данные, полученные от NTP-сервера
+ * @param size размер полученных данных
+ *
+ */
 void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
@@ -780,13 +773,13 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 						*/
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Invalid NTP response", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::WARNING);
+							log:::debug("Invalid NTP response", __PRETTY_FUNCTION__, {eid, size}, log:::flag_t::WARNING);
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Invalid NTP response", awh::log::flag_t::WARNING);
+							log:::print("Invalid NTP response", log:::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -801,13 +794,13 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -826,7 +819,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 		// Увеличиваем количество попыток получения ответа от NTP-сервера
 		this->_transfer.attempt++;
 		// Пересоздаём клиента со следующим NTP-сервером (setTarget на запущенном клиенте не работает)
-		if(!this->init(this->_io->family(this->_client.eid))){
+		if(!this->init(engine::family(this->_client.eid))){
 			// Снимаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = false;
 			// Уничтожаем событие NTP-клиента
@@ -850,7 +843,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 		// Запоминаем доли секунды метки отправки заданного вопроса
 		this->_transfer.origFrac = origFrac;
 		// Отправляем повторный запрос; send == 0 — клиент сломан (EAGAIN в движке не доходит сюда), уничтожаем событие
-		if(this->_io->send(this->_client.eid, &packet, sizeof(packet)) == 0){
+		if(engine::send(this->_client.eid, &packet, sizeof(packet)) == 0){
 			// Снимаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = false;
 			// Уничтожаем событие NTP-клиента
@@ -875,18 +868,18 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug(
+				log:::debug(
 					"NTP-client timeout (attempts: %u)",
 					__PRETTY_FUNCTION__,
 					{eid, static_cast <uint16_t> (action), delay},
-					awh::log::flag_t::WARNING, this->_transfer.attempt
+					log:::flag_t::WARNING, this->_transfer.attempt
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("NTP-client timeout (attempts: %u)", awh::log::flag_t::WARNING, this->_transfer.attempt);
+				log:::print("NTP-client timeout (attempts: %u)", log:::flag_t::WARNING, this->_transfer.attempt);
 			#endif
 		}
 	}
@@ -910,11 +903,11 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		// Если событие NTP-клиента уже существует
 		if(this->_client.eid > 0)
 			// Удаляем событие NTP-клиента
-			this->_io->destroy(this->_client.eid);
+			engine::destroy(this->_client.eid);
 		// Добавляем новое событие клиента UDP
-		this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+		this->_client.eid = engine::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем порт события
-		if((result = this->_io->setTargetPort(this->_client.eid, this->_client.port))){
+		if((result = engine::setTargetPort(this->_client.eid, this->_client.port))){
 			/**
 			 * Определяем семейство события
 			 */
@@ -924,34 +917,34 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 					// Если префикс для переменных окружения установлен
 					if(!this->_client.prefix.empty()){
 						// Получаем значение переменной
-						const char * env = ::getenv(awh::fmk::format("%s_NTP_IPV4_SERVER", this->_client.prefix.c_str()).c_str());
+						const char * env = ::getenv(fmk:::format("%s_NTP_IPV4_SERVER", this->_client.prefix.c_str()).c_str());
 						// Если IP-адрес из переменной окружения получен
 						if(env != nullptr){
 							// Устанавливаем адрес сервера назначения
-							result = this->_io->setTarget(this->_client.eid, env);
+							result = engine::setTarget(this->_client.eid, env);
 							// Выходим из условия
 							break;
 						}
 					}
 					// Устанавливаем адрес сервера назначения
-					result = this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+					result = engine::setTarget(this->_client.eid, this->_client.servers.get(family));
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Если префикс для переменных окружения установлен
 					if(!this->_client.prefix.empty()){
 						// Получаем значение переменной
-						const char * env = ::getenv(awh::fmk::format("%s_NTP_IPV6_SERVER", this->_client.prefix.c_str()).c_str());
+						const char * env = ::getenv(fmk:::format("%s_NTP_IPV6_SERVER", this->_client.prefix.c_str()).c_str());
 						// Если IP-адрес из переменной окружения получен
 						if(env != nullptr){
 							// Устанавливаем адрес сервера назначения
-							result = this->_io->setTarget(this->_client.eid, env);
+							result = engine::setTarget(this->_client.eid, env);
 							// Выходим из условия
 							break;
 						}
 					}
 					// Устанавливаем адрес сервера назначения
-					result = this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+					result = engine::setTarget(this->_client.eid, this->_client.servers.get(family));
 				} break;
 			}
 			// Если адрес сервера назначения установлен
@@ -965,29 +958,29 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 							// Устанавливаем IP-адрес события
-							result = this->_io->setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
+							result = engine::setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
 						break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6):
 							// Устанавливаем IP-адрес события
-							result = this->_io->setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
+							result = engine::setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
 						break;
 					}
 				}
 				// Если все параметры события установлены
 				if(result){
 					// Устанавливаем время ожидания ответа от NTP-сервера
-					this->_io->setTimeout(this->_client.eid, event::action_t::READ, this->_client.delay);
+					engine::setTimeout(this->_client.eid, event::action_t::READ, this->_client.delay);
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+					engine::on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие чтения данных
-					this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
+					engine::on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие таймаута
-					this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (ntp_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&ntp_t::timeout), this, _1, _2, _3)));
+					engine::on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (ntp_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&ntp_t::timeout), this, _1, _2, _3)));
 					// Если опции события не установлены
-					if(!(result = this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))){
+					if(!(result = engine::setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))){
 						// Удаляем событие NTP-клиента
-						this->_io->destroy(this->_client.eid);
+						engine::destroy(this->_client.eid);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -995,22 +988,22 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Failed to set options for NTP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
+								log:::debug("Failed to set options for NTP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log:::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Failed to set options for NTP-client event", awh::log::flag_t::CRITICAL);
+								log:::print("Failed to set options for NTP-client event", log:::flag_t::CRITICAL);
 							#endif
 						}
 						// Сетевой движок в нерабочем состоянии — аварийный выход для перезапуска процесса извне
 						::exit(EXIT_FAILURE);
 					}
 					// Фиксируем параметры события и запускаем его
-					if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
+					if(!(result = engine::commit(this->_client.eid) && engine::launch(this->_client.eid))){
 						// Удаляем событие NTP-клиента
-						this->_io->destroy(this->_client.eid);
+						engine::destroy(this->_client.eid);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -1018,13 +1011,13 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Failed to launch NTP-client", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+								log:::debug("Failed to launch NTP-client", __PRETTY_FUNCTION__, {}, log:::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Failed to launch NTP-client", awh::log::flag_t::CRITICAL);
+								log:::print("Failed to launch NTP-client", log:::flag_t::CRITICAL);
 							#endif
 						}
 					}
@@ -1040,13 +1033,13 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1096,7 +1089,7 @@ void awh::unit::NTP::setPrefixEnvironment(string_view prefix) noexcept {
 	// Если префикс переменной окружения передан
 	if(!prefix.empty())
 		// Устанавливаем префикс переменной окружения
-		this->_client.prefix = awh::fmk::transform(prefix, awh::fmk::transform_t::UPPER_CASE);
+		this->_client.prefix = fmk:::transform(prefix, fmk:::transform_t::UPPER_CASE);
 	// Если префикс переменной окружения не передан, очищаем префикс переменной окружения
 	else this->_client.prefix.clear();
 }
@@ -1108,7 +1101,7 @@ void awh::unit::NTP::setPrefixEnvironment(string_view prefix) noexcept {
  */
 awh::event::type_t awh::unit::NTP::type() const noexcept {
 	// Получаем тип события
-	return this->_io->type(this->_client.eid);
+	return engine::type(this->_client.eid);
 }
 /**
  * @brief Метод получения типа узла события
@@ -1118,7 +1111,7 @@ awh::event::type_t awh::unit::NTP::type() const noexcept {
  */
 awh::event::node_t awh::unit::NTP::node() const noexcept {
 	// Получаем тип узла события
-	return this->_io->node(this->_client.eid);
+	return engine::node(this->_client.eid);
 }
 /**
  * @brief Метод получения семейства события
@@ -1128,7 +1121,7 @@ awh::event::node_t awh::unit::NTP::node() const noexcept {
  */
 awh::event::family_t awh::unit::NTP::family() const noexcept {
 	// Получаем семейство события
-	return this->_io->family(this->_client.eid);
+	return engine::family(this->_client.eid);
 }
 /**
  * @brief Метод получения статуса события
@@ -1138,7 +1131,7 @@ awh::event::family_t awh::unit::NTP::family() const noexcept {
  */
 awh::event::status_t awh::unit::NTP::status() const noexcept {
 	// Получаем статус события
-	return this->_io->status(this->_client.eid);
+	return engine::status(this->_client.eid);
 }
 /**
  * @brief Метод получения порта NTP-сервера
@@ -1211,13 +1204,13 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {server}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1269,13 +1262,13 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1345,13 +1338,13 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1382,13 +1375,13 @@ void awh::unit::NTP::addServer(string_view server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {server}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1430,13 +1423,13 @@ void awh::unit::NTP::addServer(const net::addr_t * server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1483,13 +1476,13 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1572,13 +1565,13 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1672,13 +1665,13 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1784,13 +1777,13 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1836,13 +1829,13 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {source}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1889,13 +1882,13 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1943,13 +1936,13 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1991,7 +1984,7 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 			// Запоминаем доли секунды метки отправки заданного вопроса
 			this->_transfer.origFrac = origFrac;
 			// Отправляем запрос на NTP-сервер для синхронизации времени
-			if(this->_io->send(this->_client.eid, &packet, sizeof(packet)) > 0)
+			if(engine::send(this->_client.eid, &packet, sizeof(packet)) > 0)
 				// Возвращаем положительный результат
 				return true;
 			// Снимаем флаг ожидания ответа от NTP-сервера
@@ -2006,13 +1999,13 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log:::debug("%s", __PRETTY_FUNCTION__, {}, log:::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log:::print("%s", log:::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2056,12 +2049,12 @@ awh::unit::NTP::~NTP() noexcept {
 	// Если событие NTP-клиента активно
 	if(this->_client.eid > 0){
 		// Снимаем функцию обратного вызова на событие чтения данных
-		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
+		engine::on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
 		// Снимаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
+		engine::on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
 		// Снимаем функцию обратного вызова на событие таймаута
-		this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
+		engine::on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
 		// Удаляем событие NTP-клиента
-		this->_io->destroy(this->_client.eid);
+		engine::destroy(this->_client.eid);
 	}
 }

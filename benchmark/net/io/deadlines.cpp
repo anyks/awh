@@ -112,8 +112,6 @@ namespace {
 	 *
 	 */
 	typedef struct Fleet {
-		// Объект асинхронного движка ввода-вывода
-		awh::engine::io_t io;
 		// Список идентификаторов созданных событий таймеров
 		vector <awh::event::id_t> ids;
 		/**
@@ -123,12 +121,11 @@ namespace {
 		 * @param count количество создаваемых таймеров
 		 *
 		 */
-		explicit Fleet(const awh::event::timer_t mode, const size_t count) noexcept :
-		 io() {
+		explicit Fleet(const awh::event::timer_t mode, const size_t count) noexcept {
 			// Устанавливаем тип внутренних таймеров движка
-			this->io.setInternalTimer(mode);
+			awh::engine::setInternalTimer(mode);
 			// Если инициализация движка не выполнена
-			if(!this->io.initialize())
+			if(!awh::engine::initialize())
 				// Прекращаем подготовку набора
 				return;
 			// Резервируем память под список идентификаторов событий
@@ -138,11 +135,11 @@ namespace {
 			 */
 			for(size_t i = 0; i < count; i++){
 				// Добавляем новое событие таймера
-				const awh::event::id_t id = this->io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+				const awh::event::id_t id = awh::engine::event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 				// Устанавливаем дедлайн таймера с разбросом по диапазону
-				this->io.setTimeout(id, awh::event::action_t::NONE, deadline(i));
+				awh::engine::setTimeout(id, awh::event::action_t::NONE, deadline(i));
 				// Выполняем фиксацию настроек события таймера
-				this->io.commit(id);
+				awh::engine::commit(id);
 				// Запоминаем идентификатор созданного события
 				this->ids.push_back(id);
 			}
@@ -153,7 +150,7 @@ namespace {
 		 */
 		~Fleet() noexcept {
 			// Выполняем деинициализацию движка
-			this->io.deinitialize();
+			awh::engine::deinitialize();
 		}
 		/**
 		 * @brief Функция вычисления дедлайна таймера
@@ -176,7 +173,7 @@ namespace {
 			 */
 			for(size_t i = 0; i < this->ids.size(); i++)
 				// Ставим таймер в структуру дедлайнов
-				this->io.launch(this->ids[i]);
+				awh::engine::launch(this->ids[i]);
 		}
 		/**
 		 * @brief Функция снятия всех таймеров набора
@@ -191,7 +188,7 @@ namespace {
 			 */
 			for(size_t i = 0; i < this->ids.size(); i++)
 				// Снимаем таймер со структуры дедлайнов
-				this->io.setTimeout(this->ids[i], awh::event::action_t::NONE, 0);
+				awh::engine::setTimeout(this->ids[i], awh::event::action_t::NONE, 0);
 		}
 		/**
 		 * @brief Функция восстановления задержек всех таймеров набора
@@ -207,7 +204,7 @@ namespace {
 			 */
 			for(size_t i = 0; i < this->ids.size(); i++)
 				// Возвращаем таймеру заданную ему задержку
-				this->io.setTimeout(this->ids[i], awh::event::action_t::NONE, deadline(i));
+				awh::engine::setTimeout(this->ids[i], awh::event::action_t::NONE, deadline(i));
 		}
 	} fleet_t;
 
@@ -317,7 +314,7 @@ namespace {
 			 */
 			for(size_t i = 0; i < fleet.ids.size(); i++)
 				// Снимаем таймер со структуры дедлайнов
-				fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, 0);
+				awh::engine::setTimeout(fleet.ids[i], awh::event::action_t::NONE, 0);
 			// Запоминаем момент окончания замера
 			const auto finish = std::chrono::steady_clock::now();
 			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
@@ -386,7 +383,7 @@ namespace {
 			 */
 			for(size_t i = 0; i < fleet.ids.size(); i++)
 				// Сдвигаем дедлайн таймера вперёд
-				fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, (fleet_t::deadline(i) + shift));
+				awh::engine::setTimeout(fleet.ids[i], awh::event::action_t::NONE, (fleet_t::deadline(i) + shift));
 			// Запоминаем момент окончания замера
 			const auto finish = std::chrono::steady_clock::now();
 			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
