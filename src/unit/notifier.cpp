@@ -139,13 +139,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
-					log:::debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log:::flag_t::WARNING);
+					log::debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					log:::print("Notifier event could not be launched", log:::flag_t::WARNING);
+					log::print("Notifier event could not be launched", log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор события уведомителя в список событий уведомителя
 			} else this->_events.emplace(result);
@@ -160,13 +160,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
-				log:::debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log:::flag_t::WARNING);
+				log::debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				log:::print("Notifier event could not be created", log:::flag_t::WARNING);
+				log::print("Notifier event could not be created", log::flag_t::WARNING);
 			#endif
 		}
 	}
