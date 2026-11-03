@@ -37,7 +37,7 @@ GDB подключается вызовом — намеренно вручну�
 | `abc::Value` | `map, пар: 5`, `42 (uint64)`, `72.5 (double)` |
 | `abc::Document::Value` | `extended, октетов: 9, знак -`, `array, детей: 2` |
 | `net_addr_t` | `IPv4 192.168.5.134`, `IPv6 fe80::1ff:fe23:4567:890a`, `MAC 00:1b:44:11:3a:b7` |
-| `nwt_t::url_t` | `URL https://user:***@anyks.com:443/path?query=1#anchor` |
+| `nwt::url_t` | `URL https://user:***@anyks.com:443/path?query=1#anchor` |
 | `regex::Expression` | `выражение, команд: 23, порождённый код`, `/anyks/, лента Pike` |
 | `regex::Program` | `программа, команд: 9, с якорем` |
 | `csv::Document` | `таблица, записей: 2, столбцов: 3, полей: 6 [имя, лет, город]` |

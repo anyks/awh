@@ -107,16 +107,15 @@
  */
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <sys/macro/global.hpp>
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace

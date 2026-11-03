@@ -63,8 +63,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "provider.hpp"
-#include <sys/log.hpp>
-#include <sys/macro/global.hpp>
+#include "../../sys/log.hpp"
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian

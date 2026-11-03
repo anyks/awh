@@ -25,11 +25,15 @@
  */
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочные файлы проекта
  */
-#include <args/schema.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <args/schema.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -40,6 +44,17 @@ using namespace std;
  * Используем пространство имён параметров запуска приложения
  */
 using namespace awh::args;
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::args::Schema::Param::Param() noexcept :
+ preset(false), letter(0),
+ required(false), multiple(false),
+ value(value_t::REQUIRED), 
+ name{""}, fallback{""},
+ description{""} {}
 
 /**
  * @brief Метод очистки описания ожидаемых параметров
@@ -53,7 +68,6 @@ void awh::args::Schema::clear() noexcept {
 	// Выполняем очистку розыска по короткому имени
 	this->_letters.clear();
 }
-
 /**
  * @brief Метод заведения описания ожидаемого параметра
  *
@@ -65,7 +79,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 	// Если длинное имя параметра не подано вовсе
 	if(param.name.empty()){
 		// Выводим в лог сообщение об отсутствии имени параметра
-		awh::log::print("Schema: parameter name is empty", awh::log::flag_t::WARNING);
+		log::print("Schema: parameter name is empty", log::flag_t::WARNING);
 		// Выходим из метода, заводить нечего
 		return false;
 	}
@@ -86,7 +100,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 		((param.letter >= 'a') && (param.letter <= 'z'))
 	)){
 		// Выводим в лог сообщение о негодном коротком имени
-		awh::log::print("Schema: short name is not alphanumeric", awh::log::flag_t::WARNING);
+		log::print("Schema: short name is not alphanumeric", log::flag_t::WARNING);
 		// Выходим из метода, заведение отвечено отказом
 		return false;
 	}
@@ -108,7 +122,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 		// Если короткое имя занято описанием под ИНЫМ длинным именем
 		if((param.letter != 0) && (letter != this->_letters.end()) && (letter->second != i->second)){
 			// Выводим в лог сообщение о занятости короткого имени
-			awh::log::print("Schema: short name '%c' is already taken", awh::log::flag_t::WARNING, param.letter);
+			log::print("Schema: short name '%c' is already taken", log::flag_t::WARNING, param.letter);
 			// Выходим из метода, заведение отвечено отказом
 			return false;
 		}
@@ -130,7 +144,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 	// Если короткое имя параметра уже занято иным описанием
 	if((param.letter != 0) && (this->_letters.count(param.letter) > 0)){
 		// Выводим в лог сообщение о занятости короткого имени
-		awh::log::print("Schema: short name '%c' is already taken", awh::log::flag_t::WARNING, param.letter);
+		log::print("Schema: short name '%c' is already taken", log::flag_t::WARNING, param.letter);
 		// Выходим из метода, заведение отвечено отказом
 		return false;
 	}
@@ -292,7 +306,7 @@ string awh::args::Schema::usage(const bool multiple) const noexcept {
 	// Если название приложения установлено
 	if(!this->_application.empty()){
 		// Добавляем в справку строку применения приложения
-		result.append(awh::fmk::format("Usage: %s [OPTIONS]", this->_application.c_str()));
+		result.append(fmk::format("Usage: %s [OPTIONS]", this->_application.c_str()));
 		// Добавляем в справку перевод строки
 		result.append(1, '\n');
 		// Если описание назначения приложения установлено
@@ -322,7 +336,7 @@ string awh::args::Schema::usage(const bool multiple) const noexcept {
 		// Если описание несёт короткое имя параметра
 		if(param.letter != 0)
 			// Добавляем в строку короткое имя параметра
-			name.append(awh::fmk::format("-%c, ", param.letter));
+			name.append(fmk::format("-%c, ", param.letter));
 		// Добавляем в строку длинное имя параметра
 		name.append("--").append(param.name);
 		// Определяем потребность параметра в значении
@@ -368,7 +382,7 @@ string awh::args::Schema::usage(const bool multiple) const noexcept {
 		// Если параметр несёт значение по умолчанию
 		if(param.preset)
 			// Добавляем в справку значение параметра по умолчанию
-			result.append(awh::fmk::format(" (default: %s)", param.fallback.c_str()));
+			result.append(fmk::format(" (default: %s)", param.fallback.c_str()));
 		// Если параметр дозволено подавать повторно и описанием, и настройками сбора
 		if(param.multiple && multiple)
 			// Добавляем в справку признак дозволенности повтора

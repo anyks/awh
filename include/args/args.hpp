@@ -45,12 +45,11 @@
 #include "../sys/fs.hpp"
 #include "../codec/bridge.hpp"
 #include "../codec/abc/value.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -67,7 +66,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён параметров запуска приложения
 	 *
-	 *
 	 * \~english
 	 * @brief Namespace of the parameters of the launch of an application
 	 *
@@ -79,52 +77,53 @@ namespace awh {
 		 * @brief Параметры запуска приложения
 		 *
 		 * @details Собирает настройки приложения из набора запуска, переменных окружения
-		 * и текстовых потоков в единое дерево значений. Осью хранения служит владеющее
-		 * значение контейнера ABC: система видов его вмещает виды всех текстовых кодеков
-		 * разом, оттого выдача настроек любым из них не требует второго дерева
+		 *          и текстовых потоков в единое дерево значений. Осью хранения служит владеющее
+		 *          значение контейнера ABC: система видов его вмещает виды всех текстовых кодеков
+		 *          разом, оттого выдача настроек любым из них не требует второго дерева
 		 *
 		 * @par Намеренные решения
 		 *
-		 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-		 * задачи, и каждое из решений закреплено проверочным испытанием
+		 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+		 *      задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **Старшинство источников задано порядком членов перечня.** Значение из
-		 * набора запуска перекрывает переменную окружения, та - файл настроек, а тот -
-		 * значение по умолчанию. Обратное же перекрытие не совершается вовсе: значение
-		 * младшего источника поверх старшего не ложится, в каком бы порядке источники
-		 * ни подавались. Иначе разбор файла настроек, поданный после набора запуска,
-		 * молча отменял бы поданное из набора
+		 *     набора запуска перекрывает переменную окружения, та - файл настроек, а тот -
+		 *     значение по умолчанию. Обратное же перекрытие не совершается вовсе: значение
+		 *     младшего источника поверх старшего не ложится, в каком бы порядке источники
+		 *     ни подавались. Иначе разбор файла настроек, поданный после набора запуска,
+		 *     молча отменял бы поданное из набора
 		 *
-		 * Приоритет проверяется также между родителем и потомком: файл с полем
-		 * `net` не заменяет `net.port` из CLI. При замене младшего скаляра потомком
-		 * скаляр освобождает место для поддерева. Источники вытесненных значений
-		 * удаляются; при сборе повторов массивом пути сохранённых потомков переносятся
+		 *     Приоритет проверяется также между родителем и потомком: файл с полем
+		 *     `net` не заменяет `net.port` из CLI. При замене младшего скаляра потомком
+		 *     скаляр освобождает место для поддерева. Источники вытесненных значений
+		 *     удаляются; при сборе повторов массивом пути сохранённых потомков переносятся
 		 *
 		 * @li **Источник хранится у каждого значения.** Без него ответ на вопрос
-		 * «откуда взялось это значение» неотличим от догадки, а отладка настроек слепа
+		 *     «откуда взялось это значение» неотличим от догадки, а отладка настроек слепа
 		 *
 		 * @li **Вложенное пустое отображение является значением.** При загрузке оно
-		 * сохраняется вместе с источником и проверяется строгой схемой. Пустой
-		 * корневой документ не добавляет параметров и не очищает прежние настройки
+		 *     сохраняется вместе с источником и проверяется строгой схемой. Пустой
+		 *     корневой документ не добавляет параметров и не очищает прежние настройки
 		 *
 		 * @li **Вид значения выводится из записи, и это настройка.** Записи «true»,
-		 * «17» и «1.5», поданные набором запуска, ложатся логическим значением и
-		 * числами, а не последовательностями знаков. Довод тому - совпадение с файлом
-		 * настроек: без вывода вида один и тот же ключ приходил бы числом из файла и
-		 * знаками из набора, и потребителю пришлось бы знать источник. Обратный уклад
-		 * отведён настройкой тем, кому вывод вида мешает
+		 *     «17» и «1.5», поданные набором запуска, ложатся логическим значением и
+		 *     числами, а не последовательностями знаков. Довод тому - совпадение с файлом
+		 *     настроек: без вывода вида один и тот же ключ приходил бы числом из файла и
+		 *     знаками из набора, и потребителю пришлось бы знать источник. Обратный уклад
+		 *     отведён настройкой тем, кому вывод вида мешает
 		 *
 		 * @li **Разделитель пути в имени параметра - точка, а внутри оси - косая.**
-		 * Запись «--net.port=80» ложится по пути «net/port» оси хранения. Точка
-		 * выбрана привычною записи настроек, а перевод её в косую делается разбором,
-		 * а не потребителем
+		 *     Запись «--net.port=80» ложится по пути «net/port» оси хранения. Точка
+		 *     выбрана привычною записи настроек, а перевод её в косую делается разбором,
+		 *     а не потребителем
 		 *
 		 * \~english
 		 * @brief Parameters of the launch of an application
+		 *
 		 * @details Assembles the settings of an application from the set of the launch, from the variables of the environment
-		 * and from the text streams into a single tree of the values. The owning value of the container ABC serves as the axis
-		 * of the storage: its system of the kinds encompasses the kinds of all the text codecs
-		 * at once, whereby the issuance of the settings by any of them requires no second tree
+		 *          and from the text streams into a single tree of the values. The owning value of the container ABC serves as the axis
+		 *          of the storage: its system of the kinds encompasses the kinds of all the text codecs
+		 *          at once, whereby the issuance of the settings by any of them requires no second tree.
 		 *
 		 * \~
 		 */
@@ -171,10 +170,10 @@ namespace awh {
 					 * Признак укладки повторно поданного параметра массивом
 					 *
 					 * @details Признак этот СТАРШЕ одноимённого признака у описания
-					 * параметра, и старшинство это решено 15.09.2026: описание
-					 * говорит, ДОЗВОЛЕН ли повтор вовсе, а настройка - собирается ли он
-					 * массивом. Веля не собирать, настройка запрещает сбор ВСЕМ параметрам,
-					 * включая те, чьё описание повтор дозволяет
+					 *          параметра, и старшинство это решено 15.09.2026: описание
+					 *          говорит, ДОЗВОЛЕН ли повтор вовсе, а настройка - собирается ли он
+					 *          массивом. Веля не собирать, настройка запрещает сбор ВСЕМ параметрам,
+					 *          включая те, чьё описание повтор дозволяет.
 					 *
 					 * @note Сочетание «описание дозволяет, настройка не велит» потому и
 					 *       законно: повтор принимается без отказа, а побеждает последнее
@@ -200,15 +199,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Settings() noexcept :
-					 typed(true), strict(false),
-					 multiple(true), delimiter('.') {}
+					explicit Settings() noexcept;
 				} settings_t;
 			private:
 				// Начало имён переменных окружения, приложению отведённых
@@ -245,8 +241,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the conversion of a name of a parameter into a path of the axis of the storage
+				 *
 				 * @param key name of a parameter with the separator of the links
-				 * @return path by the links of the axis of the storage
+				 * @return    path by the links of the axis of the storage
 				 *
 				 * \~
 				 */
@@ -256,15 +253,16 @@ namespace awh {
 				 * @brief Метод выведения значения из его записи
 				 *
 				 * @details Вид выводится лишь при взведённой настройке; иначе запись
-				 * ложится последовательностью знаков как есть
+				 *          ложится последовательностью знаков как есть.
 				 *
 				 * @param text запись значения
 				 * @return     выведенное значение оси хранения
 				 *
 				 * \~english
 				 * @brief Method of the inference of a value from its record
+				 *
 				 * @param text record of a value
-				 * @return inferred value of the axis of the storage
+				 * @return     inferred value of the axis of the storage
 				 *
 				 * \~
 				 */
@@ -275,9 +273,9 @@ namespace awh {
 				 * @brief Метод укладки значения в дерево настроек
 				 *
 				 * @details Значение младшего источника поверх старшего не ложится.
-				 * До изменения дерева проверяется возможность записи по всему пути.
-				 * Несовместимый вид родителя и превышение предела роста массива дают
-				 * `INVALID_PATH`, сохраняя прежние значения и их источники
+				 *          До изменения дерева проверяется возможность записи по всему пути.
+				 *          Несовместимый вид родителя и превышение предела роста массива дают
+				 *          `INVALID_PATH`, сохраняя прежние значения и их источники
 				 *
 				 * @param path    путь звеньями оси хранения
 				 * @param value   значение для укладки
@@ -287,14 +285,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the laying of a value into the tree of the settings
+				 *
 				 * @details The full path is checked before the tree is changed. An incompatible
-				 * parent or an array growth limit produces `INVALID_PATH` and preserves existing
-				 * values and their sources
-				 * @param path path by the links of the axis of the storage
-				 * @param value value for the laying
-				 * @param source source of the value
+				 *          parent or an array growth limit produces `INVALID_PATH` and preserves existing
+				 *          values and their sources
+				 *
+				 * @param path    path by the links of the axis of the storage
+				 * @param value   value for the laying
+				 * @param source  source of the value
 				 * @param mapping create new parents as mappings while merging a configuration tree
-				 * @return result of the laying
+				 * @return        result of the laying
 				 *
 				 * \~
 				 */
@@ -304,8 +304,8 @@ namespace awh {
 				 * @brief Метод слияния дерева значений с деревом настроек
 				 *
 				 * @details Отображения сливаются вглубь, а вместимые и одиночные значения
-				 * ложатся целиком: сливать их поэлементно значило бы смешивать перечень,
-				 * поданный файлом настроек, с перечнем, поданным набором запуска
+				 *          ложатся целиком: сливать их поэлементно значило бы смешивать перечень,
+				 *          поданный файлом настроек, с перечнем, поданным набором запуска.
 				 *
 				 * @param value  сливаемое дерево значений
 				 * @param path   путь звеньями оси хранения, уже пройденный слиянием
@@ -314,10 +314,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the merging of a tree of the values with the tree of the settings
-				 * @param value merged tree of the values
-				 * @param path path by the links of the axis of the storage already passed by the merging
+				 *
+				 * @param value  merged tree of the values
+				 * @param path   path by the links of the axis of the storage already passed by the merging
 				 * @param source source of the merged values
-				 * @return result of the merging
+				 * @return       result of the merging
 				 *
 				 * \~
 				 */
@@ -327,8 +328,8 @@ namespace awh {
 				 * @brief Метод укладки разобранной лексемы по описанию ожидаемых
 				 *
 				 * @details Без описания лексема ложится как есть. С описанием же имя
-				 * сличается с ожидаемыми, склейка коротких имён разбирается, а потребность
-				 * значения проверяется
+				 *          сличается с ожидаемыми, склейка коротких имён разбирается, а потребность
+				 *          значения проверяется.
 				 *
 				 * @param lexeme разобранная лексема
 				 * @param source источник поданного значения
@@ -336,9 +337,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the laying of a parsed lexeme by the description of the expected
+				 *
 				 * @param lexeme parsed lexeme
 				 * @param source source of the submitted value
-				 * @return result of the laying
+				 * @return       result of the laying
 				 *
 				 * \~
 				 */
@@ -347,7 +349,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Метод очистки собранных параметров запуска
-				 *
 				 *
 				 * \~english
 				 * @brief Method of the clearing of the assembled parameters of the launch
@@ -366,9 +367,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a set of the arguments of the launch
+				 *
 				 * @param count number of the arguments of the set of the launch
 				 * @param items set of the arguments of the launch
-				 * @return result of the parsing
+				 * @return      result of the parsing
 				 *
 				 * \~
 				 */
@@ -377,7 +379,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод разбора набора доводов запуска широкими знаками
 				 *
-				 * @details Отведён MS Windows, где набор запуска приходит широкими знаками
+				 * @details Отведён MS Windows, где набор запуска приходит широкими знаками.
 				 *
 				 * @param count число доводов набора запуска
 				 * @param items набор доводов запуска
@@ -385,9 +387,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a set of the arguments of the launch by the wide characters
+				 *
 				 * @param count number of the arguments of the set of the launch
 				 * @param items set of the arguments of the launch
-				 * @return result of the parsing
+				 * @return      result of the parsing
 				 *
 				 * \~
 				 */
@@ -401,8 +404,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a set of the arguments of the launch
+				 *
 				 * @param items set of the arguments of the launch
-				 * @return result of the parsing
+				 * @return      result of the parsing
 				 *
 				 * \~
 				 */
@@ -412,15 +416,16 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод разбора текстового потока
 				 *
-				 * @details Отведён вводу с клавиатуры и подаче настроек одною строкою
+				 * @details Отведён вводу с клавиатуры и подаче настроек одною строкою.
 				 *
 				 * @param text текст для разбора
 				 * @return     результат разбора
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a text stream
+				 *
 				 * @param text text for the parsing
-				 * @return result of the parsing
+				 * @return     result of the parsing
 				 *
 				 * \~
 				 */
@@ -431,12 +436,13 @@ namespace awh {
 				 * @brief Метод сбора переменных окружения
 				 *
 				 * @details Собираются переменные, имя которых начато отведённым приложению
-				 * началом. Имя «PREFIX_NET_PORT» ложится по пути «net/port» оси хранения
+				 *          началом. Имя «PREFIX_NET_PORT» ложится по пути «net/port» оси хранения.
 				 *
 				 * @return результат сбора
 				 *
 				 * \~english
 				 * @brief Method of the assembling of the variables of the environment
+				 *
 				 * @return result of the assembling
 				 *
 				 * \~
@@ -453,9 +459,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of a value by default
-				 * @param key name of a parameter with the separator of the links
+				 *
+				 * @param key   name of a parameter with the separator of the links
 				 * @param value record of the value by default
-				 * @return result of the setting
+				 * @return      result of the setting
 				 *
 				 * \~
 				 */
@@ -469,6 +476,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the description of the expected parameters of the launch
+				 *
 				 * @return description of the expected parameters of the launch
 				 *
 				 * \~
@@ -482,6 +490,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembling of the help of the usage
+				 *
 				 * @return assembled text of the help
 				 *
 				 * \~
@@ -492,12 +501,13 @@ namespace awh {
 				 * @brief Метод проверки собранного по описанию ожидаемых
 				 *
 				 * @details Проверяется подача обязательных параметров, а значения по
-				 * умолчанию, описанием заданные, укладываются недостающим
+				 *          умолчанию, описанием заданные, укладываются недостающим
 				 *
 				 * @return результат проверки
 				 *
 				 * \~english
 				 * @brief Method of the check of the assembled by the description of the expected
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -509,15 +519,16 @@ namespace awh {
 				 * @brief Метод разбора записи настроек кодеком
 				 *
 				 * @details Разобранное сливается с деревом настроек источником файла:
-				 * значения набора запуска, текстового потока и окружения его перекрывают
+				 *          значения набора запуска, текстового потока и окружения его перекрывают.
 				 *
 				 * @param text запись настроек для разбора
 				 * @return     результат разбора
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a record of the settings by a codec
+				 *
 				 * @param text record of the settings for the parsing
-				 * @return result of the parsing
+				 * @return     result of the parsing
 				 *
 				 * \~
 				 */
@@ -531,8 +542,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reading of a file of the settings
+				 *
 				 * @param filename path to the file of the settings
-				 * @return result of the reading
+				 * @return         result of the reading
 				 *
 				 * \~
 				 */
@@ -542,9 +554,9 @@ namespace awh {
 				 * @brief Метод чтения файла настроек с выводом вида записи из его имени
 				 *
 				 * @details Вид записи берётся РАСШИРЕНИЕМ имени файла: `.json`, `.yaml`
-				 * либо `.yml`, `.toml`, `.ini` либо `.conf`, `.xml`. Расширение неведомое
-				 * отвечает отказом, а не догадкою по содержимому: догадка на записи,
-				 * годной двум видам разом, выбирала бы молча
+				 *          либо `.yml`, `.toml`, `.ini` либо `.conf`, `.xml`. Расширение неведомое
+				 *          отвечает отказом, а не догадкою по содержимому: догадка на записи,
+				 *          годной двум видам разом, выбирала бы молча.
 				 *
 				 * @note Ход этот ДОБАВЛЕН к прежнему, а не заменяет его: потребитель,
 				 *       вид записи знающий, задаёт его сам, и имя файла ему не указ
@@ -554,8 +566,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reading of a file of the settings with the deduction of the kind of the record from its name
+				 *
 				 * @param filename path to the file of the settings
-				 * @return result of the reading
+				 * @return         result of the reading
 				 *
 				 * \~
 				 */
@@ -570,8 +583,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the issuance of the tree of the settings by a record of a codec
+				 *
 				 * @param result assembled record of the settings
-				 * @return result of the issuance
+				 * @return       result of the issuance
 				 *
 				 * \~
 				 */
@@ -585,8 +599,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the writing of the tree of the settings into a file
+				 *
 				 * @param filename path to the file of the settings
-				 * @return result of the writing
+				 * @return         result of the writing
 				 *
 				 * \~
 				 */
@@ -597,12 +612,13 @@ namespace awh {
 				 * @brief Метод извлечения моста между контейнером ABC и текстовыми кодеками
 				 *
 				 * @details Выдан наружу настройкам перевода: правило обращения с видами,
-				 * записи кодека неведомыми, и вид оформления задаются им
+				 *          записи кодека неведомыми, и вид оформления задаются им.
 				 *
 				 * @return мост между контейнером ABC и текстовыми кодеками
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the bridge between the container ABC and the text codecs
+				 *
 				 * @return bridge between the container ABC and the text codecs
 				 *
 				 * \~
@@ -618,8 +634,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the check of the presence of a parameter
+				 *
 				 * @param key name of a parameter with the separator of the links
-				 * @return result of the check
+				 * @return    result of the check
 				 *
 				 * \~
 				 */
@@ -633,8 +650,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the source of a value of a parameter
+				 *
 				 * @param key name of a parameter with the separator of the links
-				 * @return source of the value of the parameter
+				 * @return    source of the value of the parameter
 				 *
 				 * \~
 				 */
@@ -646,18 +664,20 @@ namespace awh {
 				 * @details Значение, вместимым не являющееся, считается ОДНИМ значением:
 				 *          параметр, поданный единожды, и параметр, поданный дважды,
 				 *          потребителю вместимого различаться не должны. Ноль означает,
-				 *          что параметр не уложен вовсе
+				 *          что параметр не уложен вовсе.
 				 *
 				 * @param key имя параметра с разделителем звеньев
 				 * @return    число значений вместимого
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the number of the values of a container parameter
+				 *
 				 * @details A value that is not a container is counted as ONE value: a parameter submitted
 				 *          once and a parameter submitted twice must not differ for the consumer of a container.
-				 *          A zero means that the parameter is not laid at all
+				 *          A zero means that the parameter is not laid at all.
+				 *
 				 * @param key name of a parameter with the separator of the links
-				 * @return number of the values of the container
+				 * @return    number of the values of the container
 				 *
 				 * \~
 				 */
@@ -668,36 +688,60 @@ namespace awh {
 				 * @brief Шаблон метода извлечения значения параметра
 				 *
 				 * @tparam T тип извлекаемого значения
-				 * @param key имя параметра с разделителем звеньев
-				 * @return    извлечённое значение параметра
 				 *
 				 * \~english
 				 * @brief Template of the method of the extraction of a value of a parameter
+				 *
 				 * @tparam T type of the extracted value
-				 * @param key name of a parameter with the separator of the links
-				 * @return extracted value of the parameter
 				 *
 				 * \~
 				 */
 				template <typename T>
+				/**
+				 * \~russian
+				 * @brief Метод извлечения значения параметра
+				 *
+				 * @param key имя параметра с разделителем звеньев
+				 * @return    извлечённое значение параметра
+				 *
+				 * \~english
+				 * @brief Method for retrieving a parameter value
+				 *
+				 * @param key name of a parameter with the separator of the links
+				 * @return    extracted value of the parameter
+				 *
+				 * \~
+				 */
 				T get(const string_view key) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Шаблон метода извлечения значений вместимого параметра
 				 *
 				 * @tparam T тип извлекаемых значений
-				 * @param key имя параметра с разделителем звеньев
-				 * @return    извлечённые значения вместимого
 				 *
 				 * \~english
 				 * @brief Template of the method of the extraction of the values of a container parameter
+				 *
 				 * @tparam T type of the extracted values
-				 * @param key name of a parameter with the separator of the links
-				 * @return extracted values of the container
 				 *
 				 * \~
 				 */
 				template <typename T>
+				/**
+				 * \~russian
+				 * @brief Метод извлечения значений вместимого параметра
+				 *
+				 * @param key имя параметра с разделителем звеньев
+				 * @return    извлечённые значения вместимого
+				 *
+				 * \~english
+				 * @brief Method of the extraction of the values of a container parameter
+				 *
+				 * @param key name of a parameter with the separator of the links
+				 * @return    extracted values of the container
+				 *
+				 * \~
+				 */
 				vector <T> arr(const string_view key) const noexcept;
 			public:
 				/**
@@ -708,6 +752,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the positional arguments of the set of the launch
+				 *
 				 * @return positional arguments in the order of their occurrence
 				 *
 				 * \~
@@ -721,6 +766,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the tree of the assembled values of the settings
+				 *
 				 * @return tree of the assembled values of the settings
 				 *
 				 * \~
@@ -732,19 +778,20 @@ namespace awh {
 				 * @brief Метод извлечения отказов последнего разбора
 				 *
 				 * @details Отказы КОПЯТСЯ со всех ходов сбора - разбора набора запуска, разбора
-				 * текста, сбора окружения, чтения и записи файла настроек, - и живут до
-				 * очистки ходом `clear()`. Сделано это ради того, что настройки берутся
-				 * из нескольких источников подряд, а судит их потребитель однажды, в
-				 * конце сбора: очищай их всякий разбор, отказ чтения файла настроек,
-				 * случившийся раньше, стирался бы молча
+				 *          текста, сбора окружения, чтения и записи файла настроек, - и живут до
+				 *          очистки ходом `clear()`. Сделано это ради того, что настройки берутся
+				 *          из нескольких источников подряд, а судит их потребитель однажды, в
+				 *          конце сбора: очищай их всякий разбор, отказ чтения файла настроек,
+				 *          случившийся раньше, стирался бы молча.
 				 *
 				 * @return отказы, накопленные с последней очистки
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the refusals of the last parsing
+				 *
 				 * @details The refusals ACCUMULATE from all the functions of the gathering - the parsing of
-				 * the set of the launch, the parsing of a text, the gathering of the environment, the reading
-				 * and the writing of the settings file - and live until the clearing by the `clear()` function
+				 *          the set of the launch, the parsing of a text, the gathering of the environment, the reading
+				 *          and the writing of the settings file - and live until the clearing by the `clear()` function.
 				 *
 				 * @return refusals accumulated since the last clearing
 				 *
@@ -760,6 +807,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the beginning of the names of the variables of the environment
+				 *
 				 * @return beginning of the names of the variables of the environment
 				 *
 				 * \~
@@ -773,6 +821,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of the beginning of the names of the variables of the environment
+				 *
 				 * @param prefix beginning of the names of the variables of the environment
 				 *
 				 * \~
@@ -787,6 +836,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the settings of the assembling of the parameters of the launch
+				 *
 				 * @return settings of the assembling of the parameters of the launch
 				 *
 				 * \~
@@ -800,6 +850,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of the settings of the assembling of the parameters of the launch
+				 *
 				 * @param settings settings of the assembling of the parameters of the launch
 				 *
 				 * \~
@@ -813,6 +864,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the settings of the parsing of the parameters
+				 *
 				 * @return settings of the parsing of the parameters
 				 *
 				 * \~
@@ -826,6 +878,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of the settings of the parsing of the parameters
+				 *
 				 * @param settings settings of the parsing of the parameters
 				 *
 				 * \~
@@ -845,7 +898,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

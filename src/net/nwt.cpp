@@ -44,7 +44,12 @@ namespace {
 	 * @brief Флаг одноразовой инициализации доменных зон (для всех объектов)
 	 *
 	 */
-	once_flag __awh_init_once__;
+	static once_flag __awh_init_once__;
+	/**
+	 * @brief Список пользовательских доменных зон, общий на процесс
+	 *
+	 */
+	static unordered_set <string> __awh_zones__;
 
 	/**
 	 * @brief Функция получения списка основных доменных зон интернета
@@ -56,12 +61,12 @@ namespace {
 	 *          входа в main с необработанным std::overflow_error «__next_prime
 	 *          overflow»: поля набора несли мусор, и хеш-хранилище пыталось
 	 *          уложить его в число корзин. Функционально-статический объект
-	 *          строится первым же обращением, в каком бы порядке оно ни пришло
+	 *          строится первым же обращением, в каком бы порядке оно ни пришло.
 	 *
 	 * @return список основных доменных зон интернета
 	 *
 	 */
-	static unordered_set <string> & __awh_general_domains__() noexcept {
+	static __AWH_INLINE__ unordered_set <string> & __awh_general_domains__() noexcept {
 		// Список основных доменных зон интернета
 		static unordered_set <string> result;
 		// Выводим список основных доменных зон интернета
@@ -71,12 +76,12 @@ namespace {
 	 * @brief Функция получения списка интернациональных доменных зон интернета
 	 *
 	 * @details Заводится функционально-статическим по тому же доводу, что и список
-	 *          основных доменных зон выше
+	 *          основных доменных зон выше.
 	 *
 	 * @return список интернациональных доменных зон интернета
 	 *
 	 */
-	static unordered_set <string> & __awh_national_domains__() noexcept {
+	static __AWH_INLINE__ unordered_set <string> & __awh_national_domains__() noexcept {
 		// Список интернациональных доменных зон интернета
 		static unordered_set <string> result;
 		// Выводим список интернациональных доменных зон интернета
@@ -93,15 +98,17 @@ namespace {
 	 * @brief Функция инициализации общих списков доменных зон (вызывается единожды)
 	 *
 	 */
-	void init() noexcept {
+	static __AWH_INLINE__ void init() noexcept {
 		/**
-		 * @brief Полный список общих доменных зон (включая национальные, спонсорские и инфраструктурные)
+		 * @brief Создаем список национальных доменов
+		 *
+		 * @details Полный список общих доменных зон (включая национальные, спонсорские и инфраструктурные).
 		 *
 		 * @note Источник: https://data.iana.org/TLD/tlds-alpha-by-domain.txt
+		 *
 		 * @note База корневой зоны (человекочитаемая, с типами country-code/generic и т.д.): https://www.iana.org/domains/root/db
 		 *
 		 */
-		// Создаем список национальных доменов
 		::__awh_national_domains__().emplace("ac");
 		::__awh_national_domains__().emplace("ad");
 		::__awh_national_domains__().emplace("ae");
@@ -363,7 +370,10 @@ namespace {
 		::__awh_national_domains__().emplace("биз");
 		::__awh_national_domains__().emplace("орг");
 		::__awh_national_domains__().emplace("инфо");
-		// Создаем список общих доменов
+		/**
+		 * @brief Создаем список общих доменов
+		 *
+		 */
 		::__awh_general_domains__().emplace("app");
 		::__awh_general_domains__().emplace("biz");
 		::__awh_general_domains__().emplace("cat");
@@ -454,7 +464,10 @@ namespace {
 		::__awh_general_domains__().emplace("photography");
 		::__awh_general_domains__().emplace("accountants");
 		::__awh_general_domains__().emplace("productions");
-		// Создаём список современных общих доменов (новые gTLD, появившиеся за последнее десятилетие)
+		/**
+		 * @brief Создаём список современных общих доменов (новые gTLD, появившиеся за последнее десятилетие)
+		 *
+		 */
 		::__awh_general_domains__().emplace("art");
 		::__awh_general_domains__().emplace("bio");
 		::__awh_general_domains__().emplace("dev");
@@ -645,7 +658,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsDigit(const char letter) noexcept {
+	static constexpr bool ntIsDigit(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return ((letter >= '0') && (letter <= '9'));
 	}
@@ -656,7 +669,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsHex(const char letter) noexcept {
+	static constexpr bool ntIsHex(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			ntIsDigit(letter) ||
@@ -671,7 +684,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsAlpha(const char letter) noexcept {
+	static constexpr bool ntIsAlpha(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			((letter >= 'a') && (letter <= 'z')) ||
@@ -685,7 +698,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsLabel(const char letter) noexcept {
+	static constexpr bool ntIsLabel(const char letter) noexcept {
 		// Возвращаем результат проверки (не-ASCII байты считаем частью интернационализированной метки)
 		return (
 			ntIsAlpha(letter) ||
@@ -701,7 +714,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsUser(const char letter) noexcept {
+	static constexpr bool ntIsUser(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			ntIsAlpha(letter) ||
@@ -718,7 +731,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsPath(const char letter) noexcept {
+	static constexpr bool ntIsPath(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			ntIsAlpha(letter) ||
@@ -737,7 +750,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsParam(const char letter) noexcept {
+	static constexpr bool ntIsParam(const char letter) noexcept {
 		// Если символ является буквой, цифрой или подчёркиванием
 		if(ntIsAlpha(letter) || ntIsDigit(letter) || (letter == '_'))
 			// Сообщаем, что символ допустим
@@ -762,7 +775,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	static inline bool ntIsAnchor(const char letter) noexcept {
+	static constexpr bool ntIsAnchor(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			ntIsAlpha(letter) ||
@@ -780,7 +793,7 @@ namespace {
 	 * @return     результат сравнения
 	 *
 	 */
-	static bool ntMatchCI(string_view text, const size_t pos, const char * lit) noexcept {
+	static constexpr bool ntMatchCI(string_view text, const size_t pos, const char * lit) noexcept {
 		// Индекс перебора литерала
 		size_t k = 0;
 		/**
@@ -814,7 +827,7 @@ namespace {
 	 * @return    результат проверки
 	 *
 	 */
-	static bool ntIsValidTLD(string_view tld) noexcept {
+	static constexpr bool ntIsValidTLD(string_view tld) noexcept {
 		// Если домен верхнего уровня не передан
 		if(tld.empty())
 			// Сообщаем о невалидности
@@ -843,7 +856,7 @@ namespace {
 	 * @return     позиция конца адреса либо позиция начала при неудаче
 	 *
 	 */
-	static size_t ntParseIPv4(string_view text, const size_t pos) noexcept {
+	static __AWH_INLINE__ size_t ntParseIPv4(string_view text, const size_t pos) noexcept {
 		// Результат работы функции
 		size_t result = pos;
 		// Получаем размер текста
@@ -890,7 +903,7 @@ namespace {
 	 * @return     позиция конца адреса либо позиция начала при неудаче
 	 *
 	 */
-	static size_t ntParseMAC(string_view text, const size_t pos) noexcept {
+	static __AWH_INLINE__ size_t ntParseMAC(string_view text, const size_t pos) noexcept {
 		// Результат работы функции
 		size_t result = pos;
 		// Получаем размер текста
@@ -925,7 +938,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool ntValidateIPv6(string_view text) noexcept {
+	static __AWH_INLINE__ bool ntValidateIPv6(string_view text) noexcept {
 		// Размер строки
 		const size_t size = text.size();
 		// IPv6-адрес не может быть короче двух символов
@@ -1020,7 +1033,7 @@ namespace {
 	 * @return     позиция конца адреса либо позиция начала при неудаче
 	 *
 	 */
-	static size_t ntParseIPv6Addr(string_view text, const size_t pos) noexcept {
+	static __AWH_INLINE__ size_t ntParseIPv6Addr(string_view text, const size_t pos) noexcept {
 		// Собираем максимальный кандидат из символов IPv6-адреса (hex, ':', '.')
 		size_t result = pos;
 		// Размер текста
@@ -1052,7 +1065,7 @@ namespace {
 	 * @return       позиция конца хоста либо позиция начала при неудаче
 	 *
 	 */
-	static size_t ntParseHost(string_view text, const size_t pos, string & host, string & domain) noexcept {
+	static __AWH_INLINE__ size_t ntParseHost(string_view text, const size_t pos, string & host, string & domain) noexcept {
 		// Количество разобранных меток
 		size_t labels = 0;
 		// Текущий индекс разбора
@@ -1117,7 +1130,7 @@ namespace {
 	 * @return     позиция конца адреса либо позиция начала при неудаче
 	 *
 	 */
-	static size_t ntParseUrl(string_view text, const size_t pos, awh::Network_Types::url_t & out) noexcept {
+	static __AWH_INLINE__ size_t ntParseUrl(string_view text, const size_t pos, awh::nwt::url_t & out) noexcept {
 		// Результат арботы функции
 		size_t result = pos;
 		// Размер текста
@@ -1125,7 +1138,7 @@ namespace {
 		/**
 		 * Используем перечисление типов адресов
 		 */
-		using types_t = awh::Network_Types::types_t;
+		using types_t = awh::nwt::types_t;
 		// Выполняем разбор схемы (протокола) URL-адреса
 		if(ntMatchCI(text, result, "https://")){
 			// Запоминаем схему
@@ -1285,13 +1298,53 @@ namespace {
 };
 
 /**
+ * @brief Инкапсулируем внутренние помощники в анонимное пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция проверки, является ли домен верхнего уровня известной доменной зоной
+	 *
+	 * @param domain домен верхнего уровня для проверки
+	 * @return       результат проверки (true, если зона известна)
+	 *
+	 */
+	static __AWH_INLINE__ bool isZone(const string & domain) noexcept {
+		// Если домен верхнего уровня не передан
+		if(domain.empty())
+			// Сообщаем, что зона неизвестна
+			return false;
+		// Формируем нормализованный (в нижнем регистре для ASCII) домен верхнего уровня
+		string result = "";
+		// Резервируем память под нормализованный домен
+		result.reserve(domain.size());
+		/**
+		 * Выполняем перебор всех символов домена верхнего уровня
+		 */
+		for(const char letter : domain)
+			// Приводим ASCII-символы к нижнему регистру, остальные байты (UTF-8) оставляем как есть
+			result.push_back(((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter - 'A' + 'a') : letter);
+		// Если домен является интернационализированным (punycode), считаем зону валидной
+		if((result.size() > 4) && (result.compare(0, 4, "xn--") == 0))
+			// Сообщаем, что зона известна
+			return true;
+		// Сообщаем результат проверки наличия зоны среди интернациональных, общих или пользовательских зон
+		return (
+			(::__awh_national_domains__().find(result) != ::__awh_national_domains__().end()) ||
+			(::__awh_general_domains__().find(result) != ::__awh_general_domains__().end()) ||
+			(::__awh_zones__.find(result) != ::__awh_zones__.end())
+		);
+	}
+};
+
+/**
  * @brief Оператор перемещения
  *
  * @param url параметры адреса
  * @return    параметры URL-запроса
  *
  */
-awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noexcept {
+awh::nwt::URL & awh::nwt::URL::operator = (url_t && url) noexcept {
 	// Если выполняется попытка самоприсваивания
 	if(this == &url)
 		// Возвращаем текущий объект
@@ -1328,7 +1381,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noe
  * @return    параметры URL-запроса
  *
  */
-awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url) noexcept {
+awh::nwt::URL & awh::nwt::URL::operator = (const url_t & url) noexcept {
 	// Если выполняется попытка самоприсваивания
 	if(this == &url)
 		// Возвращаем текущий объект
@@ -1365,7 +1418,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url
  * @return    результат сравнения
  *
  */
-bool awh::Network_Types::URL::operator == (const url_t & url) const noexcept {
+bool awh::nwt::URL::operator == (const url_t & url) const noexcept {
 	// Выполняем сравнение параметров
 	return (
 		(this->type == url.type) &&
@@ -1387,7 +1440,7 @@ bool awh::Network_Types::URL::operator == (const url_t & url) const noexcept {
  * @param url параметры адреса
  *
  */
-awh::Network_Types::URL::URL(url_t && url) noexcept {
+awh::nwt::URL::URL(url_t && url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -1417,7 +1470,7 @@ awh::Network_Types::URL::URL(url_t && url) noexcept {
  * @param url параметры адреса
  *
  */
-awh::Network_Types::URL::URL(const url_t & url) noexcept {
+awh::nwt::URL::URL(const url_t & url) noexcept {
 	// Выполняем копирование тип URL-адреса
 	this->type = url.type;
 	// Выполняем копирование порта URL-адреса
@@ -1445,59 +1498,28 @@ awh::Network_Types::URL::URL(const url_t & url) noexcept {
  * @brief Конструктор
  *
  */
-awh::Network_Types::URL::URL() noexcept :
+awh::nwt::URL::URL() noexcept :
  type(types_t::NONE), port(0), uri{""},
  host{""}, path{""}, user{""}, pass{""},
  anchor{""}, domain{""}, params{""}, schema{""} {}
 
 /**
- * @brief Метод проверки, является ли домен верхнего уровня известной доменной зоной
- *
- * @param domain домен верхнего уровня для проверки
- * @return       результат проверки (true, если зона известна)
+ * @brief Функция очистки пользовательских доменных зон
  *
  */
-bool awh::Network_Types::isZone(const string & domain) const noexcept {
-	// Если домен верхнего уровня не передан
-	if(domain.empty())
-		// Сообщаем, что зона неизвестна
-		return false;
-	// Формируем нормализованный (в нижнем регистре для ASCII) домен верхнего уровня
-	string result = "";
-	// Резервируем память под нормализованный домен
-	result.reserve(domain.size());
-	/**
-	 * Выполняем перебор всех символов домена верхнего уровня
-	 */
-	for(const char letter : domain)
-		// Приводим ASCII-символы к нижнему регистру, остальные байты (UTF-8) оставляем как есть
-		result.push_back(((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter - 'A' + 'a') : letter);
-	// Если домен является интернационализированным (punycode), считаем зону валидной
-	if((result.size() > 4) && (result.compare(0, 4, "xn--") == 0))
-		// Сообщаем, что зона известна
-		return true;
-	// Сообщаем результат проверки наличия зоны среди интернациональных, общих или пользовательских зон
-	return (
-		(::__awh_national_domains__().find(result) != ::__awh_national_domains__().end()) ||
-		(::__awh_general_domains__().find(result) != ::__awh_general_domains__().end()) ||
-		(this->_user.find(result) != this->_user.end())
-	);
-}
-/**
- * @brief Метод очистки результатов парсинга
- *
- */
-void awh::Network_Types::clear() noexcept {
+void awh::nwt::clear() noexcept {
 	// Очищаем список пользовательских зон
-	this->_user.clear();
+	::__awh_zones__.clear();
 }
 /**
- * @brief Метод установки пользовательской зоны
+ * @brief Функция установки пользовательской зоны
  *
  * @param zone пользовательская зона
  *
  */
-void awh::Network_Types::zone(string_view zone) noexcept {
+void awh::nwt::zone(string_view zone) noexcept {
+	// Выполняем заполнение общих списков доменных зон только один раз для всего процесса
+	std::call_once(::__awh_init_once__, &::init);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1508,7 +1530,7 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 		if(!result.empty() && (::__awh_national_domains__().find(result) == ::__awh_national_domains__().end()) &&
 		  (::__awh_general_domains__().find(result) == ::__awh_general_domains__().end()))
 			// Добавляем зону в список
-			this->_user.emplace(result);
+			::__awh_zones__.emplace(result);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1518,44 +1540,46 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {zone}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
 /**
- * @brief Метод извлечения списка пользовательских зон интернета
+ * @brief Функция извлечения списка пользовательских зон интернета
  *
  */
-const unordered_set <string> & awh::Network_Types::zones() const noexcept {
+const unordered_set <string> & awh::nwt::zones() noexcept {
 	// Возвращаем список пользовательских зон интернета
-	return this->_user;
+	return ::__awh_zones__;
 }
 /**
- * @brief Метод установки списка пользовательских зон
+ * @brief Функция установки списка пользовательских зон
  *
  * @param zones список доменных зон интернета
  *
  */
-void awh::Network_Types::zones(const unordered_set <string> & zones) noexcept {
+void awh::nwt::zones(const unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
 		// Возвращаем список пользовательских зон
-		this->_user = zones;
+		::__awh_zones__ = zones;
 }
 /**
- * @brief Метод парсинга URI-строки
+ * @brief Функция парсинга URI-строки
  *
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
  *
  */
-awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noexcept {
+awh::nwt::url_t awh::nwt::parse(string_view text) noexcept {
+	// Выполняем заполнение общих списков доменных зон только один раз для всего процесса
+	std::call_once(::__awh_init_once__, &::init);
 	// Переменная результата
 	url_t result{};
 	/**
@@ -1590,7 +1614,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noex
 						!candidate.anchor.empty() || !candidate.params.empty() || !candidate.schema.empty()
 					);
 					// Определяем валидность доменной зоны (либо это IP-литерал без зоны)
-					const bool zone = (candidate.domain.empty() || this->isZone(candidate.domain));
+					const bool zone = (candidate.domain.empty() || isZone(candidate.domain));
 					// Если это достоверный URL-адрес
 					if(strong && zone){
 						// Устанавливаем полученный результат
@@ -1683,24 +1707,16 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noex
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
-}
-/**
- * @brief Конструктор
- *
- */
-awh::Network_Types::Network_Types() noexcept {
-	// Выполняем заполнение общих списков доменных зон только один раз для всех объектов
-	std::call_once(::__awh_init_once__, &::init);
 }

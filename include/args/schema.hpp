@@ -39,10 +39,9 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include "common.hpp"
-#include <sys/macro/global.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -87,10 +86,10 @@ namespace awh {
 		 * @brief Описание ожидаемых параметров запуска
 		 *
 		 * @details Описание необязательно: без него разбор принимает всякий поданный
-		 * параметр. С ним же имя сличается с ожидаемыми, склейка коротких имён
-		 * разбирается, потребность значения и обязательность параметра проверяются, а
-		 * справка о применении собирается из самого описания, а не пишется вторым
-		 * разом руками
+		 *          параметр. С ним же имя сличается с ожидаемыми, склейка коротких имён
+		 *          разбирается, потребность значения и обязательность параметра проверяются, а
+		 *          справка о применении собирается из самого описания, а не пишется вторым
+		 *          разом руками.
 		 *
 		 * @warning Строгость описание САМО ПО СЕБЕ не взводит: отказ на имя, описанию
 		 *          неизвестное, стоит отдельною настройкой `strict`, и умолчанием она
@@ -103,44 +102,46 @@ namespace awh {
 		 *
 		 * @par Намеренные решения
 		 *
-		 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-		 * задачи, и каждое из решений закреплено проверочным испытанием
+		 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+		 *      задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **Справка собирается из описания, а не пишется отдельно.** Написанная
-		 * отдельно, она расходится с делом при первой же правке, и расхождение это
-		 * молчаливо: приложение работает, а справка лжёт
+		 *     отдельно, она расходится с делом при первой же правке, и расхождение это
+		 *     молчаливо: приложение работает, а справка лжёт
 		 *
 		 * @li **Короткое имя есть знак буквенно-цифровой.** Указание 3 договора POSIX
-		 * о наречии программ зовёт коротким именем один знак буквенно-цифровой, и
-		 * заведение всякого иного отвечается отказом: знак «=» разбор наречия отрезает
-		 * значением и до имени не доносит, «-» сливается с двойным тире и одиночным
-		 * доводом, пробел и перевод строки оболочка до программы не доводит вовсе.
-		 * Прежде описание такие имена принимало и выводило их справкой, обещая наречие,
-		 * подать которое нельзя. Замерено 15.09.2026 аудитом, закреплено проверкой
-		 * `ArgsSchema.AShortNameMustBeTypeable`
+		 *     о наречии программ зовёт коротким именем один знак буквенно-цифровой, и
+		 *     заведение всякого иного отвечается отказом: знак «=» разбор наречия отрезает
+		 *     значением и до имени не доносит, «-» сливается с двойным тире и одиночным
+		 *     доводом, пробел и перевод строки оболочка до программы не доводит вовсе.
+		 *     Прежде описание такие имена принимало и выводило их справкой, обещая наречие,
+		 *     подать которое нельзя. Замерено 15.09.2026 аудитом, закреплено проверкой
+		 *     `ArgsSchema.AShortNameMustBeTypeable`
 		 *
 		 * @li **Склейка коротких имён есть один знак, и это не украшение.** Склейка «-abc»
-		 * разбирается тремя признаками лишь тогда, когда все три знака описанию
-		 * известны короткими именами; иначе запись эта неотличима от длинного имени
-		 * под одним тире, каковое запись «-name VALUE» дозволяет
+		 *     разбирается тремя признаками лишь тогда, когда все три знака описанию
+		 *     известны короткими именами; иначе запись эта неотличима от длинного имени
+		 *     под одним тире, каковое запись «-name VALUE» дозволяет
 		 *
 		 * @li **Строгость - настройка, а не поведение.** Приложению, принимающему
-		 * настройки сверх описанных, отказ на неизвестное имя мешал бы; оттого
-		 * описание само по себе строгости не вводит, её взводит настройка
+		 *     настройки сверх описанных, отказ на неизвестное имя мешал бы; оттого
+		 *     описание само по себе строгости не вводит, её взводит настройка
 		 *
 		 * @li **Потребность значения различает три состояния, а не два.** Признак
-		 * значения не принимает вовсе, ключ требует непременно, а третьему виду
-		 * значение необязательно - «--log» взводит признак, «--log=файл» задаёт
-		 * назначение. Сведение к двум состояниям вынуждало бы заводить два имени
-		 * под одно понятие
+		 *     значения не принимает вовсе, ключ требует непременно, а третьему виду
+		 *     значение необязательно - «--log» взводит признак, «--log=файл» задаёт
+		 *     назначение. Сведение к двум состояниям вынуждало бы заводить два имени
+		 *     под одно понятие
 		 *
 		 * \~english
 		 * @brief Description of the expected parameters of the launch
+		 *
 		 * @details The description is optional: without it the parsing accepts every submitted
-		 * parameter. With it the name is checked against the expected ones, a cluster of the
-		 * short names is parsed, the need of a value and the obligation of a parameter are
-		 * verified, and a help of the usage is assembled from the description itself rather
-		 * than written a second time by hand
+		 *          parameter. With it the name is checked against the expected ones, a cluster of the
+		 *          short names is parsed, the need of a value and the obligation of a parameter are
+		 *          verified, and a help of the usage is assembled from the description itself rather
+		 *          than written a second time by hand.
+		 *
 		 * @warning The description by itself does NOT make the parsing strict: a refusal on a
 		 *          name unknown to the description is a separate setting `strict`, and by
 		 *          default it is OFF. This half of the documentation used to claim the
@@ -153,7 +154,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Потребность параметра в значении
-				 *
 				 *
 				 * \~english
 				 * @brief Need of a parameter in a value
@@ -169,7 +169,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Описание одного ожидаемого параметра
-				 *
 				 *
 				 * \~english
 				 * @brief Description of one expected parameter
@@ -197,18 +196,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Param() noexcept :
-					 preset(false), letter(0),
-					 required(false), multiple(false),
-					 value(value_t::REQUIRED), 
-					 name{""}, fallback{""},
-					 description{""} {}
+					explicit Param() noexcept;
 				} param_t;
 			private:
 				// Название приложения для справки
@@ -228,7 +221,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод очистки описания ожидаемых параметров
 				 *
-				 *
 				 * \~english
 				 * @brief Method of the clearing of the description of the expected parameters
 				 *
@@ -240,7 +232,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод заведения описания ожидаемого параметра
 				 *
-				 * @details Имя, заведённое повторно, описание прежнее заменяет
+				 * @details Имя, заведённое повторно, описание прежнее заменяет.
 				 *
 				 * @note Замена отвечается ОТКАЗОМ, если короткое имя поданного описания занято
 				 *       описанием ИНЫМ: иначе розыск по знаку вёл бы к чужому параметру, а
@@ -254,8 +246,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the creation of a description of an expected parameter
+				 *
 				 * @param param description of the expected parameter
-				 * @return result of the creation
+				 * @return      result of the creation
 				 *
 				 * \~
 				 */
@@ -272,11 +265,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the creation of a description of an expected parameter
-				 * @param name long name of the parameter with the separator of the links
-				 * @param letter short name of the parameter by one character, zero at its absence
-				 * @param value need of the parameter in a value
+				 *
+				 * @param name        long name of the parameter with the separator of the links
+				 * @param letter      short name of the parameter by one character, zero at its absence
+				 * @param value       need of the parameter in a value
 				 * @param description description of the purpose of the parameter for the help
-				 * @return result of the creation
+				 * @return            result of the creation
 				 *
 				 * \~
 				 */
@@ -291,8 +285,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of a description of a parameter by a long name
+				 *
 				 * @param name long name of the parameter
-				 * @return description of the parameter or nullptr at its absence
+				 * @return     description of the parameter or nullptr at its absence
 				 *
 				 * \~
 				 */
@@ -306,8 +301,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of a description of a parameter by a short name
+				 *
 				 * @param letter short name of the parameter by one character
-				 * @return description of the parameter or nullptr at its absence
+				 * @return       description of the parameter or nullptr at its absence
 				 *
 				 * \~
 				 */
@@ -318,8 +314,8 @@ namespace awh {
 				 * @brief Метод разбора склейки коротких имён
 				 *
 				 * @details Запись «-abc» разбирается тремя признаками лишь тогда, когда ВСЕ
-				 * знаки её описанию известны короткими именами и ни один из них значения
-				 * не требует. Иначе запись эта неотличима от длинного имени под одним тире
+				 *          знаки её описанию известны короткими именами и ни один из них значения
+				 *          не требует. Иначе запись эта неотличима от длинного имени под одним тире.
 				 *
 				 * @param cluster склейка коротких имён без ведущего тире
 				 * @param result  контейнер разобранных длинных имён
@@ -327,9 +323,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a cluster of the short names
+				 *
 				 * @param cluster cluster of the short names without the leading dash
-				 * @param result container of the parsed long names
-				 * @return result of the parsing
+				 * @param result  container of the parsed long names
+				 * @return        result of the parsing
 				 *
 				 * \~
 				 */
@@ -343,6 +340,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the descriptions of all the expected parameters
+				 *
 				 * @return descriptions in the order of their creation
 				 *
 				 * \~
@@ -356,6 +354,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the check of the emptiness of the description
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -367,7 +366,7 @@ namespace awh {
 				 * @brief Метод сборки справки о применении
 				 *
 				 * @details Справка собирается из самого описания, а не пишется отдельно:
-				 * написанная отдельно, она расходится с делом при первой же правке
+				 *          написанная отдельно, она расходится с делом при первой же правке.
 				 *
 				 * @param multiple признак дозволенности повтора настройками сбора
 				 *
@@ -383,8 +382,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembling of the help of the usage
+				 *
 				 * @param multiple sign of the permission of a repetition by the settings of the collection
-				 * @return assembled text of the help
+				 * @return         assembled text of the help
 				 *
 				 * \~
 				 */
@@ -399,6 +399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of the name of the application for the help
+				 *
 				 * @param application name of the application
 				 * @param description description of the purpose of the application
 				 *
@@ -420,7 +421,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
@@ -435,3 +435,4 @@ namespace awh {
  * Возвращаем подавленные системные макросы
  */
 #include "../sys/macro/restore.hpp"
+#include "../sys/macro/global.hpp"

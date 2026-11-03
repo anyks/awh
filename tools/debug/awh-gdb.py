@@ -1105,7 +1105,7 @@ def lookup(value):
 		return AbcNode(value)
 	if name == 'awh::Network_Address':
 		return NetAddress(value)
-	if name == 'awh::Network_Types::URL':
+	if name == 'awh::nwt::URL':
 		return NwtUrl(value)
 	if name == 'awh::regex::Program':
 		return RegexProgram(value)

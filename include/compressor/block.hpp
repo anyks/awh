@@ -43,7 +43,7 @@
  */
 #include "types.hpp"
 #include "stream.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian

@@ -119,13 +119,13 @@
 /**
  * Подключаем единую точку подключения системных заголовков MS Windows
  */
-#include <sys/macro/win32.hpp>
+#include "../sys/macro/win32.hpp"
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/global.hpp>
-#include <net/net.hpp>
+#include "../net/net.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian

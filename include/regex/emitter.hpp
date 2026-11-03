@@ -1644,4 +1644,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"

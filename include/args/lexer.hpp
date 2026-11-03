@@ -40,12 +40,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "common.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -62,7 +61,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён параметров запуска приложения
 	 *
-	 *
 	 * \~english
 	 * @brief Namespace of the parameters of the launch of an application
 	 *
@@ -74,25 +72,26 @@ namespace awh {
 		 * @brief Разборщик параметров запуска и текстовых потоков
 		 *
 		 * @details Выдаёт лексемы одну за другой отзывом, своих копий не держа.
-		 * Оба входа - набор запуска и текстовый поток - разбирает один и тот же код:
-		 * текст сперва режется на слова, а дальше разбор идёт словом за словом
+		 *          Оба входа - набор запуска и текстовый поток - разбирает один и тот же код:
+		 *          текст сперва режется на слова, а дальше разбор идёт словом за словом.
 		 *
 		 * @par Намеренные решения
 		 *
 		 * @li **Слово, начатое тире, значением следующим не берётся - кроме числа.**
-		 * Запись «--count -5» подаёт значение «-5», а запись «--verbose --debug» -
-		 * два параметра без значений. Иначе всякий признак съедал бы следующий за
-		 * ним параметр, и набор менял бы смысл от перестановки
+		 *     Запись «--count -5» подаёт значение «-5», а запись «--verbose --debug» -
+		 *     два параметра без значений. Иначе всякий признак съедал бы следующий за
+		 *     ним параметр, и набор менял бы смысл от перестановки
 		 *
 		 * @li **Разбор отказом не прерывается.** Отказавшая лексема пропускается, а
-		 * код отказа с положением уходит отзыву: набор запуска разбирается целиком,
-		 * чтобы приложение показало сразу все огрехи набора, а не первый из них
+		 *     код отказа с положением уходит отзыву: набор запуска разбирается целиком,
+		 *     чтобы приложение показало сразу все огрехи набора, а не первый из них
 		 *
 		 * \~english
 		 * @brief Parser of the parameters of the launch and of the text streams
+		 *
 		 * @details Issues the lexemes one after another by a callback, making no copies of the submitted.
-		 * Both inputs — the set of the launch and a text stream — are parsed by one and the same code:
-		 * the text is at first cut into the words, and further the parsing goes word by word
+		 *          Both inputs — the set of the launch and a text stream — are parsed by one and the same code:
+		 *          the text is at first cut into the words, and further the parsing goes word by word.
 		 *
 		 * \~
 		 */
@@ -101,7 +100,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Настройки разбора параметров
-				 *
 				 *
 				 * \~english
 				 * @brief Settings of the parsing of the parameters
@@ -123,25 +121,23 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Settings() noexcept :
-					 terminus(true), negative(true),
-					 maxKey(1024), maxValue(1048576), maxTokens(65536) {}
+					explicit Settings() noexcept;
 				} settings_t;
 				/**
 				 * \~russian
 				 * @brief Отзыв выдачи разобранной лексемы
 				 *
-				 * @details Возврат ложью останавливает разбор
+				 * @details Возврат ложью останавливает разбор.
 				 *
 				 * \~english
 				 * @brief Callback of the issuance of a parsed lexeme
-				 * @details A return by a false stops the parsing
+				 *
+				 * @details A return by a false stops the parsing.
 				 *
 				 * \~
 				 */
@@ -150,11 +146,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Отзыв извещения об отказе разбора
 				 *
-				 * @details Возврат ложью останавливает разбор
+				 * @details Возврат ложью останавливает разбор.
 				 *
 				 * \~english
 				 * @brief Callback of the notification of a refusal of the parsing
-				 * @details A return by a false stops the parsing
+				 *
+				 * @details A return by a false stops the parsing.
 				 *
 				 * \~
 				 */
@@ -172,8 +169,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the determination of the resemblance of a word to a number
+				 *
 				 * @param word word for the check
-				 * @return result of the check
+				 * @return     result of the check
 				 *
 				 * \~
 				 */
@@ -184,7 +182,7 @@ namespace awh {
 				 * @brief Метод разреза текста на слова
 				 *
 				 * @details Кавычки одинарные и двойные объединяют слово целиком, а обратная
-				 * косая снимает особое значение у следующего за нею знака
+				 *          косая снимает особое значение у следующего за нею знака.
 				 *
 				 * @note Правила взяты у оболочек POSIX: внутри кавычки ОДИНАРНОЙ косая
 				 *       особого значения не имеет и берётся знаком как есть, ибо кавычку
@@ -199,17 +197,18 @@ namespace awh {
 				 * @note Кавычки пустые дают слово ПУСТОЕ, а не отсутствие слова: иначе
 				 *       подать довод пустой было бы нечем
 				 *
-				 * @param text     текст для разреза
-				 * @param result   контейнер собранных слов
-				 * @param failure  отзыв извещения об отказе разбора
-				 * @return         результат разреза
+				 * @param text    текст для разреза
+				 * @param result  контейнер собранных слов
+				 * @param failure отзыв извещения об отказе разбора
+				 * @return        результат разреза
 				 *
 				 * \~english
 				 * @brief Method of the cutting of a text into the words
-				 * @param text text for the cutting
-				 * @param result container of the assembled words
+				 *
+				 * @param text    text for the cutting
+				 * @param result  container of the assembled words
 				 * @param failure callback of the notification of a refusal of the parsing
-				 * @return result of the cutting
+				 * @return        result of the cutting
 				 *
 				 * \~
 				 */
@@ -226,10 +225,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a set of the arguments of the launch
-				 * @param items set of the arguments of the launch
+				 *
+				 * @param items    set of the arguments of the launch
 				 * @param callback callback of the issuance of a parsed lexeme
-				 * @param failure callback of the notification of a refusal of the parsing
-				 * @return result of the parsing
+				 * @param failure  callback of the notification of a refusal of the parsing
+				 * @return         result of the parsing
 				 *
 				 * \~
 				 */
@@ -245,10 +245,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a text stream
-				 * @param text text for the parsing
+				 *
+				 * @param text     text for the parsing
 				 * @param callback callback of the issuance of a parsed lexeme
-				 * @param failure callback of the notification of a refusal of the parsing
-				 * @return result of the parsing
+				 * @param failure  callback of the notification of a refusal of the parsing
+				 * @return         result of the parsing
 				 *
 				 * \~
 				 */
@@ -262,6 +263,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the settings of the parsing of the parameters
+				 *
 				 * @return settings of the parsing of the parameters
 				 *
 				 * \~
@@ -275,6 +277,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the setting of the settings of the parsing of the parameters
+				 *
 				 * @param settings settings of the parsing of the parameters
 				 *
 				 * \~
@@ -294,7 +297,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

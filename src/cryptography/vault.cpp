@@ -144,14 +144,15 @@ awh::Vault::Handle & awh::Vault::Handle::operator = (Handle && handle) noexcept 
  * @brief Конструктор
  *
  */
-awh::Vault::Handle::Handle() noexcept : _plain(), _valid(false) {}
+awh::Vault::Handle::Handle() noexcept : _valid(false) {}
 /**
  * @brief Конструктор переноса
  *
  * @param handle переносимая рукоять
  *
  */
-awh::Vault::Handle::Handle(Handle && handle) noexcept : _plain(::move(handle._plain)), _valid(handle._valid) {
+awh::Vault::Handle::Handle(Handle && handle) noexcept :
+ _valid(handle._valid), _plain(::move(handle._plain)) {
 	// Отмечаем отданную рукоять негодной
 	handle._valid = false;
 	// Очищаем отданную рукоять
@@ -163,7 +164,8 @@ awh::Vault::Handle::Handle(Handle && handle) noexcept : _plain(::move(handle._pl
  * @param plain открытый текст тайны
  *
  */
-awh::Vault::Handle::Handle(buffer_t && plain) noexcept : _plain(::move(plain)), _valid(true) {}
+awh::Vault::Handle::Handle(buffer_t && plain) noexcept :
+ _valid(true), _plain(::move(plain)) {}
 /**
  * @brief Деструктор
  *

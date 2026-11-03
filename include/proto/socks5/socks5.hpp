@@ -43,7 +43,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../net/net.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian

@@ -150,7 +150,7 @@ namespace {
 	 * @return     имя звена, у пути хранения безопасное
 	 *
 	 */
-	static string escape(const string & name) noexcept {
+	static __AWH_INLINE__ string escape(const string & name) noexcept {
 		// Собираемое имя звена пути
 		string result = "";
 		// Выполняем резервирование памяти под собираемое имя
@@ -176,6 +176,14 @@ namespace {
 		return result;
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::args::Args::Settings::Settings() noexcept :
+ typed(true), strict(false),
+ multiple(true), delimiter('.') {}
 
 /**
  * @brief Метод перевода имени параметра в путь оси хранения

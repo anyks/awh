@@ -31,7 +31,7 @@
  */
 struct NwtTestParameter {
 	// Тип URL-адреса
-	awh::nwt_t::types_t type = awh::nwt_t::types_t::NONE;
+	awh::nwt::types_t type = awh::nwt::types_t::NONE;
 	// Порт URL-адреса
 	uint32_t port = 0;
 	// Хост URL-адреса
@@ -74,22 +74,22 @@ class NwtTestParameterizedFixture : public NwtFixture, public ::testing::WithPar
  */
 TEST_P(NwtTestParameterizedFixture, NwtTestingTest){
 	// Выполняем очистку объекта работы со списком параметров URL
-	this->_nwt->clear();
+	awh::nwt::clear();
 	// Если пользовательская зона указана, устанавливаем её
 	if(!this->_parameter.zone.empty()){
 		// Устанавливаем пользовательскую зону для объекта работы со списком параметров URL
-		this->_nwt->zone(this->_parameter.zone);
+		awh::nwt::zone(this->_parameter.zone);
 		// Выполняем извлечение списка установленных зон
-		auto zones = this->_nwt->zones();
+		const auto & zones = awh::nwt::zones();
 		// Проверяем наличие зоны в списке установленных зон
 		ASSERT_TRUE(zones.find(this->_parameter.zone) != zones.end());
 	}
 	// Если список пользовательских зон указан, устанавливаем его
 	if(!this->_parameter.zones.empty()){
 		// Устанавливаем список пользовательских зон для объекта работы со списком параметров URL
-		this->_nwt->zones(this->_parameter.zones);
+		awh::nwt::zones(this->_parameter.zones);
 		// Выполняем извлечение списка установленных зон
-		auto zones = this->_nwt->zones();
+		const auto & zones = awh::nwt::zones();
 		/**
 		 * Выполняем перебор всех установленных зон
 		 */
@@ -98,7 +98,7 @@ TEST_P(NwtTestParameterizedFixture, NwtTestingTest){
 			ASSERT_TRUE(zones.find(zone) != zones.end());
 	}
 	// Выполняем парсинг адреса
-	auto result = this->_nwt->parse(this->_parameter.address);
+	const auto result = awh::nwt::parse(this->_parameter.address);
 	// Проверяем тип URL-адреса
 	ASSERT_EQ(this->_parameter.type, result.type);
 	// Проверяем порт URL-адреса
@@ -130,7 +130,7 @@ TEST_P(NwtTestParameterizedFixture, NwtTestingTest){
 INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 	::testing::Values(
 		NwtTestParameter({
-			awh::nwt_t::types_t::URL,
+			awh::nwt::types_t::URL,
 			443,
 			"anyks.com",
 			"/path/to/resource",
@@ -145,7 +145,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"https://user:password@anyks.com:443/path/to/resource?query=param#anchor"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::URL,
+			awh::nwt::types_t::URL,
 			0,
 			"anyks.ru",
 			"/path/to/resource",
@@ -160,7 +160,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"http://anyks.ru/path/to/resource?query=param&id=154#anchor"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::URL,
+			awh::nwt::types_t::URL,
 			0,
 			"anyks.ru",
 			"/path/to/resource",
@@ -175,7 +175,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"http://anyks.ru/path/to/resource"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::MAC,
+			awh::nwt::types_t::MAC,
 			0,
 			"73:0b:04:0d:db:79",
 			"",
@@ -190,7 +190,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"73:0b:04:0d:db:79"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::IPV4,
+			awh::nwt::types_t::IPV4,
 			0,
 			"127.0.0.1",
 			"",
@@ -205,7 +205,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"127.0.0.1"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::IPV6,
+			awh::nwt::types_t::IPV6,
 			0,
 			"2001:0db8:0000:0000:0000:0000:ae21:ad12",
 			"",
@@ -220,7 +220,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"2001:0db8:0000:0000:0000:0000:ae21:ad12"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::IPV6,
+			awh::nwt::types_t::IPV6,
 			0,
 			"2001:0db8:0000:0000:0000:0000:ae21:ad12",
 			"",
@@ -235,7 +235,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NwtTestParameterizedFixture,
 			"2001:0db8:0000:0000:0000:0000:ae21:ad12"
 		}),
 		NwtTestParameter({
-			awh::nwt_t::types_t::EMAIL,
+			awh::nwt::types_t::EMAIL,
 			0,
 			"anyks.com",
 			"",

@@ -48,7 +48,7 @@
  */
 #include "tls.hpp"
 #include "../../sys/locker.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian

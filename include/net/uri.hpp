@@ -80,7 +80,7 @@ namespace awh {
 	 * сличает адреса между собой - по правилам RFC 3986. Держит **один**
 	 * адрес и разбором его состояние меняет
 	 *
-	 * Отличается от `nwt_t` тем, что разбирает запись, уже признанную
+	 * Отличается от `nwt` тем, что разбирает запись, уже признанную
 	 * адресом ресурса, и делает это строго. Тот же, наоборот, сперва
 	 * определяет вид записи и к строгости не стремится
 	 *
@@ -131,7 +131,7 @@ namespace awh {
 	 * @details Parses an address of a resource into its constituent parts, assembles it back and
 	 * matches the addresses with each other — by the rules of RFC 3986. Holds **one**
 	 * address and changes its state by the parsing
-	 * Differs from `nwt_t` in that it parses a record already recognized as
+	 * Differs from `nwt` in that it parses a record already recognized as
 	 * an address of a resource, and does it strictly. That one, on the contrary, first
 	 * determines the kind of the record and does not strive for the strictness
 	 * @note The parsing in a number of places deliberately departs from the reference parsers —

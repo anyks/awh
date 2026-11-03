@@ -742,7 +742,7 @@ NWT_TYPES = { 0x00: 'NONE', 0x01: 'MAC', 0x02: 'URL', 0x03: 'IPv4', 0x04: 'IPv6'
 
 def nwt_url_summary(value, internal_dict):
 	##
-	# Описатель разобранной ссылки - `awh::nwt_t::URL`
+	# Описатель разобранной ссылки - `awh::nwt::URL`
 	#
 	# Ссылка разобрана на десяток строк, и полями своими она нечитаема вовсе: собираем
 	# из них ту самую запись, какую разбирали
@@ -1274,7 +1274,7 @@ def __lldb_init_module(debugger, internal_dict):
 	debugger.HandleCommand(
 		'type summary add -F awh.net_addr_summary -x "^awh::Network_Address$"')
 	debugger.HandleCommand(
-		'type summary add -F awh.nwt_url_summary -x "^awh::Network_Types::URL$"')
+		'type summary add -F awh.nwt_url_summary -x "^awh::nwt::URL$"')
 	debugger.HandleCommand(
 		'type summary add -F awh.regex_program_summary -x "^awh::regex::Program$"')
 	debugger.HandleCommand(

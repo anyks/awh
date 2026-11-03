@@ -77,6 +77,7 @@ namespace awh {
 	 *
 	 */
 	using namespace std;
+
 	/**
 	 * \~russian
 	 * @brief Класс склада тайн
@@ -88,7 +89,7 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Vault {
 		public:
 			// Тип укрытого буфера: содержимое его не уходит в подкачку и затирается при возврате
-			typedef std::vector <char, awh::alloc::Keeper <char>> buffer_t;
+			typedef std::vector <char, alloc::Keeper <char>> buffer_t;
 		public:
 			/**
 			 * \~russian
@@ -121,11 +122,18 @@ namespace awh {
 			 */
 			class __AWH_SHARED_EXPORT__ Handle {
 				private:
-					// Открытый текст тайны
-					buffer_t _plain;
 					// Признак удавшегося взятия
 					bool _valid;
+				private:
+					// Открытый текст тайны
+					buffer_t _plain;
 				public:
+					/**
+					 * @brief Шаблон метода обращения к содержимому тайны
+					 *
+					 * @tparam T тип обработчика содержимого тайны
+					 */
+					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод обращения к содержимому тайны
@@ -143,6 +151,18 @@ namespace awh {
 					 * @note Уход из обработчика исключением ЗАКОНЕН: рукоять остаётся
 					 *       целой, а само исключение уходит наружу нетронутым
 					 *
+					 * @warning Пометки `noexcept` здесь НЕТ намеренно
+					 *
+					 *          Обработчик волен уйти исключением, и пометка обращала бы такой уход
+					 *          в аварийный останов процесса ПРЕЖДЕ раскрутки - то есть отменяла бы
+					 *          ровно то, ради чего затирание и запечатывание ведутся деструктором.
+					 *          В `alloc::vessel_t` разряд этот пойман набором: с пометкой
+					 *          проверка валилась с `terminating due to uncaught exception`.
+					 *
+					 *          Уклад AWH ставит `noexcept` почти везде, и оттого разряд опасен:
+					 *          здесь пометка выглядела бы соблюдением стиля, а была бы обещанием
+					 *          за чужой код, какого дающий дать не может
+					 *
 					 * @param callback обработчик содержимого, зовомый парой «адрес, длина»
 					 * @return         признак состоявшегося обращения
 					 *
@@ -151,20 +171,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					/**
-					 * Пометки `noexcept` здесь НЕТ намеренно
-					 *
-					 * Обработчик волен уйти исключением, и пометка обращала бы такой уход
-					 * в аварийный останов процесса ПРЕЖДЕ раскрутки - то есть отменяла бы
-					 * ровно то, ради чего затирание и запечатывание ведутся деструктором.
-					 * В `awh::alloc::vessel_t` разряд этот пойман набором: с пометкой
-					 * проверка валилась с `terminating due to uncaught exception`.
-					 *
-					 * Уклад AWH ставит `noexcept` почти везде, и оттого разряд опасен:
-					 * здесь пометка выглядела бы соблюдением стиля, а была бы обещанием
-					 * за чужой код, какого дающий дать не может
-					 */
-					template <typename T>
 					bool apply(T callback) const {
 						// Если взятие тайны не удалось
 						if(!this->_valid)
@@ -176,10 +182,7 @@ namespace awh {
 						 * Пустая тайна - законное содержимое, и адрес при ней негоден:
 						 * судить о взятии по длине нельзя, на то заведён `valid()`
 						 */
-						callback(
-							(this->_plain.empty() ? nullptr : this->_plain.data()),
-							this->_plain.size()
-						);
+						callback((this->_plain.empty() ? nullptr : this->_plain.data()), this->_plain.size());
 						// Выводим признак состоявшегося обращения
 						return true;
 					}
@@ -227,26 +230,26 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Handle() noexcept;
+					explicit Handle() noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 */
-					Handle(const Handle &) = delete;
+					explicit Handle(const Handle &) = delete;
 					/**
 					 * @brief Конструктор переноса
 					 *
 					 * @param handle переносимая рукоять
 					 *
 					 */
-					Handle(Handle && handle) noexcept;
+					explicit Handle(Handle && handle) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param plain открытый текст тайны
 					 *
 					 */
-					Handle(buffer_t && plain) noexcept;
+					explicit Handle(buffer_t && plain) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -255,17 +258,17 @@ namespace awh {
 			};
 		private:
 			// Шифротекст тайн склада
-			std::map <std::string, std::vector <char>> _secrets;
+			map <string, vector <char>> _secrets;
 		private:
 			// Средство шифрования
-			awh::Crypto _crypto;
+			Crypto _crypto;
 		private:
 			// Признак заведённого склада
 			bool _ready;
 			// Вид многопоточности склада
 			threading_t _threading;
 			// Строгость склада
-			awh::alloc::secrecy_t _secrecy;
+			alloc::secrecy_t _secrecy;
 			/**
 			 * Замок раскрытия тайн склада
 			 *
@@ -277,9 +280,7 @@ namespace awh {
 			 */
 			mutable std::mutex _mutex;
 			// Сведения о защите, состоявшейся у укрытой памяти склада
-			awh::alloc::shelter_t _shelter;
-		private:
-			// Объект фреймворка
+			alloc::shelter_t _shelter;
 		public:
 			/**
 			 * \~russian
@@ -321,7 +322,7 @@ namespace awh {
 			 * @return information about the achieved protection
 			 *
 			 */
-			const awh::alloc::shelter_t & shelter() const noexcept;
+			const alloc::shelter_t & shelter() const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод укладки тайны на склад
@@ -359,7 +360,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			bool store(const std::string & name, awh::alloc::vessel_t & vessel) noexcept;
+			bool store(const std::string & name, alloc::vessel_t & vessel) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод взятия тайны со склада
@@ -506,7 +507,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Vault(const awh::alloc::secrecy_t secrecy = awh::alloc::secrecy_t::STRICT, const threading_t threading = threading_t::SHARED) noexcept;
+			explicit Vault(const alloc::secrecy_t secrecy = alloc::secrecy_t::STRICT, const threading_t threading = threading_t::SHARED) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -55,7 +55,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include "../../../sys/macro/suppress.hpp"
-#include <sys/fmk.hpp>
+#include "../../../sys/fmk.hpp"
 
 /**
  * \~russian
@@ -1772,4 +1772,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../../sys/macro/global.hpp"

@@ -65,7 +65,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../sys/locker.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian

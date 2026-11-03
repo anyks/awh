@@ -39,11 +39,11 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
-#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочный файл проекта
  */
+#include "../sys/macro/global.hpp"
 
 /**
  * Если размер буфера в байтах не определён

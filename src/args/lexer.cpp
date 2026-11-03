@@ -35,10 +35,14 @@
 #include <limits>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/fmk.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
  */
 #include <args/lexer.hpp>
-#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -58,11 +62,6 @@ namespace {
 	/**
 	 * @brief Функция извещения об отказе разбора
 	 *
-	 * @param failure  отзыв извещения об отказе разбора
-	 * @param error    код ошибки разбора
-	 * @param location положение лексемы в поданном наборе
-	 * @return         признак продолжения разбора
-	 *
 	 * @warning Виды здесь названы ПОЛНЫМ именем намеренно, и это не многословие: у
 	 *          систем GNU заголовок «errno.h» объявляет свой «error_t» в глобальном
 	 *          пространстве, и краткое имя в свободной функции разрешается в него, а
@@ -70,8 +69,13 @@ namespace {
 	 *          принимался видом «int», а внутри класса то же имя разрешалось верно -
 	 *          оттого срыв виден лишь у свободных функций и лишь у систем GNU
 	 *
+	 * @param failure  отзыв извещения об отказе разбора
+	 * @param error    код ошибки разбора
+	 * @param location положение лексемы в поданном наборе
+	 * @return         признак продолжения разбора
+	 *
 	 */
-	bool notify(const Lexer::failure_t & failure, const awh::args::error_t error, const awh::args::location_t & location) noexcept {
+	static __AWH_INLINE__ bool notify(const lexer_t::failure_t & failure, const error_t error, const location_t & location) noexcept {
 		// Если отзыв извещения об отказе установлен
 		if(failure != nullptr)
 			// Выполняем извещение об отказе разбора
@@ -80,6 +84,14 @@ namespace {
 		return true;
 	}
 }
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::args::Lexer::Settings::Settings() noexcept :
+ terminus(true), negative(true),
+ maxKey(1024), maxValue(1048576), maxTokens(65536) {}
 
 /**
  * @brief Метод определения схожести слова с числом

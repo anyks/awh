@@ -44,7 +44,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "types.hpp"
-#include <sys/macro/global.hpp>
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian

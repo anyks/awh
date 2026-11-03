@@ -1561,8 +1561,6 @@ namespace {
 	 */
 	class State {
 		public:
-			// Объект парсинга nwt адреса
-			nwt_t _nwt;
 		public:
 			/**
 			 * @brief Конструктор
@@ -2296,9 +2294,9 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = state()._nwt.parse(text);
+					const auto & url = nwt::parse(text);
 					// Если ссылка найдена
-					result = (url.type != nwt_t::types_t::NONE);
+					result = (url.type != nwt::types_t::NONE);
 				} break;
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT): {
@@ -2625,9 +2623,9 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = state()._nwt.parse(convert(text));
+					const auto & url = nwt::parse(convert(text));
 					// Если ссылка найдена
-					result = (url.type != nwt_t::types_t::NONE);
+					result = (url.type != nwt::types_t::NONE);
 				} break;
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT): {
@@ -7482,7 +7480,7 @@ void awh::fmk::domainZone(string_view zone) noexcept {
 	// Если зона передана, устанавливаем её
 	if(!zone.empty())
 		// Устанавливаем пользовательскую зону
-		state()._nwt.zone(zone);
+		nwt::zone(zone);
 }
 /**
  * @brief Функция установки списка пользовательских зон
@@ -7494,7 +7492,7 @@ void awh::fmk::domainZones(const unordered_set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
-		state()._nwt.zones(zones);
+		nwt::zones(zones);
 }
 /**
  * @brief Функция извлечения списка пользовательских зон интернета
@@ -7504,7 +7502,7 @@ void awh::fmk::domainZones(const unordered_set <string> & zones) noexcept {
  */
 const unordered_set <string> & awh::fmk::domainZones() noexcept {
 	// Возвращаем список доменных зон интернета
-	return state()._nwt.zones();
+	return nwt::zones();
 }
 /**
  * @brief Функция установки системной локали
@@ -7622,9 +7620,9 @@ unordered_map <size_t, size_t> awh::fmk::urls(string_view text) noexcept {
 			 */
 			while(pos < text.size()){
 				// Выполняем парсинг nwt адреса
-				auto resUri = state()._nwt.parse(text.substr(pos));
+				auto resUri = nwt::parse(text.substr(pos));
 				// Если ссылка найдена
-				if(resUri.type != nwt_t::types_t::NONE){
+				if(resUri.type != nwt::types_t::NONE){
 					// Получаем данные слова
 					const string & word = resUri.uri;
 					// Если позиция найдена
