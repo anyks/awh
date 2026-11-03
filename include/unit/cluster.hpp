@@ -321,7 +321,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 					/**
 					 * \~russian
 					 * Дескриптор объекта родительского процесса (0 у мастера и до захвата)
@@ -509,7 +509,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 					/**
 					 * \~russian
 					 * @brief Метод порождения дочернего процесса повторным запуском образа приложения
@@ -707,7 +707,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 					/**
 					 * \~russian
 					 * @brief Функция извещения о завершении дочернего процесса

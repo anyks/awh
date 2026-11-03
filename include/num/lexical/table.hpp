@@ -133,13 +133,13 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод проверки представимости показателя степени таблицей
+			 * @brief Функция проверки представимости показателя степени таблицей
 			 *
 			 * @param power проверяемый показатель степени десяти
 			 * @return      результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking whether an exponent is representable by the table
+			 * @brief Function of checking whether an exponent is representable by the table
 			 * @param power exponent of a power of ten to check
 			 * @return      result of the check
 			 *

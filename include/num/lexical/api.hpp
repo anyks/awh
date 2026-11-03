@@ -79,7 +79,7 @@ namespace awh {
 	namespace lexical {
 		/**
 		 * \~russian
-		 * @brief Метод проверки режима округления на округление к ближайшему
+		 * @brief Функция проверки режима округления на округление к ближайшему
 		 *
 		 * @details Проверка эквивалентна сравнению fegetround() с FE_TONEAREST,
 		 *          но выполняется существенно быстрее.
@@ -89,7 +89,7 @@ namespace awh {
 		 * @return результат проверки
 		 *
 		 * \~english
-		 * @brief Method of checking whether the rounding mode is rounding to nearest
+		 * @brief Function of checking whether the rounding mode is rounding to nearest
 		 * @details The check is equivalent to comparing fegetround() with FE_TONEAREST,
 		 *          but is performed substantially faster.
 		 * @see https://lemire.me/blog/2022/11/16/a-fast-function-to-check-your-floating-point-rounding-mode/
@@ -181,9 +181,9 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод быстрого преобразования мантиссы и показателя степени
+		 * @brief Функция быстрого преобразования мантиссы и показателя степени
 		 *
-		 * @details Метод реализует быстрый путь Клингера и даёт корректно округлённый
+		 * @details Функция реализует быстрый путь Клингера и даёт корректно округлённый
 		 *          результат независимо от установленного режима округления потока.
 		 *
 		 * @param mantissa значение мантиссы
@@ -193,8 +193,8 @@ namespace awh {
 		 * @return         результат выполнения быстрого пути
 		 *
 		 * \~english
-		 * @brief Method of the fast conversion of the mantissa and of the exponent
-		 * @details The method implements the Clinger fast path and gives a correctly rounded
+		 * @brief Function of the fast conversion of the mantissa and of the exponent
+		 * @details The function implements the Clinger fast path and gives a correctly rounded
 		 *          result regardless of the rounding mode set for the thread.
 		 * @param mantissa value of the mantissa
 		 * @param exponent decimal exponent
@@ -280,7 +280,7 @@ namespace awh {
 		template <typename T, typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод разбора специальных значений бесконечности и нечисловых значений
+		 * @brief Функция разбора специальных значений бесконечности и нечисловых значений
 		 *
 		 * @details Диапазон символов обязан быть непустым: проверка выполняется вызывающей стороной.
 		 *
@@ -291,7 +291,7 @@ namespace awh {
 		 * @return        результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing the special values of infinity and of not-a-number
+		 * @brief Function of parsing the special values of infinity and of not-a-number
 		 * @details The range of characters must be non-empty: the check is performed by the calling side.
 		 * @param first   beginning of the parsed string
 		 * @param last    end of the parsed string
@@ -377,14 +377,14 @@ namespace awh {
 		template <typename T, typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод преобразования разобранной числовой строки в число
+		 * @brief Функция преобразования разобранной числовой строки в число
 		 *
 		 * @param number разобранная числовая строка
 		 * @param value  ссылка на результат преобразования
 		 * @return       результат преобразования
 		 *
 		 * \~english
-		 * @brief Method of converting a parsed number string into a number
+		 * @brief Function of converting a parsed number string into a number
 		 * @param number parsed number string
 		 * @param value  reference to the result of the conversion
 		 * @return       result of the conversion
@@ -442,7 +442,7 @@ namespace awh {
 		template <typename T, typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод разбора числа с плавающей точкой из строки
+		 * @brief Функция разбора числа с плавающей точкой из строки
 		 *
 		 * @param first   начало разбираемой строки
 		 * @param last    конец разбираемой строки
@@ -451,7 +451,7 @@ namespace awh {
 		 * @return        результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing a floating-point number from a string
+		 * @brief Function of parsing a floating-point number from a string
 		 * @param first   beginning of the parsed string
 		 * @param last    end of the parsed string
 		 * @param value   reference to the result of the parsing
@@ -513,7 +513,7 @@ namespace awh {
 		template <typename T, typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод разбора целого числа из строки
+		 * @brief Функция разбора целого числа из строки
 		 *
 		 * @param first   начало разбираемой строки
 		 * @param last    конец разбираемой строки
@@ -522,7 +522,7 @@ namespace awh {
 		 * @return        результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing an integer from a string
+		 * @brief Function of parsing an integer from a string
 		 * @param first   beginning of the parsed string
 		 * @param last    end of the parsed string
 		 * @param value   reference to the result of the parsing
@@ -612,7 +612,7 @@ namespace awh {
 			template <typename T, typename UC>
 			/**
 			 * \~russian
-			 * @brief Метод разбора числа с плавающей точкой из строки
+			 * @brief Функция разбора числа с плавающей точкой из строки
 			 *
 			 * @param first   начало разбираемой строки
 			 * @param last    конец разбираемой строки
@@ -621,7 +621,7 @@ namespace awh {
 			 * @return        результат разбора числовой строки
 			 *
 			 * \~english
-			 * @brief Method of parsing a floating-point number from a string
+			 * @brief Function of parsing a floating-point number from a string
 			 * @param first   beginning of the parsed string
 			 * @param last    end of the parsed string
 			 * @param value   reference to the result of the parsing
@@ -664,7 +664,7 @@ namespace awh {
 			template <typename T, typename UC>
 			/**
 			 * \~russian
-			 * @brief Метод разбора целого числа из строки
+			 * @brief Функция разбора целого числа из строки
 			 *
 			 * @param first   начало разбираемой строки
 			 * @param last    конец разбираемой строки
@@ -673,7 +673,7 @@ namespace awh {
 			 * @return        результат разбора числовой строки
 			 *
 			 * \~english
-			 * @brief Method of parsing an integer from a string
+			 * @brief Function of parsing an integer from a string
 			 * @param first   beginning of the parsed string
 			 * @param last    end of the parsed string
 			 * @param value   reference to the result of the parsing
@@ -706,9 +706,9 @@ namespace awh {
 		template <typename T, typename UC = char>
 		/**
 		 * \~russian
-		 * @brief Метод разбора числа из строки с расширенными опциями
+		 * @brief Функция разбора числа из строки с расширенными опциями
 		 *
-		 * @details Метод поддерживает как числа с плавающей точкой, так и целые.
+		 * @details Функция поддерживает как числа с плавающей точкой, так и целые.
 		 *
 		 * @param first   начало разбираемой строки
 		 * @param last    конец разбираемой строки
@@ -717,8 +717,8 @@ namespace awh {
 		 * @return        результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing a number from a string with extended options
-		 * @details The method supports both floating-point numbers and integers.
+		 * @brief Function of parsing a number from a string with extended options
+		 * @details The function supports both floating-point numbers and integers.
 		 * @param first   beginning of the parsed string
 		 * @param last    end of the parsed string
 		 * @param value   reference to the result of the parsing
@@ -753,12 +753,12 @@ namespace awh {
 		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод разбора числа с плавающей точкой из строки
+		 * @brief Функция разбора числа с плавающей точкой из строки
 		 *
 		 * @details Формат записи соответствует функции strtod в локали «C».
 		 *          Результатом является ближайшее представимое значение,
 		 *          округлённое по правилу IEEE 754 к ближайшему чётному.
-		 *          Метод не выделяет память и не выбрасывает исключений.
+		 *          Функция не выделяет память и не выбрасывает исключений.
 		 *
 		 * @param first  начало разбираемой строки
 		 * @param last   конец разбираемой строки
@@ -767,11 +767,11 @@ namespace awh {
 		 * @return       результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing a floating-point number from a string
+		 * @brief Function of parsing a floating-point number from a string
 		 * @details The format of the record corresponds to the strtod function in the «C» locale.
 		 *          The result is the nearest representable value,
 		 *          rounded by the IEEE 754 rule to the nearest even.
-		 *          The method allocates no memory and throws no exceptions.
+		 *          The function allocates no memory and throws no exceptions.
 		 * @param first  beginning of the parsed string
 		 * @param last   end of the parsed string
 		 * @param value  reference to the result of the parsing
@@ -803,9 +803,9 @@ namespace awh {
 		template <typename T, typename UC = char, enableIf_t <is_supported_integer <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод разбора целого числа из строки
+		 * @brief Функция разбора целого числа из строки
 		 *
-		 * @details Метод не выделяет память и не выбрасывает исключений.
+		 * @details Функция не выделяет память и не выбрасывает исключений.
 		 *
 		 * @param first начало разбираемой строки
 		 * @param last  конец разбираемой строки
@@ -814,8 +814,8 @@ namespace awh {
 		 * @return      результат разбора числовой строки
 		 *
 		 * \~english
-		 * @brief Method of parsing an integer from a string
-		 * @details The method allocates no memory and throws no exceptions.
+		 * @brief Function of parsing an integer from a string
+		 * @details The function allocates no memory and throws no exceptions.
 		 * @param first beginning of the parsed string
 		 * @param last  end of the parsed string
 		 * @param value reference to the result of the parsing
@@ -847,9 +847,9 @@ namespace awh {
 		template <typename T, typename UC = char, enableIf_t <is_supported_integer <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод записи целого числа в строку
+		 * @brief Функция записи целого числа в строку
 		 *
-		 * @details Метод не выделяет память и не выбрасывает исключений. Завершающий
+		 * @details Функция не выделяет память и не выбрасывает исключений. Завершающий
 		 *          нулевой символ не записывается: конец записи задан выводимым указателем.
 		 *
 		 * @param first начало отведённого под запись места
@@ -859,8 +859,8 @@ namespace awh {
 		 * @return      результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing an integer into a string
-		 * @details The method allocates no memory and throws no exceptions. The terminating
+		 * @brief Function of writing an integer into a string
+		 * @details The function allocates no memory and throws no exceptions. The terminating
 		 *          null character is not written: the end of the record is set by the returned pointer.
 		 * @param first beginning of the place allotted for the record
 		 * @param last  end of the place allotted for the record
@@ -938,13 +938,13 @@ namespace awh {
 		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод записи числа с плавающей точкой в строку
+		 * @brief Функция записи числа с плавающей точкой в строку
 		 *
 		 * @details Запись содержит наименьшее количество значащих цифр, при котором она
-		 *          читается обратно тем же самым числом методом fromChars, а равно и
+		 *          читается обратно тем же самым числом функцией fromChars, а равно и
 		 *          любым иным разбором, соблюдающим округление к ближайшему. Подбор
 		 *          точности при этом не ведётся: количество цифр вычисляется сразу.
-		 *          Метод не выделяет память и не выбрасывает исключений.
+		 *          Функция не выделяет память и не выбрасывает исключений.
 		 *
 		 * @param first  начало отведённого под запись места
 		 * @param last   конец отведённого под запись места
@@ -953,12 +953,12 @@ namespace awh {
 		 * @return       результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing a floating-point number into a string
+		 * @brief Function of writing a floating-point number into a string
 		 * @details The record contains the least number of significant digits at which it
-		 *          is read back as the very same number by the fromChars method, and equally by
+		 *          is read back as the very same number by the fromChars function, and equally by
 		 *          any other parsing which observes the rounding to the nearest. No selection
 		 *          of the precision is conducted at that: the number of the digits is computed at once.
-		 *          The method allocates no memory and throws no exceptions.
+		 *          The function allocates no memory and throws no exceptions.
 		 * @param first  beginning of the place allotted for the record
 		 * @param last   end of the place allotted for the record
 		 * @param value  written number
@@ -990,7 +990,7 @@ namespace awh {
 		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод записи числа с плавающей точкой в строку с расширенными опциями
+		 * @brief Функция записи числа с плавающей точкой в строку с расширенными опциями
 		 *
 		 * @param first   начало отведённого под запись места
 		 * @param last    конец отведённого под запись места
@@ -999,7 +999,7 @@ namespace awh {
 		 * @return        результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing a floating-point number into a string with extended options
+		 * @brief Function of writing a floating-point number into a string with extended options
 		 * @param first   beginning of the place allotted for the record
 		 * @param last    end of the place allotted for the record
 		 * @param value   written number
@@ -1029,10 +1029,10 @@ namespace awh {
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод умножения беззнакового целого на степень десяти
+		 * @brief Функция умножения беззнакового целого на степень десяти
 		 *
 		 * @details При переполнении результатом является бесконечность,
-		 *          при антипереполнении — нуль. Метод не выделяет память
+		 *          при антипереполнении — нуль. Функция не выделяет память
 		 *          и не выбрасывает исключений.
 		 *
 		 * @param mantissa значение мантиссы
@@ -1040,9 +1040,9 @@ namespace awh {
 		 * @return         результат умножения
 		 *
 		 * \~english
-		 * @brief Method of multiplying an unsigned integer by a power of ten
+		 * @brief Function of multiplying an unsigned integer by a power of ten
 		 * @details On overflow the result is infinity,
-		 *          on underflow zero. The method allocates no memory
+		 *          on underflow zero. The function allocates no memory
 		 *          and throws no exceptions.
 		 * @param mantissa value of the mantissa
 		 * @param exponent decimal exponent
@@ -1079,10 +1079,10 @@ namespace awh {
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод умножения знакового целого на степень десяти
+		 * @brief Функция умножения знакового целого на степень десяти
 		 *
 		 * @details При переполнении результатом является бесконечность,
-		 *          при антипереполнении — нуль. Метод не выделяет память
+		 *          при антипереполнении — нуль. Функция не выделяет память
 		 *          и не выбрасывает исключений.
 		 *
 		 * @param mantissa значение мантиссы
@@ -1090,9 +1090,9 @@ namespace awh {
 		 * @return         результат умножения
 		 *
 		 * \~english
-		 * @brief Method of multiplying a signed integer by a power of ten
+		 * @brief Function of multiplying a signed integer by a power of ten
 		 * @details On overflow the result is infinity,
-		 *          on underflow zero. The method allocates no memory
+		 *          on underflow zero. The function allocates no memory
 		 *          and throws no exceptions.
 		 * @param mantissa value of the mantissa
 		 * @param exponent decimal exponent
@@ -1137,14 +1137,14 @@ namespace awh {
 		template <typename T = double, typename INT, enableIf_t <is_supported_float <T>::value && is_integral <INT>::value> = 0>
 		/**
 		 * \~russian
-		 * @brief Метод умножения целого произвольного типа на степень десяти
+		 * @brief Функция умножения целого произвольного типа на степень десяти
 		 *
 		 * @param mantissa значение мантиссы
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
 		 *
 		 * \~english
-		 * @brief Method of multiplying an integer of an arbitrary type by a power of ten
+		 * @brief Function of multiplying an integer of an arbitrary type by a power of ten
 		 * @param mantissa value of the mantissa
 		 * @param exponent decimal exponent
 		 * @return         result of the multiplication

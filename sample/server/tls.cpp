@@ -222,7 +222,7 @@ int32_t main(){
 	// Создаём объект сервера
 	server_t server(&dns, &tls);
 	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	*/
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);

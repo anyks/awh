@@ -56,7 +56,7 @@ using namespace awh::args;
  */
 namespace {
 	/**
-	 * @brief Метод извещения об отказе разбора
+	 * @brief Функция извещения об отказе разбора
 	 *
 	 * @param failure  отзыв извещения об отказе разбора
 	 * @param error    код ошибки разбора

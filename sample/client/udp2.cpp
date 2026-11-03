@@ -171,7 +171,7 @@ int32_t main(){
 	// Создаём объект клиента
 	client_t client(&dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	[[maybe_unused]] const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события

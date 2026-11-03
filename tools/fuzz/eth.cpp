@@ -13,13 +13,13 @@
  * @site https://anyks.com
  *
  * @brief Инструмент фаззинга модуля работы с сетевыми устройствами — подача договору
- *        `awh::eth_t` случайных доводов: имён устройств из мусорных октетов, адресов
+ *        `awh::eth` случайных доводов: имён устройств из мусорных октетов, адресов
  *        любой длины и содержимого, описателей негодных, закрытых и чужого рода,
  *        семейств и наречий в несочетаемых парах — для поиска аварийных завершений,
  *        выходов за границы буфера и утечек описателей
  *
  * @details Ворошитель этот устроен по образцу соседнего `io.cpp`: поверяется не разбор
- *          входного потока, а обхождение с ДОВОДАМИ. Договор `eth_t` тем и отличается
+ *          входного потока, а обхождение с ДОВОДАМИ. Договор `awh::eth` тем и отличается
  *          от договора движка, что почти всякий его метод принимает довод, пришедший
  *          снаружи, - имя устройства от потребителя, описатель от него же, адрес из
  *          разобранного текста, - и обязан устоять на любом из них
@@ -294,7 +294,7 @@ static unique_ptr <awh::net::addr_t> address(mt19937_64 & engine) noexcept {
  * @param engine источник случайных чисел
  *
  */
-static void ifaces(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+static void ifaces(mt19937_64 & engine) noexcept {
 	// Имя устройства, каким ведётся ворошение
 	const string name = ::interface(engine);
 	// Собранный сетевой адрес
@@ -306,17 +306,17 @@ static void ifaces(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 	 */
 	switch(static_cast <uint8_t> (::pick(engine, 7))){
 		// Спрашиваем доступность устройства
-		case 0: static_cast <void> (eth.iface.isAvailable(name)); break;
+		case 0: static_cast <void> (awh::eth::iface::isAvailable(name)); break;
 		// Спрашиваем, является ли устройство туннелем
-		case 1: static_cast <void> (eth.iface.isTunnel(name)); break;
+		case 1: static_cast <void> (awh::eth::iface::isTunnel(name)); break;
 		// Спрашиваем, является ли устройство туннелем по адресу
-		case 2: static_cast <void> (eth.iface.isTunnel(addr.get())); break;
+		case 2: static_cast <void> (awh::eth::iface::isTunnel(addr.get())); break;
 		// Спрашиваем, является ли устройство надуманным
-		case 3: static_cast <void> (eth.iface.isVirtual(name)); break;
+		case 3: static_cast <void> (awh::eth::iface::isVirtual(name)); break;
 		// Спрашиваем имя устройства по адресу
-		case 4: static_cast <void> (eth.iface.name(addr.get())); break;
+		case 4: static_cast <void> (awh::eth::iface::name(addr.get())); break;
 		// Спрашиваем наибольший размер пакета устройства
-		case 5: static_cast <void> (eth.iface.mtu(name)); break;
+		case 5: static_cast <void> (awh::eth::iface::mtu(name)); break;
 		// Спрашиваем адрес устройства
 		case 6: {
 			// Снимаемый адрес устройства
@@ -326,7 +326,7 @@ static void ifaces(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 			// Снимаемый префикс сети
 			uint8_t prefix = 0;
 			// Выполняем снятие адреса устройства
-			static_cast <void> (eth.iface.getAddress(name, ip, peer, prefix));
+			static_cast <void> (awh::eth::iface::getAddress(name, ip, peer, prefix));
 		} break;
 	}
 }
@@ -337,7 +337,7 @@ static void ifaces(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
  * @param engine источник случайных чисел
  *
  */
-static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+static void addrs(mt19937_64 & engine) noexcept {
 	// Считаем вызов метода адресов
 	::totals.addrs++;
 	/**
@@ -345,7 +345,7 @@ static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 	 */
 	switch(static_cast <uint8_t> (::pick(engine, 5))){
 		// Спрашиваем принадлежность адреса подсети
-		case 0: static_cast <void> (eth.addr.isInSubnet(
+		case 0: static_cast <void> (awh::eth::addr::isInSubnet(
 			static_cast <uint32_t> (engine()),
 			static_cast <uint32_t> (engine()),
 			static_cast <uint8_t> (::pick(engine, 40))
@@ -357,7 +357,7 @@ static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 			// Устанавливаем имя устройства источника
 			source.iface = ::interface(engine);
 			// Выполняем заполнение источника
-			eth.addr.fillSource(source);
+			awh::eth::addr::fillSource(source);
 		} break;
 		// Заполняем источник по заданной сети
 		case 2: {
@@ -366,7 +366,7 @@ static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 			// Собираем сеть, по какой заполняется источник
 			unique_ptr <awh::net::addr_t> net = ::address(engine);
 			// Выполняем заполнение источника
-			eth.addr.fillSource(net.get(), source);
+			awh::eth::addr::fillSource(net.get(), source);
 		} break;
 		// Считаем контрольную сумму переносимого уровня
 		case 3: {
@@ -390,14 +390,14 @@ static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 			 *          за границы буфера: договор считает сумму по стольким октетам,
 			 *          сколько ему названо, и назвать больше - изъян зовущего, не его
 			 */
-			static_cast <void> (eth.addr.checksum(
+			static_cast <void> (awh::eth::addr::checksum(
 				FAMILIES[::pick(engine, sizeof(FAMILIES) / sizeof(FAMILIES[0]))],
 				PROTOCOLS[::pick(engine, sizeof(PROTOCOLS) / sizeof(PROTOCOLS[0]))],
 				src.get(), dst.get(), transport.data(), length
 			));
 		} break;
 		// Считаем контрольную сумму на пустых доводах
-		case 4: static_cast <void> (eth.addr.checksum(
+		case 4: static_cast <void> (awh::eth::addr::checksum(
 			FAMILIES[::pick(engine, sizeof(FAMILIES) / sizeof(FAMILIES[0]))],
 			PROTOCOLS[::pick(engine, sizeof(PROTOCOLS) / sizeof(PROTOCOLS[0]))],
 			nullptr, nullptr, nullptr, 0
@@ -416,7 +416,7 @@ static void addrs(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
  * @param engine источник случайных чисел
  *
  */
-static void sockets(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+static void sockets(mt19937_64 & engine) noexcept {
 	// Описатель, каким ведётся ворошение
 	awh::net::socket_t sock = awh::net::invalid_socket_t;
 	// Признак того, что описатель заведён ворошителем и подлежит закрытию
@@ -487,38 +487,38 @@ static void sockets(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 	 */
 	switch(static_cast <uint8_t> (::pick(engine, 12))){
 		// Спрашиваем последний отказ сокета
-		case 0: static_cast <void> (eth.socket.getError(sock)); break;
+		case 0: static_cast <void> (awh::eth::socket::getError(sock)); break;
 		// Спрашиваем размер буфера сокета
-		case 1: static_cast <void> (eth.socket.getBufferSize(sock, awh::net::socket_event_t::READ)); break;
+		case 1: static_cast <void> (awh::eth::socket::getBufferSize(sock, awh::net::socket_event_t::READ)); break;
 		// Спрашиваем доступный объём буфера сокета
-		case 2: static_cast <void> (eth.socket.getBufferAvailable(sock, awh::net::socket_event_t::WRITE)); break;
+		case 2: static_cast <void> (awh::eth::socket::getBufferAvailable(sock, awh::net::socket_event_t::WRITE)); break;
 		// Задаём размер буфера сокета
-		case 3: static_cast <void> (eth.socket.setBufferSize(sock, awh::net::socket_event_t::READ, static_cast <int32_t> (engine()))); break;
+		case 3: static_cast <void> (awh::eth::socket::setBufferSize(sock, awh::net::socket_event_t::READ, static_cast <int32_t> (engine()))); break;
 		// Задаём срок ожидания сокета
-		case 4: static_cast <void> (eth.socket.setTimeout(sock, awh::net::socket_event_t::WRITE, static_cast <uint32_t> (engine()))); break;
+		case 4: static_cast <void> (awh::eth::socket::setTimeout(sock, awh::net::socket_event_t::WRITE, static_cast <uint32_t> (engine()))); break;
 		// Спрашиваем срок ожидания сокета
-		case 5: static_cast <void> (eth.socket.getTimeout(sock, awh::net::socket_event_t::READ)); break;
+		case 5: static_cast <void> (awh::eth::socket::getTimeout(sock, awh::net::socket_event_t::READ)); break;
 		// Задаём устройство выхода групповой рассылки
-		case 6: static_cast <void> (eth.socket.setMulticastIface(sock, family, ::interface(engine))); break;
+		case 6: static_cast <void> (awh::eth::socket::setMulticastIface(sock, family, ::interface(engine))); break;
 		// Задаём поддержание связи
-		case 7: static_cast <void> (eth.socket.setKeepalive(sock,
+		case 7: static_cast <void> (awh::eth::socket::setKeepalive(sock,
 			static_cast <int32_t> (engine()), static_cast <int32_t> (engine()), static_cast <int32_t> (engine())
 		)); break;
 		// Спрашиваем число прыжков сокета
-		case 8: static_cast <void> (eth.socket.getHops(sock, family,
+		case 8: static_cast <void> (awh::eth::socket::getHops(sock, family,
 			DELIVERIES[::pick(engine, sizeof(DELIVERIES) / sizeof(DELIVERIES[0]))]
 		)); break;
 		// Задаём число прыжков сокета
-		case 9: static_cast <void> (eth.socket.setHops(sock, family,
+		case 9: static_cast <void> (awh::eth::socket::setHops(sock, family,
 			DELIVERIES[::pick(engine, sizeof(DELIVERIES) / sizeof(DELIVERIES[0]))],
 			static_cast <uint8_t> (::pick(engine, 256))
 		)); break;
 		// Задаём код дифференцированного обслуживания
-		case 10: static_cast <void> (eth.socket.setDifferentiatedServicesCodePoint(sock, family,
+		case 10: static_cast <void> (awh::eth::socket::setDifferentiatedServicesCodePoint(sock, family,
 			static_cast <awh::event::dscp_t> (::pick(engine, 64))
 		)); break;
 		// Задаём режим уведомления о перегрузке
-		case 11: static_cast <void> (eth.socket.setExplicitCongestionNotification(sock, family,
+		case 11: static_cast <void> (awh::eth::socket::setExplicitCongestionNotification(sock, family,
 			static_cast <awh::event::ecn_t> (::pick(engine, 8))
 		)); break;
 	}
@@ -565,9 +565,9 @@ static void sockets(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
  * @param engine источник случайных чисел
  *
  */
-static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+static void gateways(mt19937_64 & engine) noexcept {
 	// Маршрут, каким ведётся ворошение
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Задаём имя устройства маршрута
 	route.ifname = ::interface(engine);
 	// Задаём префикс сети маршрута
@@ -583,7 +583,7 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 	// Считаем вызов метода шлюзов
 	::totals.gateways++;
 	// Выполняем подбор маршрута
-	static_cast <void> (eth.gateway.get(route));
+	static_cast <void> (awh::eth::gateway::get(route));
 }
 
 /**
@@ -604,7 +604,7 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
  *
  */
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
-	static void sctps(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+	static void sctps(mt19937_64 & engine) noexcept {
 		// Описатель, каким ведётся ворошение
 		awh::net::socket_t sock = awh::net::invalid_socket_t;
 		// Признак того, что описатель заведён ворошителем
@@ -653,7 +653,7 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 				// Состояние связи SCTP
 				awh::net::sctp::status_t status{};
 				// Выполняем снятие состояния связи
-				static_cast <void> (eth.sctp.status(sock, status));
+				static_cast <void> (awh::eth::sctp::status(sock, status));
 			} break;
 			// Задаём параметры установки связи
 			case 1: {
@@ -666,10 +666,10 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 				// Задаём число входящих потоков
 				initmsg.istreams = static_cast <uint16_t> (engine());
 				// Выполняем установку параметров связи
-				static_cast <void> (eth.sctp.initMessages(sock, initmsg));
+				static_cast <void> (awh::eth::sctp::initMessages(sock, initmsg));
 			} break;
 			// Спрашиваем поддержку возможности протокола
-			case 2: static_cast <void> (eth.sctp.supported(
+			case 2: static_cast <void> (awh::eth::sctp::supported(
 				FEATURES[::pick(engine, sizeof(FEATURES) / sizeof(FEATURES[0]))]
 			)); break;
 			// Задаём состав видов проверки подлинности
@@ -683,7 +683,7 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 					// Добавляем очередной вид проверки подлинности
 					types.push_back(AUTHS[::pick(engine, sizeof(AUTHS) / sizeof(AUTHS[0]))]);
 				// Выполняем установку состава видов проверки подлинности
-				static_cast <void> (eth.sctp.authenticateSupportAlgorithms(sock, types));
+				static_cast <void> (awh::eth::sctp::authenticateSupportAlgorithms(sock, types));
 			} break;
 			// Задаём ключ проверки подлинности
 			case 4: {
@@ -698,27 +698,27 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 					// Записываем очередной октет ключа
 					key[i] = static_cast <char> (::pick(engine, 256));
 				// Выполняем установку ключа проверки подлинности
-				static_cast <void> (eth.sctp.authenticateKey(sock, static_cast <uint16_t> (engine()), key));
+				static_cast <void> (awh::eth::sctp::authenticateKey(sock, static_cast <uint16_t> (engine()), key));
 			} break;
 			// Спрашиваем срок протокола
-			case 5: static_cast <void> (eth.sctp.timeout(sock, static_cast <uint32_t> (engine()),
+			case 5: static_cast <void> (awh::eth::sctp::timeout(sock, static_cast <uint32_t> (engine()),
 				TIMEOUTS[::pick(engine, sizeof(TIMEOUTS) / sizeof(TIMEOUTS[0]))]
 			)); break;
 			// Задаём срок протокола
-			case 6: static_cast <void> (eth.sctp.timeout(sock, static_cast <uint32_t> (engine()),
+			case 6: static_cast <void> (awh::eth::sctp::timeout(sock, static_cast <uint32_t> (engine()),
 				TIMEOUTS[::pick(engine, sizeof(TIMEOUTS) / sizeof(TIMEOUTS[0]))],
 				static_cast <uint32_t> (engine())
 			)); break;
 			// Спрашиваем современность оснастки протокола
-			case 7: static_cast <void> (eth.sctp.modern()); break;
+			case 7: static_cast <void> (awh::eth::sctp::modern()); break;
 			// Спрашиваем поддержку частичной выдачи
-			case 8: static_cast <void> (eth.sctp.partial()); break;
+			case 8: static_cast <void> (awh::eth::sctp::partial()); break;
 			// Задаём выдачу сведений о принятом сообщении
 			case 9: {
 				// Задаём выдачу сведений о принятом сообщении
-				static_cast <void> (eth.sctp.receiveInfo(sock, (::pick(engine, 2) == 0)));
+				static_cast <void> (awh::eth::sctp::receiveInfo(sock, (::pick(engine, 2) == 0)));
 				// Задаём явную границу записи
-				static_cast <void> (eth.sctp.explicitEndOfRecord(sock, (::pick(engine, 2) == 0)));
+				static_cast <void> (awh::eth::sctp::explicitEndOfRecord(sock, (::pick(engine, 2) == 0)));
 			} break;
 		}
 		// Если описатель заведён ворошителем, закрываем его
@@ -776,7 +776,7 @@ static vector <int32_t> descriptorList() noexcept {
 	/**
 	 * Перебираем описатели процесса
 	 *
-	 * @note Предел взят с запасом: договор `eth_t` держит сокетов единицы, и обход
+	 * @note Предел взят с запасом: договор `awh::eth` держит сокетов единицы, и обход
 	 *       тысячи чисел стоит меньше миллисекунды
 	 */
 	/**
@@ -837,7 +837,6 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Заводим источник случайных чисел
 	mt19937_64 engine(seed);
 	// Заводим объект работы с сетевыми устройствами
-	const awh::eth_t eth;
 	/**
 	 * Число проходов разогрева
 	 *
@@ -868,18 +867,18 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		#endif
 		switch(static_cast <uint8_t> (::pick(engine, parts))){
 			// Ворошим методы сетевых устройств
-			case 0: ::ifaces(eth, engine); break;
+			case 0: ::ifaces(engine); break;
 			// Ворошим методы работы с адресами
-			case 1: ::addrs(eth, engine); break;
+			case 1: ::addrs(engine); break;
 			// Ворошим методы работы с сокетами
-			case 2: ::sockets(eth, engine); break;
+			case 2: ::sockets(engine); break;
 			// Ворошим методы работы со шлюзами
-			case 3: ::gateways(eth, engine); break;
+			case 3: ::gateways(engine); break;
 			/**
 			 * Ворошим методы работы с SCTP
 			 */
 			#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
-				case 4: ::sctps(eth, engine); break;
+				case 4: ::sctps(engine); break;
 			#endif
 		}
 		// Если разогрев закончен, снимаем эталонный перечень описателей

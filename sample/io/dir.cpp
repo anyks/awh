@@ -30,7 +30,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -58,14 +58,12 @@ int32_t main(){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Добавляем новое событие каталога
-	event::id_t eid = io.event(event::node_t::DIR, event::family_t::FSYS);
+	event::id_t eid = engine::event(event::node_t::DIR, event::family_t::FSYS);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Устанавливаем функцию обратного вызова на изменение статуса события
-		io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -138,7 +136,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
-		io.on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -191,7 +189,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на изменение события
-		io.on(eid, []([[maybe_unused]] const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
+		engine::on(eid, []([[maybe_unused]] const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
 			/**
 			 * Обрабатываем тип узла события
 			 */
@@ -328,7 +326,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		io.on(eid, [&io](const event::id_t eid, const event::action_t action) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -361,7 +359,7 @@ int32_t main(){
 				// Если действие является переименованием
 				case static_cast <uint8_t> (event::action_t::RENAME):
 					// Записываем в лог сообщение о переименовании события
-					log::print("Событие на переименование: ID=%u, новый адрес: %s", log::flag_t::INFO, eid, io.getAddress(eid, event::address_t::FS).c_str());
+					log::print("Событие на переименование: ID=%u, новый адрес: %s", log::flag_t::INFO, eid, engine::getAddress(eid, event::address_t::FS).c_str());
 				break;
 				// Если действие является изменением атрибутов
 				case static_cast <uint8_t> (event::action_t::ATTRIB):
@@ -381,17 +379,17 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому каталогу
-		if(io.setAddress(eid, event::address_t::FS, "../tmp")){
+		if(engine::setAddress(eid, event::address_t::FS, "../tmp")){
 			// Выполняем фиксацию настроек события сервера
-			if(io.commit(eid)){
+			if(engine::commit(eid)){
 				// Выполняем запуск события
-				if(io.launch(eid)){
+				if(engine::launch(eid)){
 					// Записываем в лог сообщение об успешном запуске события
 					cout << " Событие успешно запущено!" << endl;
 					/**
 					 * Запускаем опрос событий
 					 */
-					while(io.poll());
+					while(engine::poll());
 				// Записываем ошибку в лог запуска события
 				} else cout << " Ошибка запуска события!" << endl;
 			}

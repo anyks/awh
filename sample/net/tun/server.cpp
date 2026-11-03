@@ -49,7 +49,7 @@
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 #include <sys/signals.hpp>
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <net/addr.hpp>
 #include <net/eth/eth.hpp>
 #include <net/eth/gateway.hpp>
@@ -273,12 +273,8 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Запускаем отслеживание сигналов
 	signals.start();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Создаём объект работы с сетевыми адресами
 	net_addr_t addr;
-	// Создаём объект работы с шлюзами
-	eth::gateway_t gateway;
 	/**
 	 * Семейство адресов узлов выводим из вида заданных адресов
 	 *
@@ -298,13 +294,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Вид адреса узла несущей связи
 	const event::address_t netAddress = (net6 ? event::address_t::IPV6 : event::address_t::IPV4);
 	// Добавляем новое событие туннеля
-	event::id_t tid = io.event(event::node_t::TUNNEL, tunFamily);
+	event::id_t tid = engine::event(event::node_t::TUNNEL, tunFamily);
 	// Добавляем новое событие посредника
-	event::id_t mid = io.event(event::node_t::MEDIATOR, tunFamily);
+	event::id_t mid = engine::event(event::node_t::MEDIATOR, tunFamily);
 	// Добавляем новое событие сервера UDP
-	event::id_t eid = io.event(event::node_t::SERVER, netFamily, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	event::id_t eid = engine::event(event::node_t::SERVER, netFamily, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
-	io.setSourcePort(eid, params.port);
+	engine::setSourcePort(eid, params.port);
 	/**
 	 * Задаём драйвер, каким заводится устройство туннеля
 	 *
@@ -323,13 +319,13 @@ int32_t main(int32_t argc, char * argv[]){
 			// Если заказан драйвер Wintun
 			if(params.driver.compare("wintun") == 0){
 				// Задаём драйвер устройств туннеля
-				io.setDriver(eth::iface_t::driver_t::WINTUN);
+				engine::setDriver(eth::iface::driver_t::WINTUN);
 				// Записываем в лог сообщение о выбранном драйвере
 				cout << " Драйвер устройства туннеля: Wintun" << endl;
 			// Если заказан драйвер tap-windows6
 			} else if(params.driver.compare("tap") == 0) {
 				// Задаём драйвер устройств туннеля
-				io.setDriver(eth::iface_t::driver_t::TAP);
+				engine::setDriver(eth::iface::driver_t::TAP);
 				// Записываем в лог сообщение о выбранном драйвере
 				cout << " Драйвер устройства туннеля: tap-windows6" << endl;
 			// Если заказан драйвер, какого не существует
@@ -347,9 +343,9 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	if(!params.iface.empty()){
 		// Задаём название устройства туннеля
-		if(io.setIface(tid, params.iface)){
+		if(engine::setIface(tid, params.iface)){
 			// Пересоздаём устройство туннеля по названному имени
-			if(io.rebuild(tid))
+			if(engine::rebuild(tid))
 				// Записываем в лог сообщение об успешном заведении устройства
 				cout << " Устройство туннеля \"" << params.iface << "\" заведено!" << endl;
 			// Записываем ошибку в лог заведения устройства
@@ -358,21 +354,21 @@ int32_t main(int32_t argc, char * argv[]){
 		} else cout << " Ошибка установки названия устройства туннеля!" << endl;
 	}
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Устананавливаем опции события туннеля
-		if(io.setOptions(tid, event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+		if(engine::setOptions(tid, event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события туннеля!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события туннеля!" << endl;
 		// Устананавливаем опции события
-		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::AUTO_RECONNECT))
+		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::AUTO_RECONNECT))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события сервера! " << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события сервера!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.setAddress(eid, netAddress, params.bind) && io.setAddress(tid, tunAddress, params.tun)){
+		if(engine::setAddress(eid, netAddress, params.bind) && engine::setAddress(tid, tunAddress, params.tun)){
 			/**
 			 * Устанавливаем адрес встречной стороны
 			 *
@@ -380,9 +376,9 @@ int32_t main(int32_t argc, char * argv[]){
 			 *       нечего задать другим концом точки-точки, и у IPv6 обратный путь
 			 *       остаётся без маршрута вовсе
 			 */
-			if(io.setTarget(mid, params.peer) && io.setTarget(tid, params.peer)){
+			if(engine::setTarget(mid, params.peer) && engine::setTarget(tid, params.peer)){
 				// Устанавливаем функцию обратного вызова на событие сервера
-				io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -455,7 +451,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на событие туннеля
-				io.on(tid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(tid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -528,7 +524,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на событие посредника
-				io.on(mid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(mid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -601,13 +597,13 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на подключение нового клиента
-				io.on(eid, static_cast <engine::callback::accept_t> ([tid, mid, &io](const event::id_t eid, const event::id_t cid) noexcept -> void {
+				engine::on(eid, static_cast <engine::callback::accept_t> ([tid, mid](const event::id_t eid, const event::id_t cid) noexcept -> void {
 					// Объединяем с пиром
-					io.splice(mid, cid);
+					engine::splice(mid, cid);
 					// Записываем в лог сообщение о принятии события
-					log::print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getSourcePort(cid));
+					log::print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log::flag_t::INFO, eid, cid, engine::getAddress(cid, event::address_t::IPV4).c_str(), engine::getSourcePort(cid));
 					// Устанавливаем функцию обратного вызова на изменение статуса события
-					io.on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+					engine::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -680,25 +676,25 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					io.on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+					engine::on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о записи данных
 						log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					io.on(cid, [tid, &io](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					engine::on(cid, [tid](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о чтении данных
 						log::print("Прочитано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 						// Отправляем данные в туннель
-						if(io.send(tid, reinterpret_cast <const char *> (data), size))
+						if(engine::send(tid, reinterpret_cast <const char *> (data), size))
 							// Если данные успешно отправлены
 							log::print("Отправлено в туннель: ID=%u, %zu байт", log::flag_t::INFO, tid, size);
 						// Если данные не отправлены
 						else log::print("Ошибка отправки в туннель: ID=%u", log::flag_t::CRITICAL, tid);
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					io.on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+					engine::on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -756,7 +752,7 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					io.on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+					engine::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -825,20 +821,20 @@ int32_t main(int32_t argc, char * argv[]){
 					});
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события посредника
-				io.on(mid, [&io](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::on(mid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Записываем в лог сообщение о чтении данных
 					log::print("Прочитано из посредника: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 					// Отправляем данные обратно клиенту
-					if(io.send(eid, reinterpret_cast <const char *> (data), size))
+					if(engine::send(eid, reinterpret_cast <const char *> (data), size))
 						// Если данные успешно отправлены
 						log::print("Отправлено в сервер: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 					// Если данные не отправлены
 					else log::print("Ошибка отправки в сервер: ID=%u", log::flag_t::CRITICAL, eid);
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события сервера
-				io.on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -896,7 +892,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события туннеля
-				io.on(tid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(tid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -954,7 +950,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на получение информации пакетов в туннеле
-				io.on(tid, [&addr](const event::id_t tid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept -> void {
+				engine::on(tid, [&addr](const event::id_t tid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept -> void {
 					// Количество хопов до процесса
 					string hops = "";
 					// Семейство адресов процесса
@@ -1111,7 +1107,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события посредника
-				io.on(mid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(mid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -1169,7 +1165,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие сервера
-				io.on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -1237,7 +1233,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие посредника
-				io.on(mid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::on(mid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -1305,11 +1301,11 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Выполняем фиксацию настроек события сервера
-				if(io.commit(eid) && io.commit(tid) && io.commit(mid)){
+				if(engine::commit(eid) && engine::commit(tid) && engine::commit(mid)){
 					// Выполняем запуск события
-					if(io.launch(eid) && io.launch(tid)){
+					if(engine::launch(eid) && engine::launch(tid)){
 						// Получаем название устройства туннеля
-						const string iface = io.getIface(tid);
+						const string iface = engine::getIface(tid);
 						// Записываем в лог название заведённого устройства
 						cout << " Устройство туннеля: " << iface << endl;
 						/**
@@ -1321,16 +1317,15 @@ int32_t main(int32_t argc, char * argv[]){
 						 */
 						if(params.up && !iface.empty()){
 							// Создаём объект работы с сетью
-							eth_t eth;
 							// Поднимаем устройство туннеля
-							if(eth.iface.flag(iface, event::eth_flag_t::UP, event::mode_t::ENABLED))
+							if(eth::iface::flag(iface, event::eth_flag_t::UP, event::mode_t::ENABLED))
 								// Записываем в лог сообщение об успешном поднятии устройства
 								cout << " Устройство туннеля поднято!" << endl;
 							// Записываем ошибку в лог поднятия устройства
 							else cout << " Ошибка поднятия устройства туннеля!" << endl;
 						}
 						// Маршрут туннеля
-						eth::gateway_t::route_t route;
+						eth::gateway::route_t route;
 						// Устанавливаем интерфейс туннеля
 						route.ifname = iface;
 						// Устанавливаем префикс маршрута туннеля
@@ -1366,7 +1361,7 @@ int32_t main(int32_t argc, char * argv[]){
 							awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
 						}
 						// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
-						if(params.route && gateway.add(route))
+						if(params.route && eth::gateway::add(route))
 							// Записываем в лог сообщение об успешной установке маршрута туннеля
 							cout << " Маршрут туннеля успешно установлен!" << endl;
 						// Записываем в лог сообщение об успешном запуске события
@@ -1388,7 +1383,7 @@ int32_t main(int32_t argc, char * argv[]){
 						 * @note Выход обязан быть штатным: только он доводит дело до разбора
 						 *       объектов, а с ним - и до сноса устройства туннеля
 						 */
-						while(!__awh_stop__.load() && io.poll(250)){
+						while(!__awh_stop__.load() && engine::poll(250)){
 							/**
 							 * Если срок до пересоздания задан и вышел - заказываем пересоздание
 							 *
@@ -1414,21 +1409,20 @@ int32_t main(int32_t argc, char * argv[]){
 							 *       пересоздание переигрывает обе стадии само, а повторный
 							 *       запуск поверх уже запущенного отвечает отказом
 							 */
-							if(!io.rebuild(tid))
+							if(!engine::rebuild(tid))
 								// Записываем ошибку в лог пересоздания устройства
 								cout << " Ошибка пересоздания устройства туннеля!" << endl;
 							// Если устройство пересоздано
 							else {
 								// Получаем название заведённого устройства
-								const string iface = io.getIface(tid);
+								const string iface = engine::getIface(tid);
 								// Записываем в лог название заведённого устройства
 								cout << " Устройство туннеля пересоздано: " << iface << endl;
 								// Если устройство требуется поднять
 								if(params.up && !iface.empty()){
 									// Создаём объект работы с сетью
-									eth_t eth;
 									// Поднимаем устройство туннеля
-									if(eth.iface.flag(iface, event::eth_flag_t::UP, event::mode_t::ENABLED))
+									if(eth::iface::flag(iface, event::eth_flag_t::UP, event::mode_t::ENABLED))
 										// Записываем в лог сообщение об успешном поднятии устройства
 										cout << " Устройство туннеля поднято!" << endl;
 									// Записываем ошибку в лог поднятия устройства
@@ -1439,7 +1433,7 @@ int32_t main(int32_t argc, char * argv[]){
 						// Записываем в лог сообщение об остановке
 						cout << " Остановка по сигналу, разбираем события..." << endl;
 						// Выполняем разбор всех событий
-						io.deinitialize();
+						engine::deinitialize();
 						// Записываем в лог сообщение о завершении работы
 						cout << " Работа завершена!" << endl;
 					// Записываем ошибку в лог запуска события

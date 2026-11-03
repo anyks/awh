@@ -530,14 +530,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод нормализации одного 64-битного слова к старшим 64 битам
+		 * @brief Функция нормализации одного 64-битного слова к старшим 64 битам
 		 *
 		 * @param value     нормализуемое значение
 		 * @param truncated ссылка на признак отброшенных значащих бит
 		 * @return          нормализованные старшие 64 бита
 		 *
 		 * \~english
-		 * @brief Method of normalising one 64-bit word to the high 64 bits
+		 * @brief Function of normalising one 64-bit word to the high 64 bits
 		 * @param value     value being normalised
 		 * @param truncated reference to the indication of discarded significant bits
 		 * @return          normalised high 64 bits
@@ -557,7 +557,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод сборки старших 64 бит из двух 64-битных слов
+		 * @brief Функция сборки старших 64 бит из двух 64-битных слов
 		 *
 		 * @param high      старшее слово
 		 * @param low       младшее слово
@@ -565,7 +565,7 @@ namespace awh {
 		 * @return          нормализованные старшие 64 бита
 		 *
 		 * \~english
-		 * @brief Method of assembling the high 64 bits from two 64-bit words
+		 * @brief Function of assembling the high 64 bits from two 64-bit words
 		 * @param high      high word
 		 * @param low       low word
 		 * @param truncated reference to the indication of discarded significant bits
@@ -598,7 +598,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод сборки старших 64 бит из двух 32-битных слов
+		 * @brief Функция сборки старших 64 бит из двух 32-битных слов
 		 *
 		 * @param high      старшее слово
 		 * @param low       младшее слово
@@ -606,7 +606,7 @@ namespace awh {
 		 * @return          нормализованные старшие 64 бита
 		 *
 		 * \~english
-		 * @brief Method of assembling the high 64 bits from two 32-bit words
+		 * @brief Function of assembling the high 64 bits from two 32-bit words
 		 * @param high      high word
 		 * @param low       low word
 		 * @param truncated reference to the indication of discarded significant bits
@@ -621,7 +621,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод сборки старших 64 бит из трёх 32-битных слов
+		 * @brief Функция сборки старших 64 бит из трёх 32-битных слов
 		 *
 		 * @param high      старшее слово
 		 * @param middle    среднее слово
@@ -630,7 +630,7 @@ namespace awh {
 		 * @return          нормализованные старшие 64 бита
 		 *
 		 * \~english
-		 * @brief Method of assembling the high 64 bits from three 32-bit words
+		 * @brief Function of assembling the high 64 bits from three 32-bit words
 		 * @param high      high word
 		 * @param middle    middle word
 		 * @param low       low word
@@ -650,7 +650,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод сложения двух разрядов с контролем переполнения
+		 * @brief Функция сложения двух разрядов с контролем переполнения
 		 *
 		 * @param x        первое слагаемое
 		 * @param y        второе слагаемое
@@ -658,7 +658,7 @@ namespace awh {
 		 * @return         сумма по модулю разрядности
 		 *
 		 * \~english
-		 * @brief Method of adding two limbs with overflow control
+		 * @brief Function of adding two limbs with overflow control
 		 * @param x        first addend
 		 * @param y        second addend
 		 * @param overflow reference to the indication of a limb overflow
@@ -690,7 +690,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод умножения двух разрядов с накоплением переноса
+		 * @brief Функция умножения двух разрядов с накоплением переноса
 		 *
 		 * @param x     первый множитель
 		 * @param y     второй множитель
@@ -698,7 +698,7 @@ namespace awh {
 		 * @return      младшая часть произведения
 		 *
 		 * \~english
-		 * @brief Method of multiplying two limbs with the accumulation of the carry
+		 * @brief Function of multiplying two limbs with the accumulation of the carry
 		 * @param x     first multiplier
 		 * @param y     second multiplier
 		 * @param carry reference to the incoming and the outgoing carry
@@ -773,7 +773,7 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод добавления скаляра к значению длинной арифметики со смещением
+		 * @brief Функция добавления скаляра к значению длинной арифметики со смещением
 		 *
 		 * @param limbs целевой вектор разрядов
 		 * @param value добавляемое значение
@@ -781,7 +781,7 @@ namespace awh {
 		 * @return      результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of adding a scalar to a long arithmetic value with an offset
+		 * @brief Function of adding a scalar to a long arithmetic value with an offset
 		 * @param limbs target limb vector
 		 * @param value added value
 		 * @param start index of the limb the addition starts from
@@ -831,14 +831,14 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод добавления скаляра к значению длинной арифметики
+		 * @brief Функция добавления скаляра к значению длинной арифметики
 		 *
 		 * @param limbs целевой вектор разрядов
 		 * @param value добавляемое значение
 		 * @return      результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of adding a scalar to a long arithmetic value
+		 * @brief Function of adding a scalar to a long arithmetic value
 		 * @param limbs target limb vector
 		 * @param value added value
 		 * @return      result of performing the operation
@@ -866,14 +866,14 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод умножения значения длинной арифметики на скаляр
+		 * @brief Функция умножения значения длинной арифметики на скаляр
 		 *
 		 * @param limbs целевой вектор разрядов
 		 * @param value множитель
 		 * @return      результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of multiplying a long arithmetic value by a scalar
+		 * @brief Function of multiplying a long arithmetic value by a scalar
 		 * @param limbs target limb vector
 		 * @param value multiplier
 		 * @return      result of performing the operation
@@ -913,7 +913,7 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод добавления диапазона разрядов со смещением
+		 * @brief Функция добавления диапазона разрядов со смещением
 		 *
 		 * @param limbs  целевой вектор разрядов
 		 * @param values добавляемый диапазон разрядов
@@ -921,7 +921,7 @@ namespace awh {
 		 * @return       результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of adding a range of limbs with an offset
+		 * @brief Function of adding a range of limbs with an offset
 		 * @param limbs  target limb vector
 		 * @param values added range of limbs
 		 * @param start  index of the limb the addition starts from
@@ -984,7 +984,7 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод умножения значения длинной арифметики на диапазон разрядов
+		 * @brief Функция умножения значения длинной арифметики на диапазон разрядов
 		 *
 		 * @details Используется школьный алгоритм умножения: при небольшом количестве
 		 *          разрядов он быстрее асимптотически более эффективных методов.
@@ -994,7 +994,7 @@ namespace awh {
 		 * @return       результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of multiplying a long arithmetic value by a range of limbs
+		 * @brief Function of multiplying a long arithmetic value by a range of limbs
 		 * @details The schoolbook multiplication algorithm is used: with a small number of
 		 *          limbs it is faster than asymptotically more efficient methods.
 		 * @param limbs  target limb vector
@@ -1063,14 +1063,14 @@ namespace awh {
 		template <uint16_t SIZE>
 		/**
 		 * \~russian
-		 * @brief Метод умножения значения длинной арифметики на диапазон разрядов
+		 * @brief Функция умножения значения длинной арифметики на диапазон разрядов
 		 *
 		 * @param limbs  целевой вектор разрядов
 		 * @param values множитель
 		 * @return       результат выполнения операции
 		 *
 		 * \~english
-		 * @brief Method of multiplying a long arithmetic value by a range of limbs
+		 * @brief Function of multiplying a long arithmetic value by a range of limbs
 		 * @param limbs  target limb vector
 		 * @param values multiplier
 		 * @return       result of performing the operation

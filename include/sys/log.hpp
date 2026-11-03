@@ -1045,7 +1045,7 @@ namespace awh {
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
 		 *
-		 * @details Доводы вызываемого метода подаются списком заведения - `{a, b, c}`,
+		 * @details Доводы вызываемой функции подаются списком заведения - `{a, b, c}`,
 		 *          а при их отсутствии пустым списком `{}`. Прежде подавался кортеж
 		 *          `make_tuple(a, b, c)`, и он вынуждал держать сборку записи здесь же,
 		 *          в заголовочном файле: состав кортежа есть часть его типа.
@@ -1059,7 +1059,7 @@ namespace awh {
 		 * \~english
 		 * @brief Functions of the outputting of the debug information into the console or into a file
 		 *
-		 * @details The arguments of the called method are passed by an initializer list - `{a, b, c}`,
+		 * @details The arguments of the called function are passed by an initializer list - `{a, b, c}`,
 		 *          and at their absence by an empty list `{}`. Before a tuple was passed,
 		 *          the `make_tuple(a, b, c)`, and it forced to keep the assembling of the record right here,
 		 *          in the header file: the composition of the tuple is a part of its type.
@@ -1077,7 +1077,7 @@ namespace awh {
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
 		 *
-		 * @details Доводы вызываемого метода подаются списком заведения - `{a, b, c}`,
+		 * @details Доводы вызываемой функции подаются списком заведения - `{a, b, c}`,
 		 *          а при их отсутствии пустым списком `{}`. Прежде подавался кортеж
 		 *          `make_tuple(a, b, c)`, и он вынуждал держать сборку записи здесь же,
 		 *          в заголовочном файле: состав кортежа есть часть его типа.
@@ -1091,7 +1091,7 @@ namespace awh {
 		 * \~english
 		 * @brief Functions of the outputting of the debug information into the console or into a file
 		 *
-		 * @details The arguments of the called method are passed by an initializer list - `{a, b, c}`,
+		 * @details The arguments of the called function are passed by an initializer list - `{a, b, c}`,
 		 *          and at their absence by an empty list `{}`. Before a tuple was passed,
 		 *          the `make_tuple(a, b, c)`, and it forced to keep the assembling of the record right here,
 		 *          in the header file: the composition of the tuple is a part of its type.
@@ -1109,7 +1109,7 @@ namespace awh {
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
 		 *
-		 * @details Доводы вызываемого метода подаются списком заведения - `{a, b, c}`,
+		 * @details Доводы вызываемой функции подаются списком заведения - `{a, b, c}`,
 		 *          а при их отсутствии пустым списком `{}`. Прежде подавался кортеж
 		 *          `make_tuple(a, b, c)`, и он вынуждал держать сборку записи здесь же,
 		 *          в заголовочном файле: состав кортежа есть часть его типа.
@@ -1123,7 +1123,7 @@ namespace awh {
 		 * \~english
 		 * @brief Functions of the outputting of the debug information into the console or into a file
 		 *
-		 * @details The arguments of the called method are passed by an initializer list - `{a, b, c}`,
+		 * @details The arguments of the called function are passed by an initializer list - `{a, b, c}`,
 		 *          and at their absence by an empty list `{}`. Before a tuple was passed,
 		 *          the `make_tuple(a, b, c)`, and it forced to keep the assembling of the record right here,
 		 *          in the header file: the composition of the tuple is a part of its type.
@@ -1141,7 +1141,7 @@ namespace awh {
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
 		 *
-		 * @details Доводы вызываемого метода подаются списком заведения - `{a, b, c}`,
+		 * @details Доводы вызываемой функции подаются списком заведения - `{a, b, c}`,
 		 *          а при их отсутствии пустым списком `{}`. Прежде подавался кортеж
 		 *          `make_tuple(a, b, c)`, и он вынуждал держать сборку записи здесь же,
 		 *          в заголовочном файле: состав кортежа есть часть его типа.
@@ -1155,7 +1155,7 @@ namespace awh {
 		 * \~english
 		 * @brief Functions of the outputting of the debug information into the console or into a file
 		 *
-		 * @details The arguments of the called method are passed by an initializer list - `{a, b, c}`,
+		 * @details The arguments of the called function are passed by an initializer list - `{a, b, c}`,
 		 *          and at their absence by an empty list `{}`. Before a tuple was passed,
 		 *          the `make_tuple(a, b, c)`, and it forced to keep the assembling of the record right here,
 		 *          in the header file: the composition of the tuple is a part of its type.

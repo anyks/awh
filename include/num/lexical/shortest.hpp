@@ -111,7 +111,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения целой части двоичного логарифма степени двойки по основанию десять
+		 * @brief Функция извлечения целой части двоичного логарифма степени двойки по основанию десять
 		 *
 		 * @details Приближение задано целочисленной дробью и точно совпадает с истинным
 		 *          значением на всём диапазоне показателей, встречающихся при записи чисел.
@@ -120,7 +120,7 @@ namespace awh {
 		 * @return         целая часть логарифма
 		 *
 		 * \~english
-		 * @brief Method of extracting the integer part of the base ten logarithm of a power of two
+		 * @brief Function of extracting the integer part of the base ten logarithm of a power of two
 		 * @details The approximation is set by an integer fraction and exactly matches the true
 		 *          value over the whole range of the exponents met while writing numbers.
 		 * @param exponent exponent of the power of two in the range from zero to 1650
@@ -135,13 +135,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения целой части логарифма степени пятёрки по основанию десять
+		 * @brief Функция извлечения целой части логарифма степени пятёрки по основанию десять
 		 *
 		 * @param exponent показатель степени пятёрки в диапазоне от нуля до 2620
 		 * @return         целая часть логарифма
 		 *
 		 * \~english
-		 * @brief Method of extracting the integer part of the base ten logarithm of a power of five
+		 * @brief Function of extracting the integer part of the base ten logarithm of a power of five
 		 * @param exponent exponent of the power of five in the range from zero to 2620
 		 * @return         integer part of the logarithm
 		 *
@@ -154,13 +154,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения количества двоичных разрядов степени пятёрки
+		 * @brief Функция извлечения количества двоичных разрядов степени пятёрки
 		 *
 		 * @param exponent показатель степени пятёрки в диапазоне от нуля до 3528
 		 * @return         количество двоичных разрядов
 		 *
 		 * \~english
-		 * @brief Method of extracting the number of the binary digits of a power of five
+		 * @brief Function of extracting the number of the binary digits of a power of five
 		 * @param exponent exponent of the power of five in the range from zero to 3528
 		 * @return         number of the binary digits
 		 *
@@ -173,14 +173,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения кратности значения степени пятёрки
+		 * @brief Функция извлечения кратности значения степени пятёрки
 		 *
 		 * @param value    проверяемое значение
 		 * @param exponent показатель степени пятёрки
 		 * @return         результат проверки
 		 *
 		 * \~english
-		 * @brief Method of extracting the divisibility of a value by a power of five
+		 * @brief Function of extracting the divisibility of a value by a power of five
 		 * @param value    checked value
 		 * @param exponent exponent of the power of five
 		 * @return         result of the check
@@ -207,14 +207,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения кратности значения степени двойки
+		 * @brief Функция извлечения кратности значения степени двойки
 		 *
 		 * @param value    проверяемое значение
 		 * @param exponent показатель степени двойки меньший разрядности значения
 		 * @return         результат проверки
 		 *
 		 * \~english
-		 * @brief Method of extracting the divisibility of a value by a power of two
+		 * @brief Function of extracting the divisibility of a value by a power of two
 		 * @param value    checked value
 		 * @param exponent exponent of the power of two smaller than the bit width of the value
 		 * @return         result of the check
@@ -228,7 +228,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод умножения значения на степень пятёрки со сдвигом
+		 * @brief Функция умножения значения на степень пятёрки со сдвигом
 		 *
 		 * @details Младшие разряды произведения на младшее слово множителя на результат
 		 *          не влияют и потому не вычисляются: множимое не превосходит
@@ -243,7 +243,7 @@ namespace awh {
 		 * @return      результат умножения со сдвигом
 		 *
 		 * \~english
-		 * @brief Method of multiplying a value by a power of five with a shift
+		 * @brief Function of multiplying a value by a power of five with a shift
 		 * @details The low digits of the product by the low word of the multiplier do not influence
 		 *          the result and therefore are not computed: the multiplicand does not exceed
 		 *          fifty six digits, while the shift makes up no less than one hundred
@@ -287,9 +287,9 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод формирования кратчайшего десятичного представления числа
+		 * @brief Функция формирования кратчайшего десятичного представления числа
 		 *
-		 * @details Метод принимает разобранное на части двоичное представление конечного
+		 * @details Функция принимает разобранное на части двоичное представление конечного
 		 *          числа, отличного от нуля, и выводит десятичное представление с
 		 *          наименьшим количеством значащих цифр из числа тех, что читаются
 		 *          обратно этим же самым числом. Порядок выбирается из промежутка
@@ -301,8 +301,8 @@ namespace awh {
 		 * @return         кратчайшее десятичное представление числа
 		 *
 		 * \~english
-		 * @brief Method of forming the shortest decimal representation of a number
-		 * @details The method takes the binary representation of a finite non-zero number parsed
+		 * @brief Function of forming the shortest decimal representation of a number
+		 * @details The function takes the binary representation of a finite non-zero number parsed
 		 *          into parts and outputs the decimal representation with the least number
 		 *          of significant digits among those which are read back as this very same
 		 *          number. The exponent is chosen from the interval of the values rounded

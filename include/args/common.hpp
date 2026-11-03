@@ -293,7 +293,7 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения описания кода ошибки разбора
+		 * @brief Функция извлечения описания кода ошибки разбора
 		 *
 		 * @details Описание отведено каждому коду по отдельности; коду неизвестному
 		 * выдаётся общее описание, а не пустота
@@ -302,7 +302,7 @@ namespace awh {
 		 * @return      описание кода ошибки разбора
 		 *
 		 * \~english
-		 * @brief Method of the extraction of the description of an error code of the parsing
+		 * @brief Function of the extraction of the description of an error code of the parsing
 		 * @param error error code of the parsing
 		 * @return description of the error code of the parsing
 		 *

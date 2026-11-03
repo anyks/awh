@@ -70,7 +70,7 @@ namespace awh {
 	namespace lexical {
 		/**
 		 * \~russian
-		 * @brief Метод вычисления смещения двоичной экспоненты для степени десяти
+		 * @brief Функция вычисления смещения двоичной экспоненты для степени десяти
 		 *
 		 * @details Для показателя степени в диапазоне (0, 350) выражение
 		 *          ((152170 + 65536) * power) >> 16 равно floor(p) + power,
@@ -81,7 +81,7 @@ namespace awh {
 		 * @return      смещение двоичной экспоненты
 		 *
 		 * \~english
-		 * @brief Method of computing the binary exponent offset for a power of ten
+		 * @brief Function of computing the binary exponent offset for a power of ten
 		 * @details For an exponent in the (0, 350) range the expression
 		 *          ((152170 + 65536) * power) >> 16 equals floor(p) + power,
 		 *          where p = log(5^power) / log(2). For the (-400, 0) range
@@ -111,7 +111,7 @@ namespace awh {
 		template <int32_t PRECISION>
 		/**
 		 * \~russian
-		 * @brief Метод приближённого вычисления произведения мантиссы на степень пяти
+		 * @brief Функция приближённого вычисления произведения мантиссы на степень пяти
 		 *
 		 * @details Для небольших показателей степени результат является точным,
 		 *          поскольку произведение помещается в 128 бит без потерь.
@@ -123,7 +123,7 @@ namespace awh {
 		 * @return         приближённое 128-битное произведение
 		 *
 		 * \~english
-		 * @brief Method of the approximate computation of the product of the mantissa by a power of five
+		 * @brief Function of the approximate computation of the product of the mantissa by a power of five
 		 * @details For small exponents the result is exact,
 		 *          since the product fits into 128 bits without losses.
 		 *          The exponent must belong to the range of the table:
@@ -177,7 +177,7 @@ namespace awh {
 		template <typename BINARY>
 		/**
 		 * \~russian
-		 * @brief Метод вычисления мантиссы с заведомо невалидным показателем степени
+		 * @brief Функция вычисления мантиссы с заведомо невалидным показателем степени
 		 *
 		 * @details Показатель степени смещается на INVALID_BIAS, что помечает
 		 *          результат как требующий уточнения длинной арифметикой.
@@ -188,7 +188,7 @@ namespace awh {
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
 		 * \~english
-		 * @brief Method of computing the mantissa with a deliberately invalid exponent
+		 * @brief Function of computing the mantissa with a deliberately invalid exponent
 		 * @details The exponent is offset by INVALID_BIAS, which marks
 		 *          the result as requiring refinement by long arithmetic.
 		 * @param power    exponent of the power of ten
@@ -225,7 +225,7 @@ namespace awh {
 		template <typename BINARY>
 		/**
 		 * \~russian
-		 * @brief Метод вычисления произведения мантиссы на степень десяти без округления
+		 * @brief Функция вычисления произведения мантиссы на степень десяти без округления
 		 *
 		 * @details Результат всегда помечается невалидным показателем степени и
 		 *          подлежит уточнению длинной арифметикой.
@@ -235,7 +235,7 @@ namespace awh {
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
 		 * \~english
-		 * @brief Method of computing the product of the mantissa by a power of ten without rounding
+		 * @brief Function of computing the product of the mantissa by a power of ten without rounding
 		 * @details The result is always marked with an invalid exponent and
 		 *          is subject to refinement by long arithmetic.
 		 * @param power    exponent of the power of ten
@@ -274,9 +274,9 @@ namespace awh {
 		template <typename BINARY>
 		/**
 		 * \~russian
-		 * @brief Метод вычисления произведения мантиссы на степень десяти
+		 * @brief Функция вычисления произведения мантиссы на степень десяти
 		 *
-		 * @details В подавляющем большинстве случаев метод даёт корректно округлённое
+		 * @details В подавляющем большинстве случаев функция даёт корректно округлённое
 		 *          двоичное представление числа. В редких случаях однозначное округление
 		 *          невозможно: тогда показатель степени результата отрицателен и
 		 *          вызывающая сторона обязана уточнить результат длинной арифметикой.
@@ -286,8 +286,8 @@ namespace awh {
 		 * @return         скорректированная мантисса двоичного представления
 		 *
 		 * \~english
-		 * @brief Method of computing the product of the mantissa by a power of ten
-		 * @details In the overwhelming majority of cases the method gives a correctly rounded
+		 * @brief Function of computing the product of the mantissa by a power of ten
+		 * @details In the overwhelming majority of cases the function gives a correctly rounded
 		 *          binary representation of the number. In rare cases an unambiguous rounding
 		 *          is impossible: then the exponent of the result is negative and
 		 *          the calling side must refine the result by long arithmetic.

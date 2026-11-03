@@ -30,7 +30,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -58,14 +58,12 @@ int32_t main(){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Добавляем новое пользовательское событие
-	event::id_t eid = io.event(event::node_t::NOTIFY, event::family_t::USER);
+	event::id_t eid = engine::event(event::node_t::NOTIFY, event::family_t::USER);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Устанавливаем функцию обратного вызова на изменение статуса события
-		io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -138,19 +136,19 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		io.on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+		engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 			// Записываем в лог сообщение о записи данных
 			log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		io.on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Текст входящего сообщения
 			const string message(reinterpret_cast <const char *> (data), size);
 			// Записываем в лог сообщение о чтении данных
 			log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
-		io.on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -203,7 +201,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		io.on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+		engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -271,28 +269,28 @@ int32_t main(){
 			}
 		});
 		// Выполняем фиксацию настроек события сервера
-		if(io.commit(eid)){
+		if(engine::commit(eid)){
 			// Запускаем дочерний поток для уведомления события
-			std::thread([&io](const event::id_t eid) noexcept -> void {
+			std::thread([](const event::id_t eid) noexcept -> void {
 				// Текст сообщения
 				const string message = "Hello AWH IO Event!";
 				// Задержка перед уведомлением события
 				std::this_thread::sleep_for(std::chrono::seconds(3));
 				// Уведомляем событие
-				io.send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
+				engine::send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
 				// Задержка перед уведомлением события
 				std::this_thread::sleep_for(std::chrono::seconds(3));
 				// Уведомляем событие
-				io.send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
+				engine::send(eid, reinterpret_cast <const char *> (message.c_str()), message.length());
 			}, eid).detach();
 			// Выполняем запуск события
-			if(io.launch(eid)){
+			if(engine::launch(eid)){
 				// Записываем в лог сообщение об успешном запуске события
 				cout << " Событие успешно запущено!" << endl;
 				/**
 				 * Запускаем опрос событий
 				 */
-				while(io.poll());
+				while(engine::poll());
 			// Записываем ошибку в лог запуска события
 			} else cout << " Ошибка запуска события!" << endl;
 		}

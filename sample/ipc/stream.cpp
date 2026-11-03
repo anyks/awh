@@ -31,7 +31,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -59,12 +59,10 @@ int32_t main(){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Добавляем новое пользовательское событие
-	const auto & events = io.events(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::NONE);
+	const auto & events = engine::events(event::family_t::UDS, event::type_t::STREAM, event::protocol_t::NONE);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Получаем идентификатор родительского процесса
 		const pid_t mpid = ::getpid();
 		// Устанавливаем идентификатор процесса
@@ -83,17 +81,17 @@ int32_t main(){
 			// Если процесс является дочерним
 			case 0: {
 				// Выполняем переинициализацию асинхронного движка ввода-вывода
-				io.reinitialize();
+				engine::reinitialize();
 				// Уничтожаем событие родительского процесса
-				io.destroy(events[0]);
+				engine::destroy(events[0]);
 				// Устананавливаем опции события
-				if(io.setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+				if(engine::setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Записываем ошибку в лог установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Устанавливаем функцию обратного вызова на изменение статуса события
-				io.on(events[1], [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(events[1], [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -166,19 +164,19 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				io.on(events[1], static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::on(events[1], static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(events[1], [mpid](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::on(events[1], [mpid](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Записываем в лог сообщение о чтении данных
 					log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				io.on(events[1], [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(events[1], [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -231,7 +229,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
-				io.on(events[1], [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::on(events[1], [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -299,19 +297,19 @@ int32_t main(){
 					}
 				});
 				// Выполняем фиксацию настроек события сервера
-				if(io.commit(events[1])){
+				if(engine::commit(events[1])){
 					// Сообщение для отправки родительскому процессу
 					const string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
-					io.send(events[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+					engine::send(events[1], reinterpret_cast <const char *> (message.c_str()), message.length());
 					// Выполняем запуск события
-					if(io.launch(events[1])){
+					if(engine::launch(events[1])){
 						// Записываем в лог сообщение об успешном запуске события
 						cout << " Событие успешно запущено!" << endl;
 						/**
 						 * Запускаем опрос событий
 						 */
-						while(io.poll());
+						while(engine::poll());
 					// Записываем ошибку в лог запуска события
 					} else cout << " Ошибка запуска события!" << endl;
 				}
@@ -319,15 +317,15 @@ int32_t main(){
 			// Если процесс является родительским
 			default: {
 				// Уничтожаем событие дочернего процесса
-				io.destroy(events[1]);
+				engine::destroy(events[1]);
 				// Устананавливаем опции события
-				if(io.setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+				if(engine::setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Записываем ошибку в лог установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Устанавливаем функцию обратного вызова на изменение статуса события
-				io.on(events[0], [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(events[0], [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -400,19 +398,19 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				io.on(events[0], static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::on(events[0], static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(events[0], [mpid](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::on(events[0], [mpid](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Записываем в лог сообщение о чтении данных
 					log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				io.on(events[0], [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(events[0], [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -465,7 +463,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
-				io.on(events[0], [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::on(events[0], [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -533,19 +531,19 @@ int32_t main(){
 					}
 				});
 				// Выполняем фиксацию настроек события сервера
-				if(io.commit(events[0])){
+				if(engine::commit(events[0])){
 					// Сообщение для отправки дочернему процессу
 					const string message = "Hello from parent process!";
 					// Отправляем сообщение родительскому процессу
-					io.send(events[0], reinterpret_cast <const char *> (message.c_str()), message.length());
+					engine::send(events[0], reinterpret_cast <const char *> (message.c_str()), message.length());
 					// Выполняем запуск события
-					if(io.launch(events[0])){
+					if(engine::launch(events[0])){
 						// Записываем в лог сообщение об успешном запуске события
 						cout << " Событие успешно запущено!" << endl;
 						/**
 						 * Запускаем опрос событий
 						 */
-						while(io.poll());
+						while(engine::poll());
 					// Записываем ошибку в лог запуска события
 					} else cout << " Ошибка запуска события!" << endl;
 				}

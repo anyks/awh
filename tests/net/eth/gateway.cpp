@@ -51,9 +51,16 @@
 	 * @note Заголовок sched.h нужен ради unshare() и CLONE_NEWNET: проверка сноса
 	 *       маршрута канальной области ставится в отдельном пространстве имён сети,
 	 *       чтобы таблица маршрутов машины не затрагивалась вовсе
+	 *
 	 */
 	#if defined(__linux__)
+		/**
+		 * Если макрос _GNU_SOURCE ещё не задан
+		 */
 		#if !defined(_GNU_SOURCE)
+			/**
+			 * Задаём макрос _GNU_SOURCE ради unshare()
+			 */
 			#define _GNU_SOURCE
 		#endif
 		#include <sched.h>
@@ -104,15 +111,15 @@ namespace {
 			uint32_t _destination;
 			// Название сетевого интерфейса
 			std::string _ifname;
-			// Объект работы с Ethernet
-			const awh::eth_t * _eth;
 		private:
+		public:
 			/**
 			 * @brief Метод сборки объекта маршрута из слепка
 			 *
 			 * @param route объект маршрута для заполнения
+			 *
 			 */
-			void restore(awh::eth::gateway_t::route_t & route) const noexcept {
+			void restore(awh::eth::gateway::route_t & route) const noexcept {
 				// Инициализируем объект адреса шлюза в маршруте
 				route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 				// Инициализируем объект адреса назначения в маршруте
@@ -130,37 +137,52 @@ namespace {
 			 * @brief Метод определения действующего шлюза по умолчанию
 			 *
 			 * @return адрес действующего шлюза по умолчанию либо ноль
+			 *
 			 */
 			uint32_t current() const noexcept {
 				// Структура маршрута
-				awh::eth::gateway_t::route_t route{};
+				awh::eth::gateway::route_t route{};
 				// Инициализируем объект адреса шлюза в маршруте
 				route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 				// Инициализируем объект адреса назначения в маршруте
 				route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 				// Если маршрут по умолчанию получить не удалось
-				if(!this->_eth->gateway.get(route))
+				if(!awh::eth::gateway::get(route))
 					// Выводим пустой результат
 					return 0;
 				// Выводим адрес действующего шлюза по умолчанию
 				return awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address;
 			}
+			/**
+			 * @brief Метод установки адреса подменного шлюза
+			 *
+			 * @details Проверка сообщает охраннику адрес шлюза, который ставит сама.
+			 * Без этого сорванное утверждение оставляло бы в таблице второй маршрут
+			 * по умолчанию: возврат исходного проходит и при нём, а расхождения
+			 * охранник не видит - действующим шлюзом система отвечает исходный
+			 *
+			 * @param substitute адрес подменного шлюза
+			 *
+			 */
+			void substitute(const uint32_t substitute) noexcept {
+				// Запоминаем адрес подменного шлюза
+				this->_substitute = substitute;
+			}
 		public:
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param eth объект работы с Ethernet
 			 */
-			explicit RouteGuard(const awh::eth_t * eth) noexcept :
-			 _saved(false), _substitute(0), _prefix(0), _gateway(0), _destination(0), _ifname{}, _eth(eth) {
+			explicit RouteGuard() noexcept :
+			 _saved(false), _substitute(0), _prefix(0), _gateway(0), _destination(0), _ifname{} {
 				// Структура маршрута
-				awh::eth::gateway_t::route_t route{};
+				awh::eth::gateway::route_t route{};
 				// Инициализируем объект адреса шлюза в маршруте
 				route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 				// Инициализируем объект адреса назначения в маршруте
 				route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 				// Если маршрут по умолчанию получить не удалось
-				if(!this->_eth->gateway.get(route))
+				if(!awh::eth::gateway::get(route))
 					// Выходим из конструктора
 					return;
 				// Запоминаем название сетевого интерфейса
@@ -175,20 +197,6 @@ namespace {
 				this->_saved = (this->_gateway > 0);
 			}
 			/**
-			 * @brief Метод установки адреса подменного шлюза
-			 *
-			 * @details Проверка сообщает охраннику адрес шлюза, который ставит сама.
-			 * Без этого сорванное утверждение оставляло бы в таблице второй маршрут
-			 * по умолчанию: возврат исходного проходит и при нём, а расхождения
-			 * охранник не видит - действующим шлюзом система отвечает исходный
-			 *
-			 * @param substitute адрес подменного шлюза
-			 */
-			void substitute(const uint32_t substitute) noexcept {
-				// Запоминаем адрес подменного шлюза
-				this->_substitute = substitute;
-			}
-			/**
 			 * @brief Деструктор
 			 *
 			 */
@@ -200,26 +208,26 @@ namespace {
 				// Если проверка ставила свой шлюз и он отличается от исходного
 				if((this->_substitute > 0) && (this->_substitute != this->_gateway)){
 					// Структура маршрута
-					awh::eth::gateway_t::route_t route{};
+					awh::eth::gateway::route_t route{};
 					// Выполняем сборку объекта маршрута из слепка
 					this->restore(route);
 					// Устанавливаем адрес подменного шлюза маршрута
 					awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_substitute;
 					// Выполняем снос маршрута по умолчанию через подменный шлюз
-					this->_eth->gateway.remove(route);
+					awh::eth::gateway::remove(route);
 				}
 				// Если маршрут по умолчанию на месте
 				if(this->current() == this->_gateway)
 					// Выходим из деструктора
 					return;
 				// Структура маршрута
-				awh::eth::gateway_t::route_t route{};
+				awh::eth::gateway::route_t route{};
 				// Выполняем сборку объекта маршрута из слепка
 				this->restore(route);
 				// Выполняем снятие того, что осталось от маршрута по умолчанию
-				this->_eth->gateway.remove(route);
+				awh::eth::gateway::remove(route);
 				// Выполняем возврат маршрута по умолчанию средствами фреймворка
-				this->_eth->gateway.add(route);
+				awh::eth::gateway::add(route);
 				// Если маршрут по умолчанию вернулся
 				if(this->current() == this->_gateway){
 					// Выводим сообщение о возврате маршрута
@@ -263,13 +271,13 @@ namespace {
  */
 TEST_F(EthFixture, GatewayGetTest){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	/**
 	 * Содержимое полученного маршрута утверждается, а не печатается
 	 *
@@ -277,6 +285,7 @@ TEST_F(EthFixture, GatewayGetTest){
 	 *          устройства и адрес шлюза лишь печатались. Вернись `get` истину с
 	 *          обнулённым маршрутом, проверка прошла бы зелёной: признак успеха о
 	 *          содержимом не говорит ничего
+	 *
 	 */
 	ASSERT_FALSE(route.ifname.empty()) << "маршрут по умолчанию получен без имени сетевого устройства";
 	// Адрес шлюза по умолчанию нулевым быть не может
@@ -301,6 +310,7 @@ TEST_F(EthFixture, GatewayGetTest){
  *
  * @warning Проверка правит таблицу маршрутизации и восстанавливает её охранником
  *          `RouteGuard`. Без полномочий она не выполняется вовсе
+ *
  */
 TEST_F(EthFixture, GatewayRouteSubstitutionTest){
 	// Если полномочий недостаточно, править таблицу маршрутизации нечем
@@ -308,25 +318,26 @@ TEST_F(EthFixture, GatewayRouteSubstitutionTest){
 		// Пропускаем проверку с указанием причины
 		GTEST_SKIP() << "подмена маршрута по умолчанию требует полномочий суперпользователя";
 	// Заводим охранника маршрута по умолчанию
-	RouteGuard guard(this->_eth.get());
+	RouteGuard guard;
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
 	// Получаем IP-адрес текущего шлюза по умолчанию
 	const std::string gateway = static_cast <std::string> (* this->_addr.get());
 	// Удаляем маршрут по указанному адресу
-	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	ASSERT_TRUE(awh::eth::gateway::remove(route));
 	/**
 	 * @note Подменный шлюз берётся соседом действующего, а не задаётся числом:
 	 *       ядро отвергает маршрут через шлюз, до которого не достаёт напрямую,
 	 *       и зашитый адрес чужой сети валил проверку на всяком стенде кодом ESRCH
+	 *
 	 */
 	// Получаем приставку сети действующего шлюза
 	const std::string & prefix = gateway.substr(0, gateway.rfind('.') + 1);
@@ -339,9 +350,9 @@ TEST_F(EthFixture, GatewayRouteSubstitutionTest){
 	// Сообщаем охраннику адрес подменного шлюза
 	guard.substitute(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address);
 	// Добавляем маршрут с новым шлюзом
-	ASSERT_TRUE(this->_eth->gateway.add(route));
+	ASSERT_TRUE(awh::eth::gateway::add(route));
 	// Получаем маршрут заново: подмена обязана быть видна
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	/**
 	 * Подмена обязана быть УТВЕРЖДЕНА, а не только выполнена
 	 *
@@ -349,16 +360,17 @@ TEST_F(EthFixture, GatewayRouteSubstitutionTest){
 	 *          успеха, а сам подменный адрес только печатался. Не встань подмена
 	 *          вовсе - проверка прошла бы: `get` вернул бы прежний маршрут и ту же
 	 *          истину
+	 *
 	 */
 	ASSERT_EQ(this->_addr->v4(awh::net_addr_t::endian_t::LITTLE), awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address) << "подменный шлюз не встал: маршрут отдаёт прежний адрес";
 	// Удаляем маршрут по указанному адресу
-	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	ASSERT_TRUE(awh::eth::gateway::remove(route));
 	// Выполняем парсинг адреса прежнего шлюза
 	(* this->_addr.get()) = gateway;
 	// Устанавливаем адрес шлюза в маршрут
 	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
 	// Возвращаем маршрут по умолчанию на место
-	ASSERT_TRUE(this->_eth->gateway.add(route));
+	ASSERT_TRUE(awh::eth::gateway::add(route));
 }
 /**
  * @brief Тест получения маршрута по умолчанию IPv4 и разрешения имени интерфейса
@@ -366,13 +378,13 @@ TEST_F(EthFixture, GatewayRouteSubstitutionTest){
  */
 TEST_F(EthFixture, GatewayGetDefaultIPv4){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Имя сетевого интерфейса обязано быть определено при любом виде маршрута
 	ASSERT_FALSE(route.ifname.empty());
 	/**
@@ -384,10 +396,11 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4){
 	 *       не имеет вовсе, и нуль здесь - верный ответ системы, а не отказ модуля.
 	 *       Проверка потому спрашивает не «шлюз ненулевой», а «нуль оправдан видом
 	 *       устройства»: на обычной машине шлюз по-прежнему обязан быть
+	 *
 	 */
 	if(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address == 0U){
 		// Получаем флаги сетевого интерфейса, которым маршрут задан
-		const auto flags = this->_eth->iface.flags(route.ifname);
+		const auto flags = awh::eth::iface::flags(route.ifname);
 		// Нулевой шлюз оправдан только устройством точка-точка
 		ASSERT_TRUE(flags.count(awh::event::eth_flag_t::POINTTOPOINT) > 0)
 		 << "Шлюз маршрута по умолчанию нулевой, а интерфейс " << route.ifname << " не является устройством точка-точка";
@@ -405,13 +418,13 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4){
  */
 TEST_F(EthFixture, GatewayGetDefaultIPv4NullDestination){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем только объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Объект адреса назначения намеренно не инициализируем (должен создаться автоматически)
 	ASSERT_EQ(route.destination, nullptr);
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Объект адреса назначения должен быть создан автоматически
 	ASSERT_NE(route.destination, nullptr);
 	// Имя сетевого интерфейса обязано быть определено при любом виде маршрута
@@ -421,10 +434,11 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4NullDestination){
 	 *
 	 * @note Нулевой шлюз законен у маршрута через устройство точка-точка,
 	 *       см. пояснение у теста GatewayGetDefaultIPv4
+	 *
 	 */
 	if(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address == 0U){
 		// Получаем флаги сетевого интерфейса, которым маршрут задан
-		const auto flags = this->_eth->iface.flags(route.ifname);
+		const auto flags = awh::eth::iface::flags(route.ifname);
 		// Нулевой шлюз оправдан только устройством точка-точка
 		ASSERT_TRUE(flags.count(awh::event::eth_flag_t::POINTTOPOINT) > 0)
 		 << "Шлюз маршрута по умолчанию нулевой, а интерфейс " << route.ifname << " не является устройством точка-точка";
@@ -436,17 +450,17 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4NullDestination){
  */
 TEST_F(EthFixture, GatewayGetByGatewayIPv4){
 	// Структура маршрута для поиска шлюза по умолчанию
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Запоминаем найденный адрес шлюза по умолчанию
 	const uint32_t gateway = awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address;
 	// Структура маршрута для поиска по адресу шлюза
-	awh::eth::gateway_t::route_t search{};
+	awh::eth::gateway::route_t search{};
 	// Инициализируем объект адреса шлюза в маршруте
 	search.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -454,7 +468,7 @@ TEST_F(EthFixture, GatewayGetByGatewayIPv4){
 	// Устанавливаем адрес шлюза для поиска
 	awh_cast <awh::net::addr_net_ipv4_t *> (search.gateway.get())->address = gateway;
 	// Выполняем поиск маршрута по адресу шлюза
-	ASSERT_TRUE(this->_eth->gateway.get(search));
+	ASSERT_TRUE(awh::eth::gateway::get(search));
 	// Найденный адрес шлюза должен совпадать с искомым
 	ASSERT_EQ(awh_cast <awh::net::addr_net_ipv4_t *> (search.gateway.get())->address, gateway);
 }
@@ -470,13 +484,13 @@ TEST_F(EthFixture, GatewayGetByGatewayIPv4){
  */
 TEST_F(EthFixture, GatewayGetByGatewayAndInterfaceIPv4){
 	// Структура маршрута для поиска шлюза по умолчанию
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Запоминаем найденный адрес шлюза по умолчанию
 	const uint32_t gateway = awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address;
 	// Запоминаем название сетевого интерфейса маршрута по умолчанию
@@ -486,12 +500,13 @@ TEST_F(EthFixture, GatewayGetByGatewayAndInterfaceIPv4){
 	/**
 	 * @note Нулевой шлюз законен у маршрута через устройство точка-точка, и искать
 	 *       по нему нечего: условие поиска вырождается в маршрут по умолчанию
+	 *
 	 */
 	if(gateway == 0U)
 		// Пропускаем проверку
 		GTEST_SKIP() << "Маршрут по умолчанию задан устройством " << ifname << " без шлюза";
 	// Структура маршрута для поиска по адресу шлюза вместе с устройством
-	awh::eth::gateway_t::route_t search{};
+	awh::eth::gateway::route_t search{};
 	// Инициализируем объект адреса шлюза в маршруте
 	search.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -501,7 +516,7 @@ TEST_F(EthFixture, GatewayGetByGatewayAndInterfaceIPv4){
 	// Устанавливаем название сетевого интерфейса для поиска
 	search.ifname = ifname;
 	// Выполняем поиск маршрута по адресу шлюза вместе с устройством
-	ASSERT_TRUE(this->_eth->gateway.get(search))
+	ASSERT_TRUE(awh::eth::gateway::get(search))
 	 << "Маршрут через шлюз на устройстве " << ifname << " не найден, хотя порознь оба условия ему отвечают";
 	// Найденный адрес шлюза должен совпадать с искомым
 	ASSERT_EQ(awh_cast <awh::net::addr_net_ipv4_t *> (search.gateway.get())->address, gateway);
@@ -526,17 +541,17 @@ TEST_F(EthFixture, GatewayRemoveByInterfaceIPv4){
 		// Пропускаем проверку
 		GTEST_SKIP() << "Для правки таблицы маршрутов нужны права суперпользователя";
 	// Структура маршрута по умолчанию
-	awh::eth::gateway_t::route_t origin{};
+	awh::eth::gateway::route_t origin{};
 	// Инициализируем объект адреса шлюза в маршруте
 	origin.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	origin.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(origin));
+	ASSERT_TRUE(awh::eth::gateway::get(origin));
 	// Название сетевого интерфейса обязано быть определено
 	ASSERT_FALSE(origin.ifname.empty());
 	// Структура маршрута до испытательной сети
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -550,13 +565,13 @@ TEST_F(EthFixture, GatewayRemoveByInterfaceIPv4){
 	// Устанавливаем название сетевого интерфейса маршрута
 	route.ifname = origin.ifname;
 	// Добавляем маршрут, заданный одним устройством
-	ASSERT_TRUE(this->_eth->gateway.add(route))
+	ASSERT_TRUE(awh::eth::gateway::add(route))
 	 << "Маршрут до испытательной сети через устройство " << route.ifname << " не добавлен";
 	// Сносим маршрут, заданный одним устройством
-	ASSERT_TRUE(this->_eth->gateway.remove(route))
+	ASSERT_TRUE(awh::eth::gateway::remove(route))
 	 << "Маршрут, заданный одним устройством " << route.ifname << ", снести не удалось";
 	// Структура маршрута для проверки того, что снос состоялся
-	awh::eth::gateway_t::route_t search{};
+	awh::eth::gateway::route_t search{};
 	// Инициализируем объект адреса шлюза в маршруте
 	search.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -566,7 +581,7 @@ TEST_F(EthFixture, GatewayRemoveByInterfaceIPv4){
 	// Устанавливаем название сетевого интерфейса маршрута
 	search.ifname = origin.ifname;
 	// Снесённый маршрут находиться больше не должен
-	ASSERT_FALSE(this->_eth->gateway.get(search))
+	ASSERT_FALSE(awh::eth::gateway::get(search))
 	 << "Маршрут до испытательной сети найден после сноса";
 }
 /**
@@ -575,13 +590,13 @@ TEST_F(EthFixture, GatewayRemoveByInterfaceIPv4){
  */
 TEST_F(EthFixture, GatewayGetByInterfaceIPv4){
 	// Структура маршрута для поиска шлюза по умолчанию
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(route));
+	ASSERT_TRUE(awh::eth::gateway::get(route));
 	// Если имя сетевого интерфейса не определено, пропускаем тест
 	if(route.ifname.empty())
 		// Завершаем тест успешно
@@ -589,7 +604,7 @@ TEST_F(EthFixture, GatewayGetByInterfaceIPv4){
 	// Запоминаем имя сетевого интерфейса маршрута по умолчанию
 	const std::string ifname = route.ifname;
 	// Структура маршрута для поиска по имени интерфейса
-	awh::eth::gateway_t::route_t search{};
+	awh::eth::gateway::route_t search{};
 	// Инициализируем объект адреса шлюза в маршруте
 	search.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -597,7 +612,7 @@ TEST_F(EthFixture, GatewayGetByInterfaceIPv4){
 	// Устанавливаем имя сетевого интерфейса для поиска
 	search.ifname = ifname;
 	// Выполняем поиск маршрута по имени сетевого интерфейса
-	ASSERT_TRUE(this->_eth->gateway.get(search));
+	ASSERT_TRUE(awh::eth::gateway::get(search));
 	// Найденное имя сетевого интерфейса должно совпадать с искомым
 	ASSERT_EQ(search.ifname, ifname);
 }
@@ -607,7 +622,7 @@ TEST_F(EthFixture, GatewayGetByInterfaceIPv4){
  */
 TEST_F(EthFixture, GatewayGetSpecificDestinationNotFoundIPv4){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -625,7 +640,7 @@ TEST_F(EthFixture, GatewayGetSpecificDestinationNotFoundIPv4){
 	 * обратное - точное сличение поля назначения, - отчего недостижимым
 	 * объявлялся и адрес своей же сети
 	 */
-	const bool result = this->_eth->gateway.get(route);
+	const bool result = awh::eth::gateway::get(route);
 	// Если маршрут до тестового адреса найден
 	if(result){
 		// Устройство, которым система отправит пакет, обязано быть названо
@@ -638,6 +653,7 @@ TEST_F(EthFixture, GatewayGetSpecificDestinationNotFoundIPv4){
 	 * @warning Прежде здесь стояла печать в поток вывода: проверка проходила
 	 *          зелёной, не утвердив ничего, и узнать об этом можно было только
 	 *          читая вывод глазами. Отчёт о прогоне такой случай не показывал
+	 *
 	 */
 	// Если маршрута нет вовсе, у машины нет и выхода наружу
 	} else GTEST_SKIP() << "маршрута до тестового адреса нет: выхода наружу у машины нет";
@@ -648,13 +664,13 @@ TEST_F(EthFixture, GatewayGetSpecificDestinationNotFoundIPv4){
  */
 TEST_F(EthFixture, GatewayGetDefaultIPv6){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	route.destination = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Выполняем получение маршрута по умолчанию IPv6 (может отсутствовать)
-	const bool result = this->_eth->gateway.get(route);
+	const bool result = awh::eth::gateway::get(route);
 	// Если маршрут по умолчанию IPv6 найден
 	if(result){
 		// Нулевой IPv6 адрес для сравнения
@@ -669,6 +685,7 @@ TEST_F(EthFixture, GatewayGetDefaultIPv6){
 	 * @warning Прежде ветви «иначе» не было вовсе: на машине без IPv6 проверка
 	 *          проходила зелёной при нуле утверждений. Сеть IPv6 есть не у всякой
 	 *          машины, и это законная обстановка, - но названа она должна быть
+	 *
 	 */
 	} else GTEST_SKIP() << "маршрута по умолчанию IPv6 у машины нет";
 }
@@ -691,21 +708,21 @@ TEST_F(EthFixture, GatewayRouteLifecycleIPv6){
 		// Пропускаем проверку
 		GTEST_SKIP() << "Для правки таблицы маршрутов нужны права суперпользователя";
 	// Структура маршрута по умолчанию IPv4, откуда берётся действующее устройство
-	awh::eth::gateway_t::route_t origin{};
+	awh::eth::gateway::route_t origin{};
 	// Инициализируем объект адреса шлюза в маршруте
 	origin.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Инициализируем объект адреса назначения в маршруте
 	origin.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
-	ASSERT_TRUE(this->_eth->gateway.get(origin));
+	ASSERT_TRUE(awh::eth::gateway::get(origin));
 	// Название сетевого интерфейса обязано быть определено
 	ASSERT_FALSE(origin.ifname.empty());
 	// Если у сетевого интерфейса нет адреса IPv6
-	if(this->_eth->iface.getAddress(origin.ifname, awh::event::family_t::IPV6) == nullptr)
+	if(awh::eth::iface::getAddress(origin.ifname, awh::event::family_t::IPV6) == nullptr)
 		// Пропускаем проверку
 		GTEST_SKIP() << "У интерфейса " << origin.ifname << " нет адреса IPv6";
 	// Структура маршрута до испытательной сети IPv6
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
 	route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Инициализируем объект адреса назначения в маршруте
@@ -721,11 +738,11 @@ TEST_F(EthFixture, GatewayRouteLifecycleIPv6){
 	// Устанавливаем название сетевого интерфейса маршрута
 	route.ifname = origin.ifname;
 	// Добавляем маршрут, заданный одним устройством
-	ASSERT_TRUE(this->_eth->gateway.add(route))
+	ASSERT_TRUE(awh::eth::gateway::add(route))
 	 << "Маршрут IPv6 до испытательной сети через устройство " << route.ifname << " не добавлен";
 	{
 		// Структура маршрута для поиска заведённого маршрута
-		awh::eth::gateway_t::route_t search{};
+		awh::eth::gateway::route_t search{};
 		// Инициализируем объект адреса шлюза в маршруте
 		search.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Инициализируем объект адреса назначения в маршруте
@@ -733,18 +750,18 @@ TEST_F(EthFixture, GatewayRouteLifecycleIPv6){
 		// Устанавливаем адрес назначения маршрута
 		awh_cast <awh::net::addr_net_ipv6_t *> (search.destination.get())->address = destination;
 		// Заведённый маршрут обязан находиться
-		ASSERT_TRUE(this->_eth->gateway.get(search))
+		ASSERT_TRUE(awh::eth::gateway::get(search))
 		 << "Заведённый маршрут IPv6 не найден";
 		// Название сетевого интерфейса обязано быть определено
 		ASSERT_FALSE(search.ifname.empty())
 		 << "У найденного маршрута IPv6 не определено устройство";
 	}
 	// Сносим маршрут, заданный одним устройством
-	ASSERT_TRUE(this->_eth->gateway.remove(route))
+	ASSERT_TRUE(awh::eth::gateway::remove(route))
 	 << "Маршрут IPv6, заданный одним устройством " << route.ifname << ", снести не удалось";
 	{
 		// Структура маршрута для проверки того, что снос состоялся
-		awh::eth::gateway_t::route_t search{};
+		awh::eth::gateway::route_t search{};
 		// Инициализируем объект адреса шлюза в маршруте
 		search.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Инициализируем объект адреса назначения в маршруте
@@ -754,7 +771,7 @@ TEST_F(EthFixture, GatewayRouteLifecycleIPv6){
 		// Устанавливаем название сетевого интерфейса маршрута
 		search.ifname = origin.ifname;
 		// Снесённый маршрут находиться больше не должен
-		ASSERT_FALSE(this->_eth->gateway.get(search))
+		ASSERT_FALSE(awh::eth::gateway::get(search))
 		 << "Маршрут IPv6 до испытательной сети найден после сноса";
 	}
 }
@@ -764,9 +781,9 @@ TEST_F(EthFixture, GatewayRouteLifecycleIPv6){
  */
 TEST_F(EthFixture, GatewayGetUninitialized){
 	// Структура маршрута без инициализированного адреса шлюза
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Получение маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.get(route));
+	ASSERT_FALSE(awh::eth::gateway::get(route));
 }
 /**
  * @brief Тест получения маршрута с неподдерживаемым семейством адресов
@@ -774,11 +791,11 @@ TEST_F(EthFixture, GatewayGetUninitialized){
  */
 TEST_F(EthFixture, GatewayGetUnsupportedFamily){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Устанавливаем неподдерживаемый тип адреса шлюза (MAC, размер 6)
 	route.gateway = std::make_unique <awh::net::addr_mac_t> ();
 	// Получение маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.get(route));
+	ASSERT_FALSE(awh::eth::gateway::get(route));
 }
 /**
  * @brief Тест добавления маршрута с неинициализированным адресом шлюза
@@ -786,9 +803,9 @@ TEST_F(EthFixture, GatewayGetUnsupportedFamily){
  */
 TEST_F(EthFixture, GatewayAddUninitialized){
 	// Структура маршрута без инициализированного адреса шлюза
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Добавление маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.add(route));
+	ASSERT_FALSE(awh::eth::gateway::add(route));
 }
 /**
  * @brief Тест добавления маршрута с неподдерживаемым семейством адресов
@@ -796,11 +813,11 @@ TEST_F(EthFixture, GatewayAddUninitialized){
  */
 TEST_F(EthFixture, GatewayAddUnsupportedFamily){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Устанавливаем неподдерживаемый тип адреса шлюза (MAC, размер 6)
 	route.gateway = std::make_unique <awh::net::addr_mac_t> ();
 	// Добавление маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.add(route));
+	ASSERT_FALSE(awh::eth::gateway::add(route));
 }
 /**
  * @brief Тест удаления маршрута с неинициализированным адресом шлюза
@@ -808,9 +825,9 @@ TEST_F(EthFixture, GatewayAddUnsupportedFamily){
  */
 TEST_F(EthFixture, GatewayRemoveUninitialized){
 	// Структура маршрута без инициализированного адреса шлюза
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Удаление маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.remove(route));
+	ASSERT_FALSE(awh::eth::gateway::remove(route));
 }
 /**
  * @brief Тест удаления маршрута с неподдерживаемым семейством адресов
@@ -818,11 +835,11 @@ TEST_F(EthFixture, GatewayRemoveUninitialized){
  */
 TEST_F(EthFixture, GatewayRemoveUnsupportedFamily){
 	// Структура маршрута
-	awh::eth::gateway_t::route_t route{};
+	awh::eth::gateway::route_t route{};
 	// Устанавливаем неподдерживаемый тип адреса шлюза (MAC, размер 6)
 	route.gateway = std::make_unique <awh::net::addr_mac_t> ();
 	// Удаление маршрута должно завершиться неудачей
-	ASSERT_FALSE(this->_eth->gateway.remove(route));
+	ASSERT_FALSE(awh::eth::gateway::remove(route));
 }
 
 /**
@@ -845,30 +862,30 @@ TEST_F(EthFixture, GatewayMismatchedKindTest){
 	 */
 	{
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv4
 		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Заводим адрес назначения маршрута семейства IPv6
 		route.destination = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Несличимая пара обязана отвечать отказом, а не порчей памяти
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.get(route)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::gateway::get(route)));
 		// Подбор по несличимой паре обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.get(route));
+		ASSERT_FALSE(awh::eth::gateway::get(route));
 	}
 	/**
 	 * Шлюз IPv6, а назначение IPv4
 	 */
 	{
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv6
 		route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Заводим адрес назначения маршрута семейства IPv4
 		route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Несличимая пара обязана отвечать отказом, а не порчей памяти
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.get(route)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::gateway::get(route)));
 		// Подбор по несличимой паре обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.get(route));
+		ASSERT_FALSE(awh::eth::gateway::get(route));
 	}
 	/**
 	 * Прокладка и снос обязаны отвечать отказом по той же паре
@@ -881,7 +898,7 @@ TEST_F(EthFixture, GatewayMismatchedKindTest){
 	 */
 	{
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv4
 		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Заводим адрес назначения маршрута семейства IPv6
@@ -889,13 +906,13 @@ TEST_F(EthFixture, GatewayMismatchedKindTest){
 		// Устанавливаем название устройства маршрута
 		route.ifname = "lo";
 		// Прокладка по несличимой паре обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.add(route));
+		ASSERT_FALSE(awh::eth::gateway::add(route));
 		// Снос по несличимой паре обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.remove(route));
+		ASSERT_FALSE(awh::eth::gateway::remove(route));
 	}
 	{
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv6
 		route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Заводим адрес назначения маршрута семейства IPv4
@@ -903,9 +920,9 @@ TEST_F(EthFixture, GatewayMismatchedKindTest){
 		// Устанавливаем название устройства маршрута
 		route.ifname = "lo";
 		// Прокладка по несличимой паре обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.add(route));
+		ASSERT_FALSE(awh::eth::gateway::add(route));
 		// Снос по несличимой паре обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.remove(route));
+		ASSERT_FALSE(awh::eth::gateway::remove(route));
 	}
 }
 
@@ -960,6 +977,7 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 	 *          отвечает отказом всегда. Оттого разводить надо по ДОВОДУ: при заслоне в
 	 *          журнал уходит сообщение о длине префикса, без заслона - сообщение
 	 *          системы о невозможности проложить путь
+	 *
 	 */
 	// Признак того, что заслон назвал причину отказа
 	bool named = false;
@@ -975,7 +993,7 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 	 */
 	for(const uint8_t prefix : {static_cast <uint8_t> (33), static_cast <uint8_t> (64), static_cast <uint8_t> (200), static_cast <uint8_t> (255)}){
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv4
 		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Заводим адрес назначения маршрута семейства IPv4
@@ -983,18 +1001,18 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 		// Задаём длину префикса, разрядности адреса не отвечающую
 		route.prefix = prefix;
 		// Прокладка по негодной длине обязана отвечать отказом, а не сдвигом за предел
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.add(route)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::gateway::add(route)));
 		// Прокладка по негодной длине обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.add(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4, где предел равен 32";
+		ASSERT_FALSE(awh::eth::gateway::add(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4, где предел равен 32";
 		// Снос по негодной длине обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.remove(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4 при сносе пути";
+		ASSERT_FALSE(awh::eth::gateway::remove(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4 при сносе пути";
 	}
 	/**
 	 * Длины, разрядности адреса IPv6 не отвечающие
 	 */
 	for(const uint8_t prefix : {static_cast <uint8_t> (129), static_cast <uint8_t> (200), static_cast <uint8_t> (255)}){
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv6
 		route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Заводим адрес назначения маршрута семейства IPv6
@@ -1002,11 +1020,11 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 		// Задаём длину префикса, разрядности адреса не отвечающую
 		route.prefix = prefix;
 		// Прокладка по негодной длине обязана отвечать отказом
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.add(route)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::gateway::add(route)));
 		// Прокладка по негодной длине обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.add(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6, где предел равен 128";
+		ASSERT_FALSE(awh::eth::gateway::add(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6, где предел равен 128";
 		// Снос по негодной длине обязан отвечать отказом
-		ASSERT_FALSE(this->_eth->gateway.remove(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6 при сносе пути";
+		ASSERT_FALSE(awh::eth::gateway::remove(route)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6 при сносе пути";
 	}
 	/**
 	 * Предельные длины обязаны заслоном НЕ отвергаться
@@ -1015,10 +1033,11 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 	 *       заслон, отвергающий всё подряд, прошёл бы её точно так же. Здесь
 	 *       закрепляется не исход прокладки - он зависит от полномочий и от
 	 *       состояния машины, - а то, что заслон по длине не срабатывает
+	 *
 	 */
 	for(const uint8_t prefix : {static_cast <uint8_t> (0), static_cast <uint8_t> (24), static_cast <uint8_t> (32)}){
 		// Маршрут, каким ведётся проверка
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Заводим шлюз маршрута семейства IPv4
 		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Заводим адрес назначения маршрута семейства IPv4
@@ -1026,13 +1045,14 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 		// Задаём годную длину префикса
 		route.prefix = prefix;
 		// Годная длина обязана проходить заслон без порчи памяти
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.add(route)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::gateway::add(route)));
 	}
 	/**
 	 * Заслон обязан был назвать причину хотя бы раз
 	 *
 	 * @note Утверждение это и делает проверку ЗРЯЧЕЙ: снятие заслона его валит, тогда
 	 *       как утверждения об отказе выше проходят и без заслона - проверено щупом
+	 *
 	 */
 	ASSERT_TRUE(named) << "Заслон по длине префикса причину отказа не назвал: отказ пришёл от системы, а не от заслона";
 	// Снимаем подписку на журнал
@@ -1056,6 +1076,7 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
  *
  */
 #if defined(__linux__)
+// Тест сноса маршрута канальной области
 TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 	// Если пользователь не является привилигированным
 	if(::getuid() != 0)
@@ -1087,13 +1108,10 @@ TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 		if(::system("ip addr add 10.55.55.1/24 dev awhdummy > /dev/null 2>&1") != 0)
 			// Выходим с признаком пропуска
 			::_exit(2);
-		// Создаём объект логгера
-		// Создаём объект работы с Ethernet
-		awh::eth_t eth;
 		// Создаём объект сетевого адреса
 		awh::net_addr_t addr;
 		// Структура сносимого маршрута
-		awh::eth::gateway_t::route_t route{};
+		awh::eth::gateway::route_t route{};
 		// Инициализируем объект адреса шлюза в маршруте
 		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Инициализируем объект адреса назначения в маршруте
@@ -1107,11 +1125,11 @@ TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 		// Устанавливаем название устройства опыта
 		route.ifname = "awhdummy";
 		// Если снести маршрут канальной области не удалось
-		if(!eth.gateway.remove(route))
+		if(!awh::eth::gateway::remove(route))
 			// Выходим с признаком отказа
 			::_exit(1);
 		// Структура маршрута для проверки того, что снос состоялся
-		awh::eth::gateway_t::route_t search{};
+		awh::eth::gateway::route_t search{};
 		// Инициализируем объект адреса шлюза в маршруте
 		search.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Инициализируем объект адреса назначения в маршруте
@@ -1121,7 +1139,7 @@ TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 		// Устанавливаем название устройства опыта
 		search.ifname = "awhdummy";
 		// Снесённый маршрут находиться больше не должен
-		::_exit(eth.gateway.get(search) ? 1 : 0);
+		::_exit(awh::eth::gateway::get(search) ? 1 : 0);
 	}
 	// Состояние дочернего процесса
 	int32_t status = 0;
@@ -1135,7 +1153,6 @@ TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 		GTEST_SKIP() << "завести пространство имён сети либо устройство опыта не удалось";
 	// Снос маршрута канальной области обязан состояться
 	ASSERT_EQ(WEXITSTATUS(status), 0)
-	 << "Маршрут канальной области 10.55.55.0/24 снести не удалось: ядро сличает "
-	    "поля rtm_scope и rtm_type, и безусловные UNIVERSE/UNICAST его не находят";
+	 << "Маршрут канальной области 10.55.55.0/24 снести не удалось: ядро сличает поля rtm_scope и rtm_type, и безусловные UNIVERSE/UNICAST его не находят";
 }
 #endif

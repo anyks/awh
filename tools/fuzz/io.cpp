@@ -107,7 +107,7 @@ static uint32_t __awh_poll_limit__ = __AWH_FUZZ_POLL_LIMIT__;
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -310,7 +310,7 @@ static const char * ADDRESSES[] = {
  * @param engine источник случайных чисел
  *
  */
-static void settings(awh::engine::io_t & io, const awh::event::id_t id, mt19937_64 & engine) noexcept {
+static void settings(const awh::event::id_t id, mt19937_64 & engine) noexcept {
 	// Число вызовов настройки на этом проходе
 	const uint64_t count = (1 + ::pick(engine, 12));
 	/**
@@ -324,29 +324,29 @@ static void settings(awh::engine::io_t & io, const awh::event::id_t id, mt19937_
 		 */
 		switch(static_cast <uint8_t> (::pick(engine, 12))){
 			// Устанавливаем опции события
-			case 0: static_cast <void> (io.setOptions(id, static_cast <uint16_t> (engine()))); break;
+			case 0: static_cast <void> (awh::engine::setOptions(id, static_cast <uint16_t> (engine()))); break;
 			// Устанавливаем отдельную опцию события
-			case 1: static_cast <void> (io.setOption(id, static_cast <uint16_t> (engine()), (::pick(engine, 2) != 0))); break;
+			case 1: static_cast <void> (awh::engine::setOption(id, static_cast <uint16_t> (engine()), (::pick(engine, 2) != 0))); break;
 			// Устанавливаем порт привязки события
-			case 2: static_cast <void> (io.setSourcePort(id, static_cast <uint16_t> (engine()))); break;
+			case 2: static_cast <void> (awh::engine::setSourcePort(id, static_cast <uint16_t> (engine()))); break;
 			// Устанавливаем порт назначения события
-			case 3: static_cast <void> (io.setTargetPort(id, static_cast <uint16_t> (engine()))); break;
+			case 3: static_cast <void> (awh::engine::setTargetPort(id, static_cast <uint16_t> (engine()))); break;
 			// Устанавливаем адрес привязки события
-			case 4: static_cast <void> (io.setAddress(id, awh::event::address_t::IPV4, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
+			case 4: static_cast <void> (awh::engine::setAddress(id, awh::event::address_t::IPV4, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
 			// Устанавливаем адрес назначения события
-			case 5: static_cast <void> (io.setTarget(id, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
+			case 5: static_cast <void> (awh::engine::setTarget(id, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
 			// Устанавливаем предел числа подключений
-			case 6: static_cast <void> (io.setMaxConnections(id, static_cast <uint32_t> (engine()))); break;
+			case 6: static_cast <void> (awh::engine::setMaxConnections(id, static_cast <uint32_t> (engine()))); break;
 			// Устанавливаем наибольший размер передаваемого блока
-			case 7: static_cast <void> (io.setMaximumTransmissionUnit(id, static_cast <uint32_t> (engine()))); break;
+			case 7: static_cast <void> (awh::engine::setMaximumTransmissionUnit(id, static_cast <uint32_t> (engine()))); break;
 			// Устанавливаем сетевой интерфейс события
-			case 8: static_cast <void> (io.setIface(id, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
+			case 8: static_cast <void> (awh::engine::setIface(id, ADDRESSES[::pick(engine, sizeof(ADDRESSES) / sizeof(ADDRESSES[0]))])); break;
 			// Запрашиваем опции события
-			case 9: static_cast <void> (io.getOptions(id)); break;
+			case 9: static_cast <void> (awh::engine::getOptions(id)); break;
 			// Запрашиваем порт привязки события
-			case 10: static_cast <void> (io.getSourcePort(id)); break;
+			case 10: static_cast <void> (awh::engine::getSourcePort(id)); break;
 			// Запрашиваем адрес привязки события
-			case 11: static_cast <void> (io.getAddress(id, awh::event::address_t::IPV4)); break;
+			case 11: static_cast <void> (awh::engine::getAddress(id, awh::event::address_t::IPV4)); break;
 		}
 	}
 }
@@ -363,7 +363,7 @@ static void settings(awh::engine::io_t & io, const awh::event::id_t id, mt19937_
  * @param engine источник случайных чисел
  *
  */
-static void misuse(awh::engine::io_t & io, const awh::event::id_t id, mt19937_64 & engine) noexcept {
+static void misuse(const awh::event::id_t id, mt19937_64 & engine) noexcept {
 	// Число вызовов вопреки состоянию на этом проходе
 	const uint64_t count = (1 + ::pick(engine, 6));
 	// Запись, какая подаётся на передачу
@@ -379,26 +379,26 @@ static void misuse(awh::engine::io_t & io, const awh::event::id_t id, mt19937_64
 		 */
 		switch(static_cast <uint8_t> (::pick(engine, 8))){
 			// Приостанавливаем узел
-			case 0: static_cast <void> (io.pause(id)); break;
+			case 0: static_cast <void> (awh::engine::pause(id)); break;
 			// Возобновляем узел
-			case 1: static_cast <void> (io.resume(id)); break;
+			case 1: static_cast <void> (awh::engine::resume(id)); break;
 			// Запускаем узел
-			case 2: static_cast <void> (io.launch(id)); break;
+			case 2: static_cast <void> (awh::engine::launch(id)); break;
 			// Разрываем связь узла
-			case 3: static_cast <void> (io.disconnect(id)); break;
+			case 3: static_cast <void> (awh::engine::disconnect(id)); break;
 			// Переводим узел в прослушивание
-			case 4: static_cast <void> (io.listen(id, static_cast <uint32_t> (::pick(engine, 64)))); break;
+			case 4: static_cast <void> (awh::engine::listen(id, static_cast <uint32_t> (::pick(engine, 64)))); break;
 			// Выполняем передачу через узел
-			case 5: static_cast <void> (io.send(id, message, sizeof(message) - 1)); break;
+			case 5: static_cast <void> (awh::engine::send(id, message, sizeof(message) - 1)); break;
 			// Выполняем повторную фиксацию узла
 			case 6: {
 				// Увеличиваем счёт фиксаций
 				::totals.commits++;
 				// Выполняем фиксацию настроек узла
-				static_cast <void> (io.commit(id));
+				static_cast <void> (awh::engine::commit(id));
 			} break;
 			// Выполняем пересборку узла
-			case 7: static_cast <void> (io.rebuild(id)); break;
+			case 7: static_cast <void> (awh::engine::rebuild(id)); break;
 		}
 	}
 }
@@ -707,13 +707,13 @@ static const char * descriptorKind([[maybe_unused]] const int32_t fd) noexcept {
  * @param alive перечень узлов, ворошителем не снесённых
  *
  */
-static void settle(awh::engine::io_t & io, vector <awh::event::id_t> & alive) noexcept {
+static void settle(vector <awh::event::id_t> & alive) noexcept {
 	/**
 	 * Перебираем узлы, ворошителем не снесённые
 	 */
 	for(auto & id : alive){
 		// Если снос узла не выполнен, считаем его отказ
-		if(!io.destroy(id))
+		if(!awh::engine::destroy(id))
 			// Увеличиваем счёт отказов сноса
 			::totals.undestroyed++;
 	}
@@ -724,7 +724,7 @@ static void settle(awh::engine::io_t & io, vector <awh::event::id_t> & alive) no
 	 */
 	for(uint8_t turn = 0; turn < 64; turn++)
 		// Выполняем оборот опроса
-		static_cast <void> (io.poll(1));
+		static_cast <void> (awh::engine::poll(1));
 	/**
 	 * Даём движку время закрыть описатели своими потоками
 	 *
@@ -744,13 +744,13 @@ static void settle(awh::engine::io_t & io, vector <awh::event::id_t> & alive) no
 	 *       тот путь. Здесь зовётся `clear()` намеренно: снимок описателей снимается до
 	 *       `deinitialize()`, и без этого вызова второй путь остался бы непроверенным
 	 */
-	io.clear();
+	awh::engine::clear();
 	/**
 	 * Крутим обороты опроса ещё раз: часть закрытий движок делает ими
 	 */
 	for(uint8_t turn = 0; turn < 64; turn++)
 		// Выполняем оборот опроса
-		static_cast <void> (io.poll(1));
+		static_cast <void> (awh::engine::poll(1));
 }
 /**
  * Если операционной системой является не MS Windows
@@ -947,7 +947,7 @@ static void __awh_poll_watcher__() noexcept {
  * @param engine источник случайных чисел
  *
  */
-static void turns(awh::engine::io_t & io, mt19937_64 & engine) noexcept {
+static void turns(mt19937_64 & engine) noexcept {
 	// Число оборотов опроса на этом проходе
 	const uint64_t count = (1 + ::pick(engine, 4));
 	// Срок, за который обороты обязаны уложиться
@@ -967,7 +967,7 @@ static void turns(awh::engine::io_t & io, mt19937_64 & engine) noexcept {
 		 */
 		__awh_poll_guard__(__awh_poll_limit__);
 		// Выполняем оборот опроса
-		static_cast <void> (io.poll(static_cast <int32_t> (::pick(engine, 3))));
+		static_cast <void> (awh::engine::poll(static_cast <int32_t> (::pick(engine, 3))));
 		// Снимаем сторож: оборот вернул управление
 		__awh_poll_guard__(0);
 	}
@@ -1024,9 +1024,8 @@ int main(int argc, char * argv[]) noexcept {
 		std::thread(__awh_poll_watcher__).detach();
 	#endif
 	// Объект сетевого движка
-	awh::engine::io_t io;
 	// Выполняем заведение сетевого движка
-	if(!io.initialize()){
+	if(!awh::engine::initialize()){
 		// Сообщаем, что движок завести не удалось
 		::fprintf(stderr, "Сетевой движок завести не удалось\n");
 		// Выходим из приложения с кодом ошибки
@@ -1072,7 +1071,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		if(round == warmup){
 			// Успокаиваем движок, чтобы снимок что-то значил
-			::settle(io, alive);
+			::settle(alive);
 			// Снимаем перечень открытых описателей после разогрева
 			opened = ::descriptorList();
 			// Снимаем число открытых описателей после разогрева
@@ -1094,9 +1093,9 @@ int main(int argc, char * argv[]) noexcept {
 			// Годное сочетание рода узла, семейства, типа и протокола
 			const size_t index = static_cast <size_t> (::pick(engine, sizeof(VALIDS) / sizeof(VALIDS[0])));
 			// Заводим узел годным сочетанием
-			id = io.event(VALIDS[index].node, VALIDS[index].family, VALIDS[index].type, VALIDS[index].protocol);
+			id = awh::engine::event(VALIDS[index].node, VALIDS[index].family, VALIDS[index].type, VALIDS[index].protocol);
 		// Заводим узел случайного рода в случайном сочетании
-		} else id = io.event(
+		} else id = awh::engine::event(
 			NODES[::pick(engine, sizeof(NODES) / sizeof(NODES[0]))],
 			FAMILIES[::pick(engine, sizeof(FAMILIES) / sizeof(FAMILIES[0]))],
 			TYPES[::pick(engine, sizeof(TYPES) / sizeof(TYPES[0]))],
@@ -1118,7 +1117,7 @@ int main(int argc, char * argv[]) noexcept {
 				// Увеличиваем счёт обращений к снесённым опознавателям
 				::totals.zombies++;
 				// Выполняем обхождение со снесённым узлом
-				::misuse(io, zombies[::pick(engine, zombies.size())], engine);
+				::misuse(zombies[::pick(engine, zombies.size())], engine);
 			}
 			// Переходим к следующему проходу
 			continue;
@@ -1130,7 +1129,7 @@ int main(int argc, char * argv[]) noexcept {
 		/**
 		 * Настраиваем узел ДО фиксации
 		 */
-		::settings(io, id, engine);
+		::settings(id, engine);
 		/**
 		 * Обходимся с узлом вопреки состоянию ещё до фиксации
 		 *
@@ -1139,7 +1138,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		if(::pick(engine, 2) != 0)
 			// Выполняем обхождение вопреки состоянию
-			::misuse(io, id, engine);
+			::misuse(id, engine);
 		/**
 		 * Фиксируем настройки узла
 		 */
@@ -1147,7 +1146,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Увеличиваем счёт фиксаций
 			::totals.commits++;
 			// Выполняем фиксацию настроек узла
-			static_cast <void> (io.commit(id));
+			static_cast <void> (awh::engine::commit(id));
 		}
 		/**
 		 * Настраиваем узел ПОСЛЕ фиксации
@@ -1158,11 +1157,11 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		if(::pick(engine, 2) != 0)
 			// Выполняем настройку узла
-			::settings(io, id, engine);
+			::settings(id, engine);
 		// Выполняем обхождение вопреки состоянию
-		::misuse(io, id, engine);
+		::misuse(id, engine);
 		// Выполняем обороты опроса
-		::turns(io, engine);
+		::turns(engine);
 		/**
 		 * Сносим узел
 		 */
@@ -1170,7 +1169,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Увеличиваем счёт снесённых узлов
 			::totals.destroyed++;
 			// Выполняем снос узла
-			static_cast <void> (io.destroy(id));
+			static_cast <void> (awh::engine::destroy(id));
 			// Убираем узел из перечня живых
 			alive.pop_back();
 			// Запоминаем опознаватель снесённого узла
@@ -1192,7 +1191,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Увеличиваем счёт обращений к снесённым опознавателям
 			::totals.zombies++;
 			// Выполняем обхождение со снесённым узлом
-			::misuse(io, zombies[::pick(engine, zombies.size())], engine);
+			::misuse(zombies[::pick(engine, zombies.size())], engine);
 		}
 	}
 	/**
@@ -1204,7 +1203,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Число узлов, оставленных ворошителем живыми
 	const size_t left = alive.size();
 	// Успокаиваем движок тем же порядком, что и перед опорным снимком
-	::settle(io, alive);
+	::settle(alive);
 	/**
 	 * Снимаем число открытых описателей ДО снятия движка
 	 *
@@ -1286,7 +1285,7 @@ int main(int argc, char * argv[]) noexcept {
 	}
 
 	// Выполняем снятие сетевого движка
-	static_cast <void> (io.deinitialize());
+	static_cast <void> (awh::engine::deinitialize());
 	// Выводим итоги проделанной работы
 	::fprintf(stdout,
 		"ЗЕРНО=%llu ПРОХОДОВ=%llu\n"

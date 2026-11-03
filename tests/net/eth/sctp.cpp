@@ -61,6 +61,17 @@ namespace {
 			awh::net::socket_t fd;
 		public:
 			/**
+			 * @brief Метод проверки валидности сокета
+			 *
+			 * @return флаг валидности сокета
+			 *
+			 */
+			bool valid() const noexcept {
+				// Сокет валиден, если дескриптор неотрицательный
+				return (this->fd >= 0);
+			}
+		public:
+			/**
 			 * @brief Конструктор
 			 *
 			 */
@@ -74,17 +85,6 @@ namespace {
 				if(this->fd >= 0)
 					// Закрываем сокет
 					::close(this->fd);
-			}
-		public:
-			/**
-			 * @brief Метод проверки валидности сокета
-			 *
-			 * @return флаг валидности сокета
-			 *
-			 */
-			bool valid() const noexcept {
-				// Сокет валиден, если дескриптор неотрицательный
-				return (this->fd >= 0);
 			}
 	};
 }
@@ -111,7 +111,7 @@ TEST_F(EthFixture, SctpInitMessages){
 	// Устанавливаем количество входящих потоков
 	initmsg.istreams = 8;
 	// Инициализация параметров рукопожатия должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.initMessages(sock.fd, initmsg));
+	ASSERT_TRUE(awh::eth::sctp::initMessages(sock.fd, initmsg));
 }
 /**
  * @brief Тест круговой записи/чтения таймаута INIT через SCTP_INITMSG
@@ -130,9 +130,9 @@ TEST_F(EthFixture, SctpTimeoutInitRoundTrip){
 	// Новое значение таймаута INIT в миллисекундах
 	const uint32_t value = 4000;
 	// Устанавливаем таймаут INIT
-	ASSERT_TRUE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::INIT, value));
+	ASSERT_TRUE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::INIT, value));
 	// Считанный таймаут INIT должен совпадать с установленным
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::INIT), value);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::INIT), value);
 }
 /**
  * @brief Тест круговой записи/чтения таймаута DATA через SCTP_RTOINFO
@@ -148,9 +148,9 @@ TEST_F(EthFixture, SctpTimeoutDataRoundTrip){
 	// Новое значение начального таймаута RTO в миллисекундах (в пределах диапазона min/max по умолчанию)
 	const uint32_t value = 5000;
 	// Устанавливаем таймаут DATA
-	ASSERT_TRUE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::DATA, value));
+	ASSERT_TRUE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::DATA, value));
 	// Считанный таймаут DATA должен совпадать с установленным
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::DATA), value);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::DATA), value);
 }
 /**
  * @brief Тест круговой записи/чтения таймаута COOKIE через SCTP_ASSOCINFO
@@ -166,9 +166,9 @@ TEST_F(EthFixture, SctpTimeoutCookieRoundTrip){
 	// Новое значение времени жизни cookie в миллисекундах
 	const uint32_t value = 30000;
 	// Устанавливаем таймаут COOKIE
-	ASSERT_TRUE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::COOKIE, value));
+	ASSERT_TRUE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::COOKIE, value));
 	// Считанное время жизни cookie должно совпадать с установленным
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::COOKIE), value);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::COOKIE), value);
 }
 /**
  * @brief Тест обработки неподдерживаемых типов таймаутов SCTP
@@ -184,17 +184,17 @@ TEST_F(EthFixture, SctpTimeoutUnsupported){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Установка таймаута SACK не поддерживается
-	ASSERT_FALSE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SACK, 1000));
+	ASSERT_FALSE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SACK, 1000));
 	// Чтение таймаута SACK не поддерживается и возвращает 0
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SACK), 0U);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SACK), 0U);
 	// Установка таймаута SHUTDOWN не поддерживается
-	ASSERT_FALSE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWN, 1000));
+	ASSERT_FALSE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWN, 1000));
 	// Чтение таймаута SHUTDOWN не поддерживается и возвращает 0
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWN), 0U);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWN), 0U);
 	// Установка таймаута SHUTDOWNACK не поддерживается
-	ASSERT_FALSE(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWNACK, 1000));
+	ASSERT_FALSE(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWNACK, 1000));
 	// Чтение таймаута SHUTDOWNACK не поддерживается и возвращает 0
-	ASSERT_EQ(this->_eth->sctp.timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWNACK), 0U);
+	ASSERT_EQ(awh::eth::sctp::timeout(sock.fd, 0, awh::net::sctp::timeout_t::SHUTDOWNACK), 0U);
 }
 /**
  * @brief Тест подписки на устаревшие (legacy) события SCTP через SCTP_EVENTS
@@ -214,11 +214,12 @@ TEST_F(EthFixture, SctpEventsSubscribeLegacy){
 	 *       его содержащий, обязана ответить ОТКАЗОМ: часть набора там неисполнима, а
 	 *       молчаливый успех оставил бы вызывающую сторону ждать событий, которых не
 	 *       будет. Проверяется здесь именно это - отказ, а не пропуск проверки
+	 *
 	 */
 	// Если система несёт перенастройку потоков, подписка на весь набор обязана пройти
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_RESET)){
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::STREAM_RESET)){
 		// Подписка на набор устаревших событий должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::DATA_IO,
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -229,7 +230,7 @@ TEST_F(EthFixture, SctpEventsSubscribeLegacy){
 	// Если не несёт, подписка на тот же набор обязана ответить отказом
 	} else {
 		// Подписка обязана ответить отказом: часть набора неисполнима
-		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_FALSE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::DATA_IO,
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -238,7 +239,7 @@ TEST_F(EthFixture, SctpEventsSubscribeLegacy){
 			awh::net::sctp::event_type_t::STREAM_RESET_EVENT
 		}));
 		// Подписка на набор без неисполнимого события обязана пройти
-		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::DATA_IO,
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -266,19 +267,20 @@ TEST_F(EthFixture, SctpEventsSubscribeModern){
 	 *
 	 * @note У систем Sun ни перенастройки связи, ни смены состава потоков нет вовсе,
 	 *       и подписка обязана ответить отказом целиком: исполнимого в наборе нет
+	 *
 	 */
 	// Если система несёт перенастройку связи и смену состава потоков
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
-	   this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_CHANGE)){
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
+	   awh::eth::sctp::supported(awh::net::sctp::feature_t::STREAM_CHANGE)){
 		// Подписка на современные события должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
 			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
 		}));
 	// Если не несёт, подписка обязана ответить отказом
 	} else {
 		// Подписка обязана ответить отказом: исполнимого в наборе нет
-		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_FALSE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
 			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
 		}));
@@ -301,17 +303,18 @@ TEST_F(EthFixture, SctpEventsSubscribeMixed){
 	 * @note У систем Sun исполнима здесь лишь смена состояния связи, прочие три события
 	 *       система не несёт, - и подписка обязана ответить отказом, а не выдать частичный
 	 *       успех за полный
+	 *
 	 */
 	// Признак того, что система несёт все события смешанного набора
 	const bool whole = (
-		this->_eth->sctp.supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
-		this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_RESET) &&
-		this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_CHANGE)
+		awh::eth::sctp::supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
+		awh::eth::sctp::supported(awh::net::sctp::feature_t::STREAM_RESET) &&
+		awh::eth::sctp::supported(awh::net::sctp::feature_t::STREAM_CHANGE)
 	);
 	// Если система несёт весь набор, подписка обязана пройти, иначе - ответить отказом
 	if(whole){
 		// Подписка на смешанный набор событий должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
 			awh::net::sctp::event_type_t::STREAM_RESET_EVENT,
@@ -319,7 +322,7 @@ TEST_F(EthFixture, SctpEventsSubscribeMixed){
 		}));
 	} else {
 		// Подписка обязана ответить отказом: исполнима лишь часть набора
-		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+		ASSERT_FALSE(awh::eth::sctp::eventsSubscribe(sock.fd, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
 			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
 			awh::net::sctp::event_type_t::STREAM_RESET_EVENT,
@@ -341,7 +344,7 @@ TEST_F(EthFixture, SctpEventsSubscribeEmpty){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Подписка на пустой список событий должна завершиться неудачей
-	ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {}));
+	ASSERT_FALSE(awh::eth::sctp::eventsSubscribe(sock.fd, {}));
 }
 /**
  * @brief Тест установки поддерживаемых алгоритмов аутентификации SCTP сокета
@@ -360,18 +363,19 @@ TEST_F(EthFixture, SctpAuthenticateSupportAlgorithms){
 	 * @note У систем Sun её нет вовсе - ни у Solaris, ни у illumos, - и фасад обязан
 	 *       ответить ОТКАЗОМ. Проверяется именно отказ: пропуск означал бы молчаливое
 	 *       отключение, и отказ, обернувшийся успехом, прошёл бы незамеченным
+	 *
 	 */
 	// Если система несёт проверку подлинности сообщений
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::AUTHENTICATION)){
 		// Установка поддерживаемых алгоритмов аутентификации должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::authenticateSupportAlgorithms(sock.fd, {
 			awh::net::sctp::auth_type_t::HMAC_SHA1,
 			awh::net::sctp::auth_type_t::HMAC_SHA256
 		}));
 	// Если не несёт, вызовы обязаны отвечать отказом
 	} else {
 		// Установка алгоритмов обязана ответить отказом
-		ASSERT_FALSE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {
+		ASSERT_FALSE(awh::eth::sctp::authenticateSupportAlgorithms(sock.fd, {
 			awh::net::sctp::auth_type_t::HMAC_SHA1,
 			awh::net::sctp::auth_type_t::HMAC_SHA256
 		}));
@@ -389,7 +393,7 @@ TEST_F(EthFixture, SctpAuthenticateSupportAlgorithmsEmpty){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Установка пустого списка алгоритмов аутентификации должна завершиться неудачей
-	ASSERT_FALSE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {}));
+	ASSERT_FALSE(awh::eth::sctp::authenticateSupportAlgorithms(sock.fd, {}));
 }
 /**
  * @brief Тест установки ключа аутентификации SCTP сокета
@@ -407,15 +411,16 @@ TEST_F(EthFixture, SctpAuthenticateKey){
 	 *
 	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
 	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 *
 	 */
 	// Если система несёт проверку подлинности сообщений
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::AUTHENTICATION)){
 		// Установка ключа аутентификации должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
+		ASSERT_TRUE(awh::eth::sctp::authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
 	// Если не несёт, вызовы обязаны отвечать отказом
 	} else {
 		// Установка ключа обязана ответить отказом
-		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
+		ASSERT_FALSE(awh::eth::sctp::authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
 	}
 }
 /**
@@ -430,7 +435,7 @@ TEST_F(EthFixture, SctpAuthenticateKeyEmpty){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Установка пустого ключа аутентификации должна завершиться неудачей
-	ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, 1, ""));
+	ASSERT_FALSE(awh::eth::sctp::authenticateKey(sock.fd, 1, ""));
 }
 /**
  * @brief Тест активации и деактивации ключа аутентификации SCTP сокета
@@ -449,20 +454,22 @@ TEST_F(EthFixture, SctpAuthenticateKeyActivateDeactivate){
 	 *
 	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
 	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 *
 	 */
 	// Если система несёт проверку подлинности сообщений
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
-		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 5, "active-key-material"));
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+		// Установка ключа аутентификации должна завершиться успешно
+		ASSERT_TRUE(awh::eth::sctp::authenticateKey(sock.fd, 5, "active-key-material"));
 		// Активация ключа аутентификации должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
+		ASSERT_TRUE(awh::eth::sctp::authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
 	// Если не несёт, вызовы обязаны отвечать отказом
 	} else {
 		// Установка и включение ключа обязаны ответить отказом
-		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, 5, "active-key-material"));
-		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
+		ASSERT_FALSE(awh::eth::sctp::authenticateKey(sock.fd, 5, "active-key-material"));
+		ASSERT_FALSE(awh::eth::sctp::authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
 	}
 	// Деактивация (удаление) ранее активного ключа допустима не на всех ядрах, поэтому проверяем лишь отсутствие падения
-	(void) this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::DISABLED, 0, 5);
+	(void) awh::eth::sctp::authenticateKey(sock.fd, awh::net::socket_mode_t::DISABLED, 0, 5);
 }
 /**
  * @brief Тест установки чанков аутентификации SCTP сокета
@@ -480,18 +487,19 @@ TEST_F(EthFixture, SctpAuthenticateChunksSet){
 	 *
 	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
 	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 *
 	 */
 	// Если система несёт проверку подлинности сообщений
-	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+	if(awh::eth::sctp::supported(awh::net::sctp::feature_t::AUTHENTICATION)){
 		// Установка чанков аутентификации должна завершиться успешно
-		ASSERT_TRUE(this->_eth->sctp.authenticateChunks(sock.fd, {
+		ASSERT_TRUE(awh::eth::sctp::authenticateChunks(sock.fd, {
 			awh::net::sctp::auth_chunk_t::DATA,
 			awh::net::sctp::auth_chunk_t::COOKIE_ECHO
 		}));
 	// Если не несёт, вызовы обязаны отвечать отказом
 	} else {
 		// Установка кусков обязана ответить отказом
-		ASSERT_FALSE(this->_eth->sctp.authenticateChunks(sock.fd, {
+		ASSERT_FALSE(awh::eth::sctp::authenticateChunks(sock.fd, {
 			awh::net::sctp::auth_chunk_t::DATA,
 			awh::net::sctp::auth_chunk_t::COOKIE_ECHO
 		}));
@@ -509,7 +517,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksSetEmpty){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Установка пустого списка чанков аутентификации должна завершиться неудачей
-	ASSERT_FALSE(this->_eth->sctp.authenticateChunks(sock.fd, std::vector <awh::net::sctp::auth_chunk_t> {}));
+	ASSERT_FALSE(awh::eth::sctp::authenticateChunks(sock.fd, std::vector <awh::net::sctp::auth_chunk_t> {}));
 }
 /**
  * @brief Тест извлечения локальных чанков аутентификации SCTP сокета
@@ -528,7 +536,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksGetLocal){
 	// Контейнер для извлечённых чанков аутентификации
 	std::vector <awh::net::sctp::auth_chunk_t> chunks;
 	// Извлекаем локальные чанки аутентификации (вызов должен корректно завершиться без порчи памяти)
-	const bool result = this->_eth->sctp.authenticateChunks(sock.fd, awh::event::origin_t::LOCAL, 0, chunks);
+	const bool result = awh::eth::sctp::authenticateChunks(sock.fd, awh::event::origin_t::LOCAL, 0, chunks);
 	// Если извлечение выполнено успешно
 	if(result)
 		// Количество извлечённых чанков не должно превышать ёмкость выделенного буфера
@@ -551,7 +559,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksGetRemote){
 	// Контейнер для извлечённых чанков аутентификации
 	std::vector <awh::net::sctp::auth_chunk_t> chunks;
 	// Извлекаем удалённые чанки аутентификации (вызов должен корректно завершиться без порчи памяти)
-	const bool result = this->_eth->sctp.authenticateChunks(sock.fd, awh::event::origin_t::REMOTE, 0, chunks);
+	const bool result = awh::eth::sctp::authenticateChunks(sock.fd, awh::event::origin_t::REMOTE, 0, chunks);
 	// Если извлечение выполнено успешно
 	if(result)
 		// Количество извлечённых чанков не должно превышать ёмкость выделенного буфера
@@ -574,9 +582,9 @@ TEST_F(EthFixture, SctpStatusUnconnected){
 	// Создаём объект статуса SCTP сокета
 	awh::net::sctp::status_t status;
 	// Получаем статус SCTP сокета
-	if(this->_eth->sctp.status(sock.fd, status))
+	if(awh::eth::sctp::status(sock.fd, status))
 		// Возвращаемое состояние должно быть валидным значением перечисления
 		ASSERT_LE(static_cast <uint8_t> (status.state), static_cast <uint8_t> (awh::net::sctp::state_status_t::SHUTDOWN_ACK_SENT));
 }
 
-#endif // __linux__ || __FreeBSD__ || __sun
+#endif

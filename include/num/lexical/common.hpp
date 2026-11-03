@@ -459,14 +459,14 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод проверки установки флага формата разбора
+		 * @brief Функция проверки установки флага формата разбора
 		 *
 		 * @param format проверяемый формат разбора
 		 * @param flag   искомый флаг формата разбора
 		 * @return       результат проверки
 		 *
 		 * \~english
-		 * @brief Method of checking whether a parsing format flag is set
+		 * @brief Function of checking whether a parsing format flag is set
 		 * @param format parsing format to check
 		 * @param flag   sought flag of the parsing format
 		 * @return       result of the check
@@ -802,13 +802,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод подсчёта ведущих нулевых бит 64-битного значения
+		 * @brief Функция подсчёта ведущих нулевых бит 64-битного значения
 		 *
 		 * @param value исходное значение
 		 * @return      количество ведущих нулевых бит
 		 *
 		 * \~english
-		 * @brief Method of counting the leading zero bits of a 64-bit value
+		 * @brief Function of counting the leading zero bits of a 64-bit value
 		 * @param value source value
 		 * @return      number of leading zero bits
 		 *
@@ -889,14 +889,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод умножения двух 32-битных значений в 64-битное
+		 * @brief Функция умножения двух 32-битных значений в 64-битное
 		 *
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения
 		 *
 		 * \~english
-		 * @brief Method of multiplying two 32-bit values into a 64-bit one
+		 * @brief Function of multiplying two 32-bit values into a 64-bit one
 		 * @param x first multiplier
 		 * @param y second multiplier
 		 * @return  result of the multiplication
@@ -910,14 +910,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод универсального 128-битного умножения двух 64-битных значений
+		 * @brief Функция универсального 128-битного умножения двух 64-битных значений
 		 *
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения в виде пары 64-битных слов
 		 *
 		 * \~english
-		 * @brief Method of the universal 128-bit multiplication of two 64-bit values
+		 * @brief Function of the universal 128-bit multiplication of two 64-bit values
 		 * @param x first multiplier
 		 * @param y second multiplier
 		 * @return  result of the multiplication as a pair of 64-bit words
@@ -944,14 +944,14 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод 128-битного умножения двух 64-битных значений
+		 * @brief Функция 128-битного умножения двух 64-битных значений
 		 *
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения в виде пары 64-битных слов
 		 *
 		 * \~english
-		 * @brief Method of the 128-bit multiplication of two 64-bit values
+		 * @brief Function of the 128-bit multiplication of two 64-bit values
 		 * @param x first multiplier
 		 * @param y second multiplier
 		 * @return  result of the multiplication as a pair of 64-bit words
@@ -2050,7 +2050,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает типы половинной точности и bfloat16, то определяем их параметры
 		 */
-		#if defined(__STDCPP_FLOAT16_T__)
+		#if defined(__STDCPP_FLOAT16_T__) || defined(DOXYGEN)
 			/**
 			 * \~russian
 			 * @brief Шаблон фиктивного типа подстановки
@@ -2406,7 +2406,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип bfloat16, то определяем его параметры
 		 */
-		#if defined(__STDCPP_BFLOAT16_T__)
+		#if defined(__STDCPP_BFLOAT16_T__) || defined(DOXYGEN)
 			/**
 			 * \~russian
 			 * @brief Шаблон фиктивного типа подстановки
@@ -2761,7 +2761,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип float32_t, то определяем его параметры
 		 */
-		#if defined(__STDCPP_FLOAT32_T__)
+		#if defined(__STDCPP_FLOAT32_T__) || defined(DOXYGEN)
 			/**
 			 * \~russian
 			 * @brief Структура параметров двоичного формата float32_t
@@ -2777,7 +2777,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип float64_t, то определяем его параметры
 		 */
-		#if defined(__STDCPP_FLOAT64_T__)
+		#if defined(__STDCPP_FLOAT64_T__) || defined(DOXYGEN)
 			/**
 			 * \~russian
 			 * @brief Структура параметров двоичного формата float64_t
@@ -2806,14 +2806,14 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод сборки числа с плавающей точкой из знака и мантиссы
+		 * @brief Функция сборки числа с плавающей точкой из знака и мантиссы
 		 *
 		 * @param negative признак отрицательного числа
 		 * @param mantissa скорректированная мантисса двоичного представления
 		 * @param value    ссылка на результат сборки
 		 *
 		 * \~english
-		 * @brief Method of assembling a floating-point number from the sign and the mantissa
+		 * @brief Function of assembling a floating-point number from the sign and the mantissa
 		 * @param negative indication of a negative number
 		 * @param mantissa corrected mantissa of the binary representation
 		 * @param value    reference to the result of the assembly
@@ -2851,13 +2851,13 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод разбора числа с плавающей точкой в расширенное представление
+		 * @brief Функция разбора числа с плавающей точкой в расширенное представление
 		 *
 		 * @param value разбираемое число с плавающей точкой
 		 * @return      скорректированная мантисса расширенной точности
 		 *
 		 * \~english
-		 * @brief Method of parsing a floating-point number into the extended representation
+		 * @brief Function of parsing a floating-point number into the extended representation
 		 * @param value floating-point number being parsed
 		 * @return      corrected mantissa of extended precision
 		 *
@@ -2911,13 +2911,13 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод получения середины между числом и следующим представимым числом
+		 * @brief Функция получения середины между числом и следующим представимым числом
 		 *
 		 * @param value исходное число с плавающей точкой
 		 * @return      скорректированная мантисса середины интервала
 		 *
 		 * \~english
-		 * @brief Method of getting the middle between a number and the next representable number
+		 * @brief Function of getting the middle between a number and the next representable number
 		 * @param value source floating-point number
 		 * @return      corrected mantissa of the middle of the interval
 		 *
@@ -3045,7 +3045,7 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод сравнения ASCII-строк без учёта регистра
+		 * @brief Функция сравнения ASCII-строк без учёта регистра
 		 *
 		 * @param actual   фактическая строка произвольного регистра
 		 * @param expected ожидаемая строка в нижнем регистре
@@ -3053,7 +3053,7 @@ namespace awh {
 		 * @return         результат сравнения
 		 *
 		 * \~english
-		 * @brief Method of comparing ASCII strings case-insensitively
+		 * @brief Function of comparing ASCII strings case-insensitively
 		 * @param actual   actual string of an arbitrary case
 		 * @param expected expected string in lower case
 		 * @param length   number of compared characters
@@ -3093,13 +3093,13 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод проверки символа на принадлежность к пробельным
+		 * @brief Функция проверки символа на принадлежность к пробельным
 		 *
 		 * @param symbol проверяемый символ
 		 * @return       результат проверки
 		 *
 		 * \~english
-		 * @brief Method of checking whether a character belongs to the whitespace ones
+		 * @brief Function of checking whether a character belongs to the whitespace ones
 		 * @param symbol character to check
 		 * @return       result of the check
 		 *
@@ -3126,13 +3126,13 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод проверки символа на принадлежность к десятичным цифрам
+		 * @brief Функция проверки символа на принадлежность к десятичным цифрам
 		 *
 		 * @param symbol проверяемый символ
 		 * @return       результат проверки
 		 *
 		 * \~english
-		 * @brief Method of checking whether a character belongs to the decimal digits
+		 * @brief Function of checking whether a character belongs to the decimal digits
 		 * @param symbol character to check
 		 * @return       result of the check
 		 *
@@ -3159,13 +3159,13 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод преобразования символа в значение цифры
+		 * @brief Функция преобразования символа в значение цифры
 		 *
 		 * @param symbol преобразуемый символ
 		 * @return       значение цифры или 255 если символ цифрой не является
 		 *
 		 * \~english
-		 * @brief Method of converting a character into a digit value
+		 * @brief Function of converting a character into a digit value
 		 * @param symbol character being converted
 		 * @return       digit value or 255 if the character is not a digit
 		 *
@@ -3186,13 +3186,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод получения максимального количества цифр 64-битного значения
+		 * @brief Функция получения максимального количества цифр 64-битного значения
 		 *
 		 * @param base основание системы счисления в диапазоне от 2 до 36
 		 * @return     максимальное количество цифр
 		 *
 		 * \~english
-		 * @brief Method of getting the maximum number of digits of a 64-bit value
+		 * @brief Function of getting the maximum number of digits of a 64-bit value
 		 * @param base base of the numeral system in the range from 2 to 36
 		 * @return     maximum number of digits
 		 *
@@ -3219,13 +3219,13 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы нечислового значения
+		 * @brief Функция получения строковой константы нечислового значения
 		 *
 		 * @return строковая константа нечислового значения
 		 *
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of a not-a-number value
+		 * @brief Function of getting the string constant of a not-a-number value
 		 * @return string constant of a not-a-number value
 		 *
 		 * \~
@@ -3234,13 +3234,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы нечислового значения
+		 * @brief Функция получения строковой константы нечислового значения
 		 *
 		 * @return строковая константа нечислового значения
 		 *
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of a not-a-number value
+		 * @brief Function of getting the string constant of a not-a-number value
 		 * @return string constant of a not-a-number value
 		 *
 		 * \~
@@ -3251,12 +3251,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы нечислового значения (широкий символ)
+		 * @brief Функция получения строковой константы нечислового значения (широкий символ)
 		 *
 		 * @return строковая константа нечислового значения
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of a not-a-number value (wide character)
+		 * @brief Function of getting the string constant of a not-a-number value (wide character)
 		 * @return string constant of a not-a-number value
 		 *
 		 * \~
@@ -3267,12 +3267,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы нечислового значения (16-битный символ)
+		 * @brief Функция получения строковой константы нечислового значения (16-битный символ)
 		 *
 		 * @return строковая константа нечислового значения
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of a not-a-number value (16-bit character)
+		 * @brief Function of getting the string constant of a not-a-number value (16-bit character)
 		 * @return string constant of a not-a-number value
 		 *
 		 * \~
@@ -3283,12 +3283,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы нечислового значения (32-битный символ)
+		 * @brief Функция получения строковой константы нечислового значения (32-битный символ)
 		 *
 		 * @return строковая константа нечислового значения
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of a not-a-number value (32-bit character)
+		 * @brief Function of getting the string constant of a not-a-number value (32-bit character)
 		 * @return string constant of a not-a-number value
 		 *
 		 * \~
@@ -3300,15 +3300,15 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип char8_t, то определяем его параметры
 		 */
-		#if defined(__cpp_char8_t)
+		#if defined(__cpp_char8_t) || defined(DOXYGEN)
 			/**
 			 * \~russian
-			 * @brief Метод получения строковой константы нечислового значения (8-битный символ)
+			 * @brief Функция получения строковой константы нечислового значения (8-битный символ)
 			 *
 			 * @return строковая константа нечислового значения
 			 *
 			 * \~english
-			 * @brief Method of getting the string constant of a not-a-number value (8-bit character)
+			 * @brief Function of getting the string constant of a not-a-number value (8-bit character)
 			 * @return string constant of a not-a-number value
 			 *
 			 * \~
@@ -3335,13 +3335,13 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы бесконечности
+		 * @brief Функция получения строковой константы бесконечности
 		 *
 		 * @return строковая константа бесконечности
 		 *
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of infinity
+		 * @brief Function of getting the string constant of infinity
 		 * @return string constant of infinity
 		 *
 		 * \~
@@ -3349,13 +3349,13 @@ namespace awh {
 		constexpr const UC * constInf() noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы бесконечности
+		 * @brief Функция получения строковой константы бесконечности
 		 *
 		 * @return строковая константа бесконечности
 		 *
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of infinity
+		 * @brief Function of getting the string constant of infinity
 		 * @return string constant of infinity
 		 *
 		 * \~
@@ -3366,12 +3366,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы бесконечности (широкий символ)
+		 * @brief Функция получения строковой константы бесконечности (широкий символ)
 		 *
 		 * @return строковая константа бесконечности
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of infinity (wide character)
+		 * @brief Function of getting the string constant of infinity (wide character)
 		 * @return string constant of infinity
 		 *
 		 * \~
@@ -3382,12 +3382,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы бесконечности (16-битный символ)
+		 * @brief Функция получения строковой константы бесконечности (16-битный символ)
 		 *
 		 * @return строковая константа бесконечности
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of infinity (16-bit character)
+		 * @brief Function of getting the string constant of infinity (16-bit character)
 		 * @return string constant of infinity
 		 *
 		 * \~
@@ -3398,12 +3398,12 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения строковой константы бесконечности (32-битный символ)
+		 * @brief Функция получения строковой константы бесконечности (32-битный символ)
 		 *
 		 * @return строковая константа бесконечности
 		 *
 		 * \~english
-		 * @brief Method of getting the string constant of infinity (32-bit character)
+		 * @brief Function of getting the string constant of infinity (32-bit character)
 		 * @return string constant of infinity
 		 *
 		 * \~
@@ -3415,15 +3415,15 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип char8_t, то определяем его параметры
 		 */
-		#if defined(__cpp_char8_t)
+		#if defined(__cpp_char8_t) || defined(DOXYGEN)
 			/**
 			 * \~russian
-			 * @brief Метод получения строковой константы бесконечности (8-битный символ)
+			 * @brief Функция получения строковой константы бесконечности (8-битный символ)
 			 *
 			 * @return строковая константа бесконечности
 			 *
 			 * \~english
-			 * @brief Method of getting the string constant of infinity (8-bit character)
+			 * @brief Function of getting the string constant of infinity (8-bit character)
 			 * @return string constant of infinity
 			 *
 			 * \~

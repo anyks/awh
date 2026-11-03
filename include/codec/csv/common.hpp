@@ -1057,7 +1057,7 @@ namespace awh {
 			 *          with the senior bit (a lone senior octet is never a fit sequence of UTF-8)
 			 *
 			 * @note The tabulation character `0x09` is NOT in the number of the divergences: the parsing
-			 *       accepts it on a par with the printable ones, for it is named a separator in the method
+			 *       accepts it on a par with the printable ones, for it is named a separator in the function
 			 *       itself and stands in the four characters by which the separator is determined
 			 *
 			 * @note Predicting the success of the parsing by this mediator is IMPOSSIBLE. For that one must

@@ -69,8 +69,8 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "io.hpp"
-#include "../../include/net/addr.hpp"
-#include "../../include/sys/chrono.hpp"
+#include "../../../include/net/addr.hpp"
+#include "../../../include/sys/chrono.hpp"
 
 /**
  * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
@@ -278,7 +278,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Добавляем новое событие клиента ICMP
-		eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
+		eid = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -286,22 +286,22 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		// Если пользователь является непривилигированным
 		if(::getuid())
 			// Добавляем новое событие клиента ICMP
-			eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::ICMP);
+			eid = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::ICMP);
 		// Добавляем новое событие клиента ICMP
-		else eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
+		else eid = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
 	#endif
 	// Проверяем, что идентификатор события больше нуля
 	ASSERT_GT(eid, 0);
 	// Инициализируем асинхронный движок ввода-вывода
-	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(awh::engine::initialize());
 	// Устанавливаем опции событий
-	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR));
+	ASSERT_TRUE(awh::engine::setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR));
 	// Устанавливаем IP-адрес события
-	ASSERT_TRUE(this->_io->setAddress(eid, awh::event::address_t::IPV4, this->_parameter.source));
+	ASSERT_TRUE(awh::engine::setAddress(eid, awh::event::address_t::IPV4, this->_parameter.source));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->setTarget(eid, this->_parameter.target));
+	ASSERT_TRUE(awh::engine::setTarget(eid, this->_parameter.target));
 	// Устанавливаем функцию обратного вызова на запись в событие
-	this->_io->on(eid, static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
+	awh::engine::on(eid, static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 		// Записываем в лог сообщение о переподключении события
 		awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 	}));
@@ -313,7 +313,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 *       постоянности признака перенесён к самому его объявлению - лечится
 	 *       предупреждение там, а не здесь
 	 */
-	this->_io->on(eid, [&raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	awh::engine::on(eid, [&raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Если принятого не хватает даже на заголовок
 		if((data == nullptr) || (size == 0))
 			// Выходим из разбора отклика
@@ -401,7 +401,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		replies++;
 	});
 	// Устанавливаем функцию обратного вызова на ошибку события
-	this->_io->on(eid, [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+	awh::engine::on(eid, [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 		/**
 		 * Обрабатываем статус события
 		 */
@@ -459,7 +459,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		}
 	});
 	// Устанавливаем функцию обратного вызова на общее событие
-	this->_io->on(eid, [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+	awh::engine::on(eid, [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 		/**
 		 * Обрабатываем действие события
 		 */
@@ -527,7 +527,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		}
 	});
 	// Устанавливаем таймаут события на запись
-	this->_io->setTimeout(eid, awh::event::action_t::WRITE, 3000);
+	awh::engine::setTimeout(eid, awh::event::action_t::WRITE, 3000);
 	/**
 	 * Срок на чтение обязателен: сокет блокирующий, а читаем мы его сами
 	 *
@@ -545,11 +545,11 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 *       в сорок миллисекунд на запрос, и двенадцати секунд хватает с запасом
 	 *       даже медленному стенду
 	 */
-	this->_io->setTimeout(eid, awh::event::action_t::READ, 12000);
+	awh::engine::setTimeout(eid, awh::event::action_t::READ, 12000);
 	// Устанавливаем таймаут события на подключение
-	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 5000);
+	awh::engine::setTimeout(eid, awh::event::action_t::CONNECT, 5000);
 	// Выполняем фиксацию настроек события сервера
-	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(awh::engine::commit(eid));
 	/**
 	 * Запускаем событие вслед за фиксацией, как это делает настоящий потребитель
 	 *
@@ -573,7 +573,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 *       `send` и `recv` зовутся прямо. Запуск события и запуск цикла - разные
 	 *       вещи, и прежнее пояснение их смешивало
 	 */
-	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(awh::engine::launch(eid));
 	// Выполняем инициализацию генератора
 	std::random_device randev;
 	// Подключаем устройство генератора
@@ -608,7 +608,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		// Запоминаем счёт откликов до обмена
 		const uint8_t before = replies;
 		// Отправляем сообщение серверу
-		ASSERT_TRUE(this->_io->send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp)));
+		ASSERT_TRUE(awh::engine::send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp)));
 		/**
 		 * Выполняем чтение ответа, пока не придёт отклик именно на наш запрос
 		 *
@@ -635,12 +635,12 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		 */
 		for(uint8_t attempt = 0; (attempt < 3) && (replies == before); attempt++)
 			// Выполняем чтение очередного принятого пакета
-			ASSERT_TRUE(this->_io->recv(eid));
+			ASSERT_TRUE(awh::engine::recv(eid));
 		// Увеличиваем последовательность запроса
 		sequence++;
 	}
 	// Уничтожаем все события после получения ответа
-	ASSERT_TRUE(this->_io->deinitialize());
+	ASSERT_TRUE(awh::engine::deinitialize());
 	/**
 	 * Проверяем, что отклики на эхо-запросы приняты и разобраны
 	 *
@@ -721,15 +721,15 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	 */
 	uint8_t count = 0;
 	// Добавляем новое событие таймера
-	awh::event::id_t eid = this->_io->event(this->_parameter.node, awh::event::family_t::TIMER);
+	awh::event::id_t eid = awh::engine::event(this->_parameter.node, awh::event::family_t::TIMER);
 	// Проверяем, что идентификатор события больше нуля
 	ASSERT_GT(eid, 0);
 	// Добавляем новое событие таймера
-	this->_io->setTimeout(eid, awh::event::action_t::NONE, this->_parameter.timeout);
+	awh::engine::setTimeout(eid, awh::event::action_t::NONE, this->_parameter.timeout);
 	// Инициализируем асинхронный движок ввода-вывода
-	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(awh::engine::initialize());
 	// Выполняем фиксацию настроек события сервера
-	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(awh::engine::commit(eid));
 	// Запоминаем текущее значение времени
 	this->ts = std::chrono::system_clock::now();
 	/**
@@ -740,7 +740,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	// Если таймер является интервалом
 	if(this->_parameter.node == awh::event::node_t::INTERVAL){
 		// Устанавливаем функцию обратного вызова на событие интервала
-		this->_io->on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		awh::engine::on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = std::chrono::system_clock::now();
 			// Если статус события успешен
@@ -765,7 +765,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 		 *       тест завершался на первом же из них за одну миллисекунду, ни разу не
 		 *       дождавшись срабатывания самого таймаута
 		 */
-		this->_io->on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		awh::engine::on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = std::chrono::system_clock::now();
 			// Если статус события успешен
@@ -780,7 +780,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 		});
 	}
 	// Выполняем запуск события
-	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(awh::engine::launch(eid));
 	/**
 	 * Запускаем опрос событий
 	 */
@@ -798,7 +798,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 		 */
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds((this->_parameter.timeout * 6) + 5000);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -810,7 +810,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	 */
 	ASSERT_GE(std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now() - start).count(), (this->_parameter.timeout - (this->_parameter.timeout / 4)));
 	// Уничтожаем все события после получения ответа
-	ASSERT_TRUE(this->_io->deinitialize());
+	ASSERT_TRUE(awh::engine::deinitialize());
 }
 
 /**
@@ -911,22 +911,22 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			 *       ПО ИМЕНИ канала, а не наследованием описателя, как у систем POSIX. Оттого
 			 *       имя снимается с него и уходит работнику окружением, а сам он сносится
 			 */
-			const auto & channels = this->_io->events(this->_parameter.family, this->_parameter.type);
+			const auto & channels = awh::engine::events(this->_parameter.family, this->_parameter.type);
 			// Проверяем, что идентификаторы событий заведены
 			ASSERT_GT(channels[0], 0);
 			ASSERT_GT(channels[1], 0);
 			// Инициализируем асинхронный движок ввода-вывода
-			ASSERT_TRUE(this->_io->initialize());
+			ASSERT_TRUE(awh::engine::initialize());
 			// Получаем имя канала обмена, каким работник нас найдёт
-			const std::string pipe = this->_io->getTarget(channels[1]);
+			const std::string pipe = awh::engine::getTarget(channels[1]);
 			// Имя канала обмена обязано быть известно
 			ASSERT_FALSE(pipe.empty());
 			// Сносим второй конец: работник заведёт свой сам, по имени
-			ASSERT_TRUE(this->_io->destroy(channels[1]));
+			ASSERT_TRUE(awh::engine::destroy(channels[1]));
 			// Опознаватель процесса, доложившийся работником
 			uint32_t reported = 0;
 			// Устанавливаем функцию обратного вызова на получение доклада работника
-			this->_io->on(channels[0], [&reported, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(channels[0], [&reported, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если доклад пришёл целиком
 				if((data != nullptr) && (size == sizeof(uint32_t))){
 					// Запоминаем опознаватель процесса работника
@@ -936,9 +936,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 				}
 			});
 			// Выполняем фиксацию настроек своего конца канала обмена
-			ASSERT_TRUE(this->_io->commit(channels[0]));
+			ASSERT_TRUE(awh::engine::commit(channels[0]));
 			// Выполняем запуск своего конца канала обмена
-			ASSERT_TRUE(this->_io->launch(channels[0]));
+			ASSERT_TRUE(awh::engine::launch(channels[0]));
 			// Буфер под путь к своему двоичному файлу
 			wchar_t executable[MAX_PATH]{0};
 			// Получаем путь к своему двоичному файлу: работник это тот же файл
@@ -972,7 +972,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			 */
 			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
 				// Выполняем оборот опроса
-				ASSERT_TRUE(this->_io->poll(__AWH_TEST_POLL_SLICE__));
+				ASSERT_TRUE(awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 			// Дожидаемся завершения работника
 			::WaitForSingleObject(process.hProcess, 5000);
 			// Закрываем описатели порождённого процесса
@@ -989,9 +989,9 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			ASSERT_NE(reported, static_cast <uint32_t> (::GetCurrentProcessId()));
 			ASSERT_GT(reported, 0u);
 			// Сносим свой конец канала обмена
-			ASSERT_TRUE(this->_io->destroy(channels[0]));
+			ASSERT_TRUE(awh::engine::destroy(channels[0]));
 			// Сворачиваем движок
-			ASSERT_TRUE(this->_io->deinitialize());
+			ASSERT_TRUE(awh::engine::deinitialize());
 			// Оканчиваем проверку
 			return;
 		}
@@ -1005,16 +1005,16 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 		// Если семейство события является каналом
 		case static_cast <uint8_t> (awh::event::family_t::PIPE): {
 			// Добавляем новое события межпроцессного взаимодействия для родительского процесса
-			const auto & mfds = this->_io->events(this->_parameter.family);
+			const auto & mfds = awh::engine::events(this->_parameter.family);
 			// Добавляем новое события межпроцессного взаимодействия для дочернего процесса
-			const auto & cfds = this->_io->events(this->_parameter.family);
+			const auto & cfds = awh::engine::events(this->_parameter.family);
 			// Проверяем, что идентификаторы событий больше нуля
 			ASSERT_GT(mfds[0], 0);
 			ASSERT_GT(mfds[1], 0);
 			ASSERT_GT(cfds[0], 0);
 			ASSERT_GT(cfds[1], 0);
 			// Инициализируем асинхронный движок ввода-вывода
-			ASSERT_TRUE(this->_io->initialize());
+			ASSERT_TRUE(awh::engine::initialize());
 			// Получаем идентификатор родительского процесса
 			const pid_t mpid = ::getpid();
 			// Устанавливаем идентификатор процесса
@@ -1066,17 +1066,17 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					} childGuard;
 					// Выполняем переинициализацию асинхронного движка ввода-вывода
-					ASSERT_TRUE(this->_io->reinitialize());
+					ASSERT_TRUE(awh::engine::reinitialize());
 					// Уничтожаем событие родительского процесса для чтения
-					ASSERT_TRUE(this->_io->destroy(mfds[0]));
+					ASSERT_TRUE(awh::engine::destroy(mfds[0]));
 					// Уничтожаем событие дочернего процесса для записи
-					ASSERT_TRUE(this->_io->destroy(cfds[1]));
+					ASSERT_TRUE(awh::engine::destroy(cfds[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(cfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(cfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					awh::engine::on(cfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1149,12 +1149,12 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(mfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					awh::engine::on(mfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
 						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(cfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					awh::engine::on(cfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
@@ -1163,7 +1163,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					awh::engine::on(cfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1216,7 +1216,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					awh::engine::on(cfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1284,14 +1284,14 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Выполняем фиксацию настроек событий дочернего процесса
-					ASSERT_TRUE(this->_io->commit(cfds[0]));
-					ASSERT_TRUE(this->_io->commit(mfds[1]));
+					ASSERT_TRUE(awh::engine::commit(cfds[0]));
+					ASSERT_TRUE(awh::engine::commit(mfds[1]));
 					// Выполняем запуск события
-					ASSERT_TRUE(this->_io->launch(cfds[0]));
+					ASSERT_TRUE(awh::engine::launch(cfds[0]));
 					// Сообщение для отправки родительскому процессу
 					const std::string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
-					this->_io->send(mfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+					awh::engine::send(mfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
 					/**
 					 * Запускаем опрос событий
 					 */
@@ -1304,25 +1304,25 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
 					// Уничтожаем все события после получения ответа
-					ASSERT_TRUE(this->_io->deinitialize());
+					ASSERT_TRUE(awh::engine::deinitialize());
 				} break;
 				// Если процесс является родительским
 				default: {
 					// Уничтожаем событие родительского процесса для записи
-					ASSERT_TRUE(this->_io->destroy(mfds[1]));
+					ASSERT_TRUE(awh::engine::destroy(mfds[1]));
 					// Уничтожаем событие дочернего процесса для чтения
-					ASSERT_TRUE(this->_io->destroy(cfds[0]));
+					ASSERT_TRUE(awh::engine::destroy(cfds[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(mfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(mfds[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					awh::engine::on(mfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1395,12 +1395,12 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(cfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					awh::engine::on(cfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
 						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(mfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					awh::engine::on(mfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
@@ -1409,7 +1409,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					awh::engine::on(mfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1462,7 +1462,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					awh::engine::on(mfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1530,14 +1530,14 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Выполняем фиксацию настроек события сервера
-					ASSERT_TRUE(this->_io->commit(mfds[0]));
-					ASSERT_TRUE(this->_io->commit(cfds[1]));
+					ASSERT_TRUE(awh::engine::commit(mfds[0]));
+					ASSERT_TRUE(awh::engine::commit(cfds[1]));
 					// Выполняем запуск события
-					ASSERT_TRUE(this->_io->launch(mfds[0]));
+					ASSERT_TRUE(awh::engine::launch(mfds[0]));
 					// Сообщение для отправки дочернему процессу
 					const std::string message = "Hello from parent process!";
 					// Отправляем сообщение родительскому процессу
-					this->_io->send(cfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+					awh::engine::send(cfds[1], reinterpret_cast <const char *> (message.c_str()), message.length());
 					/**
 					 * Запускаем опрос событий
 					 */
@@ -1550,7 +1550,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
@@ -1574,19 +1574,19 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Проверяем, что утверждения дочернего процесса прошли
 					ASSERT_EQ(WEXITSTATUS(status), EXIT_SUCCESS) << "утверждения в дочернем процессе не прошли";
 					// Уничтожаем все события после получения ответа
-					ASSERT_TRUE(this->_io->deinitialize());
+					ASSERT_TRUE(awh::engine::deinitialize());
 				}
 			}
 		} break;
 		// Если семейство события является сокетом UDS
 		case static_cast <uint8_t> (awh::event::family_t::UDS): {
 			// Добавляем новое пользовательское событие
-			const auto & events = this->_io->events(awh::event::family_t::UDS, this->_parameter.type);
+			const auto & events = awh::engine::events(awh::event::family_t::UDS, this->_parameter.type);
 			// Проверяем, что идентификаторы событий больше нуля
 			ASSERT_GT(events[0], 0);
 			ASSERT_GT(events[1], 0);
 			// Инициализируем асинхронный движок ввода-вывода
-			ASSERT_TRUE(this->_io->initialize());
+			ASSERT_TRUE(awh::engine::initialize());
 			// Получаем идентификатор родительского процесса
 			const pid_t mpid = ::getpid();
 			// Устанавливаем идентификатор процесса
@@ -1638,13 +1638,13 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					} childGuard;
 					// Выполняем переинициализацию асинхронного движка ввода-вывода
-					ASSERT_TRUE(this->_io->reinitialize());
+					ASSERT_TRUE(awh::engine::reinitialize());
 					// Уничтожаем событие родительского процесса
-					ASSERT_TRUE(this->_io->destroy(events[0]));
+					ASSERT_TRUE(awh::engine::destroy(events[0]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
-					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					awh::engine::on(events[1], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1717,12 +1717,12 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					awh::engine::on(events[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
 						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(events[1], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					awh::engine::on(events[1], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
@@ -1731,7 +1731,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					awh::engine::on(events[1], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1784,7 +1784,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					awh::engine::on(events[1], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1852,13 +1852,13 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Выполняем фиксацию настроек события сервера
-					ASSERT_TRUE(this->_io->commit(events[1]));
+					ASSERT_TRUE(awh::engine::commit(events[1]));
 					// Выполняем запуск события
-					ASSERT_TRUE(this->_io->launch(events[1]));
+					ASSERT_TRUE(awh::engine::launch(events[1]));
 					// Сообщение для отправки родительскому процессу
 					const std::string message = "Hello from child process!";
 					// Отправляем сообщение родительскому процессу
-					this->_io->send(events[1], reinterpret_cast <const char *> (message.c_str()), message.length());
+					awh::engine::send(events[1], reinterpret_cast <const char *> (message.c_str()), message.length());
 					/**
 					 * Запускаем опрос событий
 					 */
@@ -1871,21 +1871,21 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
 					// Уничтожаем все события после получения ответа
-					ASSERT_TRUE(this->_io->deinitialize());
+					ASSERT_TRUE(awh::engine::deinitialize());
 				} break;
 				// Если процесс является родительским
 				default: {
 					// Уничтожаем событие дочернего процесса
-					ASSERT_TRUE(this->_io->destroy(events[1]));
+					ASSERT_TRUE(awh::engine::destroy(events[1]));
 					// Устананавливаем опции события
-					ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+					ASSERT_TRUE(awh::engine::setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
-					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					awh::engine::on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1958,12 +1958,12 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					awh::engine::on(events[0], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
 						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(events[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					awh::engine::on(events[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
@@ -1972,7 +1972,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					awh::engine::on(events[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -2025,7 +2025,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					awh::engine::on(events[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -2093,13 +2093,13 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						}
 					});
 					// Выполняем фиксацию настроек события сервера
-					ASSERT_TRUE(this->_io->commit(events[0]));
+					ASSERT_TRUE(awh::engine::commit(events[0]));
 					// Выполняем запуск события
-					ASSERT_TRUE(this->_io->launch(events[0]));
+					ASSERT_TRUE(awh::engine::launch(events[0]));
 					// Сообщение для отправки дочернему процессу
 					const std::string message = "Hello from parent process!";
 					// Отправляем сообщение родительскому процессу
-					this->_io->send(events[0], reinterpret_cast <const char *> (message.c_str()), message.length());
+					awh::engine::send(events[0], reinterpret_cast <const char *> (message.c_str()), message.length());
 					/**
 					 * Запускаем опрос событий
 					 */
@@ -2112,7 +2112,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
@@ -2136,7 +2136,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Проверяем, что утверждения дочернего процесса прошли
 					ASSERT_EQ(WEXITSTATUS(status), EXIT_SUCCESS) << "утверждения в дочернем процессе не прошли";
 					// Уничтожаем все события после получения ответа
-					ASSERT_TRUE(this->_io->deinitialize());
+					ASSERT_TRUE(awh::engine::deinitialize());
 				}
 			}
 		} break;
@@ -2187,7 +2187,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			::_exit(EXIT_FAILURE);
 		}).detach();
 		// Выполняем инициализацию сетевого движка
-		ASSERT_TRUE(this->_io->initialize());
+		ASSERT_TRUE(awh::engine::initialize());
 		// Заводим событие канала обмена, каким доложимся родителю
 		// Буфер под семейство и вид узла обмена, названные родителем
 		wchar_t kind[16]{0};
@@ -2203,21 +2203,21 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			::_exit(EXIT_FAILURE);
 		// Запоминаем вид узла обмена
 		const awh::event::type_t type = static_cast <awh::event::type_t> (::wcstoul(kind, nullptr, 10));
-		const awh::event::id_t channel = this->_io->event(awh::event::node_t::IPC, family, type);
+		const awh::event::id_t channel = awh::engine::event(awh::event::node_t::IPC, family, type);
 		// Проверяем, что идентификатор события канала заведён
 		ASSERT_GT(channel, 0);
 		// Устанавливаем имя канала обмена, названное родителем
-		ASSERT_TRUE(this->_io->setTarget(channel, awh::fmk::convert(std::wstring(buffer))));
+		ASSERT_TRUE(awh::engine::setTarget(channel, awh::fmk::convert(std::wstring(buffer))));
 		// Выполняем фиксацию настроек канала обмена
-		ASSERT_TRUE(this->_io->commit(channel));
+		ASSERT_TRUE(awh::engine::commit(channel));
 		// Выполняем подключение канала обмена к родителю
-		ASSERT_TRUE(this->_io->connect({channel}));
+		ASSERT_TRUE(awh::engine::connect({channel}));
 		// Выполняем запуск канала обмена
-		ASSERT_TRUE(this->_io->launch(channel));
+		ASSERT_TRUE(awh::engine::launch(channel));
 		// Свой опознаватель процесса: им и доказывается, что процессов было два
 		const uint32_t self = static_cast <uint32_t> (::GetCurrentProcessId());
 		// Докладываем родителю свой опознаватель процесса
-		ASSERT_TRUE(this->_io->send(channel, reinterpret_cast <const char *> (&self), sizeof(self)));
+		ASSERT_TRUE(awh::engine::send(channel, reinterpret_cast <const char *> (&self), sizeof(self)));
 		// Отсчёт времени на доставку доклада
 		const auto start = std::chrono::steady_clock::now();
 		/**
@@ -2225,10 +2225,10 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 		 */
 		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1000))
 			// Выполняем оборот опроса
-			this->_io->poll(50);
+			awh::engine::poll(50);
 		// Сворачиваем движок
-		this->_io->destroy(channel);
-		this->_io->deinitialize();
+		awh::engine::destroy(channel);
+		awh::engine::deinitialize();
 		/**
 		 * Выходим успехом
 		 *

@@ -309,8 +309,8 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция формирования форматированной строки по записи «printf»
 			 *
-			 * @details Здесь выполняется само построение строки. Наружу метод не
-			 *          выведен: обращение к нему идёт через перекрытие «format»,
+			 * @details Здесь выполняется само построение строки. Наружу функция не
+			 *          выведена: обращение к нему идёт через перекрытие «format»,
 			 *          отчего перечень доводов с переменным числом остаётся вне
 			 *          разбора перекрытий и не сталкивается с подстановкой по «$N».
 			 *
@@ -321,7 +321,7 @@ namespace awh {
 			 * \~english
 			 * @brief Function of building a formatted string by the «printf» record
 			 *
-			 * @details Here the very building of the string is performed. Outwards the method is not
+			 * @details Here the very building of the string is performed. Outwards the function is not
 			 *          exposed: the address to it goes through the «format» overload,
 			 *          and therefore the list of the arguments of a variable number remains outside
 			 *          the resolution of the overloads and does not collide with the substitution by «$N».
@@ -534,8 +534,8 @@ namespace awh {
 		 * @brief Функция конвертирования строки UTF-8 в строку широких символов
 		 *
 		 * @details Узкая строка разбирается как запись в кодировке UTF-8 и выводится
-		 *          строкой широких символов. Обратное действие выполняется одноимённым
-		 *          методом, принимающим строку широких символов.
+		 *          строкой широких символов. Обратное действие выполняется одноимённой
+		 *          функцией, принимающей строку широких символов.
 		 *
 		 * @note Разрядность широкого символа задаётся операционной системой: на
 		 *       MS Windows он двухбайтовый, и символы за пределами основной плоскости
@@ -559,7 +559,7 @@ namespace awh {
 		 * @brief Function of converting a UTF-8 string into a wide-character string
 		 *
 		 * @details A narrow string is parsed as a record in the UTF-8 encoding and is yielded
-		 *          as a string of wide characters. The reverse action is performed by the method of the same name
+		 *          as a string of wide characters. The reverse action is performed by the function of the same name
 		 *          taking a string of wide characters.
 		 *
 		 * @note The width of a wide character is set by the operating system: on
@@ -682,7 +682,7 @@ namespace awh {
 		 * @brief Функция определения точного размера, сколько занимает число байт
 		 *
 		 * @details Выводится количество байт, которым число записывается без потери
-		 *          значения, а не размер его типа. Метод служит сжатию записи чисел
+		 *          значения, а не размер его типа. Функция служит сжатию записи чисел
 		 *          в двоичных протоколах.
 		 *
 		 * @param num число для проверки
@@ -698,7 +698,7 @@ namespace awh {
 		 * @brief Function of determining the exact size of how many bytes a number occupies
 		 *
 		 * @details What is yielded is the number of the bytes a number is written by without a loss of
-		 *          the value, and not the size of its type. The method serves the compression of the record of the numbers
+		 *          the value, and not the size of its type. The function serves the compression of the record of the numbers
 		 *          in the binary protocols.
 		 *
 		 * @param num number to check
@@ -719,7 +719,7 @@ namespace awh {
 		 * @details Выводится размер буфера за вычетом нулевых байтов, лежащих в его
 		 *          конце. Буфер, заполненный нулями целиком, даёт нулевой размер.
 		 *
-		 * @warning Метод пригоден лишь для буферов, записанных ОБРАТНЫМ порядком байт
+		 * @warning Функция пригодна лишь для буферов, записанных ОБРАТНЫМ порядком байт
 		 *          (little-endian), где старший разряд числа лежит в конце буфера:
 		 *          именно оттуда и отсекаются нулевые байты. Прямой порядок байт
 		 *          (big-endian) не поддержан - там старший разряд лежит в начале, и
@@ -735,7 +735,7 @@ namespace awh {
 		 * @details What is yielded is the size of the buffer minus the zero bytes lying at its
 		 *          end. A buffer filled with zeroes entirely gives a zero size.
 		 *
-		 * @warning The method is suitable only for the buffers written in the REVERSE order of the
+		 * @warning The function is suitable only for the buffers written in the REVERSE order of the
 		 *          bytes (little-endian), where the higher digit of a number lies at the end of the buffer:
 		 *          it is from there that the zero bytes are cut off. The direct order of the bytes
 		 *          (big-endian) is not supported - there the higher digit lies at the beginning, and
@@ -1028,7 +1028,7 @@ namespace awh {
 		 * @brief Функция получения иконки
 		 *
 		 * @details Выводится случайно выбранный знак из набора: один набор отведён
-		 *          началу работы, другой — её завершению. Метод служит выводу в
+		 *          началу работы, другой — её завершению. Функция служит выводу в
 		 *          консоль и содержательной нагрузки не несёт.
 		 *
 		 * @param end флаг завершения работы
@@ -1038,7 +1038,7 @@ namespace awh {
 		 * @brief Function of getting an icon
 		 *
 		 * @details What is yielded is a randomly chosen sign from a set: one set is given over to
-		 *          the beginning of the work, another one — to its completion. The method serves the output into
+		 *          the beginning of the work, another one — to its completion. The function serves the output into
 		 *          the console and carries no meaningful load.
 		 *
 		 * @param end flag of the completion of the work
@@ -1056,8 +1056,8 @@ namespace awh {
 		 *          степени числа 1000, а не 1024, как принято для пропускной
 		 *          способности сети.
 		 *
-		 * @note Приставки размера буфера, выводимого методом «bytes», задают степени
-		 *       числа 1024: единицы измерения этих двух методов не совпадают намеренно
+		 * @note Приставки размера буфера, выводимого функцией «bytes», задают степени
+		 *       числа 1024: единицы измерения этих двух функций не совпадают намеренно
 		 *
 		 * @see bpsBuffer
 		 *
@@ -1079,8 +1079,8 @@ namespace awh {
 		 *          the powers of the number 1000, and not of 1024, as it is accepted for the bandwidth
 		 *          of a network.
 		 *
-		 * @note The prefixes of the size of a buffer, yielded by the «bytes» method, set the powers
-		 *       of the number 1024: the units of the measurement of these two methods do not coincide deliberately
+		 * @note The prefixes of the size of a buffer, yielded by the «bytes» function, set the powers
+		 *       of the number 1024: the units of the measurement of these two functions do not coincide deliberately
 		 *
 		 * @see bpsBuffer
 		 *
@@ -1131,7 +1131,7 @@ namespace awh {
 		 *
 		 * @note Запись, не начинающаяся цифрой, выводится нулевым значением
 		 *
-		 * @note Единица измерения обязательна: задача метода — получить точное число
+		 * @note Единица измерения обязательна: задача функции — получить точное число
 		 *       байт из записи размерности, а не разобрать число. Запись из одних
 		 *       цифр выводится нулевым значением, и разбирать её следует модулем
 		 *       лексического разбора чисел
@@ -1157,7 +1157,7 @@ namespace awh {
 		 *
 		 * @note A record not beginning with a digit is yielded as a zero value
 		 *
-		 * @note The unit of the measurement is obligatory: the task of the method is to obtain the exact number
+		 * @note The unit of the measurement is obligatory: the task of the function is to obtain the exact number
 		 *       of the bytes from a record of a dimension, and not to parse a number. A record of the digits
 		 *       alone is yielded as a zero value, and it should be parsed by the module
 		 *       of the lexical parsing of the numbers
@@ -1182,11 +1182,11 @@ namespace awh {
 		 * @brief Функция конвертации байт в строку
 		 *
 		 * @details Единица измерения подбирается наибольшей из тех, при которой число
-		 *          остаётся не меньше единицы. Запись числа выполняется методом «noexp»
+		 *          остаётся не меньше единицы. Запись числа выполняется функцией «noexp»
 		 *          и от установленной локали не зависит.
 		 *
-		 * @note Запись, выводимая этим методом, разбирается обратно одноимённым
-		 *       методом до того же значения
+		 * @note Запись, выводимая этой функцией, разбирается обратно одноимённой
+		 *       функцией до того же значения
 		 *
 		 * @see bytes(const string_view)
 		 *
@@ -1205,10 +1205,10 @@ namespace awh {
 		 * @brief Function of the conversion of the bytes into a string
 		 *
 		 * @details The unit of the measurement is picked the largest of those at which the number
-		 *          remains not less than one. The record of the number is performed by the «noexp» method
+		 *          remains not less than one. The record of the number is performed by the «noexp» function
 		 *          and does not depend on the set locale.
 		 *
-		 * @note The record yielded by this method is parsed back by the method of the same
+		 * @note The record yielded by this function is parsed back by the function of the same
 		 *       name up to the same value
 		 *
 		 * @see bytes(const string_view)
@@ -1509,13 +1509,13 @@ namespace awh {
 		 * @details Сличаются **числа**, лежащие в памяти так, как их кладёт сама
 		 *          машина. Перебор идёт с последнего байта: на машине с обратным
 		 *          порядком байт старший разряд числа лежит именно там. Так и
-		 *          задумано, и разворачивать перебор не следует - иначе метод
+		 *          задумано, и разворачивать перебор не следует - иначе функция
 		 *          перестанет сличать числа.
 		 *
-		 * @warning Двоичный буфер, числом не являющийся, сличать этим методом
+		 * @warning Двоичный буфер, числом не являющийся, сличать этой функцией
 		 *          **нельзя**: сетевой адрес, аппаратный адрес, отпечаток - всё
 		 *          это лежит в своём порядке, старшим байтом вперёд, и порядок их
-		 *          даёт побайтное сличение `memcmp`, а не этот метод
+		 *          даёт побайтное сличение `memcmp`, а не эта функция
 		 *
 		 * @param value1 значение первого числа в бинарном виде
 		 * @param value2 значение второго числа в бинарном виде
@@ -1528,13 +1528,13 @@ namespace awh {
 		 * @details What is matched are the **numbers** lying in the memory the way the machine itself
 		 *          puts them. The traversal goes from the last byte: on a machine with the reverse
 		 *          order of the bytes the higher digit of a number lies exactly there. It is
-		 *          intended so, and the traversal should not be turned around — otherwise the method
+		 *          intended so, and the traversal should not be turned around — otherwise the function
 		 *          will stop matching numbers.
 		 *
 		 * @warning A binary buffer that is not a number **must not** be matched by this
-		 *          method: a network address, a hardware address, a fingerprint — all
+		 *          function: a network address, a hardware address, a fingerprint — all
 		 *          of this lies in its own order, the higher byte first, and their order
-		 *          is given by the byte by byte matching `memcmp`, and not by this method
+		 *          is given by the byte by byte matching `memcmp`, and not by this function
 		 *
 		 * @param value1 value of the first number in the binary form
 		 * @param value2 value of the second number in the binary form
@@ -1556,7 +1556,7 @@ namespace awh {
 		 * @note Разбор протокольных данных от локали не зависит: она влияет на
 		 *       действия над текстом широких символов и на вывод в консоль
 		 *
-		 * @warning Метод меняет состояние приложения целиком: вызывать его следует
+		 * @warning Функция меняет состояние приложения целиком: вызывать её следует
 		 *          однажды при запуске, до начала работы модулей
 		 *
 		 * @param locale локализация приложения
@@ -1572,7 +1572,7 @@ namespace awh {
 		 * @note The parsing of the protocol data does not depend on the locale: it influences
 		 *       the actions over the text of wide characters and the output into the console
 		 *
-		 * @warning The method changes the state of the whole application: it should be called
+		 * @warning The function changes the state of the whole application: it should be called
 		 *          once at the startup, before the beginning of the work of the modules
 		 *
 		 * @param locale localization of the application
@@ -1619,7 +1619,7 @@ namespace awh {
 		 *
 		 * @details The set of the domain zones is applied by the parsing of the addresses: a zone not belonging
 		 *          to the set is not recognized as an address. The module carries the set of the zones
-		 *          of the common use, and the method supplements it with the private zones.
+		 *          of the common use, and the function supplements it with the private zones.
 		 *
 		 * @warning The function changes the state of the PROCESS, and not of a separate object: the set of
 		 *          the zones is one for the whole application, and a zone added by one consumer changes
@@ -1658,7 +1658,7 @@ namespace awh {
 		 *          дальше без повторного поиска.
 		 *
 		 * @note Распознание адреса опирается на набор доменных зон, пополняемый
-		 *       методом «domainZone»
+		 *       функцией «domainZone»
 		 *
 		 * @see domainZone
 		 *
@@ -1678,7 +1678,7 @@ namespace awh {
 		 *          further without a repeated search.
 		 *
 		 * @note The recognition of an address relies on the set of the domain zones supplemented
-		 *       by the «domainZone» method
+		 *       by the «domainZone» function
 		 *
 		 * @see domainZone
 		 *
@@ -1800,7 +1800,7 @@ namespace awh {
 		 *
 		 * @details Отказ конвертирования выводится пустым текстом и записывается
 		 *          в лог. Кодировки задаются обозначением, полученным разбором имени
-		 *          методом «codepage» либо определением кодировки методом «detect».
+		 *          функцией «codepage» либо определением кодировки функцией «detect».
 		 *
 		 * @note Совпадение кодировок отказом не является: текст выводится без изменений
 		 *
@@ -1826,7 +1826,7 @@ namespace awh {
 		 *
 		 * @details A refusal of the conversion is yielded as an empty text and is written
 		 *          into the log. The encodings are set by a designation obtained by the parsing of a name
-		 *          by the «codepage» method or by the determination of the encoding by the «detect» method.
+		 *          by the «codepage» function or by the determination of the encoding by the «detect» function.
 		 *
 		 * @note A coincidence of the encodings is not a refusal: the text is yielded unchanged
 		 *
@@ -2233,7 +2233,7 @@ namespace awh {
 		 * @details Дробная часть отсекается, а не округляется: число приводится
 		 *          к ближайшему меньшему.
 		 *
-		 * @note Округление выполняется методом «noexp», выводящим запись числа
+		 * @note Округление выполняется функцией «noexp», выводящим запись числа
 		 *
 		 * @see noexp
 		 *
@@ -2252,7 +2252,7 @@ namespace awh {
 		 * @details The fractional part is cut off, and not rounded: the number is brought
 		 *          to the nearest smaller one.
 		 *
-		 * @note The rounding is performed by the «noexp» method, yielding the record of a number
+		 * @note The rounding is performed by the «noexp» function, yielding the record of a number
 		 *
 		 * @see noexp
 		 *
@@ -2379,7 +2379,7 @@ namespace awh {
 		 *
 		 * @note Запись, числом не являющаяся, выводится нулевым значением. Тем же
 		 *       нулём выводится и запись, за пределы типа выходящая: разбор её
-		 *       отвергает, а иного значения у метода нет. Отличить «не число» от
+		 *       отвергает, а иного значения у функции нет. Отличить «не число» от
 		 *       «слишком велико» по выводу нельзя - требуется различать, разбирайте
 		 *       модулем лексического разбора чисел
 		 *
@@ -2411,7 +2411,7 @@ namespace awh {
 		 *
 		 * @note A record that is not a number is yielded as a zero value. By the same
 		 *       zero is yielded also a record going beyond the limits of the type: the parsing
-		 *       rejects it, and another value the method does not have. To tell «not a number»
+		 *       rejects it, and another value the function does not have. To tell «not a number»
 		 *       from «too large» by the yielded value is impossible - if the distinction is
 		 *       required, parse by the module of the lexical parsing of the numbers
 		 *
@@ -2694,7 +2694,7 @@ namespace awh {
 		 *
 		 * @details Разряды целой части разделяются знаком-разделителем, отчего запись
 		 *          крупного числа читается глазом заметно легче. Запись выполняется
-		 *          поверх метода @c noexp(), оттого разделителем дробной части в ней
+		 *          поверх функции @c noexp(), оттого разделителем дробной части в ней
 		 *          всегда служит точка, а сама запись не зависит от установленной
 		 *          местности.
 		 *
@@ -2702,10 +2702,10 @@ namespace awh {
 		 *          может: признак «'» функции printf стандартом языка C не описан и
 		 *          у MS Windows не работает вовсе, а установка местности меняет
 		 *          запись чисел во всём приложении разом, включая ту, что уходит в
-		 *          протокол. Оттого разделение включается вызовом этого метода, а
+		 *          протокол. Оттого разделение включается вызовом этой функции, а
 		 *          не состоянием, и приложение вправе ставить себе любую местность.
 		 *
-		 * @note Приложению, которому разделение не нужно, вызывать метод незачем:
+		 * @note Приложению, которому разделение не нужно, вызывать функцию незачем:
 		 *       @c noexp() разделителей не ставит и не ставил
 		 *
 		 * @param number    записываемое число
@@ -2729,17 +2729,17 @@ namespace awh {
 		 *
 		 * @details The groups of the digits of the integer part are separated by a separator character, and therefore a record
 		 *          of a large number is read by the eye noticeably easier. The record is performed
-		 *          on top of the @c noexp() method, and therefore the separator of the fractional part in it
+		 *          on top of the @c noexp() function, and therefore the separator of the fractional part in it
 		 *          is always a dot, and the record itself does not depend on the set locale.
 		 *
 		 * @details The separation of the groups of the digits is **not** set by the locale and cannot be
 		 *          set by it: the «'» flag of the printf function is not described by the standard of the C language and
 		 *          does not work at all on MS Windows, and setting the locale changes
 		 *          the record of the numbers in the whole application at once, including the one going into
-		 *          the protocol. Therefore the separation is switched on by a call to this method, and
+		 *          the protocol. Therefore the separation is switched on by a call to this function, and
 		 *          not by a state, and the application is free to set itself any locale.
 		 *
-		 * @note An application that does not need the separation has no reason to call the method:
+		 * @note An application that does not need the separation has no reason to call the function:
 		 *       @c noexp() does not place separators and never did
 		 *
 		 * @param number    number being written

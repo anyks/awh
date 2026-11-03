@@ -23,7 +23,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 #include <sys/fiber.hpp>
@@ -39,8 +39,6 @@ using namespace awh;
  */
 class Executor {
 	private:
-		// Объект асинхронного движка ввода-вывода
-		engine::io_t * _io;
 		// Идентификатор события клиента
 		event::id_t _client;
 		// Волокно, в котором идут синхронные на вид обмены
@@ -77,7 +75,7 @@ class Executor {
 			// Сбрасываем прежний ответ
 			this->_answer.clear();
 			// Отправляем запрос серверу
-			if(this->_io->send(this->_client, message.data(), message.size()) == 0){
+			if(engine::send(this->_client, message.data(), message.size()) == 0){
 				// Записываем ошибку в лог
 				log::print("Запрос отправить не удалось", log::flag_t::CRITICAL);
 				// Выводим пустой ответ
@@ -153,12 +151,11 @@ class Executor {
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param io     объект асинхронного движка ввода-вывода
 		 * @param client идентификатор события клиента
 		 *
 		 */
-		Executor(engine::io_t * io, const event::id_t client) noexcept :
-		 _io(io), _client(client), _fiber(nullptr), _answer{""}, _done(false) {}
+		Executor(const event::id_t client) noexcept :
+		 _client(client), _fiber(nullptr), _answer{""}, _done(false) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -183,8 +180,6 @@ int32_t main(){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Порт, на котором работает встроенный эхо-сервер образца
 	constexpr uint16_t PORT = 12345;
 	// Набор опций событий
@@ -193,76 +188,76 @@ int32_t main(){
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY
 	);
 	// Добавляем событие сервера
-	const event::id_t server = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t server = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Добавляем событие клиента
-	const event::id_t client = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t client = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события сервера
-	io.setSourcePort(server, PORT);
+	engine::setSourcePort(server, PORT);
 	// Устанавливаем порт назначения события клиента
-	io.setTargetPort(client, PORT);
+	engine::setTargetPort(client, PORT);
 	// Инициализируем движок
-	if(!io.initialize()){
+	if(!engine::initialize()){
 		// Записываем ошибку в лог
 		log::print("Движок инициализировать не удалось", log::flag_t::CRITICAL);
 		// Выходим из приложения
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем опции события сервера
-	io.setOptions(server, OPTIONS);
+	engine::setOptions(server, OPTIONS);
 	// Устанавливаем опции события клиента
-	io.setOptions(client, OPTIONS);
+	engine::setOptions(client, OPTIONS);
 	// Устанавливаем адрес события сервера
-	io.setAddress(server, event::address_t::IPV4, "127.0.0.1");
+	engine::setAddress(server, event::address_t::IPV4, "127.0.0.1");
 	/**
 	 * Заводим встроенный эхо-сервер: он возвращает принятое обратно
 	 *
 	 * @note Сервер нужен образцу лишь затем, чтобы обмен был настоящим. Всё
 	 *       существенное происходит на стороне клиента, в волокне
 	 */
-	io.on(server, static_cast <engine::callback::accept_t> ([&io]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
+	engine::on(server, static_cast <engine::callback::accept_t> ([]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Записываем в лог сообщение о принятом подключении
 		log::print("Сервер принял подключение", log::flag_t::INFO);
 		// Устанавливаем функцию обратного вызова на чтение данных сервером
-		io.on(cid, [&io](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		engine::on(cid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Возвращаем принятое обратно отправителю
-			io.send(eid, data, size);
+			engine::send(eid, data, size);
 		});
 	}));
 	// Выполняем фиксацию настроек события сервера
-	io.commit(server);
+	engine::commit(server);
 	// Переводим событие сервера в режим прослушивания
-	io.listen(server, 16);
+	engine::listen(server, 16);
 	// Запускаем событие сервера
-	io.launch(server);
+	engine::launch(server);
 	// Создаём объект исполнителя
-	Executor executor(&io, client);
+	Executor executor(client);
 	// Устанавливаем адрес назначения события клиента
-	io.setTarget(client, "127.0.0.1");
+	engine::setTarget(client, "127.0.0.1");
 	// Устанавливаем функцию обратного вызова на чтение данных клиентом
-	io.on(client, [&executor](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	engine::on(client, [&executor](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Выполняем обработку чтения данных
 		executor.read(eid, data, size);
 	});
 	// Устанавливаем функцию обратного вызова на подключение к серверу
-	io.on(client, static_cast <engine::callback::connect_t> ([&executor]([[maybe_unused]] const event::id_t eid, const bool ok) noexcept -> void {
+	engine::on(client, static_cast <engine::callback::connect_t> ([&executor]([[maybe_unused]] const event::id_t eid, const bool ok) noexcept -> void {
 		// Выполняем обработку подключения
 		executor.connect(ok);
 	}));
 	// Выполняем фиксацию настроек события клиента
-	io.commit(client);
+	engine::commit(client);
 	// Выполняем подключение к серверу
-	io.connect(client);
+	engine::connect(client);
 	// Запускаем событие клиента
-	io.launch(client);
+	engine::launch(client);
 	/**
 	 * Крутим цикл опроса событий
 	 *
 	 * @note Цикл здесь самый обычный, ничем не отличающийся от любого другого.
 	 *       Волокна ему не требуют НИЧЕГО: ни вложенных вызовов, ни потоков
 	 */
-	while(!executor.done() && io.poll(100));
+	while(!executor.done() && engine::poll(100));
 	// Уничтожаем все события
-	io.deinitialize();
+	engine::deinitialize();
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

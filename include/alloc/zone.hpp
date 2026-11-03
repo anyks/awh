@@ -102,7 +102,7 @@
 /**
  * Если операционной системой является macOS
  */
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(DOXYGEN)
 
 /**
  * Стандартные заголовочные файлы

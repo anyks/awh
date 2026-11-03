@@ -106,7 +106,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 
 /**
  * Стандартные заголовочные файлы

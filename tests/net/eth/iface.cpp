@@ -73,13 +73,13 @@
  * @return    имя петлевого интерфейса либо пустая строка
  *
  */
-static std::string findLoopback(const awh::eth_t * eth) noexcept {
+static std::string findLoopback() noexcept {
 	/**
 	 * Перебираем все доступные сетевые интерфейсы
 	 */
-	for(auto & name : eth->iface.available()){
+	for(auto & name : awh::eth::iface::available()){
 		// Получаем флаги сетевого интерфейса
-		auto flags = eth->iface.flags(name);
+		auto flags = awh::eth::iface::flags(name);
 		// Если интерфейс является петлевым
 		if(flags.find(awh::event::eth_flag_t::LOOPBACK) != flags.end())
 			// Возвращаем найденное имя
@@ -95,7 +95,7 @@ static std::string findLoopback(const awh::eth_t * eth) noexcept {
  */
 TEST_F(EthFixture, IfaceAvailableTest){
 	// Получаем список доступных сетевых интерфейсов
-	auto interfaces = this->_eth->iface.available();
+	auto interfaces = awh::eth::iface::available();
 	// В системе обычно есть хотя бы loopback
 	ASSERT_FALSE(interfaces.empty());
 }
@@ -106,15 +106,15 @@ TEST_F(EthFixture, IfaceAvailableTest){
  */
 TEST_F(EthFixture, IfaceIsAvailableTest){
 	// Получаем список доступных сетевых интерфейсов
-	auto interfaces = this->_eth->iface.available();
+	auto interfaces = awh::eth::iface::available();
 	// В системе обычно есть хотя бы loopback
 	ASSERT_FALSE(interfaces.empty());
 	// Получаем название первого сетевого интерфейса
 	std::string ifname = * interfaces.begin();
 	// Проверяем что сетевой интерфейс доступен в системе
-	ASSERT_TRUE(this->_eth->iface.isAvailable(ifname));
+	ASSERT_TRUE(awh::eth::iface::isAvailable(ifname));
 	// Проверяем что такого фейкового сетевого интерфейса в системе нет
-	ASSERT_FALSE(this->_eth->iface.isAvailable("non_existent_iface_123"));
+	ASSERT_FALSE(awh::eth::iface::isAvailable("non_existent_iface_123"));
 }
 
 /**
@@ -123,13 +123,14 @@ TEST_F(EthFixture, IfaceIsAvailableTest){
  */
 TEST_F(EthFixture, IfaceTypeTest){
 	// Получаем список доступных сетевых интерфейсов
-	auto interfaces = this->_eth->iface.available();
+	auto interfaces = awh::eth::iface::available();
 	// Если список сетевых интерфейсов получен
 	/**
 	 * Перечень устройств пустым быть НЕ МОЖЕТ
 	 *
 	 * @warning Прежде тело стояло под условием без ветви «иначе». Хотя бы петля есть
 	 *          у всякой системы, и пустой перечень - дефект перебора, а не обстановка
+	 *
 	 */
 	ASSERT_FALSE(interfaces.empty()) << "перебор сетевых устройств не показал ни одного устройства";
 	{
@@ -139,16 +140,17 @@ TEST_F(EthFixture, IfaceTypeTest){
 		 * @note Значения признаков зависят от системы, а их согласованность - нет:
 		 *       устройство туннеля обязано быть виртуальным всегда, обратное неверно.
 		 *       Прежде проверка звала оба опроса и исхода не смотрела
+		 *
 		 */
 		// Если устройство опознано туннелем
-		if(this->_eth->iface.isTunnel(ifname))
+		if(awh::eth::iface::isTunnel(ifname))
 			// Устройство туннеля обязано быть виртуальным
-			ASSERT_TRUE(this->_eth->iface.isVirtual(ifname))
+			ASSERT_TRUE(awh::eth::iface::isVirtual(ifname))
 			 << "Устройство " << ifname << " опознано туннелем, но не виртуальным";
 		// Признак туннеля обязан читаться одинаково при повторном опросе
-		ASSERT_EQ(this->_eth->iface.isTunnel(ifname), this->_eth->iface.isTunnel(ifname));
+		ASSERT_EQ(awh::eth::iface::isTunnel(ifname), awh::eth::iface::isTunnel(ifname));
 		// Признак виртуальности обязан читаться одинаково при повторном опросе
-		ASSERT_EQ(this->_eth->iface.isVirtual(ifname), this->_eth->iface.isVirtual(ifname));
+		ASSERT_EQ(awh::eth::iface::isVirtual(ifname), awh::eth::iface::isVirtual(ifname));
 	}
 }
 
@@ -165,12 +167,13 @@ TEST_F(EthFixture, IfaceTypeByAddrTest){
 	/**
 	 * @note Петлевое устройство туннелем не является ни у одной системы, а виртуальным
 	 *       является у всех: признаки от него определены однозначно и годны утверждению
+	 *
 	 */
 	// Петлевой адрес туннелю принадлежать не может
-	ASSERT_FALSE(this->_eth->iface.isTunnel(addr.get()))
+	ASSERT_FALSE(awh::eth::iface::isTunnel(addr.get()))
 	 << "Петлевой адрес опознан принадлежащим туннелю";
 	// Петлевое устройство обязано быть виртуальным
-	ASSERT_TRUE(this->_eth->iface.isVirtual(addr.get()))
+	ASSERT_TRUE(awh::eth::iface::isVirtual(addr.get()))
 	 << "Петлевое устройство не опознано виртуальным";
 }
 
@@ -187,9 +190,10 @@ TEST_F(EthFixture, IfaceNameTest){
 	 * @note Нулевой адрес - это INADDR_ANY, и система выдаёт его связям без адреса.
 	 *       Устройству он принадлежать не может: розыск по нему обязан отвечать пусто.
 	 *       Прежде проверка звала розыск и исхода не смотрела вовсе
+	 *
 	 */
 	// Розыск устройства по нулевому адресу обязан отвечать пусто
-	ASSERT_TRUE(this->_eth->iface.name(addr.get()).empty())
+	ASSERT_TRUE(awh::eth::iface::name(addr.get()).empty())
 	 << "Нулевой адрес опознан принадлежащим устройству";
 	/**
 	 * Заслон стоит на ТРЁХ видах адреса, и проверяется каждый
@@ -202,20 +206,21 @@ TEST_F(EthFixture, IfaceNameTest){
 	 * @note Заведён заслон по находке на Solaris и OpenIndiana: перебор выдавал там
 	 *       связь без адреса с нулевым адресом, и розыск возвращал её имя. Договор
 	 *       общий на все движки, оттого и проверка общая
+	 *
 	 */
 	// Создаём объект IPv6 адреса
 	std::unique_ptr <awh::net::addr_t> addr6 = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Зануляем адрес целиком
 	::memset(&static_cast <awh::net::addr_net_ipv6_t *> (addr6.get())->address[0], 0, 16);
 	// Розыск устройства по нулевому адресу IPv6 обязан отвечать пусто
-	ASSERT_TRUE(this->_eth->iface.name(addr6.get()).empty())
+	ASSERT_TRUE(awh::eth::iface::name(addr6.get()).empty())
 	 << "Нулевой адрес IPv6 опознан принадлежащим устройству";
 	// Создаём объект аппаратного адреса
 	std::unique_ptr <awh::net::addr_t> mac = std::make_unique <awh::net::addr_mac_t> ();
 	// Зануляем аппаратный адрес целиком
 	::memset(&static_cast <awh::net::addr_mac_t *> (mac.get())->address[0], 0, 6);
 	// Розыск устройства по нулевому аппаратному адресу обязан отвечать пусто
-	ASSERT_TRUE(this->_eth->iface.name(mac.get()).empty())
+	ASSERT_TRUE(awh::eth::iface::name(mac.get()).empty())
 	 << "Нулевой аппаратный адрес опознан принадлежащим устройству";
 }
 
@@ -227,12 +232,13 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
 	// Название созданного тоннеля
 	std::string name = "";
 	// Попытка создания TAP/TUN интерфейса (требует прав)
-	auto sock = this->_eth->iface.create(awh::event::eth_t::TUN, name);
+	auto sock = awh::eth::iface::create(awh::event::eth_t::TUN, name);
 	/**
 	 * @note Заведение требует надзорных прав, и отказ без них законен. А вот заведённое
 	 *       устройство обязано быть НАЗВАННЫМ и опознаваемым: имя не смеет остаться
 	 *       пустым, а перечень устройств обязан его показывать. Прежде проверка звала
 	 *       заведение с уничтожением и ни того ни другого не смотрела
+	 *
 	 */
 	// Если пользователь является привилигированным
 	if(::getuid() == 0)
@@ -245,6 +251,7 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
 	 *          заведение (а без надзорных прав оно и не даётся), проверка не
 	 *          утверждала НИЧЕГО и проходила зелёной. Отличить такой проход от
 	 *          настоящего было нечем
+	 *
 	 */
 	if(sock == awh::net::invalid_socket_t)
 		// Заводить устройство туннеля нечем - утверждать нечего
@@ -254,15 +261,15 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
 		// Название заведённого устройства обязано быть определено
 		ASSERT_FALSE(name.empty()) << "Устройство заведено, а имени у него нет";
 		// Заведённое устройство обязано числиться доступным
-		ASSERT_TRUE(this->_eth->iface.isAvailable(name))
+		ASSERT_TRUE(awh::eth::iface::isAvailable(name))
 		 << "Заведённое устройство " << name << " не числится доступным";
 		// Заведённое устройство туннеля обязано опознаваться виртуальным
-		ASSERT_TRUE(this->_eth->iface.isVirtual(name))
+		ASSERT_TRUE(awh::eth::iface::isVirtual(name))
 		 << "Устройство туннеля " << name << " не опознано виртуальным";
 		// Если создался, закрываем и уничтожаем
 		::closesocket(sock);
 		// Уничтожение может требовать persistent режима, здесь просто проверяем вызов
-		this->_eth->iface.destroy(name);
+		awh::eth::iface::destroy(name);
 	}
 }
 
@@ -275,9 +282,10 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
  *          отказал: переключатель уходил в ветвь явно заданного драйвера, и годность
  *          драйверов не проверялась больше никогда
  *
- * @note Проверка ведётся на СВОЁМ объекте устройства, а не на объекте оснастки: у того
- *       выбор мог закрепиться соседней проверкой этого же набора, и утверждение
- *       «поле осталось AUTO» ничего бы не значило
+ * @note Выбор драйвера принадлежит модулю, а не объекту устройства, и оттого
+ *       начинается проверка со сброса в `AUTO`: без сброса соседняя проверка
+ *       этого же набора успела бы закрепить драйвер, и утверждение
+ *       «выбор остался AUTO» ничего бы не значило
  *
  * @note Место это принадлежит наречию MS Windows: у систем POSIX драйвер туннельного
  *       устройства один и выбора нет вовсе
@@ -288,31 +296,32 @@ TEST_F(EthFixture, IfaceDriverStaysAutoAfterFailureTest){
 	 * Если проверка идёт под MS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Заводим свой объект работы с сетевыми устройствами
-		awh::eth::Interface iface;
-		// Выбор драйвера у нового объекта обязан быть поручен модулю
-		ASSERT_EQ(iface.driver(), awh::eth::Interface::driver_t::AUTO)
-		 << "у нового объекта выбор драйвера не поручен модулю";
+		// Поручаем выбор драйвера модулю
+		awh::eth::iface::driver(awh::eth::iface::driver_t::AUTO);
+		// Выбор драйвера у модуля обязан быть поручен AUTO
+		ASSERT_EQ(awh::eth::iface::driver(), awh::eth::iface::driver_t::AUTO)
+		 << "выбор драйвера не поручен модулю";
 		/**
 		 * Заводим устройство с заведомо негодным названием
 		 *
 		 * @note Название длиною в три сотни знаков не принимает ни один из драйверов:
 		 *       у обоих предел куда короче
+		 *
 		 */
 		std::string name(300, 'x');
 		// Выполняем заведение устройства с негодным названием
-		const awh::net::socket_t sock = iface.create(awh::event::eth_t::TUN, name);
+		const awh::net::socket_t sock = awh::eth::iface::create(awh::event::eth_t::TUN, name);
 		// Если устройство вопреки ожиданию завелось - утверждать нечего
 		if(sock != awh::net::invalid_socket_t){
 			// Закрываем заведённое устройство
 			::closesocket(sock);
 			// Уничтожаем заведённое устройство
-			iface.destroy(name);
+			awh::eth::iface::destroy(name);
 			// Отступаем с доводом: негодное название оказалось годным
 			GTEST_SKIP() << "устройство с негодным названием завелось: закреплять нечего";
 		}
 		// Отказ заведения не вправе закреплять выбор драйвера
-		ASSERT_EQ(iface.driver(), awh::eth::Interface::driver_t::AUTO)
+		ASSERT_EQ(awh::eth::iface::driver(), awh::eth::iface::driver_t::AUTO)
 		 << "неудачное заведение закрепило выбор драйвера: перебор драйверов потерян навсегда";
 	/**
 	 * Если проверка идёт под системой POSIX
@@ -329,7 +338,7 @@ TEST_F(EthFixture, IfaceDriverStaysAutoAfterFailureTest){
  */
 TEST_F(EthFixture, IfaceMtuTest){
 	// Получаем список доступных сетевых интерфейсов
-	auto interfaces = this->_eth->iface.available();
+	auto interfaces = awh::eth::iface::available();
 	/**
 	 * Перебираем все перечисленные сетевые интерфейсы
 	 *
@@ -341,10 +350,11 @@ TEST_F(EthFixture, IfaceMtuTest){
 	 *
 	 * @note Спрашивать размер у каждого имени - это и есть договор: имя, названное
 	 *       `available()`, обязано отвечать и у `mtu()`
+	 *
 	 */
 	for(auto & ifname : interfaces){
 		// Получаем значение MTU для сетевого интерфейса
-		const uint32_t mtu = this->_eth->iface.mtu(ifname);
+		const uint32_t mtu = awh::eth::iface::mtu(ifname);
 		/**
 		 * Спрашиваем размер лишь у интерфейсов, которые уровню IP известны
 		 *
@@ -359,14 +369,15 @@ TEST_F(EthFixture, IfaceMtuTest){
 		 *       имеет, а размер у неё есть, и модуль обязан его назвать - берётся он
 		 *       у канального уровня. Проверяется это замером на стенде,
 		 *       см. src/net/backend/sun/iface.cpp
+		 *
 		 */
-		if(this->_eth->iface.flags(ifname).empty())
+		if(awh::eth::iface::flags(ifname).empty())
 			// Переходим к следующему интерфейсу
 			continue;
 		// Проверяем, что размер получен
 		ASSERT_GT(mtu, 0U) << "Интерфейс \"" << ifname << "\" перечислен, но размер MTU у него не читается";
 		// Попытка установить тот же MTU (безопасно)
-		this->_eth->iface.mtu(ifname, mtu);
+		awh::eth::iface::mtu(ifname, mtu);
 	}
 }
 
@@ -376,7 +387,7 @@ TEST_F(EthFixture, IfaceMtuTest){
  */
 TEST_F(EthFixture, IfaceFlagsTest){
 	// Получаем список доступных сетевых интерфейсов
-	auto interfaces = this->_eth->iface.available();
+	auto interfaces = awh::eth::iface::available();
 	/**
 	 * Отсутствие устройств обязано быть ПРОПУСКОМ с доводом, а не тишиной
 	 *
@@ -384,6 +395,7 @@ TEST_F(EthFixture, IfaceFlagsTest){
 	 *          «устройства есть» и «первое из них поднято», - и ни одно из них не
 	 *          имело ветви «иначе». Не окажись устройств либо не будь первое
 	 *          поднятым, проверка не утверждала бы НИЧЕГО и проходила зелёной
+	 *
 	 */
 	if(interfaces.empty())
 		// Сетевых устройств нет - утверждать нечего
@@ -400,10 +412,11 @@ TEST_F(EthFixture, IfaceFlagsTest){
 		 *          устройство на той же машине есть. Перебор дороже одного
 		 *          обращения, но проверка от него становится исполняемой вместо
 		 *          пропускаемой
+		 *
 		 */
 		for(auto & candidate : interfaces){
 			// Получаем перечень признаков устройства
-			const auto & flags = this->_eth->iface.flags(candidate);
+			const auto & flags = awh::eth::iface::flags(candidate);
 			// Если устройство числится поднятым
 			if(flags.find(awh::event::eth_flag_t::UP) != flags.end()){
 				// Запоминаем название поднятого устройства
@@ -417,28 +430,30 @@ TEST_F(EthFixture, IfaceFlagsTest){
 			// Поднимать нечего - утверждать нечего
 			GTEST_SKIP() << "среди " << interfaces.size() << " сетевых устройств не нашлось ни одного поднятого";
 		// Получаем список флагов сетевого интерфейса
-		auto flags = this->_eth->iface.flags(ifname);
+		auto flags = awh::eth::iface::flags(ifname);
 		// Проверяем наличие флагов (например UP)
 		/**
 		 * @note Перечень признаков обязан быть согласован с самим собой: устройство,
 		 *       названное поднятым, обязано остаться поднятым и после повторного
 		 *       поднятия. Прежде проверка звала установку и исхода не смотрела
+		 *
 		 */
 		if(flags.find(awh::event::eth_flag_t::UP) != flags.end()){
 			// Выполняем повторное поднятие устройства
-			const bool result = this->_eth->iface.flag(ifname, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED);
+			const bool result = awh::eth::iface::flag(ifname, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED);
 			/**
 			 * @note Правка признаков требует надзорных прав, и отказ без них законен -
 			 *       утверждается он только под ними. А вот СОСТОЯНИЕ устройства обязано
 			 *       уцелеть при любом исходе: поднятое не смеет опуститься оттого, что
 			 *       его попросили подняться ещё раз
+			 *
 			 */
 			// Если пользователь является привилигированным
 			if(::getuid() == 0)
 				// Поднятие уже поднятого устройства обязано удаваться
 				ASSERT_TRUE(result) << "Поднять уже поднятое устройство " << ifname << " не удалось";
 			// Получаем перечень признаков устройства заново
-			const auto actual = this->_eth->iface.flags(ifname);
+			const auto actual = awh::eth::iface::flags(ifname);
 			// Устройство обязано остаться поднятым
 			ASSERT_NE(actual.find(awh::event::eth_flag_t::UP), actual.end())
 			 << "Устройство " << ifname << " перестало числиться поднятым после поднятия";
@@ -466,11 +481,11 @@ TEST_F(EthFixture, IfaceFlagsTest){
  */
 TEST_F(EthFixture, IfaceAddressTest){
 	// Получаем список доступных сетевых интерфейсов
-	const auto interfaces = this->_eth->iface.available();
+	const auto interfaces = awh::eth::iface::available();
 	// Перечень устройств обязан быть непустым: петля есть у всякой системы
 	ASSERT_FALSE(interfaces.empty()) << "перебор устройств не показал ни одного";
 	// Ищем петлевой интерфейс
-	const std::string lo = findLoopback(this->_eth.get());
+	const std::string lo = findLoopback();
 	// Петлевое устройство обязано находиться
 	ASSERT_FALSE(lo.empty()) << "петлевое устройство не найдено среди доступных";
 	/**
@@ -478,7 +493,7 @@ TEST_F(EthFixture, IfaceAddressTest){
 	 */
 	{
 		// Получаем адрес IPv4 петлевого устройства
-		const auto ip = this->_eth->iface.getAddress(lo, awh::event::family_t::IPV4);
+		const auto ip = awh::eth::iface::getAddress(lo, awh::event::family_t::IPV4);
 		// Адрес петлевого устройства обязан читаться
 		ASSERT_NE(ip, nullptr) << "адрес IPv4 петлевого устройства " << lo << " не прочитан";
 		// Адрес петли обязан быть именно 127.0.0.1, а не любым прочитанным
@@ -491,6 +506,7 @@ TEST_F(EthFixture, IfaceAddressTest){
 	 * @note Имя заведомо не существует, и сети проверка не касается. Утверждается
 	 *       именно ОТКАЗ: молчаливый успех на несуществующем устройстве означал бы,
 	 *       что установка не проверяет своих доводов вовсе
+	 *
 	 */
 	{
 		// Заводим адрес, какой предлагается к установке
@@ -498,7 +514,7 @@ TEST_F(EthFixture, IfaceAddressTest){
 		// Устанавливаем значение адреса
 		static_cast <awh::net::addr_net_ipv4_t *> (ip.get())->address = htonl(0x0AFFFFFE);
 		// Установка адреса несуществующему устройству обязана ответить отказом
-		ASSERT_FALSE(this->_eth->iface.setAddress("awh-no-such-iface", ip.get(), 24))
+		ASSERT_FALSE(awh::eth::iface::setAddress("awh-no-such-iface", ip.get(), 24))
 		 << "установка адреса несуществующему устройству ответила успехом";
 	}
 	/**
@@ -512,7 +528,7 @@ TEST_F(EthFixture, IfaceAddressTest){
 		// IP-адрес того конца связи
 		std::unique_ptr <awh::net::addr_t> peer = nullptr;
 		// Чтение настроек несуществующего устройства обязано ответить отказом
-		ASSERT_FALSE(this->_eth->iface.getAddress("awh-no-such-iface", ip, peer, prefix))
+		ASSERT_FALSE(awh::eth::iface::getAddress("awh-no-such-iface", ip, peer, prefix))
 		 << "чтение настроек несуществующего устройства ответило успехом";
 	}
 }
@@ -535,7 +551,7 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 	// Название созданного тоннеля
 	std::string name = "";
 	// Выполняем создание устройства туннеля
-	const awh::net::socket_t sock = this->_eth->iface.create(awh::event::eth_t::TUN, name);
+	const awh::net::socket_t sock = awh::eth::iface::create(awh::event::eth_t::TUN, name);
 	// Если устройство туннеля создать не удалось
 	if(sock == awh::net::invalid_socket_t)
 		// Пропускаем проверку
@@ -551,7 +567,7 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 	// Устанавливаем адрес устройства
 	awh_cast <awh::net::addr_net_ipv4_t *> (ip.get())->address = addr.v4(awh::net_addr_t::endian_t::LITTLE);
 	// Выполняем постановку адреса на устройство
-	const bool result = this->_eth->iface.setAddress(name, ip.get(), 24);
+	const bool result = awh::eth::iface::setAddress(name, ip.get(), 24);
 	// Если адрес поставлен
 	if(result){
 		/**
@@ -560,12 +576,13 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 		 *       система при этом адрес уже числит (`ip addr` его показывает), а перечень
 		 *       устройств его ещё не отдаёт. Без поднятия проверка обвиняла бы движок в
 		 *       том, что делает система
+		 *
 		 */
 		// Поднимаем устройство туннеля
-		ASSERT_TRUE(this->_eth->iface.flag(name, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED))
+		ASSERT_TRUE(awh::eth::iface::flag(name, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED))
 		 << "Поднять устройство " << name << " не удалось";
 		// Читаем адрес устройства обратно
-		auto actual = this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);
+		auto actual = awh::eth::iface::getAddress(name, awh::event::family_t::IPV4);
 		// Прочитанный адрес обязан существовать
 		ASSERT_NE(actual, nullptr) << "Адрес поставлен на " << name << ", а читается пустым";
 		// Прочитанный адрес обязан совпадать с поставленным
@@ -573,20 +590,21 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 		          awh_cast <awh::net::addr_net_ipv4_t *> (ip.get())->address)
 		 << "Прочитанный адрес не совпадает с поставленным";
 		// Название устройства по его же адресу обязано определяться
-		ASSERT_EQ(this->_eth->iface.name(actual.get()), name)
+		ASSERT_EQ(awh::eth::iface::name(actual.get()), name)
 		 << "Адрес не опознаётся принадлежащим устройству " << name;
 		/**
 		 * @note Снятие адреса объявлено не у всех систем: у Linux и BSD устройство
 		 *       туннеля исчезает вместе с процессом, и отдельного снятия там нет.
 		 *       Где метод есть, круг проверяется целиком; где его нет - исчезновение
 		 *       адреса проверяется уничтожением самого устройства ниже
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64) || defined(__sun__) || defined(__APPLE__)
 			// Выполняем снятие адреса с устройства
-			ASSERT_TRUE(this->_eth->iface.delAddress(name, ip.get(), nullptr))
+			ASSERT_TRUE(awh::eth::iface::delAddress(name, ip.get(), nullptr))
 			 << "Снять поставленный адрес с устройства " << name << " не удалось";
 			// Читаем адрес устройства после снятия
-			auto removed = this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);
+			auto removed = awh::eth::iface::getAddress(name, awh::event::family_t::IPV4);
 			// Снятый адрес читаться больше не должен
 			ASSERT_TRUE((removed == nullptr) ||
 			            (awh_cast <awh::net::addr_net_ipv4_t *> (removed.get())->address !=
@@ -597,11 +615,11 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 	// Закрываем сокет устройства туннеля
 	::closesocket(sock);
 	// Выполняем уничтожение устройства туннеля
-	this->_eth->iface.destroy(name);
+	awh::eth::iface::destroy(name);
 	// Если адрес был поставлен
 	if(result){
 		// Читаем адрес уничтоженного устройства
-		auto orphan = this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);
+		auto orphan = awh::eth::iface::getAddress(name, awh::event::family_t::IPV4);
 		// Адрес уничтоженного устройства читаться больше не должен
 		ASSERT_TRUE((orphan == nullptr) ||
 		            (awh_cast <awh::net::addr_net_ipv4_t *> (orphan.get())->address !=
@@ -615,6 +633,7 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 	 *       систем Sun итог постановки решал необязательный широковещательный адрес,
 	 *       которого у устройства точка-точка нет вовсе, и `setAddress` отвечал отказом
 	 *       при уже поставленном адресе
+	 *
 	 */
 	// Постановка адреса на своё устройство обязана удаваться
 	ASSERT_TRUE(result) << "Поставить адрес на своё устройство " << name << " не удалось";
@@ -627,10 +646,10 @@ TEST_F(EthFixture, IfaceNullAddrTest){
 	// Нулевой адрес сетевого подключения
 	const awh::net::addr_t * nullAddr = nullptr;
 	// Получение имени по нулевому адресу должно вернуть пустую строку без падения
-	ASSERT_TRUE(this->_eth->iface.name(nullAddr).empty());
+	ASSERT_TRUE(awh::eth::iface::name(nullAddr).empty());
 	// Проверки по нулевому адресу должны вернуть false без падения
-	ASSERT_FALSE(this->_eth->iface.isTunnel(nullAddr));
-	ASSERT_FALSE(this->_eth->iface.isVirtual(nullAddr));
+	ASSERT_FALSE(awh::eth::iface::isTunnel(nullAddr));
+	ASSERT_FALSE(awh::eth::iface::isVirtual(nullAddr));
 }
 
 /**
@@ -640,23 +659,31 @@ TEST_F(EthFixture, IfaceNullAddrTest){
 TEST_F(EthFixture, IfaceEmptyNameTest){
 	// Пустое имя сетевого интерфейса
 	const std::string empty = "";
-	// Все методы должны безопасно обрабатывать пустое имя
-	ASSERT_FALSE(this->_eth->iface.isAvailable(empty));
-	ASSERT_FALSE(this->_eth->iface.isTunnel(empty));
-	ASSERT_FALSE(this->_eth->iface.isVirtual(empty));
-	ASSERT_EQ(this->_eth->iface.mtu(empty), 0);
-	ASSERT_FALSE(this->_eth->iface.mtu(empty, 1500));
-	ASSERT_TRUE(this->_eth->iface.flags(empty).empty());
-	ASSERT_FALSE(this->_eth->iface.flag(empty, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
-	ASSERT_FALSE(this->_eth->iface.destroy(empty));
-	ASSERT_EQ(this->_eth->iface.getAddress(empty, awh::event::family_t::IPV4), nullptr);
+	// Пустое имя не должно считаться доступным устройством
+	ASSERT_FALSE(awh::eth::iface::isAvailable(empty));
+	// Пустое имя не должно считаться туннелем
+	ASSERT_FALSE(awh::eth::iface::isTunnel(empty));
+	// Пустое имя не должно считаться виртуальным устройством
+	ASSERT_FALSE(awh::eth::iface::isVirtual(empty));
+	// MTU пустого имени должен быть нулевым
+	ASSERT_EQ(awh::eth::iface::mtu(empty), 0);
+	// Установка MTU пустому имени должна быть отвергнута
+	ASSERT_FALSE(awh::eth::iface::mtu(empty, 1500));
+	// Список флагов пустого имени должен быть пуст
+	ASSERT_TRUE(awh::eth::iface::flags(empty).empty());
+	// Установка флага пустому имени должна быть отвергнута
+	ASSERT_FALSE(awh::eth::iface::flag(empty, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
+	// Снос пустого имени должен быть отвергнут
+	ASSERT_FALSE(awh::eth::iface::destroy(empty));
+	// Адрес пустого имени должен быть пустым
+	ASSERT_EQ(awh::eth::iface::getAddress(empty, awh::event::family_t::IPV4), nullptr);
 	// Создаём объект IPv4 адреса для проверки сеттеров
 	auto ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Устанавливаем адрес петлевого сетевого интерфейса
 	ip->address = htonl(INADDR_LOOPBACK);
 	// Установка адреса и комплексная настройка с пустым именем должны вернуть false
-	ASSERT_FALSE(this->_eth->iface.setAddress(empty, ip.get(), 24));
-	ASSERT_FALSE(this->_eth->iface.configure(empty, ip.get(), 24, 1500));
+	ASSERT_FALSE(awh::eth::iface::setAddress(empty, ip.get(), 24));
+	ASSERT_FALSE(awh::eth::iface::configure(empty, ip.get(), 24, 1500));
 }
 
 /**
@@ -667,14 +694,14 @@ TEST_F(EthFixture, IfaceNonExistentTest){
 	// Заведомо несуществующее имя сетевого интерфейса
 	const std::string fake = "non_existent_iface_123";
 	// Несуществующий интерфейс недоступен
-	ASSERT_FALSE(this->_eth->iface.isAvailable(fake));
+	ASSERT_FALSE(awh::eth::iface::isAvailable(fake));
 	// MTU несуществующего интерфейса равен нулю
-	ASSERT_EQ(this->_eth->iface.mtu(fake), 0);
+	ASSERT_EQ(awh::eth::iface::mtu(fake), 0);
 	// Список флагов несуществующего интерфейса пуст
-	ASSERT_TRUE(this->_eth->iface.flags(fake).empty());
+	ASSERT_TRUE(awh::eth::iface::flags(fake).empty());
 	// Классификация несуществующего интерфейса возвращает false
-	ASSERT_FALSE(this->_eth->iface.isTunnel(fake));
-	ASSERT_FALSE(this->_eth->iface.isVirtual(fake));
+	ASSERT_FALSE(awh::eth::iface::isTunnel(fake));
+	ASSERT_FALSE(awh::eth::iface::isVirtual(fake));
 }
 
 /**
@@ -683,7 +710,7 @@ TEST_F(EthFixture, IfaceNonExistentTest){
  */
 TEST_F(EthFixture, IfaceLoopbackVirtualTest){
 	// Ищем петлевой интерфейс
-	const std::string lo = findLoopback(this->_eth.get());
+	const std::string lo = findLoopback();
 	// Если петлевой интерфейс найден
 	/**
 	 * Петлевое устройство обязано НАХОДИТЬСЯ, а не быть условием
@@ -692,17 +719,19 @@ TEST_F(EthFixture, IfaceLoopbackVirtualTest){
 	 *          есть у всякой системы, и ненахождение её - дефект самого перебора
 	 *          устройств, а не обстановка. Под условием же он давал зелёную
 	 *          проверку при нуле утверждений
+	 *
 	 */
 	ASSERT_FALSE(lo.empty()) << "петлевое устройство не найдено среди доступных: перебор устройств его не показывает";
 	{
 		// Петлевой интерфейс должен быть доступен
-		ASSERT_TRUE(this->_eth->iface.isAvailable(lo));
+		ASSERT_TRUE(awh::eth::iface::isAvailable(lo));
 		// Петлевой интерфейс всегда виртуальный
-		ASSERT_TRUE(this->_eth->iface.isVirtual(lo));
+		ASSERT_TRUE(awh::eth::iface::isVirtual(lo));
 		// MTU петлевого интерфейса больше нуля
-		ASSERT_GT(this->_eth->iface.mtu(lo), 0);
+		ASSERT_GT(awh::eth::iface::mtu(lo), 0);
 		// В флагах петлевого интерфейса присутствует LOOPBACK
-		auto flags = this->_eth->iface.flags(lo);
+		auto flags = awh::eth::iface::flags(lo);
+		// Признак LOOPBACK обязан найтись в списке флагов
 		ASSERT_NE(flags.find(awh::event::eth_flag_t::LOOPBACK), flags.end());
 	}
 }
@@ -715,11 +744,11 @@ TEST_F(EthFixture, IfaceTunnelIsVirtualTest){
 	/**
 	 * Перебираем все доступные сетевые интерфейсы
 	 */
-	for(auto & name : this->_eth->iface.available()){
+	for(auto & name : awh::eth::iface::available()){
 		// Если интерфейс является туннельным
-		if(this->_eth->iface.isTunnel(name))
+		if(awh::eth::iface::isTunnel(name))
 			// Туннель обязан классифицироваться и как виртуальный (туннель ⊂ виртуальный)
-			ASSERT_TRUE(this->_eth->iface.isVirtual(name));
+			ASSERT_TRUE(awh::eth::iface::isVirtual(name));
 	}
 }
 
@@ -733,21 +762,22 @@ TEST_F(EthFixture, IfaceNameByLoopbackAddrTest){
 	// Устанавливаем адрес петлевого сетевого интерфейса
 	addr->address = htonl(INADDR_LOOPBACK);
 	// Получаем имя интерфейса по адресу
-	const std::string name = this->_eth->iface.name(addr.get());
+	const std::string name = awh::eth::iface::name(addr.get());
 	/**
 	 * @note Петлевой адрес принадлежит петлевому устройству у всякой системы: розыск по
 	 *       нему обязан отвечать именем. Прежде пустой ответ проходил молча, не утвердив
 	 *       ничего
+	 *
 	 */
 	// Розыск устройства по петлевому адресу обязан отвечать именем
 	ASSERT_FALSE(name.empty()) << "Петлевой адрес не опознан принадлежащим устройству";
 	// Если имя найдено
 	if(!name.empty()){
 		// Найденный интерфейс должен быть доступен
-		ASSERT_TRUE(this->_eth->iface.isAvailable(name));
+		ASSERT_TRUE(awh::eth::iface::isAvailable(name));
 		// Проверки по адресу и по имени должны давать одинаковый результат
-		ASSERT_EQ(this->_eth->iface.isVirtual(addr.get()), this->_eth->iface.isVirtual(name));
-		ASSERT_EQ(this->_eth->iface.isTunnel(addr.get()), this->_eth->iface.isTunnel(name));
+		ASSERT_EQ(awh::eth::iface::isVirtual(addr.get()), awh::eth::iface::isVirtual(name));
+		ASSERT_EQ(awh::eth::iface::isTunnel(addr.get()), awh::eth::iface::isTunnel(name));
 	}
 }
 
@@ -759,15 +789,16 @@ TEST_F(EthFixture, IfaceGetAddressFamiliesTest){
 	/**
 	 * Перебираем все доступные сетевые интерфейсы
 	 */
-	for(auto & name : this->_eth->iface.available()){
+	for(auto & name : awh::eth::iface::available()){
 		// Получаем IPv4-адрес интерфейса
-		auto v4 = this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);
+		auto v4 = awh::eth::iface::getAddress(name, awh::event::family_t::IPV4);
 		// Получаем IPv6-адрес интерфейса
-		auto v6 = this->_eth->iface.getAddress(name, awh::event::family_t::IPV6);
+		auto v6 = awh::eth::iface::getAddress(name, awh::event::family_t::IPV6);
 		/**
 		 * @note Наличие адреса зависит от устройства, а вид выданного - нет: спросили
 		 *       IPv4 - обязан прийти IPv4. Прежде проверка звала оба опроса и на
 		 *       выданное не смотрела вовсе
+		 *
 		 */
 		// Если адрес IPv4 получен
 		if(v4 != nullptr)
@@ -786,7 +817,7 @@ TEST_F(EthFixture, IfaceGetAddressFamiliesTest){
  */
 TEST_F(EthFixture, IfacePrefixTest){
 	// Ищем петлевой интерфейс
-	const std::string lo = findLoopback(this->_eth.get());
+	const std::string lo = findLoopback();
 	// Если петлевой интерфейс найден
 	/**
 	 * Петлевое устройство обязано НАХОДИТЬСЯ, а не быть условием
@@ -795,6 +826,7 @@ TEST_F(EthFixture, IfacePrefixTest){
 	 *          есть у всякой системы, и ненахождение её - дефект самого перебора
 	 *          устройств, а не обстановка. Под условием же он давал зелёную
 	 *          проверку при нуле утверждений
+	 *
 	 */
 	ASSERT_FALSE(lo.empty()) << "петлевое устройство не найдено среди доступных: перебор устройств его не показывает";
 	{
@@ -805,7 +837,7 @@ TEST_F(EthFixture, IfacePrefixTest){
 		// Префикс подсети
 		uint8_t prefix = 0;
 		// Если параметры IPv4 успешно извлечены
-		if(this->_eth->iface.getAddress(lo, ip, peer, prefix))
+		if(awh::eth::iface::getAddress(lo, ip, peer, prefix))
 			// Префикс должен быть в допустимом диапазоне
 			ASSERT_LE(prefix, 32);
 	}
@@ -821,13 +853,13 @@ TEST_F(EthFixture, IfaceConfigureGuardTest){
 	// Устанавливаем адрес петлевого сетевого интерфейса
 	ip->address = htonl(INADDR_LOOPBACK);
 	// Комплексная настройка с пустым именем недопустима
-	ASSERT_FALSE(this->_eth->iface.configure("", ip.get(), 24, 1500));
+	ASSERT_FALSE(awh::eth::iface::configure("", ip.get(), 24, 1500));
 	// Комплексная настройка с нулевым адресом недопустима
-	ASSERT_FALSE(this->_eth->iface.configure("lo0", static_cast <const awh::net::addr_t *> (nullptr), 24, 1500));
+	ASSERT_FALSE(awh::eth::iface::configure("lo0", static_cast <const awh::net::addr_t *> (nullptr), 24, 1500));
 	// Создаём объект IPv6 адреса для проверки несовпадения типов
 	auto peer6 = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Комплексная настройка точка-точка с разными типами адреса и пира недопустима
-	ASSERT_FALSE(this->_eth->iface.configure("lo0", ip.get(), peer6.get(), 24, 1500));
+	ASSERT_FALSE(awh::eth::iface::configure("lo0", ip.get(), peer6.get(), 24, 1500));
 }
 
 /**
@@ -836,7 +868,7 @@ TEST_F(EthFixture, IfaceConfigureGuardTest){
  */
 TEST_F(EthFixture, IfaceConfigureCallTest){
 	// Ищем петлевой интерфейс
-	const std::string lo = findLoopback(this->_eth.get());
+	const std::string lo = findLoopback();
 	// Если петлевой интерфейс найден
 	/**
 	 * Петлевое устройство обязано НАХОДИТЬСЯ, а не быть условием
@@ -845,24 +877,26 @@ TEST_F(EthFixture, IfaceConfigureCallTest){
 	 *          есть у всякой системы, и ненахождение её - дефект самого перебора
 	 *          устройств, а не обстановка. Под условием же он давал зелёную
 	 *          проверку при нуле утверждений
+	 *
 	 */
 	ASSERT_FALSE(lo.empty()) << "петлевое устройство не найдено среди доступных: перебор устройств его не показывает";
 	{
 		// Получаем текущий IPv4-адрес петлевого интерфейса
-		auto ip = this->_eth->iface.getAddress(lo, awh::event::family_t::IPV4);
+		auto ip = awh::eth::iface::getAddress(lo, awh::event::family_t::IPV4);
 		// Если адрес получен (фактическое применение требует прав суперпользователя)
 		if(ip != nullptr){
 			// Вызов комплексной настройки не должен приводить к падению (MTU не меняем)
-			this->_eth->iface.configure(lo, ip.get(), 8, 0);
+			awh::eth::iface::configure(lo, ip.get(), 8, 0);
 			/**
 			 * @note Настройка требует надзорных прав, и отказ без них законен: утверждается
 			 *       не её исход, а неприкосновенность петлевого устройства. Настройка тем же
 			 *       адресом, каким оно уже настроено, не смеет ни отнять у него адрес, ни
 			 *       опустить его. Прежде проверка звала настройку и не смотрела вовсе,
 			 *       чем она кончилась
+			 *
 			 */
 			// Получаем адрес петлевого устройства заново
-			auto actual = this->_eth->iface.getAddress(lo, awh::event::family_t::IPV4);
+			auto actual = awh::eth::iface::getAddress(lo, awh::event::family_t::IPV4);
 			// Адрес петлевого устройства обязан уцелеть
 			ASSERT_NE(actual, nullptr) << "Петлевое устройство " << lo << " осталось без адреса после настройки";
 			// Адрес петлевого устройства обязан остаться прежним
@@ -870,7 +904,7 @@ TEST_F(EthFixture, IfaceConfigureCallTest){
 			          awh_cast <awh::net::addr_net_ipv4_t *> (ip.get())->address)
 			 << "Адрес петлевого устройства " << lo << " изменился после настройки тем же адресом";
 			// Получаем перечень признаков петлевого устройства
-			const auto flags = this->_eth->iface.flags(lo);
+			const auto flags = awh::eth::iface::flags(lo);
 			// Петлевое устройство обязано остаться поднятым
 			ASSERT_NE(flags.find(awh::event::eth_flag_t::UP), flags.end())
 			 << "Петлевое устройство " << lo << " опустилось после настройки";
@@ -897,10 +931,11 @@ TEST_F(EthFixture, IfaceNameByHardwareAddrTest){
 	 *
 	 * @note Заводится она сетевым адресом: пустого конструктора у связки нет вовсе -
 	 *       адрес сети приходит извне и хранится ею с самого заведения
+	 *
 	 */
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем заполнение связки сведений об устройстве
-	this->_eth->addr.fillSource(source);
+	awh::eth::addr::fillSource(source);
 	// Если аппаратного адреса у машины не нашлось - проверять нечего
 	if((source.mac == nullptr) || source.iface.empty()){
 		// Сообщаем о пропуске проверки с доводом
@@ -947,7 +982,7 @@ TEST_F(EthFixture, IfaceNameByHardwareAddrTest){
 	/**
 	 * Выполняем перебор всех доступных устройств машины
 	 */
-	for(const std::string & item : this->_eth->iface.available()){
+	for(const std::string & item : awh::eth::iface::available()){
 		// Дополняем перечень разделителем
 		listing.append(listing.empty() ? "" : ", ").append(item);
 		// Если устройство выхода наружу среди доступных найдено
@@ -956,7 +991,7 @@ TEST_F(EthFixture, IfaceNameByHardwareAddrTest){
 			listed = true;
 	}
 	// Розыск устройства по его аппаратному адресу обязан отвечать именем
-	ASSERT_EQ(this->_eth->iface.name(source.mac.get()), source.iface)
+	ASSERT_EQ(awh::eth::iface::name(source.mac.get()), source.iface)
 	 << "Аппаратный адрес " << mac << " не опознан принадлежащим устройству " << source.iface
 	 << "; среди доступных устройство " << (listed ? "числится" : "НЕ ЧИСЛИТСЯ") << ", доступны: " << listing;
 }
@@ -976,11 +1011,11 @@ TEST_F(EthFixture, IfaceNameByHardwareAddrTest){
  */
 TEST_F(EthFixture, IfaceThreadSafetyTest){
 	// Снимаем образец перечня устройств до включения защиты
-	const auto reference = this->_eth->iface.available();
+	const auto reference = awh::eth::iface::available();
 	// Перечень устройств машины пустым быть не может: петлевое есть всегда
 	ASSERT_FALSE(reference.empty()) << "Перечень доступных устройств машины пуст";
 	// Включаем защиту от одновременного доступа
-	this->_eth->iface.threadSafety(true);
+	awh::eth::iface::threadSafety(true);
 	// Замок, оберегающий сбор итогов потоков
 	std::mutex mtx;
 	// Собранные потоками перечни устройств
@@ -998,7 +1033,7 @@ TEST_F(EthFixture, IfaceThreadSafetyTest){
 			 */
 			for(uint8_t j = 0; j < 25; j++){
 				// Получаем перечень доступных устройств машины
-				auto listing = this->_eth->iface.available();
+				auto listing = awh::eth::iface::available();
 				// Выполняем блокировку сбора итогов
 				const std::lock_guard <std::mutex> lock(mtx);
 				// Сохраняем полученный перечень
@@ -1012,7 +1047,7 @@ TEST_F(EthFixture, IfaceThreadSafetyTest){
 		// Дожидаемся завершения очередного потока опроса
 		worker.join();
 	// Снимаем защиту от одновременного доступа
-	this->_eth->iface.threadSafety(false);
+	awh::eth::iface::threadSafety(false);
 	// Все потоки обязаны были отработать полностью
 	ASSERT_EQ(results.size(), static_cast <size_t> (4 * 25));
 	/**
@@ -1025,11 +1060,11 @@ TEST_F(EthFixture, IfaceThreadSafetyTest){
 		ASSERT_EQ(results[i], reference) << "Перечень устройств разошёлся с образцом у обращения №" << i;
 	}
 	// Повторное переключение защиты обязано оставаться безвредным
-	this->_eth->iface.threadSafety(true);
+	awh::eth::iface::threadSafety(true);
 	// Снимаем защиту повторно
-	this->_eth->iface.threadSafety(false);
+	awh::eth::iface::threadSafety(false);
 	// Перечень устройств обязан уцелеть и после переключений
-	ASSERT_EQ(this->_eth->iface.available(), reference);
+	ASSERT_EQ(awh::eth::iface::available(), reference);
 }
 
 /**
@@ -1068,9 +1103,9 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 		// Адрес, каким ведётся проверка
 		std::unique_ptr <awh::net::addr_t> ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Установка адреса по негодной длине обязана отвечать отказом
-		ASSERT_NO_THROW(static_cast <void> (this->_eth->iface.setAddress("lo0", ip.get(), prefix)));
+		ASSERT_NO_THROW(static_cast <void> (awh::eth::iface::setAddress("lo0", ip.get(), prefix)));
 		// Установка адреса по негодной длине обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->iface.setAddress("lo0", ip.get(), prefix)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4, где предел равен 32";
+		ASSERT_FALSE(awh::eth::iface::setAddress("lo0", ip.get(), prefix)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv4, где предел равен 32";
 	}
 	/**
 	 * Длины, разрядности адреса IPv6 не отвечающие
@@ -1079,7 +1114,7 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 		// Адрес, каким ведётся проверка
 		std::unique_ptr <awh::net::addr_t> ip = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Установка адреса по негодной длине обязана отвечать отказом
-		ASSERT_FALSE(this->_eth->iface.setAddress("lo0", ip.get(), prefix)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6, где предел равен 128";
+		ASSERT_FALSE(awh::eth::iface::setAddress("lo0", ip.get(), prefix)) << "Движок принял длину префикса " << static_cast <uint32_t> (prefix) << " у адреса IPv6, где предел равен 128";
 	}
 	// Заслон обязан был назвать причину хотя бы раз
 	ASSERT_TRUE(named) << "Заслон по длине префикса причину отказа не назвал: отказ пришёл от системы, а не от заслона";
@@ -1095,6 +1130,7 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 	 *          ПЕРВЫЙ довод в журнале - он отвечает на вопрос, ЧЕЙ отказ пришёл.
 	 *          Найдено на наречии MS Windows, где заслон стоял после поиска
 	 *          устройства и на несуществующем устройстве молчал
+	 *
 	 */
 	{
 		// Первый довод, попавший в журнал
@@ -1109,7 +1145,7 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 		// Адрес, каким ведётся проверка
 		std::unique_ptr <awh::net::addr_t> ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Установка адреса на несуществующее устройство по негодной длине
-		ASSERT_FALSE(this->_eth->iface.setAddress("awh-no-such-device", ip.get(), static_cast <uint8_t> (200)));
+		ASSERT_FALSE(awh::eth::iface::setAddress("awh-no-such-device", ip.get(), static_cast <uint8_t> (200)));
 		// Снимаем подписку на журнал
 		awh::log::subscribe(nullptr);
 		// Первым доводом обязана быть длина префикса, а не отсутствие устройства

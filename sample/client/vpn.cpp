@@ -73,8 +73,6 @@ class Executor {
 	private:
 		// Объект работы с сетевыми адресами
 		net_addr_t _addr;
-		// Объект работы с шлюзами
-		eth::gateway_t _gateway;
 	private:
 		// Объект туннеля
 		unit::tunnel_t * _tunnel;
@@ -228,7 +226,7 @@ class Executor {
 									// Подключаем посредника к клиенту
 									if(this->_mediator->splice(mid, eid)){
 										// Маршрут туннеля
-										eth::gateway_t::route_t route;
+										eth::gateway::route_t route;
 										// Устанавливаем интерфейс туннеля
 										route.ifname = this->_tunnel->getIface(this->_tun);
 										// Устанавливаем префикс маршрута туннеля
@@ -242,7 +240,7 @@ class Executor {
 										// Устанавливаем адрес назначения маршрута туннеля
 										awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 										// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
-										if(this->_gateway.add(route))
+										if(eth::gateway::add(route))
 											// Записываем в лог сообщение об успешной установке маршрута туннеля
 											cout << " Tunnel route successfully added!" << endl;
 										// Записываем в лог сообщение об успешном запуске события
@@ -343,7 +341,7 @@ class Executor {
 		 *
 		 */
 		Executor(unit::tunnel_t * tun, unit::mediator_t * med) noexcept :
-		 _tun(0), _addr(), _gateway(),
+		 _tun(0), _addr(),
 		 _tunnel(tun), _mediator(med) {}
 };
 
@@ -372,7 +370,7 @@ int32_t main(){
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor(&tunnel, &mediator);
 	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события

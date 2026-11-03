@@ -1150,7 +1150,7 @@ namespace awh {
 		/**
 		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
+		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun) || defined(DOXYGEN)
 			/**
 			 * \~russian
 			 * @brief Пространство имён для работы с SCTP

@@ -114,10 +114,9 @@ namespace {
 	/**
 	 * @brief Функция проверки исчерпания пула и прямого разбора таймера
 	 *
-	 * @param engine проверяемый движок
 	 *
 	 */
-	static void exhaustion(awh::engine::io_t & engine) noexcept {
+	static void exhaustion() noexcept {
 		// Контексты и число входов каждого обработчика
 		std::array <awh::fiber::ctx_t *, 64> contexts{};
 		std::array <uint8_t, 64> stages{};
@@ -152,23 +151,23 @@ namespace {
 		// Проверяем настоящий fallback таймера внутри IO::poll при занятом пуле
 		uint8_t fired = 0;
 		bool outside = false;
-		const auto interval = engine.event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+		const auto interval = awh::engine::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
 		::require(interval > 0, "fallback interval");
-		engine.setTimeout(interval, awh::event::action_t::NONE, 10);
-		::require(engine.commit(interval), "fallback commit");
-		engine.on(interval, [&](const awh::event::id_t, const awh::event::status_t status) noexcept {
+		awh::engine::setTimeout(interval, awh::event::action_t::NONE, 10);
+		::require(awh::engine::commit(interval), "fallback commit");
+		awh::engine::on(interval, [&](const awh::event::id_t, const awh::event::status_t status) noexcept {
 			// Учитываем только успешную доставку таймера
 			if(status == awh::event::status_t::SUCCESS){
 				fired++;
 				outside = (awh::fiber::current() == nullptr);
 			}
 		});
-		::require(engine.launch(interval), "fallback launch");
+		::require(awh::engine::launch(interval), "fallback launch");
 		const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(5));
 		while((fired == 0) && (std::chrono::steady_clock::now() < deadline))
-			::require(engine.poll(1), "fallback poll");
+			::require(awh::engine::poll(1), "fallback poll");
 		::require((fired == 1) && outside, "actual timer fallback once outside fiber");
-		::require(engine.destroy(interval), "fallback destroy");
+		::require(awh::engine::destroy(interval), "fallback destroy");
 		// Очистка не должна сносить ни одного занятого worker
 		::fibers::clear();
 		::require(::fibers::pool.size() == contexts.size(), "clear preserves suspended workers");
@@ -183,10 +182,9 @@ namespace {
 	/**
 	 * @brief Функция проверки разбора движка из работающего callback
 	 *
-	 * @param engine проверяемый движок
 	 *
 	 */
-	static void teardown(awh::engine::io_t & engine) noexcept {
+	static void teardown() noexcept {
 		// Контекст, состояние и запись обработчика
 		awh::fiber::ctx_t * held = nullptr;
 		uint8_t stage = 0;
@@ -196,7 +194,7 @@ namespace {
 			held = awh::fiber::current();
 			::require(held != nullptr, "teardown inside fiber");
 			// Разбираем движок с текущего рабочего стека
-			::require(engine.deinitialize(), "deinitialize from callback");
+			::require(awh::engine::deinitialize(), "deinitialize from callback");
 			::require((::fibers::pool.size() == 1) && ::fibers::pool.front()->busy, "current worker survives deinitialize");
 			stage++;
 			awh::fiber::yield();
@@ -210,11 +208,11 @@ namespace {
 		::fibers::clear();
 		::require(::fibers::pool.empty(), "teardown final cleanup");
 		// Повторное заведение и опрос не должны доставлять старые callbacks
-		::require(engine.initialize(), "reinitialize");
+		::require(awh::engine::initialize(), "reinitialize");
 		for(uint8_t index = 0; index < 16; index++)
-			::require(engine.poll(0), "poll after reinitialize");
+			::require(awh::engine::poll(0), "poll after reinitialize");
 		::require(stage == 2, "no late callback");
-		::require(engine.deinitialize(), "final deinitialize");
+		::require(awh::engine::deinitialize(), "final deinitialize");
 	}
 };
 
@@ -227,11 +225,10 @@ namespace {
 int main() {
 	// Инициализируем память и настоящий движок
 	awh::fmk::initialize();
-	awh::engine::io_t engine;
-	::require(engine.initialize(), "initialize");
+	::require(awh::engine::initialize(), "initialize");
 	::lifetime();
-	::exhaustion(engine);
-	::teardown(engine);
+	::exhaustion();
+	::teardown();
 	::fprintf(stdout, "WORKER_PROBE_OK: copy, yield, overwrite, 64 workers, actual timer fallback, deinitialize, reinitialize\n");
 	return EXIT_SUCCESS;
 }

@@ -905,7 +905,7 @@ namespace awh {
 	};
 };
 /**
- * @brief Метод обнуления буфера числа
+ * @brief Функция обнуления буфера числа
  *
  * @param value буфер числа для обнуления
  * @param size  размер буфера числа в байтах
@@ -918,7 +918,7 @@ void awh::bignum::reset(uint8_t * value, const size_t size) noexcept {
 		::memset(value, 0, size);
 }
 /**
- * @brief Метод проверки буфера числа на нулевое значение
+ * @brief Функция проверки буфера числа на нулевое значение
  *
  * @param value буфер числа для проверки
  * @param size  размер буфера числа в байтах
@@ -954,7 +954,7 @@ bool awh::bignum::zero(const uint8_t * value, const size_t size) noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения количества значащих бит числа
+ * @brief Функция извлечения количества значащих бит числа
  *
  * @param value буфер числа для подсчёта
  * @param size  размер буфера числа в байтах
@@ -994,7 +994,7 @@ size_t awh::bignum::bits(const uint8_t * value, const size_t size) noexcept {
 	return 0;
 }
 /**
- * @brief Метод извлечения значения бита числа
+ * @brief Функция извлечения значения бита числа
  *
  * @param value буфер числа для извлечения
  * @param size  размер буфера числа в байтах
@@ -1011,7 +1011,7 @@ bool awh::bignum::bit(const uint8_t * value, const size_t size, const size_t ind
 	return ((value[index / 8] & (1 << (index % 8))) != 0);
 }
 /**
- * @brief Метод установки значения бита числа
+ * @brief Функция установки значения бита числа
  *
  * @param value буфер числа для установки
  * @param size  размер буфера числа в байтах
@@ -1032,7 +1032,7 @@ void awh::bignum::bit(uint8_t * value, const size_t size, const size_t index, co
 	else value[index / 8] &= static_cast <uint8_t> (~(1 << (index % 8)));
 }
 /**
- * @brief Метод проверки числа на отрицательное значение
+ * @brief Функция проверки числа на отрицательное значение
  *
  * @param value буфер числа для проверки
  * @param size  размер буфера числа в байтах
@@ -1048,7 +1048,7 @@ bool awh::bignum::negative(const uint8_t * value, const size_t size) noexcept {
 	return ((value[size - 1] & 0x80) != 0);
 }
 /**
- * @brief Метод сложения двух целых чисел
+ * @brief Функция сложения двух целых чисел
  *
  * @param result буфер числа приёмника и первого слагаемого
  * @param value  буфер числа второго слагаемого
@@ -1087,7 +1087,7 @@ bool awh::bignum::add(uint8_t * result, const uint8_t * value, const size_t size
 	return (carry != 0);
 }
 /**
- * @brief Метод вычитания двух целых чисел
+ * @brief Функция вычитания двух целых чисел
  *
  * @param result буфер числа приёмника и уменьшаемого
  * @param value  буфер числа вычитаемого
@@ -1126,14 +1126,6 @@ bool awh::bignum::sub(uint8_t * result, const uint8_t * value, const size_t size
 	return (borrow != 0);
 }
 /**
- * @brief Метод умножения двух целых чисел
- *
- * @param result буфер числа приёмника и множимого
- * @param value  буфер числа множителя
- * @param size   размер буферов чисел в байтах
- *
- */
-/**
  * @brief Основное пространство имён
  *
  */
@@ -1149,9 +1141,9 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод умножения чисел в представлении машинных разрядов
+			 * @brief Функция умножения чисел в представлении машинных разрядов
 			 *
-			 * @details Метод содержит единственную реализацию школьного умножения и вызывается
+			 * @details Функция содержит единственную реализацию школьного умножения и вызывается
 			 *          из обеих ветвей умножения, различающихся только способом размещения
 			 *          буферов разрядов. Формируются только младшие разряды произведения,
 			 *          поскольку старшие выходят за разрядную сетку числа.
@@ -1192,6 +1184,14 @@ namespace awh {
 		};
 	};
 };
+/**
+ * @brief Функция умножения двух целых чисел
+ *
+ * @param result буфер числа приёмника и множимого
+ * @param value  буфер числа множителя
+ * @param size   размер буферов чисел в байтах
+ *
+ */
 void awh::bignum::mul(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	// Определяем количество разрядов представления чисел
 	const size_t count = ((size + 3) / 4);
@@ -1241,7 +1241,7 @@ void awh::bignum::mul(uint8_t * result, const uint8_t * value, const size_t size
 	storeLimbs(result, size, product.get(), count);
 }
 /**
- * @brief Метод деления двух беззнаковых целых чисел с получением остатка
+ * @brief Функция деления двух беззнаковых целых чисел с получением остатка
  *
  * @param result буфер числа приёмника частного и делимого
  * @param value  буфер числа делителя
@@ -1521,7 +1521,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 	return true;
 }
 /**
- * @brief Метод смены знака целого числа в дополнительном коде
+ * @brief Функция смены знака целого числа в дополнительном коде
  *
  * @param value буфер числа для смены знака
  * @param size  размер буфера числа в байтах
@@ -1545,7 +1545,7 @@ void awh::bignum::neg(uint8_t * value, const size_t size) noexcept {
 	}
 }
 /**
- * @brief Метод побитовой инверсии целого числа
+ * @brief Функция побитовой инверсии целого числа
  *
  * @param value буфер числа для инверсии
  * @param size  размер буфера числа в байтах
@@ -1560,7 +1560,7 @@ void awh::bignum::inv(uint8_t * value, const size_t size) noexcept {
 		value[i] = static_cast <uint8_t> (~value[i]);
 }
 /**
- * @brief Метод побитового умножения двух целых чисел
+ * @brief Функция побитового умножения двух целых чисел
  *
  * @param result буфер числа приёмника и первого операнда
  * @param value  буфер числа второго операнда
@@ -1576,7 +1576,7 @@ void awh::bignum::band(uint8_t * result, const uint8_t * value, const size_t siz
 		result[i] &= value[i];
 }
 /**
- * @brief Метод побитового сложения двух целых чисел
+ * @brief Функция побитового сложения двух целых чисел
  *
  * @param result буфер числа приёмника и первого операнда
  * @param value  буфер числа второго операнда
@@ -1592,7 +1592,7 @@ void awh::bignum::bor(uint8_t * result, const uint8_t * value, const size_t size
 		result[i] |= value[i];
 }
 /**
- * @brief Метод побитового исключающего сложения двух целых чисел
+ * @brief Функция побитового исключающего сложения двух целых чисел
  *
  * @param result буфер числа приёмника и первого операнда
  * @param value  буфер числа второго операнда
@@ -1608,7 +1608,7 @@ void awh::bignum::bxor(uint8_t * result, const uint8_t * value, const size_t siz
 		result[i] ^= value[i];
 }
 /**
- * @brief Метод сдвига целого числа влево
+ * @brief Функция сдвига целого числа влево
  *
  * @param value буфер числа для сдвига
  * @param size  размер буфера числа в байтах
@@ -1679,7 +1679,7 @@ void awh::bignum::shl(uint8_t * value, const size_t size, const size_t count) no
 	}
 }
 /**
- * @brief Метод сдвига целого числа вправо
+ * @brief Функция сдвига целого числа вправо
  *
  * @param value буфер числа для сдвига
  * @param size  размер буфера числа в байтах
@@ -1771,7 +1771,7 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
 	}
 }
 /**
- * @brief Метод сравнения двух беззнаковых целых чисел
+ * @brief Функция сравнения двух беззнаковых целых чисел
  *
  * @param value1 буфер первого числа для сравнения
  * @param value2 буфер второго числа для сравнения
@@ -1797,7 +1797,7 @@ int8_t awh::bignum::ucompare(const uint8_t * value1, const uint8_t * value2, con
 	return 0;
 }
 /**
- * @brief Метод сравнения двух знаковых целых чисел
+ * @brief Функция сравнения двух знаковых целых чисел
  *
  * @param value1 буфер первого числа для сравнения
  * @param value2 буфер второго числа для сравнения
@@ -1818,7 +1818,7 @@ int8_t awh::bignum::scompare(const uint8_t * value1, const uint8_t * value2, con
 	return ucompare(value1, value2, size);
 }
 /**
- * @brief Метод извлечения целочисленного квадратного корня беззнакового числа
+ * @brief Функция извлечения целочисленного квадратного корня беззнакового числа
  *
  * @param value буфер числа для извлечения корня
  * @param size  размер буфера числа в байтах
@@ -1889,7 +1889,7 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	::memcpy(value, guess.get(), size);
 }
 /**
- * @brief Метод возведения целого числа в степень
+ * @brief Функция возведения целого числа в степень
  *
  * @param value    буфер числа для возведения в степень
  * @param size     размер буфера числа в байтах
@@ -1941,7 +1941,7 @@ void awh::bignum::pow(uint8_t * value, const size_t size, const uint64_t exponen
 	::memcpy(value, result.get(), size);
 }
 /**
- * @brief Метод установки значения целого числа
+ * @brief Функция установки значения целого числа
  *
  * @param value буфер числа для установки
  * @param size  размер буфера числа в байтах
@@ -1966,7 +1966,7 @@ void awh::bignum::set(uint8_t * value, const size_t size, const uint64_t num, co
 		neg(value, size);
 }
 /**
- * @brief Метод извлечения беззнакового целого значения числа
+ * @brief Функция извлечения беззнакового целого значения числа
  *
  * @param value буфер числа для извлечения
  * @param size  размер буфера числа в байтах
@@ -1988,7 +1988,7 @@ uint64_t awh::bignum::getUint(const uint8_t * value, const size_t size) noexcept
 	return result;
 }
 /**
- * @brief Метод извлечения знакового целого значения числа
+ * @brief Функция извлечения знакового целого значения числа
  *
  * @param value буфер числа для извлечения
  * @param size  размер буфера числа в байтах
@@ -2006,7 +2006,7 @@ int64_t awh::bignum::getInt(const uint8_t * value, const size_t size) noexcept {
 	return static_cast <int64_t> (result);
 }
 /**
- * @brief Метод извлечения вещественного значения целого числа
+ * @brief Функция извлечения вещественного значения целого числа
  *
  * @param value буфер числа для извлечения
  * @param size  размер буфера числа в байтах
@@ -2041,7 +2041,7 @@ long double awh::bignum::getReal(const uint8_t * value, const size_t size, const
 	return (minus ? -result : result);
 }
 /**
- * @brief Метод установки вещественного значения целого числа
+ * @brief Функция установки вещественного значения целого числа
  *
  * @param value буфер числа для установки
  * @param size  размер буфера числа в байтах
@@ -2116,7 +2116,7 @@ void awh::bignum::setReal(uint8_t * value, const size_t size, const long double 
 		neg(value, size);
 }
 /**
- * @brief Метод формирования строкового представления целого числа
+ * @brief Функция формирования строкового представления целого числа
  *
  * @param value  буфер числа для формирования
  * @param size   размер буфера числа в байтах
@@ -2287,7 +2287,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 	return result;
 }
 /**
- * @brief Метод разбора строкового представления целого числа
+ * @brief Функция разбора строкового представления целого числа
  *
  * @param value  буфер числа для установки результата разбора
  * @param size   размер буфера числа в байтах
@@ -2487,7 +2487,7 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	return true;
 }
 /**
- * @brief Метод округления целого числа до указанного десятичного разряда
+ * @brief Функция округления целого числа до указанного десятичного разряда
  *
  * @param value  буфер числа для округления
  * @param size   размер буфера числа в байтах
@@ -2606,7 +2606,7 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод проверки наличия установленных бит ниже указанной позиции
+			 * @brief Функция проверки наличия установленных бит ниже указанной позиции
 			 *
 			 * @details Проверка выполняется побайтово, что на порядок быстрее побитового перебора.
 			 *
@@ -2644,7 +2644,7 @@ namespace awh {
 				return false;
 			}
 			/**
-			 * @brief Метод сдвига магнитуды вправо с накоплением флага младших разрядов
+			 * @brief Функция сдвига магнитуды вправо с накоплением флага младших разрядов
 			 *
 			 * @param value буфер магнитуды для сдвига
 			 * @param size  размер буфера магнитуды в байтах
@@ -2666,7 +2666,7 @@ namespace awh {
 					value[0] |= 0x01;
 			}
 			/**
-			 * @brief Метод сдвига магнитуды с округлением к ближайшему чётному
+			 * @brief Функция сдвига магнитуды с округлением к ближайшему чётному
 			 *
 			 * @param value буфер магнитуды для сдвига
 			 * @param size  размер буфера магнитуды в байтах
@@ -2720,7 +2720,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод извлечения значения поля порядка вещественного числа
+			 * @brief Функция извлечения значения поля порядка вещественного числа
 			 *
 			 * @details Извлечение выполняется чтением байтов поля порядка без распаковки
 			 *          числа целиком, поэтому не требует выделения памяти под мантиссу.
@@ -2752,7 +2752,7 @@ namespace awh {
 				return ((params.exp < 64) ? (result & ((static_cast <uint64_t> (1) << params.exp) - 1)) : result);
 			}
 			/**
-			 * @brief Метод проверки мантиссы вещественного числа на нулевое значение
+			 * @brief Функция проверки мантиссы вещественного числа на нулевое значение
 			 *
 			 * @param value  буфер числа для проверки
 			 * @param params параметры формата вещественного числа
@@ -2770,7 +2770,7 @@ namespace awh {
 				return zero(value, offset);
 			}
 			/**
-			 * @brief Метод определения класса значения вещественного числа
+			 * @brief Функция определения класса значения вещественного числа
 			 *
 			 * @details Определение выполняется без распаковки числа целиком, поэтому не
 			 *          требует выделения памяти под мантиссу.
@@ -2797,7 +2797,7 @@ namespace awh {
 				return class_t::NORMAL;
 			}
 			/**
-			 * @brief Метод распаковки вещественного числа
+			 * @brief Функция распаковки вещественного числа
 			 *
 			 * @param value буфер числа для распаковки
 			 * @param size  размер буфера числа в байтах
@@ -2854,7 +2854,7 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * @brief Метод упаковки вещественного числа с округлением
+			 * @brief Функция упаковки вещественного числа с округлением
 			 *
 			 * @param result   буфер числа приёмника
 			 * @param size     размер буфера числа в байтах
@@ -2944,7 +2944,7 @@ namespace awh {
 			 */
 			constexpr long double LOG2_OF_TEN = 3.3219280948873623L;
 			/**
-			 * @brief Метод переноса строки десятичных цифр в буфер длинного числа
+			 * @brief Функция переноса строки десятичных цифр в буфер длинного числа
 			 *
 			 * @param value  буфер числа для установки
 			 * @param size   размер буфера числа в байтах
@@ -2983,7 +2983,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод умножения длинного числа на степень десяти
+			 * @brief Функция умножения длинного числа на степень десяти
 			 *
 			 * @param value    буфер числа для умножения
 			 * @param size     размер буфера числа в байтах
@@ -3017,7 +3017,7 @@ namespace awh {
 				}
 			}
 			/**
-			 * @brief Метод формирования точного десятичного представления вещественного числа
+			 * @brief Функция формирования точного десятичного представления вещественного числа
 			 *
 			 * @details Мантисса переводится в десятичную запись, после чего к ней применяется
 			 *          показатель степени двойки: умножением на два для положительного показателя
@@ -3123,9 +3123,9 @@ namespace awh {
 				return true;
 			}
 			/**
-			 * @brief Метод отбрасывания младших цифр десятичного представления по правилу округления
+			 * @brief Функция отбрасывания младших цифр десятичного представления по правилу округления
 			 *
-			 * @details В отличие от округления до количества значащих цифр, метод сохраняет
+			 * @details В отличие от округления до количества значащих цифр, функция сохраняет
 			 *          значение записи: перенос при округлении удлиняет строку цифр, а не
 			 *          сдвигает десятичную точку.
 			 *
@@ -3245,7 +3245,7 @@ namespace awh {
 				digits.insert(digits.begin(), '1');
 			}
 			/**
-			 * @brief Метод формирования вещественного числа из десятичного представления
+			 * @brief Функция формирования вещественного числа из десятичного представления
 			 *
 			 * @details Значение формируемого числа равно digits * 10^power с учётом знака.
 			 *
@@ -3324,7 +3324,7 @@ namespace awh {
 	};
 };
 /**
- * @brief Метод извлечения разрядности порядка вещественного числа
+ * @brief Функция извлечения разрядности порядка вещественного числа
  *
  * @param bits разрядность вещественного числа в битах
  * @return     разрядность порядка вещественного числа в битах
@@ -3366,7 +3366,7 @@ size_t awh::bignum::exponentBits(const size_t bits) noexcept {
 	return static_cast <size_t> (result);
 }
 /**
- * @brief Метод определения класса вещественного числа
+ * @brief Функция определения класса вещественного числа
  *
  * @param value буфер числа для определения
  * @param size  размер буфера числа в байтах
@@ -3378,7 +3378,7 @@ awh::bignum::class_t awh::bignum::classify(const uint8_t * value, const size_t s
 	return realClass(value, size);
 }
 /**
- * @brief Метод формирования бесконечности вещественного числа
+ * @brief Функция формирования бесконечности вещественного числа
  *
  * @param value буфер числа для формирования
  * @param size  размер буфера числа в байтах
@@ -3402,7 +3402,7 @@ void awh::bignum::realInf(uint8_t * value, const size_t size, const bool sign) n
 		bit(value, size, params.bits - 1, true);
 }
 /**
- * @brief Метод формирования значения не являющегося числом
+ * @brief Функция формирования значения не являющегося числом
  *
  * @param value буфер числа для формирования
  * @param size  размер буфера числа в байтах
@@ -3417,7 +3417,7 @@ void awh::bignum::realNan(uint8_t * value, const size_t size) noexcept {
 	bit(value, size, params.man - 1, true);
 }
 /**
- * @brief Метод формирования машинного эпсилон вещественного числа
+ * @brief Функция формирования машинного эпсилон вещественного числа
  *
  * @param value буфер числа для формирования
  * @param size  размер буфера числа в байтах
@@ -3438,7 +3438,7 @@ void awh::bignum::realEpsilon(uint8_t * value, const size_t size) noexcept {
 		bit(value, size, params.man + i, ((static_cast <uint64_t> (exp) & (static_cast <uint64_t> (1) << i)) != 0));
 }
 /**
- * @brief Метод формирования максимального конечного вещественного числа
+ * @brief Функция формирования максимального конечного вещественного числа
  *
  * @param value буфер числа для формирования
  * @param size  размер буфера числа в байтах
@@ -3456,7 +3456,7 @@ void awh::bignum::realLimit(uint8_t * value, const size_t size, const bool sign)
 	bit(value, size, params.bits - 1, sign);
 }
 /**
- * @brief Метод смены знака вещественного числа
+ * @brief Функция смены знака вещественного числа
  *
  * @param value буфер числа для смены знака
  * @param size  размер буфера числа в байтах
@@ -3467,7 +3467,7 @@ void awh::bignum::realNeg(uint8_t * value, const size_t size) noexcept {
 	bit(value, size, (size * 8) - 1, !bit(value, size, (size * 8) - 1));
 }
 /**
- * @brief Метод извлечения модуля вещественного числа
+ * @brief Функция извлечения модуля вещественного числа
  *
  * @param value буфер числа для извлечения модуля
  * @param size  размер буфера числа в байтах
@@ -3478,7 +3478,7 @@ void awh::bignum::realAbs(uint8_t * value, const size_t size) noexcept {
 	bit(value, size, (size * 8) - 1, false);
 }
 /**
- * @brief Метод сравнения двух вещественных чисел
+ * @brief Функция сравнения двух вещественных чисел
  *
  * @param value1 буфер первого числа для сравнения
  * @param value2 буфер второго числа для сравнения
@@ -3531,7 +3531,7 @@ int8_t awh::bignum::realCompare(const uint8_t * value1, const uint8_t * value2, 
 	return (sign1 ? static_cast <int8_t> (-result) : result);
 }
 /**
- * @brief Метод сложения двух вещественных чисел
+ * @brief Функция сложения двух вещественных чисел
  *
  * @param result буфер числа приёмника и первого слагаемого
  * @param value  буфер числа второго слагаемого
@@ -3672,7 +3672,7 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 	realPack(result, size, sign, exp, num1.mantissa.data(), num1.mantissa.size());
 }
 /**
- * @brief Метод вычитания двух вещественных чисел
+ * @brief Функция вычитания двух вещественных чисел
  *
  * @param result буфер числа приёмника и уменьшаемого
  * @param value  буфер числа вычитаемого
@@ -3694,7 +3694,7 @@ void awh::bignum::realSub(uint8_t * result, const uint8_t * value, const size_t 
 	realAdd(result, tmp.get(), size);
 }
 /**
- * @brief Метод умножения двух вещественных чисел
+ * @brief Функция умножения двух вещественных чисел
  *
  * @param result буфер числа приёмника и множимого
  * @param value  буфер числа множителя
@@ -3751,7 +3751,7 @@ void awh::bignum::realMul(uint8_t * result, const uint8_t * value, const size_t 
 	realPack(result, size, sign, (num1.exp + num2.exp), num1.mantissa.data(), num1.mantissa.size());
 }
 /**
- * @brief Метод деления двух вещественных чисел
+ * @brief Функция деления двух вещественных чисел
  *
  * @param result буфер числа приёмника и делимого
  * @param value  буфер числа делителя
@@ -3840,7 +3840,7 @@ void awh::bignum::realDiv(uint8_t * result, const uint8_t * value, const size_t 
 	realPack(result, size, sign, ((num1.exp - num2.exp) - guard), num1.mantissa.data(), num1.mantissa.size());
 }
 /**
- * @brief Метод извлечения остатка от деления двух вещественных чисел
+ * @brief Функция извлечения остатка от деления двух вещественных чисел
  *
  * @param result буфер числа приёмника и делимого
  * @param value  буфер числа делителя
@@ -3924,7 +3924,7 @@ void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t 
 	realPack(result, size, num1.sign, num2.exp, num1.mantissa.data(), num1.mantissa.size());
 }
 /**
- * @brief Метод извлечения квадратного корня вещественного числа
+ * @brief Функция извлечения квадратного корня вещественного числа
  *
  * @param value буфер числа для извлечения корня
  * @param size  размер буфера числа в байтах
@@ -3985,7 +3985,7 @@ void awh::bignum::realSqrt(uint8_t * value, const size_t size) noexcept {
 	realPack(value, size, false, (exp / 2), num.mantissa.data(), num.mantissa.size());
 }
 /**
- * @brief Метод возведения вещественного числа в целую степень
+ * @brief Функция возведения вещественного числа в целую степень
  *
  * @param value    буфер числа для возведения в степень
  * @param size     размер буфера числа в байтах
@@ -4037,7 +4037,7 @@ void awh::bignum::realPow(uint8_t * value, const size_t size, const uint64_t exp
 	::memcpy(value, result.get(), size);
 }
 /**
- * @brief Метод установки целого значения вещественного числа
+ * @brief Функция установки целого значения вещественного числа
  *
  * @param value буфер числа для установки
  * @param size  размер буфера числа в байтах
@@ -4054,7 +4054,7 @@ void awh::bignum::realSet(uint8_t * value, const size_t size, const uint64_t num
 	realPack(value, size, sign, 0, mantissa.data(), mantissa.size());
 }
 /**
- * @brief Метод установки вещественного значения числа
+ * @brief Функция установки вещественного значения числа
  *
  * @param value буфер числа для установки
  * @param size  размер буфера числа в байтах
@@ -4122,9 +4122,9 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод извлечения модуля целой части вещественного числа в машинное слово
+			 * @brief Функция извлечения модуля целой части вещественного числа в машинное слово
 			 *
-			 * @details Метод масштабирует мантиссу числа по его показателю степени двойки и
+			 * @details Функция масштабирует мантиссу числа по его показателю степени двойки и
 			 *          сообщает, помещается ли полученная целая часть в машинное слово. Проверка
 			 *          выполняется по количеству значащих разрядов результата, а не по размеру
 			 *          рабочего буфера мантиссы, поскольку буфер заведомо шире машинного слова
@@ -4183,7 +4183,7 @@ namespace awh {
 	};
 };
 /**
- * @brief Метод извлечения беззнакового целого значения вещественного числа
+ * @brief Функция извлечения беззнакового целого значения вещественного числа
  *
  * @details При выходе значения за пределы разрядной сетки результата выполняется насыщение
  *          её предельным значением, а отрицательное значение насыщается нулём, поскольку
@@ -4219,7 +4219,7 @@ uint64_t awh::bignum::realGetUint(const uint8_t * value, const size_t size) noex
 	return result;
 }
 /**
- * @brief Метод извлечения знакового целого значения вещественного числа
+ * @brief Функция извлечения знакового целого значения вещественного числа
  *
  * @details При выходе значения за пределы разрядной сетки результата выполняется
  *          насыщение её предельным значением соответствующего знака.
@@ -4269,7 +4269,7 @@ int64_t awh::bignum::realGetInt(const uint8_t * value, const size_t size) noexce
 	return static_cast <int64_t> (result);
 }
 /**
- * @brief Метод извлечения вещественного значения числа
+ * @brief Функция извлечения вещественного значения числа
  *
  * @param value буфер числа для извлечения
  * @param size  размер буфера числа в байтах
@@ -4313,7 +4313,7 @@ long double awh::bignum::realGetReal(const uint8_t * value, const size_t size) n
 	return (num.sign ? -result : result);
 }
 /**
- * @brief Метод переноса вещественного числа в буфер другой разрядности
+ * @brief Функция переноса вещественного числа в буфер другой разрядности
  *
  * @param result буфер числа приёмника
  * @param size1  размер буфера числа приёмника в байтах
@@ -4389,7 +4389,7 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод масштабирования вещественного числа степенью двойки
+			 * @brief Функция масштабирования вещественного числа степенью двойки
 			 *
 			 * @param value буфер числа для масштабирования
 			 * @param size  размер буфера числа в байтах
@@ -4407,7 +4407,7 @@ namespace awh {
 				realPack(value, size, num.sign, (num.exp + shift), num.mantissa.data(), num.mantissa.size());
 			}
 			/**
-			 * @brief Метод проверки вещественного числа на нечётность
+			 * @brief Функция проверки вещественного числа на нечётность
 			 *
 			 * @param value буфер числа для проверки
 			 * @param size  размер буфера числа в байтах
@@ -4429,7 +4429,7 @@ namespace awh {
 				return bit(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (-num.exp));
 			}
 			/**
-			 * @brief Метод насыщения целого числа предельным значением разрядной сетки
+			 * @brief Функция насыщения целого числа предельным значением разрядной сетки
 			 *
 			 * @param value буфер числа для насыщения
 			 * @param size  размер буфера числа в байтах
@@ -4459,7 +4459,7 @@ namespace awh {
 					bit(value, size, (size * 8) - 1, false);
 			}
 			/**
-			 * @brief Метод преобразования числа между разрядностями и типами
+			 * @brief Функция преобразования числа между разрядностями и типами
 			 *
 			 * @param result буфер числа приёмника
 			 * @param size1  размер буфера числа приёмника в байтах
@@ -4615,7 +4615,7 @@ namespace awh {
 	};
 };
 /**
- * @brief Метод формирования строкового представления вещественного числа
+ * @brief Функция формирования строкового представления вещественного числа
  *
  * @param value     буфер числа для формирования
  * @param size      размер буфера числа в байтах
@@ -4962,7 +4962,7 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод сравнения строки с образцом без учёта регистра
+			 * @brief Функция сравнения строки с образцом без учёта регистра
 			 *
 			 * @param text    строка для сравнения
 			 * @param pattern образец для сравнения
@@ -4994,7 +4994,7 @@ namespace awh {
 	};
 };
 /**
- * @brief Метод разбора строкового представления вещественного числа
+ * @brief Функция разбора строкового представления вещественного числа
  *
  * @param value буфер числа для установки результата разбора
  * @param size  размер буфера числа в байтах
@@ -5190,7 +5190,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	return true;
 }
 /**
- * @brief Метод округления вещественного числа до указанного количества знаков после запятой
+ * @brief Функция округления вещественного числа до указанного количества знаков после запятой
  *
  * @param value  буфер числа для округления
  * @param size   размер буфера числа в байтах
@@ -5255,7 +5255,7 @@ void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t di
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования минимально возможного значения числа
+ * @brief Функция формирования минимально возможного значения числа
  *
  * @return минимально возможное значение числа
  *
@@ -5298,7 +5298,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::minimum() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования максимально возможного значения числа
+ * @brief Функция формирования максимально возможного значения числа
  *
  * @return максимально возможное значение числа
  *
@@ -5346,7 +5346,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::maximum() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования машинного эпсилон числа
+ * @brief Функция формирования машинного эпсилон числа
  *
  * @return машинный эпсилон числа
  *
@@ -5372,7 +5372,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::epsilon() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования значения бесконечности
+ * @brief Функция формирования значения бесконечности
  *
  * @return значение бесконечности
  *
@@ -5399,7 +5399,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::unlimited() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования значения не являющегося числом
+ * @brief Функция формирования значения не являющегося числом
  *
  * @return значение не являющееся числом
  *
@@ -5423,7 +5423,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::undefined() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод деления двух чисел с получением частного и остатка
+ * @brief Функция деления двух чисел с получением частного и остатка
  *
  * @param num1      делимое число
  * @param num2      делитель числа
@@ -5477,7 +5477,7 @@ void awh::BigNum <BYTES, TYPE>::divmod(const BigNum & num1, const BigNum & num2,
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод очистки значения числа
+ * @brief Функция очистки значения числа
  *
  */
 void awh::BigNum <BYTES, TYPE>::clear() noexcept {
@@ -5493,7 +5493,7 @@ void awh::BigNum <BYTES, TYPE>::clear() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод обмена значениями двух чисел
+ * @brief Функция обмена значениями двух чисел
  *
  * @param num число для обмена значениями
  *
@@ -5511,7 +5511,7 @@ void awh::BigNum <BYTES, TYPE>::swap(BigNum & num) noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод проверки числа на нулевое значение
+ * @brief Функция проверки числа на нулевое значение
  *
  * @return результат проверки
  *
@@ -5533,7 +5533,7 @@ bool awh::BigNum <BYTES, TYPE>::zero() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод проверки числа на отрицательное значение
+ * @brief Функция проверки числа на отрицательное значение
  *
  * @return результат проверки
  *
@@ -5555,7 +5555,7 @@ bool awh::BigNum <BYTES, TYPE>::negative() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод проверки числа на нечётное значение
+ * @brief Функция проверки числа на нечётное значение
  *
  * @return результат проверки
  *
@@ -5577,7 +5577,7 @@ bool awh::BigNum <BYTES, TYPE>::odd() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод проверки числа на чётное значение
+ * @brief Функция проверки числа на чётное значение
  *
  * @return результат проверки
  *
@@ -5595,7 +5595,7 @@ bool awh::BigNum <BYTES, TYPE>::even() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод определения класса значения числа
+ * @brief Функция определения класса значения числа
  *
  * @return класс значения числа
  *
@@ -5617,7 +5617,7 @@ awh::bignum::class_t awh::BigNum <BYTES, TYPE>::category() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения количества значащих бит числа
+ * @brief Функция извлечения количества значащих бит числа
  *
  * @return количество значащих бит числа
  *
@@ -5648,7 +5648,7 @@ uint32_t awh::BigNum <BYTES, TYPE>::bits() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения значения бита числа
+ * @brief Функция извлечения значения бита числа
  *
  * @param index индекс извлекаемого бита
  * @return      значение указанного бита
@@ -5667,7 +5667,7 @@ bool awh::BigNum <BYTES, TYPE>::bit(const uint32_t index) const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод установки значения бита числа
+ * @brief Функция установки значения бита числа
  *
  * @param index индекс устанавливаемого бита
  * @param mode  устанавливаемое значение бита
@@ -5686,7 +5686,7 @@ void awh::BigNum <BYTES, TYPE>::bit(const uint32_t index, const bool mode) noexc
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения буфера числа
+ * @brief Функция извлечения буфера числа
  *
  * @return буфер хранения числа
  *
@@ -5704,7 +5704,7 @@ uint8_t * awh::BigNum <BYTES, TYPE>::data() noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения буфера числа
+ * @brief Функция извлечения буфера числа
  *
  * @return буфер хранения числа
  *
@@ -5722,7 +5722,7 @@ const uint8_t * awh::BigNum <BYTES, TYPE>::data() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения массива байтов числа
+ * @brief Функция извлечения массива байтов числа
  *
  * @return массив байтов хранения числа
  *
@@ -5740,7 +5740,7 @@ const array <uint8_t, BYTES> & awh::BigNum <BYTES, TYPE>::bytes() const noexcept
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод установки значения числа из внешнего буфера
+ * @brief Функция установки значения числа из внешнего буфера
  *
  * @param buffer буфер числа источника в порядке от младшего байта к старшему
  * @param size   размер буфера числа источника в байтах
@@ -5767,7 +5767,7 @@ void awh::BigNum <BYTES, TYPE>::set(const uint8_t * buffer, const uint16_t size,
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения значения числа во внешний буфер
+ * @brief Функция извлечения значения числа во внешний буфер
  *
  * @param buffer буфер числа приёмника в порядке от младшего байта к старшему
  * @param size   размер буфера числа приёмника в байтах
@@ -5791,7 +5791,7 @@ void awh::BigNum <BYTES, TYPE>::get(uint8_t * buffer, const uint16_t size, const
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод сравнения двух чисел
+ * @brief Функция сравнения двух чисел
  *
  * @param num число для сравнения
  * @return    результат сравнения
@@ -5827,7 +5827,7 @@ int8_t awh::BigNum <BYTES, TYPE>::compare(const BigNum & num) const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения модуля числа
+ * @brief Функция извлечения модуля числа
  *
  * @return модуль текущего числа
  *
@@ -5855,7 +5855,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::abs() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод извлечения квадратного корня числа
+ * @brief Функция извлечения квадратного корня числа
  *
  * @return квадратный корень текущего числа
  *
@@ -5892,7 +5892,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::sqrt() const noexcept {
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод возведения числа в степень
+ * @brief Функция возведения числа в степень
  *
  * @param exponent показатель степени
  * @return         результат возведения в степень
@@ -5919,7 +5919,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::pow(const uint64_t exponent
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод округления числа до указанного количества знаков после запятой
+ * @brief Функция округления числа до указанного количества знаков после запятой
  *
  * @param digits количество знаков после запятой
  * @param mode   правило округления числа
@@ -5947,7 +5947,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::round(const int32_t digits,
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод отбрасывания знаков числа после указанной позиции
+ * @brief Функция отбрасывания знаков числа после указанной позиции
  *
  * @param digits количество сохраняемых знаков после запятой
  * @return        значение числа с отброшенными младшими знаками
@@ -5966,7 +5966,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::trunc(const int32_t digits)
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод округления числа в сторону минус бесконечности
+ * @brief Функция округления числа в сторону минус бесконечности
  *
  * @param digits количество сохраняемых знаков после запятой
  * @return        округлённое значение числа
@@ -5985,7 +5985,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::floor(const int32_t digits)
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод округления числа в сторону плюс бесконечности
+ * @brief Функция округления числа в сторону плюс бесконечности
  *
  * @param digits количество сохраняемых знаков после запятой
  * @return        округлённое значение числа
@@ -6004,7 +6004,7 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::ceil(const int32_t digits) 
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод формирования строкового представления числа
+ * @brief Функция формирования строкового представления числа
  *
  * @param format    формат представления числа
  * @param precision количество знаков после запятой (отрицательное значение - автоматически)
@@ -6028,7 +6028,7 @@ string awh::BigNum <BYTES, TYPE>::print(const format_t format, const int16_t pre
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
- * @brief Метод разбора строкового представления числа
+ * @brief Функция разбора строкового представления числа
  *
  * @param text   разбираемая строка числа
  * @param format формат представления числа
@@ -6066,7 +6066,7 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод извлечения знакового целого значения числа
+			 * @brief Функция извлечения знакового целого значения числа
 			 *
 			 * @param value буфер числа для извлечения
 			 * @param size  размер буфера числа в байтах
@@ -6083,7 +6083,7 @@ namespace awh {
 				return getInt(value, size);
 			}
 			/**
-			 * @brief Метод извлечения беззнакового целого значения числа
+			 * @brief Функция извлечения беззнакового целого значения числа
 			 *
 			 * @param value буфер числа для извлечения
 			 * @param size  размер буфера числа в байтах
@@ -6100,7 +6100,7 @@ namespace awh {
 				return getUint(value, size);
 			}
 			/**
-			 * @brief Метод извлечения вещественного значения числа
+			 * @brief Функция извлечения вещественного значения числа
 			 *
 			 * @param value буфер числа для извлечения
 			 * @param size  размер буфера числа в байтах
@@ -6880,7 +6880,7 @@ namespace awh {
 		 */
 		namespace {
 			/**
-			 * @brief Метод установки знакового целого значения числа
+			 * @brief Функция установки знакового целого значения числа
 			 *
 			 * @param value буфер числа для установки
 			 * @param size  размер буфера числа в байтах
@@ -6901,7 +6901,7 @@ namespace awh {
 				else set(value, size, magnitude, sign);
 			}
 			/**
-			 * @brief Метод установки беззнакового целого значения числа
+			 * @brief Функция установки беззнакового целого значения числа
 			 *
 			 * @param value буфер числа для установки
 			 * @param size  размер буфера числа в байтах
@@ -6918,7 +6918,7 @@ namespace awh {
 				else set(value, size, num, false);
 			}
 			/**
-			 * @brief Метод установки вещественного значения числа
+			 * @brief Функция установки вещественного значения числа
 			 *
 			 * @param value буфер числа для установки
 			 * @param size  размер буфера числа в байтах

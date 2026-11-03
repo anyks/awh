@@ -95,7 +95,7 @@
 /**
  * Модуль предназначен только для операционной системы Linux
  */
-#if defined(__linux__)
+#if defined(__linux__) || defined(DOXYGEN)
 
 /**
  * Стандартная библиотека
@@ -203,7 +203,7 @@ namespace awh {
 		#endif
 		/**
 		 * \~russian
-		 * @brief Метод создания сокета
+		 * @brief Функция создания сокета
 		 *
 		 * @param domain   семейство протоколов
 		 * @param type     тип сокета
@@ -211,7 +211,7 @@ namespace awh {
 		 * @return         созданный сокет либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of creating a socket
+		 * @brief Function of creating a socket
 		 * @param domain   family of the protocols
 		 * @param type     type of the socket
 		 * @param protocol protocol of the socket
@@ -234,7 +234,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод привязки сокета к адресу
+		 * @brief Функция привязки сокета к адресу
 		 *
 		 * @param sock сетевой сокет
 		 * @param addr адрес для привязки
@@ -242,7 +242,7 @@ namespace awh {
 		 * @return     результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of binding a socket to an address
+		 * @brief Function of binding a socket to an address
 		 * @param sock network socket
 		 * @param addr address to bind to
 		 * @param size size of the address
@@ -265,14 +265,14 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод перевода сокета в режим ожидания подключений
+		 * @brief Функция перевода сокета в режим ожидания подключений
 		 *
 		 * @param sock    сетевой сокет
 		 * @param backlog размер очереди подключений
 		 * @return        результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of putting a socket into the mode of the waiting for the connections
+		 * @brief Function of putting a socket into the mode of the waiting for the connections
 		 * @param sock    network socket
 		 * @param backlog size of the queue of the connections
 		 * @return        result of the work of the function
@@ -294,7 +294,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод принятия входящего подключения
+		 * @brief Функция принятия входящего подключения
 		 *
 		 * @param sock сетевой сокет
 		 * @param addr адрес подключившегося клиента
@@ -302,7 +302,7 @@ namespace awh {
 		 * @return     сокет подключения либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of accepting an incoming connection
+		 * @brief Function of accepting an incoming connection
 		 * @param sock network socket
 		 * @param addr address of the connected client
 		 * @param size size of the address
@@ -325,7 +325,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод установки подключения
+		 * @brief Функция установки подключения
 		 *
 		 * @param sock сетевой сокет
 		 * @param addr адрес подключения
@@ -333,7 +333,7 @@ namespace awh {
 		 * @return     результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of establishing a connection
+		 * @brief Function of establishing a connection
 		 * @param sock network socket
 		 * @param addr address of the connection
 		 * @param size size of the address
@@ -356,13 +356,13 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод закрытия сокета
+		 * @brief Функция закрытия сокета
 		 *
 		 * @param sock сетевой сокет
 		 * @return     результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of closing a socket
+		 * @brief Function of closing a socket
 		 * @param sock network socket
 		 * @return     result of the work of the function
 		 *
@@ -383,14 +383,14 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод прекращения обмена по сокету
+		 * @brief Функция прекращения обмена по сокету
 		 *
 		 * @param sock сетевой сокет
 		 * @param how  направление прекращения обмена
 		 * @return     результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of stopping the exchange over a socket
+		 * @brief Function of stopping the exchange over a socket
 		 * @param sock network socket
 		 * @param how  direction of the stopping of the exchange
 		 * @return     result of the work of the function
@@ -412,7 +412,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод чтения данных из сокета
+		 * @brief Функция чтения данных из сокета
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер для чтения данных
@@ -421,7 +421,7 @@ namespace awh {
 		 * @return       количество прочитанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of reading the data from a socket
+		 * @brief Function of reading the data from a socket
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -445,7 +445,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод отправки данных в сокет
+		 * @brief Функция отправки данных в сокет
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер данных для отправки
@@ -454,7 +454,7 @@ namespace awh {
 		 * @return       количество отправленных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of sending the data into a socket
+		 * @brief Function of sending the data into a socket
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to send
 		 * @param size   size of the buffer
@@ -478,7 +478,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод чтения данных из сокета с получением адреса отправителя
+		 * @brief Функция чтения данных из сокета с получением адреса отправителя
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер для чтения данных
@@ -489,7 +489,7 @@ namespace awh {
 		 * @return       количество прочитанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of reading the data from a socket with the getting of the address of the sender
+		 * @brief Function of reading the data from a socket with the getting of the address of the sender
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -515,7 +515,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод отправки данных в сокет по указанному адресу
+		 * @brief Функция отправки данных в сокет по указанному адресу
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер данных для отправки
@@ -526,7 +526,7 @@ namespace awh {
 		 * @return       количество отправленных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of sending the data into a socket to the specified address
+		 * @brief Function of sending the data into a socket to the specified address
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to send
 		 * @param size   size of the buffer
@@ -552,7 +552,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод чтения данных из сокета единым сообщением
+		 * @brief Функция чтения данных из сокета единым сообщением
 		 *
 		 * @details Через сообщение приходят и служебные сведения: метки перегрузки
 		 *          сети, адрес назначения, признак усечения. Протоколу QUIC они нужны
@@ -564,7 +564,7 @@ namespace awh {
 		 * @return        количество прочитанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of reading the data from a socket as a single message
+		 * @brief Function of reading the data from a socket as a single message
 		 * @details Through a message the service information comes as well: the marks of the congestion of
 		 *          the network, the address of the destination, the sign of the truncation. The QUIC protocol needs them
 		 *          directly, and getting by with a simple reading there is not possible
@@ -590,7 +590,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод отправки данных в сокет единым сообщением
+		 * @brief Функция отправки данных в сокет единым сообщением
 		 *
 		 * @param sock    сетевой сокет
 		 * @param message сообщение для отправки данных
@@ -598,7 +598,7 @@ namespace awh {
 		 * @return        количество отправленных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of sending the data into a socket as a single message
+		 * @brief Function of sending the data into a socket as a single message
 		 * @param sock    network socket
 		 * @param message message to send the data from
 		 * @param flags   signs of the sending
@@ -621,7 +621,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод чтения данных из описателя
+		 * @brief Функция чтения данных из описателя
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер для чтения данных
@@ -629,7 +629,7 @@ namespace awh {
 		 * @return       количество прочитанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of reading the data from a handle
+		 * @brief Function of reading the data from a handle
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -652,7 +652,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод записи данных в описатель
+		 * @brief Функция записи данных в описатель
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer буфер данных для записи
@@ -660,7 +660,7 @@ namespace awh {
 		 * @return       количество записанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of writing the data into a handle
+		 * @brief Function of writing the data into a handle
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to write
 		 * @param size   size of the buffer
@@ -683,7 +683,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод чтения данных из описателя набором буферов
+		 * @brief Функция чтения данных из описателя набором буферов
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer набор буферов для чтения данных
@@ -691,7 +691,7 @@ namespace awh {
 		 * @return       количество прочитанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of reading the data from a handle by a set of buffers
+		 * @brief Function of reading the data from a handle by a set of buffers
 		 * @param sock   network socket
 		 * @param buffer set of the buffers to read the data into
 		 * @param count  number of the buffers in the set
@@ -714,7 +714,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод записи данных в описатель набором буферов
+		 * @brief Функция записи данных в описатель набором буферов
 		 *
 		 * @param sock   сетевой сокет
 		 * @param buffer набор буферов данных для записи
@@ -722,7 +722,7 @@ namespace awh {
 		 * @return       количество записанных байт либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of writing the data into a handle by a set of buffers
+		 * @brief Function of writing the data into a handle by a set of buffers
 		 * @param sock   network socket
 		 * @param buffer set of the buffers of the data to write
 		 * @param count  number of the buffers in the set
@@ -745,7 +745,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения настройки сокета
+		 * @brief Функция получения настройки сокета
 		 *
 		 * @param sock   сетевой сокет
 		 * @param level  уровень настройки
@@ -755,7 +755,7 @@ namespace awh {
 		 * @return       результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of getting a setting of a socket
+		 * @brief Function of getting a setting of a socket
 		 * @param sock   network socket
 		 * @param level  level of the setting
 		 * @param name   name of the setting
@@ -780,7 +780,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод установки настройки сокета
+		 * @brief Функция установки настройки сокета
 		 *
 		 * @param sock   сетевой сокет
 		 * @param level  уровень настройки
@@ -790,7 +790,7 @@ namespace awh {
 		 * @return       результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of setting a setting of a socket
+		 * @brief Function of setting a setting of a socket
 		 * @param sock   network socket
 		 * @param level  level of the setting
 		 * @param name   name of the setting
@@ -815,7 +815,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения собственного адреса сокета
+		 * @brief Функция получения собственного адреса сокета
 		 *
 		 * @param sock   сетевой сокет
 		 * @param addr   адрес сокета
@@ -823,7 +823,7 @@ namespace awh {
 		 * @return       результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of getting the own address of a socket
+		 * @brief Function of getting the own address of a socket
 		 * @param sock   network socket
 		 * @param addr   address of the socket
 		 * @param length size of the address
@@ -846,7 +846,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод получения адреса другого конца подключения
+		 * @brief Функция получения адреса другого конца подключения
 		 *
 		 * @param sock   сетевой сокет
 		 * @param addr   адрес другого конца подключения
@@ -854,7 +854,7 @@ namespace awh {
 		 * @return       результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of getting the address of the other end of a connection
+		 * @brief Function of getting the address of the other end of a connection
 		 * @param sock   network socket
 		 * @param addr   address of the other end of the connection
 		 * @param length size of the address
@@ -877,21 +877,23 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод управления описателем сокета
+		 * @brief Функция управления описателем сокета
 		 *
 		 * @details Довод здесь передаётся набором переменной длины: у разных запросов
 		 *          он разного вида, а у части его нет вовсе
 		 *
 		 * @param sock    сетевой сокет
 		 * @param request запрос управления
+		 * @param args    дополнительные аргументы запроса
 		 * @return        результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of the control of the handle of a socket
+		 * @brief Function of the control of the handle of a socket
 		 * @details The argument here is passed as a set of a variable length: at different requests
 		 *          it is of a different kind, and at a part of them it is absent at all
 		 * @param sock    network socket
 		 * @param request request of the control
+		 * @param args    additional arguments of the request
 		 * @return        result of the work of the function
 		 *
 		 * \~
@@ -912,7 +914,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод управления устройством через сокет
+		 * @brief Функция управления устройством через сокет
 		 *
 		 * @param sock    сетевой сокет
 		 * @param request запрос управления
@@ -920,7 +922,7 @@ namespace awh {
 		 * @return        результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of the control of a device through a socket
+		 * @brief Function of the control of a device through a socket
 		 * @param sock    network socket
 		 * @param request request of the control
 		 * @param data    data of the request
@@ -943,7 +945,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод ожидания событий на наборе описателей
+		 * @brief Функция ожидания событий на наборе описателей
 		 *
 		 * @param fds     набор описателей
 		 * @param count   количество описателей в наборе
@@ -951,7 +953,7 @@ namespace awh {
 		 * @return        количество описателей с событиями либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of waiting for the events on a set of handles
+		 * @brief Function of waiting for the events on a set of handles
 		 * @param fds     set of the handles
 		 * @param count   number of the handles in the set
 		 * @param timeout limit of the waiting in milliseconds
@@ -974,7 +976,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод создания набора ожидания событий
+		 * @brief Функция создания набора ожидания событий
 		 *
 		 * @details Признаки создания передаются напрямую, и обращение это всегда
 		 *          пользуется `epoll_create1`: устаревший `epoll_create` не умеет
@@ -985,7 +987,7 @@ namespace awh {
 		 * @return      описатель набора ожидания либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of creating a set of the waiting for the events
+		 * @brief Function of creating a set of the waiting for the events
 		 * @details The signs of the creation are passed directly, and this address always
 		 *          uses `epoll_create1`: the obsolete `epoll_create` cannot
 		 *          close the handle at the start of another program, and therefore it
@@ -1010,7 +1012,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод управления набором ожидания событий
+		 * @brief Функция управления набором ожидания событий
 		 *
 		 * @param epfd  описатель набора ожидания
 		 * @param op    действие над описателем
@@ -1019,7 +1021,7 @@ namespace awh {
 		 * @return      результат работы функции
 		 *
 		 * \~english
-		 * @brief Method of the control of a set of the waiting for the events
+		 * @brief Function of the control of a set of the waiting for the events
 		 * @param epfd  handle of the set of the waiting
 		 * @param op    action over the handle
 		 * @param sock  network socket
@@ -1043,7 +1045,7 @@ namespace awh {
 		}
 		/**
 		 * \~russian
-		 * @brief Метод ожидания событий на наборе
+		 * @brief Функция ожидания событий на наборе
 		 *
 		 * @param epfd    описатель набора ожидания
 		 * @param events  набор произошедших событий
@@ -1052,7 +1054,7 @@ namespace awh {
 		 * @return        количество произошедших событий либо признак ошибки
 		 *
 		 * \~english
-		 * @brief Method of waiting for the events on a set
+		 * @brief Function of waiting for the events on a set
 		 * @param epfd    handle of the set of the waiting
 		 * @param events  set of the happened events
 		 * @param count   size of the set of the events
@@ -1077,10 +1079,10 @@ namespace awh {
 		/**
 		 * Если собирается движок io_uring
 		 */
-		#if defined(AWH_ENGINE_IO_URING)
+		#if defined(AWH_ENGINE_IO_URING) || defined(DOXYGEN)
 			/**
 			 * \~russian
-			 * @brief Метод устройства колец io_uring
+			 * @brief Функция устройства колец io_uring
 			 *
 			 * @details Обходного стека здесь нет и быть не может: io_uring - средство
 			 *          ядра, а DPDK ядро как раз обходит. Оттого посредник в отличие от
@@ -1095,7 +1097,7 @@ namespace awh {
 			 * @return        дескриптор колец либо признак ошибки
 			 *
 			 * \~english
-			 * @brief Method of the setup of the io_uring rings
+			 * @brief Function of the setup of the io_uring rings
 			 * @details There is no bypassing stack here and there cannot be one: io_uring is a means
 			 *          of the kernel, and DPDK bypasses the kernel exactly. Therefore the mediator, unlike
 			 *          the neighbouring ones, has no branching
@@ -1113,7 +1115,7 @@ namespace awh {
 			}
 			/**
 			 * \~russian
-			 * @brief Метод подачи операций и ожидания завершений io_uring
+			 * @brief Функция подачи операций и ожидания завершений io_uring
 			 *
 			 * @details Одним обращением выполняются оба действия сразу: подаётся всё,
 			 *          что положено в кольцо подачи, и ожидается указанное число
@@ -1129,7 +1131,7 @@ namespace awh {
 			 * @return          количество принятых записей либо признак ошибки
 			 *
 			 * \~english
-			 * @brief Method of the submission of the operations and of the waiting for the completions of io_uring
+			 * @brief Function of the submission of the operations and of the waiting for the completions of io_uring
 			 * @details By one address both actions are performed at once: everything that is put into
 			 *          the ring of the submission is submitted, and the specified number of the completions
 			 *          is waited for. That is how io_uring differs from epoll, where the subscription and
@@ -1149,7 +1151,7 @@ namespace awh {
 			}
 			/**
 			 * \~russian
-			 * @brief Метод закрепления ресурсов за кольцами io_uring
+			 * @brief Функция закрепления ресурсов за кольцами io_uring
 			 *
 			 * @details Через него выполняется и проба возможностей ядра, и закрепление
 			 *          колец буферов приёма, и закрепление дескрипторов
@@ -1161,7 +1163,7 @@ namespace awh {
 			 * @return      результат работы функции
 			 *
 			 * \~english
-			 * @brief Method of the registration of the resources with the io_uring rings
+			 * @brief Function of the registration of the resources with the io_uring rings
 			 * @details Through it both the probing of the possibilities of the kernel is performed, and the registration of
 			 *          the rings of the buffers of the reception, and the registration of the descriptors
 			 * @param fd    descriptor of the rings

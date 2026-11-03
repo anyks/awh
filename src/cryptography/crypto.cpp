@@ -802,7 +802,7 @@ namespace gost {
 		}
 	};
 	/**
-	 * @brief Метод переворота порядка октетов
+	 * @brief Функция переворота порядка октетов
 	 *
 	 * @param result буфер для записи итога
 	 * @param value  исходный буфер
@@ -815,7 +815,7 @@ namespace gost {
 			result[i] = value[size - 1 - i];
 	}
 	/**
-	 * @brief Метод чтения слова блока старшим октетом вперёд
+	 * @brief Функция чтения слова блока старшим октетом вперёд
 	 *
 	 * @param value буфер октетов
 	 * @return      прочитанное слово
@@ -831,7 +831,7 @@ namespace gost {
 		 (static_cast <uint64_t> (value[6]) << 8) | static_cast <uint64_t> (value[7]));
 	}
 	/**
-	 * @brief Метод записи слова блока старшим октетом вперёд
+	 * @brief Функция записи слова блока старшим октетом вперёд
 	 *
 	 * @param result буфер октетов для записи
 	 * @param value  записываемое слово
@@ -843,7 +843,7 @@ namespace gost {
 			result[i] = static_cast <uint8_t> ((value >> (56 - (i * 8))) & 0xFF);
 	}
 	/**
-	 * @brief Метод чтения блока потока словами
+	 * @brief Функция чтения блока потока словами
 	 *
 	 * @param result набор слов для записи
 	 * @param data   буфер блока в порядке потока
@@ -868,7 +868,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод сложения по модулю два в степени 512
+	 * @brief Функция сложения по модулю два в степени 512
 	 *
 	 * @param result набор слагаемого и итога
 	 * @param value  набор второго слагаемого
@@ -895,7 +895,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод сложения по модулю два
+	 * @brief Функция сложения по модулю два
 	 *
 	 * @param result набор слагаемого и итога
 	 * @param value  набор второго слагаемого
@@ -959,7 +959,7 @@ namespace gost {
 		}
 	};
 	/**
-	 * @brief Метод получения свода преобразования LPS
+	 * @brief Функция получения свода преобразования LPS
 	 *
 	 * @return свод преобразования
 	 *
@@ -999,7 +999,7 @@ namespace gost {
 		}
 	};
 	/**
-	 * @brief Метод получения свода постоянных величин кругов шифрования
+	 * @brief Функция получения свода постоянных величин кругов шифрования
 	 *
 	 * @return свод постоянных величин
 	 */
@@ -1010,7 +1010,7 @@ namespace gost {
 		return result;
 	}
 	/**
-	 * @brief Метод преобразования LPS хэш-функции
+	 * @brief Функция преобразования LPS хэш-функции
 	 *
 	 * @param value набор слов преобразуемого блока
 	 */
@@ -1078,7 +1078,7 @@ namespace gost {
 		::memcpy(value, words, sizeof(words));
 	}
 	/**
-	 * @brief Метод сжимающего преобразования хэш-функции
+	 * @brief Функция сжимающего преобразования хэш-функции
 	 *
 	 * @param hash    набор промежуточного значения хэш-суммы
 	 * @param counter набор счётчика разрядов
@@ -1126,7 +1126,7 @@ namespace gost {
 		::memcpy(hash, result, sizeof(result));
 	}
 	/**
-	 * @brief Метод заведения состояния счёта хэш-суммы
+	 * @brief Функция заведения состояния счёта хэш-суммы
 	 *
 	 * @param state состояние счёта хэш-суммы
 	 * @param bits  разрядность вырабатываемой хэш-суммы
@@ -1151,7 +1151,7 @@ namespace gost {
 		state.bits = bits;
 	}
 	/**
-	 * @brief Метод обработки полного блока потока
+	 * @brief Функция обработки полного блока потока
 	 *
 	 * @param state состояние счёта хэш-суммы
 	 * @param data  буфер блока в порядке потока
@@ -1182,7 +1182,7 @@ namespace gost {
 		add512(state.sigma, block);
 	}
 	/**
-	 * @brief Метод подачи данных в счёт хэш-суммы
+	 * @brief Функция подачи данных в счёт хэш-суммы
 	 *
 	 * @param state состояние счёта хэш-суммы
 	 * @param data  буфер подаваемых данных
@@ -1235,7 +1235,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод завершения счёта хэш-суммы
+	 * @brief Функция завершения счёта хэш-суммы
 	 *
 	 * @param state  состояние счёта хэш-суммы
 	 * @param digest буфер для записи хэш-суммы в порядке потока
@@ -1291,7 +1291,7 @@ namespace gost {
 		reverse(digest, outcome, width);
 	}
 	/**
-	 * @brief Метод выработки хэш-суммы разом
+	 * @brief Функция выработки хэш-суммы разом
 	 *
 	 * @param digest буфер для записи хэш-суммы
 	 * @param data   буфер данных
@@ -1309,7 +1309,7 @@ namespace gost {
 		finalize(state, digest);
 	}
 	/**
-	 * @brief Метод выработки имитовставки HMAC
+	 * @brief Функция выработки имитовставки HMAC
 	 *
 	 * @param result буфер для записи имитовставки
 	 * @param key    буфер ключа
@@ -1375,7 +1375,7 @@ namespace gost {
 		::OPENSSL_cleanse(outer, BLOCK);
 	}
 	/**
-	 * @brief Метод вывода ключа по PBKDF2
+	 * @brief Функция вывода ключа по PBKDF2
 	 *
 	 * @param result   буфер для записи выведенного ключа
 	 * @param width    размер выводимого ключа в октетах
@@ -1445,7 +1445,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод разбора записи числа в буфер вычислений
+	 * @brief Функция разбора записи числа в буфер вычислений
 	 *
 	 * @param value буфер вычислений для записи
 	 * @param text  запись числа старшим октетом вперёд
@@ -1483,7 +1483,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод переноса числа в буфер вычислений
+	 * @brief Функция переноса числа в буфер вычислений
 	 *
 	 * @param value  буфер вычислений для записи
 	 * @param source буфер числа старшим октетом вперёд
@@ -1498,7 +1498,7 @@ namespace gost {
 			value[size - 1 - i] = source[i];
 	}
 	/**
-	 * @brief Метод выгрузки числа из буфера вычислений
+	 * @brief Функция выгрузки числа из буфера вычислений
 	 *
 	 * @param result буфер для записи числа старшим октетом вперёд
 	 * @param value  буфер вычислений
@@ -1511,7 +1511,7 @@ namespace gost {
 			result[i] = value[size - 1 - i];
 	}
 	/**
-	 * @brief Метод приведения числа по модулю
+	 * @brief Функция приведения числа по модулю
 	 *
 	 * @param value буфер приводимого числа и итога
 	 * @param mod   буфер модуля
@@ -1526,7 +1526,7 @@ namespace gost {
 		bignum::divmod(quotient, mod, value, width);
 	}
 	/**
-	 * @brief Метод сложения по модулю
+	 * @brief Функция сложения по модулю
 	 *
 	 * @param result буфер слагаемого и итога
 	 * @param value  буфер второго слагаемого
@@ -1548,7 +1548,7 @@ namespace gost {
 			bignum::sub(result, mod, width);
 	}
 	/**
-	 * @brief Метод вычитания по модулю
+	 * @brief Функция вычитания по модулю
 	 *
 	 * @param result буфер уменьшаемого и итога
 	 * @param value  буфер вычитаемого
@@ -1574,7 +1574,7 @@ namespace gost {
 		bignum::sub(result, value, width);
 	}
 	/**
-	 * @brief Метод умножения по модулю
+	 * @brief Функция умножения по модулю
 	 *
 	 * @param result буфер множимого и итога
 	 * @param value  буфер множителя
@@ -1606,7 +1606,7 @@ namespace gost {
 		uint8_t square[WIDTH];
 	};
 	/**
-	 * @brief Метод чтения звена числа
+	 * @brief Функция чтения звена числа
 	 *
 	 * @param value буфер числа
 	 * @param index указатель звена
@@ -1624,7 +1624,7 @@ namespace gost {
 		 (static_cast <uint32_t> (value[(index * 4) + 3]) << 24));
 	}
 	/**
-	 * @brief Метод записи звена числа
+	 * @brief Функция записи звена числа
 	 *
 	 * @param value буфер числа
 	 * @param index указатель звена
@@ -1638,7 +1638,7 @@ namespace gost {
 		value[(index * 4) + 3] = static_cast <uint8_t> ((digit >> 24) & 0xFF);
 	}
 	/**
-	 * @brief Метод заведения свойств приведения Монтгомери
+	 * @brief Функция заведения свойств приведения Монтгомери
 	 *
 	 * @param mont  свойства приведения для записи
 	 * @param mod   буфер модуля
@@ -1683,7 +1683,7 @@ namespace gost {
 			addmod(mont.square, mont.square, mod, width);
 	}
 	/**
-	 * @brief Метод умножения по модулю приведением Монтгомери
+	 * @brief Функция умножения по модулю приведением Монтгомери
 	 *
 	 * @param result буфер множимого и итога
 	 * @param value  буфер множителя
@@ -1770,7 +1770,7 @@ namespace gost {
 			bignum::sub(result, mod, mont.limbs * 4);
 	}
 	/**
-	 * @brief Метод перевода числа в вид Монтгомери
+	 * @brief Функция перевода числа в вид Монтгомери
 	 *
 	 * @param value буфер числа
 	 * @param mod   буфер модуля
@@ -1781,7 +1781,7 @@ namespace gost {
 		montmul(value, mont.square, mod, mont);
 	}
 	/**
-	 * @brief Метод вывода числа из вида Монтгомери
+	 * @brief Функция вывода числа из вида Монтгомери
 	 *
 	 * @param value буфер числа
 	 * @param mod   буфер модуля
@@ -1798,7 +1798,7 @@ namespace gost {
 		montmul(value, one, mod, mont);
 	}
 	/**
-	 * @brief Метод возведения в степень по модулю видом Монтгомери
+	 * @brief Функция возведения в степень по модулю видом Монтгомери
 	 *
 	 * @param result   буфер для записи итога
 	 * @param base     буфер основания видом Монтгомери
@@ -1841,7 +1841,7 @@ namespace gost {
 		::memcpy(result, outcome, WIDTH);
 	}
 	/**
-	 * @brief Метод получения обратного по модулю видом Монтгомери
+	 * @brief Функция получения обратного по модулю видом Монтгомери
 	 *
 	 * @param result буфер для записи итога
 	 * @param value  буфер обращаемого числа видом Монтгомери
@@ -1904,7 +1904,7 @@ namespace gost {
 		point_t basis;
 	};
 	/**
-	 * @brief Метод заведения свойств кривой
+	 * @brief Функция заведения свойств кривой
 	 *
 	 * @param field свойства кривой в буферах вычислений
 	 * @param index указатель набора свойств кривой
@@ -1950,7 +1950,7 @@ namespace gost {
 		enter(field.basis.z, field.p, field.mont);
 	}
 	/**
-	 * @brief Метод получения свойств кривой
+	 * @brief Функция получения свойств кривой
 	 *
 	 * @param index указатель набора свойств кривой
 	 * @return      свойства кривой в буферах вычислений
@@ -1974,7 +1974,7 @@ namespace gost {
 		return fields[index];
 	}
 	/**
-	 * @brief Метод проверки точки на бесконечную удалённость
+	 * @brief Функция проверки точки на бесконечную удалённость
 	 *
 	 * @param point проверяемая точка
 	 * @param width ширина счёта в октетах
@@ -1985,7 +1985,7 @@ namespace gost {
 		return bignum::zero(point.z, width);
 	}
 	/**
-	 * @brief Метод удвоения точки
+	 * @brief Функция удвоения точки
 	 *
 	 * @param result точка для записи итога
 	 * @param point  удваиваемая точка
@@ -2057,7 +2057,7 @@ namespace gost {
 		::memcpy(result.z, nz, WIDTH);
 	}
 	/**
-	 * @brief Метод сложения точек
+	 * @brief Функция сложения точек
 	 *
 	 * @param result точка для записи итога
 	 * @param first  первое слагаемое
@@ -2166,7 +2166,7 @@ namespace gost {
 		::memcpy(result.z, nz, WIDTH);
 	}
 	/**
-	 * @brief Метод умножения точки на число
+	 * @brief Функция умножения точки на число
 	 *
 	 * @param result точка для записи итога
 	 * @param point  умножаемая точка
@@ -2264,7 +2264,7 @@ namespace gost {
 	// Количество долей множителя
 	static constexpr size_t PARTS = 8;
 	/**
-	 * @brief Метод получения предвычисленных кратных точки основания
+	 * @brief Функция получения предвычисленных кратных точки основания
 	 *
 	 * @param curve указатель набора свойств кривой
 	 * @return      предвычисленные кратные точки основания
@@ -2334,7 +2334,7 @@ namespace gost {
 		return combs[curve];
 	}
 	/**
-	 * @brief Метод умножения точки основания на число
+	 * @brief Функция умножения точки основания на число
 	 *
 	 * @param result точка для записи итога
 	 * @param factor буфер множителя
@@ -2383,7 +2383,7 @@ namespace gost {
 		result = outcome;
 	}
 	/**
-	 * @brief Метод приведения точки к плоским координатам
+	 * @brief Функция приведения точки к плоским координатам
 	 *
 	 * @param x     буфер для записи первой оси
 	 * @param y     буфер для записи второй оси
@@ -2417,7 +2417,7 @@ namespace gost {
 		leave(y, field.p, field.mont);
 	}
 	/**
-	 * @brief Метод затирания рабочих буферов тайны
+	 * @brief Функция затирания рабочих буферов тайны
 	 *
 	 * @param first  первый затираемый буфер
 	 * @param second второй затираемый буфер
@@ -2441,7 +2441,7 @@ namespace gost {
 			::OPENSSL_cleanse(third, WIDTH);
 	}
 	/**
-	 * @brief Метод получения открытой части ключа из закрытой
+	 * @brief Функция получения открытой части ключа из закрытой
 	 *
 	 * @param key ключ подписи
 	 * @return    результат получения
@@ -2491,7 +2491,7 @@ namespace gost {
 		return true;
 	}
 	/**
-	 * @brief Метод выработки ключа подписи
+	 * @brief Функция выработки ключа подписи
 	 *
 	 * @param key   ключ подписи для записи
 	 * @param curve указатель набора свойств кривой
@@ -2521,7 +2521,7 @@ namespace gost {
 		return false;
 	}
 	/**
-	 * @brief Метод выработки подписи
+	 * @brief Функция выработки подписи
 	 *
 	 * @param key       ключ подписи
 	 * @param digest    буфер хэш-суммы подписываемого
@@ -2660,7 +2660,7 @@ namespace gost {
 		return false;
 	}
 	/**
-	 * @brief Метод проверки подписи
+	 * @brief Функция проверки подписи
 	 *
 	 * @param key       ключ подписи
 	 * @param digest    буфер хэш-суммы подписанного
@@ -2788,7 +2788,7 @@ namespace gost {
 	// Опознаватель набора свойств ТК26 512 C: 1.2.643.7.1.2.1.2.3
 	static const uint8_t OID_CURVE_E[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03};
 	/**
-	 * @brief Метод записи длины по правилам DER
+	 * @brief Функция записи длины по правилам DER
 	 *
 	 * @param result набор для записи
 	 * @param length записываемая длина
@@ -2820,7 +2820,7 @@ namespace gost {
 		}
 	}
 	/**
-	 * @brief Метод записи записи DER
+	 * @brief Функция записи записи DER
 	 *
 	 * @param result набор для записи
 	 * @param tag    метка записи
@@ -2836,7 +2836,7 @@ namespace gost {
 		result.insert(result.end(), value, value + size);
 	}
 	/**
-	 * @brief Метод опознания вида подписи схемой ГОСТ Р 34.10-2012
+	 * @brief Функция опознания вида подписи схемой ГОСТ Р 34.10-2012
 	 *
 	 * @param type вид подписи
 	 * @return     результат опознания
@@ -2852,7 +2852,7 @@ namespace gost {
 		return ((type == crypto_t::signature_t::GOST) || (type == crypto_t::signature_t::GOST512));
 	}
 	/**
-	 * @brief Метод получения размера числа подписи ключа
+	 * @brief Функция получения размера числа подписи ключа
 	 *
 	 * @param key ключ подписи
 	 * @return    размер числа подписи в октетах
@@ -2862,7 +2862,7 @@ namespace gost {
 		return CURVES[key.curve].digit;
 	}
 	/**
-	 * @brief Метод получения опознавателя набора свойств кривой
+	 * @brief Функция получения опознавателя набора свойств кривой
 	 *
 	 * @param index указатель набора свойств кривой
 	 * @param size  размер опознавателя в октетах
@@ -2879,7 +2879,7 @@ namespace gost {
 		return OIDS[index];
 	}
 	/**
-	 * @brief Метод записи опознавателя схемы подписи
+	 * @brief Функция записи опознавателя схемы подписи
 	 *
 	 * @param result набор для записи
 	 * @param index  указатель набора свойств кривой
@@ -2907,7 +2907,7 @@ namespace gost {
 		derRecord(result, 0x30, algorithm.data(), algorithm.size());
 	}
 	/**
-	 * @brief Метод записи открытой части ключа записью SubjectPublicKeyInfo
+	 * @brief Функция записи открытой части ключа записью SubjectPublicKeyInfo
 	 *
 	 * @param key    ключ подписи
 	 * @param result набор для записи
@@ -2947,7 +2947,7 @@ namespace gost {
 		derRecord(result, 0x30, body.data(), body.size());
 	}
 	/**
-	 * @brief Метод записи закрытой части ключа записью PrivateKeyInfo
+	 * @brief Функция записи закрытой части ключа записью PrivateKeyInfo
 	 *
 	 * @param key    ключ подписи
 	 * @param result набор для записи
@@ -2995,7 +2995,7 @@ namespace gost {
 		size_t offset;
 	};
 	/**
-	 * @brief Метод считывания записи DER
+	 * @brief Функция считывания записи DER
 	 *
 	 * @param reader состояние разбора
 	 * @param tag    ожидаемая метка записи
@@ -3058,7 +3058,7 @@ namespace gost {
 		return true;
 	}
 	/**
-	 * @brief Метод разбора опознавателя схемы подписи
+	 * @brief Функция разбора опознавателя схемы подписи
 	 *
 	 * @param value буфер опознавателя
 	 * @param size  размер опознавателя в октетах
@@ -3115,7 +3115,7 @@ namespace gost {
 		return false;
 	}
 	/**
-	 * @brief Метод разбора открытой части ключа из записи SubjectPublicKeyInfo
+	 * @brief Функция разбора открытой части ключа из записи SubjectPublicKeyInfo
 	 *
 	 * @param key   ключ подписи для записи
 	 * @param value буфер разбираемой записи
@@ -3177,7 +3177,7 @@ namespace gost {
 		return true;
 	}
 	/**
-	 * @brief Метод разбора закрытой части ключа из записи PrivateKeyInfo
+	 * @brief Функция разбора закрытой части ключа из записи PrivateKeyInfo
 	 *
 	 * @param key   ключ подписи для записи
 	 * @param value буфер разбираемой записи

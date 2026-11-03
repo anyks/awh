@@ -18,10 +18,10 @@
  *          чтобы проверить весь ход целиком:
  *
  *          - `STREAM` с выключенными границами: файл уходит ОДНИМ обращением
- *            `io.send()`. Очередь потоковая, она принимает сколько влезло, а
+ *            `engine::send()`. Очередь потоковая, она принимает сколько влезло, а
  *            остаток досылается по освобождению места. Границ записей нет;
  *          - `STREAM` с включёнными границами: файл уходит кусками через
- *            `sctp.send()`, признак завершения ставится лишь на последнем. У
+ *            `engine::sctp::send()`, признак завершения ставится лишь на последнем. У
  *            получателя обязана собраться ОДНА запись на весь файл;
  *          - `SEQPACKET`: файл режется на куски, всякий уходит отдельным
  *            сообщением. Очередь границ сообщений неделима: кусок ложится либо
@@ -53,14 +53,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
 /**
  * Если операционная система несёт протокол SCTP
  *
- * @note Сторож тот же, каким объявлен и сам фасад протокола в io.hpp: на прочих
+ * @note Сторож тот же, каким объявлен и сам фасад протокола в engine::hpp: на прочих
  *       системах средство собирается, но лишь сообщает о невозможности работы -
  *       молчаливое исключение из сборки выглядело бы пропущенной проверкой
  */
@@ -191,14 +191,13 @@ static bool load(const string & filename, vector <uint8_t> & result) noexcept {
  *          вслед за переполнением, а короткий файл очередь не переполняет вовсе -
  *          отправка тогда завершалась бы, но никто бы об этом не узнал
  *
- * @param io  объект работы с асинхронными событиями
  * @param eid идентификатор события
  * @return    результат проверки
  *
  */
-static bool complete(engine::io_t & io, const event::id_t eid) noexcept {
+static bool complete(const event::id_t eid) noexcept {
 	// Выводим результат проверки
-	return (__sending__.queued && (io.available(eid) >= __sending__.capacity));
+	return (__sending__.queued && (engine::available(eid) >= __sending__.capacity));
 }
 
 /**
@@ -208,12 +207,10 @@ static bool complete(engine::io_t & io, const event::id_t eid) noexcept {
  *          вид отправки укладывается здесь по-своему, но правило одно: принято
  *          столько, сколько вернула очередь, и остаток ждёт следующего вызова
  *
- * @param io   объект работы с асинхронными событиями
- * @param sctp объект работы с протоколом SCTP
  * @param eid  идентификатор события
  *
  */
-static void feed(engine::io_t & io, engine::sctp_t & sctp, const event::id_t eid) noexcept {
+static void feed(const event::id_t eid) noexcept {
 	// Если весь файл уже принят к отправке
 	if(__sending__.queued)
 		// Выходим из функции
@@ -241,9 +238,9 @@ static void feed(engine::io_t & io, engine::sctp_t & sctp, const event::id_t eid
 			// Метаданные отправляемого сообщения
 			net::sctp::minfo_t info;
 			// Выполняем отправку куска вместе с метаданными
-			accepted = sctp.send(eid, buffer, length, info, end);
+			accepted = engine::sctp::send(eid, buffer, length, info, end);
 		// Иначе отправляем остаток целиком: очередь возьмёт сколько влезет
-		} else accepted = io.send(eid, buffer, rest);
+		} else accepted = engine::send(eid, buffer, rest);
 		// Если очередь не приняла ничего, ждём её освобождения
 		if(accepted == 0)
 			// Выходим из функции
@@ -323,46 +320,42 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим сведения об отправляемом файле
 	log::print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", log::flag_t::INFO,
 		total, records, static_cast <unsigned long long> (digest(__sending__.payload.data(), total)));
-	// Объект асинхронного движка ввода-вывода
-	engine::io_t io;
-	// Объект работы с протоколом SCTP
-	engine::sctp_t sctp;
 	// Создаём событие клиента
-	event::id_t eid = io.event(
+	event::id_t eid = engine::event(
 		event::node_t::CLIENT, event::family_t::IPV4,
 		(__sending__.stream ? event::type_t::STREAM : event::type_t::SEQPACKET),
 		event::protocol_t::SCTP
 	);
 	// Устанавливаем порт удалённого сервера
-	io.setTargetPort(eid, port);
+	engine::setTargetPort(eid, port);
 	// Если завести движок не удалось
-	if(!io.initialize()){
+	if(!engine::initialize()){
 		// Выводим сообщение об ошибке
 		log::print("Движок завести не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем опции события клиента
-	io.setOptions(eid,
+	engine::setOptions(eid,
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC
 	);
 	// Если установить локальный адрес не удалось
-	if(!io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
+	if(!engine::setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 		// Выводим сообщение об ошибке
 		log::print("Локальный адрес установить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если установить адрес удалённого сервера не удалось
-	if(!io.setTarget(eid, target)){
+	if(!engine::setTarget(eid, target)){
 		// Выводим сообщение об ошибке
 		log::print("Адрес удалённого сервера установить не удалось: %s", log::flag_t::CRITICAL, target.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик подключения
-	io.on(eid, static_cast <engine::callback::connect_t> ([&io, &sctp](const event::id_t eid, const bool ok) noexcept -> void {
+	engine::on(eid, static_cast <engine::callback::connect_t> ([](const event::id_t eid, const bool ok) noexcept -> void {
 		// Если подключиться не удалось
 		if(!ok){
 			// Выводим сообщение об ошибке
@@ -379,18 +372,18 @@ int32_t main(int32_t argc, char * argv[]){
 		 *       файл ушёл бы вереницей отдельных сообщений вместо одной записи. Молчать
 		 *       об этом нельзя: итог сличения сторон стал бы необъяснимым
 		 */
-		if(__sending__.stream && __sending__.bounds && !sctp.partialSupported(eid))
+		if(__sending__.stream && __sending__.bounds && !engine::sctp::partialSupported(eid))
 			// Выводим предупреждение
 			log::print("Границы записи система не поддерживает: файл уйдёт несколькими записями", log::flag_t::WARNING);
 		// Запоминаем свободное место очереди при пустой очереди
-		__sending__.capacity = io.available(eid);
+		__sending__.capacity = engine::available(eid);
 		// Запоминаем идентификатор события отправки
 		__event__ = eid;
 		// Выполняем отправку файла
-		feed(io, sctp, eid);
+		feed(eid);
 	}));
 	// Устанавливаем отклик состояния события
-	io.on(eid, [&io, &sctp](const event::id_t eid, const event::status_t status) noexcept -> void {
+	engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 		/**
 		 * Определяем состояние события
 		 */
@@ -404,26 +397,26 @@ int32_t main(int32_t argc, char * argv[]){
 			// Если в очереди отправки освободилось место
 			case static_cast <uint8_t> (event::status_t::QUEUE_AVAILABLE):
 				// Досылаем остаток файла
-				feed(io, sctp, eid);
+				feed(eid);
 			break;
 		}
 	});
 	// Если зафиксировать настройки события не удалось
-	if(!io.commit(eid)){
+	if(!engine::commit(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Настройки события зафиксировать не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если подключиться к серверу не удалось
-	if(!io.connect(eid)){
+	if(!engine::connect(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Подключение к серверу выполнить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
-	if(!io.launch(eid)){
+	if(!engine::launch(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Событие запустить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
@@ -435,9 +428,9 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Проверка стоит в цикле, а не в отклике: отклик освобождения очереди
 	 *       приходит лишь вслед за её переполнением, а короткие файлы её не переполняют
 	 */
-	while(io.poll(100) && !__done__){
+	while(engine::poll(100) && !__done__){
 		// Если отправка ещё не завершена
-		if((__event__ == 0) || !complete(io, __event__))
+		if((__event__ == 0) || !complete(__event__))
 			// Продолжаем оборот цикла
 			continue;
 		// Выводим сообщение о завершении отправки
@@ -448,12 +441,12 @@ int32_t main(int32_t argc, char * argv[]){
 		 * @note Цикл событий продолжает крутиться: закрытие тут же оборвало бы хвост,
 		 *       ещё лежащий в буфере ядра
 		 */
-		for(uint32_t i = 0; (i < __linger__) && io.poll(100); i += 100);
+		for(uint32_t i = 0; (i < __linger__) && engine::poll(100); i += 100);
 		// Устанавливаем признак завершения работы
 		__done__ = true;
 	}
 	// Выполняем очистку движка, закрывая подключение
-	io.clear();
+	engine::clear();
 	// Выходим успешно
 	return EXIT_SUCCESS;
 }

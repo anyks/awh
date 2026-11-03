@@ -65,7 +65,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/fmk.hpp>
 
 /**
@@ -150,10 +150,8 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::address_t kind = (v6 ? event::address_t::IPV6 : event::address_t::IPV4);
 	// Адрес, на котором событие принимает и отправляет
 	const string any = (v6 ? "::" : "0.0.0.0");
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Выполняем инициализацию движка
-	if(!io.initialize()){
+	if(!engine::initialize()){
 		// Выводим сообщение об ошибке
 		cout << "ОТКАЗ: движок не инициализирован" << endl;
 		// Выходим с ошибкой
@@ -164,25 +162,25 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	if(mode == "server"){
 	// Добавляем новое событие сервера SCTP
-	const event::id_t server = io.event(
+	const event::id_t server = engine::event(
 		event::node_t::SERVER, family,
 		type, protocol
 	);
 	// Устанавливаем настройки события сервера
-	io.setOptions(server,
+	engine::setOptions(server,
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC |
 		event::options::REUSE_ADDR
 	);
 	// Устанавливаем адрес события сервера
-	if(!io.setAddress(server, kind, any)){
+	if(!engine::setAddress(server, kind, any)){
 		// Выводим сообщение об ошибке
 		cout << "ОТКАЗ: адрес сервера не установлен" << endl;
 		// Выходим с ошибкой
 		return 1;
 	}
 	// Устанавливаем порт, на котором сервер принимает подключения
-	io.setSourcePort(server, port);
+	engine::setSourcePort(server, port);
 	/**
 	 * @brief Функция приёма слова сервером
 	 *
@@ -205,14 +203,14 @@ int32_t main(int32_t argc, char * argv[]){
 	 *       принятые подключения потока, - разнится лишь то, что очередь подключений
 	 *       датаграммам не открывается
 	 */
-	io.on(server, static_cast <engine::callback::accept_t> ([&io, &receive](const event::id_t, const event::id_t bid) noexcept -> void {
+	engine::on(server, static_cast <engine::callback::accept_t> ([&receive](const event::id_t, const event::id_t bid) noexcept -> void {
 		// Выводим сведения о принятом подключении
 		cout << "СЕРВЕР: принято подключение " << bid << endl;
 		// Выполняем подписку на приём данных принятого подключения
-		io.on(bid, static_cast <engine::callback::read_t> (receive));
+		engine::on(bid, static_cast <engine::callback::read_t> (receive));
 	}));
 	// Выполняем фиксацию настроек события сервера
-	if(!io.commit(server) || (!dgram && !io.listen(server, 16)) || !io.launch(server)){
+	if(!engine::commit(server) || (!dgram && !engine::listen(server, 16)) || !engine::launch(server)){
 		// Выводим сообщение об ошибке
 		cout << "ОТКАЗ: сервер не поднялся" << endl;
 		// Выходим с ошибкой
@@ -223,11 +221,11 @@ int32_t main(int32_t argc, char * argv[]){
 	/**
 	 * Крутим цикл до получения слова, но не дольше тридцати секунд
 	 */
-	for(uint32_t i = 0; (i < 30000) && io.poll(100); i += 100);
+	for(uint32_t i = 0; (i < 30000) && engine::poll(100); i += 100);
 	// Выводим итог работы сервера
 	cout << "ИТОГ СЕРВЕРА: слово=" << (__received__.load() ? "СОШЛОСЬ" : "НЕТ") << endl;
 	// Выполняем очистку движка
-	io.clear();
+	engine::clear();
 	// Выводим результат работы сервера
 	return (__received__.load() ? 0 : 1);
 	}
@@ -248,35 +246,35 @@ int32_t main(int32_t argc, char * argv[]){
 		 * @note Разновидность неоднородности задаётся шестым доводом и касается лишь
 		 *       НЕ первого события списка: первое всегда берётся образцом
 		 */
-		const event::id_t client = io.event(
+		const event::id_t client = engine::event(
 			((next && (mix == "node")) ? event::node_t::SERVER : event::node_t::CLIENT),
 			((next && (mix == "family")) ? (v6 ? event::family_t::IPV4 : event::family_t::IPV6) : family),
 			type,
 			((next && (mix == "protocol")) ? event::protocol_t::TCP : protocol)
 		);
 		// Устанавливаем настройки события клиента
-		io.setOptions(client,
+		engine::setOptions(client,
 			event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 			event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC
 		);
 		// Устанавливаем адрес сетевого интерфейса события клиента
-		io.setAddress(client, kind, any);
+		engine::setAddress(client, kind, any);
 		// Устанавливаем порт удалённого узла
-		io.setTargetPort(client, port);
+		engine::setTargetPort(client, port);
 		/**
 		 * Устанавливаем адрес удалённого узла
 		 *
 		 * @note У неоднородного события отказ здесь помехой не считается: оно и заведено
 		 *       ради того, чтобы движок его отбросил, а не ради подключения
 		 */
-		if(!io.setTarget(client, addr) && !(next && !mix.empty())){
+		if(!engine::setTarget(client, addr) && !(next && !mix.empty())){
 			// Выводим сообщение об ошибке
 			cout << "ОТКАЗ: адрес узла \"" << addr << "\" не установлен" << endl;
 			// Выходим с ошибкой
 			return 1;
 		}
 		// Выполняем подписку на подключение к удалённому узлу
-		io.on(client, static_cast <engine::callback::connect_t> ([&io](const event::id_t id, const bool ok) noexcept -> void {
+		engine::on(client, static_cast <engine::callback::connect_t> ([](const event::id_t id, const bool ok) noexcept -> void {
 			// Считаем каждый пришедший отчёт о подключении
 			__connects__.fetch_add(1);
 			// Выводим сведения об отчёте о подключении
@@ -286,7 +284,7 @@ int32_t main(int32_t argc, char * argv[]){
 				// Запоминаем состоявшуюся связь
 				__connected__.store(true);
 				// Отправляем слово по установленной связи
-				io.send(id, __word__.data(), __word__.size());
+				engine::send(id, __word__.data(), __word__.size());
 			// Если подключение не выполнено
 			} else __failed__.store(true);
 		}));
@@ -298,7 +296,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	for(const event::id_t id : ids){
 		// Выполняем фиксацию настроек события клиента
-		if(!io.commit(id) && mix.empty()){
+		if(!engine::commit(id) && mix.empty()){
 			// Выводим сообщение об ошибке
 			cout << "ОТКАЗ: настройки клиента не зафиксированы" << endl;
 			// Выходим с ошибкой
@@ -306,7 +304,7 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}
 	// Выполняем подключение к узлу СРАЗУ ПО ДВУМ ЕГО АДРЕСАМ
-	if(!io.connect(ids)){
+	if(!engine::connect(ids)){
 		// Выводим сообщение об ошибке
 		cout << "ОТКАЗ: подключение не начато" << endl;
 		// Выходим с ошибкой
@@ -320,9 +318,9 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	for(size_t i = 1; (protocol != event::protocol_t::SCTP) && (i < ids.size()); i++)
 		// Выполняем запуск очередного события клиента
-		io.launch(ids.at(i));
+		engine::launch(ids.at(i));
 	// Выполняем запуск первого события клиента
-	if(!io.launch(ids.front())){
+	if(!engine::launch(ids.front())){
 		// Выводим сообщение об ошибке
 		cout << "ОТКАЗ: клиент не запущен" << endl;
 		// Выходим с ошибкой
@@ -331,20 +329,20 @@ int32_t main(int32_t argc, char * argv[]){
 	/**
 	 * Крутим цикл до получения слова, но не дольше десяти секунд
 	 */
-	for(uint32_t i = 0; (i < 10000) && io.poll(100); i += 100){
+	for(uint32_t i = 0; (i < 10000) && engine::poll(100); i += 100){
 		// Если слово принято или подключение не состоялось
 		if((__connects__.load() >= static_cast <int32_t> (ids.size())) || __failed__.load())
 			// Выходим из цикла
 			break;
 	}
 	// Держим связь открытой, чтобы её состав можно было осмотреть снаружи
-	for(uint32_t i = 0; (i < 20000) && io.poll(100); i += 100);
+	for(uint32_t i = 0; (i < 20000) && engine::poll(100); i += 100);
 	// Выводим итог проверки
 	cout << "ИТОГ: отчётов=" << __connects__.load()
 	     << " связь=" << (__connected__.load() ? "ЕСТЬ" : "НЕТ")
 	     << endl;
 	// Выполняем очистку движка
-	io.clear();
+	engine::clear();
 	// Выводим результат проверки: одна связь, один отчёт, слово дошло
 	return ((__connects__.load() == 1) && __connected__.load() ? 0 : 1);
 }

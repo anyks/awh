@@ -166,13 +166,13 @@ namespace awh {
 	namespace bignum {
 		/**
 		 * \~russian
-		 * @brief Метод обнуления буфера числа
+		 * @brief Функция обнуления буфера числа
 		 *
 		 * @param value буфер числа для обнуления
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of zeroing the buffer of a number
+		 * @brief Function of zeroing the buffer of a number
 		 * @param value buffer of the number to zero
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -181,14 +181,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void reset(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод проверки буфера числа на нулевое значение
+		 * @brief Функция проверки буфера числа на нулевое значение
 		 *
 		 * @param value буфер числа для проверки
 		 * @param size  размер буфера числа в байтах
 		 * @return      результат проверки
 		 *
 		 * \~english
-		 * @brief Method of checking the buffer of a number for a zero value
+		 * @brief Function of checking the buffer of a number for a zero value
 		 * @param value buffer of the number to check
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      result of the check
@@ -198,14 +198,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool zero(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения количества значащих бит числа
+		 * @brief Функция извлечения количества значащих бит числа
 		 *
 		 * @param value буфер числа для подсчёта
 		 * @param size  размер буфера числа в байтах
 		 * @return      позиция старшего установленного бита увеличенная на единицу
 		 *
 		 * \~english
-		 * @brief Method of getting the number of significant bits of a number
+		 * @brief Function of getting the number of significant bits of a number
 		 * @param value buffer of the number to count over
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      position of the highest set bit increased by one
@@ -215,7 +215,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ size_t bits(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения значения бита числа
+		 * @brief Функция извлечения значения бита числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
@@ -223,7 +223,7 @@ namespace awh {
 		 * @return      значение указанного бита
 		 *
 		 * \~english
-		 * @brief Method of getting the value of a bit of a number
+		 * @brief Function of getting the value of a bit of a number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @param index index of the bit to get
@@ -234,7 +234,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool bit(const uint8_t * value, const size_t size, const size_t index) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод установки значения бита числа
+		 * @brief Функция установки значения бита числа
 		 *
 		 * @param value буфер числа для установки
 		 * @param size  размер буфера числа в байтах
@@ -242,7 +242,7 @@ namespace awh {
 		 * @param mode  устанавливаемое значение бита
 		 *
 		 * \~english
-		 * @brief Method of setting the value of a bit of a number
+		 * @brief Function of setting the value of a bit of a number
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param index index of the bit to set
@@ -253,14 +253,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void bit(uint8_t * value, const size_t size, const size_t index, const bool mode) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод проверки числа на отрицательное значение
+		 * @brief Функция проверки числа на отрицательное значение
 		 *
 		 * @param value буфер числа для проверки
 		 * @param size  размер буфера числа в байтах
 		 * @return      результат проверки старшего бита числа
 		 *
 		 * \~english
-		 * @brief Method of checking a number for a negative value
+		 * @brief Function of checking a number for a negative value
 		 * @param value buffer of the number to check
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      result of checking the highest bit of the number
@@ -270,7 +270,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool negative(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сложения двух целых чисел
+		 * @brief Функция сложения двух целых чисел
 		 *
 		 * @param result буфер числа приёмника и первого слагаемого
 		 * @param value  буфер числа второго слагаемого
@@ -278,7 +278,7 @@ namespace awh {
 		 * @return       флаг переноса за пределы разрядной сетки
 		 *
 		 * \~english
-		 * @brief Method of adding two integers
+		 * @brief Function of adding two integers
 		 * @param result buffer of the destination number and of the first addend
 		 * @param value  buffer of the number of the second addend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -289,7 +289,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool add(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод вычитания двух целых чисел
+		 * @brief Функция вычитания двух целых чисел
 		 *
 		 * @param result буфер числа приёмника и уменьшаемого
 		 * @param value  буфер числа вычитаемого
@@ -297,7 +297,7 @@ namespace awh {
 		 * @return       флаг заёма за пределами разрядной сетки
 		 *
 		 * \~english
-		 * @brief Method of subtracting two integers
+		 * @brief Function of subtracting two integers
 		 * @param result buffer of the destination number and of the minuend
 		 * @param value  buffer of the number of the subtrahend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -308,7 +308,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool sub(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод умножения двух целых чисел
+		 * @brief Функция умножения двух целых чисел
 		 *
 		 * @details Результат умножения усекается до размера разрядной сетки.
 		 *
@@ -317,7 +317,7 @@ namespace awh {
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of multiplying two integers
+		 * @brief Function of multiplying two integers
 		 * @details The result of the multiplication is truncated to the size of the bit grid.
 		 * @param result buffer of the destination number and of the multiplicand
 		 * @param value  buffer of the number of the multiplier
@@ -328,13 +328,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void mul(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод деления двух беззнаковых целых чисел с получением остатка
+		 * @brief Функция деления двух беззнаковых целых чисел с получением остатка
 		 *
-		 * @details При делении на нуль частное и остаток обнуляются, метод выводит
+		 * @details При делении на нуль частное и остаток обнуляются, функция выводит
 		 *          отрицательный результат. Буфер остатка допускается совмещать с буфером
 		 *          делителя, но не с буфером частного: частное и остаток являются двумя
 		 *          независимыми результатами и в одном буфере не помещаются, поэтому при
-		 *          совмещении буферов деление не выполняется и метод выводит отрицательный
+		 *          совмещении буферов деление не выполняется и функция выводит отрицательный
 		 *          результат, оставляя переданные буферы без изменений. Буфер остатка
 		 *          допускается не передавать, указав нулевой указатель.
 		 *
@@ -345,12 +345,12 @@ namespace awh {
 		 * @return       результат выполнения деления
 		 *
 		 * \~english
-		 * @brief Method of dividing two unsigned integers with getting the remainder
-		 * @details On division by zero the quotient and the remainder are zeroed, the method yields
+		 * @brief Function of dividing two unsigned integers with getting the remainder
+		 * @details On division by zero the quotient and the remainder are zeroed, the function yields
 		 *          a negative result. The buffer of the remainder is allowed to coincide with the buffer
 		 *          of the divisor, but not with the buffer of the quotient: the quotient and the remainder are two
 		 *          independent results and do not fit into one buffer, therefore on
-		 *          coinciding buffers the division is not performed and the method yields a negative
+		 *          coinciding buffers the division is not performed and the function yields a negative
 		 *          result, leaving the passed buffers unchanged. The buffer of the remainder
 		 *          is allowed not to be passed, by specifying a null pointer.
 		 * @param result buffer of the destination number of the quotient and of the dividend
@@ -364,13 +364,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool divmod(uint8_t * result, const uint8_t * value, uint8_t * mod, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод смены знака целого числа в дополнительном коде
+		 * @brief Функция смены знака целого числа в дополнительном коде
 		 *
 		 * @param value буфер числа для смены знака
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of changing the sign of an integer in two's complement
+		 * @brief Function of changing the sign of an integer in two's complement
 		 * @param value buffer of the number to change the sign of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -379,13 +379,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void neg(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод побитовой инверсии целого числа
+		 * @brief Функция побитовой инверсии целого числа
 		 *
 		 * @param value буфер числа для инверсии
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of the bitwise inversion of an integer
+		 * @brief Function of the bitwise inversion of an integer
 		 * @param value buffer of the number to invert
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -394,14 +394,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void inv(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод побитового умножения двух целых чисел
+		 * @brief Функция побитового умножения двух целых чисел
 		 *
 		 * @param result буфер числа приёмника и первого операнда
 		 * @param value  буфер числа второго операнда
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of the bitwise multiplication of two integers
+		 * @brief Function of the bitwise multiplication of two integers
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -411,14 +411,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void band(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод побитового сложения двух целых чисел
+		 * @brief Функция побитового сложения двух целых чисел
 		 *
 		 * @param result буфер числа приёмника и первого операнда
 		 * @param value  буфер числа второго операнда
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of the bitwise addition of two integers
+		 * @brief Function of the bitwise addition of two integers
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -428,14 +428,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void bor(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод побитового исключающего сложения двух целых чисел
+		 * @brief Функция побитового исключающего сложения двух целых чисел
 		 *
 		 * @param result буфер числа приёмника и первого операнда
 		 * @param value  буфер числа второго операнда
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of the bitwise exclusive addition of two integers
+		 * @brief Function of the bitwise exclusive addition of two integers
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -445,14 +445,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void bxor(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сдвига целого числа влево
+		 * @brief Функция сдвига целого числа влево
 		 *
 		 * @param value буфер числа для сдвига
 		 * @param size  размер буфера числа в байтах
 		 * @param count количество бит сдвига
 		 *
 		 * \~english
-		 * @brief Method of shifting an integer left
+		 * @brief Function of shifting an integer left
 		 * @param value buffer of the number to shift
 		 * @param size  size of the buffer of the number in bytes
 		 * @param count number of bits of the shift
@@ -462,7 +462,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void shl(uint8_t * value, const size_t size, const size_t count) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сдвига целого числа вправо
+		 * @brief Функция сдвига целого числа вправо
 		 *
 		 * @param value буфер числа для сдвига
 		 * @param size  размер буфера числа в байтах
@@ -470,7 +470,7 @@ namespace awh {
 		 * @param sign  флаг выполнения арифметического сдвига с сохранением знака
 		 *
 		 * \~english
-		 * @brief Method of shifting an integer right
+		 * @brief Function of shifting an integer right
 		 * @param value buffer of the number to shift
 		 * @param size  size of the buffer of the number in bytes
 		 * @param count number of bits of the shift
@@ -481,7 +481,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void shr(uint8_t * value, const size_t size, const size_t count, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сравнения двух беззнаковых целых чисел
+		 * @brief Функция сравнения двух беззнаковых целых чисел
 		 *
 		 * @param value1 буфер первого числа для сравнения
 		 * @param value2 буфер второго числа для сравнения
@@ -489,7 +489,7 @@ namespace awh {
 		 * @return       результат сравнения (-1, 0 или 1)
 		 *
 		 * \~english
-		 * @brief Method of comparing two unsigned integers
+		 * @brief Function of comparing two unsigned integers
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -500,7 +500,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ int8_t ucompare(const uint8_t * value1, const uint8_t * value2, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сравнения двух знаковых целых чисел
+		 * @brief Функция сравнения двух знаковых целых чисел
 		 *
 		 * @param value1 буфер первого числа для сравнения
 		 * @param value2 буфер второго числа для сравнения
@@ -508,7 +508,7 @@ namespace awh {
 		 * @return       результат сравнения (-1, 0 или 1)
 		 *
 		 * \~english
-		 * @brief Method of comparing two signed integers
+		 * @brief Function of comparing two signed integers
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -519,13 +519,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ int8_t scompare(const uint8_t * value1, const uint8_t * value2, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения целочисленного квадратного корня беззнакового числа
+		 * @brief Функция извлечения целочисленного квадратного корня беззнакового числа
 		 *
 		 * @param value буфер числа для извлечения корня
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of taking the integer square root of an unsigned number
+		 * @brief Function of taking the integer square root of an unsigned number
 		 * @param value buffer of the number to take the root of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -534,14 +534,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void sqrt(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод возведения целого числа в степень
+		 * @brief Функция возведения целого числа в степень
 		 *
 		 * @param value    буфер числа для возведения в степень
 		 * @param size     размер буфера числа в байтах
 		 * @param exponent показатель степени
 		 *
 		 * \~english
-		 * @brief Method of raising an integer to a power
+		 * @brief Function of raising an integer to a power
 		 * @param value    buffer of the number to raise to a power
 		 * @param size     size of the buffer of the number in bytes
 		 * @param exponent exponent of the power
@@ -551,7 +551,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void pow(uint8_t * value, const size_t size, const uint64_t exponent) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод установки значения целого числа
+		 * @brief Функция установки значения целого числа
 		 *
 		 * @param value буфер числа для установки
 		 * @param size  размер буфера числа в байтах
@@ -559,7 +559,7 @@ namespace awh {
 		 * @param sign  флаг отрицательного значения устанавливаемого числа
 		 *
 		 * \~english
-		 * @brief Method of setting the value of an integer
+		 * @brief Function of setting the value of an integer
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   value being set by modulus
@@ -570,14 +570,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void set(uint8_t * value, const size_t size, const uint64_t num, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения беззнакового целого значения числа
+		 * @brief Функция извлечения беззнакового целого значения числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
 		 * @return      извлечённое значение младших разрядов числа
 		 *
 		 * \~english
-		 * @brief Method of getting the unsigned integer value of a number
+		 * @brief Function of getting the unsigned integer value of a number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained value of the low limbs of the number
@@ -587,14 +587,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ uint64_t getUint(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения знакового целого значения числа
+		 * @brief Функция извлечения знакового целого значения числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
 		 * @return      извлечённое значение младших разрядов числа
 		 *
 		 * \~english
-		 * @brief Method of getting the signed integer value of a number
+		 * @brief Function of getting the signed integer value of a number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained value of the low limbs of the number
@@ -604,7 +604,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ int64_t getInt(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения вещественного значения целого числа
+		 * @brief Функция извлечения вещественного значения целого числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
@@ -612,7 +612,7 @@ namespace awh {
 		 * @return      извлечённое вещественное значение числа
 		 *
 		 * \~english
-		 * @brief Method of getting the real value of an integer
+		 * @brief Function of getting the real value of an integer
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of the signed representation of the number
@@ -623,7 +623,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ long double getReal(const uint8_t * value, const size_t size, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод установки вещественного значения целого числа
+		 * @brief Функция установки вещественного значения целого числа
 		 *
 		 * @details Дробная часть устанавливаемого значения отбрасывается. При выходе значения
 		 *          за пределы разрядной сетки числа выполняется насыщение её предельным
@@ -636,7 +636,7 @@ namespace awh {
 		 * @param sign  флаг знакового представления числа
 		 *
 		 * \~english
-		 * @brief Method of setting the real value of an integer
+		 * @brief Function of setting the real value of an integer
 		 * @details The fractional part of the value being set is discarded. When the value goes
 		 *          beyond the bounds of the bit grid of the number it is saturated with the limiting
 		 *          value, when the flag of the signed representation is cleared a negative value
@@ -651,7 +651,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void setReal(uint8_t * value, const size_t size, const long double num, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования строкового представления целого числа
+		 * @brief Функция формирования строкового представления целого числа
 		 *
 		 * @param value  буфер числа для формирования
 		 * @param size   размер буфера числа в байтах
@@ -660,7 +660,7 @@ namespace awh {
 		 * @return       сформированная строка числа
 		 *
 		 * \~english
-		 * @brief Method of building the string representation of an integer
+		 * @brief Function of building the string representation of an integer
 		 * @param value  buffer of the number to build from
 		 * @param size   size of the buffer of the number in bytes
 		 * @param sign   flag of the signed representation of the number
@@ -672,7 +672,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string print(const uint8_t * value, const size_t size, const bool sign, const format_t format) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод разбора строкового представления целого числа
+		 * @brief Функция разбора строкового представления целого числа
 		 *
 		 * @details Разбор прекращается на первом символе, не принадлежащем числу, а уже
 		 *          разобранная часть сохраняется. При снятом флаге знакового представления
@@ -688,7 +688,7 @@ namespace awh {
 		 * @return       результат выполнения разбора
 		 *
 		 * \~english
-		 * @brief Method of parsing the string representation of an integer
+		 * @brief Function of parsing the string representation of an integer
 		 * @details The parsing stops at the first character not belonging to the number, while the already
 		 *          parsed part is kept. When the flag of the signed representation is cleared the
 		 *          leading minus is not considered a part of the number: a negative value is not expressed by an unsigned
@@ -706,7 +706,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool parse(uint8_t * value, const size_t size, string_view text, const bool sign, const format_t format) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод округления целого числа до указанного десятичного разряда
+		 * @brief Функция округления целого числа до указанного десятичного разряда
 		 *
 		 * @details Неотрицательное количество знаков оставляет целое число без изменений,
 		 *          отрицательное округляет его до соответствующей степени десяти: значение
@@ -719,7 +719,7 @@ namespace awh {
 		 * @param mode   правило округления числа
 		 *
 		 * \~english
-		 * @brief Method of rounding an integer to the specified decimal place
+		 * @brief Function of rounding an integer to the specified decimal place
 		 * @details A non-negative number of digits leaves an integer unchanged,
 		 *          a negative one rounds it to the corresponding power of ten: the value
 		 *          -3 rounds the number to thousands.
@@ -745,7 +745,7 @@ namespace awh {
 	namespace bignum {
 		/**
 		 * \~russian
-		 * @brief Метод извлечения разрядности порядка вещественного числа
+		 * @brief Функция извлечения разрядности порядка вещественного числа
 		 *
 		 * @details Для стандартных разрядностей 16, 32, 64 и 128 бит используется
 		 *          разрядность порядка, определённая стандартом IEEE-754, для
@@ -755,7 +755,7 @@ namespace awh {
 		 * @return     разрядность порядка вещественного числа в битах
 		 *
 		 * \~english
-		 * @brief Method of getting the bit width of the exponent of a real number
+		 * @brief Function of getting the bit width of the exponent of a real number
 		 * @details For the standard bit widths of 16, 32, 64 and 128 bits the exponent
 		 *          bit width defined by the IEEE-754 standard is used, for the
 		 *          other bit widths the formula round(4 * log2(N)) - 13 is applied.
@@ -767,14 +767,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ size_t exponentBits(const size_t bits) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод определения класса вещественного числа
+		 * @brief Функция определения класса вещественного числа
 		 *
 		 * @param value буфер числа для определения
 		 * @param size  размер буфера числа в байтах
 		 * @return      класс значения вещественного числа
 		 *
 		 * \~english
-		 * @brief Method of determining the class of a real number
+		 * @brief Function of determining the class of a real number
 		 * @param value buffer of the number to determine for
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      class of the value of the real number
@@ -784,14 +784,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ class_t classify(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования бесконечности вещественного числа
+		 * @brief Функция формирования бесконечности вещественного числа
 		 *
 		 * @param value буфер числа для формирования
 		 * @param size  размер буфера числа в байтах
 		 * @param sign  флаг формирования отрицательной бесконечности
 		 *
 		 * \~english
-		 * @brief Method of building the infinity of a real number
+		 * @brief Function of building the infinity of a real number
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of building a negative infinity
@@ -801,13 +801,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realInf(uint8_t * value, const size_t size, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования значения не являющегося числом
+		 * @brief Функция формирования значения не являющегося числом
 		 *
 		 * @param value буфер числа для формирования
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of building a value that is not a number
+		 * @brief Function of building a value that is not a number
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -816,13 +816,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realNan(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования машинного эпсилон вещественного числа
+		 * @brief Функция формирования машинного эпсилон вещественного числа
 		 *
 		 * @param value буфер числа для формирования
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of building the machine epsilon of a real number
+		 * @brief Function of building the machine epsilon of a real number
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -831,14 +831,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realEpsilon(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования максимального конечного вещественного числа
+		 * @brief Функция формирования максимального конечного вещественного числа
 		 *
 		 * @param value буфер числа для формирования
 		 * @param size  размер буфера числа в байтах
 		 * @param sign  флаг формирования минимального отрицательного числа
 		 *
 		 * \~english
-		 * @brief Method of building the maximum finite real number
+		 * @brief Function of building the maximum finite real number
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of building the minimum negative number
@@ -848,13 +848,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realLimit(uint8_t * value, const size_t size, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод смены знака вещественного числа
+		 * @brief Функция смены знака вещественного числа
 		 *
 		 * @param value буфер числа для смены знака
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of changing the sign of a real number
+		 * @brief Function of changing the sign of a real number
 		 * @param value buffer of the number to change the sign of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -863,13 +863,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realNeg(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения модуля вещественного числа
+		 * @brief Функция извлечения модуля вещественного числа
 		 *
 		 * @param value буфер числа для извлечения модуля
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of taking the modulus of a real number
+		 * @brief Function of taking the modulus of a real number
 		 * @param value buffer of the number to take the modulus of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -878,14 +878,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realAbs(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сложения двух вещественных чисел
+		 * @brief Функция сложения двух вещественных чисел
 		 *
 		 * @param result буфер числа приёмника и первого слагаемого
 		 * @param value  буфер числа второго слагаемого
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of adding two real numbers
+		 * @brief Function of adding two real numbers
 		 * @param result buffer of the destination number and of the first addend
 		 * @param value  buffer of the number of the second addend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -895,14 +895,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realAdd(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод вычитания двух вещественных чисел
+		 * @brief Функция вычитания двух вещественных чисел
 		 *
 		 * @param result буфер числа приёмника и уменьшаемого
 		 * @param value  буфер числа вычитаемого
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of subtracting two real numbers
+		 * @brief Function of subtracting two real numbers
 		 * @param result buffer of the destination number and of the minuend
 		 * @param value  buffer of the number of the subtrahend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -912,14 +912,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realSub(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод умножения двух вещественных чисел
+		 * @brief Функция умножения двух вещественных чисел
 		 *
 		 * @param result буфер числа приёмника и множимого
 		 * @param value  буфер числа множителя
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of multiplying two real numbers
+		 * @brief Function of multiplying two real numbers
 		 * @param result buffer of the destination number and of the multiplicand
 		 * @param value  buffer of the number of the multiplier
 		 * @param size   size of the buffers of the numbers in bytes
@@ -929,14 +929,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realMul(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод деления двух вещественных чисел
+		 * @brief Функция деления двух вещественных чисел
 		 *
 		 * @param result буфер числа приёмника и делимого
 		 * @param value  буфер числа делителя
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of dividing two real numbers
+		 * @brief Function of dividing two real numbers
 		 * @param result buffer of the destination number and of the dividend
 		 * @param value  buffer of the number of the divisor
 		 * @param size   size of the buffers of the numbers in bytes
@@ -946,14 +946,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realDiv(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения остатка от деления двух вещественных чисел
+		 * @brief Функция извлечения остатка от деления двух вещественных чисел
 		 *
 		 * @param result буфер числа приёмника и делимого
 		 * @param value  буфер числа делителя
 		 * @param size   размер буферов чисел в байтах
 		 *
 		 * \~english
-		 * @brief Method of getting the remainder of the division of two real numbers
+		 * @brief Function of getting the remainder of the division of two real numbers
 		 * @param result buffer of the destination number and of the dividend
 		 * @param value  buffer of the number of the divisor
 		 * @param size   size of the buffers of the numbers in bytes
@@ -963,13 +963,13 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realMod(uint8_t * result, const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения квадратного корня вещественного числа
+		 * @brief Функция извлечения квадратного корня вещественного числа
 		 *
 		 * @param value буфер числа для извлечения корня
 		 * @param size  размер буфера числа в байтах
 		 *
 		 * \~english
-		 * @brief Method of taking the square root of a real number
+		 * @brief Function of taking the square root of a real number
 		 * @param value buffer of the number to take the root of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -978,14 +978,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realSqrt(uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод возведения вещественного числа в целую степень
+		 * @brief Функция возведения вещественного числа в целую степень
 		 *
 		 * @param value    буфер числа для возведения в степень
 		 * @param size     размер буфера числа в байтах
 		 * @param exponent показатель степени
 		 *
 		 * \~english
-		 * @brief Method of raising a real number to an integer power
+		 * @brief Function of raising a real number to an integer power
 		 * @param value    buffer of the number to raise to a power
 		 * @param size     size of the buffer of the number in bytes
 		 * @param exponent exponent of the power
@@ -995,7 +995,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realPow(uint8_t * value, const size_t size, const uint64_t exponent) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод сравнения двух вещественных чисел
+		 * @brief Функция сравнения двух вещественных чисел
 		 *
 		 * @param value1 буфер первого числа для сравнения
 		 * @param value2 буфер второго числа для сравнения
@@ -1003,7 +1003,7 @@ namespace awh {
 		 * @return       результат сравнения (-1, 0, 1 или 2 для несравнимых значений)
 		 *
 		 * \~english
-		 * @brief Method of comparing two real numbers
+		 * @brief Function of comparing two real numbers
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -1014,7 +1014,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ int8_t realCompare(const uint8_t * value1, const uint8_t * value2, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод установки целого значения вещественного числа
+		 * @brief Функция установки целого значения вещественного числа
 		 *
 		 * @param value буфер числа для установки
 		 * @param size  размер буфера числа в байтах
@@ -1022,7 +1022,7 @@ namespace awh {
 		 * @param sign  флаг отрицательного значения устанавливаемого числа
 		 *
 		 * \~english
-		 * @brief Method of setting the integer value of a real number
+		 * @brief Function of setting the integer value of a real number
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   value being set by modulus
@@ -1033,14 +1033,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realSet(uint8_t * value, const size_t size, const uint64_t num, const bool sign) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод установки вещественного значения числа
+		 * @brief Функция установки вещественного значения числа
 		 *
 		 * @param value буфер числа для установки
 		 * @param size  размер буфера числа в байтах
 		 * @param num   устанавливаемое вещественное значение
 		 *
 		 * \~english
-		 * @brief Method of setting the real value of a number
+		 * @brief Function of setting the real value of a number
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   real value being set
@@ -1050,14 +1050,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realSetReal(uint8_t * value, const size_t size, const long double num) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения беззнакового целого значения вещественного числа
+		 * @brief Функция извлечения беззнакового целого значения вещественного числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
 		 * @return      извлечённое целое значение числа
 		 *
 		 * \~english
-		 * @brief Method of getting the unsigned integer value of a real number
+		 * @brief Function of getting the unsigned integer value of a real number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained integer value of the number
@@ -1067,14 +1067,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ uint64_t realGetUint(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения знакового целого значения вещественного числа
+		 * @brief Функция извлечения знакового целого значения вещественного числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
 		 * @return      извлечённое целое значение числа
 		 *
 		 * \~english
-		 * @brief Method of getting the signed integer value of a real number
+		 * @brief Function of getting the signed integer value of a real number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained integer value of the number
@@ -1084,14 +1084,14 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ int64_t realGetInt(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод извлечения вещественного значения числа
+		 * @brief Функция извлечения вещественного значения числа
 		 *
 		 * @param value буфер числа для извлечения
 		 * @param size  размер буфера числа в байтах
 		 * @return      извлечённое вещественное значение числа
 		 *
 		 * \~english
-		 * @brief Method of getting the real value of a number
+		 * @brief Function of getting the real value of a number
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained real value of the number
@@ -1101,7 +1101,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ long double realGetReal(const uint8_t * value, const size_t size) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод переноса вещественного числа в буфер другой разрядности
+		 * @brief Функция переноса вещественного числа в буфер другой разрядности
 		 *
 		 * @param result буфер числа приёмника
 		 * @param size1  размер буфера числа приёмника в байтах
@@ -1109,7 +1109,7 @@ namespace awh {
 		 * @param size2  размер буфера числа источника в байтах
 		 *
 		 * \~english
-		 * @brief Method of transferring a real number into a buffer of another bit width
+		 * @brief Function of transferring a real number into a buffer of another bit width
 		 * @param result buffer of the destination number
 		 * @param size1  size of the buffer of the destination number in bytes
 		 * @param value  buffer of the source number
@@ -1120,7 +1120,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void realCast(uint8_t * result, const size_t size1, const uint8_t * value, const size_t size2) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод формирования строкового представления вещественного числа
+		 * @brief Функция формирования строкового представления вещественного числа
 		 *
 		 * @param value     буфер числа для формирования
 		 * @param size      размер буфера числа в байтах
@@ -1129,7 +1129,7 @@ namespace awh {
 		 * @return          сформированная строка числа
 		 *
 		 * \~english
-		 * @brief Method of building the string representation of a real number
+		 * @brief Function of building the string representation of a real number
 		 * @param value     buffer of the number to build from
 		 * @param size      size of the buffer of the number in bytes
 		 * @param format    format of the representation of the number
@@ -1141,7 +1141,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string realPrint(const uint8_t * value, const size_t size, const format_t format, const int16_t precision) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод разбора строкового представления вещественного числа
+		 * @brief Функция разбора строкового представления вещественного числа
 		 *
 		 * @param value буфер числа для установки результата разбора
 		 * @param size  размер буфера числа в байтах
@@ -1149,7 +1149,7 @@ namespace awh {
 		 * @return      результат выполнения разбора
 		 *
 		 * \~english
-		 * @brief Method of parsing the string representation of a real number
+		 * @brief Function of parsing the string representation of a real number
 		 * @param value buffer of the number to set the result of the parsing in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param text  string of the number being parsed
@@ -1160,7 +1160,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool realParse(uint8_t * value, const size_t size, string_view text) noexcept;
 		/**
 		 * \~russian
-		 * @brief Метод округления вещественного числа до указанного количества знаков после запятой
+		 * @brief Функция округления вещественного числа до указанного количества знаков после запятой
 		 *
 		 * @details Округление выполняется в десятичной системе счисления: строится точное
 		 *          десятичное представление числа, отбрасываются младшие цифры по указанному
@@ -1181,7 +1181,7 @@ namespace awh {
 		 * @param mode   правило округления числа
 		 *
 		 * \~english
-		 * @brief Method of rounding a real number to the specified number of digits after the decimal point
+		 * @brief Function of rounding a real number to the specified number of digits after the decimal point
 		 * @details The rounding is performed in the decimal numeral system: an exact
 		 *          decimal representation of the number is built, the low digits are discarded by the specified
 		 *          rule, after which the result is converted back into the binary format with

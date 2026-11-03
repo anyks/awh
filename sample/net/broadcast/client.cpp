@@ -25,7 +25,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -55,26 +55,24 @@ int32_t main(){
 	fmk::initialize();
 	// Устанавливаем уровень логирования
 	// log::level(log::level_t::NONE);
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Добавляем новое событие клиента
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	io.setTargetPort(eid, 2222);
+	engine::setTargetPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Устананавливаем опции события
-		if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT | event::options::BROADCAST))
+		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT | event::options::BROADCAST))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(engine::setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(io.setTarget(eid, "192.168.3.255")){
+			if(engine::setTarget(eid, "192.168.3.255")){
 				// Устанавливаем функцию обратного вызова на изменение статуса события
-				io.on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -147,19 +145,19 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				io.on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Текст входящего сообщения
 					const string message(reinterpret_cast <const char *> (data), size);
 					// Записываем в лог сообщение о чтении данных
 					log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				io.on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -217,7 +215,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
-				io.on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -285,19 +283,19 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем таймаут события на запись
-				io.setTimeout(eid, event::action_t::WRITE, 3000);
+				engine::setTimeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на подключение
-				io.setTimeout(eid, event::action_t::CONNECT, 5000);
+				engine::setTimeout(eid, event::action_t::CONNECT, 5000);
 				// Выполняем фиксацию настроек события сервера
-				if(io.commit(eid)){
+				if(engine::commit(eid)){
 					// Выполняем запуск события
-					if(io.launch(eid)){
+					if(engine::launch(eid)){
 						// Записываем в лог сообщение об успешном запуске события
 						cout << " Событие успешно запущено!" << endl;
 						// Текст исходящего сообщения
 						const string message("Hello from async client!");
 						// Отправляем данные обратно клиенту
-						if(io.send(eid, message.c_str(), message.size()))
+						if(engine::send(eid, message.c_str(), message.size()))
 							// Если данные успешно отправлены
 							log::print("Отправлено: ID=%u, %zu байт", log::flag_t::INFO, eid, message.size());
 						// Если данные не отправлены
@@ -305,7 +303,7 @@ int32_t main(){
 						/**
 						 * Запускаем опрос событий
 						 */
-						while(io.poll());
+						while(engine::poll());
 					// Записываем ошибку в лог запуска события
 					} else cout << " Ошибка запуска события!" << endl;
 				}

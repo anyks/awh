@@ -90,12 +90,12 @@ namespace awh {
 		 * @brief Структура результата записи числа в строку
 		 *
 		 * @details В отличие от результата разбора, указатель на конец записи является
-		 *          изменяемым: он указывает в тот же буфер, что был передан методу.
+		 *          изменяемым: он указывает в тот же буфер, что был передан функции.
 		 *
 		 * \~english
 		 * @brief Structure of the result of writing a number into a string
 		 * @details Unlike the result of the parsing, the pointer to the end of the record is
-		 *          mutable: it points into the very buffer which was passed to the method.
+		 *          mutable: it points into the very buffer which was passed to the function.
 		 *
 		 * \~
 		 */
@@ -194,7 +194,7 @@ namespace awh {
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Метод извлечения достаточного размера места под запись числа
+		 * @brief Функция извлечения достаточного размера места под запись числа
 		 *
 		 * @details Наибольшую длину даёт запись без показателя степени у наименьшего
 		 *          представимого значения: она состоит из знака, ведущего нуля целой
@@ -207,7 +207,7 @@ namespace awh {
 		 * @return достаточный размер места под запись числа в символах
 		 *
 		 * \~english
-		 * @brief Method of extracting the sufficient size of the place for the record of a number
+		 * @brief Function of extracting the sufficient size of the place for the record of a number
 		 * @details The greatest length is given by the record without an exponent of the smallest
 		 *          representable value: it consists of the sign, of the leading zero of the integer
 		 *          part, of the decimal point, of the insignificant zeros of the fractional part and
@@ -233,13 +233,13 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Метод извлечения количества десятичных цифр значения
+		 * @brief Функция извлечения количества десятичных цифр значения
 		 *
 		 * @param value значение для подсчёта
 		 * @return      количество десятичных цифр
 		 *
 		 * \~english
-		 * @brief Method of extracting the number of the decimal digits of a value
+		 * @brief Function of extracting the number of the decimal digits of a value
 		 * @param value value to count
 		 * @return      number of the decimal digits
 		 *
@@ -276,7 +276,7 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод записи десятичного значения в буфер справа налево
+		 * @brief Функция записи десятичного значения в буфер справа налево
 		 *
 		 * @details Запись ведётся от конца отведённого места к началу, что избавляет
 		 *          от разворота записи после её формирования.
@@ -285,7 +285,7 @@ namespace awh {
 		 * @param value записываемое значение
 		 *
 		 * \~english
-		 * @brief Method of writing a decimal value into a buffer from right to left
+		 * @brief Function of writing a decimal value into a buffer from right to left
 		 * @details The writing is conducted from the end of the allotted place to the beginning,
 		 *          which frees from the reversal of the record after its forming.
 		 * @param last  end of the place allotted for the record
@@ -338,7 +338,7 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод записи беззнакового значения в произвольной системе счисления
+		 * @brief Функция записи беззнакового значения в произвольной системе счисления
 		 *
 		 * @param first начало отведённого под запись места
 		 * @param last  конец отведённого под запись места
@@ -347,7 +347,7 @@ namespace awh {
 		 * @return      результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing an unsigned value in an arbitrary numeral system
+		 * @brief Function of writing an unsigned value in an arbitrary numeral system
 		 * @param first beginning of the place allotted for the record
 		 * @param last  end of the place allotted for the record
 		 * @param value written value
@@ -418,7 +418,7 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод записи десятичного представления числа с порядком
+		 * @brief Функция записи десятичного представления числа с порядком
 		 *
 		 * @details Запись имеет вид одной цифры целой части, дробной части и показателя
 		 *          степени десяти со знаком: 1.5e+300. Показатель записывается не менее
@@ -431,7 +431,7 @@ namespace awh {
 		 * @return             результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing the decimal representation of a number with an exponent
+		 * @brief Function of writing the decimal representation of a number with an exponent
 		 * @details The record has the form of one digit of the integer part, of the fractional part
 		 *          and of the exponent of the power of ten with a sign: 1.5e+300. The exponent is written
 		 *          by no less than two digits, as the printf function does.
@@ -514,7 +514,7 @@ namespace awh {
 		template <typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод записи десятичного представления числа без порядка
+		 * @brief Функция записи десятичного представления числа без порядка
 		 *
 		 * @details Запись имеет вид целой и дробной частей без показателя степени.
 		 *          Числу, меньшему единицы, дописывается ведущий ноль целой части.
@@ -526,7 +526,7 @@ namespace awh {
 		 * @return             результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing the decimal representation of a number without an exponent
+		 * @brief Function of writing the decimal representation of a number without an exponent
 		 * @details The record has the form of the integer and of the fractional parts without an exponent.
 		 *          A number smaller than one is given a leading zero of the integer part.
 		 * @param first        beginning of the place allotted for the record
@@ -617,7 +617,7 @@ namespace awh {
 		template <typename T, typename UC>
 		/**
 		 * \~russian
-		 * @brief Метод записи числа с плавающей точкой кратчайшим обратимым представлением
+		 * @brief Функция записи числа с плавающей точкой кратчайшим обратимым представлением
 		 *
 		 * @details Запись содержит наименьшее количество значащих цифр, при котором она
 		 *          читается обратно тем же самым числом. Вид записи задаётся форматом:
@@ -632,7 +632,7 @@ namespace awh {
 		 * @return        результат записи числовой строки
 		 *
 		 * \~english
-		 * @brief Method of writing a floating-point number by the shortest reversible representation
+		 * @brief Function of writing a floating-point number by the shortest reversible representation
 		 * @details The record contains the least number of significant digits at which it
 		 *          is read back as the very same number. The form of the record is set by the format:
 		 *          at the indication of a single form it is applied, at the indication of both

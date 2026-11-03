@@ -29,7 +29,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <net/io.hpp>
+#include <net/engine.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -57,32 +57,30 @@ int32_t main(){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io;
 	// Устанавливаем тип таймера как простой
-	io.setInternalTimer(event::timer_t::SIMPLE);
+	engine::setInternalTimer(event::timer_t::SIMPLE);
 	// Устанавливаем тип таймера как сложный
-	// io.setInternalTimer(event::timer_t::DIFFICULT);
+	// engine::setInternalTimer(event::timer_t::DIFFICULT);
 	// Добавляем новое событие таймера
-	event::id_t eid1 = io.event(event::node_t::TIMEOUT, event::family_t::TIMER);
+	event::id_t eid1 = engine::event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие интервала
-	event::id_t eid2 = io.event(event::node_t::INTERVAL, event::family_t::TIMER);
+	event::id_t eid2 = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Устанавливаем таймаут таймера
-	io.setTimeout(eid1, event::action_t::NONE, 12000);
+	engine::setTimeout(eid1, event::action_t::NONE, 12000);
 	// Устанавливаем таймаут интервала
-	io.setTimeout(eid2, event::action_t::NONE, 5000);
+	engine::setTimeout(eid2, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
+	if(engine::initialize()){
 		// Выполняем фиксацию настроек события таймера
-		io.commit(eid1);
+		engine::commit(eid1);
 		// Выполняем фиксацию настроек события интервала
-		io.commit(eid2);
+		engine::commit(eid2);
 		// Замеряем время начала работы для таймера
 		chrono::time_point <chrono::system_clock> ts = chrono::system_clock::now();
 		// Замеряем время начала работы для интервала времени
 		chrono::time_point <chrono::system_clock> is = chrono::system_clock::now();
 		// Устанавливаем функцию обратного вызова на событие таймера
-		io.on(eid1, [&ts](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::on(eid1, [&ts](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
@@ -93,7 +91,7 @@ int32_t main(){
 		// Количество срабатываний интервала
 		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на событие интервала
-		io.on(eid2, [&count, &is](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::on(eid2, [&count, &is](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
@@ -109,13 +107,13 @@ int32_t main(){
 			}
 		});
 		// Выполняем запуск события
-		if(io.launch(eid1) && io.launch(eid2)){
+		if(engine::launch(eid1) && engine::launch(eid2)){
 			// Записываем в лог сообщение об успешном запуске события
 			cout << " Событие успешно запущено!" << endl;
 			/**
 			 * Запускаем опрос событий
 			 */
-			while(io.poll());
+			while(engine::poll());
 		// Записываем ошибку в лог запуска события
 		} else cout << " Ошибка запуска события!" << endl;
 	}

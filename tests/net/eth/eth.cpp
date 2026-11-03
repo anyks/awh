@@ -29,8 +29,6 @@
  *
  */
 void EthFixture::SetUp(){
-	// Создаём объект работы с Ethernet
-	this->_eth = std::make_unique <awh::eth_t> ();
 	// Инициализируем объект сетевого адреса
 	this->_addr = std::make_unique <awh::net_addr_t> ();
 }

@@ -2446,7 +2446,7 @@ bool awh::fs::unlink(string_view addr, const bool resolve) noexcept {
 	return result;
 }
 /**
- * @brief Метод, определяющий тип файловой системы по адресу
+ * @brief Функция, определяющая тип файловой системы по адресу
  *
  * @param addr        адрес директории или файла
  * @param detectLinks флаг детектирования символьных ссылок (на горячих путях можно отключить)

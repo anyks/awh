@@ -29,17 +29,8 @@
  *
  */
 void IoFixture::SetUp(){
-	// Создаём объект асинхронного движка ввода-вывода
-	this->_io = std::make_unique <awh::engine::io_t> ();
 	// Создаём объект транспортного уровня безопасности
 	this->_coder = std::make_unique <awh::tls::coder_t> ();
-	/**
-	 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
-	 */
-	#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
-		// Объект управления SCTP протоколом
-		this->_sctp = std::make_unique <awh::engine::sctp_t> ();
-	#endif
 }
 
 /**
@@ -58,7 +49,8 @@ void IoFixture::TearDown(){
 	 * меньшей скоростью - отказ выглядел плавающим, хотя был предрешён
 	 * порядком проверок
 	 */
-	if(this->_io != nullptr)
-		// Устанавливаем простой тип таймера для событий сетевого движка
-		this->_io->setInternalTimer(awh::event::timer_t::SIMPLE);
+	// Устанавливаем простой тип таймера для событий сетевого движка
+	awh::engine::setInternalTimer(awh::event::timer_t::SIMPLE);
+	// Выполняем деинициализацию движка: событие проверки своего хвоста не оставляет
+	awh::engine::deinitialize();
 }

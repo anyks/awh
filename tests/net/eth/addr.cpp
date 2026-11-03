@@ -185,17 +185,26 @@ namespace {
 			case static_cast <uint8_t> (awh::event::family_t::IPV4): {
 				// Псевдозаголовок IPv4
 				struct {
+					// Адрес источника
 					uint32_t src;
+					// Адрес назначения
 					uint32_t dst;
+					// Нулевой октет
 					uint8_t zero;
+					// Протокол транспортного уровня
 					uint8_t proto;
+					// Длина транспортного пакета
 					uint16_t length;
 				} hdr;
-				// Заполняем псевдозаголовок
+				// Обнуляем зарезервированный октет
 				hdr.zero = 0;
+				// Записываем протокол транспортного уровня
 				hdr.proto = ((protocol == awh::event::protocol_t::TCP) ? IPPROTO_TCP : IPPROTO_UDP);
+				// Записываем адрес источника
 				hdr.src = (* reinterpret_cast <const uint32_t *> (src));
+				// Записываем адрес назначения
 				hdr.dst = (* reinterpret_cast <const uint32_t *> (dst));
+				// Записываем длину транспортного пакета
 				hdr.length = htons(static_cast <uint16_t> (length));
 				// Вычисляем размер псевдозаголовка
 				pseudoSize = sizeof(hdr);
@@ -208,17 +217,26 @@ namespace {
 			case static_cast <uint8_t> (awh::event::family_t::IPV6): {
 				// Псевдозаголовок IPv6
 				struct {
+					// Адрес источника
 					struct in6_addr src;
+					// Адрес назначения
 					struct in6_addr dst;
+					// Длина транспортного пакета
 					uint32_t length;
+					// Нулевые октеты
 					uint8_t zero[3];
-					uint8_t next_hdr;
+					// Следующий заголовок
+					uint8_t nextHdr;
 				} hdr;
-				// Заполняем псевдозаголовок
+				// Обнуляем зарезервированные октеты
 				hdr.zero[0] = hdr.zero[1] = hdr.zero[2] = 0;
-				hdr.next_hdr = ((protocol == awh::event::protocol_t::TCP) ? IPPROTO_TCP : IPPROTO_UDP);
+				// Записываем следующий заголовок
+				hdr.nextHdr = ((protocol == awh::event::protocol_t::TCP) ? IPPROTO_TCP : IPPROTO_UDP);
+				// Записываем адрес источника
 				hdr.src = (* reinterpret_cast <const struct in6_addr *> (src));
+				// Записываем адрес назначения
 				hdr.dst = (* reinterpret_cast <const struct in6_addr *> (dst));
+				// Записываем длину транспортного пакета
 				hdr.length = htonl(static_cast <uint32_t> (length));
 				// Вычисляем размер псевдозаголовка
 				pseudoSize = sizeof(hdr);
@@ -264,14 +282,12 @@ TEST_F(EthFixture, AddressIsInSubnetTest){
 	uint32_t net = 0xC0A80100;
 	// /24
 	uint8_t prefix = 24;
-
 	// Выполняем проверку принадлежности IP-адреса подсети
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, net, prefix));
-
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(ip, net, prefix));
 	// Неверная подсеть 192.168.2.0
 	uint32_t net2 = 0xC0A80200;
 	// Если адрес соответствует подсети
-	ASSERT_FALSE(this->_eth->addr.isInSubnet(ip, net2, prefix));
+	ASSERT_FALSE(awh::eth::addr::isInSubnet(ip, net2, prefix));
 }
 
 /**
@@ -280,9 +296,9 @@ TEST_F(EthFixture, AddressIsInSubnetTest){
  */
 TEST_F(EthFixture, AddressIsInSubnetPrefixZeroTest){
 	// При нулевом префиксе любой IP-адрес принадлежит подсети
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(0xC0A8010A, 0x0A000001, 0));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(0xC0A8010A, 0x0A000001, 0));
 	// Проверяем для совершенно произвольных адресов
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(0xFFFFFFFF, 0x00000000, 0));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(0xFFFFFFFF, 0x00000000, 0));
 }
 
 /**
@@ -291,9 +307,9 @@ TEST_F(EthFixture, AddressIsInSubnetPrefixZeroTest){
  */
 TEST_F(EthFixture, AddressIsInSubnetPrefix32Test){
 	// При префиксе /32 адрес должен совпадать полностью
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(0xC0A8010A, 0xC0A8010A, 32));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(0xC0A8010A, 0xC0A8010A, 32));
 	// Если адрес отличается хотя бы на единицу
-	ASSERT_FALSE(this->_eth->addr.isInSubnet(0xC0A8010A, 0xC0A8010B, 32));
+	ASSERT_FALSE(awh::eth::addr::isInSubnet(0xC0A8010A, 0xC0A8010B, 32));
 }
 
 /**
@@ -307,15 +323,14 @@ TEST_F(EthFixture, AddressIsInSubnetPrefix32Test){
  *
  */
 TEST_F(EthFixture, AddressIpv6PrefixEqualTest){
-	// Создаём два IPv6-адреса
+	// Создаём первый IPv6-адрес
 	uint8_t a[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+	// Создаём второй IPv6-адрес
 	uint8_t b[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2};
-
 	// /64 совпадают
-	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(a, b, 64));
-
+	ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(a, b, 64));
 	// /128 не совпадают
-	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(a, b, 128));
+	ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(a, b, 128));
 }
 
 /**
@@ -323,11 +338,12 @@ TEST_F(EthFixture, AddressIpv6PrefixEqualTest){
  *
  */
 TEST_F(EthFixture, AddressIpv6PrefixEqualZeroTest){
-	// Создаём два полностью различных IPv6-адреса
+	// Создаём первый IPv6-адрес
 	uint8_t a[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+	// Создаём второй IPv6-адрес
 	uint8_t b[16] = {0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2};
 	// При нулевой длине префикса адреса считаются равными
-	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(a, b, 0));
+	ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(a, b, 0));
 }
 
 /**
@@ -344,9 +360,9 @@ TEST_F(EthFixture, AddressIpv6PrefixEqualPartialBitTest){
 		// Меняем младшие биты последнего значимого байта
 		other[4] = 0xF8;
 		// Префикс /36 (4 полных байта + 4 старших бита) — старшие 4 бита 0xF совпадают
-		ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(base, other, 36));
+		ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(base, other, 36));
 		// Префикс /37 — 5-й бит отличается (0xF0 против 0xF8)
-		ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(base, other, 37));
+		ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(base, other, 37));
 	}{
 		// Адрес отличается в третьем бите первого байта (0x20 -> 0x00, бит со значением 0x20)
 		uint8_t other[16];
@@ -354,9 +370,9 @@ TEST_F(EthFixture, AddressIpv6PrefixEqualPartialBitTest){
 		// Обнуляем первый байт (0x20 -> 0x00): первые два бита (00) совпадают, третий бит отличается
 		other[0] = 0x00;
 		// Префикс /2 — первые два бита (00) совпадают
-		ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(base, other, 2));
+		ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(base, other, 2));
 		// Префикс /3 — третий бит отличается (001 против 000)
-		ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(base, other, 3));
+		ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(base, other, 3));
 	}
 }
 
@@ -373,15 +389,16 @@ TEST_F(EthFixture, AddressIpv6PrefixEqualPartialBitTest){
 TEST_F(EthFixture, AddressChecksumInvalidArgsTest){
 	// Полезная нагрузка транспортного уровня
 	uint8_t data[20] = {0};
-	// IP-адреса источника и назначения
+	// IP-адрес источника
 	uint32_t src = htonl(0x0A000001);
+	// IP-адрес назначения
 	uint32_t dst = htonl(0x0A000002);
 	// Нулевые указатели должны давать нулевую контрольную сумму
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));
 	// Если транспортные данные отсутствуют
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, nullptr, 10));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, nullptr, 10));
 	// Если длина данных нулевая
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data, 0));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data, 0));
 }
 
 /**
@@ -391,13 +408,14 @@ TEST_F(EthFixture, AddressChecksumInvalidArgsTest){
 TEST_F(EthFixture, AddressChecksumUnsupportedProtocolTest){
 	// Полезная нагрузка транспортного уровня
 	uint8_t data[20] = {0};
-	// IP-адреса источника и назначения
+	// IP-адрес источника
 	uint32_t src = htonl(0x0A000001);
+	// IP-адрес назначения
 	uint32_t dst = htonl(0x0A000002);
 	// Для неподдерживаемого протокола контрольная сумма должна быть нулевой
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::ICMP, &src, &dst, data, sizeof(data)));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::ICMP, &src, &dst, data, sizeof(data)));
 	// Для RAW-протокола результат также нулевой
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::RAW, &src, &dst, data, sizeof(data)));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::RAW, &src, &dst, data, sizeof(data)));
 }
 
 /**
@@ -407,11 +425,12 @@ TEST_F(EthFixture, AddressChecksumUnsupportedProtocolTest){
 TEST_F(EthFixture, AddressChecksumUnsupportedFamilyTest){
 	// Полезная нагрузка транспортного уровня
 	uint8_t data[20] = {0};
-	// IP-адреса источника и назначения
+	// IP-адрес источника
 	uint32_t src = htonl(0x0A000001);
+	// IP-адрес назначения
 	uint32_t dst = htonl(0x0A000002);
 	// Для неподдерживаемого семейства контрольная сумма должна быть нулевой (без падения)
-	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::NONE, awh::event::protocol_t::TCP, &src, &dst, data, sizeof(data)));
+	ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::NONE, awh::event::protocol_t::TCP, &src, &dst, data, sizeof(data)));
 }
 
 /**
@@ -429,14 +448,16 @@ TEST_F(EthFixture, AddressChecksumIPv4TcpTest){
 	 * Заполняем сегмент произвольными данными
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер по порядку
 		data[i] = static_cast <uint8_t> (i + 1);
 	// Записываем заведомо ненулевое значение в поле контрольной суммы
 	data[offsetof(struct tcp_hdr_min, sum)] = 0xAB;
+	// Записываем второй октет контрольной суммы
 	data[offsetof(struct tcp_hdr_min, sum) + 1] = 0xCD;
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size()),
-		this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
+		awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
 	);
 }
 
@@ -455,11 +476,12 @@ TEST_F(EthFixture, AddressChecksumIPv4UdpTest){
 	 * Заполняем датаграмму произвольными данными
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер обратным отсчётом
 		data[i] = static_cast <uint8_t> (0xFF - i);
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV4, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size()),
-		this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size())
+		awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size())
 	);
 }
 
@@ -478,11 +500,12 @@ TEST_F(EthFixture, AddressChecksumIPv6TcpTest){
 	 * Заполняем сегмент произвольными данными
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер по формуле
 		data[i] = static_cast <uint8_t> ((i * 7) & 0xFF);
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV6, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size()),
-		this->_eth->addr.checksum(awh::event::family_t::IPV6, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
+		awh::eth::addr::checksum(awh::event::family_t::IPV6, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
 	);
 }
 
@@ -501,11 +524,12 @@ TEST_F(EthFixture, AddressChecksumIPv6UdpTest){
 	 * Заполняем датаграмму произвольными данными
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер по формуле
 		data[i] = static_cast <uint8_t> ((i * 3 + 5) & 0xFF);
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV6, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size()),
-		this->_eth->addr.checksum(awh::event::family_t::IPV6, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size())
+		awh::eth::addr::checksum(awh::event::family_t::IPV6, awh::event::protocol_t::UDP, &src, &dst, data.data(), data.size())
 	);
 }
 
@@ -524,11 +548,12 @@ TEST_F(EthFixture, AddressChecksumOddLengthTest){
 	 * Заполняем данные произвольными значениями
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер по формуле
 		data[i] = static_cast <uint8_t> (0x10 + i);
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size()),
-		this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
+		awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size())
 	);
 }
 
@@ -547,15 +572,16 @@ TEST_F(EthFixture, AddressChecksumDeterministicTest){
 	 * Заполняем сегмент произвольными данными
 	 */
 	for(size_t i = 0; i < data.size(); ++i)
+		// Заполняем буфер по формуле
 		data[i] = static_cast <uint8_t> (i + 0x20);
 	// Сохраняем исходную копию буфера
 	std::vector <uint8_t> original = data;
 	// Вычисляем контрольную сумму
-	uint16_t first = this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size());
+	uint16_t first = awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size());
 	// Проверяем, что исходный буфер не был модифицирован (регрессия на правку const-буфера)
 	ASSERT_EQ(0, ::memcmp(data.data(), original.data(), data.size()));
 	// Вычисляем контрольную сумму повторно
-	uint16_t second = this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size());
+	uint16_t second = awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size());
 	// Результат должен быть детерминированным
 	ASSERT_EQ(first, second);
 }
@@ -580,7 +606,7 @@ TEST_F(EthFixture, AddressChecksumUdpZeroIsFFFFTest){
 		// Если «сырая» контрольная сумма равна нулю
 		if(raw == 0){
 			// Для UDP метод должен вернуть 0xFFFF вместо нуля
-			ASSERT_EQ(0xFFFF, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::UDP, &src, &dst, &payload, sizeof(payload)));
+			ASSERT_EQ(0xFFFF, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::UDP, &src, &dst, &payload, sizeof(payload)));
 			// Помечаем, что подходящие данные найдены
 			found = true;
 			// Прерываем перебор
@@ -589,7 +615,6 @@ TEST_F(EthFixture, AddressChecksumUdpZeroIsFFFFTest){
 	}
 	// Убеждаемся, что подходящие данные были найдены
 	ASSERT_TRUE(found);
-
 	// Дополнительно убеждаемся, что для TCP правило 0xFFFF не применяется
 	found = false;
 	/**
@@ -603,7 +628,7 @@ TEST_F(EthFixture, AddressChecksumUdpZeroIsFFFFTest){
 		// Если контрольная сумма равна нулю
 		if(raw == 0){
 			// Для TCP метод должен вернуть ноль (правило UDP не применяется)
-			ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, &payload, sizeof(payload)));
+			ASSERT_EQ(0, awh::eth::addr::checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, &payload, sizeof(payload)));
 			// Помечаем, что подходящие данные найдены
 			found = true;
 			// Прерываем перебор
@@ -628,7 +653,7 @@ TEST_F(EthFixture, AddressFillSourceTest){
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(source);
+	awh::eth::addr::fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено (или хотя бы не упало, может быть пустым если сети нет)
 	ASSERT_FALSE(source.iface.empty()); // Необходимо, чтобы хотя бы один сетевой интерфейс имел выход в интернет
 }
@@ -641,7 +666,7 @@ TEST_F(EthFixture, AddressFillSourceByIfaceTest){
 	// Сначала определяем доступный сетевой интерфейс
 	awh::net::src_t discovery(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(discovery);
+	awh::eth::addr::fillSource(discovery);
 	// Проверяем, что интерфейс получен
 	ASSERT_FALSE(discovery.iface.empty());
 	// Создаём новый источник с явно заданным именем интерфейса
@@ -649,7 +674,7 @@ TEST_F(EthFixture, AddressFillSourceByIfaceTest){
 	// Устанавливаем имя ранее найденного интерфейса
 	source.iface = discovery.iface;
 	// Выполняем извлечение сетевых параметров по имени интерфейса
-	this->_eth->addr.fillSource(source);
+	awh::eth::addr::fillSource(source);
 	// Имя интерфейса должно сохраниться
 	ASSERT_EQ(discovery.iface, source.iface);
 }
@@ -662,7 +687,7 @@ TEST_F(EthFixture, AddressFillSourceNodeTest){
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(awh::event::node_t::NONE, source);
+	awh::eth::addr::fillSource(awh::event::node_t::NONE, source);
 	// Проверяем результат
 	ASSERT_FALSE(source.iface.empty());
 }
@@ -677,7 +702,7 @@ TEST_F(EthFixture, AddressFillSourceClientTest){
 	// Устанавливаем адрес loopback (он присутствует практически всегда)
 	static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address = htonl(INADDR_LOOPBACK);
 	// Выполняем извлечение сетевых параметров для узла клиента
-	this->_eth->addr.fillSource(awh::event::node_t::CLIENT, source);
+	awh::eth::addr::fillSource(awh::event::node_t::CLIENT, source);
 	// Для loopback-адреса интерфейс должен быть найден
 	ASSERT_FALSE(source.iface.empty());
 }
@@ -692,7 +717,7 @@ TEST_F(EthFixture, AddressFillSourceServerTest){
 	// Устанавливаем адрес loopback (он присутствует практически всегда)
 	static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address = htonl(INADDR_LOOPBACK);
 	// Выполняем извлечение сетевых параметров для узла сервера
-	this->_eth->addr.fillSource(awh::event::node_t::SERVER, source);
+	awh::eth::addr::fillSource(awh::event::node_t::SERVER, source);
 	// Для loopback-адреса интерфейс должен быть найден
 	ASSERT_FALSE(source.iface.empty());
 }
@@ -709,7 +734,7 @@ TEST_F(EthFixture, AddressFillSourceAnyIsDeliberateTest){
 	// Временный объект источника без единой приметы для подбора устройства
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 	// Выполняем извлечение сетевых параметров для узла клиента
-	this->_eth->addr.fillSource(awh::event::node_t::CLIENT, source);
+	awh::eth::addr::fillSource(awh::event::node_t::CLIENT, source);
 	// Устройство подбираться не должно
 	ASSERT_TRUE(source.iface.empty());
 	// Адрес обязан остаться нулевым
@@ -717,7 +742,7 @@ TEST_F(EthFixture, AddressFillSourceAnyIsDeliberateTest){
 	// Временный объект источника IPv6 без единой приметы для подбора устройства
 	awh::net::src_t source6(std::make_unique <awh::net::addr_net_ipv6_t> ());
 	// Выполняем извлечение сетевых параметров для узла сервера
-	this->_eth->addr.fillSource(awh::event::node_t::SERVER, source6);
+	awh::eth::addr::fillSource(awh::event::node_t::SERVER, source6);
 	// Устройство подбираться не должно
 	ASSERT_TRUE(source6.iface.empty());
 	/**
@@ -739,7 +764,7 @@ TEST_F(EthFixture, AddressFillSourcePeerTest){
 	static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address = htonl(INADDR_LOOPBACK);
 	// Выполняем извлечение сетевых параметров для однорангового узла
 	// Содержимое таблицы маршрутизации зависит от окружения, поэтому проверяем лишь отсутствие падения
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(awh::event::node_t::PEER, source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(awh::event::node_t::PEER, source));
 }
 
 /**
@@ -753,7 +778,7 @@ TEST_F(EthFixture, AddressFillSourcePeerIPv6Test){
 	static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->address[15] = 1;
 	// Выполняем извлечение сетевых параметров для однорангового узла
 	// Проверяем устойчивость разбора таблицы маршрутизации IPv6 (регрессия на правку указателя sin)
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(awh::event::node_t::PEER, source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(awh::event::node_t::PEER, source));
 }
 
 /**
@@ -767,9 +792,8 @@ TEST_F(EthFixture, AddressFillSourceNetTest){
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Устанавливаем адрес (например, 0.0.0.0 или localhost 127.0.0.1)
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
-
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(addr.get(), source);
+	awh::eth::addr::fillSource(addr.get(), source);
 	// Проверяем, что интерфейс найден (для loopback он должен быть)
 	ASSERT_FALSE(source.iface.empty());
 }
@@ -793,17 +817,18 @@ TEST_F(EthFixture, AddressFillSourceNetPrefixClampIPv4Test){
 	 *          `Address_Network_IPv4` заводит поле по умолчанию (src/net/net.cpp:90).
 	 *          Проверка держалась на умолчании и молчала бы при слое, не пишущем
 	 *          длину ВОВСЕ, - что и было найдено у наречия MS Windows 03.09.2026
+	 *
 	 */
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->prefix = 8;
 	// Выполняем извлечение сетевых параметров
-	this->_eth->addr.fillSource(addr.get(), source);
+	awh::eth::addr::fillSource(addr.get(), source);
 	// Длина, разрядности адреса не превышающая, обязана дойти до источника как есть
 	ASSERT_EQ(8, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->prefix))
 	 << "Движок не переносит длину префикса в источник";
 	// Устанавливаем некорректный префикс (> 32)
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->prefix = 40;
 	// Выполняем извлечение сетевых параметров заново
-	this->_eth->addr.fillSource(addr.get(), source);
+	awh::eth::addr::fillSource(addr.get(), source);
 	// Префикс источника должен быть скорректирован до 32
 	ASSERT_EQ(32, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->prefix))
 	 << "Движок не ограничивает длину префикса разрядностью адреса";
@@ -826,17 +851,18 @@ TEST_F(EthFixture, AddressFillSourceNetPrefixClampIPv6Test){
 	 * @warning Довод тот же, что и у проверки IPv4: конструктор
 	 *          `Address_Network_IPv6` заводит поле числом 128 (src/net/net.cpp:97), и
 	 *          одно лишь ожидание 128 утверждало умолчание, а не работу слоя
+	 *
 	 */
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 64;
 	// Выполняем извлечение сетевых параметров
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(addr.get(), source));
 	// Длина, разрядности адреса не превышающая, обязана дойти до источника как есть
 	ASSERT_EQ(64, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
 	 << "Движок не переносит длину префикса в источник";
 	// Устанавливаем некорректный префикс (> 128) — раньше приводил к выходу за границы массива
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 200;
 	// Выполняем извлечение сетевых параметров (не должно падать)
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(addr.get(), source));
 	// Префикс источника должен быть скорректирован до 128
 	ASSERT_EQ(128, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
 	 << "Движок не ограничивает длину префикса разрядностью адреса";
@@ -851,7 +877,7 @@ TEST_F(EthFixture, AddressFillSourceNodeIPv6Test){
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv6_t> ());
 	// Выполняем извлечение сетевых параметров
 	// Наличие IPv6-маршрута зависит от окружения, поэтому проверяем лишь отсутствие падения
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(awh::event::node_t::NONE, source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(awh::event::node_t::NONE, source));
 }
 
 /**
@@ -873,10 +899,11 @@ TEST_F(EthFixture, AddressFillSourceNetIPv6Test){
 	 *          Утверждение держалось на умолчании целиком: слой, не пишущий длину
 	 *          ВОВСЕ, проверку бы прошёл. Длина, умолчанию не равная, только и делает
 	 *          такую проверку зрячей
+	 *
 	 */
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 96;
 	// Выполняем извлечение сетевых параметров (не должно падать)
-	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
+	ASSERT_NO_THROW(awh::eth::addr::fillSource(addr.get(), source));
 	// Длина префикса обязана дойти до источника как есть
 	ASSERT_EQ(96, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
 	 << "Движок не переносит длину префикса в источник";
@@ -911,7 +938,7 @@ TEST_F(EthFixture, AddressFillSourceMismatchedKindTest){
 		// Устанавливаем префикс сети
 		static_cast <awh::net::addr_net_ipv4_t *> (net.get())->prefix = 8;
 		// Несличимая пара обязана отвечать отказом, а не чтением за границей
-		ASSERT_NO_THROW(this->_eth->addr.fillSource(net.get(), source));
+		ASSERT_NO_THROW(awh::eth::addr::fillSource(net.get(), source));
 		// Название устройства обязано остаться незаполненным
 		ASSERT_TRUE(source.iface.empty());
 	}
@@ -928,7 +955,7 @@ TEST_F(EthFixture, AddressFillSourceMismatchedKindTest){
 		// Устанавливаем префикс сети
 		static_cast <awh::net::addr_net_ipv6_t *> (net.get())->prefix = 128;
 		// Несличимая пара обязана отвечать отказом, а не чтением за границей
-		ASSERT_NO_THROW(this->_eth->addr.fillSource(net.get(), source));
+		ASSERT_NO_THROW(awh::eth::addr::fillSource(net.get(), source));
 		// Название устройства обязано остаться незаполненным
 		ASSERT_TRUE(source.iface.empty());
 	}
@@ -939,7 +966,7 @@ TEST_F(EthFixture, AddressFillSourceMismatchedKindTest){
 		// Временный объект для извлечения сетевого интерфейса IPv4
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 		// Пустая сеть обязана отвечать отказом, а не разыменованием нуля
-		ASSERT_NO_THROW(this->_eth->addr.fillSource(static_cast <const awh::net::addr_t *> (nullptr), source));
+		ASSERT_NO_THROW(awh::eth::addr::fillSource(static_cast <const awh::net::addr_t *> (nullptr), source));
 		// Название устройства обязано остаться незаполненным
 		ASSERT_TRUE(source.iface.empty());
 	}
@@ -959,15 +986,15 @@ TEST_F(EthFixture, AddressSubnetOversizedPrefixTest){
 	// Адрес, принадлежность какого проверяется
 	const uint32_t ip = 0x0100007F;
 	// Префикс шире самого адреса описывает один-единственный узел
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 33));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(ip, ip, 33));
 	// Адрес, отличный от названного, такой подсети не принадлежит
-	ASSERT_FALSE(this->_eth->addr.isInSubnet(ip, 0x0200007F, 33));
+	ASSERT_FALSE(awh::eth::addr::isInSubnet(ip, 0x0200007F, 33));
 	// Наибольшее значение поля довода обязано разбираться тем же порядком
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 255));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(ip, ip, 255));
 	// Префикс ровно по ширине адреса сличает адреса целиком
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 32));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(ip, ip, 32));
 	// Нулевой префикс принимает любой адрес
-	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, 0x0200007F, 0));
+	ASSERT_TRUE(awh::eth::addr::isInSubnet(ip, 0x0200007F, 0));
 }
 
 /**
@@ -996,19 +1023,19 @@ TEST_F(EthFixture, AddressIPv6PrefixOversizedTest){
 	// Обращаем оба адреса в петлевой (::1)
 	first[15] = second[15] = 1;
 	// Префикс шире самого адреса описывает один-единственный узел
-	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 200));
+	ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(first, second, 200));
 	// Наибольшее значение поля довода обязано разбираться тем же порядком
-	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
+	ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(first, second, 255));
 	// Разводим адреса последним октетом
 	second[15] = 2;
 	// Адрес, отличный от названного, такой подсети не принадлежит
-	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
+	ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(first, second, 255));
 	// Префикс ровно по ширине адреса сличает адреса целиком
-	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 128));
+	ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(first, second, 128));
 	// Нулевой префикс принимает любой адрес
-	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 0));
+	ASSERT_TRUE(awh::eth::addr::ipv6PrefixEqual(first, second, 0));
 	// Разводим адреса октетом первым, чтобы задеть сличение полных октетов
 	second[0] = 0xFF;
 	// Расхождение в старших октетах обязано ловиться и при чрезмерном префиксе
-	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
+	ASSERT_FALSE(awh::eth::addr::ipv6PrefixEqual(first, second, 255));
 }

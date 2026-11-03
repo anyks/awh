@@ -383,7 +383,7 @@
  *
  * \~
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 	/**
 	 * \~russian
 	 * @brief Заменяем переменную AWH ERROR
@@ -487,7 +487,7 @@
 	 *
 	 * \~
 	 */
-	#if defined(_MSC_VER)
+	#if defined(_MSC_VER) || defined(DOXYGEN)
 		/**
 		 * \~russian
 		 * @brief Объявляем типы происхождения BSD своими силами

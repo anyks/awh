@@ -25,7 +25,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/net/io.hpp"
+#include "../../../include/net/engine.hpp"
 #include "../../../include/net/addr.hpp"
 #include "../../../include/sys/fs.hpp"
 #include "../../../include/cryptography/tls/coder.hpp"
@@ -70,7 +70,7 @@
  * @brief Наибольший срок одного оборота опроса в проверках, в миллисекундах
  *
  * @details Циклы ожидания в проверках сторожатся сроком: `while(!stop && (now <
- *          deadline) && io.poll(...))`. Срок этот работает лишь тогда, когда опрос
+ *          deadline) && awh::engine::poll(...))`. Срок этот работает лишь тогда, когда опрос
  *          УПРАВЛЕНИЕ ВОЗВРАЩАЕТ
  *
  * @warning Умолчанием `poll()` ждёт БЕЗ ПРЕДЕЛА, и с ним сторож не срабатывает вовсе:
@@ -372,18 +372,8 @@ static inline void __awh_test_port_range__(uint16_t & begin, uint16_t & end) noe
  */
 class IoFixture : public testing::Test {
 	protected:
-		
-		// Объект асинхронного движка ввода-вывода
-		std::unique_ptr <awh::engine::io_t> _io;
 		// Объект транспортного уровня безопасности
 		std::unique_ptr <awh::tls::coder_t> _coder;
-		/**
-		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
-		 */
-		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
-			// Объект управления SCTP протоколом
-			std::unique_ptr <awh::engine::sctp_t> _sctp;
-		#endif
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

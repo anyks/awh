@@ -103,10 +103,9 @@ class Executor {
 		 *
 		 * @param eid    идентификатор клиента
 		 * @param status новый статус клиента
-		 * @param sctp   объект SCTP
 		 *
 		 */
-		void state(const event::id_t eid, const event::status_t status, engine::sctp_t * sctp) noexcept {
+		void state(const event::id_t eid, const event::status_t status) noexcept {
 			/**
 			 * Определяем состояние клиента
 			 */
@@ -116,7 +115,7 @@ class Executor {
 					// Записываем в лог сообщение об возрождении события
 					log::print("SCTP client rebirthed: ID=%u", log::flag_t::INFO, eid);
 					// Выполняем подписку на SCTP события
-					sctp->eventsSubscribe(eid, {
+					engine::sctp::eventsSubscribe(eid, {
 						net::sctp::event_type_t::ASSOC_CHANGE,
 						net::sctp::event_type_t::SHUTDOWN_EVENT,
 						net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -154,10 +153,9 @@ class Executor {
 		 *
 		 * @param eid   идентификатор клиента
 		 * @param event событие SCTP
-		 * @param sctp  объект SCTP
 		 *
 		 */
-		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event, engine::sctp_t * sctp) noexcept {
+		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event) noexcept {
 			// Записываем в лог сообщение с идентификатором событий SCTP
 			cout << " SCTP EVENT ID: " << event->id << endl;
 			/**
@@ -221,7 +219,7 @@ class Executor {
 				break;
 			}
 			// Получаем статус SCTP-сокета
-			const net::sctp::status_t & status = sctp->status(eid);
+			const net::sctp::status_t & status = engine::sctp::status(eid);
 			// Возвращаем статус SCTP-сокета
 			cout << " SCTP Status: " << endl;
 			cout << "  - ID: " << status.id << endl;
@@ -306,7 +304,6 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	fmk::initialize();
 	// Создаём объект SCTP протокола
-	engine::sctp_t sctp;
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
 	// Создаём объект транспортного уровня безопасности
@@ -353,7 +350,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект клиента
 	client_t client(tls.transport(cts), &tls, &dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устананавливаем опции события
@@ -363,7 +360,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Выполняем подписку на SCTP события
-	sctp.eventsSubscribe(eid, {
+	engine::sctp::eventsSubscribe(eid, {
 		net::sctp::event_type_t::ASSOC_CHANGE,
 		net::sctp::event_type_t::SHUTDOWN_EVENT,
 		net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -372,9 +369,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("localhost") && client.setTargetPort(3333)){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-		sctp.on(eid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, &executor, _1, _2)));
+		engine::sctp::on(eid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, &executor, _1, _2)));
 		// Устанавливаем функцию обратного вызова на создание события
-		sctp.on(eid, static_cast <engine::callback::sctp::events_t> (std::bind(&Executor::sctp, &executor, _1, _2, &sctp)));
+		engine::sctp::on(eid, static_cast <engine::callback::sctp::events_t> (std::bind(&Executor::sctp, &executor, _1, _2)));
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
 		client.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента
@@ -384,7 +381,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие подключения клиента к удалённому серверу
 		client.on <void (const bool)> ("connect", &Executor::connect, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова получения состояния клиента
-		client.on <void (const event::status_t)> ("state", &Executor::state, &executor, eid, _1, &sctp);
+		client.on <void (const event::status_t)> ("state", &Executor::state, &executor, eid, _1);
 		// Регистрируем функцию обратного вызова на событие чтения данных клиентом
 		client.on <void (const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, &client);
 		// Регистрируем функцию обратного вызова на событие ошибок клиента

@@ -115,16 +115,15 @@ class Executor {
 		 * @param tid    идентификатор клиента TLS
 		 * @param server объект сервера
 		 * @param tls  объект TLS кодера
-		 * @param sctp   объект SCTP протокола
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls, engine::sctp_t * sctp) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 				// Получаем информацию о сообщении SCTP-сокета
-				const net::sctp::minfo_t & minfo = sctp->messageInfo(cid);
+				const net::sctp::minfo_t & minfo = engine::sctp::messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета
 				cout << " SCTP Message Info1: " << endl;
 				cout << "  - Stream Number: " << minfo.num << endl;
@@ -133,7 +132,7 @@ class Executor {
 				cout << "  - Time to Live: " << minfo.ttl << endl;
 				cout << "  - Flags: " << minfo.flags.size() << endl;
 				// Получаем статус SCTP-сокета
-				const net::sctp::status_t & status = sctp->status(cid);
+				const net::sctp::status_t & status = engine::sctp::status(cid);
 				// Возвращаем статус SCTP-сокета
 				cout << " SCTP Status: " << endl;
 				cout << "  - ID: " << status.id << endl;
@@ -157,16 +156,16 @@ class Executor {
 				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 				log::print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log::flag_t::INFO, tid, tls->alpn(tid));
 				// Выполняем подписку на SCTP события
-				sctp->eventsSubscribe(cid, {
+				engine::sctp::eventsSubscribe(cid, {
 					net::sctp::event_type_t::ASSOC_CHANGE,
 					net::sctp::event_type_t::SHUTDOWN_EVENT,
 					net::sctp::event_type_t::SEND_FAILED_EVENT,
 					net::sctp::event_type_t::REMOTE_ERROR
 				});
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
-				sctp->on(cid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, this, _1, _2)));
+				engine::sctp::on(cid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, this, _1, _2)));
 				// Устанавливаем функцию обратного вызова на создание события
-				sctp->on(cid, static_cast <engine::callback::sctp::events_t> (std::bind(&Executor::sctp, this, _1, _2, sctp)));
+				engine::sctp::on(cid, static_cast <engine::callback::sctp::events_t> (std::bind(&Executor::sctp, this, _1, _2)));
 			}
 		}
 		/**
@@ -174,10 +173,9 @@ class Executor {
 		 *
 		 * @param eid   идентификатор клиента
 		 * @param event событие SCTP
-		 * @param sctp  объект SCTP
 		 *
 		 */
-		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event, engine::sctp_t * sctp) noexcept {
+		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event) noexcept {
 			// Записываем в лог сообщение с идентификатором событий SCTP
 			cout << " SCTP EVENT ID: " << event->id << endl;
 			/**
@@ -241,7 +239,7 @@ class Executor {
 				break;
 			}
 			// Получаем статус SCTP-сокета
-			const net::sctp::status_t & status = sctp->status(eid);
+			const net::sctp::status_t & status = engine::sctp::status(eid);
 			// Возвращаем статус SCTP-сокета
 			cout << " SCTP Status: " << endl;
 			cout << "  - ID: " << status.id << endl;
@@ -342,7 +340,6 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	fmk::initialize();
 	// Создаём объект SCTP протокола
-	engine::sctp_t sctp;
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor;
 	// Создаём объект отпечатка браузера
@@ -356,7 +353,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект сервера
 	server_t server(cts, &tls, &dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устананавливаем опции события
@@ -366,7 +363,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Выполняем подписку на SCTP события
-	sctp.eventsSubscribe(eid, {
+	engine::sctp::eventsSubscribe(eid, {
 		net::sctp::event_type_t::ASSOC_CHANGE,
 		net::sctp::event_type_t::SHUTDOWN_EVENT,
 		net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -424,7 +421,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server, &tls, &sctp);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server, &tls);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
 		server.on <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие TLS fingerprint клиента

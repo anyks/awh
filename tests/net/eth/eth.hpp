@@ -34,8 +34,6 @@
  */
 class EthFixture : public testing::Test {
 	protected:
-		// Объект работы с Ethernet
-		std::unique_ptr <awh::eth_t> _eth;
 		// Объект сетевого адреса
 		std::unique_ptr <awh::net_addr_t> _addr;
 	public:

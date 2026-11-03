@@ -58,7 +58,7 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Метод сохранения принятого HMAC-nonce с LRU-вытеснением
+	 * @brief Функция сохранения принятого HMAC-nonce с LRU-вытеснением
 	 *
 	 * @param sign  параметры подписи
 	 * @param nonce одноразовое значение

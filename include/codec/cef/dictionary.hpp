@@ -200,7 +200,7 @@ namespace awh {
 				 *
 				 * @details The traversal of the dictionary in full is needed by a reference on the application and by
 				 *          a check of the sortedness of the table, while the search itself is to be conducted by the
-				 *          methods `find` and `search`
+				 *          functions `find` and `search`
 				 *
 				 * @param index ordinal number of a record of the dictionary
 				 * @return      record of the dictionary or nothing if the number goes beyond the table
@@ -237,7 +237,7 @@ namespace awh {
 				 * \~english
 				 * @brief Function of the search for a record of the dictionary by the full name of a key
 				 *
-				 * @details This method is the very second way to the reduced naming: a traversal of the tree issues
+				 * @details This function is the very second way to the reduced naming: a traversal of the tree issues
 				 *          the keys raw, while the full name is searched for by it.
 				 *
 				 * @param name full name of a key of an extension
