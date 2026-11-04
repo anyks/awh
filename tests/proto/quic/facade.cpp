@@ -599,7 +599,7 @@ namespace {
 				// Локальные транспортные параметры соединения
 				const awh::quic::params::params_t params = this->makeParams();
 				// Создаём фасад сервера QUIC на серверном шаблоне контекста безопасности
-				this->_server = std::make_unique <awh::server_t> (this->_security->context(awh::quic::endpoint_t::SERVER), &this->_security->coder());
+				this->_server = std::make_unique <awh::server_t> (this->_security->context(awh::quic::endpoint_t::SERVER));
 				// Создаём событие сервера транспорта QUIC поверх UDP
 				this->_server->init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 				// Устанавливаем локальные транспортные параметры соединений сервера
@@ -619,7 +619,7 @@ namespace {
 				// Регистрируем коллбэк завершения соединения на стороне сервера
 				this->_server->on <void (const event::id_t, const quic::error_t)> ("disconnect", &Harness::serverDisconnect, this, _1, _2);
 				// Создаём фасад клиента QUIC на транспорте клиентского шаблона контекста безопасности
-				this->_client = std::make_unique <awh::client_t> (this->_security->coder().transport(this->_security->context(awh::quic::endpoint_t::CLIENT)), &this->_security->coder());
+				this->_client = std::make_unique <awh::client_t> (awh::tls::coder::transport(this->_security->context(awh::quic::endpoint_t::CLIENT)));
 				// Создаём событие клиента транспорта QUIC поверх UDP
 				this->_client->init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 				// Устанавливаем локальные транспортные параметры соединения клиента

@@ -59,8 +59,6 @@ int32_t main(int32_t argc, char * argv[]){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	fmk::initialize();
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls;
 	// Добавляем новое событие сервера SCTP
 	event::id_t eid = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
@@ -68,17 +66,17 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(engine::initialize()){
 		// Регистрируем объект транспортного уровня безопасности
-		tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
+		tls::coder::id_t cts = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		tls::coder::alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации TLS
-		tls.ca(cts, "../sh/certificates", "ca.pem");
+		tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		tls.validateServerNameIndication(cts, false);
+		tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат TLS
-		tls.certificate(cts, "../sh/certificates/server/cert.pem");
+		tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		tls.privateKey(cts, "../sh/certificates/server/key.pem");
+		tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 		// Устананавливаем опции события
 		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Записываем в лог сообщение об успешной установке опций события
@@ -232,7 +230,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			engine::on(eid, static_cast <engine::callback::accept_t> ([cts, &tls](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			engine::on(eid, static_cast <engine::callback::accept_t> ([cts](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = engine::sctp::messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета
@@ -261,73 +259,73 @@ int32_t main(int32_t argc, char * argv[]){
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Выполнено подключение: " << engine::getAddress(cid, event::address_t::IPV4) << ":" << engine::getSourcePort(cid) << endl;
 					// Создаём идентификатор транспортного уровня DTLS
-					tls::coder_t::id_t ctl = tls.transport(cts);
+					tls::coder::id_t ctl = tls::coder::transport(cts);
 					// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-					tls.on(ctl, [&tls](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
+					tls::coder::on(ctl, [](const tls::coder::id_t id, const tls::coder::state_t state) noexcept -> void {
 						/**
 						 * Обрабатываем входящие состояния DTLS
 						 */
 						switch(static_cast <uint8_t> (state)){
 							// Если состояние ошибки транспортного уровня
-							case static_cast <uint8_t> (tls::coder_t::state_t::FAILED):
+							case static_cast <uint8_t> (tls::coder::state_t::FAILED):
 								// Записываем ошибку в лог транспортного уровня TLS
 								log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", log::flag_t::CRITICAL, id);
 							break;
 							// Если состояние уничтожения объекта транспортного уровня
-							case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED):
+							case static_cast <uint8_t> (tls::coder::state_t::DESTROYED):
 								// Записываем в лог сообщение об успешном удалении контекста TLS
 								log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", log::flag_t::INFO, id);
 							break;
 							// Если состояние рукопожатия успешно завершено
-							case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
+							case static_cast <uint8_t> (tls::coder::state_t::HANDSHAKED): {
 								// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-								cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
-								cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
-								cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls.serverNameIndication(id) << endl << endl;
+								cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls::coder::info(id) << endl;
+								cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls::coder::alpn(id) << endl;
+								cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls::coder::serverNameIndication(id) << endl << endl;
 								cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-								cout << "Версия OpenSSL: " << tls.version() << endl << endl;
-								cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
-								cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
-								cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
-								cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+								cout << "Версия OpenSSL: " << tls::coder::version() << endl << endl;
+								cout << "Cipher: " << tls::coder::cipherInfo(id) << endl << endl;
+								cout << "Certificate: " << tls::coder::certificateInfo(id) << endl << endl;
+								cout << "CRL Info: " << tls::coder::certificateRevocationListInfo(id) << endl << endl;
+								cout << "Certificate Validation: " << (tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
 								// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-								log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log::flag_t::INFO, id, tls.alpn(id));
+								log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log::flag_t::INFO, id, tls::coder::alpn(id));
 							} break;
 						}
 					});
 					// Регистрируем функцию обратного вызова на получение ошибок TLS
-					tls.on(ctl, [](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
+					tls::coder::on(ctl, [](const tls::coder::id_t id, [[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept -> void {
 						// Записываем в лог сообщение о предупреждающей ошибке TLS
 						log::print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log::flag_t::CRITICAL, id, message.c_str());
 					});
 					// Регистрируем функцию обратного вызова на запись данных TLS
-					tls.on(ctl, [](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const size_t size) noexcept -> void {
+					tls::coder::on(ctl, [](const tls::coder::id_t id, const tls::coder::event_t event, const size_t size) noexcept -> void {
 						/**
 						 * Обрабатываем тип события TLS
 						 */
 						switch(static_cast <uint8_t> (event)){
 							// Если событие шифрования данных TLS
-							case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION):
+							case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION):
 								// Записываем в лог сообщение о записи зашифрованных данных TLS
 								log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log::flag_t::INFO, id, size);
 							break;
 							// Если событие дешифрования данных TLS
-							case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+							case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
 								// Записываем в лог сообщение о записи дешифрованных данных TLS
 								log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log::flag_t::INFO, id, size);
 							break;
 						}
 					});
 					// Устанавливаем клиента TLS для события
-					tls.peer(ctl, engine::getAddress(cid, event::address_t::IPV4), engine::getSourcePort(cid));
+					tls::coder::peer(ctl, engine::getAddress(cid, event::address_t::IPV4), engine::getSourcePort(cid));
 					// Регистрируем функцию обратного вызова на чтение данных TLS
-					tls.on(ctl, [cid, &tls](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+					tls::coder::on(ctl, [cid](const tls::coder::id_t id, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 						/**
 						 * Обрабатываем тип события TLS
 						 */
 						switch(static_cast <uint8_t> (event)){
 							// Если событие шифрования данных TLS
-							case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+							case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 								// Отправляем данные обратно клиенту
 								if(engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 									// Если данные успешно отправлены
@@ -336,13 +334,13 @@ int32_t main(int32_t argc, char * argv[]){
 								else log::print("Ошибка отправки зашифрованных данных: ID=%u", log::flag_t::CRITICAL, cid);
 							} break;
 							// Если событие дешифрования данных TLS
-							case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
+							case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION): {
 								// Получаем ответ сервера в расшифрованном виде
 								const string response(reinterpret_cast <const char *> (buffer), size);
 								// Записываем в лог сообщение полученных данных с сервера
 								log::print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", log::flag_t::INFO, id, size, response.c_str());
 								// Если данные успешно зашифрованы TLS
-								if(tls.encrypt(id, response.c_str(), response.size()))
+								if(tls::coder::encrypt(id, response.c_str(), response.size()))
 									// Записываем в лог сообщение об успешном шифровании данных TLS
 									log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log::flag_t::INFO, id, response.size());
 								// Если данные не отправлены
@@ -351,9 +349,9 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Устанавливаем функцию обратного вызова на чтение из события
-					engine::on(cid, [ctl, &tls](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					engine::on(cid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Если данные успешно дешифрованы TLS
-						if(tls.decrypt(ctl, data, size))
+						if(tls::coder::decrypt(ctl, data, size))
 							// Записываем в лог сообщение об успешном дешифровании данных TLS
 							log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log::flag_t::INFO, ctl, size);
 						// Если данные не отправлены
@@ -428,7 +426,7 @@ int32_t main(int32_t argc, char * argv[]){
 						}
 					});
 					// Если рукопожатие TLS успешно
-					if(tls.handshake(ctl))
+					if(tls::coder::handshake(ctl))
 						// Записываем в лог сообщение о начале рукопожатия TLS
 						log::print("Начинаем процесс рукопожатия: ID=%u", log::flag_t::INFO, ctl);
 					// Если рукопожатие TLS не выполнено

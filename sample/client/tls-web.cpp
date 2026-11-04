@@ -154,7 +154,7 @@ class Executor {
 		 * @param message сообщение об ошибке TLS
 		 *
 		 */
-		void errorTLS([[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
+		void errorTLS([[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
 			log::print("TLS error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
@@ -182,26 +182,24 @@ int32_t main(){
 	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls;
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4);
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Устанавливаем хост сервера для подключения клиента
 	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
-	tls.alpn(cts, {{0,"http/1.1"}});
+	tls::coder::alpn(cts, {{0,"http/1.1"}});
 	// Устанавливаем файл центра сертификации TLS
-	tls.ca(cts, "../sh/certificates", "ca.pem");
+	tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 	// Включаем проверку имени хоста TLS
-	tls.validateServerNameIndication(cts, true);
+	tls::coder::validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
-	tls.serverNameIndication(cts, host);
+	tls::coder::serverNameIndication(cts, host);
 	// Создаём объект клиента
-	client_t client(tls.transport(cts), &tls, &dns);
+	client_t client(tls::coder::transport(cts), &dns);
 	// Создаём событие клиента и сохраняем его идентификатор
 	[[maybe_unused]] const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
@@ -225,7 +223,7 @@ int32_t main(){
 		// Регистрируем функцию обратного вызова на событие ошибок клиента
 		client.on <void (const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
-		client.on <void (const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2);
+		client.on <void (const tls::coder::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие готовности клиента к работе
 		client.on <void (const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3);
 		// Запускаем событие клиента

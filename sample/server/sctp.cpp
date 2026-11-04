@@ -117,7 +117,7 @@ class Executor {
 		 * @param tls  объект TLS кодера
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
@@ -144,17 +144,17 @@ class Executor {
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls->info(tid) << endl;
-				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls->alpn(tid) << endl;
-				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls->serverNameIndication(tid) << endl << endl;
+				cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls::coder::info(tid) << endl;
+				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls::coder::alpn(tid) << endl;
+				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls::coder::serverNameIndication(tid) << endl << endl;
 				cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-				cout << "Версия OpenSSL: " << tls->version() << endl << endl;
-				cout << "Cipher: " << tls->cipherInfo(tid) << endl << endl;
-				cout << "Certificate: " << tls->certificateInfo(tid) << endl << endl;
-				cout << "CRL Info: " << tls->certificateRevocationListInfo(tid) << endl << endl;
-				cout << "Certificate Validation: " << (tls->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
+				cout << "Версия OpenSSL: " << tls::coder::version() << endl << endl;
+				cout << "Cipher: " << tls::coder::cipherInfo(tid) << endl << endl;
+				cout << "Certificate: " << tls::coder::certificateInfo(tid) << endl << endl;
+				cout << "CRL Info: " << tls::coder::certificateRevocationListInfo(tid) << endl << endl;
+				cout << "Certificate Validation: " << (tls::coder::validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
 				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				log::print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log::flag_t::INFO, tid, tls->alpn(tid));
+				log::print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log::flag_t::INFO, tid, tls::coder::alpn(tid));
 				// Выполняем подписку на SCTP события
 				engine::sctp::eventsSubscribe(cid, {
 					net::sctp::event_type_t::ASSOC_CHANGE,
@@ -298,7 +298,7 @@ class Executor {
 		 * @param message сообщение об ошибке TLS
 		 *
 		 */
-		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
+		void errorTLS([[maybe_unused]] const tls::coder::id_t id, [[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
 			log::print("TLS error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
@@ -311,7 +311,7 @@ class Executor {
 		 * @param fgp     объект отпечатка браузера
 		 *
 		 */
-		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
+		void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
 			// Записываем в лог информацию о браузере клиента, который подключился к серверу
 			log::print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log::flag_t::INFO, id, eid, fgp->print(browser).c_str());
 		}
@@ -344,14 +344,14 @@ int32_t main(int32_t argc, char * argv[]){
 	Executor executor;
 	// Создаём объект отпечатка браузера
 	tls::fgp_t fgp;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls(&fgp);
+	// Устанавливаем объект для работы с отпечатками TLS
+	tls::coder::fingerprint(&fgp);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4);
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Создаём объект сервера
-	server_t server(cts, &tls, &dns);
+	server_t server(cts, &dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
@@ -370,14 +370,14 @@ int32_t main(int32_t argc, char * argv[]){
 		net::sctp::event_type_t::REMOTE_ERROR
 	});
 	// Устанавливаем ALPN протоколы TLS
-	tls.alpn(cts, {
+	tls::coder::alpn(cts, {
 		{0,"h3"},
 		{1,"http/1.1"}
 	});
 	// Устанавливаем файл центра сертификации TLS
-	tls.ca(cts, "../sh/certificates", "ca.pem");
+	tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 	// Устанавливаем список доступных шифров TLS
-	tls.ciphers(cts, {
+	tls::coder::ciphers(cts, {
 		tls::cipher_t::TLS_AES_128_GCM_SHA256,
 		tls::cipher_t::TLS_AES_256_GCM_SHA384,
 		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
@@ -395,17 +395,17 @@ int32_t main(int32_t argc, char * argv[]){
 		tls::cipher_t::AES256_SHA
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS
-	tls.compressors(cts, {
+	tls::coder::compressors(cts, {
 		compressor::method_t::ZLIB,
 		compressor::method_t::ZSTD,
 		compressor::method_t::BROTLI
 	});
 	// Включаем проверку имени хоста TLS
-	tls.validateServerNameIndication(cts, false);
+	tls::coder::validateServerNameIndication(cts, false);
 	// Устанавливаем клиентский сертификат TLS
-	tls.certificate(cts, "../sh/certificates/server/cert.pem");
+	tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ TLS
-	tls.privateKey(cts, "../sh/certificates/server/key.pem");
+	tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(3333) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
@@ -421,11 +421,11 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server, &tls);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
-		server.on <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3);
+		server.on <void (const tls::coder::id_t, const tls::coder::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие TLS fingerprint клиента
-		server.on <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", &Executor::fingerprintTLS, &executor, _1, _2, _3, &fgp);
+		server.on <void (const tls::coder::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", &Executor::fingerprintTLS, &executor, _1, _2, _3, &fgp);
 		// Запускаем событие сервера
 		server.start();
 	}

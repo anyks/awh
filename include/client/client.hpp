@@ -129,7 +129,7 @@ namespace awh {
 				// Идентификатор клиента
 				event::id_t eid;
 				// Контекст безопасности TLS
-				tls::coder_t::id_t ctl;
+				tls::coder::id_t ctl;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -214,9 +214,6 @@ namespace awh {
 		protected:
 			// Объект юнита клиента
 			unique_ptr <unit_t> _unit;
-		protected:
-			// Объект транспортного уровня безопасности
-			tls::coder_t * _coder;
 		protected:
 			/**
 			 * \~russian
@@ -708,7 +705,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept;
+			virtual void stateTLS(const tls::coder::id_t, const tls::coder::state_t state) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод получения ошибок TLS
@@ -726,7 +723,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void errorTLS(const tls::coder_t::id_t, const tls::coder_t::error_t error, const string & message) noexcept;
+			virtual void errorTLS(const tls::coder::id_t, const tls::coder::error_t error, const string & message) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
@@ -746,7 +743,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void processTLS(const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -2066,36 +2063,32 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param ctl   идентификатор контекста безопасности
-			 * @param coder объект транспортного уровня безопасности
+			 * @param ctl идентификатор контекста безопасности
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param ctl   security context identifier
-			 * @param coder transport layer security object
+			 * @param ctl security context identifier
 			 *
 			 * \~
 			 */
-			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept;
+			explicit Client(const tls::coder::id_t ctl) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param ctl   идентификатор контекста безопасности
-			 * @param coder объект транспортного уровня безопасности
-			 * @param dns   объект DNS-резолвера
+			 * @param ctl идентификатор контекста безопасности
+			 * @param dns объект DNS-резолвера
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param ctl   security context identifier
-			 * @param coder transport layer security object
-			 * @param dns   DNS resolver object
+			 * @param ctl security context identifier
+			 * @param dns DNS resolver object
 			 *
 			 * \~
 			 */
-			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept;
+			explicit Client(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept;
 		public:
 			/**
 			 * \~russian

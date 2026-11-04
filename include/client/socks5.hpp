@@ -253,7 +253,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				void stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept;
+				void stateTLS(const tls::coder::id_t, const tls::coder::state_t state) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения событий шифрования/дешифрования данных TLS
@@ -273,7 +273,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				void processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+				void processTLS(const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -569,36 +569,32 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param ctl   идентификатор контекста безопасности
-				 * @param coder объект транспортного уровня безопасности
+				 * @param ctl идентификатор контекста безопасности
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param ctl   security context identifier
-				 * @param coder transport layer security object
+				 * @param ctl security context identifier
 				 *
 				 * \~
 				 */
-				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept;
+				explicit Socks5(const tls::coder::id_t ctl) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param ctl   идентификатор контекста безопасности
-				 * @param coder объект транспортного уровня безопасности
-				 * @param dns   объект DNS-резолвера
+				 * @param ctl идентификатор контекста безопасности
+				 * @param dns объект DNS-резолвера
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param ctl   security context identifier
-				 * @param coder transport layer security object
-				 * @param dns   DNS resolver object
+				 * @param ctl security context identifier
+				 * @param dns DNS resolver object
 				 *
 				 * \~
 				 */
-				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept;
+				explicit Socks5(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept;
 			public:
 				/**
 				 * \~russian

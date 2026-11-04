@@ -133,8 +133,6 @@ void TlsFixture::SetUp(){
 	 * некорректные данные, и его диагностика забивала бы вывод теста
 	 */
 	awh::log::level(awh::log::level_t::NONE);
-	// Создаём объект кодера транспортной безопасности
-	this->_coder = std::make_unique <awh::tls::Coder> ();
 	// Выполняем генерацию самоподписанного сертификата тестового узла
 	this->makeCertificate(this->_certificate, this->_privateKey);
 }
@@ -151,8 +149,6 @@ void TlsFixture::TearDown(){
 	if(!this->_privateKey.empty())
 		// Удаляем файл приватного ключа
 		::remove(this->_privateKey.c_str());
-	// Освобождаем объект кодера транспортной безопасности
-	this->_coder.reset(nullptr);
 	// Освобождаем объект для работы с логами
 	// Освобождаем объект фреймворка
 }

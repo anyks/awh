@@ -2136,17 +2136,15 @@ namespace awh {
 					 *
 					 * @param endpoint роль локального эндпоинта на соединении
 					 * @param ctx      идентификатор шаблона контекста безопасности
-					 * @param coder    объект кодера транспортной безопасности
 					 *
 					 * \~english
 					 * @brief Constructor
 					 * @param endpoint role of the local endpoint on the connection
 					 * @param ctx      identifier of the template of the context of the safety
-					 * @param coder    object of the coder of the transport safety
 					 *
 					 * \~
 					 */
-					explicit Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
+					explicit Crypto(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept;
 				} crypto_t;
 			private:
 				// Основные скаляры состояния соединения
@@ -2189,11 +2187,9 @@ namespace awh {
 				rtt_t _rtt;
 			private:
 				// Идентификатор шаблона контекста безопасности (для кэша билетов возобновления)
-				tls::coder_t::id_t _ctx;
+				tls::coder::id_t _ctx;
 				// Флаг сохранения полученного билета возобновления в кэш кодера (сохраняется однократно)
 				bool _persisted;
-				// Объект кодера транспортной безопасности (кэш билетов возобновления по ключу сервера)
-				const tls::coder_t & _coder;
 			private:
 				// Криптографическое состояние соединения (RFC 9001)
 				crypto_t _crypto;
@@ -3228,7 +3224,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				tls::coder_t::alpn_t alpn() const noexcept;
+				tls::coder::alpn_t alpn() const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -4557,11 +4553,10 @@ namespace awh {
 				 *       кодера транспортной безопасности: сертификаты, доверенные
 				 *       центры, проверка узла, доменное имя и список ALPN-протоколов
 				 *       настраиваются там и здесь не дублируются. Владение контекстом
-				 *       остаётся за кодером, поэтому кодер обязан пережить соединение
+				 *       остаётся за модулем транспортной безопасности
 				 *
 				 * @param endpoint роль локального эндпоинта на соединении
 				 * @param ctx      идентификатор шаблона контекста безопасности
-				 * @param coder    объект кодера транспортной безопасности
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -4569,14 +4564,13 @@ namespace awh {
 				 *       of the coder of the transport safety: the certificates, the trusted
 				 *       centres, the checking of the node, the domain name and the list of the ALPN protocols
 				 *       are configured there and are not duplicated here. The ownership of the context
-				 *       remains at the coder, therefore the coder is obliged to survive the connection
+				 *       remains at the transport security module
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the context of the safety
-				 * @param coder    object of the coder of the transport safety
 				 *
 				 * \~
 				 */
-				explicit Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
+				explicit Connection(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept;
 		} connection_t;
 	};
 };

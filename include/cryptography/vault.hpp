@@ -89,7 +89,7 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Vault {
 		public:
 			// Тип укрытого буфера: содержимое его не уходит в подкачку и затирается при возврате
-			typedef std::vector <char, alloc::Keeper <char>> buffer_t;
+			typedef vector <char, alloc::Keeper <char>> buffer_t;
 		public:
 			/**
 			 * \~russian

@@ -109,7 +109,7 @@ class Executor {
 		 * @param server объект сервера
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 		}
@@ -197,7 +197,7 @@ int32_t main(){
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
 		// Запускаем событие сервера
 		server.start();
 	}

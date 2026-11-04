@@ -179,23 +179,13 @@ namespace {
 	}
 };
 /**
- * @brief Метод доступа к объекту кодера транспортной безопасности
- *
- * @return объект кодера транспортной безопасности
- *
- */
-awh::tls::Coder & awh::benchmark::quic::Security::coder() noexcept {
-	// Выводим объект кодера транспортной безопасности
-	return this->_coder;
-}
-/**
  * @brief Метод извлечения шаблона контекста безопасности роли эндпоинта
  *
  * @param endpoint роль эндпоинта
  * @return         идентификатор шаблона контекста безопасности
  *
  */
-awh::tls::Coder::id_t awh::benchmark::quic::Security::context(const awh::quic::endpoint_t endpoint) const noexcept {
+awh::tls::coder::id_t awh::benchmark::quic::Security::context(const awh::quic::endpoint_t endpoint) const noexcept {
 	// Выводим шаблон контекста безопасности запрошенной роли
 	return ((endpoint == awh::quic::endpoint_t::CLIENT) ? this->_client : this->_server);
 }
@@ -204,7 +194,7 @@ awh::tls::Coder::id_t awh::benchmark::quic::Security::context(const awh::quic::e
  *
  */
 awh::benchmark::quic::Security::Security() noexcept :
- _client(0), _server(0), _coder() {
+ _client(0), _server(0) {
 	// Сертификат узла бенчмарка в формате PEM
 	std::string certificate = "";
 	// Приватный ключ узла бенчмарка в формате PEM
@@ -224,31 +214,31 @@ awh::benchmark::quic::Security::Security() noexcept :
 		// Выходим из конструктора - контексты останутся несозданными
 		return;
 	// Создаём шаблоны контекста безопасности протокола QUIC
-	this->_client = this->_coder.context(event::node_t::CLIENT, event::protocol_t::QUIC);
+	this->_client = awh::tls::coder::context(event::node_t::CLIENT, event::protocol_t::QUIC);
 	// Создаём шаблон контекста безопасности сервера
-	this->_server = this->_coder.context(event::node_t::SERVER, event::protocol_t::QUIC);
+	this->_server = awh::tls::coder::context(event::node_t::SERVER, event::protocol_t::QUIC);
 	// Если шаблоны контекста безопасности не созданы
 	if((this->_client == 0) || (this->_server == 0))
 		// Выходим из конструктора
 		return;
 	// Устанавливаем список поддерживаемых ALPN-протоколов клиента (RFC 9001 §8.1)
-	this->_coder.alpn(this->_client, {tls::Coder::alpn_t{0, "h3"}});
+	awh::tls::coder::alpn(this->_client, {tls::coder::alpn_t{0, "h3"}});
 	// Устанавливаем список поддерживаемых ALPN-протоколов сервера
-	this->_coder.alpn(this->_server, {tls::Coder::alpn_t{0, "h3"}});
+	awh::tls::coder::alpn(this->_server, {tls::coder::alpn_t{0, "h3"}});
 	// Устанавливаем доменное имя удалённого узла на клиенте
-	this->_coder.serverNameIndication(this->_client, "localhost");
+	awh::tls::coder::serverNameIndication(this->_client, "localhost");
 	// Снимаем проверку сертификата удалённого узла на клиенте
-	this->_coder.validateServerNameIndication(this->_client, false);
+	awh::tls::coder::validateServerNameIndication(this->_client, false);
 	// Устанавливаем сертификат узла бенчмарка на сервере
-	this->_coder.certificate(this->_server, this->_certificate);
+	awh::tls::coder::certificate(this->_server, this->_certificate);
 	// Устанавливаем приватный ключ узла бенчмарка на сервере
-	this->_coder.privateKey(this->_server, this->_privateKey);
+	awh::tls::coder::privateKey(this->_server, this->_privateKey);
 	/**
 	 * Снимаем проверку на сервере: шаблон контекста создаётся с включённой
 	 * проверкой, а на серверном узле это означает требование клиентского
 	 * сертификата, то есть взаимную аутентификацию
 	 */
-	this->_coder.validateServerNameIndication(this->_server, false);
+	awh::tls::coder::validateServerNameIndication(this->_server, false);
 }
 /**
  * @brief Деструктор

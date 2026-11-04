@@ -40,23 +40,23 @@ using namespace awh;
  */
 TEST_F(TlsFixture, ContextCreateTest){
 	// Создаём шаблон контекста безопасности клиента поверх TCP
-	const tls::Coder::id_t client = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t client = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста клиента создан
 	ASSERT_NE(client, 0u);
 	// Создаём шаблон контекста безопасности сервера поверх TCP
-	const tls::Coder::id_t server = this->_coder->context(event::node_t::SERVER, event::protocol_t::TCP);
+	const tls::coder::id_t server = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста сервера создан
 	ASSERT_NE(server, 0u);
 	// Проверяем что идентификаторы шаблонов различаются
 	ASSERT_NE(client, server);
 	// Создаём шаблон контекста безопасности клиента поверх UDP
-	const tls::Coder::id_t datagram = this->_coder->context(event::node_t::CLIENT, event::protocol_t::UDP);
+	const tls::coder::id_t datagram = tls::coder::context(event::node_t::CLIENT, event::protocol_t::UDP);
 	// Проверяем что шаблон контекста поверх UDP создан
 	ASSERT_NE(datagram, 0u);
 	// Выполняем удаление созданных шаблонов контекста
-	ASSERT_TRUE(this->_coder->destroy(client));
-	ASSERT_TRUE(this->_coder->destroy(server));
-	ASSERT_TRUE(this->_coder->destroy(datagram));
+	ASSERT_TRUE(tls::coder::destroy(client));
+	ASSERT_TRUE(tls::coder::destroy(server));
+	ASSERT_TRUE(tls::coder::destroy(datagram));
 }
 
 /**
@@ -69,15 +69,15 @@ TEST_F(TlsFixture, ContextCreateTest){
  */
 TEST_F(TlsFixture, TransportCreateTest){
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Создаём первый транспортный уровень из шаблона контекста
-	const tls::Coder::id_t first = this->_coder->transport(context);
+	const tls::coder::id_t first = tls::coder::transport(context);
 	// Проверяем что транспортный уровень создан
 	ASSERT_NE(first, 0u);
 	// Создаём второй транспортный уровень из того же шаблона контекста
-	const tls::Coder::id_t second = this->_coder->transport(context);
+	const tls::coder::id_t second = tls::coder::transport(context);
 	// Проверяем что второй транспортный уровень создан
 	ASSERT_NE(second, 0u);
 	// Проверяем что транспортные уровни различаются
@@ -85,9 +85,9 @@ TEST_F(TlsFixture, TransportCreateTest){
 	// Проверяем что транспортный уровень отличается от шаблона контекста
 	ASSERT_NE(first, context);
 	// Выполняем удаление созданных объектов
-	ASSERT_TRUE(this->_coder->destroy(first));
-	ASSERT_TRUE(this->_coder->destroy(second));
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(first));
+	ASSERT_TRUE(tls::coder::destroy(second));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -107,31 +107,31 @@ TEST_F(TlsFixture, TransportCreateTest){
  */
 TEST_F(TlsFixture, LateCallAfterInternalErrorTest){
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Создаём транспортный уровень из шаблона контекста
-	const tls::Coder::id_t transport = this->_coder->transport(context);
+	const tls::coder::id_t transport = tls::coder::transport(context);
 	// Проверяем что транспортный уровень создан
 	ASSERT_NE(transport, 0u);
 	// Буфер заведомо негодных данных, доводящий разбор до неустранимой ошибки
 	const std::vector <uint8_t> garbage(64, static_cast <uint8_t> ('z'));
 	// Выполняем расшифровку негодных данных и получаем отказ
-	ASSERT_FALSE(this->_coder->decrypt(transport, garbage.data(), garbage.size()));
+	ASSERT_FALSE(tls::coder::decrypt(transport, garbage.data(), garbage.size()));
 	/**
 	 * Участник помечен мусорным изнутри разбора, но памяти не отдал: все три работы
 	 * обязаны отвечать отказом, а не читать освобождённое
 	 */
 	// Выполняем запоздалую расшифровку на том же опознавателе
-	ASSERT_FALSE(this->_coder->decrypt(transport, garbage.data(), garbage.size()));
+	ASSERT_FALSE(tls::coder::decrypt(transport, garbage.data(), garbage.size()));
 	// Выполняем запоздалое шифрование на том же опознавателе
-	ASSERT_FALSE(this->_coder->encrypt(transport, garbage.data(), garbage.size()));
+	ASSERT_FALSE(tls::coder::encrypt(transport, garbage.data(), garbage.size()));
 	// Выполняем запоздалое рукопожатие на том же опознавателе
-	ASSERT_FALSE(this->_coder->handshake(transport));
+	ASSERT_FALSE(tls::coder::handshake(transport));
 	// Выполняем снятие транспортного уровня - только оно возвращает память
-	ASSERT_TRUE(this->_coder->destroy(transport));
+	ASSERT_TRUE(tls::coder::destroy(transport));
 	// Выполняем снятие шаблона контекста безопасности
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -151,21 +151,21 @@ TEST_F(TlsFixture, LateCallAfterInternalErrorTest){
  */
 TEST_F(TlsFixture, DestroyNotifiesStateTest){
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Создаём транспортный уровень из шаблона контекста
-	const tls::Coder::id_t transport = this->_coder->transport(context);
+	const tls::coder::id_t transport = tls::coder::transport(context);
 	// Проверяем что транспортный уровень создан
 	ASSERT_NE(transport, 0u);
 	// Количество полученных извещений о снятии
 	uint32_t destroyed = 0;
 	// Опознаватель, с каким пришло извещение о снятии
-	tls::Coder::id_t reported = 0;
+	tls::coder::id_t reported = 0;
 	// Устанавливаем отклик состояния транспортного уровня
-	ASSERT_TRUE(this->_coder->on(transport, [&](const tls::Coder::id_t id, const tls::Coder::state_t state) noexcept {
+	ASSERT_TRUE(tls::coder::on(transport, [&](const tls::coder::id_t id, const tls::coder::state_t state) noexcept {
 		// Если состояние является снятием контекста
-		if(state == tls::Coder::state_t::DESTROYED){
+		if(state == tls::coder::state_t::DESTROYED){
 			// Выполняем подсчёт извещений о снятии
 			destroyed++;
 			// Запоминаем опознаватель извещения
@@ -173,13 +173,13 @@ TEST_F(TlsFixture, DestroyNotifiesStateTest){
 		}
 	}));
 	// Выполняем снятие транспортного уровня
-	ASSERT_TRUE(this->_coder->destroy(transport));
+	ASSERT_TRUE(tls::coder::destroy(transport));
 	// Проверяем что извещение о снятии получено ровно одно
 	ASSERT_EQ(destroyed, 1u);
 	// Проверяем что извещение пришло с опознавателем снятого уровня
 	ASSERT_EQ(reported, transport);
 	// Выполняем снятие шаблона контекста безопасности
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -192,22 +192,22 @@ TEST_F(TlsFixture, DestroyNotifiesStateTest){
  */
 TEST_F(TlsFixture, NativeContextTest){
 	// Проверяем что нативный контекст несуществующего идентификатора не выдаётся
-	ASSERT_EQ(this->_coder->native(0), nullptr);
+	ASSERT_EQ(tls::coder::native(0), nullptr);
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Проверяем что нативный контекст шаблона выдаётся
-	ASSERT_NE(this->_coder->native(context), nullptr);
+	ASSERT_NE(tls::coder::native(context), nullptr);
 	// Создаём транспортный уровень из шаблона контекста
-	const tls::Coder::id_t transport = this->_coder->transport(context);
+	const tls::coder::id_t transport = tls::coder::transport(context);
 	// Проверяем что транспортный уровень создан
 	ASSERT_NE(transport, 0u);
 	// Проверяем что нативный контекст транспортного уровня совпадает с контекстом шаблона
-	ASSERT_EQ(this->_coder->native(transport), this->_coder->native(context));
+	ASSERT_EQ(tls::coder::native(transport), tls::coder::native(context));
 	// Выполняем удаление созданных объектов
-	ASSERT_TRUE(this->_coder->destroy(transport));
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(transport));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -222,23 +222,23 @@ TEST_F(TlsFixture, CertificateSetupTest){
 	ASSERT_FALSE(this->_certificate.empty());
 	ASSERT_FALSE(this->_privateKey.empty());
 	// Создаём шаблон контекста безопасности сервера
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::SERVER, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Устанавливаем сертификат тестового узла
-	this->_coder->certificate(context, this->_certificate);
+	tls::coder::certificate(context, this->_certificate);
 	// Устанавливаем приватный ключ тестового узла
-	this->_coder->privateKey(context, this->_privateKey);
+	tls::coder::privateKey(context, this->_privateKey);
 	// Устанавливаем несуществующий сертификат - обработка обязана быть безопасной
-	this->_coder->certificate(context, "/nonexistent/path/to/certificate.pem");
+	tls::coder::certificate(context, "/nonexistent/path/to/certificate.pem");
 	// Устанавливаем несуществующий приватный ключ
-	this->_coder->privateKey(context, "/nonexistent/path/to/private.key");
+	tls::coder::privateKey(context, "/nonexistent/path/to/private.key");
 	// Устанавливаем пустой путь к сертификату
-	this->_coder->certificate(context, "");
+	tls::coder::certificate(context, "");
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(this->_coder->native(context), nullptr);
+	ASSERT_NE(tls::coder::native(context), nullptr);
 	// Выполняем удаление шаблона контекста
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -249,21 +249,21 @@ TEST_F(TlsFixture, CertificateSetupTest){
  */
 TEST_F(TlsFixture, CertificateAuthoritySetupTest){
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Устанавливаем доверенный центр сертификации файлом
-	this->_coder->ca(context, this->_certificate);
+	tls::coder::ca(context, this->_certificate);
 	// Устанавливаем доверенный центр сертификации каталогом и файлом
-	this->_coder->ca(context, "", this->_certificate);
+	tls::coder::ca(context, "", this->_certificate);
 	// Устанавливаем несуществующий доверенный центр сертификации
-	this->_coder->ca(context, "/nonexistent/path/to/ca.pem");
+	tls::coder::ca(context, "/nonexistent/path/to/ca.pem");
 	// Устанавливаем пустой путь к доверенному центру сертификации
-	this->_coder->ca(context, "");
+	tls::coder::ca(context, "");
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(this->_coder->native(context), nullptr);
+	ASSERT_NE(tls::coder::native(context), nullptr);
 	// Выполняем удаление шаблона контекста
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -275,23 +275,23 @@ TEST_F(TlsFixture, CertificateAuthoritySetupTest){
  */
 TEST_F(TlsFixture, NegotiationSetupTest){
 	// Создаём шаблон контекста безопасности клиента
-	const tls::Coder::id_t context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Устанавливаем список протоколов приложения
-	this->_coder->alpn(context, {tls::Coder::alpn_t{0, "h2"}, tls::Coder::alpn_t{0, "http/1.1"}});
+	tls::coder::alpn(context, {tls::coder::alpn_t{0, "h2"}, tls::coder::alpn_t{0, "http/1.1"}});
 	// Устанавливаем доменное имя удалённого узла
-	this->_coder->serverNameIndication(context, "example.com");
+	tls::coder::serverNameIndication(context, "example.com");
 	// Проверяем что доменное имя сохранено
-	ASSERT_EQ(this->_coder->serverNameIndication(context), "example.com");
+	ASSERT_EQ(tls::coder::serverNameIndication(context), "example.com");
 	// Устанавливаем режим единственного сертификата
-	this->_coder->mode(context, tls::Coder::mode_t::UNICERT);
+	tls::coder::mode(context, tls::coder::mode_t::UNICERT);
 	// Устанавливаем проверку доменного имени удалённого узла
-	this->_coder->validateServerNameIndication(context, true);
+	tls::coder::validateServerNameIndication(context, true);
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(this->_coder->native(context), nullptr);
+	ASSERT_NE(tls::coder::native(context), nullptr);
 	// Выполняем удаление шаблона контекста
-	ASSERT_TRUE(this->_coder->destroy(context));
+	ASSERT_TRUE(tls::coder::destroy(context));
 }
 
 /**
@@ -310,19 +310,19 @@ TEST_F(TlsFixture, NegotiationSetupTest){
  */
 TEST_F(TlsFixture, InvalidIdentifierTest){
 	// Недопустимый идентификатор объекта
-	const tls::Coder::id_t invalid = 0;
+	const tls::coder::id_t invalid = 0;
 	// Проверяем отказ создания транспортного уровня по недопустимому идентификатору
-	ASSERT_EQ(this->_coder->transport(invalid), 0u);
+	ASSERT_EQ(tls::coder::transport(invalid), 0u);
 	// Проверяем отказ получения нативного контекста
-	ASSERT_EQ(this->_coder->native(invalid), nullptr);
+	ASSERT_EQ(tls::coder::native(invalid), nullptr);
 	// Проверяем отказ удаления несуществующего объекта
-	ASSERT_FALSE(this->_coder->destroy(invalid));
+	ASSERT_FALSE(tls::coder::destroy(invalid));
 	// Выполняем настройку несуществующего объекта - обработка обязана быть безопасной
-	this->_coder->ca(invalid, this->_certificate);
+	tls::coder::ca(invalid, this->_certificate);
 	// Выполняем установку сертификата несуществующего объекта
-	this->_coder->certificate(invalid, this->_certificate);
+	tls::coder::certificate(invalid, this->_certificate);
 	// Выполняем установку доменного имени несуществующего объекта
-	this->_coder->serverNameIndication(invalid, "example.com");
+	tls::coder::serverNameIndication(invalid, "example.com");
 	// Проверяем что доменное имя несуществующего объекта пустое
-	ASSERT_TRUE(this->_coder->serverNameIndication(invalid).empty());
+	ASSERT_TRUE(tls::coder::serverNameIndication(invalid).empty());
 }

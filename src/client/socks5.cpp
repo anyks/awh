@@ -355,9 +355,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если идентификатор клиента соответствует идентификатору socks5 клиента
 				if(eid == this->_id.eid){
 					// Если объект транспортного уровня безопасности установлен
-					if((this->_coder != nullptr) && (this->_id.ctl > 0)){
+					if(this->_id.ctl > 0){
 						// Если данные не расшифрованы
-						if(!this->_coder->decrypt(this->_id.ctl, buffer, size)){
+						if(!tls::coder::decrypt(this->_id.ctl, buffer, size)){
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error_tls")){
 								/**
@@ -384,9 +384,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						// Если установлен хост клиента, которому адресован UDP-пакет
 						if(this->_endpoint.udp.ctx.host != nullptr){
 							// Если объект транспортного уровня безопасности установлен
-							if((this->_coder != nullptr) && (this->_id.ctl > 0)){
+							if(this->_id.ctl > 0){
 								// Если данные не расшифрованы
-								if(!this->_coder->decrypt(this->_id.ctl, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size)){
+								if(!tls::coder::decrypt(this->_id.ctl, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size)){
 									// Если функция обратного вызова не установлена
 									if(!this->_callback.is("error_tls")){
 										/**
@@ -796,9 +796,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
+								if(this->_id.ctl > 0){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_coder->handshake(this->_id.ctl)){
+									if(!tls::coder::handshake(this->_id.ctl)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -974,9 +974,9 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
+								if(this->_id.ctl > 0){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_coder->handshake(this->_id.ctl)){
+									if(!tls::coder::handshake(this->_id.ctl)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -1082,13 +1082,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
  * @param state состояние TLS
  *
  */
-void awh::client::Socks5::stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept {
+void awh::client::Socks5::stateTLS(const tls::coder::id_t, const tls::coder::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const tls::coder_t::state_t)> ("state_tls", state);
+		this->_callback.call <void (const tls::coder::state_t)> ("state_tls", state);
 		// Если состояние рукопожатия успешно завершено
-		if(state == tls::coder_t::state_t::HANDSHAKED)
+		if(state == tls::coder::state_t::HANDSHAKED)
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const bool)> ("connect", true);
 	}
@@ -1102,7 +1102,7 @@ void awh::client::Socks5::stateTLS(const tls::coder_t::id_t, const tls::coder_t:
  * @param size   размер данных для события шифрования/дешифрования TLS
  *
  */
-void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+void awh::client::Socks5::processTLS(const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
@@ -1114,7 +1114,7 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+				case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 					// Если клиент для работы с UDP протоколом инициализирован
 					if(this->_endpoint.udp.eid > 0){
 						// Сбрасываем размер буфера полезной нагрузки
@@ -1259,7 +1259,7 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 					} else this->residueTLS(buffer, size);
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const uint8_t *, const size_t)> ("read", buffer, size);
 				break;
@@ -1487,9 +1487,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом не инициализирован
 			if(this->_endpoint.udp.eid == 0){
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.ctl > 0) && (this->_coder != nullptr)){
+				if(this->_id.ctl > 0){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(this->_id.ctl, buffer, size))
+					if(tls::coder::encrypt(this->_id.ctl, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Возвращаем значение по умолчанию
@@ -1500,9 +1500,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом инициализирован
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.ctl > 0) && (this->_coder != nullptr)){
+				if(this->_id.ctl > 0){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(this->_id.ctl, buffer, size))
+					if(tls::coder::encrypt(this->_id.ctl, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Возвращаем значение по умолчанию
@@ -2270,22 +2270,20 @@ awh::client::Socks5::Socks5(unit::dns_t * dns) noexcept :
 /**
  * @brief Конструктор
  *
- * @param ctl   идентификатор контекста безопасности
- * @param coder объект транспортного уровня безопасности
+ * @param ctl идентификатор контекста безопасности
  *
  */
-awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept :
- client_t(ctl, coder), _socks5() {}
+awh::client::Socks5::Socks5(const tls::coder::id_t ctl) noexcept :
+ client_t(ctl), _socks5() {}
 /**
  * @brief Конструктор
  *
- * @param ctl   идентификатор контекста безопасности
- * @param coder объект транспортного уровня безопасности
- * @param dns   объект DNS-резолвера
+ * @param ctl идентификатор контекста безопасности
+ * @param dns объект DNS-резолвера
  *
  */
-awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept :
- client_t(ctl, coder, dns), _socks5() {}
+awh::client::Socks5::Socks5(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
+ client_t(ctl, dns), _socks5() {}
 /**
  * @brief Деструктор
  *

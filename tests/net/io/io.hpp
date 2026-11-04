@@ -371,9 +371,6 @@ static inline void __awh_test_port_range__(uint16_t & begin, uint16_t & end) noe
  *
  */
 class IoFixture : public testing::Test {
-	protected:
-		// Объект транспортного уровня безопасности
-		std::unique_ptr <awh::tls::coder_t> _coder;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

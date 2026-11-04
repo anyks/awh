@@ -44,9 +44,6 @@
  */
 class TlsFixture : public testing::Test {
 	protected:
-		// Объект кодера транспортной безопасности
-		std::unique_ptr <awh::tls::Coder> _coder;
-	protected:
 		// Путь к файлу сертификата тестового узла
 		std::string _certificate;
 		// Путь к файлу приватного ключа тестового узла

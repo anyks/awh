@@ -23,14 +23,15 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <map>
 #include <ctime>
 #include <atomic>
 #include <memory>
 #include <csignal>
+#include <cstring>
 #include <shared_mutex>
 #include <net/event.hpp>
+#include <sys/macro/global.hpp>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -81,13 +82,13 @@
 	 *          заменяет имя прежде разбора, и объявление вида
 	 *          "X509_NAME * subject = X509_get_subject_name(x509)" превращается в
 	 *          "((LPCSTR) 7) * subject = ...", отчего сборка отвечает отказом
-	 *          "'subject' was not declared in this scope"
+	 *          "'subject' was not declared in this scope".
 	 *
 	 *          Снятие здесь постоянное и возврата не требует: файл этот работает с
 	 *          OpenSSL, а не с подсистемой шифрования MS Windows, и постоянные эти
 	 *          ему не нужны. Хранилище сертификатов системы, ради какого wincrypt.h
 	 *          и подключён, обращается к именам иным - HCERTSTORE, CertOpenSystemStore,
-	 *          CertEnumCertificatesInStore
+	 *          CertEnumCertificatesInStore.
 	 *
 	 */
 	#undef X509_NAME
@@ -112,11 +113,11 @@
  */
 #include <sys/fs.hpp>
 #include <sys/os.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 #include <sys/locker.hpp>
 #include <net/net.hpp>
 #include <cryptography/tls/coder.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -158,37 +159,55 @@ namespace {
 	 * @brief Глобальный контейнер уровней защищённых сокетов
 	 *
 	 */
-	members_t __awh_ssl_members__;
-
-	/**
-	 * @brief Счётчик инициализации библиотеки OpenSSL
-	 *
-	 */
-	uint16_t __awh_ssl_init_count__ = 0;
-
+	static members_t __awh_ssl_members__;
 	/**
 	 * @brief Флаг инициализации библиотеки OpenSSL
 	 *
 	 */
-	bool __awh_ssl_initialized__ = false;
-
+	static bool __awh_ssl_initialized__ = false;
 	/**
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
 	 */
-	unordered_set <::tls::coder_t::id_t> __awh_ssl_ids__;
-
+	static unordered_set <::tls::coder::id_t> __awh_ssl_ids__;
 	/**
 	 * @brief Глобальная карта сплайса контекстов TLS
 	 *
 	 */
-	map <pair <event::protocol_t, string>, ::tls::coder_t::id_t> __awh_ssl_splice_map__;
-
+	static map <pair <event::protocol_t, string>, ::tls::coder::id_t> __awh_ssl_splice_map__;
 	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
 	 */
-	int32_t __awh_ssl_index__[7] = {-1, -1, -1, -1, -1, -1, -1};
+	static int32_t __awh_ssl_index__[7] = {-1, -1, -1, -1, -1, -1, -1};
+
+	/**
+	 * @brief Объект работы с сетевыми адресами
+	 *
+	 * @details Прежде принадлежал объекту кодера, а объект упразднён: контексты
+	 *          TLS общие на процесс, а адрес нужен как временная запись -
+	 *          разобрать строку при установке адреса собеседника. Оттого запись
+	 *          эта не своя у объекта, а своя у каждого потока
+	 *
+	 */
+	static thread_local net_addr_t __awh_addr__;
+	/**
+	 * @brief Объект работы с компрессией сертификатов
+	 *
+	 * @details Адрес объекта сохраняется в данных SSL на время рукопожатия,
+	 *          поэтому запись эта живёт столько же, сколько поток, завёдший
+	 *          контекст TLS
+	 *
+	 */
+	static thread_local compressor::block_t __awh_compressor__;
+	/**
+	 * @brief Объект для работы с отпечатками TLS
+	 *
+	 * @details Задаётся функцией fingerprint() и принадлежит тому потоку,
+	 *          который его задал: у каждого потока свой обмен и свои отпечатки
+	 *
+	 */
+	static thread_local const tls::fgp_t * __awh_fgp__ = nullptr;
 };
 
 /**
@@ -205,19 +224,17 @@ namespace {
 	 * @brief Флаг одноразовой инициализации TLS-модуля
 	 *
 	 */
-	once_flag __awh_ssl_init_once__;
-
+	static once_flag __awh_ssl_init_once__;
 	/**
 	 * @brief Мьютекс блокировки глобального состояния TLS-модуля
 	 *
 	 */
-	lock_state_t <std::shared_mutex> __awh_ssl_mutex__;
-
+	static lock_state_t <std::shared_mutex> __awh_ssl_mutex__;
 	/**
 	 * @brief Режим безопасности работы потоков TLS-модуля
 	 *
 	 */
-	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+	static event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
 };
 
 /**
@@ -250,7 +267,7 @@ namespace ssl {
 		 * @return объект блокировки
 		 *
 		 */
-		inline global_lock_t globalShared() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ global_lock_t globalShared() noexcept {
 			// Возвращаем объект блокировки глобального реестра TLS
 			return global_lock_t(::__awh_ssl_mutex__, global_lock_t::mode_t::SHARED);
 		}
@@ -260,7 +277,7 @@ namespace ssl {
 		 * @return объект блокировки
 		 *
 		 */
-		inline global_lock_t globalExclusive() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ global_lock_t globalExclusive() noexcept {
 			// Возвращаем объект блокировки глобального реестра TLS
 			return global_lock_t(::__awh_ssl_mutex__, global_lock_t::mode_t::EXCLUSIVE);
 		}
@@ -271,7 +288,7 @@ namespace ssl {
 		 * @return   результат проверки
 		 *
 		 */
-		inline bool contains(const ::tls::coder_t::id_t id) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ bool contains(const ::tls::coder::id_t id) noexcept {
 			// Выполняем разделяемую блокировку глобального реестра TLS
 			const global_lock_t lock = globalShared();
 			// Возвращаем результат проверки регистрации идентификатора TLS
@@ -283,7 +300,7 @@ namespace ssl {
 		 * @param id идентификатор контекста TLS
 		 *
 		 */
-		inline void add(const ::tls::coder_t::id_t id) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void add(const ::tls::coder::id_t id) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Регистрируем идентификатор контекста TLS
@@ -297,7 +314,7 @@ namespace ssl {
 		 * @param iterator итератор удаляемого участника
 		 *
 		 */
-		inline void drop(const ::tls::coder_t::id_t id, members_t & members, const members_t::iterator & iterator) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void drop(const ::tls::coder::id_t id, members_t & members, const members_t::iterator & iterator) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
@@ -316,7 +333,7 @@ namespace ssl {
 		 * @return   итератор добавленного участника
 		 *
 		 */
-		inline members_t::iterator emplace(members_t::value_type item) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ members_t::iterator emplace(members_t::value_type item) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Добавляем участника в глобальный контейнер и возвращаем итератор
@@ -329,7 +346,7 @@ namespace ssl {
 		 * @param host  имя хоста
 		 *
 		 */
-		inline void spliceErase(const event::protocol_t proto, const std::string & host) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void spliceErase(const event::protocol_t proto, const std::string & host) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
@@ -347,7 +364,7 @@ namespace ssl {
 		 * @param id    идентификатор контекста TLS
 		 *
 		 */
-		inline void spliceEmplace(const event::protocol_t proto, const std::string & host, const ::tls::coder_t::id_t id) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ void spliceEmplace(const event::protocol_t proto, const std::string & host, const ::tls::coder::id_t id) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Добавляем запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
@@ -361,7 +378,7 @@ namespace ssl {
 		 * @return      идентификатор контекста TLS или 0
 		 *
 		 */
-		inline ::tls::coder_t::id_t spliceResolve(const event::protocol_t proto, const std::string & host) noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ ::tls::coder::id_t spliceResolve(const event::protocol_t proto, const std::string & host) noexcept {
 			// Выполняем разделяемую блокировку глобального реестра TLS
 			const global_lock_t lock = globalShared();
 			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
@@ -378,16 +395,14 @@ namespace ssl {
 			return i->second;
 		}
 		/**
-		 * @brief Функция увеличения счётчика инициализации OpenSSL
+		 * @brief Функция выполнения инициализации OpenSSL
 		 *
 		 * @return флаг необходимости инициализации OpenSSL
 		 *
 		 */
-		inline bool acquireInit() noexcept {
+		[[maybe_unused]] static __AWH_INLINE__ bool acquireInit() noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
-			// Увеличиваем счётчик инициализации библиотеки OpenSSL
-			::__awh_ssl_init_count__++;
 			// Если библиотека OpenSSL ещё не инициализирована
 			if(!::__awh_ssl_initialized__){
 				// Устанавливаем флаг инициализации библиотеки OpenSSL
@@ -398,33 +413,12 @@ namespace ssl {
 			// Сообщаем об отсутствии необходимости инициализации OpenSSL
 			return false;
 		}
-		/**
-		 * @brief Функция уменьшения счётчика инициализации OpenSSL
-		 *
-		 * @return флаг необходимости деинициализации OpenSSL
-		 *
-		 */
-		inline bool releaseInit() noexcept {
-			// Выполняем эксклюзивную блокировку глобального реестра TLS
-			const global_lock_t lock = globalExclusive();
-			// Уменьшаем счётчик инициализации библиотеки OpenSSL
-			::__awh_ssl_init_count__--;
-			// Если счётчик инициализации библиотеки OpenSSL равен нулю
-			if(::__awh_ssl_init_count__ == 0){
-				// Сбрасываем флаг инициализации библиотеки OpenSSL
-				::__awh_ssl_initialized__ = false;
-				// Сообщаем о необходимости деинициализации OpenSSL
-				return true;
-			}
-			// Сообщаем об отсутствии необходимости деинициализации OpenSSL
-			return false;
-		}
 	}
 	/**
 	 * @brief Функция одноразовой инициализации OpenSSL для TLS-модуля
 	 *
 	 */
-	inline void initOpenSSL() noexcept {
+	[[maybe_unused]] static __AWH_INLINE__ void initOpenSSL() noexcept {
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 *
@@ -492,6 +486,25 @@ namespace ssl {
 		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
 		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 	}
+	/**
+	 * @brief Функция одноразовой инициализации TLS-модуля
+	 *
+	 * @details Прежде инициализацию выполнял конструктор объекта кодера,
+	 *          а объект упразднён: функция зовётся при заведении первого
+	 *          контекста TLS и выполняется единожды на процесс
+	 *
+	 */
+	[[maybe_unused]] static __AWH_INLINE__ void init() noexcept {
+		// Выполняем одноразовую инициализацию TLS-модуля
+		std::call_once(::__awh_ssl_init_once__, []() noexcept {
+			// Активируем работу мьютекса блокировки глобального состояния TLS
+			::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+			// Если библиотека OpenSSL ещё не инициализирована
+			if(::ssl::registry::acquireInit())
+				// Выполняем одноразовую инициализацию OpenSSL
+				::ssl::initOpenSSL();
+		});
+	}
 };
 
 /**
@@ -528,7 +541,6 @@ namespace {
 		explicit BufferIO() noexcept :
 		 read(nullptr), write(nullptr) {}
 	} bio_t;
-
 	/**
 	 * @brief Структура cookie SSL
 	 *
@@ -545,7 +557,6 @@ namespace {
 		explicit Cookie() noexcept :
 		 buffer{0}, initialized(false) {}
 	} cookie_t;
-
 	/**
 	 * @brief Структура хоста
 	 *
@@ -562,7 +573,6 @@ namespace {
 		explicit Host() noexcept :
 		 name{""}, peer(nullptr) {}
 	} host_t;
-
 	/**
 	 * @brief Структура ALPN-протоколов
 	 *
@@ -580,16 +590,15 @@ namespace {
 		 */
 		explicit ALPN() noexcept : id(0) {}
 	} alpn_t;
-
 	/**
 	 * @brief Структура обратных вызовов
 	 *
 	 */
 	typedef struct Callback {
 		// Функция обратного вызова получения ошибок
-		::tls::coder_t::error_callback_t error;
+		::tls::coder::error_callback_t error;
 		// Функция обратного вызова при изменении состояния
-		::tls::coder_t::state_callback_t state;
+		::tls::coder::state_callback_t state;
 		/**
 		 * @brief Конструктор
 		 *
@@ -602,18 +611,17 @@ namespace {
 		 */
 		virtual ~Callback() noexcept = default;
 	} callback_t;
-
 	/**
 	 * @brief Структура обратных вызовов контроля передачи данных
 	 *
 	 */
 	typedef struct Callback_Transfer : public callback_t {
 		// Функция обратного вызова чтения данных
-		::tls::coder_t::read_callback_t read;
+		::tls::coder::read_callback_t read;
 		// Функция обратного вызова записи данных
-		::tls::coder_t::write_callback_t write;
+		::tls::coder::write_callback_t write;
 		// Функция обратного вызова получения снимка браузера приславшего ClientHello
-		::tls::coder_t::fingerprint_callback_t fingerprint;
+		::tls::coder::fingerprint_callback_t fingerprint;
 		/**
 		 * @brief Конструктор
 		 *
@@ -621,7 +629,6 @@ namespace {
 		explicit Callback_Transfer() noexcept :
 		 read(nullptr), write(nullptr), fingerprint(nullptr) {}
 	} callback_transfer_t;
-
 	/**
 	 * @brief Класс участника обмена защищёнными данными
 	 *
@@ -674,7 +681,7 @@ namespace {
 	void Member::erase(members_t & members) noexcept {
 		// Удаляем участника из глобального реестра TLS
 		::ssl::registry::drop(
-			static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())),
+			static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())),
 			members,
 			this->iterator
 		);
@@ -714,7 +721,6 @@ namespace {
 				::SSL_CTX_free(this->ctx);
 		}
 	} cts_t;
-
 	/**
 	 * @brief Структура транспортного уровня передачи
 	 *
@@ -766,17 +772,6 @@ namespace state {
 	 */
 	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
 	/**
-	 * @brief Флаг проверки режима безсостояния TLS
-	 *
-	 * @details Признак и обе работы с куками (generate, verify) заведены заделом под
-	 *          DTLS и покуда не зовутся: настройка их идёт через
-	 *          SSL_CTX_set_stateless_cookie_*_cb, а у BoringSSL этого API нет вовсе
-	 *          (см. отбор по протоколу подключения). Пометка объявляет неупотребление
-	 *          намеренным - снимать задел ради предупреждения не следует
-	 *
-	 */
-	[[maybe_unused]] static constexpr uint8_t STATELESS_MODE = 0x04;
-	/**
 	 * @brief Флаг работы в мультисертификатном режиме
 	 *
 	 */
@@ -798,10 +793,21 @@ namespace state {
 	 *          Признак этот ставится ТОЛЬКО снятием по требованию вызывающей стороны, и
 	 *          лишь по нему охранник возвращает память: пока опознаватель не снят, тело
 	 *          участника остаётся на месте, и запоздалый вызов приходит в живую память,
-	 *          а не в отданную
+	 *          а не в отданную.
 	 *
 	 */
 	static constexpr uint8_t RELEASED_MODE = 0x20;
+	/**
+	 * @brief Флаг проверки режима безсостояния TLS
+	 *
+	 * @details Признак и обе работы с куками (generate, verify) заведены заделом под
+	 *          DTLS и покуда не зовутся: настройка их идёт через
+	 *          SSL_CTX_set_stateless_cookie_*_cb, а у BoringSSL этого API нет вовсе
+	 *          (см. отбор по протоколу подключения). Пометка объявляет неупотребление
+	 *          намеренным - снимать задел ради предупреждения не следует.
+	 *
+	 */
+	[[maybe_unused]] static constexpr uint8_t STATELESS_MODE = 0x04;
 };
 
 /**
@@ -933,7 +939,6 @@ namespace local {
 	 *
 	 */
 	thread_local vector <uint8_t> certBuffer;
-
 	/**
 	 * @brief Буфер для обмена данными SSL
 	 *
@@ -953,7 +958,7 @@ namespace local {
 	 * @return       полный размер record layer или 0, если данных недостаточно
 	 *
 	 */
-	static inline size_t tlsRecordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ size_t tlsRecordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
 		// Если буфер пустой или слишком короткий
 		if((buffer == nullptr) || (size < 3u))
 			// Возвращаем 0 — размер определить нельзя
@@ -1041,7 +1046,7 @@ namespace ssl {
 		 *          закреплении оставил бы её удержанной навсегда
 		 *
 		 */
-		static unique_ptr <pin_t> pin(const ::tls::coder_t::id_t id, const bool garbage = false) noexcept {
+		static __AWH_INLINE__ unique_ptr <pin_t> pin(const ::tls::coder::id_t id, const bool garbage = false) noexcept {
 			// Эксклюзивная блокировка: find в ids и refs++ должны быть атомарны относительно drop()
 			const global_lock_t lock = globalExclusive();
 			// Если идентификатор контекста TLS не зарегистрирован
@@ -1078,7 +1083,7 @@ namespace ssl {
 	 * @return        сформированное сообщение об ошибке
 	 *
 	 */
-	static string error(const ::tls::coder_t::id_t id, string_view message = "") noexcept {
+	static string error(const ::tls::coder::id_t id, string_view message = "") noexcept {
 		// Переменная результата
 		string result = "";
 		/**
@@ -1165,7 +1170,7 @@ namespace ssl {
 	 * @return       результат выполнения отправки
 	 *
 	 */
-	static bool emitWriteBio(::ctl_t * member, const ::tls::coder_t::id_t id) noexcept {
+	static bool emitWriteBio(::ctl_t * member, const ::tls::coder::id_t id) noexcept {
 		// Количество прочитанных данных
 		int32_t bytes = 0;
 		// Количество ожидающих данных для чтения
@@ -1183,7 +1188,7 @@ namespace ssl {
 			// Если функция обратного вызова чтения данных установлена
 			if(member->callback.read != nullptr)
 				// Вызываем функцию обратного вызова чтения данных
-				member->callback.read(id, ::tls::coder_t::event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+				member->callback.read(id, ::tls::coder::event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 		}
 		// Возвращаем результат
 		return true;
@@ -1195,428 +1200,426 @@ namespace ssl {
 	 * @details Подача его в SSL_CTX_set_msg_callback тоже огорожена этим признаком.
 	 *          Пока под ним стояло только тело, выпускная сборка несла определённое
 	 *          и не званное ниоткуда обращение с шестью неиспользуемыми доводами -
-	 *          шесть предупреждений из семи по всей зоне давало одно это место
+	 *          шесть предупреждений из семи по всей зоне давало одно это место.
+	 *
 	 */
 	#if defined(DEBUG_MODE)
-	/**
-	 * @brief Функция обратного вызова сообщений SSL
-	 *
-	 * @param write  флаг записи сообщения
-	 * @param version версия протокола
-	 * @param type    тип сообщения
-	 * @param buffer  буфер сообщения
-	 * @param size    размер буфера сообщения
-	 * @param ssl     объект SSL
-	 * @param ctx     передаваемый контекст
-	 *
-	 */
-	static void message(int32_t write, [[maybe_unused]] int32_t version, int32_t type, const void * buffer, size_t size, SSL * ssl, [[maybe_unused]] void * ctx) noexcept {
 		/**
-		 * Если включён режим отладки
+		 * @brief Функция обратного вызова сообщений SSL
+		 *
+		 * @param write  флаг записи сообщения
+		 * @param version версия протокола
+		 * @param type    тип сообщения
+		 * @param buffer  буфер сообщения
+		 * @param size    размер буфера сообщения
+		 * @param ssl     объект SSL
+		 * @param ctx     передаваемый контекст
+		 *
 		 */
-		// Если тип сообщения является рукопожатием SSL
-		if(type == SSL3_RT_HANDSHAKE){
-			// Получаем объект контекста модуля
-			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-			/**
-			 * Объект транспортного уровня отсутствует, если объект TLS-соединения
-			 * создан не кодером, а внешним потребителем шаблона контекста
-			 * безопасности: функция обратного вызова устанавливается на контекст
-			 * и вызывается для любого созданного из него соединения
-			 */
-			if(member == nullptr)
-				// Выходим из функции - отладочный вывод для такого соединения не ведётся
-				return;
-			// Создаём охранника участника обмена защищёнными данными
-			::local::guard_t guard(member);
-			/**
-			 * Обрабатываем тип сообщения рукопожатия SSL
-			 */
-			switch(reinterpret_cast <const uint8_t *> (buffer)[0]){
-				// Если сообщение является ClientHello
-				case SSL3_MT_CLIENT_HELLO: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientHello", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientHello", size);
-						break;
-					}
-				} break;
-				// Если сообщение является ServerHello
-				case SSL3_MT_SERVER_HELLO: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHello", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHello", size);
-						break;
-					}
-				} break;
-				// Если сообщение является Certificate
-				case SSL3_MT_CERTIFICATE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Certificate", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Certificate", size);
-						break;
-					}
-				} break;
-				// Если сообщение является HelloRequest
-				case SSL3_MT_HELLO_REQUEST: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloRequest", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloRequest", size);
-						break;
-					}
-				} break;
-				// Если сообщение является NewSessionTicket
-				case SSL3_MT_NEWSESSION_TICKET: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "NewSessionTicket", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "NewSessionTicket", size);
-						break;
-					}
-				} break;
-				// Если сообщение является EndOfEarlyData
-				case SSL3_MT_END_OF_EARLY_DATA: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "EndOfEarlyData", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "EndOfEarlyData", size);
-						break;
-					}
-				} break;
-				// Если сообщение является EncryptedExtensions
-				case SSL3_MT_ENCRYPTED_EXTENSIONS: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "EncryptedExtensions", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "EncryptedExtensions", size);
-						break;
-					}
-				} break;
-				// Если сообщение является ServerKeyExchange
-				case SSL3_MT_SERVER_KEY_EXCHANGE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerKeyExchange", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerKeyExchange", size);
-						break;
-					}
-				} break;
-				// Если сообщение является CertificateRequest
-				case SSL3_MT_CERTIFICATE_REQUEST: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateRequest", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateRequest", size);
-						break;
-					}
-				} break;
-				// Если сообщение является ServerHelloDone
-				case SSL3_MT_SERVER_DONE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHelloDone", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHelloDone", size);
-						break;
-					}
-				} break;
-				// Если сообщение является CertificateVerify
-				case SSL3_MT_CERTIFICATE_VERIFY: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateVerify", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateVerify", size);
-						break;
-					}
-				} break;
-				// Если сообщение является ClientKeyExchange
-				case SSL3_MT_CLIENT_KEY_EXCHANGE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientKeyExchange", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientKeyExchange", size);
-						break;
-					}
-				} break;
-				// Если сообщение является CertificateStatus
-				case SSL3_MT_CERTIFICATE_STATUS: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateStatus", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateStatus", size);
-						break;
-					}
-				} break;
-				// Если сообщение является SupplementalData
-				case SSL3_MT_SUPPLEMENTAL_DATA: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "SupplementalData", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "SupplementalData", size);
-						break;
-					}
-				} break;
-				// Если сообщение является KeyUpdate
-				case SSL3_MT_KEY_UPDATE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "KeyUpdate", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "KeyUpdate", size);
-						break;
-					}
-				} break;
-				// Если сообщение является CompressedCertificate
-				case SSL3_MT_COMPRESSED_CERTIFICATE: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CompressedCertificate", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CompressedCertificate", size);
-						break;
-					}
-				} break;
-				// Если сообщение является HelloVerifyRequest
-				case DTLS1_MT_HELLO_VERIFY_REQUEST: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloVerifyRequest", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloVerifyRequest", size);
-						break;
-					}
-				} break;
-				// Если сообщение является MessageHash
-				case SSL3_MT_MESSAGE_HASH: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "MessageHash", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "MessageHash", size);
-						break;
-					}
-				} break;
-				// Если сообщение является Finished
-				case SSL3_MT_FINISHED: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Finished", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Finished", size);
-						break;
-					}
-				} break;
+		static void message(int32_t write, [[maybe_unused]] int32_t version, int32_t type, const void * buffer, size_t size, SSL * ssl, [[maybe_unused]] void * ctx) noexcept {
+			// Если тип сообщения является рукопожатием SSL
+			if(type == SSL3_RT_HANDSHAKE){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				/**
-				 * Если сообщение является NextProto, то это сообщение используется для обмена информацией о поддерживаемых протоколах между клиентом и сервером в процессе рукопожатия SSL/TLS.
-				 * Оно позволяет сторонам согласовать, какой протокол будет использоваться для дальнейшей коммуникации после завершения рукопожатия.
+				 * Объект транспортного уровня отсутствует, если объект TLS-соединения
+				 * создан не кодером, а внешним потребителем шаблона контекста
+				 * безопасности: функция обратного вызова устанавливается на контекст
+				 * и вызывается для любого созданного из него соединения
 				 */
-				case SSL3_MT_NEXT_PROTO: {
+				if(member == nullptr)
+					// Выходим из функции - отладочный вывод для такого соединения не ведётся
+					return;
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				/**
+				 * Обрабатываем тип сообщения рукопожатия SSL
+				 */
+				switch(reinterpret_cast <const uint8_t *> (buffer)[0]){
+					// Если сообщение является ClientHello
+					case SSL3_MT_CLIENT_HELLO: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientHello", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientHello", size);
+							break;
+						}
+					} break;
+					// Если сообщение является ServerHello
+					case SSL3_MT_SERVER_HELLO: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHello", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHello", size);
+							break;
+						}
+					} break;
+					// Если сообщение является Certificate
+					case SSL3_MT_CERTIFICATE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Certificate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Certificate", size);
+							break;
+						}
+					} break;
+					// Если сообщение является HelloRequest
+					case SSL3_MT_HELLO_REQUEST: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloRequest", size);
+							break;
+						}
+					} break;
+					// Если сообщение является NewSessionTicket
+					case SSL3_MT_NEWSESSION_TICKET: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "NewSessionTicket", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "NewSessionTicket", size);
+							break;
+						}
+					} break;
+					// Если сообщение является EndOfEarlyData
+					case SSL3_MT_END_OF_EARLY_DATA: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "EndOfEarlyData", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "EndOfEarlyData", size);
+							break;
+						}
+					} break;
+					// Если сообщение является EncryptedExtensions
+					case SSL3_MT_ENCRYPTED_EXTENSIONS: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "EncryptedExtensions", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "EncryptedExtensions", size);
+							break;
+						}
+					} break;
+					// Если сообщение является ServerKeyExchange
+					case SSL3_MT_SERVER_KEY_EXCHANGE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerKeyExchange", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerKeyExchange", size);
+							break;
+						}
+					} break;
+					// Если сообщение является CertificateRequest
+					case SSL3_MT_CERTIFICATE_REQUEST: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateRequest", size);
+							break;
+						}
+					} break;
+					// Если сообщение является ServerHelloDone
+					case SSL3_MT_SERVER_DONE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHelloDone", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHelloDone", size);
+							break;
+						}
+					} break;
+					// Если сообщение является CertificateVerify
+					case SSL3_MT_CERTIFICATE_VERIFY: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateVerify", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateVerify", size);
+							break;
+						}
+					} break;
+					// Если сообщение является ClientKeyExchange
+					case SSL3_MT_CLIENT_KEY_EXCHANGE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientKeyExchange", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientKeyExchange", size);
+							break;
+						}
+					} break;
+					// Если сообщение является CertificateStatus
+					case SSL3_MT_CERTIFICATE_STATUS: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateStatus", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateStatus", size);
+							break;
+						}
+					} break;
+					// Если сообщение является SupplementalData
+					case SSL3_MT_SUPPLEMENTAL_DATA: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "SupplementalData", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "SupplementalData", size);
+							break;
+						}
+					} break;
+					// Если сообщение является KeyUpdate
+					case SSL3_MT_KEY_UPDATE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "KeyUpdate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "KeyUpdate", size);
+							break;
+						}
+					} break;
+					// Если сообщение является CompressedCertificate
+					case SSL3_MT_COMPRESSED_CERTIFICATE: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "CompressedCertificate", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "CompressedCertificate", size);
+							break;
+						}
+					} break;
+					// Если сообщение является HelloVerifyRequest
+					case DTLS1_MT_HELLO_VERIFY_REQUEST: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloVerifyRequest", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloVerifyRequest", size);
+							break;
+						}
+					} break;
+					// Если сообщение является MessageHash
+					case SSL3_MT_MESSAGE_HASH: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "MessageHash", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "MessageHash", size);
+							break;
+						}
+					} break;
+					// Если сообщение является Finished
+					case SSL3_MT_FINISHED: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Finished", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Finished", size);
+							break;
+						}
+					} break;
 					/**
-					 * Определяем узел события к которому относится контекст TLS
+					 * Если сообщение является NextProto, то это сообщение используется для обмена информацией о поддерживаемых протоколах между клиентом и сервером в процессе рукопожатия SSL/TLS.
+					 * Оно позволяет сторонам согласовать, какой протокол будет использоваться для дальнейшей коммуникации после завершения рукопожатия.
 					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "NextProto", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "NextProto", size);
-						break;
-					}
-				} break;
-				// Если сообщение является иным типом рукопожатия SSL
-				default: {
-					/**
-					 * Определяем узел события к которому относится контекст TLS
-					 */
-					switch(static_cast <uint8_t> (member->node)){
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Handshake", size);
-						break;
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER):
-							// Записываем ошибку в лог
-							log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Handshake", size);
-						break;
+					case SSL3_MT_NEXT_PROTO: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "NextProto", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "NextProto", size);
+							break;
+						}
+					} break;
+					// Если сообщение является иным типом рукопожатия SSL
+					default: {
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? ">>>" : "<<<"), "Handshake", size);
+							break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER):
+								// Записываем ошибку в лог
+								log::print("%s %s (%zu bytes)", log::flag_t::INFO, (write ? "<<<" : ">>>"), "Handshake", size);
+							break;
+						}
 					}
 				}
 			}
 		}
-	}
 	#endif
 	/**
 	 * @brief Функция выполнения выбора протокола
@@ -2209,17 +2212,17 @@ namespace cookie {
 			// Выходим из функции с удачей
 			return 1;
 		// Выполняем получение идентификатора контекста TLS
-		const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+		const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 		// Если функция обратного вызова состояния установлена
 		if(member->callback.state != nullptr)
 			// Вызываем функцию обратного вызова состояния
-			member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+			member->callback.state(id, ::tls::coder::state_t::FAILED);
 		// Получаем текст ошибки
 		const string error = ::ssl::error(id, "Peer address is not set for DTLS cookie");
 		// Если функция обратного вызова ошибки установлена
 		if(member->callback.error != nullptr)
 			// Вызываем функцию обратного вызова ошибки
-			member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
+			member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
 		// Если функция обратного вызова ошибки не установлена
 		else {
 			/**
@@ -2259,17 +2262,17 @@ namespace cookie {
 			// Выполняем произвольно генерацию байт в буфере cookie
 			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
 				// Выполняем получение идентификатора контекста TLS
-				const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+				const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
-					member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+					member->callback.state(id, ::tls::coder::state_t::FAILED);
 				// Получаем текст ошибки
 				const string error = ::ssl::error(id, "Setting random cookie secret");
 				// Если функция обратного вызова ошибки установлена
 				if(member->callback.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
+					member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					/**
@@ -2303,17 +2306,17 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "Out of memory cookie");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
+				member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				/**
@@ -2400,17 +2403,17 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "Out of memory cookie");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
+				member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				/**
@@ -2499,7 +2502,7 @@ namespace verify {
 	 * @return       результат проверки
 	 *
 	 */
-	static bool equal(string_view first, string_view second) noexcept {
+	static __AWH_INLINE__ bool equal(string_view first, string_view second) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если данные переданы
@@ -2518,7 +2521,7 @@ namespace verify {
 	 * @return       результат проверки
 	 *
 	 */
-	static bool noqual(string_view first, string_view second, size_t max) noexcept {
+	static __AWH_INLINE__ bool noqual(string_view first, string_view second, size_t max) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если данные переданы
@@ -2536,7 +2539,7 @@ namespace verify {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool hostmatch(string_view host, string_view fqdn) noexcept {
+	static __AWH_INLINE__ bool hostmatch(string_view host, string_view fqdn) noexcept {
 		// Переменная результата
 		bool result = true;
 		// Если данные переданы
@@ -2591,7 +2594,7 @@ namespace verify {
 	 * @return    результат обработки
 	 *
 	 */
-	static int32_t matchSNI(SSL * ssl, [[maybe_unused]] int32_t * al, [[maybe_unused]] void * ctx) noexcept {
+	static __AWH_INLINE__ int32_t matchSNI(SSL * ssl, [[maybe_unused]] int32_t * al, [[maybe_unused]] void * ctx) noexcept {
 		// Переменная результата
 		int32_t result = SSL_TLSEXT_ERR_NOACK;
 		// Получаем название хоста (SNI) от клиента
@@ -2615,7 +2618,7 @@ namespace verify {
 			// Если установлен режим работы с несколькими сертификатами TLS
 			if(member->state & state::MULTICERT_MODE){
 				// Выполняем поиск идентификатора контекста TLS в карте сплайса
-				const ::tls::coder_t::id_t spliceId = ::ssl::registry::spliceResolve(member->proto, string{sni});
+				const ::tls::coder::id_t spliceId = ::ssl::registry::spliceResolve(member->proto, string{sni});
 				// Если идентификатор контекста TLS найден
 				if(spliceId != 0){
 					// Выполняем подмену сертификата на основной
@@ -2628,17 +2631,17 @@ namespace verify {
 		// Если SNI не получен
 		} else {
 			// Выполняем получение идентификатора контекста TLS
-			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "SNI is not set by client");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, ::tls::coder_t::error_t::SNI_FAILED, error);
+				member->callback.error(id, ::tls::coder::error_t::SNI_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				/**
@@ -2667,7 +2670,7 @@ namespace verify {
 	 * @return     результат проверки
 	 *
 	 */
-	static bool certHostcheck(string_view host, string_view fqdn) noexcept {
+	static __AWH_INLINE__ bool certHostcheck(string_view host, string_view fqdn) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если данные переданы
@@ -2685,7 +2688,7 @@ namespace verify {
 	 * @return     результат проверки
 	 *
 	 */
-	static status_t matchSubjectName(string_view host, const X509 * x509) noexcept {
+	static __AWH_INLINE__ status_t matchSubjectName(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
@@ -2706,6 +2709,9 @@ namespace verify {
 				 */
 				// Количество элементов SAN
 				const int32_t count = static_cast <int32_t> (sk_GENERAL_NAME_num(san));
+				/**
+				 * Перебираем имена SAN сертификата
+				 */
 				for(int32_t i = 0; i < count; i++){
 					// Извлекаем элемент SAN
 					const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
@@ -2750,7 +2756,7 @@ namespace verify {
 	 * @return     результат проверки
 	 *
 	 */
-	static status_t matchesCommonName(string_view host, const X509 * x509) noexcept {
+	static __AWH_INLINE__ status_t matchesCommonName(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
@@ -2789,7 +2795,7 @@ namespace verify {
 	 * @return     результат проверки
 	 *
 	 */
-	static status_t validateHostname(string_view host, const X509 * x509) noexcept {
+	static __AWH_INLINE__ status_t validateHostname(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
 		status_t result = status_t::Error;
 		// Если данные переданы
@@ -2807,16 +2813,15 @@ namespace verify {
 	/**
 	 * @brief Функция обратного вызова для проверки валидности сертификата
 	 *
+	 * @details Хранилище нужно одному лишь отладочному выводу, оттого и помечено:
+	 *          в выпускной сборке тело его не читает вовсе.
+	 *
 	 * @param ok    результат получения сертификата
 	 * @param store хранилище сертификатов
 	 * @return      результат проверки
 	 *
 	 */
-	/**
-	 * Хранилище нужно одному лишь отладочному выводу, оттого и помечено:
-	 * в выпускной сборке тело его не читает вовсе
-	 */
-	static int32_t certificate(const int32_t ok, [[maybe_unused]] X509_STORE_CTX * store) noexcept {
+	static __AWH_INLINE__ int32_t certificate(const int32_t ok, [[maybe_unused]] X509_STORE_CTX * store) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2861,7 +2866,7 @@ namespace verify {
 	 * @return      результат проверки
 	 *
 	 */
-	static int32_t hostname(X509_STORE_CTX * store, void * ctx) noexcept {
+	static __AWH_INLINE__ int32_t hostname(X509_STORE_CTX * store, void * ctx) noexcept {
 		// Результат проверки домена
 		int32_t result = 0;
 		// Если объекты переданы верно
@@ -2895,17 +2900,17 @@ namespace verify {
 					// Если данные сертификата не получены
 					if(x509 == nullptr){
 						// Выполняем получение идентификатора контекста TLS
-						const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+						const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+							member->callback.state(id, ::tls::coder::state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "Certificate is not found in store");
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
+							member->callback.error(id, ::tls::coder::error_t::CERT_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							/**
@@ -2929,17 +2934,17 @@ namespace verify {
 						// Если имя эмитента не получено
 						if(name == nullptr){
 							// Выполняем получение идентификатора контекста TLS
-							const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+							const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+								member->callback.state(id, ::tls::coder::state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Certificate issuer name is not found");
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
+								member->callback.error(id, ::tls::coder::error_t::CERT_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								/**
@@ -3014,17 +3019,17 @@ namespace verify {
 									default: ::snprintf(result, 4, "%s", "WTF");
 								}
 								// Выполняем получение идентификатора контекста TLS
-								const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+								const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+									member->callback.state(id, ::tls::coder::state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, awh::fmk::format("%s for hostname '%s' [%s]", result, member->host.c_str(), fqdn));
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, ::tls::coder_t::error_t::HOSTNAME_BAD, error);
+									member->callback.error(id, ::tls::coder::error_t::HOSTNAME_BAD, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									/**
@@ -3056,64 +3061,79 @@ namespace verify {
  * @brief Конструктор
  *
  */
-awh::tls::Coder::CipherInfo::CipherInfo() noexcept :
+awh::tls::coder::CipherInfo::CipherInfo() noexcept :
  tls13(false),
  name{""}, origin{""},
  cipher(cipher_t::UNKNOWN) {}
 
 /**
- * @brief Метод получения версии OpenSSL
+ * @brief Конструктор
+ *
+ */
+awh::tls::coder::ALPN::ALPN() noexcept : id(0), protocol{""} {}
+/**
+ * @brief Конструктор
+ *
+ * @param id       идентификатор ALPN-протокола
+ * @param protocol название ALPN-протокола
+ *
+ */
+awh::tls::coder::ALPN::ALPN(const uint8_t id, const string & protocol) noexcept :
+ id(id), protocol(protocol) {}
+
+/**
+ * @brief Функция получения версии OpenSSL
  *
  * @return версия OpenSSL
  *
  */
-string awh::tls::Coder::version() const noexcept {
+string awh::tls::coder::version() noexcept {
 	// Возвращаем версию OpenSSL
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
  *
  * @details Защищает только глобальный реестр TLS (ids, members, splice_map,
- *          init OpenSSL). Методы модуля после закрепления id выполняются без
+ *          init OpenSSL). Функции модуля после закрепления id выполняются без
  *          глобального lock; синхронизацию вызовов из разных потоков должен
  *          обеспечивать вызывающий код.
  *
  */
-void awh::tls::Coder::threadSafety(const bool mode) noexcept {
+void awh::tls::coder::threadSafety(const bool mode) noexcept {
 	// Если объект для работы с отпечатками TLS установлен
-	if(this->_fgp != nullptr)
+	if(::__awh_fgp__ != nullptr)
 		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
-		const_cast <fgp_t *> (this->_fgp)->threadSafety(mode);
+		const_cast <fgp_t *> (::__awh_fgp__)->threadSafety(mode);
 	// Активируем работу мьютекса блокировки глобального состояния TLS
 	::__awh_ssl_mutex__.enabled = mode;
 	// Устанавливаем режим безопасности работы потоков
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 }
 /**
- * @brief Метод подключения объекта для работы с отпечатками TLS
+ * @brief Функция подключения объекта для работы с отпечатками TLS
  *
  * @param fgp объект для работы с отпечатками TLS
  *
  */
-void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
+void awh::tls::coder::fingerprint(const fgp_t * fgp) noexcept {
 	// Сохраняем объект для работы с отпечатками TLS
-	this->_fgp = fgp;
+	::__awh_fgp__ = fgp;
 	// Если объект для работы с отпечатками TLS установлен
-	if(this->_fgp != nullptr)
+	if(::__awh_fgp__ != nullptr)
 		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
-		const_cast <fgp_t *> (this->_fgp)->threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
+		const_cast <fgp_t *> (::__awh_fgp__)->threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
- * @brief Метод получения общей информации о TLS соединении
+ * @brief Функция получения общей информации о TLS соединении
  *
  * @param id идентификатор события
  * @return   общая информация о TLS соединении
  *
  */
-string awh::tls::Coder::info(const id_t id) const noexcept {
+string awh::tls::coder::info(const id_t id) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -3352,13 +3372,13 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения информации о одноразовом узле TLS
+ * @brief Функция получения информации о одноразовом узле TLS
  *
  * @param id идентификатор события
  * @return   информация о одноразовом узле TLS
  *
  */
-string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
+string awh::tls::coder::peerInfo(const id_t id) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -3824,13 +3844,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения информации о шифре
+ * @brief Функция получения информации о шифре
  *
  * @param id идентификатор события
  * @return   информация о шифре
  *
  */
-string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
+string awh::tls::coder::cipherInfo(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3902,13 +3922,13 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 	return "";
 }
 /**
- * @brief Метод получения информации о сертификате
+ * @brief Функция получения информации о сертификате
  *
  * @param id идентификатор события
  * @return   информация о сертификате
  *
  */
-string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
+string awh::tls::coder::certificateInfo(const id_t id) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -4026,13 +4046,13 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 	return result;
 }
 /**
- * @brief Метод получения информации о списке отзыва сертификатов
+ * @brief Функция получения информации о списке отзыва сертификатов
  *
  * @param id идентификатор события
  * @return   информация о списке отзыва сертификатов
  *
  */
-string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexcept {
+string awh::tls::coder::certificateRevocationListInfo(const id_t id) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -4239,13 +4259,13 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 	return result;
 }
 /**
- * @brief Метод получения списка доступных шифров
+ * @brief Функция получения списка доступных шифров
  *
  * @param id идентификатор события
  * @return   список доступных шифров
  *
  */
-vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const id_t id) const noexcept {
+vector <awh::tls::coder::cipher_info_t> awh::tls::coder::availableCiphers(const id_t id) noexcept {
 	// Переменная результата
 	vector <cipher_info_t> result;
 	/**
@@ -4629,13 +4649,13 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 	return result;
 }
 /**
- * @brief Метод извлечения сертификата TLS
+ * @brief Функция извлечения сертификата TLS
  *
  * @param id идентификатор события
  * @return   активный протокол
  *
  */
-string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
+string awh::tls::coder::certificateExtract(const id_t id) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -4748,7 +4768,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки валидности сертификата
+ * @brief Функция проверки валидности сертификата
  *
  * @param id идентификатор события
  * @return   результат проверки валидности сертификата
@@ -4759,7 +4779,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
  *       понимать эту семантику (mTLS и т.п.).
  *
  */
-bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
+bool awh::tls::coder::validateCertificate(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4977,6 +4997,9 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						 */
 						// Количество элементов SAN
 						const int32_t count = static_cast <int32_t> (sk_GENERAL_NAME_num(san));
+						/**
+						 * Перебираем имена SAN сертификата
+						 */
 						for(int32_t i = 0; i < count; i++){
 							// Извлекаем элемент SAN
 							const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
@@ -5032,13 +5055,13 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 	return false;
 }
 /**
- * @brief Метод установки проверки доменного имени сервера
+ * @brief Функция установки проверки доменного имени сервера
  *
  * @param id   идентификатор события
  * @param mode режим проверки доменного имени сервера
  *
  */
-void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mode) noexcept {
+void awh::tls::coder::validateServerNameIndication(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5141,13 +5164,13 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 	}
 }
 /**
- * @brief Метод получения режима работы TLS
+ * @brief Функция получения режима работы TLS
  *
  * @param id идентификатор события
  * @return   режим работы TLS
  *
  */
-awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
+awh::tls::coder::mode_t awh::tls::coder::mode(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5206,13 +5229,13 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 	return mode_t::NONE;
 }
 /**
- * @brief Метод установки режима работы TLS
+ * @brief Функция установки режима работы TLS
  *
  * @param id   идентификатор события
  * @param mode режим работы TLS
  *
  */
-void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
+void awh::tls::coder::mode(const id_t id, const mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5294,13 +5317,13 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 	}
 }
 /**
- * @brief Метод получения доменного имени сервера
+ * @brief Функция получения доменного имени сервера
  *
  * @param id идентификатор события
  * @return   доменное имя сервера
  *
  */
-string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
+string awh::tls::coder::serverNameIndication(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5345,13 +5368,13 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 	return "";
 }
 /**
- * @brief Метод установки доменного имени сервера
+ * @brief Функция установки доменного имени сервера
  *
  * @param id  идентификатор события
  * @param sni доменное имя сервера
  *
  */
-void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexcept {
+void awh::tls::coder::serverNameIndication(const id_t id, string_view sni) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5460,7 +5483,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 	}
 }
 /**
- * @brief Метод извлечения кэшированного билета возобновления сессии (RFC 9001 §4.6)
+ * @brief Функция извлечения кэшированного билета возобновления сессии (RFC 9001 §4.6)
  *
  * @note Билеты возобновления хранятся на шаблонном контексте безопасности
  *       по ключу сервера (SNI либо адрес эндпоинта), что делает
@@ -5472,7 +5495,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
  * @return        результат извлечения (билет найден)
  *
  */
-bool awh::tls::Coder::session(const id_t id, string_view key, string & session) const noexcept {
+bool awh::tls::coder::session(const id_t id, string_view key, string & session) noexcept {
 	// Сбрасываем результат извлечения билета возобновления
 	session.clear();
 	/**
@@ -5514,14 +5537,14 @@ bool awh::tls::Coder::session(const id_t id, string_view key, string & session) 
 	return !session.empty();
 }
 /**
- * @brief Метод сохранения билета возобновления сессии в кэш (RFC 9001 §4.6)
+ * @brief Функция сохранения билета возобновления сессии в кэш (RFC 9001 §4.6)
  *
  * @param id      идентификатор шаблонного контекста безопасности
  * @param key     ключ сервера (SNI либо адрес эндпоинта)
  * @param session сериализованный билет возобновления для сохранения
  *
  */
-void awh::tls::Coder::session(const id_t id, string_view key, string_view session) const noexcept {
+void awh::tls::coder::session(const id_t id, string_view key, string_view session) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5559,7 +5582,7 @@ void awh::tls::Coder::session(const id_t id, string_view key, string_view sessio
 	}
 }
 /**
- * @brief Метод установки адреса и порта отдалённого узла
+ * @brief Функция установки адреса и порта отдалённого узла
  *
  * @param id   идентификатор события
  * @param ip   IP-адрес отдалённого узла
@@ -5567,7 +5590,7 @@ void awh::tls::Coder::session(const id_t id, string_view key, string_view sessio
  * @return     результат выполнения установки
  *
  */
-bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
+bool awh::tls::coder::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5618,7 +5641,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Выполняем парсинг I-адреса
-						if(this->_addr.parse(ip)){
+						if(::__awh_addr__.parse(ip)){
 							// Выполняем инициализацию объекта хоста IPv4-адреса
 							member->host.peer = make_unique <net::attr_net_t> ();
 							// Получаем объект хоста IPv4-адреса
@@ -5626,7 +5649,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							/**
 							 * Выполняем определение типа IP-адреса
 							 */
-							switch(static_cast <uint8_t> (this->_addr.type())){
+							switch(static_cast <uint8_t> (::__awh_addr__.type())){
 								// Для IPv4-адреса
 								case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 									// Устанавливаем тип адреса однорангового узла
@@ -5634,7 +5657,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 									// Устанавливаем порт
 									address->port = port;
 									// Выполняем инициализацию объекта IP-адреса
-									address->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
+									address->ip = ::__awh_addr__.source(net_addr_t::endian_t::LITTLE);
 								} break;
 								// Для IPv6-адреса
 								case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
@@ -5643,7 +5666,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 									// Устанавливаем порт
 									address->port = port;
 									// Выполняем инициализацию объекта IP-адреса
-									address->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
+									address->ip = ::__awh_addr__.source(net_addr_t::endian_t::LITTLE);
 								} break;
 								// Для других типов адресов
 								default: {
@@ -5728,16 +5751,16 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 	return false;
 }
 /**
- * @brief Метод удаления контекста TLS
+ * @brief Функция удаления контекста TLS
  *
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   результат выполнения удаления
  *
- * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы методов
+ * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы функций
  *       с этим id недопустимы. Физическое удаление из реестра — при refs==0.
  *
  */
-bool awh::tls::Coder::destroy(const id_t id) noexcept {
+bool awh::tls::coder::destroy(const id_t id) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -5834,13 +5857,13 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Метод завершения TLS соединения
+ * @brief Функция завершения TLS соединения
  *
  * @param id идентификатор события
  * @return   результат выполнения завершения
  *
  */
-bool awh::tls::Coder::shutdown(const id_t id) noexcept {
+bool awh::tls::coder::shutdown(const id_t id) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -5937,7 +5960,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Метод выполнения TLS рукопожатия
+ * @brief Функция выполнения TLS рукопожатия
  *
  * @param id идентификатор события
  * @return   результат выполнения рукопожатия
@@ -5946,7 +5969,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  *
  */
-bool awh::tls::Coder::handshake(const id_t id) noexcept {
+bool awh::tls::coder::handshake(const id_t id) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -6062,11 +6085,11 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 									// Если функция обратного вызова чтения данных установлена
 									} else if(member->callback.read != nullptr) {
 										// Если узел является клиентом и объект для работы с отпечатками TLS установлен
-										if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
+										if((member->node == event::node_t::CLIENT) && (::__awh_fgp__ != nullptr)){
 											// Если рукопожатие ещё не выполнено
 											if(!(member->state & state::HANDSHAKE_MODE)){
 												// Получаем объект браузера из шаблона контекста безопасности
-												const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
+												const fgp_t::browser_t & browser = ::__awh_fgp__->get(member->fid);
 												// Если объект браузера получен
 												if(!browser.ciphers.empty() && !browser.extensions.empty()){
 													// Добавляем прочитанный фрагмент в буфер сборки ClientHello
@@ -6078,7 +6101,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 														// Переходим к следующему фрагменту из BIO
 														continue;
 													// Выполняем применение шаблона отпечатка браузера к полному ClientHello
-													const auto applied = this->_fgp->apply(member->hello.data(), recordLen, browser);
+													const auto applied = ::__awh_fgp__->apply(member->hello.data(), recordLen, browser);
 													// Если отпечаток браузера TLS успешно наложен
 													if(!applied.empty()){
 														// Вызываем функцию обратного вызова чтения данных
@@ -6255,13 +6278,13 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Метод повторной передачи данных
+ * @brief Функция повторной передачи данных
  *
  * @param id идентификатор события
  * @return   результат выполнения повторной передачи
  *
  */
-bool awh::tls::Coder::retransmit(const id_t id) noexcept {
+bool awh::tls::coder::retransmit(const id_t id) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -6344,13 +6367,13 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Метод получения нативного контекста криптографической библиотеки
+ * @brief Функция получения нативного контекста криптографической библиотеки
  *
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   нативный контекст криптографической библиотеки либо nullptr
  *
  */
-ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
+ssl_ctx_st * awh::tls::coder::native(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6395,13 +6418,13 @@ ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
 	return nullptr;
 }
 /**
- * @brief Метод создания идентификатора транспортного уровня
+ * @brief Функция создания идентификатора транспортного уровня
  *
  * @param id идентификатор шаблона контекста безопасности
  * @return   идентификатор транспортного уровня
  *
  */
-awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
+awh::tls::coder::id_t awh::tls::coder::transport(const id_t id) noexcept {
 	// Переменная результата
 	id_t result = 0;
 	/**
@@ -6481,7 +6504,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Привязываем текущий объект TLS к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret).get());
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&::__awh_compressor__));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -6575,9 +6598,9 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
 						::ssl::registry::add(result);
 						// Если идентификатор цифрового отпечатка браузера установлен — применяем CTL-настройки отпечатка
-						if((member->node == event::node_t::CLIENT) && (member->fid != 0) && (this->_fgp != nullptr))
+						if((member->node == event::node_t::CLIENT) && (member->fid != 0) && (::__awh_fgp__ != nullptr))
 							// Активируем поддержку наложения цифрового отпечатка браузера на TLS-соединение
-							this->browser(result, member->fid);
+							awh::tls::coder::browser(result, member->fid);
 					}
 				} break;
 				// Если уровень является транспортной передачей данных
@@ -6645,7 +6668,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Привязываем текущий объект TLS к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret).get());
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&::__awh_compressor__));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -6791,14 +6814,16 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Метод создания идентификатора шаблона контекста безопасности
+ * @brief Функция создания идентификатора шаблона контекста безопасности
  *
  * @param node  тип узла события
  * @param proto тип протокола события
  * @return      идентификатор шаблона контекста безопасности
  *
  */
-awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const event::protocol_t proto) noexcept {
+awh::tls::coder::id_t awh::tls::coder::context(const event::node_t node, const event::protocol_t proto) noexcept {
+	// Выполняем одноразовую инициализацию TLS-модуля
+	::ssl::init();
 	// Переменная результата
 	id_t result = 0;
 	/**
@@ -6943,7 +6968,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 * ключа другой группы, приходится отвечать HelloRetryRequest.
 				 * Это лишний круговой обход на каждом соединении, а на стороне
 				 * QUIC ещё и запрет ранних данных (RFC 8446 §4.2.10).
-				 * Сузить список при необходимости позволяет метод groups()
+				 * Сузить список при необходимости позволяет функция groups()
 				 */
 				/**
 				 * Если включён режим отладки
@@ -6988,7 +7013,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						   !::ssl::addCertToStore(store, "AuthRoot"))
 							/**
 							 * Возвращаем нулевой идентификатор - признак неудачи, принятый
-							 * в этом методе прочими путями выхода. Прежде здесь стоял
+							 * в этой функции прочими путями выхода. Прежде здесь стоял
 							 * возврат без значения, и обнаружилось это лишь первой сборкой
 							 * под MinGW64: ветка эта принадлежит MS Windows и компилятором
 							 * не читалась ни разу
@@ -7176,7 +7201,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 * ключа другой группы, приходится отвечать HelloRetryRequest.
 				 * Это лишний круговой обход на каждом соединении, а на стороне
 				 * QUIC ещё и запрет ранних данных (RFC 8446 §4.2.10).
-				 * Сузить список при необходимости позволяет метод groups()
+				 * Сузить список при необходимости позволяет функция groups()
 				 */
 				// Выполняем установку идентификатора сессии
 				if(::SSL_CTX_set_session_id_context(member->ctx, reinterpret_cast <const uint8_t *> (&result), sizeof(result)) != 1){
@@ -7213,7 +7238,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 * и во всех поддерживаемых библиотеках вызов раскрывается в
 				 * константу (в BoringSSL - в 1, в OpenSSL 3 - в проверку
 				 * аргумента), то есть ничего не устанавливает. Список групп
-				 * при необходимости задаётся методом groups()
+				 * при необходимости задаётся функцией groups()
 				 */
 				// Получаем данные стора
 				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
@@ -7249,7 +7274,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						   !::ssl::addCertToStore(store, "AuthRoot"))
 							/**
 							 * Возвращаем нулевой идентификатор - признак неудачи, принятый
-							 * в этом методе прочими путями выхода. Прежде здесь стоял
+							 * в этой функции прочими путями выхода. Прежде здесь стоял
 							 * возврат без значения, и обнаружилось это лишь первой сборкой
 							 * под MinGW64: ветка эта принадлежит MS Windows и компилятором
 							 * не читалась ни разу
@@ -7399,14 +7424,14 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 	return result;
 }
 /**
- * @brief Метод получения сериализованного ECHConfigList для публикации в DNS
+ * @brief Функция получения сериализованного ECHConfigList для публикации в DNS
  *
  * @param id идентификатор события
  * @return   байты ECHConfigList для DNS HTTPS-записи (для сервера)
  *           или байты ECHConfigList полученные из DNS (для клиента).
  *           Возвращает пустой вектор если ECH не был настроен.
  *
- * @details Метод возвращает ECHConfigList, сохранённый в памяти после вызова
+ * @details Функция возвращает ECHConfigList, сохранённый в памяти после вызова
  *          setKeysECH(). Для сервера содержит публичные ECHConfig, которые
  *          нужно опубликовать через DNS HTTPS-запись (поле eckparam), чтобы
  *          клиенты могли найти публичный ключ и зашифровать ClientHello.
@@ -7430,7 +7455,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
  *          @endcode
  *
  */
-vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
+vector <uint8_t> awh::tls::coder::getKeysECH(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7475,13 +7500,13 @@ vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
 	return {};
 }
 /**
- * @brief Метод установки ключей EncryptedClientHello (ECH)
+ * @brief Функция установки ключей EncryptedClientHello (ECH)
  *
  * @param id   идентификатор события
  * @param keys ключи EncryptedClientHello (ECH)
  * @return     результат выполнения установки
  *
- * @details Метод поддерживается только в BoringSSL. Поведение зависит от
+ * @details Функция поддерживается только в BoringSSL. Поведение зависит от
  *          типа узла (CLIENT/SERVER) и уровня (CTS/CTL).
  *
  *          <b>Клиент (CTS или CTL):</b> @p keys — сериализованный ECHConfigList
@@ -7513,18 +7538,18 @@ vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
  *          @endcode
  *
  */
-bool awh::tls::Coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept {
+bool awh::tls::coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept {
 	// Если ключи не пустые
 	if(!keys.empty())
 		// Выполняем установку ключей EncryptedClientHello (ECH)
-		return this->setKeysECH(id, &keys[0], keys.size());
+		return awh::tls::coder::setKeysECH(id, &keys[0], keys.size());
 	// Выполняем установку ключей EncryptedClientHello (ECH) с пустым вектором
-	else return this->setKeysECH(id, nullptr, 0);
+	else return awh::tls::coder::setKeysECH(id, nullptr, 0);
 	// Возвращаем результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод установки ключей EncryptedClientHello (ECH)
+ * @brief Функция установки ключей EncryptedClientHello (ECH)
  *
  * @param id   идентификатор события
  * @param keys ключи EncryptedClientHello (ECH)
@@ -7538,7 +7563,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) n
  *          ключ генерируется автоматически.
  *
  */
-bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept {
+bool awh::tls::coder::setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -7831,7 +7856,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 	return result;
 }
 /**
- * @brief Метод шифрования данных
+ * @brief Функция шифрования данных
  *
  * @param id     идентификатор события
  * @param buffer буфер данных для шифрования
@@ -7842,7 +7867,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  *
  */
-bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::tls::coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8058,7 +8083,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 	return result;
 }
 /**
- * @brief Метод расшифровки данных
+ * @brief Функция расшифровки данных
  *
  * @param id     идентификатор события
  * @param buffer буфер данных для расшифровки
@@ -8069,7 +8094,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  *
  */
-bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::tls::coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8132,16 +8157,16 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 						// Если рукопожатие ещё не выполнено
 						if(!(member->state & state::HANDSHAKE_MODE)){
 							// Если функция обратного вызова на вывод отпечатка браузера установлена
-							if((this->_fgp != nullptr) && (member->callback.fingerprint != nullptr)){
+							if((::__awh_fgp__ != nullptr) && (member->callback.fingerprint != nullptr)){
 								// Создаём объект отпечатка браузера
 								fgp_t::browser_t browser{};
 								// Выполняем парсинг отпечатка браузера
-								if(this->_fgp->parse(reinterpret_cast <const uint8_t *> (buffer), size, browser))
+								if(::__awh_fgp__->parse(reinterpret_cast <const uint8_t *> (buffer), size, browser))
 									// Вызываем функцию обратного вызова на вывод отпечатка браузера
 									member->callback.fingerprint(id, browser);
 							}
 							// Выполняем рукопожатие TLS
-							result = this->handshake(id);
+							result = awh::tls::coder::handshake(id);
 							// Если рукопожатие ещё не выполнено
 							if(!result || !(member->state & state::HANDSHAKE_MODE))
 								// Возвращаем результат
@@ -8267,13 +8292,13 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 	return result;
 }
 /**
- * @brief Метод установки поддерживаемых групп эллиптических кривых
+ * @brief Функция установки поддерживаемых групп эллиптических кривых
  *
  * @param id     идентификатор события
  * @param groups список поддерживаемых групп эллиптических кривых
  *
  */
-void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noexcept {
+void awh::tls::coder::groups(const id_t id, const vector <group_t> & groups) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8439,13 +8464,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 	}
 }
 /**
- * @brief Метод установки алгоритмов шифрования
+ * @brief Функция установки алгоритмов шифрования
  *
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
  *
  */
-void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) noexcept {
+void awh::tls::coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8683,13 +8708,13 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 	}
 }
 /**
- * @brief Метод активации/деактивации GREASE-значений (мусорных кодов)
+ * @brief Функция активации/деактивации GREASE-значений (мусорных кодов)
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации
  *
  */
-void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::coder::grease(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8826,13 +8851,13 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 	}
 }
 /**
- * @brief Метод перемешивания поддерживаемых расширений TLS для имитации поведения различных браузеров
+ * @brief Функция перемешивания поддерживаемых расширений TLS для имитации поведения различных браузеров
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации перемешивания расширений
  *
  */
-void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::coder::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8969,12 +8994,12 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 	}
 }
 /**
- * @brief Метод активации поддержки SCT (Signed Certificate Timestamp)
+ * @brief Функция активации поддержки SCT (Signed Certificate Timestamp)
  *
  * @param id идентификатор события
  *
  */
-void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
+void awh::tls::coder::signedCertificateTimestamp(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9027,12 +9052,12 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 	}
 }
 /**
- * @brief Метод активации поддержки Stapling (OCSP)
+ * @brief Функция активации поддержки Stapling (OCSP)
  *
  * @param id идентификатор события
  *
  */
-void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
+void awh::tls::coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9087,13 +9112,13 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 	}
 }
 /**
- * @brief Метод активации поддержки расширения Next Protocol Negotiation (NPN)
+ * @brief Функция активации поддержки расширения Next Protocol Negotiation (NPN)
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации поддержки расширения
  *
  */
-void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::coder::nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9226,13 +9251,13 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 	}
 }
 /**
- * @brief Метод активации поддержки наложения цифрового отпечатка браузера на TLS-соединение
+ * @brief Функция активации поддержки наложения цифрового отпечатка браузера на TLS-соединение
  *
  * @param id  идентификатор события
  * @param fid идентификатор цифрового отпечатка браузера
  *
  */
-void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
+void awh::tls::coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9250,17 +9275,17 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
+					if((member->node == event::node_t::CLIENT) && (::__awh_fgp__ != nullptr)){
 						// Выполняем установку идентификатора цифрового отпечатка браузера
 						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
-						const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
+						const fgp_t::browser_t & browser = ::__awh_fgp__->get(member->fid);
 						// Если объект браузера получен
 						if(!browser.ciphers.empty() && !browser.extensions.empty()){
 							// Устанавливаем поддерживаемые шифры TLS
-							this->ciphers(id, browser.ciphers);
+							awh::tls::coder::ciphers(id, browser.ciphers);
 							// Активируем/деактивируем поддержку GREASE-значений (мусорных кодов)
-							this->grease(id, (browser.grease ? event::mode_t::ENABLED : event::mode_t::DISABLED));
+							awh::tls::coder::grease(id, (browser.grease ? event::mode_t::ENABLED : event::mode_t::DISABLED));
 							/**
 							 * Выполняем перебор всего списка поддерживаемых расширений TLS
 							 */
@@ -9272,22 +9297,22 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует signed_certificate_timestamp
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
 										// Активируем поддержку SCT (Signed Certificate Timestamp)
-										this->signedCertificateTimestamp(id);
+										awh::tls::coder::signedCertificateTimestamp(id);
 									break;
 									// Если тип расширения соответствует status_request
 									case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST):
 										// Активируем поддержку Stapling (OCSP)
-										this->onlineCertificateStatusProtocol(id);
+										awh::tls::coder::onlineCertificateStatusProtocol(id);
 									break;
 									// Если тип расширения соответствует supported_groups
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS):
 										// Устанавливаем поддерживаемые группы (кривые) для TLS-соединения
-										this->groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
+										awh::tls::coder::groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
 									break;
 									// Если тип расширения соответствует signature_algorithms
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
 										// Устанавливаем поддерживаемые алгоритмы подписи для TLS-соединения
-										this->signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
+										awh::tls::coder::signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
 									break;
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
@@ -9321,7 +9346,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										// Если список поддерживаемых методов компрессии сертификата TLS не пустой
 										if(!methods.empty())
 											// Устанавливаем поддерживаемые методы компрессии сертификата TLS
-											this->compressors(id, methods);
+											awh::tls::coder::compressors(id, methods);
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
@@ -9359,7 +9384,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует next_protocol_negotiation
 									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG):
 										// Активируем поддержку расширения Next Protocol Negotiation (NPN)
-										this->nextProtocolNegotiation(id, event::mode_t::ENABLED);
+										awh::tls::coder::nextProtocolNegotiation(id, event::mode_t::ENABLED);
 									break;
 								}
 							}
@@ -9414,19 +9439,19 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
+					if((member->node == event::node_t::CLIENT) && (::__awh_fgp__ != nullptr)){
 						// Выполняем установку идентификатора цифрового отпечатка браузера
 						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
-						const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
+						const fgp_t::browser_t & browser = ::__awh_fgp__->get(member->fid);
 						// Если объект браузера получен
 						if(!browser.ciphers.empty() && !browser.extensions.empty()){
 							// Переменная для хранения режима активации/деактивации EncryptedClientHello (ECH)
 							event::mode_t ech = event::mode_t::DISABLED;
 							// Устанавливаем поддерживаемые шифры TLS
-							this->ciphers(id, browser.ciphers);
+							awh::tls::coder::ciphers(id, browser.ciphers);
 							// Активируем/деактивируем поддержку GREASE-значений (мусорных кодов)
-							this->grease(id, (browser.grease ? event::mode_t::ENABLED : event::mode_t::DISABLED));
+							awh::tls::coder::grease(id, (browser.grease ? event::mode_t::ENABLED : event::mode_t::DISABLED));
 							/**
 							 * Выполняем перебор всего списка поддерживаемых расширений TLS
 							 */
@@ -9438,22 +9463,22 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует signed_certificate_timestamp
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
 										// Активируем поддержку SCT (Signed Certificate Timestamp)
-										this->signedCertificateTimestamp(id);
+										awh::tls::coder::signedCertificateTimestamp(id);
 									break;
 									// Если тип расширения соответствует status_request
 									case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST):
 										// Активируем поддержку Stapling (OCSP)
-										this->onlineCertificateStatusProtocol(id);
+										awh::tls::coder::onlineCertificateStatusProtocol(id);
 									break;
 									// Если тип расширения соответствует supported_groups
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS):
 										// Устанавливаем поддерживаемые группы (кривые) для TLS-соединения
-										this->groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
+										awh::tls::coder::groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
 									break;
 									// Если тип расширения соответствует signature_algorithms
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
 										// Устанавливаем поддерживаемые алгоритмы подписи для TLS-соединения
-										this->signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
+										awh::tls::coder::signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
 									break;
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
@@ -9487,7 +9512,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										// Если список поддерживаемых методов компрессии сертификата TLS не пустой
 										if(!methods.empty())
 											// Устанавливаем поддерживаемые методы компрессии сертификата TLS
-											this->compressors(id, methods);
+											awh::tls::coder::compressors(id, methods);
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
@@ -9533,12 +9558,12 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 											// Добавляем группу (кривую) для обмена ключами TLS в список поддерживаемых групп (кривых)
 											groups.push_back(share.first);
 										// Устанавливаем поддерживаемые группы (кривые) для обмена ключами TLS
-										this->keyShare(id, groups, ech);
+										awh::tls::coder::keyShare(id, groups, ech);
 									} break;
 									// Если тип расширения соответствует next_protocol_negotiation
 									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG):
 										// Активируем поддержку расширения Next Protocol Negotiation (NPN)
-										this->nextProtocolNegotiation(id, event::mode_t::ENABLED);
+										awh::tls::coder::nextProtocolNegotiation(id, event::mode_t::ENABLED);
 									break;
 									// Если тип расширения соответствует application_settings_old (устаревшее)
 									case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD):
@@ -9627,7 +9652,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 	}
 }
 /**
- * @brief Метод получения списка поддерживаемых ALPN-протоколов
+ * @brief Функция получения списка поддерживаемых ALPN-протоколов
  *
  * @note Выдаёт настроенный список, а не согласованный протокол:
  *       согласованный отдаёт alpn() по идентификатору транспортного
@@ -9639,7 +9664,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
  * @return   список поддерживаемых ALPN-протоколов
  *
  */
-vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const noexcept {
+vector <awh::tls::coder::alpn_t> awh::tls::coder::protocols(const id_t id) noexcept {
 	// Результирующий список поддерживаемых ALPN-протоколов
 	vector <alpn_t> result;
 	/**
@@ -9697,7 +9722,7 @@ vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const
 				// Прекращаем разбор буфера
 				break;
 			// Формируем запись поддерживаемого протокола
-			alpn_t item;
+			alpn_t item{0, ""};
 			// Устанавливаем идентификатор протокола
 			item.id = ((index < ids->size()) ? (* ids)[index] : 0);
 			// Устанавливаем название протокола
@@ -9731,13 +9756,13 @@ vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const
 	return result;
 }
 /**
- * @brief Метод извлечения активного протокола
+ * @brief Функция извлечения активного протокола
  *
  * @param id идентификатор события
  * @return   метод активного протокола
  *
  */
-uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
+uint8_t awh::tls::coder::alpn(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9782,13 +9807,13 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 	return -1;
 }
 /**
- * @brief Метод установки поддерживаемых ALPN-протоколов
+ * @brief Функция установки поддерживаемых ALPN-протоколов
  *
  * @param id   идентификатор события
  * @param alpn список поддерживаемых ALPN-протоколов
  *
  */
-void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
+void awh::tls::coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9844,7 +9869,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						}
 						// Если после фильтрации не осталось допустимых протоколов
 						if(member->alpn.ids.empty())
-							// Завершаем выполнение метода
+							// Завершаем выполнение функции
 							break;
 						// Если идентификатор выбранного ALPN-протокола не передан
 						member->alpn.id = member->alpn.ids.front();
@@ -9894,7 +9919,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						}
 						// Если после фильтрации не осталось допустимых протоколов
 						if(member->alpn.ids.empty())
-							// Завершаем выполнение метода
+							// Завершаем выполнение функции
 							break;
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT)
@@ -9924,14 +9949,14 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 	}
 }
 /**
- * @brief Метод установки поддерживаемых ALPS-протоколов
+ * @brief Функция установки поддерживаемых ALPS-протоколов
  *
  * @param id   идентификатор события
  * @param alps список поддерживаемых ALPS-протоколов
  * @param std  флаг поддерживаемого стандарта
  *
  */
-void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
+void awh::tls::coder::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10104,13 +10129,13 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 	}
 }
 /**
- * @brief Метод установки поддерживаемых алгоритмов подписи
+ * @brief Функция установки поддерживаемых алгоритмов подписи
  *
  * @param id         идентификатор события
  * @param signatures список поддерживаемых алгоритмов подписи
  *
  */
-void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & signatures) noexcept {
+void awh::tls::coder::signature(const id_t id, const vector <signature_t> & signatures) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10307,13 +10332,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 	}
 }
 /**
- * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
+ * @brief Функция установки поддерживаемых алгоритмов компрессии сертификата
  *
  * @param id     идентификатор события
  * @param methods список поддерживаемых алгоритмов компрессии сертификата
  *
  */
-void awh::tls::Coder::compressors(const id_t id, const vector <compressor::method_t> & methods) noexcept {
+void awh::tls::coder::compressors(const id_t id, const vector <compressor::method_t> & methods) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10679,14 +10704,14 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 	}
 }
 /**
- * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых
+ * @brief Функция генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых
  *
  * @param id     идентификатор события
  * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
  * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
  *
  */
-void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, const event::mode_t grease) noexcept {
+void awh::tls::coder::keyShare(const id_t id, const vector <group_t> & groups, const event::mode_t grease) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10885,13 +10910,13 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 	}
 }
 /**
- * @brief Метод установки сертификатов доверенных центров сертификации
+ * @brief Функция установки сертификатов доверенных центров сертификации
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу сертификата доверенных центров сертификации
  *
  */
-void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
+void awh::tls::coder::ca(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -11112,14 +11137,14 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 	}
 }
 /**
- * @brief Метод установки сертификатов доверенных центров сертификации
+ * @brief Функция установки сертификатов доверенных центров сертификации
  *
  * @param id   идентификатор транспортного уровня или шаблона контекста безопасности
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
  * @param file путь к файлу сертификата доверенного центра сертификации
  *
  */
-void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexcept {
+void awh::tls::coder::ca(const id_t id, string_view dir, string_view file) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -11402,13 +11427,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 	}
 }
 /**
- * @brief Метод установки списка отзыва сертификатов
+ * @brief Функция установки списка отзыва сертификатов
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу списка отзыва сертификатов
  *
  */
-void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filename) noexcept {
+void awh::tls::coder::certificateRevocationList(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -11662,14 +11687,14 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 	}
 }
 /**
- * @brief Метод установки приватного ключа клиента
+ * @brief Функция установки приватного ключа клиента
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
  *
  */
-void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
+void awh::tls::coder::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -11921,14 +11946,14 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 	}
 }
 /**
- * @brief Метод установки клиентского сертификата
+ * @brief Функция установки клиентского сертификата
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу клиентского сертификата
  * @param type     тип файла клиентского сертификата
  *
  */
-void awh::tls::Coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
+void awh::tls::coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -12274,14 +12299,14 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 	}
 }
 /**
- * @brief Метод установки функции обратного вызова получения данных
+ * @brief Функция установки функции обратного вызова получения данных
  *
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  *
  */
-bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
+bool awh::tls::coder::on(const id_t id, read_callback_t callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -12322,14 +12347,14 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки функции обратного вызова передачи данных
+ * @brief Функция установки функции обратного вызова передачи данных
  *
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  *
  */
-bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
+bool awh::tls::coder::on(const id_t id, write_callback_t callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -12370,14 +12395,14 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки функции обратного вызова изменения состояния
+ * @brief Функция установки функции обратного вызова изменения состояния
  *
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  *
  */
-bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
+bool awh::tls::coder::on(const id_t id, state_callback_t callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -12430,14 +12455,14 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки функции обратного вызова получения ошибок
+ * @brief Функция установки функции обратного вызова получения ошибок
  *
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  *
  */
-bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
+bool awh::tls::coder::on(const id_t id, error_callback_t callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -12490,14 +12515,14 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки функции обратного вызова получения снимка браузера приславшего ClientHello
+ * @brief Функция установки функции обратного вызова получения снимка браузера приславшего ClientHello
  *
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  *
  */
-bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcept {
+bool awh::tls::coder::on(const id_t id, fingerprint_callback_t callback) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -12536,58 +12561,4 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 	}
 	// Возвращаем результат
 	return result;
-}
-/**
- * @brief Конструктор
- *
- */
-awh::tls::Coder::Coder() noexcept :
- _addr(), _compressor(), _fgp(nullptr) {
-	/**
-	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
-	 */
-	std::call_once(::__awh_ssl_init_once__, []() noexcept {
-		// Активируем работу мьютекса блокировки глобального состояния TLS
-		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-		// Увеличиваем счётчик инициализации библиотеки OpenSSL
-		const bool needInit = ::ssl::registry::acquireInit();
-		// Если библиотека OpenSSL ещё не инициализирована
-		if(needInit)
-			// Выполняем одноразовую инициализацию OpenSSL
-			::ssl::initOpenSSL();
-	});
-}
-/**
- * @brief Конструктор
- *
- * @param fgp объект для работы с отпечатками TLS
- *
- */
-awh::tls::Coder::Coder(const fgp_t * fgp) noexcept :
- _addr(), _compressor(), _fgp(fgp) {
-	// Если объект для работы с отпечатками TLS установлен
-	if(this->_fgp != nullptr)
-		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
-		const_cast <fgp_t *> (this->_fgp)->threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
-	/**
-	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
-	 */
-	std::call_once(::__awh_ssl_init_once__, []() noexcept {
-		// Активируем работу мьютекса блокировки глобального состояния TLS
-		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-		// Увеличиваем счётчик инициализации библиотеки OpenSSL
-		const bool needInit = ::ssl::registry::acquireInit();
-		// Если библиотека OpenSSL ещё не инициализирована
-		if(needInit)
-			// Выполняем одноразовую инициализацию OpenSSL
-			::ssl::initOpenSSL();
-	});
-}
-/**
- * @brief Деструктор
- *
- */
-awh::tls::Coder::~Coder() noexcept {
-	// Уменьшаем счётчик инициализации библиотеки OpenSSL
-	::ssl::registry::releaseInit();
 }

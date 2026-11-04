@@ -61,8 +61,6 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk::initialize();
 	// Устанавливаем уровень логирования
 	// log::level(log::level_t::NONE);
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls;
 	// Добавляем новое событие клиента SCTP
 	event::id_t eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
@@ -72,53 +70,53 @@ int32_t main(int32_t argc, char * argv[]){
 		// Флаг завершения работы
 		bool stop = false;
 		// Регистрируем объект транспортного уровня безопасности
-		tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
+		tls::coder::id_t cts = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
-		tls.alpn(cts, {{0,"http/1.1"}});
-		// tls.alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+		tls::coder::alpn(cts, {{0,"http/1.1"}});
+		// tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
-		tls.ca(cts, "../sh/certificates", "ca.pem");
+		tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		tls.validateServerNameIndication(cts, false);
+		tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		tls.serverNameIndication(cts, "anyks.com");
+		tls::coder::serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
-		tls.certificate(cts, "../sh/certificates/client/cert.pem");
+		tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		tls.privateKey(cts, "../sh/certificates/client/key.pem");
+		tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня DTLS
-		tls::coder_t::id_t ctl = tls.transport(cts);
+		tls::coder::id_t ctl = tls::coder::transport(cts);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		tls.on(ctl, [&tls](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
+		tls::coder::on(ctl, [](const tls::coder::id_t id, const tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния DTLS
 			 */
 			switch(static_cast <uint8_t> (state)){
 				// Если состояние ошибки транспортного уровня
-				case static_cast <uint8_t> (tls::coder_t::state_t::FAILED):
+				case static_cast <uint8_t> (tls::coder::state_t::FAILED):
 					// Записываем ошибку в лог транспортного уровня TLS
 					log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", log::flag_t::CRITICAL, id);
 				break;
 				// Если состояние уничтожения объекта транспортного уровня
-				case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED):
+				case static_cast <uint8_t> (tls::coder::state_t::DESTROYED):
 					// Записываем в лог сообщение об успешном удалении контекста TLS
 					log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", log::flag_t::INFO, id);
 				break;
 				// Если состояние рукопожатия успешно завершено
-				case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
+				case static_cast <uint8_t> (tls::coder::state_t::HANDSHAKED): {
 					// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-					cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
-					cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
+					cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls::coder::info(id) << endl;
+					cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls::coder::alpn(id) << endl;
 					cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-					cout << "Версия OpenSSL: " << tls.version() << endl << endl;
-					cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
-					cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
-					cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
-					cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+					cout << "Версия OpenSSL: " << tls::coder::version() << endl << endl;
+					cout << "Cipher: " << tls::coder::cipherInfo(id) << endl << endl;
+					cout << "Certificate: " << tls::coder::certificateInfo(id) << endl << endl;
+					cout << "CRL Info: " << tls::coder::certificateRevocationListInfo(id) << endl << endl;
+					cout << "Certificate Validation: " << (tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
 					// Возвращаем данные сертификата TLS
-					cout << "Certificate data:\n" << tls.certificateExtract(id) << endl << endl;
+					cout << "Certificate data:\n" << tls::coder::certificateExtract(id) << endl << endl;
 					// Записываем в лог информацию о TLS соединении
-					cout << tls.peerInfo(id) << endl;
+					cout << tls::coder::peerInfo(id) << endl;
 					// Текст запроса к серверу
 					const string request =
 						"GET / HTTP/1.1\r\n"
@@ -127,7 +125,7 @@ int32_t main(int32_t argc, char * argv[]){
 						"User-Agent: iouring-opentls-sample/1.0\r\n"
 						"\r\n";
 					// Если данные успешно зашифрованы TLS
-					if(tls.encrypt(id, request.c_str(), request.size()))
+					if(tls::coder::encrypt(id, request.c_str(), request.size()))
 						// Записываем в лог сообщение об успешном шифровании данных TLS
 						log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log::flag_t::INFO, id, request.size());
 					// Если данные не отправлены
@@ -136,36 +134,36 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		tls.on(ctl, [](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
+		tls::coder::on(ctl, [](const tls::coder::id_t id, [[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			log::print("Ошибка TLS: ID=%" PRIu64 ", Сообщение=%s", log::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
-		tls.on(ctl, [](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const size_t size) noexcept -> void {
+		tls::coder::on(ctl, [](const tls::coder::id_t id, const tls::coder::event_t event, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION):
 					// Записываем в лог сообщение о записи зашифрованных данных TLS
 					log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log::flag_t::INFO, id, size);
 				break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
 					// Записываем в лог сообщение о записи дешифрованных данных TLS
 					log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", log::flag_t::INFO, id, size);
 				break;
 			}
 		});
 		// Регистрируем функцию обратного вызова на чтение данных TLS
-		tls.on(ctl, [eid, &stop](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		tls::coder::on(ctl, [eid, &stop](const tls::coder::id_t id, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+				case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
 					if(engine::send(eid, reinterpret_cast <const char *> (buffer), size))
 						// Если данные успешно отправлены
@@ -174,7 +172,7 @@ int32_t main(int32_t argc, char * argv[]){
 					else log::print("Ошибка отправки зашифрованных данных: ID=%u", log::flag_t::CRITICAL, eid);
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
+				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION): {
 					// Получаем ответ сервера в расшифрованном виде
 					const string response(reinterpret_cast <const char *> (buffer), size);
 					// Записываем в лог сообщение полученных данных с сервера
@@ -368,7 +366,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				engine::on(eid, [ctl, &tls](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::on(eid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
 					const net::sctp::minfo_t & minfo = engine::sctp::messageInfo(eid);
 					// Записываем в лог информацию о сообщении SCTP-сокета
@@ -391,7 +389,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Unpack Data: " << status.unackdata << endl;
 					cout << "  - Pending Data: " << status.penddata << endl;
 					// Если данные успешно дешифрованы TLS
-					if(tls.decrypt(ctl, data, size))
+					if(tls::coder::decrypt(ctl, data, size))
 						// Записываем в лог сообщение об успешном дешифровании данных TLS
 						log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", log::flag_t::INFO, ctl, size);
 					// Если данные не отправлены
@@ -456,13 +454,13 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				engine::on(eid, static_cast <engine::callback::connect_t> ([ctl, &tls](const event::id_t eid, const bool ok) noexcept -> void {
+				engine::on(eid, static_cast <engine::callback::connect_t> ([ctl](const event::id_t eid, const bool ok) noexcept -> void {
 					// Записываем в лог сообщение о принятии события
 					log::print("Событие подключения: ID=%u, результат: %s", log::flag_t::INFO, eid, ok ? "YES" : "NO");
 					// Если подключение успешно
 					if(ok){
 						// Если рукопожатие TLS успешно
-						if(tls.handshake(ctl))
+						if(tls::coder::handshake(ctl))
 							// Записываем в лог сообщение о начале рукопожатия TLS
 							log::print("Начинаем процесс рукопожатия: ID=%u", log::flag_t::INFO, ctl);
 						// Если рукопожатие TLS не выполнено

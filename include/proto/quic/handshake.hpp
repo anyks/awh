@@ -216,7 +216,7 @@ namespace awh {
 				// Флаг отказа удалённого узла в ранних данных (RFC 9001 §4.6.2)
 				bool _rejected;
 				// Список поддерживаемых ALPN-протоколов из контекста TLS
-				vector <tls::coder_t::alpn_t> _protocols;
+				vector <tls::coder::alpn_t> _protocols;
 			private:
 				// Состояния уровней шифрования
 				level_data_t _levels[LEVELS];
@@ -261,7 +261,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				tls::coder_t::alpn_t alpn() const noexcept;
+				tls::coder::alpn_t alpn() const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -620,7 +620,6 @@ namespace awh {
 				 *
 				 * @param endpoint роль локального эндпоинта на соединении
 				 * @param ctx      идентификатор шаблона контекста безопасности
-				 * @param coder    объект кодера транспортной безопасности
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -630,11 +629,10 @@ namespace awh {
 				 *       outlive the object of the handshake
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the security context
-				 * @param coder    object of the coder of the transport security
 				 *
 				 * \~
 				 */
-				explicit Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
+				explicit Handshake(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

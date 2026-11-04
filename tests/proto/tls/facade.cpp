@@ -262,30 +262,17 @@ namespace {
 			std::string _privateKey;
 		private:
 			// Идентификатор шаблона контекста безопасности клиента
-			awh::tls::Coder::id_t _client;
+			awh::tls::coder::id_t _client;
 			// Идентификатор шаблона контекста безопасности сервера
-			awh::tls::Coder::id_t _server;
-		private:
-			// Объект кодера транспортной безопасности
-			awh::tls::Coder _coder;
+			awh::tls::coder::id_t _server;
 		public:
-			/**
-			 * @brief Метод доступа к объекту кодера транспортной безопасности
-			 *
-			 * @return объект кодера транспортной безопасности
-			 *
-			 */
-			awh::tls::Coder & coder() noexcept {
-				// Выводим объект кодера транспортной безопасности
-				return this->_coder;
-			}
 			/**
 			 * @brief Метод извлечения шаблона контекста безопасности клиента
 			 *
 			 * @return идентификатор шаблона контекста безопасности
 			 *
 			 */
-			awh::tls::Coder::id_t client() const noexcept {
+			awh::tls::coder::id_t client() const noexcept {
 				// Выводим шаблон контекста безопасности клиента
 				return this->_client;
 			}
@@ -295,7 +282,7 @@ namespace {
 			 * @return идентификатор шаблона контекста безопасности
 			 *
 			 */
-			awh::tls::Coder::id_t server() const noexcept {
+			awh::tls::coder::id_t server() const noexcept {
 				// Выводим шаблон контекста безопасности сервера
 				return this->_server;
 			}
@@ -323,7 +310,7 @@ namespace {
 			 *
 			 */
 			explicit Security() noexcept :
-			 _client(0), _server(0), _coder() {
+			 _client(0), _server(0) {
 				// Сертификат тестового узла в формате PEM
 				std::string certificate = "";
 				// Приватный ключ тестового узла в формате PEM
@@ -343,31 +330,31 @@ namespace {
 					// Выходим из конструктора - контексты останутся несозданными
 					return;
 				// Создаём шаблон контекста безопасности сервера поверх TCP
-				this->_server = this->_coder.context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+				this->_server = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 				// Если шаблон контекста безопасности сервера создан
 				if(this->_server > 0){
 					// Устанавливаем сертификат тестового узла
-					this->_coder.certificate(this->_server, this->_certificate);
+					awh::tls::coder::certificate(this->_server, this->_certificate);
 					// Устанавливаем приватный ключ тестового узла
-					this->_coder.privateKey(this->_server, this->_privateKey);
+					awh::tls::coder::privateKey(this->_server, this->_privateKey);
 					/**
 					 * Снимаем проверку на сервере: шаблон контекста создаётся с включённой
 					 * проверкой, а на серверном узле это означает требование клиентского
 					 * сертификата, то есть взаимную аутентификацию. Проверяется односторонний
 					 * TLS, поэтому требование снимается явно
 					 */
-					this->_coder.validateServerNameIndication(this->_server, false);
+					awh::tls::coder::validateServerNameIndication(this->_server, false);
 				}
 				// Создаём шаблон контекста безопасности клиента поверх TCP
-				this->_client = this->_coder.context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
+				this->_client = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
 				// Если шаблон контекста безопасности клиента создан
 				if(this->_client > 0){
 					// Устанавливаем доменное имя удалённого узла
-					this->_coder.serverNameIndication(this->_client, "localhost");
+					awh::tls::coder::serverNameIndication(this->_client, "localhost");
 					// Устанавливаем доверенный центр сертификации тестового узла
-					this->_coder.ca(this->_client, this->_certificate);
+					awh::tls::coder::ca(this->_client, this->_certificate);
 					// Снимаем проверку сертификата удалённого узла (сертификат самоподписанный)
-					this->_coder.validateServerNameIndication(this->_client, false);
+					awh::tls::coder::validateServerNameIndication(this->_client, false);
 				}
 			}
 			/**
@@ -457,7 +444,7 @@ namespace {
 			std::unique_ptr <awh::client_t> _client;
 		private:
 			// Опознаватель транспортного уровня клиента, заведённого прогоном
-			tls::coder_t::id_t _ctl;
+			tls::coder::id_t _ctl;
 		private:
 			// Отправленная клиентом нагрузка (эталон для сверки)
 			std::string _payload;
@@ -535,7 +522,7 @@ namespace {
 			 * @param cid идентификатор принятого клиента
 			 *
 			 */
-			void serverAccept(const event::id_t, const event::id_t cid, const tls::coder_t::id_t) noexcept {
+			void serverAccept(const event::id_t, const event::id_t cid, const tls::coder::id_t) noexcept {
 				// Устанавливаем опции принятого клиента
 				this->_server->setOptions(cid, (event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::TCP_NO_DELAY));
 			}
@@ -655,7 +642,7 @@ namespace {
 				// Формируем нагрузку обмена заданного размера
 				this->_payload = this->makePayload(this->_length);
 				// Создаём фасад сервера на серверном шаблоне контекста безопасности
-				this->_server = std::make_unique <awh::server_t> (this->_security->server(), &this->_security->coder());
+				this->_server = std::make_unique <awh::server_t> (this->_security->server());
 				// Создаём событие сервера потокового транспорта поверх TCP
 				this->_server->init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 				// Устанавливаем хост сервера на локальной петле
@@ -665,7 +652,7 @@ namespace {
 				// Регистрируем коллбэк изменения статуса сервера
 				this->_server->on <void (const event::status_t)> ("status", &Harness::serverStatus, this, _1);
 				// Регистрируем коллбэк приёма подключения клиента сервером
-				this->_server->on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Harness::serverAccept, this, _1, _2, _3);
+				this->_server->on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Harness::serverAccept, this, _1, _2, _3);
 				// Регистрируем коллбэк принятых сервером расшифрованных данных
 				this->_server->on <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", &Harness::serverRead, this, _1, _2, _3, _4);
 				/**
@@ -675,9 +662,9 @@ namespace {
 				 * откликами, привязанными к фасаду клиента, который прогон разрушит
 				 */
 				// Выполняем заведение транспортного уровня клиента
-				this->_ctl = this->_security->coder().transport(this->_security->client());
+				this->_ctl = awh::tls::coder::transport(this->_security->client());
 				// Создаём фасад клиента на транспорте клиентского шаблона контекста безопасности
-				this->_client = std::make_unique <awh::client_t> (this->_ctl, &this->_security->coder());
+				this->_client = std::make_unique <awh::client_t> (this->_ctl);
 				// Создаём событие клиента потокового транспорта поверх TCP
 				this->_client->init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 				// Устанавливаем опции клиента: обе стороны на одном потоке цикла, блокирующая запись встала бы намертво
@@ -762,7 +749,7 @@ namespace {
 				// Если транспортный уровень заводился прогоном
 				if(this->_ctl > 0)
 					// Выполняем снятие транспортного уровня
-					this->_security->coder().destroy(this->_ctl);
+					awh::tls::coder::destroy(this->_ctl);
 				// Выполняем разрушение фасада клиента
 				this->_client.reset(nullptr);
 				// Выполняем разрушение фасада сервера

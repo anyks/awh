@@ -29,8 +29,6 @@
  *
  */
 void IoFixture::SetUp(){
-	// Создаём объект транспортного уровня безопасности
-	this->_coder = std::make_unique <awh::tls::coder_t> ();
 }
 
 /**

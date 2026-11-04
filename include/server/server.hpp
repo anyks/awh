@@ -136,7 +136,7 @@ namespace awh {
 				// Идентификатор клиента
 				event::id_t eid;
 				// Контекст шаблона безопасности TLS
-				tls::coder_t::id_t cts;
+				tls::coder::id_t cts;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -197,12 +197,10 @@ namespace awh {
 					 */
 					explicit Ciphertext() noexcept : buffer{""}, offset(0) {}
 				} ciphertext_t;
-				// Объект транспортного уровня безопасности
-				tls::coder_t * coder;
 				// Список ожидающего отправки шифротекста клиентов
 				unordered_map <event::id_t, ciphertext_t> residue;
 				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
-				unordered_map <event::id_t, tls::coder_t::id_t> safety;
+				unordered_map <event::id_t, tls::coder::id_t> safety;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -871,7 +869,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept;
+			virtual void stateTLS(const tls::coder::id_t id, const event::id_t eid, const tls::coder::state_t state) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод получения отпечатка TLS
@@ -889,7 +887,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
+			virtual void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки ошибок TLS
@@ -909,7 +907,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void errorTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::error_t error, const string & message) noexcept;
+			virtual void errorTLS(const tls::coder::id_t id, const event::id_t eid, const tls::coder::error_t error, const string & message) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки событий шифрования/дешифрования данных TLS
@@ -933,7 +931,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			virtual void processTLS(const tls::coder::id_t id, const event::id_t eid, const tls::coder::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -2885,36 +2883,32 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param cts   идентификатор шаблона контекста безопасности
-			 * @param coder объект транспортного уровня безопасности
+			 * @param cts идентификатор шаблона контекста безопасности
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param cts   security context template identifier
-			 * @param coder transport layer security object
+			 * @param cts security context template identifier
 			 *
 			 * \~
 			 */
-			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder) noexcept;
+			explicit Server(const tls::coder::id_t cts) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param cts   идентификатор шаблона контекста безопасности
-			 * @param coder объект транспортного уровня безопасности
-			 * @param dns   объект DNS-резолвера
+			 * @param cts идентификатор шаблона контекста безопасности
+			 * @param dns объект DNS-резолвера
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param cts   security context template identifier
-			 * @param coder transport layer security object
-			 * @param dns   DNS resolver object
+			 * @param cts security context template identifier
+			 * @param dns DNS resolver object
 			 *
 			 * \~
 			 */
-			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns) noexcept;
+			explicit Server(const tls::coder::id_t cts, unit::dns_t * dns) noexcept;
 		public:
 			/**
 			 * \~russian

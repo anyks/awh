@@ -71,9 +71,9 @@ namespace {
 	 */
 	typedef struct Endpoint {
 		// Идентификатор шаблона контекста безопасности
-		tls::Coder::id_t context;
+		tls::coder::id_t context;
 		// Идентификатор транспортного уровня передачи
-		tls::Coder::id_t transport;
+		tls::coder::id_t transport;
 		// Накопленный исходящий шифртекст
 		std::string outgoing;
 		// Накопленный принятый открытый текст
@@ -95,44 +95,43 @@ namespace {
 	/**
 	 * @brief Функция подключения функций обратного вызова эндпоинта
 	 *
-	 * @param coder    объект кодера транспортной безопасности
 	 * @param endpoint эндпоинт тестового обмена
 	 *
 	 */
-	static void subscribe(tls::Coder & coder, endpoint_t & endpoint) noexcept {
+	static void subscribe(endpoint_t & endpoint) noexcept {
 		// Устанавливаем функцию обратного вызова чтения
-		coder.on(endpoint.transport, [&endpoint](const tls::Coder::id_t, const tls::Coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		tls::coder::on(endpoint.transport, [&endpoint](const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Определяем тип события кодера
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие является шифрованием - данные готовы к отправке пиру
-				case static_cast <uint8_t> (tls::Coder::event_t::ENCRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION):
 					// Накапливаем исходящий шифртекст
 					endpoint.outgoing.append(reinterpret_cast <const char *> (buffer), size);
 				break;
 				// Если событие является расшифровкой - данные предназначены приложению
-				case static_cast <uint8_t> (tls::Coder::event_t::DECRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
 					// Накапливаем принятый открытый текст
 					endpoint.incoming.append(reinterpret_cast <const char *> (buffer), size);
 				break;
 			}
 		});
 		// Устанавливаем функцию обратного вызова изменения состояния
-		coder.on(endpoint.transport, [&endpoint](const tls::Coder::id_t, const tls::Coder::state_t state) noexcept -> void {
+		tls::coder::on(endpoint.transport, [&endpoint](const tls::coder::id_t, const tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Определяем состояние кодера
 			 */
 			switch(static_cast <uint8_t> (state)){
 				// Если рукопожатие выполнено
-				case static_cast <uint8_t> (tls::Coder::state_t::HANDSHAKED):
+				case static_cast <uint8_t> (tls::coder::state_t::HANDSHAKED):
 					// Устанавливаем флаг выполненного рукопожатия
 					endpoint.handshaked = true;
 				break;
 				// Если рукопожатие завершилось отказом
-				case static_cast <uint8_t> (tls::Coder::state_t::HANDSHAKE_FAILED):
+				case static_cast <uint8_t> (tls::coder::state_t::HANDSHAKE_FAILED):
 				// Если работа завершилась ошибкой
-				case static_cast <uint8_t> (tls::Coder::state_t::FAILED):
+				case static_cast <uint8_t> (tls::coder::state_t::FAILED):
 					// Устанавливаем флаг отказа рукопожатия
 					endpoint.failed = true;
 				break;
@@ -142,13 +141,12 @@ namespace {
 	/**
 	 * @brief Функция передачи накопленного шифртекста между эндпоинтами
 	 *
-	 * @param coder объект кодера транспортной безопасности
 	 * @param from  эндпоинт-отправитель
 	 * @param to    эндпоинт-получатель
 	 * @return      количество переданных октетов
 	 *
 	 */
-	static size_t transfer(tls::Coder & coder, endpoint_t & from, endpoint_t & to) noexcept {
+	static size_t transfer(endpoint_t & from, endpoint_t & to) noexcept {
 		// Если исходящих данных нет
 		if(from.outgoing.empty())
 			// Выводим нулевое количество переданных октетов
@@ -160,36 +158,35 @@ namespace {
 		// Учитываем переданные пиру октеты
 		from.sent += buffer.size();
 		// Передаём шифртекст получателю на расшифровку
-		coder.decrypt(to.transport, buffer.data(), buffer.size());
+		tls::coder::decrypt(to.transport, buffer.data(), buffer.size());
 		// Выводим количество переданных октетов
 		return buffer.size();
 	}
 	/**
 	 * @brief Функция выполнения рукопожатия между эндпоинтами
 	 *
-	 * @param coder  объект кодера транспортной безопасности
 	 * @param client эндпоинт клиента
 	 * @param server эндпоинт сервера
 	 * @return       результат выполнения рукопожатия
 	 *
 	 */
-	static bool establish(tls::Coder & coder, endpoint_t & client, endpoint_t & server) noexcept {
+	static bool establish(endpoint_t & client, endpoint_t & server) noexcept {
 		/**
 		 * Инициируем рукопожатие на обоих эндпоинтах однократно: далее оно
 		 * продвигается подачей принятого шифртекста на расшифровку, как это
 		 * устроено в рабочих примерах модуля
 		 */
-		coder.handshake(client.transport);
+		tls::coder::handshake(client.transport);
 		// Инициируем рукопожатие сервера
-		coder.handshake(server.transport);
+		tls::coder::handshake(server.transport);
 		/**
 		 * Выполняем обмен до завершения рукопожатия на обоих эндпоинтах
 		 */
 		for(size_t i = 0; i < 32; i++){
 			// Передаём исходящий шифртекст клиента серверу
-			const size_t sent = ::transfer(coder, client, server);
+			const size_t sent = ::transfer(client, server);
 			// Передаём исходящий шифртекст сервера клиенту
-			const size_t received = ::transfer(coder, server, client);
+			const size_t received = ::transfer(server, client);
 			// Если рукопожатие выполнено на обоих эндпоинтах
 			if(client.handshaked && server.handshaked)
 				// Выводим положительный результат
@@ -209,42 +206,40 @@ namespace {
 	/**
 	 * @brief Функция настройки пары эндпоинтов одностороннего TLS
 	 *
-	 * @param coder       объект кодера транспортной безопасности
 	 * @param client      эндпоинт клиента
 	 * @param server      эндпоинт сервера
 	 * @param certificate сертификат сервера
 	 * @param privateKey  приватный ключ сервера
 	 *
 	 */
-	static void contexts(tls::Coder & coder, endpoint_t & client, endpoint_t & server, const std::string & certificate, const std::string & privateKey) noexcept {
+	static void contexts(endpoint_t & client, endpoint_t & server, const std::string & certificate, const std::string & privateKey) noexcept {
 		// Создаём шаблоны контекста безопасности
-		client.context = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
-		server.context = coder.context(event::node_t::SERVER, event::protocol_t::TCP);
+		client.context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
+		server.context = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 		// Устанавливаем сертификат и приватный ключ сервера
-		coder.certificate(server.context, certificate);
-		coder.privateKey(server.context, privateKey);
+		tls::coder::certificate(server.context, certificate);
+		tls::coder::privateKey(server.context, privateKey);
 		// Устанавливаем доверенный центр сертификации клиента
-		coder.ca(client.context, certificate);
+		tls::coder::ca(client.context, certificate);
 		// Устанавливаем доменное имя удалённого узла на клиенте
-		coder.serverNameIndication(client.context, "localhost");
+		tls::coder::serverNameIndication(client.context, "localhost");
 		// Снимаем требование клиентского сертификата на сервере
-		coder.validateServerNameIndication(server.context, false);
+		tls::coder::validateServerNameIndication(server.context, false);
 	}
 	/**
 	 * @brief Функция запуска транспортных уровней пары эндпоинтов
 	 *
-	 * @param coder  объект кодера транспортной безопасности
 	 * @param client эндпоинт клиента
 	 * @param server эндпоинт сервера
 	 *
 	 */
-	static void transports(tls::Coder & coder, endpoint_t & client, endpoint_t & server) noexcept {
+	static void transports(endpoint_t & client, endpoint_t & server) noexcept {
 		// Создаём транспортные уровни
-		client.transport = coder.transport(client.context);
-		server.transport = coder.transport(server.context);
+		client.transport = tls::coder::transport(client.context);
+		server.transport = tls::coder::transport(server.context);
 		// Подключаем функции обратного вызова эндпоинтов
-		::subscribe(coder, client);
-		::subscribe(coder, server);
+		::subscribe(client);
+		::subscribe(server);
 	}
 	/**
 	 * Размер распакованной бомбы сжатия. Сжатая бомба обязана уложиться в
@@ -457,58 +452,58 @@ TEST_F(TlsFixture, HandshakeLoopbackTest){
 	// Эндпоинт сервера
 	::endpoint_t server;
 	// Создаём шаблон контекста безопасности клиента
-	client.context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
+	client.context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Создаём шаблон контекста безопасности сервера
-	server.context = this->_coder->context(event::node_t::SERVER, event::protocol_t::TCP);
+	server.context = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Проверяем что шаблоны контекста созданы
 	ASSERT_NE(client.context, 0u);
 	ASSERT_NE(server.context, 0u);
 	// Устанавливаем сертификат сервера
-	this->_coder->certificate(server.context, this->_certificate);
+	tls::coder::certificate(server.context, this->_certificate);
 	// Устанавливаем приватный ключ сервера
-	this->_coder->privateKey(server.context, this->_privateKey);
+	tls::coder::privateKey(server.context, this->_privateKey);
 	// Устанавливаем доверенный центр сертификации клиента
-	this->_coder->ca(client.context, this->_certificate);
+	tls::coder::ca(client.context, this->_certificate);
 	// Устанавливаем доменное имя удалённого узла на клиенте
-	this->_coder->serverNameIndication(client.context, "localhost");
+	tls::coder::serverNameIndication(client.context, "localhost");
 	/**
 	 * Снимаем проверку сертификата на сервере: шаблон контекста создаётся
 	 * с включённой проверкой, а на серверном узле это означает требование
 	 * клиентского сертификата, то есть взаимную аутентификацию. Тесты
 	 * проверяют односторонний TLS, поэтому требование снимается явно
 	 */
-	this->_coder->validateServerNameIndication(server.context, false);
+	tls::coder::validateServerNameIndication(server.context, false);
 	// Создаём транспортный уровень клиента
-	client.transport = this->_coder->transport(client.context);
+	client.transport = tls::coder::transport(client.context);
 	// Создаём транспортный уровень сервера
-	server.transport = this->_coder->transport(server.context);
+	server.transport = tls::coder::transport(server.context);
 	// Проверяем что транспортные уровни созданы
 	ASSERT_NE(client.transport, 0u);
 	ASSERT_NE(server.transport, 0u);
 	// Подключаем функции обратного вызова клиента
-	::subscribe(* this->_coder, client);
+	::subscribe(client);
 	// Подключаем функции обратного вызова сервера
-	::subscribe(* this->_coder, server);
+	::subscribe(server);
 	// Выполняем рукопожатие между эндпоинтами
-	ASSERT_TRUE(::establish(* this->_coder, client, server));
+	ASSERT_TRUE(::establish(client, server));
 	// Проверяем что рукопожатие выполнено на обоих эндпоинтах
 	ASSERT_TRUE(client.handshaked);
 	ASSERT_TRUE(server.handshaked);
 	// Проверяем что согласованный шифр доступен
-	ASSERT_FALSE(this->_coder->cipherInfo(client.transport).empty());
+	ASSERT_FALSE(tls::coder::cipherInfo(client.transport).empty());
 	// Передаваемое прикладное сообщение
 	const std::string message = "прикладные данные поверх установленного соединения";
 	// Шифруем прикладное сообщение на клиенте
-	ASSERT_TRUE(this->_coder->encrypt(client.transport, message.data(), message.size()));
+	ASSERT_TRUE(tls::coder::encrypt(client.transport, message.data(), message.size()));
 	// Передаём шифртекст серверу
-	ASSERT_GT(::transfer(* this->_coder, client, server), 0u);
+	ASSERT_GT(::transfer(client, server), 0u);
 	// Проверяем что сервер принял сообщение без искажений
 	ASSERT_EQ(server.incoming, message);
 	// Выполняем удаление созданных объектов
-	ASSERT_TRUE(this->_coder->destroy(client.transport));
-	ASSERT_TRUE(this->_coder->destroy(server.transport));
-	ASSERT_TRUE(this->_coder->destroy(client.context));
-	ASSERT_TRUE(this->_coder->destroy(server.context));
+	ASSERT_TRUE(tls::coder::destroy(client.transport));
+	ASSERT_TRUE(tls::coder::destroy(server.transport));
+	ASSERT_TRUE(tls::coder::destroy(client.context));
+	ASSERT_TRUE(tls::coder::destroy(server.context));
 }
 
 /**
@@ -524,48 +519,48 @@ TEST_F(TlsFixture, HandshakeAlpnTest){
 	// Эндпоинт сервера
 	::endpoint_t server;
 	// Создаём шаблоны контекста безопасности
-	client.context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
-	server.context = this->_coder->context(event::node_t::SERVER, event::protocol_t::TCP);
+	client.context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
+	server.context = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Проверяем что шаблоны контекста созданы
 	ASSERT_NE(client.context, 0u);
 	ASSERT_NE(server.context, 0u);
 	// Устанавливаем сертификат и приватный ключ сервера
-	this->_coder->certificate(server.context, this->_certificate);
-	this->_coder->privateKey(server.context, this->_privateKey);
+	tls::coder::certificate(server.context, this->_certificate);
+	tls::coder::privateKey(server.context, this->_privateKey);
 	// Устанавливаем доверенный центр сертификации клиента
-	this->_coder->ca(client.context, this->_certificate);
+	tls::coder::ca(client.context, this->_certificate);
 	// Устанавливаем доменное имя удалённого узла на клиенте
-	this->_coder->serverNameIndication(client.context, "localhost");
+	tls::coder::serverNameIndication(client.context, "localhost");
 	// Устанавливаем список протоколов приложения клиента
-	this->_coder->alpn(client.context, {tls::Coder::alpn_t{0, "h2"}, tls::Coder::alpn_t{0, "http/1.1"}});
+	tls::coder::alpn(client.context, {tls::coder::alpn_t{0, "h2"}, tls::coder::alpn_t{0, "http/1.1"}});
 	// Устанавливаем список протоколов приложения сервера
-	this->_coder->alpn(server.context, {tls::Coder::alpn_t{0, "h2"}});
+	tls::coder::alpn(server.context, {tls::coder::alpn_t{0, "h2"}});
 	/**
 	 * Снимаем проверку сертификата на сервере: шаблон контекста создаётся
 	 * с включённой проверкой, а на серверном узле это означает требование
 	 * клиентского сертификата, то есть взаимную аутентификацию. Тесты
 	 * проверяют односторонний TLS, поэтому требование снимается явно
 	 */
-	this->_coder->validateServerNameIndication(server.context, false);
+	tls::coder::validateServerNameIndication(server.context, false);
 	// Создаём транспортные уровни
-	client.transport = this->_coder->transport(client.context);
-	server.transport = this->_coder->transport(server.context);
+	client.transport = tls::coder::transport(client.context);
+	server.transport = tls::coder::transport(server.context);
 	// Проверяем что транспортные уровни созданы
 	ASSERT_NE(client.transport, 0u);
 	ASSERT_NE(server.transport, 0u);
 	// Подключаем функции обратного вызова эндпоинтов
-	::subscribe(* this->_coder, client);
-	::subscribe(* this->_coder, server);
+	::subscribe(client);
+	::subscribe(server);
 	// Выполняем рукопожатие между эндпоинтами
-	ASSERT_TRUE(::establish(* this->_coder, client, server));
+	ASSERT_TRUE(::establish(client, server));
 	// Проверяем что рукопожатие выполнено на обоих эндпоинтах
 	ASSERT_TRUE(client.handshaked);
 	ASSERT_TRUE(server.handshaked);
 	// Выполняем удаление созданных объектов
-	ASSERT_TRUE(this->_coder->destroy(client.transport));
-	ASSERT_TRUE(this->_coder->destroy(server.transport));
-	ASSERT_TRUE(this->_coder->destroy(client.context));
-	ASSERT_TRUE(this->_coder->destroy(server.context));
+	ASSERT_TRUE(tls::coder::destroy(client.transport));
+	ASSERT_TRUE(tls::coder::destroy(server.transport));
+	ASSERT_TRUE(tls::coder::destroy(client.context));
+	ASSERT_TRUE(tls::coder::destroy(server.context));
 }
 
 /**
@@ -581,38 +576,38 @@ TEST_F(TlsFixture, HandshakeUntrustedCertificateTest){
 	// Эндпоинт сервера
 	::endpoint_t server;
 	// Создаём шаблоны контекста безопасности
-	client.context = this->_coder->context(event::node_t::CLIENT, event::protocol_t::TCP);
-	server.context = this->_coder->context(event::node_t::SERVER, event::protocol_t::TCP);
+	client.context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
+	server.context = tls::coder::context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Проверяем что шаблоны контекста созданы
 	ASSERT_NE(client.context, 0u);
 	ASSERT_NE(server.context, 0u);
 	// Устанавливаем сертификат и приватный ключ сервера
-	this->_coder->certificate(server.context, this->_certificate);
-	this->_coder->privateKey(server.context, this->_privateKey);
+	tls::coder::certificate(server.context, this->_certificate);
+	tls::coder::privateKey(server.context, this->_privateKey);
 	// Устанавливаем доменное имя удалённого узла на клиенте
-	this->_coder->serverNameIndication(client.context, "localhost");
+	tls::coder::serverNameIndication(client.context, "localhost");
 	/**
 	 * Снимаем проверку сертификата на сервере: шаблон контекста создаётся
 	 * с включённой проверкой, а на серверном узле это означает требование
 	 * клиентского сертификата, то есть взаимную аутентификацию. Тест проверяет
 	 * односторонний TLS, поэтому требование снимается явно
 	 */
-	this->_coder->validateServerNameIndication(server.context, false);
+	tls::coder::validateServerNameIndication(server.context, false);
 	/**
 	 * Доверенный центр сертификации клиенту намеренно не задаётся: сертификат
 	 * сервера самоподписанный и в системном хранилище отсутствует
 	 */
-	client.transport = this->_coder->transport(client.context);
+	client.transport = tls::coder::transport(client.context);
 	// Создаём транспортный уровень сервера
-	server.transport = this->_coder->transport(server.context);
+	server.transport = tls::coder::transport(server.context);
 	// Проверяем что транспортные уровни созданы
 	ASSERT_NE(client.transport, 0u);
 	ASSERT_NE(server.transport, 0u);
 	// Подключаем функции обратного вызова эндпоинтов
-	::subscribe(* this->_coder, client);
-	::subscribe(* this->_coder, server);
+	::subscribe(client);
+	::subscribe(server);
 	// Проверяем что рукопожатие не выполнено
-	ASSERT_FALSE(::establish(* this->_coder, client, server));
+	ASSERT_FALSE(::establish(client, server));
 	// Проверяем что рукопожатие клиента не завершилось успехом
 	ASSERT_FALSE(client.handshaked);
 	/**
@@ -620,8 +615,8 @@ TEST_F(TlsFixture, HandshakeUntrustedCertificateTest){
 	 * кодер помечает их на удаление самостоятельно, поэтому повторный вызов
 	 * отвергается. Удаляются только шаблоны контекста
 	 */
-	ASSERT_TRUE(this->_coder->destroy(client.context));
-	ASSERT_TRUE(this->_coder->destroy(server.context));
+	ASSERT_TRUE(tls::coder::destroy(client.context));
+	ASSERT_TRUE(tls::coder::destroy(server.context));
 }
 
 /**
@@ -641,18 +636,18 @@ TEST_F(TlsFixture, HandshakeCompressedCertificateTest){
 		// Эндпоинты обмена
 		::endpoint_t client, server;
 		// Настраиваем контексты
-		::contexts(* this->_coder, client, server, this->_certificate, this->_privateKey);
+		::contexts(client, server, this->_certificate, this->_privateKey);
 		// Запускаем транспортные уровни
-		::transports(* this->_coder, client, server);
+		::transports(client, server);
 		// Выполняем рукопожатие без сжатия
-		ASSERT_TRUE(::establish(* this->_coder, client, server));
+		ASSERT_TRUE(::establish(client, server));
 		// Запоминаем объём потока сервера
 		plain = server.sent;
 		// Выполняем удаление созданных объектов
-		ASSERT_TRUE(this->_coder->destroy(client.transport));
-		ASSERT_TRUE(this->_coder->destroy(server.transport));
-		ASSERT_TRUE(this->_coder->destroy(client.context));
-		ASSERT_TRUE(this->_coder->destroy(server.context));
+		ASSERT_TRUE(tls::coder::destroy(client.transport));
+		ASSERT_TRUE(tls::coder::destroy(server.transport));
+		ASSERT_TRUE(tls::coder::destroy(client.context));
+		ASSERT_TRUE(tls::coder::destroy(server.context));
 	}
 	/**
 	 * Перебираем методы сжатия сертификата
@@ -661,21 +656,21 @@ TEST_F(TlsFixture, HandshakeCompressedCertificateTest){
 		// Эндпоинты обмена
 		::endpoint_t client, server;
 		// Настраиваем контексты
-		::contexts(* this->_coder, client, server, this->_certificate, this->_privateKey);
+		::contexts(client, server, this->_certificate, this->_privateKey);
 		// Разрешаем сжатие сертификата обеим сторонам
-		this->_coder->compressors(client.context, {method});
-		this->_coder->compressors(server.context, {method});
+		tls::coder::compressors(client.context, {method});
+		tls::coder::compressors(server.context, {method});
 		// Запускаем транспортные уровни
-		::transports(* this->_coder, client, server);
+		::transports(client, server);
 		// Выполняем рукопожатие со сжатым сертификатом
-		ASSERT_TRUE(::establish(* this->_coder, client, server)) << "метод " << static_cast <uint32_t> (method);
+		ASSERT_TRUE(::establish(client, server)) << "метод " << static_cast <uint32_t> (method);
 		// Проверяем что сертификат действительно ушёл сжатым
 		ASSERT_LT(server.sent, plain) << "метод " << static_cast <uint32_t> (method) << ": сжатие не случилось";
 		// Выполняем удаление созданных объектов
-		ASSERT_TRUE(this->_coder->destroy(client.transport));
-		ASSERT_TRUE(this->_coder->destroy(server.transport));
-		ASSERT_TRUE(this->_coder->destroy(client.context));
-		ASSERT_TRUE(this->_coder->destroy(server.context));
+		ASSERT_TRUE(tls::coder::destroy(client.transport));
+		ASSERT_TRUE(tls::coder::destroy(server.transport));
+		ASSERT_TRUE(tls::coder::destroy(client.context));
+		ASSERT_TRUE(tls::coder::destroy(server.context));
 	}
 }
 
@@ -733,17 +728,17 @@ TEST_F(TlsFixture, HandshakeCompressedCertificateBombTest){
 		// Эндпоинты обмена
 		::endpoint_t client, server;
 		// Настраиваем контексты
-		::contexts(* this->_coder, client, server, this->_certificate, this->_privateKey);
+		::contexts(client, server, this->_certificate, this->_privateKey);
 		// Разрешаем клиенту распаковку сертификата проверяемым методом
-		this->_coder->compressors(client.context, {method});
+		tls::coder::compressors(client.context, {method});
 		// Устанавливаем враждебному серверу сжатие бомбой под номером метода (RFC 8879)
-		ASSERT_EQ(::SSL_CTX_add_cert_compression_alg(this->_coder->native(server.context), number, &::explode, nullptr), 1) << "метод " << name;
+		ASSERT_EQ(::SSL_CTX_add_cert_compression_alg(tls::coder::native(server.context), number, &::explode, nullptr), 1) << "метод " << name;
 		// Запускаем транспортные уровни
-		::transports(* this->_coder, client, server);
+		::transports(client, server);
 		// Запоминаем пик памяти до рукопожатия
 		const size_t before = ::peak();
 		// Проверяем что рукопожатие отвергнуто
-		ASSERT_FALSE(::establish(* this->_coder, client, server)) << "метод " << name;
+		ASSERT_FALSE(::establish(client, server)) << "метод " << name;
 		// Проверяем что клиент рукопожатия не завершил
 		ASSERT_FALSE(client.handshaked) << "метод " << name;
 		// Получаем пик памяти после рукопожатия
@@ -755,7 +750,7 @@ TEST_F(TlsFixture, HandshakeCompressedCertificateBombTest){
 			// Проверяем что распаковка не отвела память сверх объявленного размера
 			ASSERT_LT(after - before, (64ull << 20)) << "метод " << name << ": пик вырос на " << ((after - before) >> 20) << " МиБ";
 		// Выполняем удаление шаблонов контекста
-		ASSERT_TRUE(this->_coder->destroy(client.context));
-		ASSERT_TRUE(this->_coder->destroy(server.context));
+		ASSERT_TRUE(tls::coder::destroy(client.context));
+		ASSERT_TRUE(tls::coder::destroy(server.context));
 	}
 }

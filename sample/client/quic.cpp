@@ -322,10 +322,8 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls;
 	// Регистрируем шаблон контекста безопасности для транспорта QUIC
-	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::QUIC);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::CLIENT, event::protocol_t::QUIC);
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
@@ -334,15 +332,15 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем список поддерживаемых ALPN-протоколов (RFC 9001 §8.1)
-	tls.alpn(cts, {tls::coder_t::alpn_t{0, "h3"}});
+	tls::coder::alpn(cts, {tls::coder::alpn_t{0, "h3"}});
 	// Снимаем проверку сертификата удалённого сервера для локального эхо-прогона
-	tls.validateServerNameIndication(cts, false);
+	tls::coder::validateServerNameIndication(cts, false);
 	// Устанавливаем сертификат клиента
-	tls.certificate(cts, "../sh/certificates/client/cert.pem");
+	tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 	// Устанавливаем приватный ключ клиента
-	tls.privateKey(cts, "../sh/certificates/client/key.pem");
+	tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 	// Создаём объект клиента QUIC на шаблоне контекста безопасности
-	client_t client(tls.transport(cts), &tls);
+	client_t client(tls::coder::transport(cts));
 	// Создаём событие клиента транспорта QUIC поверх UDP
 	client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 	// Локальные транспортные параметры соединения QUIC (RFC 9000 §7.4)

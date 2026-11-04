@@ -70,20 +70,11 @@ namespace awh {
 					std::string _privateKey;
 				private:
 					// Идентификатор шаблона контекста безопасности клиента
-					awh::tls::Coder::id_t _client;
+					awh::tls::coder::id_t _client;
 					// Идентификатор шаблона контекста безопасности сервера
-					awh::tls::Coder::id_t _server;
+					awh::tls::coder::id_t _server;
 				private:
-					// Объект кодера транспортной безопасности
-					awh::tls::Coder _coder;
 				public:
-					/**
-					 * @brief Метод доступа к объекту кодера транспортной безопасности
-					 *
-					 * @return объект кодера транспортной безопасности
-					 *
-					 */
-					awh::tls::Coder & coder() noexcept;
 					/**
 					 * @brief Метод извлечения шаблона контекста безопасности роли эндпоинта
 					 *
@@ -91,7 +82,7 @@ namespace awh {
 					 * @return         идентификатор шаблона контекста безопасности
 					 *
 					 */
-					awh::tls::Coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
+					awh::tls::coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
 				public:
 					/**
 					 * Запрещаем копирование и перемещение (окружение владеет контекстами кодера)

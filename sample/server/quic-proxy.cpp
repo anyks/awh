@@ -112,7 +112,7 @@ class Proxy {
 		 * @param tid идентификатор шаблона контекста безопасности
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder::id_t tid) noexcept {
 			// Записываем в лог сообщение об установленном соединении QUIC
 			log::print("QUIC connection established: ID=%u, Address=%s", log::flag_t::INFO, cid, this->_server->getAddress(cid, event::address_t::IPV4).c_str());
 			// Открываем исходящее TCP-соединение к бэкенду для этой сессии QUIC
@@ -337,10 +337,10 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	fmk::initialize();
 	// Создаём объект отпечатка браузера
 	tls::fgp_t fgp;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls(&fgp);
+	// Устанавливаем объект для работы с отпечатками TLS
+	tls::coder::fingerprint(&fgp);
 	// Регистрируем шаблон контекста безопасности для транспорта QUIC
-	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::QUIC);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::SERVER, event::protocol_t::QUIC);
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
@@ -349,15 +349,15 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем список поддерживаемых ALPN-протоколов (RFC 9001 §8.1)
-	tls.alpn(cts, {tls::coder_t::alpn_t{0, "h3"}});
+	tls::coder::alpn(cts, {tls::coder::alpn_t{0, "h3"}});
 	// Устанавливаем сертификат сервера
-	tls.certificate(cts, "../sh/certificates/server/cert.pem");
+	tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ сервера
-	tls.privateKey(cts, "../sh/certificates/server/key.pem");
+	tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 	// Снимаем требование клиентского сертификата (взаимная аутентификация не нужна)
-	tls.validateServerNameIndication(cts, false);
+	tls::coder::validateServerNameIndication(cts, false);
 	// Создаём объект QUIC-сервера (фронтенд прокси) на шаблоне контекста безопасности
-	server_t server(cts, &tls);
+	server_t server(cts);
 	// Создаём объект клиента для исходящих TCP-соединений к бэкенду
 	unit::client_t client;
 	// Создаём объект прокси (бэкенд - внешний TCP-эхо на 127.0.0.1:9999)
@@ -393,7 +393,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Proxy::status, &proxy, _1);
 		// Регистрируем функцию обратного вызова на событие установленного соединения QUIC
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Proxy::accept, &proxy, _1, _2, _3);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Proxy::accept, &proxy, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на завершённое соединение QUIC
 		server.on <void (const event::id_t, const quic::error_t)> ("disconnect", &Proxy::disconnect, &proxy, _1, _2);
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе

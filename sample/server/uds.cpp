@@ -113,7 +113,7 @@ class Executor {
 		 * @param server объект сервера
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder::id_t tid, server_t * server) noexcept {
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT))
 				// Записываем в лог сообщение об успешной установке опций события
@@ -193,7 +193,7 @@ int32_t main(){
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
 		// Запускаем событие сервера
 		server.start();
 	}

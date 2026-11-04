@@ -136,9 +136,9 @@ namespace {
 		// Получаем окружение транспортной безопасности бенчмарка
 		auto & security = awh::benchmark::quic::security();
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder());
+		connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT));
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder());
+		connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER));
 		// Выполняем подготовку соединения клиента
 		awh::benchmark::quic::configure(client);
 		// Выполняем подготовку соединения сервера

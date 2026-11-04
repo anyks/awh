@@ -14463,21 +14463,21 @@ TEST_F(IoFixture, IoTLSTest){
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объект транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+		awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts, 0);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		awh::tls::coder::alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts, false);
+		awh::tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts, "../sh/certificates/server/cert.pem");
+		awh::tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts, "../sh/certificates/server/key.pem");
+		awh::tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(cts, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(cts, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
@@ -14617,7 +14617,7 @@ TEST_F(IoFixture, IoTLSTest){
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
-			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+			awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			if(ctl == 0){
 				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
@@ -14629,56 +14629,56 @@ TEST_F(IoFixture, IoTLSTest){
 				return;
 			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
 				switch(static_cast <uint8_t> (state)){
 					// Если состояние ошибки транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 						// Записываем ошибку в лог транспортного уровня TLS
 						awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 					break;
 					// Если состояние уничтожения объекта транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 						// Записываем в лог сообщение об успешном удалении контекста TLS
 						awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 					break;
 					// Если состояние рукопожатия успешно завершено
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+					case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_coder->serverNameIndication(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-						std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-						std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-						std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+						std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, this->_coder->alpn(id));
+						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 					} break;
 				}
 			});
 			// Регистрируем функцию обратного вызова на запись данных TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 						// Записываем в лог сообщение о записи зашифрованных данных TLS
 						awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 						// Записываем в лог сообщение о записи дешифрованных данных TLS
 						awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
@@ -14689,15 +14689,15 @@ TEST_F(IoFixture, IoTLSTest){
 			// Записываем в лог сообщение об успешной установке опций события
 			awh::log::print("%s", awh::log::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
+			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
 						if(awh::engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
@@ -14706,13 +14706,13 @@ TEST_F(IoFixture, IoTLSTest){
 						else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, cid);
 					} break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 						// Получаем ответ сервера в расшифрованном виде
 						const std::string response(reinterpret_cast <const char *> (buffer), size);
 						// Записываем в лог сообщение полученных данных с сервера
 						awh::log::print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log::flag_t::INFO, id, size, response.c_str());
 						// Если данные успешно зашифрованы TLS
-						if(this->_coder->encrypt(id, response.c_str(), response.size()))
+						if(awh::tls::coder::encrypt(id, response.c_str(), response.size()))
 							// Записываем в лог сообщение об успешном шифровании данных TLS
 							awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, response.size());
 						// Если данные не отправлены
@@ -14728,7 +14728,7 @@ TEST_F(IoFixture, IoTLSTest){
 			// Устанавливаем функцию обратного вызова на чтение из события
 			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
-				if(this->_coder->decrypt(ctl, data, size))
+				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
 					awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 				// Если данные не отправлены
@@ -14887,57 +14887,57 @@ TEST_F(IoFixture, IoTLSTest){
 	 */
 	{
 		// Регистрируем объект транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
+		awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts, 0);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts, {{0,"http/1.1"}});
-		// this->_coder->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+		awh::tls::coder::alpn(cts, {{0,"http/1.1"}});
+		// awh::tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts, false);
+		awh::tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_coder->serverNameIndication(cts, "anyks.com");
+		awh::tls::coder::serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts, "../sh/certificates/client/cert.pem");
+		awh::tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts, "../sh/certificates/client/key.pem");
+		awh::tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня TLS
-		awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+		awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
 			switch(static_cast <uint8_t> (state)){
 				// Если состояние ошибки транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 					// Записываем ошибку в лог транспортного уровня TLS
 					awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 				break;
 				// Если состояние уничтожения объекта транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 					// Записываем в лог сообщение об успешном удалении контекста TLS
 					awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 				break;
 				// Если состояние рукопожатия успешно завершено
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+				case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 					// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
 					std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-					std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-					std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-					std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+					std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+					std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+					std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 					// Возвращаем данные сертификата TLS
-					std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+					std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 					// Записываем в лог информацию о TLS соединении
-					std::cout << this->_coder->peerInfo(id) << std::endl;
+					std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 					// Текст запроса к серверу
 					const std::string request =
 						"GET / HTTP/1.1\r\n"
@@ -14946,7 +14946,7 @@ TEST_F(IoFixture, IoTLSTest){
 						"User-Agent: iouring-openssl-sample/1.0\r\n"
 						"\r\n";
 					// Если данные успешно зашифрованы TLS
-					if(this->_coder->encrypt(id, request.c_str(), request.size()))
+					if(awh::tls::coder::encrypt(id, request.c_str(), request.size()))
 						// Записываем в лог сообщение об успешном шифровании данных TLS
 						awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, request.size());
 					// Если данные не отправлены
@@ -14955,36 +14955,36 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 					// Записываем в лог сообщение о записи зашифрованных данных TLS
 					awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 					// Записываем в лог сообщение о записи дешифрованных данных TLS
 					awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 			}
 		});
 		// Регистрируем функцию обратного вызова на чтение данных TLS
-		this->_coder->on(ctl, [&events, &stop](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [&events, &stop](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
 					if(awh::engine::send(events[0], reinterpret_cast <const char *> (buffer), size))
 						// Если данные успешно отправлены
@@ -14993,7 +14993,7 @@ TEST_F(IoFixture, IoTLSTest){
 					else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, events[0]);
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 					// Получаем ответ сервера в расшифрованном виде
 					const std::string response(reinterpret_cast <const char *> (buffer), size);
 					// Записываем в лог сообщение полученных данных с сервера
@@ -15088,7 +15088,7 @@ TEST_F(IoFixture, IoTLSTest){
 		// Устанавливаем функцию обратного вызова на чтение из события
 		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
-			if(this->_coder->decrypt(ctl, data, size))
+			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
 				awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 			// Если данные не отправлены
@@ -15159,7 +15159,7 @@ TEST_F(IoFixture, IoTLSTest){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS успешно
-				if(this->_coder->handshake(ctl))
+				if(awh::tls::coder::handshake(ctl))
 					// Записываем в лог сообщение о начале рукопожатия TLS
 					awh::log::print("Начинаем процесс рукопожатия: ID=%u", awh::log::flag_t::INFO, ctl);
 				// Если рукопожатие TLS не выполнено
@@ -15323,38 +15323,38 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объекты транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts1 = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
-		awh::tls::coder_t::id_t cts2 = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+		awh::tls::coder::id_t cts1 = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+		awh::tls::coder::id_t cts2 = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts1, 0);
 		ASSERT_GT(cts2, 0);
 		// Устанавливаем режим работы TLS
-		this->_coder->mode(cts1, awh::tls::coder_t::mode_t::MULTICERT);
-		this->_coder->mode(cts2, awh::tls::coder_t::mode_t::MULTICERT);
+		awh::tls::coder::mode(cts1, awh::tls::coder::mode_t::MULTICERT);
+		awh::tls::coder::mode(cts2, awh::tls::coder::mode_t::MULTICERT);
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts1, false);
-		this->_coder->validateServerNameIndication(cts2, false);
+		awh::tls::coder::validateServerNameIndication(cts1, false);
+		awh::tls::coder::validateServerNameIndication(cts2, false);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts1, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
-		this->_coder->alpn(cts2, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		awh::tls::coder::alpn(cts1, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		awh::tls::coder::alpn(cts2, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts1, "../sh/certificates", "ca.pem");
-		this->_coder->ca(cts2, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts1, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts2, "../sh/certificates", "ca.pem");
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts1, "../sh/certificates/example/cert.pem");
-		this->_coder->certificate(cts2, "../sh/certificates/server/cert.pem");
+		awh::tls::coder::certificate(cts1, "../sh/certificates/example/cert.pem");
+		awh::tls::coder::certificate(cts2, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts1, "../sh/certificates/example/key.pem");
-		this->_coder->privateKey(cts2, "../sh/certificates/server/key.pem");
+		awh::tls::coder::privateKey(cts1, "../sh/certificates/example/key.pem");
+		awh::tls::coder::privateKey(cts2, "../sh/certificates/server/key.pem");
 		// Устанавливаем имя хоста TLS (Указывать нужно после установки режима работы мультисертификатного TLS!!!!!!!)
-		this->_coder->serverNameIndication(cts2, "anyks.com");
+		awh::tls::coder::serverNameIndication(cts2, "anyks.com");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(cts1, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(cts1, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(cts2, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(cts2, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
@@ -15494,7 +15494,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
-			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts1);
+			awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts1);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			if(ctl == 0){
 				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
@@ -15506,56 +15506,56 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				return;
 			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
 				switch(static_cast <uint8_t> (state)){
 					// Если состояние ошибки транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 						// Записываем ошибку в лог транспортного уровня TLS
 						awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 					break;
 					// Если состояние уничтожения объекта транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 						// Записываем в лог сообщение об успешном удалении контекста TLS
 						awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 					break;
 					// Если состояние рукопожатия успешно завершено
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+					case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_coder->serverNameIndication(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-						std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-						std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-						std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+						std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, this->_coder->alpn(id));
+						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 					} break;
 				}
 			});
 			// Регистрируем функцию обратного вызова на запись данных TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 						// Записываем в лог сообщение о записи зашифрованных данных TLS
 						awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 						// Записываем в лог сообщение о записи дешифрованных данных TLS
 						awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
@@ -15566,15 +15566,15 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Записываем в лог сообщение об успешной установке опций события
 			awh::log::print("%s", awh::log::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
+			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
 						if(awh::engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
@@ -15583,13 +15583,13 @@ TEST_F(IoFixture, IoMultiTLSTest){
 						else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, cid);
 					} break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 						// Получаем ответ сервера в расшифрованном виде
 						const std::string response(reinterpret_cast <const char *> (buffer), size);
 						// Записываем в лог сообщение полученных данных с сервера
 						awh::log::print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log::flag_t::INFO, id, size, response.c_str());
 						// Если данные успешно зашифрованы TLS
-						if(this->_coder->encrypt(id, response.c_str(), response.size()))
+						if(awh::tls::coder::encrypt(id, response.c_str(), response.size()))
 							// Записываем в лог сообщение об успешном шифровании данных TLS
 							awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, response.size());
 						// Если данные не отправлены
@@ -15605,7 +15605,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Устанавливаем функцию обратного вызова на чтение из события
 			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
-				if(this->_coder->decrypt(ctl, data, size))
+				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
 					awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 				// Если данные не отправлены
@@ -15764,57 +15764,57 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	 */
 	{
 		// Регистрируем объект транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
+		awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts, 0);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts, {{0,"http/1.1"}});
-		// this->_coder->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+		awh::tls::coder::alpn(cts, {{0,"http/1.1"}});
+		// awh::tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts, false);
+		awh::tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_coder->serverNameIndication(cts, "anyks.com");
+		awh::tls::coder::serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts, "../sh/certificates/client/cert.pem");
+		awh::tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts, "../sh/certificates/client/key.pem");
+		awh::tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня TLS
-		awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+		awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
 			switch(static_cast <uint8_t> (state)){
 				// Если состояние ошибки транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 					// Записываем ошибку в лог транспортного уровня TLS
 					awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 				break;
 				// Если состояние уничтожения объекта транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 					// Записываем в лог сообщение об успешном удалении контекста TLS
 					awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 				break;
 				// Если состояние рукопожатия успешно завершено
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+				case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 					// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
 					std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-					std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-					std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-					std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+					std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+					std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+					std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 					// Возвращаем данные сертификата TLS
-					std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+					std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 					// Записываем в лог информацию о TLS соединении
-					std::cout << this->_coder->peerInfo(id) << std::endl;
+					std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 					// Текст запроса к серверу
 					const std::string request =
 						"GET / HTTP/1.1\r\n"
@@ -15823,7 +15823,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 						"User-Agent: iouring-openssl-sample/1.0\r\n"
 						"\r\n";
 					// Если данные успешно зашифрованы TLS
-					if(this->_coder->encrypt(id, request.c_str(), request.size()))
+					if(awh::tls::coder::encrypt(id, request.c_str(), request.size()))
 						// Записываем в лог сообщение об успешном шифровании данных TLS
 						awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, request.size());
 					// Если данные не отправлены
@@ -15832,36 +15832,36 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 					// Записываем в лог сообщение о записи зашифрованных данных TLS
 					awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 					// Записываем в лог сообщение о записи дешифрованных данных TLS
 					awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 			}
 		});
 		// Регистрируем функцию обратного вызова на чтение данных TLS
-		this->_coder->on(ctl, [&events, &stop](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [&events, &stop](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
 					if(awh::engine::send(events[0], reinterpret_cast <const char *> (buffer), size))
 						// Если данные успешно отправлены
@@ -15870,7 +15870,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 					else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, events[0]);
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 					// Получаем ответ сервера в расшифрованном виде
 					const std::string response(reinterpret_cast <const char *> (buffer), size);
 					// Записываем в лог сообщение полученных данных с сервера
@@ -15965,7 +15965,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Устанавливаем функцию обратного вызова на чтение из события
 		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
-			if(this->_coder->decrypt(ctl, data, size))
+			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
 				awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 			// Если данные не отправлены
@@ -16036,7 +16036,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS успешно
-				if(this->_coder->handshake(ctl))
+				if(awh::tls::coder::handshake(ctl))
 					// Записываем в лог сообщение о начале рукопожатия TLS
 					awh::log::print("Начинаем процесс рукопожатия: ID=%u", awh::log::flag_t::INFO, ctl);
 				// Если рукопожатие TLS не выполнено
@@ -16200,21 +16200,21 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объект транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
+		awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts, 0);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		awh::tls::coder::alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts, false);
+		awh::tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts, "../sh/certificates/server/cert.pem");
+		awh::tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts, "../sh/certificates/server/key.pem");
+		awh::tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(cts, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(cts, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
@@ -16354,7 +16354,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
-			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+			awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			if(ctl == 0){
 				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
@@ -16366,60 +16366,60 @@ TEST_F(IoFixture, IoDTLSTest){
 				return;
 			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
 				switch(static_cast <uint8_t> (state)){
 					// Если состояние ошибки транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 						// Записываем ошибку в лог транспортного уровня TLS
 						awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 					break;
 					// Если состояние уничтожения объекта транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 						// Записываем в лог сообщение об успешном удалении контекста TLS
 						awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 					break;
 					// Если состояние рукопожатия успешно завершено
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+					case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_coder->serverNameIndication(id) << std::endl << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::serverNameIndication(id) << std::endl << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-						std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-						std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-						std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+						std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 						// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, this->_coder->alpn(id));
+						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 						// Записываем в лог информацию о DTLS соединении
-						std::cout << this->_coder->peerInfo(id) << std::endl;
+						std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 						// Выполняем повторную передачу данных TLS
-						EXPECT_TRUE(this->_coder->retransmit(id));
+						EXPECT_TRUE(awh::tls::coder::retransmit(id));
 					} break;
 				}
 			});
 			// Регистрируем функцию обратного вызова на запись данных TLS
-			this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 						// Записываем в лог сообщение о записи зашифрованных данных TLS
 						awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 						// Записываем в лог сообщение о записи дешифрованных данных TLS
 						awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
@@ -16428,15 +16428,15 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Записываем в лог сообщение об успешной установке опций события
 			awh::log::print("%s", awh::log::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
+			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
 						if(awh::engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
@@ -16445,13 +16445,13 @@ TEST_F(IoFixture, IoDTLSTest){
 						else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, cid);
 					} break;
 					// Если событие дешифрования данных TLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 						// Получаем ответ сервера в расшифрованном виде
 						const std::string response(reinterpret_cast <const char *> (buffer), size);
 						// Записываем в лог сообщение полученных данных с сервера
 						awh::log::print("Получены данные с сервера TLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log::flag_t::INFO, id, size, response.c_str());
 						// Если данные успешно зашифрованы TLS
-						if(this->_coder->encrypt(id, response.c_str(), response.size()))
+						if(awh::tls::coder::encrypt(id, response.c_str(), response.size()))
 							// Записываем в лог сообщение об успешном шифровании данных TLS
 							awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, response.size());
 						// Если данные не отправлены
@@ -16467,7 +16467,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем функцию обратного вызова на чтение из события
 			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
-				if(this->_coder->decrypt(ctl, data, size))
+				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
 					awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 				// Если данные не отправлены
@@ -16624,57 +16624,57 @@ TEST_F(IoFixture, IoDTLSTest){
 	 */
 	{
 		// Регистрируем объект транспортного уровня безопасности
-		awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
+		awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts, 0);
 		// Устанавливаем ALPN протоколы TLS
-		this->_coder->alpn(cts, {{0,"http/1.1"}});
-		// this->_coder->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+		awh::tls::coder::alpn(cts, {{0,"http/1.1"}});
+		// awh::tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации TLS
-		this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+		awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
-		this->_coder->validateServerNameIndication(cts, false);
+		awh::tls::coder::validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста TLS
-		this->_coder->serverNameIndication(cts, "anyks.com");
+		awh::tls::coder::serverNameIndication(cts, "anyks.com");
 		// Устанавливаем клиентский сертификат TLS
-		this->_coder->certificate(cts, "../sh/certificates/client/cert.pem");
+		awh::tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
-		this->_coder->privateKey(cts, "../sh/certificates/client/key.pem");
+		awh::tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня TLS
-		awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+		awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
 			switch(static_cast <uint8_t> (state)){
 				// Если состояние ошибки транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 					// Записываем ошибку в лог транспортного уровня TLS
 					awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 				break;
 				// Если состояние уничтожения объекта транспортного уровня
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+				case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 					// Записываем в лог сообщение об успешном удалении контекста TLS
 					awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 				break;
 				// Если состояние рукопожатия успешно завершено
-				case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+				case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 					// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+					std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
 					std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-					std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-					std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-					std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-					std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+					std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+					std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+					std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+					std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 					// Возвращаем данные сертификата TLS
-					std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+					std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 					// Записываем в лог информацию о TLS соединении
-					std::cout << this->_coder->peerInfo(id) << std::endl;
+					std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 					// Текст запроса к серверу
 					const std::string request =
 						"GET / HTTP/1.1\r\n"
@@ -16683,7 +16683,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						"User-Agent: iouring-openssl-sample/1.0\r\n"
 						"\r\n";
 					// Если данные успешно зашифрованы TLS
-					if(this->_coder->encrypt(id, request.c_str(), request.size()))
+					if(awh::tls::coder::encrypt(id, request.c_str(), request.size()))
 						// Записываем в лог сообщение об успешном шифровании данных TLS
 						awh::log::print("Успешно зашифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, request.size());
 					// Если данные не отправлены
@@ -16692,36 +16692,36 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 			// Записываем в лог сообщение о предупреждающей ошибке TLS
 			awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных TLS
-		this->_coder->on(ctl, [](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 					// Записываем в лог сообщение о записи зашифрованных данных TLS
 					awh::log::print("Записаны зашифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 					// Записываем в лог сообщение о записи дешифрованных данных TLS
 					awh::log::print("Записаны дешифрованные данные TLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 				break;
 			}
 		});
 		// Регистрируем функцию обратного вызова на чтение данных TLS
-		this->_coder->on(ctl, [&events, &stop](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		awh::tls::coder::on(ctl, [&events, &stop](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события TLS
 			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
 					if(awh::engine::send(events[0], reinterpret_cast <const char *> (buffer), size))
 						// Если данные успешно отправлены
@@ -16730,7 +16730,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, events[0]);
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+				case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 					// Получаем ответ сервера в расшифрованном виде
 					const std::string response(reinterpret_cast <const char *> (buffer), size);
 					// Записываем в лог сообщение полученных данных с сервера
@@ -16825,7 +16825,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Устанавливаем функцию обратного вызова на чтение из события
 		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
-			if(this->_coder->decrypt(ctl, data, size))
+			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
 				awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 			// Если данные не отправлены
@@ -16896,7 +16896,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS успешно
-				if(this->_coder->handshake(ctl))
+				if(awh::tls::coder::handshake(ctl))
 					// Записываем в лог сообщение о начале рукопожатия TLS
 					awh::log::print("Начинаем процесс рукопожатия: ID=%u", awh::log::flag_t::INFO, ctl);
 				// Если рукопожатие TLS не выполнено
@@ -19859,21 +19859,21 @@ TEST_F(IoFixture, IoDTLSTest){
 			 *       контекст как TCP и работает поверх обычного TLS.
 			 */
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
+			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
-			this->_coder->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+			awh::tls::coder::alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 			// Устанавливаем файл центра сертификации DTLS
-			this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+			awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_coder->validateServerNameIndication(cts, false);
+			awh::tls::coder::validateServerNameIndication(cts, false);
 			// Устанавливаем клиентский сертификат DTLS
-			this->_coder->certificate(cts, "../sh/certificates/server/cert.pem");
+			awh::tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 			// Устанавливаем приватный ключ DTLS
-			this->_coder->privateKey(cts, "../sh/certificates/server/key.pem");
+			awh::tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
-			this->_coder->on(cts, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(cts, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
@@ -20043,7 +20043,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Записываем в лог сообщение о принятии события
 				awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 				// Создаём идентификатор транспортного уровня DTLS
-				awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+				awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				if(ctl == 0){
 					// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
@@ -20055,66 +20055,66 @@ TEST_F(IoFixture, IoDTLSTest){
 					return;
 				}
 				// Устанавливаем клиента DTLS для события
-				this->_coder->peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
+				awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 					// Записываем в лог сообщение о предупреждающей ошибке TLS
 					awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 				});
 				// Регистрируем функцию обратного вызова на запись данных DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем тип события DTLS
 					 */
 					switch(static_cast <uint8_t> (event)){
 						// Если событие шифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+						case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 							// Записываем в лог сообщение о записи зашифрованных данных DTLS
 							awh::log::print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 						break;
 						// Если событие дешифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+						case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 							// Записываем в лог сообщение о записи дешифрованных данных DTLS
 							awh::log::print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 						break;
 					}
 				});
 				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 					/**
 					 * Обрабатываем входящие состояния DTLS
 					 */
 					switch(static_cast <uint8_t> (state)){
 						// Если состояние ошибки транспортного уровня
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+						case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 							// Записываем ошибку в лог транспортного уровня TLS
 							awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 						break;
 						// Если состояние уничтожения объекта транспортного уровня
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+						case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 							// Записываем в лог сообщение об успешном удалении контекста TLS
 							awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 						break;
 						// Если состояние рукопожатия успешно завершено
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+						case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 							// Записываем в лог сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_coder->serverNameIndication(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::serverNameIndication(id) << std::endl << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-							std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-							std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-							std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-							std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-							std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+							std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+							std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+							std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 							// Возвращаем данные сертификата DTLS
-							std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+							std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 							// Записываем в лог сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-							awh::log::print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, this->_coder->alpn(id));
+							awh::log::print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 							// Записываем в лог информацию о DTLS соединении
-							std::cout << this->_coder->peerInfo(id) << std::endl;
+							std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 							// Выполняем повторную передачу данных TLS
-							EXPECT_TRUE(this->_coder->retransmit(id));
+							EXPECT_TRUE(awh::tls::coder::retransmit(id));
 						} break;
 					}
 				});
@@ -20194,13 +20194,13 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устананавливаем опции события
 				EXPECT_TRUE(awh::engine::setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
-				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+				awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем тип события DTLS
 					 */
 					switch(static_cast <uint8_t> (event)){
 						// Если событие шифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+						case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 							// Отправляем данные обратно клиенту
 							if(awh::engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 								// Если данные успешно отправлены
@@ -20209,13 +20209,13 @@ TEST_F(IoFixture, IoDTLSTest){
 							else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, cid);
 						} break;
 						// Если событие дешифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+						case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 							// Получаем ответ сервера в расшифрованном виде
 							const std::string response(reinterpret_cast <const char *> (buffer), size);
 							// Записываем в лог сообщение полученных данных с сервера
 							awh::log::print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log::flag_t::INFO, id, size, response.c_str());
 							// Если данные успешно зашифрованы DTLS
-							if(this->_coder->encrypt(id, response.c_str(), response.size()))
+							if(awh::tls::coder::encrypt(id, response.c_str(), response.size()))
 								// Записываем в лог сообщение об успешном шифровании данных DTLS
 								awh::log::print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, response.size());
 							// Если данные не отправлены
@@ -20233,7 +20233,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устанавливаем функцию обратного вызова на чтение из события
 				awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы DTLS
-					if(this->_coder->decrypt(ctl, data, size))
+					if(awh::tls::coder::decrypt(ctl, data, size))
 						// Записываем в лог сообщение об успешном дешифровании данных DTLS
 						awh::log::print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 					// Если данные не отправлены
@@ -20418,56 +20418,56 @@ TEST_F(IoFixture, IoDTLSTest){
 			 *       контекст как TCP и работает поверх обычного TLS.
 			 */
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
+			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
-			this->_coder->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+			awh::tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 			// Устанавливаем файл центра сертификации DTLS
-			this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+			awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_coder->validateServerNameIndication(cts, false);
+			awh::tls::coder::validateServerNameIndication(cts, false);
 			// Устанавливаем имя хоста DTLS
-			this->_coder->serverNameIndication(cts, "server.anyks.com");
+			awh::tls::coder::serverNameIndication(cts, "server.anyks.com");
 			// Устанавливаем клиентский сертификат DTLS
-			this->_coder->certificate(cts, "../sh/certificates/client/cert.pem");
+			awh::tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 			// Устанавливаем приватный ключ DTLS
-			this->_coder->privateKey(cts, "../sh/certificates/client/key.pem");
+			awh::tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 			// Создаём идентификатор транспортного уровня DTLS
-			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+			awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(ctl, 0);
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния DTLS
 				 */
 				switch(static_cast <uint8_t> (state)){
 					// Если состояние ошибки транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 						// Записываем ошибку в лог транспортного уровня TLS
 						awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 					break;
 					// Если состояние уничтожения объекта транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 						// Записываем в лог сообщение об успешном удалении контекста TLS
 						awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 					break;
 					// Если состояние рукопожатия успешно завершено
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+					case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 						// Записываем в лог сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-						std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-						std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-						std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+						std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 						// Возвращаем данные сертификата DTLS
-						std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+						std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 						// Записываем в лог информацию о DTLS соединении
-						std::cout << this->_coder->peerInfo(id) << std::endl;
+						std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 						// Текст запроса к серверу
 						const std::string request =
 							"GET / HTTP/1.1\r\n"
@@ -20476,7 +20476,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							"User-Agent: iouring-openssl-sample/1.0\r\n"
 							"\r\n";
 						// Если данные успешно зашифрованы DTLS
-						if(this->_coder->encrypt(id, request.c_str(), request.size()))
+						if(awh::tls::coder::encrypt(id, request.c_str(), request.size()))
 							// Записываем в лог сообщение об успешном шифровании данных DTLS
 							awh::log::print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, request.size());
 						// Если данные не отправлены
@@ -20485,36 +20485,36 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на запись данных DTLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события DTLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 						// Записываем в лог сообщение о записи зашифрованных данных DTLS
 						awh::log::print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 					// Если событие дешифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 						// Записываем в лог сообщение о записи дешифрованных данных DTLS
 						awh::log::print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 				}
 			});
 			// Регистрируем функцию обратного вызова на чтение данных DTLS
-			this->_coder->on(ctl, [&stop, &events, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [&stop, &events, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события DTLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
 						if(awh::engine::send(events[0], reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
@@ -20523,7 +20523,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, events[0]);
 					} break;
 					// Если событие дешифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 						// Получаем ответ сервера в расшифрованном виде
 						const std::string response(reinterpret_cast <const char *> (buffer), size);
 						// Записываем в лог сообщение полученных данных с сервера
@@ -20724,7 +20724,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Если данные успешно дешифрованы DTLS
-				if(this->_coder->decrypt(ctl, data, size))
+				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных DTLS
 					awh::log::print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 				// Если данные не отправлены
@@ -20795,7 +20795,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Если подключение успешно
 				if(ok){
 					// Если рукопожатие DTLS успешно
-					if(this->_coder->handshake(ctl))
+					if(awh::tls::coder::handshake(ctl))
 						// Записываем в лог сообщение о начале рукопожатия DTLS
 						awh::log::print("Начинаем процесс рукопожатия: ID=%u", awh::log::flag_t::INFO, ctl);
 					// Если рукопожатие DTLS не выполнено
@@ -20941,21 +20941,21 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
-			this->_coder->alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+			awh::tls::coder::alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
 			// Устанавливаем файл центра сертификации DTLS
-			this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+			awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_coder->validateServerNameIndication(cts, false);
+			awh::tls::coder::validateServerNameIndication(cts, false);
 			// Устанавливаем клиентский сертификат DTLS
-			this->_coder->certificate(cts, "../sh/certificates/server/cert.pem");
+			awh::tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 			// Устанавливаем приватный ключ DTLS
-			this->_coder->privateKey(cts, "../sh/certificates/server/key.pem");
+			awh::tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
-			this->_coder->on(cts, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(cts, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
@@ -21125,7 +21125,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Записываем в лог сообщение о принятии события
 				awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 				// Создаём идентификатор транспортного уровня DTLS
-				awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+				awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				if(ctl == 0){
 					// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
@@ -21137,62 +21137,62 @@ TEST_F(IoFixture, IoDTLSTest){
 					return;
 				}
 				// Устанавливаем клиента DTLS для события
-				this->_coder->peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
+				awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 					// Записываем в лог сообщение о предупреждающей ошибке TLS
 					awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 				});
 				// Регистрируем функцию обратного вызова на запись данных DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем тип события DTLS
 					 */
 					switch(static_cast <uint8_t> (event)){
 						// Если событие шифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+						case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 							// Записываем в лог сообщение о записи зашифрованных данных DTLS
 							awh::log::print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 						break;
 						// Если событие дешифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+						case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 							// Записываем в лог сообщение о записи дешифрованных данных DTLS
 							awh::log::print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 						break;
 					}
 				});
 				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+				awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 					/**
 					 * Обрабатываем входящие состояния DTLS
 					 */
 					switch(static_cast <uint8_t> (state)){
 						// Если состояние ошибки транспортного уровня
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+						case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 							// Записываем ошибку в лог транспортного уровня TLS
 							awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 						break;
 						// Если состояние уничтожения объекта транспортного уровня
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+						case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 							// Записываем в лог сообщение об успешном удалении контекста TLS
 							awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 						break;
 						// Если состояние рукопожатия успешно завершено
-						case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+						case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 							// Записываем в лог сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
-							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << this->_coder->serverNameIndication(id) << std::endl << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
+							std::cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::serverNameIndication(id) << std::endl << std::endl;
 							std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-							std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-							std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-							std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-							std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-							std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+							std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+							std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+							std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+							std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 							// Возвращаем данные сертификата TLS
-							std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+							std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 							// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-							awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, this->_coder->alpn(id));
+							awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 						} break;
 					}
 				});
@@ -21272,13 +21272,13 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устананавливаем опции события
 				EXPECT_TRUE(awh::engine::setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
-				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+				awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем тип события DTLS
 					 */
 					switch(static_cast <uint8_t> (event)){
 						// Если событие шифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+						case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 							// Отправляем данные обратно клиенту
 							if(awh::engine::send(cid, reinterpret_cast <const char *> (buffer), size))
 								// Если данные успешно отправлены
@@ -21287,13 +21287,13 @@ TEST_F(IoFixture, IoDTLSTest){
 							else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, cid);
 						} break;
 						// Если событие дешифрования данных DTLS
-						case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+						case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 							// Получаем ответ сервера в расшифрованном виде
 							const std::string response(reinterpret_cast <const char *> (buffer), size);
 							// Записываем в лог сообщение полученных данных с сервера
 							awh::log::print("Получены данные с сервера DTLS: ID=%" PRIu64 ", Размер=%zu байт.\n\n%s", awh::log::flag_t::INFO, id, size, response.c_str());
 							// Если данные успешно зашифрованы DTLS
-							if(this->_coder->encrypt(id, response.c_str(), response.size()))
+							if(awh::tls::coder::encrypt(id, response.c_str(), response.size()))
 								// Записываем в лог сообщение об успешном шифровании данных DTLS
 								awh::log::print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, response.size());
 							// Если данные не отправлены
@@ -21311,7 +21311,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Устанавливаем функцию обратного вызова на чтение из события
 				awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы TLS
-					if(this->_coder->decrypt(ctl, data, size)){
+					if(awh::tls::coder::decrypt(ctl, data, size)){
 						// Записываем в лог сообщение об успешном дешифровании данных TLS
 						awh::log::print("Успешно дешифрованы данные TLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 					// Если данные не отправлены
@@ -21479,56 +21479,56 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
+			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
-			this->_coder->alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+			awh::tls::coder::alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 			// Устанавливаем файл центра сертификации DTLS
-			this->_coder->ca(cts, "../sh/certificates", "ca.pem");
+			awh::tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 			// Включаем проверку имени хоста DTLS
-			this->_coder->validateServerNameIndication(cts, false);
+			awh::tls::coder::validateServerNameIndication(cts, false);
 			// Устанавливаем имя хоста DTLS
-			this->_coder->serverNameIndication(cts, "server.anyks.com");
+			awh::tls::coder::serverNameIndication(cts, "server.anyks.com");
 			// Устанавливаем клиентский сертификат TLS
-			this->_coder->certificate(cts, "../sh/certificates/client/cert.pem");
+			awh::tls::coder::certificate(cts, "../sh/certificates/client/cert.pem");
 			// Устанавливаем приватный ключ TLS
-			this->_coder->privateKey(cts, "../sh/certificates/client/key.pem");
+			awh::tls::coder::privateKey(cts, "../sh/certificates/client/key.pem");
 			// Создаём идентификатор транспортного уровня TLS
-			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
+			awh::tls::coder::id_t ctl = awh::tls::coder::transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(ctl, 0);
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
 				switch(static_cast <uint8_t> (state)){
 					// Если состояние ошибки транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::FAILED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::FAILED):
 						// Записываем ошибку в лог транспортного уровня TLS
 						awh::log::print("Ошибка транспортного уровня TLS: ID=%" PRIu64 "", awh::log::flag_t::CRITICAL, id);
 					break;
 					// Если состояние уничтожения объекта транспортного уровня
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::DESTROYED):
+					case static_cast <uint8_t> (awh::tls::coder::state_t::DESTROYED):
 						// Записываем в лог сообщение об успешном удалении контекста TLS
 						awh::log::print("Контекст TLS успешно удалён: ID=%" PRIu64 "", awh::log::flag_t::INFO, id);
 					break;
 					// Если состояние рукопожатия успешно завершено
-					case static_cast <uint8_t> (awh::tls::coder_t::state_t::HANDSHAKED): {
+					case static_cast <uint8_t> (awh::tls::coder::state_t::HANDSHAKED): {
 						// Записываем в лог сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << this->_coder->info(id) << std::endl;
-						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (this->_coder->alpn(id)) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << awh::tls::coder::info(id) << std::endl;
+						std::cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << static_cast <u_short> (awh::tls::coder::alpn(id)) << std::endl;
 						std::cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-						std::cout << "Версия OpenSSL: " << this->_coder->version() << std::endl << std::endl;
-						std::cout << "Cipher: " << this->_coder->cipherInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate: " << this->_coder->certificateInfo(id) << std::endl << std::endl;
-						std::cout << "CRL Info: " << this->_coder->certificateRevocationListInfo(id) << std::endl << std::endl;
-						std::cout << "Certificate Validation: " << (this->_coder->validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
+						std::cout << "Версия OpenSSL: " << awh::tls::coder::version() << std::endl << std::endl;
+						std::cout << "Cipher: " << awh::tls::coder::cipherInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate: " << awh::tls::coder::certificateInfo(id) << std::endl << std::endl;
+						std::cout << "CRL Info: " << awh::tls::coder::certificateRevocationListInfo(id) << std::endl << std::endl;
+						std::cout << "Certificate Validation: " << (awh::tls::coder::validateCertificate(id) ? "Valid" : "Invalid") << std::endl << std::endl;
 						// Возвращаем данные сертификата DTLS
-						std::cout << "Certificate data:\n" << this->_coder->certificateExtract(id) << std::endl << std::endl;
+						std::cout << "Certificate data:\n" << awh::tls::coder::certificateExtract(id) << std::endl << std::endl;
 						// Записываем в лог информацию о DTLS соединении
-						std::cout << this->_coder->peerInfo(id) << std::endl;
+						std::cout << awh::tls::coder::peerInfo(id) << std::endl;
 						// Текст запроса к серверу
 						const std::string request =
 							"GET / HTTP/1.1\r\n"
@@ -21537,7 +21537,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							"User-Agent: iouring-openssl-sample/1.0\r\n"
 							"\r\n";
 						// Если данные успешно зашифрованы DTLS
-						if(this->_coder->encrypt(id, request.c_str(), request.size()))
+						if(awh::tls::coder::encrypt(id, request.c_str(), request.size()))
 							// Записываем в лог сообщение об успешном шифровании данных DTLS
 							awh::log::print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, id, request.size());
 						// Если данные не отправлены
@@ -21546,36 +21546,36 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Регистрируем функцию обратного вызова на получение ошибок DTLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на запись данных DTLS
-			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события DTLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION):
 						// Записываем в лог сообщение о записи зашифрованных данных DTLS
 						awh::log::print("Записаны зашифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 					// Если событие дешифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION):
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION):
 						// Записываем в лог сообщение о записи дешифрованных данных DTLS
 						awh::log::print("Записаны дешифрованные данные DTLS: ID=%" PRIu64 ", Размер=%zu байт", awh::log::flag_t::INFO, id, size);
 					break;
 				}
 			});
 			// Регистрируем функцию обратного вызова на чтение данных DTLS
-			this->_coder->on(ctl, [&stop, &events, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [&stop, &events, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события DTLS
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если событие шифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::ENCRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::ENCRYPTION): {
 						// Отправляем данные обратно клиенту
 						if(awh::engine::send(events[0], reinterpret_cast <const char *> (buffer), size))
 							// Если данные успешно отправлены
@@ -21584,7 +21584,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						else awh::log::print("Ошибка отправки зашифрованных данных: ID=%u", awh::log::flag_t::CRITICAL, events[0]);
 					} break;
 					// Если событие дешифрования данных DTLS
-					case static_cast <uint8_t> (awh::tls::coder_t::event_t::DECRYPTION): {
+					case static_cast <uint8_t> (awh::tls::coder::event_t::DECRYPTION): {
 						// Получаем ответ сервера в расшифрованном виде
 						const std::string response(reinterpret_cast <const char *> (buffer), size);
 						// Записываем в лог сообщение полученных данных с сервера
@@ -21785,7 +21785,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Если данные успешно дешифрованы DTLS
-				if(this->_coder->decrypt(ctl, data, size))
+				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных DTLS
 					awh::log::print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", awh::log::flag_t::INFO, ctl, size);
 				// Если данные не отправлены
@@ -21856,7 +21856,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Если подключение успешно
 				if(ok){
 					// Если рукопожатие DTLS успешно
-					if(this->_coder->handshake(ctl))
+					if(awh::tls::coder::handshake(ctl))
 						// Записываем в лог сообщение о начале рукопожатия DTLS
 						awh::log::print("Начинаем процесс рукопожатия: ID=%u", awh::log::flag_t::INFO, ctl);
 					// Если рукопожатие DTLS не выполнено

@@ -34,10 +34,10 @@
 #include <openssl/x509.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <proto/quic/handshake.hpp>
 #include <sys/log.hpp>
+#include <proto/quic/handshake.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -535,9 +535,9 @@ awh::quic::status_t awh::quic::Handshake::process() noexcept {
  * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
  *
  */
-awh::tls::coder_t::alpn_t awh::quic::Handshake::alpn() const noexcept {
+awh::tls::coder::alpn_t awh::quic::Handshake::alpn() const noexcept {
 	// Согласованный ALPN-протокол
-	tls::coder_t::alpn_t result;
+	tls::coder::alpn_t result{0, ""};
 	// Если TLS-соединение не создано
 	if(this->_ssl == nullptr)
 		// Выводим пустой результат
@@ -986,12 +986,11 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  *
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
- * @param coder    объект кодера транспортной безопасности
  *
  */
-awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
+awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _alert(0), _hasAlert(false),
- _ctx(coder.native(ctx)), _ssl(nullptr), _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(coder.protocols(ctx)) {
+ _ctx(tls::coder::native(ctx)), _ssl(nullptr), _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(tls::coder::protocols(ctx)) {
 	/**
 	 * Удерживаем ссылку на контекст на всё время жизни объекта хендшейка:
 	 * владение остаётся за кодером, а ссылка защищает от освобождения контекста

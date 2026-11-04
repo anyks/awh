@@ -125,20 +125,10 @@ class QuicSecurity {
 		std::string _privateKey;
 	private:
 		// Идентификатор шаблона контекста безопасности клиента
-		awh::tls::Coder::id_t _client;
+		awh::tls::coder::id_t _client;
 		// Идентификатор шаблона контекста безопасности сервера
-		awh::tls::Coder::id_t _server;
-	private:
-		// Объект кодера транспортной безопасности
-		awh::tls::Coder _coder;
+		awh::tls::coder::id_t _server;
 	public:
-		/**
-		 * @brief Метод доступа к объекту кодера транспортной безопасности
-		 *
-		 * @return объект кодера транспортной безопасности
-		 *
-		 */
-		awh::tls::Coder & coder() noexcept;
 		/**
 		 * @brief Метод извлечения шаблона контекста безопасности роли эндпоинта
 		 *
@@ -146,7 +136,7 @@ class QuicSecurity {
 		 * @return         идентификатор шаблона контекста безопасности
 		 *
 		 */
-		awh::tls::Coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
+		awh::tls::coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
 		/**
 		 * @brief Метод создания отдельного шаблона контекста безопасности
 		 *
@@ -160,7 +150,7 @@ class QuicSecurity {
 		 * @return          идентификатор созданного шаблона контекста безопасности
 		 *
 		 */
-		awh::tls::Coder::id_t make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::Coder::alpn_t> & protocols, const bool validate = false) noexcept;
+		awh::tls::coder::id_t make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::coder::alpn_t> & protocols, const bool validate = false) noexcept;
 	public:
 		/**
 		 * Запрещаем копирование и перемещение (окружение владеет контекстами кодера)

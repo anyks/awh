@@ -275,7 +275,7 @@ class Executor {
 		 * @param message сообщение об ошибке TLS
 		 *
 		 */
-		void errorTLS([[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
+		void errorTLS([[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
 			log::print("TLS error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
@@ -306,19 +306,17 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект SCTP протокола
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls;
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4);
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
-	tls.alpn(cts, {
+	tls::coder::alpn(cts, {
 		{0,"http/1.1"},
 		{1,"h2"}
 	});
 	// Устанавливаем список доступных шифров TLS
-	tls.ciphers(cts, {
+	tls::coder::ciphers(cts, {
 		tls::cipher_t::TLS_AES_128_GCM_SHA256,
 		tls::cipher_t::TLS_AES_256_GCM_SHA384,
 		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
@@ -336,19 +334,19 @@ int32_t main(int32_t argc, char * argv[]){
 		tls::cipher_t::AES256_SHA
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS
-	tls.compressors(cts, {
+	tls::coder::compressors(cts, {
 		compressor::method_t::ZLIB,
 		compressor::method_t::ZSTD,
 		compressor::method_t::BROTLI
 	});
 	// Устанавливаем файл центра сертификации TLS
-	tls.ca(cts, "../sh/certificates", "ca.pem");
+	tls::coder::ca(cts, "../sh/certificates", "ca.pem");
 	// Устанавливаем имя хоста TLS
-	tls.serverNameIndication(cts, "anyks.com");
+	tls::coder::serverNameIndication(cts, "anyks.com");
 	// Включаем проверку имени хоста TLS
-	tls.validateServerNameIndication(cts, false);
+	tls::coder::validateServerNameIndication(cts, false);
 	// Создаём объект клиента
-	client_t client(tls.transport(cts), &tls, &dns);
+	client_t client(tls::coder::transport(cts), &dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers(vector <string> {"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
@@ -387,7 +385,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие ошибок клиента
 		client.on <void (const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
-		client.on <void (const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2);
+		client.on <void (const tls::coder::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие готовности клиента к работе
 		client.on <void (const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3);
 		// Запускаем событие клиента

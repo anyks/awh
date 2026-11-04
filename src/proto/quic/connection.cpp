@@ -569,11 +569,10 @@ awh::quic::Connection::Cids::Cids() noexcept {}
  *
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
- * @param coder    объект кодера транспортной безопасности
  *
  */
-awh::quic::Connection::Crypto::Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
- handshake(endpoint, ctx, coder) {}
+awh::quic::Connection::Crypto::Crypto(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept :
+ handshake(endpoint, ctx) {}
 
 /**
  * @brief Конструктор
@@ -4817,7 +4816,7 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
  * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
  *
  */
-awh::tls::coder_t::alpn_t awh::quic::Connection::alpn() const noexcept {
+awh::tls::coder::alpn_t awh::quic::Connection::alpn() const noexcept {
 	// Выводим согласованный ALPN-протокол хендшейк-машины
 	return this->_crypto.handshake.alpn();
 }
@@ -5070,7 +5069,7 @@ awh::quic::status_t awh::quic::Connection::connect() noexcept {
 		// Кэшированный билет возобновления сессии
 		string ticket;
 		// Если билет возобновления найден в кэше кодера по ключу сервера
-		if(this->_coder.session(this->_ctx, this->sessionKey(), ticket))
+		if(tls::coder::session(this->_ctx, this->sessionKey(), ticket))
 			// Подставляем билет возобновления соединению
 			this->session(ticket);
 	}
@@ -7359,7 +7358,7 @@ bool awh::quic::Connection::rotate() noexcept {
  */
 string awh::quic::Connection::sessionKey() const noexcept {
 	// Извлекаем доменное имя сервера (SNI) шаблона контекста безопасности
-	const string sni = this->_coder.serverNameIndication(this->_ctx);
+	const string sni = tls::coder::serverNameIndication(this->_ctx);
 	// Если доменное имя сервера установлено - используем его как ключ сервера
 	if(!sni.empty())
 		// Выводим доменное имя сервера в качестве ключа
@@ -7383,7 +7382,7 @@ void awh::quic::Connection::persist() noexcept {
 		// Выходим из метода
 		return;
 	// Сохраняем билет возобновления в кэш кодера по ключу сервера
-	this->_coder.session(this->_ctx, this->sessionKey(), session);
+	tls::coder::session(this->_ctx, this->sessionKey(), session);
 	// Отмечаем билет возобновления сохранённым (сохранение выполняется однократно)
 	this->_persisted = true;
 }
@@ -8141,8 +8140,7 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  *
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
- * @param coder    объект кодера транспортной безопасности
  *
  */
-awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
- _core(endpoint), _amplify(endpoint), _ctx(ctx), _persisted(false), _coder(coder), _crypto(endpoint, ctx, coder) {}
+awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept :
+ _core(endpoint), _amplify(endpoint), _ctx(ctx), _persisted(false), _crypto(endpoint, ctx) {}

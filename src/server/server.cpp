@@ -54,7 +54,7 @@ awh::Server::Identifier::Identifier() noexcept : eid(0), cts(0) {}
  * @brief Конструктор
  *
  */
-awh::Server::TLS::TLS() noexcept : coder(nullptr) {}
+awh::Server::TLS::TLS() noexcept {}
 
 /**
  * @brief Конструктор
@@ -356,9 +356,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 					// Если сервер ещё живой
 					if(this->_unit != nullptr){
 						// Если идентификатор TLS и объект TLS установлены
-						if((this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+						if((this->_id.cts > 0) && !this->_tls.safety.empty()){
 							// Временный список идентификаторов TLS, которые нужно удалить
-							vector <tls::coder_t::id_t> garbage;
+							vector <tls::coder::id_t> garbage;
 							/**
 							 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
 							 */
@@ -377,7 +377,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 								 */
 								for(const auto & id : garbage)
 									// Уничтожаем объект TLS по найденному идентификатору TLS
-									this->_tls.coder->destroy(id);
+									tls::coder::destroy(id);
 							}
 						}
 						// Останавливаем сервер
@@ -401,7 +401,7 @@ void awh::Server::opened(const event::id_t cid) noexcept {
 		 * Транслируем приложению принятие нового соединения: рукопожатие TLS 1.3
 		 * ведёт само соединение QUIC, поэтому идентификатор TLS-контекста не выдаётся
 		 */
-		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), cid, 0);
+		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), cid, 0);
 }
 /**
  * @brief Метод обработки события разрешения подключения
@@ -412,9 +412,9 @@ void awh::Server::opened(const event::id_t cid) noexcept {
  */
 void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Если объект транспортного уровня безопасности установлен
-	if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.cts > 0)){
+	if((this->_unit != nullptr) && (this->_id.cts > 0)){
 		// Создаём идентификатор транспортного уровня TLS/DTLS
-		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.cts);
+		tls::coder::id_t ctl = tls::coder::transport(this->_id.cts);
 		// Добавляем сопоставление идентификатора клиента с идентификатором TLS
 		if(this->_tls.safety.emplace(cid, ctl).second){
 			/**
@@ -430,24 +430,24 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 				// Если клиент работает с адресами IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4):
 					// Устанавливаем клиента TLS для события
-					this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV4), this->_unit->server.getPort(cid));
+					tls::coder::peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV4), this->_unit->server.getPort(cid));
 				break;
 				// Если клиент работает с адресами IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6):
 					// Устанавливаем клиента TLS для события
-					this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV6), this->_unit->server.getPort(cid));
+					tls::coder::peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV6), this->_unit->server.getPort(cid));
 				break;
 			}
 			// Регистрируем функцию обратного вызова на изменение состояния TLS
-			this->_tls.coder->on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
+			tls::coder::on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
-			this->_tls.coder->on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
+			tls::coder::on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
 			// Регистрируем функцию обратного вызова на получение снимка браузера отправившего ClientHello
-			this->_tls.coder->on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
+			tls::coder::on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
 			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-			this->_tls.coder->on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4, nullptr));
+			tls::coder::on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4, nullptr));
 			// Если рукопожатие TLS не выполнено
-			if(!this->_tls.coder->handshake(ctl)){
+			if(!tls::coder::handshake(ctl)){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error_tls")){
 					/**
@@ -470,7 +470,7 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 		// Уничтожаем подключившегося клиента
 		this->_unit->server.destroy(cid);
 	// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
-	} else this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", eid, cid, 0);
+	} else this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", eid, cid, 0);
 }
 /**
  * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
@@ -650,9 +650,9 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 				// Обнуляем идентификатор сервера
 				this->_id.eid = 0;
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_unit != nullptr) && (this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+				if((this->_unit != nullptr) && (this->_id.cts > 0) && !this->_tls.safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
-					vector <tls::coder_t::id_t> garbage;
+					vector <tls::coder::id_t> garbage;
 					/**
 					 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
 					 */
@@ -671,25 +671,25 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 						 */
 						for(const auto & id : garbage)
 							// Уничтожаем объект TLS по найденному идентификатору TLS
-							this->_tls.coder->destroy(id);
+							tls::coder::destroy(id);
 					}
 				}
 			// Если производится завершение работы клиента подключенного к текущему серверу
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_unit != nullptr) && (this->_id.cts > 0) && (this->_tls.coder != nullptr)){
+				if((this->_unit != nullptr) && (this->_id.cts > 0)){
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
 					auto i = this->_tls.safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
-						const tls::coder_t::id_t ctx = i->second;
+						const tls::coder::id_t ctx = i->second;
 						// Удаляем ожидающий отправки шифротекст клиента
 						this->_tls.residue.erase(i->first);
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_tls.coder->destroy(ctx);
+						tls::coder::destroy(ctx);
 					}
 				}
 			}
@@ -723,13 +723,13 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.cts > 0)){
+		if((this->_unit != nullptr) && (this->_id.cts > 0)){
 			// Выполняем поиск идентификатора TLS по идентификатору события клиента
 			auto i = this->_tls.safety.find(eid);
 			// Если для данного идентификатора события клиента найден идентификатор TLS
 			if(i != this->_tls.safety.end()){
 				// Если данные не расшифрованы
-				if(!this->_tls.coder->decrypt(i->second, buffer, size)){
+				if(!tls::coder::decrypt(i->second, buffer, size)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error_tls")){
 						/**
@@ -959,17 +959,17 @@ bool awh::Server::source(const event::id_t eid, const uint8_t ** buffer, size_t 
  * @param state состояние TLS
  *
  */
-void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept {
+void awh::Server::stateTLS(const tls::coder::id_t id, const event::id_t eid, const tls::coder::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active()){
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::state_t)> ("state_tls", id, eid, state);
+		this->_callback.call <void (const tls::coder::id_t, const event::id_t, const tls::coder::state_t)> ("state_tls", id, eid, state);
 		/**
 		 * Обрабатываем входящие состояния DTLS
 		 */
 		switch(static_cast <uint8_t> (state)){
 			// Если состояние ошибки транспортного уровня
-			case static_cast <uint8_t> (tls::coder_t::state_t::FAILED): {
+			case static_cast <uint8_t> (tls::coder::state_t::FAILED): {
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error_tls")){
 					/**
@@ -990,7 +990,7 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 				this->_unit->server.destroy(eid);
 			} break;
 			// Если состояние уничтожения объекта транспортного уровня
-			case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED): {
+			case static_cast <uint8_t> (tls::coder::state_t::DESTROYED): {
 				// Если сервер ещё живой
 				if(this->_unit != nullptr){
 					// Если список сопоставлений идентификаторов клиентов с идентификаторами TLS не пустой
@@ -1010,9 +1010,9 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 				}
 			} break;
 			// Если состояние рукопожатия успешно завершено
-			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED):
+			case static_cast <uint8_t> (tls::coder::state_t::HANDSHAKED):
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), eid, id);
+				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), eid, id);
 			break;
 		}
 	}
@@ -1025,11 +1025,11 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  * @param browser информация о браузере для отпечатка TLS
  *
  */
-void awh::Server::fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept {
+void awh::Server::fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active())
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
+		this->_callback.call <void (const tls::coder::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
 }
 /**
  * @brief Метод обработки ошибок TLS
@@ -1040,7 +1040,7 @@ void awh::Server::fingerprintTLS(const tls::coder_t::id_t id, const event::id_t 
  * @param message сообщение об ошибке TLS
  *
  */
-void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::error_t error, const string & message) noexcept {
+void awh::Server::errorTLS(const tls::coder::id_t id, const event::id_t eid, const tls::coder::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active()){
 		// Если функция обратного вызова не установлена
@@ -1059,7 +1059,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 				awh::log::print("%s", awh::log::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
-		} else this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", id, eid, error, message);
+		} else this->_callback.call <void (const tls::coder::id_t, const event::id_t, const tls::coder::error_t, const string &)> ("error_tls", id, eid, error, message);
 	}
 }
 /**
@@ -1073,7 +1073,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  *
  */
-void awh::Server::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+void awh::Server::processTLS([[maybe_unused]] const tls::coder::id_t id, const event::id_t eid, const tls::coder::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active()){
 		/**
@@ -1081,7 +1081,7 @@ void awh::Server::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 		 */
 		switch(static_cast <uint8_t> (event)){
 			// Если событие шифрования данных TLS
-			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+			case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 				// Получаем ожидающий отправки шифротекст клиента
 				auto & residue = this->_tls.residue[eid];
 				// Если выданный сетевому движку шифротекст уже отправлен целиком
@@ -1107,7 +1107,7 @@ void awh::Server::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 				this->_unit->server.send(eid, nullptr, 0);
 			} break;
 			// Если событие дешифрования данных TLS
-			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+			case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", eid, buffer, size, ctx);
 			break;
@@ -1224,9 +1224,9 @@ void awh::Server::stop() noexcept {
 				// Если сервер ещё живой
 				if(this->_unit != nullptr){
 					// Если идентификатор TLS и объект TLS установлены
-					if((this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+					if((this->_id.cts > 0) && !this->_tls.safety.empty()){
 						// Временный список идентификаторов TLS, которые нужно удалить
-						vector <tls::coder_t::id_t> garbage;
+						vector <tls::coder::id_t> garbage;
 						/**
 						 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
 						 */
@@ -1245,7 +1245,7 @@ void awh::Server::stop() noexcept {
 							 */
 							for(const auto & id : garbage)
 								// Уничтожаем объект TLS по найденному идентификатору TLS
-								this->_tls.coder->destroy(id);
+								tls::coder::destroy(id);
 						}
 					}
 					// Останавливаем событие сервера
@@ -1427,19 +1427,19 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 			// Если сервер ещё живой
 			if(this->_unit != nullptr){
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.cts > 0) && (this->_tls.coder != nullptr)){
+				if(this->_id.cts > 0){
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
 					auto i = this->_tls.safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
-						const tls::coder_t::id_t ctx = i->second;
+						const tls::coder::id_t ctx = i->second;
 						// Удаляем ожидающий отправки шифротекст клиента
 						this->_tls.residue.erase(i->first);
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_tls.coder->destroy(ctx);
+						tls::coder::destroy(ctx);
 					}
 				}
 				// Уничтожаем событие клиента
@@ -1496,9 +1496,9 @@ bool awh::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 		// Выполняем поиск идентификатора TLS по идентификатору события клиента
 		auto i = this->_tls.safety.find(eid);
 		// Если для данного идентификатора события клиента найден идентификатор TLS
-		if((this->_tls.coder != nullptr) && (i != this->_tls.safety.end()))
+		if(i != this->_tls.safety.end())
 			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-			this->_tls.coder->on(i->second, std::bind(&server_t::processTLS, this, _1, eid, _2, _3, _4, ctx));
+			tls::coder::on(i->second, std::bind(&server_t::processTLS, this, _1, eid, _2, _3, _4, ctx));
 	}
 	// Выводим результат
 	return result;
@@ -1650,13 +1650,13 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
 		if((this->_unit != nullptr) && (eid != this->_id.eid) && this->_unit->server.isActual(eid)){
 			// Если идентификатор TLS и объект TLS установлены
-			if((this->_id.cts > 0) && (this->_tls.coder != nullptr)){
+			if(this->_id.cts > 0){
 				// Выполняем поиск идентификатора TLS по идентификатору события клиента
 				auto i = this->_tls.safety.find(eid);
 				// Если для данного идентификатора события клиента найден идентификатор TLS
 				if(i != this->_tls.safety.end()){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_tls.coder->encrypt(i->second, buffer, size))
+					if(tls::coder::encrypt(i->second, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 				}
@@ -3458,8 +3458,8 @@ awh::event::id_t awh::Server::init(const event::family_t family, const event::ty
 		 */
 		if(protocol == event::protocol_t::QUIC){
 			// Передаём шаблон контекста безопасности соединениям выделенного юнита сервера QUIC
-			if((this->_tls.coder != nullptr) && (this->_id.cts > 0))
-				this->_unit->quic.context(* this->_tls.coder, this->_id.cts);
+			if(this->_id.cts > 0)
+				this->_unit->quic.context(this->_id.cts);
 			// Инициализируем новое событие сервера на выделенном юните сервера QUIC
 			this->_id.eid = this->_unit->quic.issue(family, type, protocol);
 		// Инициализируем новое событие сервера на общем юните сервера
@@ -3946,34 +3946,13 @@ awh::Server::Server(unit::dns_t * dns) noexcept :
 /**
  * @brief Конструктор
  *
- * @param cts   идентификатор шаблона контекста безопасности
- * @param coder объект транспортного уровня безопасности
+ * @param cts идентификатор шаблона контекста безопасности
  *
  */
-awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder) noexcept :
+awh::Server::Server(const tls::coder::id_t cts) noexcept :
  _host{""}, _callback(), _unit(nullptr) {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_id.cts = cts;
-	// Устанавливаем объект транспортного уровня безопасности для сервера
-	this->_tls.coder = coder;
-	// Если объект транспортного уровня безопасности не установлен
-	if(this->_tls.coder == nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("TLS object not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("TLS object not set", awh::log::flag_t::CRITICAL);
-		#endif
-		// Выходим из приложения
-		::_exit(EXIT_FAILURE);
-	}
 	// Создаём объект юнита сервера
 	this->_unit = make_unique <unit_t> ();
 	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
@@ -4044,35 +4023,14 @@ awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder) noexcept
 /**
  * @brief Конструктор
  *
- * @param cts   идентификатор шаблона контекста безопасности
- * @param coder объект транспортного уровня безопасности
- * @param dns   объект DNS-резолвера
+ * @param cts идентификатор шаблона контекста безопасности
+ * @param dns объект DNS-резолвера
  *
  */
-awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns) noexcept :
+awh::Server::Server(const tls::coder::id_t cts, unit::dns_t * dns) noexcept :
  _host{""}, _callback(), _unit(nullptr) {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_id.cts = cts;
-	// Устанавливаем объект транспортного уровня безопасности для сервера
-	this->_tls.coder = coder;
-	// Если объект транспортного уровня безопасности не установлен
-	if(this->_tls.coder == nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("TLS object not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("TLS object not set", awh::log::flag_t::CRITICAL);
-		#endif
-		// Выходим из приложения
-		::_exit(EXIT_FAILURE);
-	}
 	// Создаём объект юнита сервера
 	this->_unit = make_unique <unit_t> ();
 	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера

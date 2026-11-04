@@ -138,7 +138,7 @@ bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const
  */
 void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const event::id_t oid) noexcept {
 	// Если шаблон контекста безопасности не установлен
-	if((this->_coder == nullptr) || (this->_ctx == 0)){
+	if(this->_ctx == 0){
 		// Записываем ошибку в лог
 		log::print("QUIC security context is not set", log::flag_t::CRITICAL);
 		// Уничтожаем сессию соединения
@@ -156,8 +156,7 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	session_t & session = ret.first->second;
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	session.connection = make_unique <quic::connection_t> (
-		quic::endpoint_t::SERVER, this->_ctx,
-		* this->_coder
+		quic::endpoint_t::SERVER, this->_ctx
 	);
 	// Устанавливаем локальные транспортные параметры соединения
 	session.connection->params(this->_params);
@@ -709,13 +708,10 @@ void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
 /**
  * @brief Метод установки шаблона контекста безопасности соединений
  *
- * @param coder объект кодера транспортной безопасности
- * @param ctx   идентификатор шаблона контекста безопасности
+ * @param ctx идентификатор шаблона контекста безопасности
  *
  */
-void awh::unit::QuicServer::context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept {
-	// Устанавливаем объект кодера транспортной безопасности
-	this->_coder = &coder;
+void awh::unit::QuicServer::context(const tls::coder::id_t ctx) noexcept {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_ctx = ctx;
 }
@@ -2032,7 +2028,7 @@ void awh::unit::QuicServer::close(const event::id_t oid, const uint64_t code, st
  * @return    согласованный ALPN-протокол
  *
  */
-awh::tls::coder_t::alpn_t awh::unit::QuicServer::alpn(const event::id_t oid) const noexcept {
+awh::tls::coder::alpn_t awh::unit::QuicServer::alpn(const event::id_t oid) const noexcept {
 	// Выполняем поиск сессии соединения
 	auto i = this->_sessions.find(oid);
 	// Если сессия соединения найдена
@@ -2040,7 +2036,7 @@ awh::tls::coder_t::alpn_t awh::unit::QuicServer::alpn(const event::id_t oid) con
 		// Выводим согласованный ALPN-протокол соединения
 		return i->second.connection->alpn();
 	// Выводим пустой результат
-	return tls::coder_t::alpn_t();
+	return tls::coder::alpn_t(0, "");
 }
 /**
  * @brief Метод получения адреса удалённого эндпоинта соединения
@@ -2715,7 +2711,7 @@ bool awh::unit::QuicServer::clusterSetBufferSize(const pid_t pid, const event::a
  */
 awh::unit::QuicServer::QuicServer() noexcept :
  unit_t(), _eid(0), _tid(0), _inheritedEid(0), _retry(false), _ecn(false), _family(event::family_t::IPV4),
- _resetKey{""}, _ctx(0), _coder(nullptr), _cluster(nullptr),
+ _resetKey{""}, _ctx(0), _cluster(nullptr),
  _listenType(event::address_t::IPV4), _awaitingPort(false), _backlog(0), _listenPort(0),
  _portBegin(0), _portEnd(0), _listenHost{""} {}
 /**
@@ -3145,13 +3141,10 @@ void awh::unit::QuicClient::mark(const event::ecn_t marking) noexcept {
 /**
  * @brief Метод установки шаблона контекста безопасности соединения
  *
- * @param coder объект кодера транспортной безопасности
- * @param ctx   идентификатор шаблона контекста безопасности
+ * @param ctx идентификатор шаблона контекста безопасности
  *
  */
-void awh::unit::QuicClient::context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept {
-	// Устанавливаем объект кодера транспортной безопасности
-	this->_coder = &coder;
+void awh::unit::QuicClient::context(const tls::coder::id_t ctx) noexcept {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_ctx = ctx;
 }
@@ -3269,7 +3262,7 @@ void awh::unit::QuicClient::launch(const event::status_t status) noexcept {
  */
 awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
 	// Если шаблон контекста безопасности не установлен
-	if((this->_coder == nullptr) || (this->_ctx == 0)){
+	if(this->_ctx == 0){
 		// Записываем ошибку в лог
 		log::print("QUIC security context is not set", log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
@@ -3446,7 +3439,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 		// Выводим отрицательный результат
 		return false;
 	// Если шаблон контекста безопасности не установлен
-	if((this->_coder == nullptr) || (this->_ctx == 0)){
+	if(this->_ctx == 0){
 		// Записываем ошибку в лог
 		log::print("QUIC security context is not set", log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
@@ -3462,8 +3455,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	this->_tunnel = quic::connection_t::INVALID_STREAM;
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	this->_connection = make_unique <quic::connection_t> (
-		quic::endpoint_t::CLIENT, this->_ctx,
-		* this->_coder
+		quic::endpoint_t::CLIENT, this->_ctx
 	);
 	// Устанавливаем локальные транспортные параметры соединения
 	this->_connection->params(this->_params);
@@ -4462,11 +4454,11 @@ void awh::unit::QuicClient::close(const uint64_t code, string_view reason) noexc
  * @return согласованный ALPN-протокол
  *
  */
-awh::tls::coder_t::alpn_t awh::unit::QuicClient::alpn() const noexcept {
+awh::tls::coder::alpn_t awh::unit::QuicClient::alpn() const noexcept {
 	// Если соединение не создано
 	if(this->_connection == nullptr)
 		// Выводим пустой результат
-		return tls::coder_t::alpn_t();
+		return tls::coder::alpn_t(0, "");
 	// Выводим согласованный ALPN-протокол соединения
 	return this->_connection->alpn();
 }
@@ -4496,7 +4488,7 @@ void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
  */
 awh::unit::QuicClient::QuicClient() noexcept :
  unit_t(), _eid(0), _tid(0), _connected(false), _notified(false), _ecn(false),
- _family(event::family_t::IPV4), _marking(event::ecn_t::NOT_ECT), _ctx(0), _coder(nullptr),
+ _family(event::family_t::IPV4), _marking(event::ecn_t::NOT_ECT), _ctx(0),
  _token{""}, _targetPort(0), _target(nullptr), _connection(nullptr),
  _datagram{""}, _handed(false), _dest(0), _tunnel(quic::connection_t::INVALID_STREAM) {}
 /**

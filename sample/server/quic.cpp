@@ -86,7 +86,7 @@ class Executor {
 		 * @param server объект сервера
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об установленном соединении
 			log::print("QUIC connection established: ID=%u, Address=%s", log::flag_t::INFO, cid, server->getAddress(cid, event::address_t::IPV4).c_str());
 		}
@@ -198,10 +198,10 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	Executor executor;
 	// Создаём объект отпечатка браузера
 	tls::fgp_t fgp;
-	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls(&fgp);
+	// Устанавливаем объект для работы с отпечатками TLS
+	tls::coder::fingerprint(&fgp);
 	// Регистрируем шаблон контекста безопасности для транспорта QUIC
-	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::QUIC);
+	const tls::coder::id_t cts = tls::coder::context(event::node_t::SERVER, event::protocol_t::QUIC);
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
@@ -210,19 +210,19 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем список поддерживаемых ALPN-протоколов (RFC 9001 §8.1)
-	tls.alpn(cts, {tls::coder_t::alpn_t{0, "h3"}});
+	tls::coder::alpn(cts, {tls::coder::alpn_t{0, "h3"}});
 	// Устанавливаем сертификат сервера
-	tls.certificate(cts, "../sh/certificates/server/cert.pem");
+	tls::coder::certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ сервера
-	tls.privateKey(cts, "../sh/certificates/server/key.pem");
+	tls::coder::privateKey(cts, "../sh/certificates/server/key.pem");
 	/**
 	 * Снимаем проверку сертификата удалённого узла: на серверном узле это означает
 	 * требование клиентского сертификата (взаимная аутентификация), для эхо-сервера
 	 * оно не нужно
 	 */
-	tls.validateServerNameIndication(cts, false);
+	tls::coder::validateServerNameIndication(cts, false);
 	// Создаём объект сервера QUIC на шаблоне контекста безопасности
-	server_t server(cts, &tls);
+	server_t server(cts);
 	// Создаём событие сервера транспорта QUIC поверх UDP
 	server.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 	/**
@@ -267,7 +267,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие установленного соединения QUIC
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на собранные данные потока приложения QUIC
 		server.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("stream", &Executor::stream, &executor, _1, _2, _3, _4, &server);
 		// Регистрируем функцию обратного вызова на принятую датаграмму приложения QUIC

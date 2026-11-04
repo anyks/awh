@@ -240,9 +240,7 @@ namespace awh {
 				string _resetKey;
 			private:
 				// Идентификатор шаблона контекста безопасности
-				tls::coder_t::id_t _ctx;
-				// Объект кодера транспортной безопасности
-				const tls::coder_t * _coder;
+				tls::coder::id_t _ctx;
 			private:
 				// Локальные транспортные параметры соединений
 				quic::params::params_t _params;
@@ -831,22 +829,20 @@ namespace awh {
 				 *
 				 * @note Криптография соединений задаётся целиком на шаблоне контекста:
 				 *       сертификаты, доверенные центры, проверка узла и список
-				 *       ALPN-протоколов настраиваются там. Кодер обязан пережить модуль
+				 *       ALPN-протоколов настраиваются там
 				 *
-				 * @param coder объект кодера транспортной безопасности
-				 * @param ctx   идентификатор шаблона контекста безопасности
+				 * @param ctx идентификатор шаблона контекста безопасности
 				 *
 				 * \~english
 				 * @brief Method of setting the template of the security context of the connections
 				 * @note The cryptography of the connections is given entirely on the template of the context:
 				 *       the certificates, the trusted authorities, the verification of the node and the list
-				 *       of the ALPN protocols are configured there. The coder is obliged to outlive the module
-				 * @param coder object of the coder of the transport security
-				 * @param ctx   identifier of the template of the security context
+				 *       of the ALPN protocols are configured there
+				 * @param ctx identifier of the template of the security context
 				 *
 				 * \~
 				 */
-				void context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept;
+				void context(const tls::coder::id_t ctx) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки локальных транспортных параметров соединений (RFC 9000 §7.4)
@@ -2238,7 +2234,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				tls::coder_t::alpn_t alpn(const event::id_t oid) const noexcept;
+				tls::coder::alpn_t alpn(const event::id_t oid) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения адреса удалённого эндпоинта соединения
@@ -2368,9 +2364,7 @@ namespace awh {
 				event::ecn_t _marking;
 			private:
 				// Идентификатор шаблона контекста безопасности
-				tls::coder_t::id_t _ctx;
-				// Объект кодера транспортной безопасности
-				const tls::coder_t * _coder;
+				tls::coder::id_t _ctx;
 			private:
 				/**
 				 * Сохранённый токен проверки адреса фрейма NEW_TOKEN. Подставляется
@@ -2627,17 +2621,15 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод установки шаблона контекста безопасности соединения
 				 *
-				 * @param coder объект кодера транспортной безопасности
-				 * @param ctx   идентификатор шаблона контекста безопасности
+				 * @param ctx идентификатор шаблона контекста безопасности
 				 *
 				 * \~english
 				 * @brief Method of setting the template of the security context of the connection
-				 * @param coder object of the coder of the transport security
-				 * @param ctx   identifier of the template of the security context
+				 * @param ctx identifier of the template of the security context
 				 *
 				 * \~
 				 */
-				void context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept;
+				void context(const tls::coder::id_t ctx) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки уведомления о перегрузке пути (RFC 9000 §13.4)
@@ -3800,7 +3792,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				tls::coder_t::alpn_t alpn() const noexcept;
+				tls::coder::alpn_t alpn() const noexcept;
 			public:
 				/**
 				 * \~russian

@@ -336,23 +336,13 @@ namespace {
 };
 
 /**
- * @brief Метод доступа к объекту кодера транспортной безопасности
- *
- * @return объект кодера транспортной безопасности
- *
- */
-awh::tls::Coder & QuicSecurity::coder() noexcept {
-	// Выводим объект кодера транспортной безопасности
-	return this->_coder;
-}
-/**
  * @brief Метод извлечения шаблона контекста безопасности роли эндпоинта
  *
  * @param endpoint роль эндпоинта
  * @return         идентификатор шаблона контекста безопасности
  *
  */
-awh::tls::Coder::id_t QuicSecurity::context(const awh::quic::endpoint_t endpoint) const noexcept {
+awh::tls::coder::id_t QuicSecurity::context(const awh::quic::endpoint_t endpoint) const noexcept {
 	// Выводим шаблон контекста безопасности запрошенной роли
 	return ((endpoint == awh::quic::endpoint_t::CLIENT) ? this->_client : this->_server);
 }
@@ -365,38 +355,38 @@ awh::tls::Coder::id_t QuicSecurity::context(const awh::quic::endpoint_t endpoint
  * @return          идентификатор созданного шаблона контекста безопасности
  *
  */
-awh::tls::Coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::Coder::alpn_t> & protocols, const bool validate) noexcept {
+awh::tls::coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::coder::alpn_t> & protocols, const bool validate) noexcept {
 	// Определяем роль узла кодера
 	const awh::event::node_t node = ((endpoint == awh::quic::endpoint_t::CLIENT) ? awh::event::node_t::CLIENT : awh::event::node_t::SERVER);
 	// Создаём шаблон контекста безопасности протокола QUIC
-	const awh::tls::Coder::id_t result = this->_coder.context(node, awh::event::protocol_t::QUIC);
+	const awh::tls::coder::id_t result = awh::tls::coder::context(node, awh::event::protocol_t::QUIC);
 	// Если шаблон контекста безопасности не создан
 	if(result == 0)
 		// Выводим отрицательный результат
 		return result;
 	// Устанавливаем список поддерживаемых ALPN-протоколов
-	this->_coder.alpn(result, protocols);
+	awh::tls::coder::alpn(result, protocols);
 	// Если эндпоинт является сервером
 	if(endpoint == awh::quic::endpoint_t::SERVER){
 		// Устанавливаем сертификат тестового узла
-		this->_coder.certificate(result, this->_certificate);
+		awh::tls::coder::certificate(result, this->_certificate);
 		// Устанавливаем приватный ключ тестового узла
-		this->_coder.privateKey(result, this->_privateKey);
+		awh::tls::coder::privateKey(result, this->_privateKey);
 		/**
 		 * Снимаем проверку на сервере: шаблон контекста создаётся с включённой
 		 * проверкой, а на серверном узле это означает требование клиентского
 		 * сертификата, то есть взаимную аутентификацию. Тесты проверяют
 		 * односторонний TLS, поэтому требование снимается явно
 		 */
-		this->_coder.validateServerNameIndication(result, false);
+		awh::tls::coder::validateServerNameIndication(result, false);
 	// Если эндпоинт является клиентом
 	} else {
 		// Устанавливаем доменное имя удалённого узла
-		this->_coder.serverNameIndication(result, "localhost");
+		awh::tls::coder::serverNameIndication(result, "localhost");
 		// Устанавливаем доверенный центр сертификации тестового узла
-		this->_coder.ca(result, this->_certificate);
+		awh::tls::coder::ca(result, this->_certificate);
 		// Устанавливаем режим проверки сертификата удалённого узла
-		this->_coder.validateServerNameIndication(result, validate);
+		awh::tls::coder::validateServerNameIndication(result, validate);
 	}
 	// Выводим созданный шаблон контекста безопасности
 	return result;
@@ -406,7 +396,7 @@ awh::tls::Coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, c
  *
  */
 QuicSecurity::QuicSecurity() noexcept :
- _client(0), _server(0), _coder() {
+ _client(0), _server(0) {
 	// Сертификат тестового узла в формате PEM
 	std::string certificate = "";
 	// Приватный ключ тестового узла в формате PEM
@@ -426,9 +416,9 @@ QuicSecurity::QuicSecurity() noexcept :
 		// Выходим из конструктора - контексты останутся несозданными
 		return;
 	// Создаём шаблон контекста безопасности клиента
-	this->_client = this->make(awh::quic::endpoint_t::CLIENT, {awh::tls::Coder::alpn_t{0, "h3"}});
+	this->_client = this->make(awh::quic::endpoint_t::CLIENT, {awh::tls::coder::alpn_t{0, "h3"}});
 	// Создаём шаблон контекста безопасности сервера
-	this->_server = this->make(awh::quic::endpoint_t::SERVER, {awh::tls::Coder::alpn_t{0, "h3"}});
+	this->_server = this->make(awh::quic::endpoint_t::SERVER, {awh::tls::coder::alpn_t{0, "h3"}});
 }
 /**
  * @brief Деструктор
