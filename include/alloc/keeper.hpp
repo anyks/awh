@@ -313,7 +313,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool operator == (const Keeper <T> &, const Keeper <U> &) noexcept {
+		static constexpr bool operator == (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители равны всегда
 			return true;
 		}
@@ -346,7 +346,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool operator != (const Keeper <T> &, const Keeper <U> &) noexcept {
+		static constexpr bool operator != (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители не равны никогда
 			return false;
 		}

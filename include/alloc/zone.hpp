@@ -305,7 +305,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				ZoneCapture() noexcept;
+				explicit ZoneCapture() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
