@@ -143,7 +143,7 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 	// Устанавливаем адрес прослушивания серверу
 	ASSERT_TRUE(awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем функцию обратного вызова принятия подключения
-	awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered, options](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
+	awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
 		// Принятому узлу признаки ставятся те же, блокирующие
 		EXPECT_TRUE(awh::engine::setOptions(cid, options));
 		// Устанавливаем функцию обратного вызова получения данных

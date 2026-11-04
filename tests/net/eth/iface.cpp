@@ -1027,7 +1027,7 @@ TEST_F(EthFixture, IfaceThreadSafetyTest){
 	 */
 	for(uint8_t i = 0; i < 4; i++)
 		// Заводим очередной поток опроса
-		workers.emplace_back([this, &mtx, &results]() noexcept {
+		workers.emplace_back([&mtx, &results]() noexcept {
 			/**
 			 * Опрашиваем перечень устройств многократно, чтобы обращения наложились
 			 */

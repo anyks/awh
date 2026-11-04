@@ -14613,7 +14613,7 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -14634,7 +14634,7 @@ TEST_F(IoFixture, IoTLSTest){
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
@@ -14691,7 +14691,7 @@ TEST_F(IoFixture, IoTLSTest){
 			// Устанавливаем клиента TLS для события
 			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
@@ -14726,7 +14726,7 @@ TEST_F(IoFixture, IoTLSTest){
 				awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на чтение из события
-			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
 				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -14908,7 +14908,7 @@ TEST_F(IoFixture, IoTLSTest){
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
@@ -15086,7 +15086,7 @@ TEST_F(IoFixture, IoTLSTest){
 			awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		awh::engine::on(events[0], [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
 			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -15153,7 +15153,7 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие подключения: ID=%u, результат: %s", awh::log::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -15490,7 +15490,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts1, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts1, &stop](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -15511,7 +15511,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
@@ -15568,7 +15568,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Устанавливаем клиента TLS для события
 			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
@@ -15603,7 +15603,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на чтение из события
-			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
 				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -15785,7 +15785,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
@@ -15963,7 +15963,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		awh::engine::on(events[0], [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
 			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -16030,7 +16030,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие подключения: ID=%u, результат: %s", awh::log::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
@@ -16350,7 +16350,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие принято: ID=%u, Клиентский ID=%u", awh::log::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
@@ -16371,7 +16371,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
 			// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-			awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+			awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 				/**
 				 * Обрабатываем входящие состояния TLS
 				 */
@@ -16430,7 +16430,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Устанавливаем клиента TLS для события
 			awh::tls::coder::peer(ctl, awh::engine::getAddress(cid, awh::event::address_t::IPV4), awh::engine::getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
-			awh::tls::coder::on(ctl, [cid, this](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::tls::coder::on(ctl, [cid](const awh::tls::coder::id_t id, const awh::tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
 				 * Обрабатываем тип события TLS
 				 */
@@ -16465,7 +16465,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на чтение из события
-			awh::engine::on(cid, [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::on(cid, [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если данные успешно дешифрованы TLS
 				if(awh::tls::coder::decrypt(ctl, data, size))
 					// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -16645,7 +16645,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(ctl, 0);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия TLS
-		awh::tls::coder::on(ctl, [this](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
+		awh::tls::coder::on(ctl, [](const awh::tls::coder::id_t id, const awh::tls::coder::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния TLS
 			 */
@@ -16823,7 +16823,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		awh::engine::on(events[0], [ctl, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		awh::engine::on(events[0], [ctl](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Если данные успешно дешифрованы TLS
 			if(awh::tls::coder::decrypt(ctl, data, size))
 				// Записываем в лог сообщение об успешном дешифровании данных TLS
@@ -16890,7 +16890,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([ctl](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			awh::log::print("Событие подключения: ID=%u, результат: %s", awh::log::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
