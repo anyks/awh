@@ -549,7 +549,7 @@ using namespace std;
 /**
  * Подключаем строй сообщений POSIX для MS Windows
  *
- * @details Типы `iovec`, `msghdr` и `cmsghdr`, обход метаданных макросами `CMSG_*` и
+ * @details Типы `iovec_t`, `msghdr_t` и `cmsghdr_t`, обход метаданных макросами `CMSG_*` и
  *          простой приём поверх `WSARecvMsg` вынесены отсюда в свой модуль 03.09.2026.
  *          Довод к выносу изложен при заголовке модуля: покуда строй жил внутри этой
  *          единицы трансляции, ни проверка доставки метки перегрузки, ни щуп чтения
@@ -591,7 +591,7 @@ namespace {
 	 * @return       признак того, что приём обслужен родным путём
 	 *
 	 */
-	static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t & result) noexcept;
+	static bool __awh_pool_recvmsg__(const SOCKET sock, msghdr_t * msg, ssize_t & result) noexcept;
 	/**
 	 * @brief Функция проверки заведённого родного приёма по дескриптору
 	 *
@@ -613,7 +613,7 @@ namespace {
 	 * @return      число принятых октетов, либо -1 при отказе
 	 *
 	 */
-	static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] const int32_t flags) noexcept {
+	static ssize_t recvmsg(const SOCKET sock, msghdr_t * msg, [[maybe_unused]] const int32_t flags) noexcept {
 		/**
 		 * Если приём обслужен родным приёмом - обращения к системе не происходит вовсе
 		 *
@@ -649,7 +649,7 @@ namespace {
 		/**
 		 * Приём у системы ведётся вынесенным посредником
 		 *
-		 * @details Прежде тело его лежало здесь же: перенос состава `msghdr` в `WSAMSG`,
+		 * @details Прежде тело его лежало здесь же: перенос состава `msghdr_t` в `WSAMSG`,
 		 *          добыча расширенного вызова и разбор отказа. Вынесено в свой модуль
 		 *          03.09.2026 - разбор при заголовке `net/backend/win/message.hpp`
 		 *
@@ -3182,7 +3182,7 @@ namespace {
 	 * @return      число принятых октетов, либо -1 при отказе
 	 *
 	 */
-	[[maybe_unused]] static ssize_t readv(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+	[[maybe_unused]] static ssize_t readv(const SOCKET sock, const iovec_t * iov, const int32_t count) noexcept {
 		// Если набор буферов не передан
 		if((iov == nullptr) || (count <= 0))
 			// Выводим признак отказа приёма
@@ -3194,9 +3194,9 @@ namespace {
 		 */
 		for(int32_t i = 0; i < count; i++){
 			// Устанавливаем начало буфера приёма
-			buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].iov_base);
+			buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].base);
 			// Устанавливаем размер буфера приёма
-			buffers[i].len = static_cast <ULONG> (iov[i].iov_len);
+			buffers[i].len = static_cast <ULONG> (iov[i].size);
 		}
 		// Число принятых октетов
 		DWORD received = 0;
@@ -3228,16 +3228,16 @@ namespace {
 	 * @return     число принятых октетов вместе с меткой семейства, либо -1 при отказе
 	 *
 	 */
-	static ssize_t __awh_tunnel_read__(const SOCKET sock, const struct iovec * iov) noexcept {
+	static ssize_t __awh_tunnel_read__(const SOCKET sock, const iovec_t * iov) noexcept {
 		// Если набор буферов не передан
-		if((iov == nullptr) || (iov[0].iov_base == nullptr) || (iov[1].iov_base == nullptr) || (iov[0].iov_len < sizeof(uint32_t))){
+		if((iov == nullptr) || (iov[0].base == nullptr) || (iov[1].base == nullptr) || (iov[0].size < sizeof(uint32_t))){
 			// Запоминаем причину отказа приёма
 			errno = EINVAL;
 			// Выводим признак отказа приёма
 			return -1;
 		}
 		// Выполняем приём пакета из туннельного устройства
-		const int64_t bytes = awh::win::tunnel::read(static_cast <awh::net::socket_t> (sock), iov[1].iov_base, iov[1].iov_len);
+		const int64_t bytes = awh::win::tunnel::read(static_cast <awh::net::socket_t> (sock), iov[1].base, iov[1].size);
 		// Если приём отказом завершился
 		if(bytes < 0){
 			// Запоминаем причину отказа приёма
@@ -3260,7 +3260,7 @@ namespace {
 			return -1;
 		}
 		// Получаем начало принятого пакета
-		const uint8_t * packet = reinterpret_cast <const uint8_t *> (iov[1].iov_base);
+		const uint8_t * packet = reinterpret_cast <const uint8_t *> (iov[1].base);
 		/**
 		 * Выводим метку семейства по версии, объявленной самим пакетом
 		 *
@@ -3268,7 +3268,7 @@ namespace {
 		 *       разбирает пакет именно по ней
 		 *
 		 */
-		* reinterpret_cast <uint32_t *> (iov[0].iov_base) = ((((packet[0] & 0xF0) >> 4) == 6) ? AF_INET6 : AF_INET);
+		* reinterpret_cast <uint32_t *> (iov[0].base) = ((((packet[0] & 0xF0) >> 4) == 6) ? AF_INET6 : AF_INET);
 		// Выводим число принятых октетов вместе с меткой семейства
 		return static_cast <ssize_t> (bytes + static_cast <int64_t> (sizeof(uint32_t)));
 	}
@@ -3282,7 +3282,7 @@ namespace {
 	 * @return      число отданных октетов, либо -1 при отказе
 	 *
 	 */
-	[[maybe_unused]] static ssize_t writev(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+	[[maybe_unused]] static ssize_t writev(const SOCKET sock, const iovec_t * iov, const int32_t count) noexcept {
 		// Если набор буферов не передан
 		if((iov == nullptr) || (count <= 0))
 			// Выводим признак отказа отдачи
@@ -3294,9 +3294,9 @@ namespace {
 		 */
 		for(int32_t i = 0; i < count; i++){
 			// Устанавливаем начало буфера отдачи
-			buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].iov_base);
+			buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].base);
 			// Устанавливаем размер буфера отдачи
-			buffers[i].len = static_cast <ULONG> (iov[i].iov_len);
+			buffers[i].len = static_cast <ULONG> (iov[i].size);
 		}
 		// Число отданных октетов
 		DWORD sent = 0;
@@ -3321,16 +3321,16 @@ namespace {
 	 * @return     число отданных октетов вместе с меткой семейства, либо -1 при отказе
 	 *
 	 */
-	static ssize_t __awh_tunnel_write__(const SOCKET sock, const struct iovec * iov) noexcept {
+	static ssize_t __awh_tunnel_write__(const SOCKET sock, const iovec_t * iov) noexcept {
 		// Если набор буферов не передан
-		if((iov == nullptr) || (iov[1].iov_base == nullptr) || (iov[1].iov_len == 0)){
+		if((iov == nullptr) || (iov[1].base == nullptr) || (iov[1].size == 0)){
 			// Запоминаем причину отказа отдачи
 			errno = EINVAL;
 			// Выводим признак отказа отдачи
 			return -1;
 		}
 		// Выполняем отправку пакета в туннельное устройство
-		const int64_t bytes = awh::win::tunnel::write(static_cast <awh::net::socket_t> (sock), iov[1].iov_base, iov[1].iov_len);
+		const int64_t bytes = awh::win::tunnel::write(static_cast <awh::net::socket_t> (sock), iov[1].base, iov[1].size);
 		// Если отдача отказом завершилась
 		if(bytes < 0){
 			// Запоминаем причину отказа отдачи
@@ -7082,7 +7082,7 @@ namespace inflight {
 		// Длина адреса удалённой стороны, читается ядром там же
 		socklen_t length;
 		// Устройство сообщения для приёма и отправки дейтаграмм
-		struct msghdr message;
+		msghdr_t message;
 		/**
 		 * @brief Устройство сообщения строя MS Windows для приёма со служебными метаданными
 		 *
@@ -7120,7 +7120,7 @@ namespace inflight {
 		 */
 		bool bounded;
 		// Вектор буферов сообщения
-		struct iovec vector;
+		iovec_t vector;
 		// Срок ожидания в миллисекундах
 		uint64_t deadline;
 		/**
@@ -8459,7 +8459,7 @@ namespace pool {
 		 *       сырой, которому система метаданных не отдала вовсе
 		 *
 		 */
-		uint32_t controllen;
+		uint32_t controlSize;
 		/**
 		 * @brief Конструктор
 		 *
@@ -8468,7 +8468,7 @@ namespace pool {
 		 armed(false), ready(false), bid(::pool::INVALID), res(0), offset(0),
 		 token(::inflight::INVALID), owner(nullptr), addr{},
 		 length(sizeof(struct sockaddr_storage)), addressed(false), bounded(false),
-		 controllen(0) {}
+		 controlSize(0) {}
 	};
 
 	/**
@@ -8731,7 +8731,7 @@ namespace pool {
 		 *       записи учёта
 		 *
 		 */
-		record->controllen = ((slot != nullptr) && slot->metadata ?
+		record->controlSize = ((slot != nullptr) && slot->metadata ?
 		 static_cast <uint32_t> (slot->wsamsg.Control.len) : 0);
 		/**
 		 * Если адрес отправителя системой выяснен - запоминаем его
@@ -8750,7 +8750,7 @@ namespace pool {
 			 *       отдельным полем: расширенный вызов пишет выясненную длину именно туда
 			 *
 			 */
-			record->length = (slot->metadata ? static_cast <socklen_t> (slot->wsamsg.namelen) : slot->length);
+			record->length = (slot->metadata ? static_cast <socklen_t> (slot->wsamsg.nameSize) : slot->length);
 			// Отмечаем адрес отправителя выясненным
 			record->addressed = true;
 			// Отмечаем принятое сохраняющим границы сообщения
@@ -8942,7 +8942,7 @@ namespace pool {
 	 * @return       признак того, что приём обслужен отложенным
 	 *
 	 */
-	static bool receiving(const net::socket_t sock, struct msghdr * msg, ssize_t & result) noexcept {
+	static bool receiving(const net::socket_t sock, msghdr_t * msg, ssize_t & result) noexcept {
 		// Получаем запись принятого по дескриптору
 		fetched_t * record = ((static_cast <size_t> (sock) < ::pool::fetched.size()) ?
 		 &::pool::fetched.at(static_cast <size_t> (sock)) : nullptr);
@@ -9009,43 +9009,43 @@ namespace pool {
 		/**
 		 * Выполняем перебор буферов потребителя
 		 */
-		for(size_t i = 0; (source != nullptr) && (i < msg->msg_iovlen) && (carried < received); i++){
+		for(size_t i = 0; (source != nullptr) && (i < msg->iovecSize) && (carried < received); i++){
 			// Вычисляем размер порции, влезающей в текущий буфер потребителя
-			const size_t portion = (((received - carried) < msg->msg_iov[i].iov_len) ?
-			 (received - carried) : msg->msg_iov[i].iov_len);
+			const size_t portion = (((received - carried) < msg->iovec[i].size) ?
+			 (received - carried) : msg->iovec[i].size);
 			// Если переносить есть что
 			if(portion > 0)
 				// Выполняем перенос принятого в буфер потребителя
-				::memcpy(msg->msg_iov[i].iov_base, (source + carried), portion);
+				::memcpy(msg->iovec[i].base, (source + carried), portion);
 			// Увеличиваем количество перенесённого потребителю
 			carried += portion;
 		}
 		// Если адрес отправителя запрошен и системой выяснен
-		if((msg->msg_name != nullptr) && record->addressed){
+		if((msg->name != nullptr) && record->addressed){
 			// Вычисляем размер переносимого адреса отправителя
-			const size_t length = ((static_cast <size_t> (record->length) < static_cast <size_t> (msg->msg_namelen)) ?
-			 static_cast <size_t> (record->length) : static_cast <size_t> (msg->msg_namelen));
+			const size_t length = ((static_cast <size_t> (record->length) < static_cast <size_t> (msg->nameSize)) ?
+			 static_cast <size_t> (record->length) : static_cast <size_t> (msg->nameSize));
 			// Выполняем перенос адреса отправителя
-			::memcpy(msg->msg_name, &record->addr, length);
+			::memcpy(msg->name, &record->addr, length);
 			// Устанавливаем длину адреса отправителя
-			msg->msg_namelen = static_cast <socklen_t> (length);
+			msg->nameSize = static_cast <socklen_t> (length);
 		// Если адрес отправителя не выяснен - сообщаем об этом нулевой длиной
-		} else msg->msg_namelen = 0;
+		} else msg->nameSize = 0;
 		// Получаем буфер служебных метаданных
-		const uint8_t * metadata = ((record->controllen > 0) ? ::pool::control(bid) : nullptr);
+		const uint8_t * metadata = ((record->controlSize > 0) ? ::pool::control(bid) : nullptr);
 		// Если служебные метаданные приняты и потребитель их просит
-		if((metadata != nullptr) && (msg->msg_control != nullptr)){
+		if((metadata != nullptr) && (msg->control != nullptr)){
 			// Вычисляем размер переносимых служебных метаданных
-			const size_t length = ((static_cast <size_t> (record->controllen) < msg->msg_controllen) ?
-			 static_cast <size_t> (record->controllen) : msg->msg_controllen);
+			const size_t length = ((static_cast <size_t> (record->controlSize) < msg->controlSize) ?
+			 static_cast <size_t> (record->controlSize) : msg->controlSize);
 			// Выполняем перенос служебных метаданных
-			::memcpy(msg->msg_control, metadata, length);
+			::memcpy(msg->control, metadata, length);
 			// Устанавливаем размер принятых служебных метаданных
-			msg->msg_controllen = length;
+			msg->controlSize = length;
 		// Если служебных метаданных не приняли вовсе
-		} else msg->msg_controllen = 0;
+		} else msg->controlSize = 0;
 		// Забываем длину принятых служебных метаданных
-		record->controllen = 0;
+		record->controlSize = 0;
 		/**
 		 * Устанавливаем признак усечённого сообщения
 		 *
@@ -9054,7 +9054,7 @@ namespace pool {
 		 *       обязан
 		 *
 		 */
-		msg->msg_flags = ((carried < received) ? MSG_TRUNC : 0);
+		msg->flags = ((carried < received) ? MSG_TRUNC : 0);
 		// Освобождаем буфер приёма
 		::pool::give(bid);
 		// Устанавливаем количество принятых октетов
@@ -9582,7 +9582,7 @@ namespace {
 	 * @return       признак того, что приём обслужен родным путём
 	 *
 	 */
-	static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t & result) noexcept {
+	static bool __awh_pool_recvmsg__(const SOCKET sock, msghdr_t * msg, ssize_t & result) noexcept {
 		// Выводим признак обслуженности приёма сообщения родным путём
 		return ::pool::receiving(static_cast <awh::net::socket_t> (sock), msg, result);
 	}
@@ -10255,7 +10255,7 @@ namespace post {
 			// Устанавливаем адрес отправителя
 			slot->wsamsg.name = reinterpret_cast <LPSOCKADDR> (&slot->addr);
 			// Устанавливаем длину адреса отправителя
-			slot->wsamsg.namelen = static_cast <INT> (sizeof(struct sockaddr_storage));
+			slot->wsamsg.nameSize = static_cast <INT> (sizeof(struct sockaddr_storage));
 			// Устанавливаем набор буферов приёма
 			slot->wsamsg.lpBuffers = &slot->wsabuf;
 			// Устанавливаем число буферов приёма
@@ -20640,15 +20640,15 @@ namespace io {
 			// Семейство адресов туннеля
 			uint32_t family = 0;
 			// Буфер ввода-вывода заголовка туннеля
-			struct iovec iov[2];
+			iovec_t iov[2];
 			// Устанавливаем базу буфера
-			iov[0].iov_base = &family;
+			iov[0].base = &family;
 			// Устанавливаем длину буфера
-			iov[0].iov_len = sizeof(family);
+			iov[0].size = sizeof(family);
 			// Устанавливаем буфер для чтения данных
-			iov[1].iov_base = ::__awh_buffer__;
+			iov[1].base = ::__awh_buffer__;
 			// Устанавливаем размер буфера для чтения данных
-			iov[1].iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+			iov[1].size = AWH_EVENT_MAX_BUFFER_SIZE;
 			// Если событие является неблокирующим
 			if((tunnel->state.options & event::options::NO_IO_BLOCK) || (tunnel->state.options & event::options::SM_IO_BLOCK)){
 				// Количество прочитанных байт
@@ -22360,30 +22360,30 @@ namespace io {
 									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 									 * на стеке, а не в узле события
 									 */
-									struct iovec iov{};
-									struct msghdr msg{};
+									iovec_t iov{};
+									msghdr_t msg{};
 									// Устанавливаем семейство адресов текущего события
 									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
 									client->raw.info.protocol = client->state.protocol;
 									// Устанавливаем буфер для получения данных из сокета
-									iov.iov_base = ::__awh_buffer__;
+									iov.base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									msg.msg_iov = &iov;
+									msg.iovec = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									msg.msg_iovlen = 1;
+									msg.iovecSize = 1;
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									msg.msg_control = ::__awh_cmsgbuf__;
+									msg.control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.controlSize = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
 									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+									for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/**
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -22623,30 +22623,30 @@ namespace io {
 								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 								 * на стеке, а не в узле события
 								 */
-								struct iovec iov{};
-								struct msghdr msg{};
+								iovec_t iov{};
+								msghdr_t msg{};
 								// Устанавливаем семейство адресов текущего события
 								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
 								client->raw.info.protocol = client->state.protocol;
 								// Устанавливаем буфер для получения данных из сокета
-								iov.iov_base = ::__awh_buffer__;
+								iov.base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								msg.msg_iov = &iov;
+								msg.iovec = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								msg.msg_iovlen = 1;
+								msg.iovecSize = 1;
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								msg.msg_control = ::__awh_cmsgbuf__;
+								msg.control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.controlSize = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
 								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+								for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/**
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -22850,34 +22850,34 @@ namespace io {
 									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 									 * на стеке, а не в узле события
 									 */
-									struct iovec iov{};
-									struct msghdr msg{};
+									iovec_t iov{};
+									msghdr_t msg{};
 									// Устанавливаем семейство адресов текущего события
 									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
 									client->raw.info.protocol = client->state.protocol;
 									// Устанавливаем буфер для получения данных из сокета
-									iov.iov_base = ::__awh_buffer__;
+									iov.base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									msg.msg_iov = &iov;
+									msg.iovec = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									msg.msg_iovlen = 1;
+									msg.iovecSize = 1;
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
-									msg.msg_namelen = client->endpoint.size;
+									msg.nameSize = client->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
+									msg.name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									msg.msg_control = ::__awh_cmsgbuf__;
+									msg.control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.controlSize = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
 									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+									for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/**
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -23126,34 +23126,34 @@ namespace io {
 								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 								 * на стеке, а не в узле события
 								 */
-								struct iovec iov{};
-								struct msghdr msg{};
+								iovec_t iov{};
+								msghdr_t msg{};
 								// Устанавливаем семейство адресов текущего события
 								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
 								client->raw.info.protocol = client->state.protocol;
 								// Устанавливаем буфер для получения данных из сокета
-								iov.iov_base = ::__awh_buffer__;
+								iov.base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								msg.msg_iov = &iov;
+								msg.iovec = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								msg.msg_iovlen = 1;
+								msg.iovecSize = 1;
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
-								msg.msg_namelen = client->endpoint.size;
+								msg.nameSize = client->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
+								msg.name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								msg.msg_control = ::__awh_cmsgbuf__;
+								msg.control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.controlSize = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
 								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+								for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/**
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -23925,34 +23925,34 @@ namespace io {
 									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 									 * на стеке, а не в узле события
 									 */
-									struct iovec iov{};
-									struct msghdr msg{};
+									iovec_t iov{};
+									msghdr_t msg{};
 									// Устанавливаем семейство адресов текущего события
 									server->raw.info.family = server->state.family;
 									// Устанавливаем протокол текущего события
 									server->raw.info.protocol = server->state.protocol;
 									// Устанавливаем буфер для получения данных из сокета
-									iov.iov_base = ::__awh_buffer__;
+									iov.base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									msg.msg_iov = &iov;
+									msg.iovec = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									msg.msg_iovlen = 1;
+									msg.iovecSize = 1;
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
-									msg.msg_namelen = server->endpoint.size;
+									msg.nameSize = server->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
+									msg.name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									msg.msg_control = ::__awh_cmsgbuf__;
+									msg.control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.controlSize = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
 									bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+									for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/**
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -24232,34 +24232,34 @@ namespace io {
 								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
 								 * на стеке, а не в узле события
 								 */
-								struct iovec iov{};
-								struct msghdr msg{};
+								iovec_t iov{};
+								msghdr_t msg{};
 								// Устанавливаем семейство адресов текущего события
 								server->raw.info.family = server->state.family;
 								// Устанавливаем протокол текущего события
 								server->raw.info.protocol = server->state.protocol;
 								// Устанавливаем буфер для получения данных из сокета
-								iov.iov_base = ::__awh_buffer__;
+								iov.base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.size = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								msg.msg_iov = &iov;
+								msg.iovec = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								msg.msg_iovlen = 1;
+								msg.iovecSize = 1;
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
-								msg.msg_namelen = server->endpoint.size;
+								msg.nameSize = server->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
+								msg.name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								msg.msg_control = ::__awh_cmsgbuf__;
+								msg.control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.controlSize = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
 								bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
+								for(struct cmsghdr_t * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/**
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -26452,11 +26452,11 @@ namespace io {
 				// Семейство адресов туннеля
 				uint32_t family = 0;
 				// Буфер ввода-вывода заголовка туннеля
-				struct iovec iov[2];
+				iovec_t iov[2];
 				// Устанавливаем базу буфера
-				iov[0].iov_base = &family;
+				iov[0].base = &family;
 				// Устанавливаем длину буфера
-				iov[0].iov_len = sizeof(family);
+				iov[0].size = sizeof(family);
 				/**
 				 * Определяем семейство адресов
 				 */
@@ -26483,9 +26483,9 @@ namespace io {
 					 */
 					errno = 0;
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[1].size = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[1].base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
 					const ssize_t bytes = ::__awh_tunnel_write__(tunnel->fd, iov);
 					// Если данные отправлены успешно
@@ -31825,11 +31825,11 @@ namespace io {
 			// Семейство адресов туннеля
 			uint32_t family = 0;
 			// Буфер ввода-вывода заголовка туннеля
-			struct iovec iov[2];
+			iovec_t iov[2];
 			// Устанавливаем базу буфера
-			iov[0].iov_base = &family;
+			iov[0].base = &family;
 			// Устанавливаем длину буфера
-			iov[0].iov_len = sizeof(family);
+			iov[0].size = sizeof(family);
 			/**
 			 * Определяем семейство адресов
 			 */
@@ -31870,9 +31870,9 @@ namespace io {
 					 */
 					errno = 0;
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[1].size = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[1].base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
 					const ssize_t bytes = ::__awh_tunnel_write__(tunnel->fd, iov);
 					// Если данные не отправлены
@@ -32257,9 +32257,9 @@ namespace io {
 				// Переводим сокет в блокирующий режим
 				if(engine::socket::switchOption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[1].size = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[1].base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
 					const ssize_t bytes = ::__awh_tunnel_write__(tunnel->fd, iov);
 					// Если данные не отправлены
@@ -32613,9 +32613,9 @@ namespace io {
 			// Если событие является блокирующим
 			} else {
 				// Устанавливаем размер буфера для записи данных
-				iov[1].iov_len = size;
+				iov[1].size = size;
 				// Устанавливаем буфер для записи данных
-				iov[1].iov_base = const_cast <void *> (buffer);
+				iov[1].base = const_cast <void *> (buffer);
 				// Выполняем отправку данных в туннель
 				const ssize_t bytes = ::__awh_tunnel_write__(tunnel->fd, iov);
 				// Если данные не отправлены

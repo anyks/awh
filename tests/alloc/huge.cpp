@@ -80,7 +80,7 @@ TEST_F(AllocFixture, HugeBlockIsRecognized){
 	// Крупная выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Разбираем адрес выданного блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 	// Блок обязан быть узнан живым
 	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
 	// Начало блока обязано совпасть с выданным адресом
@@ -107,7 +107,7 @@ TEST_F(AllocFixture, HugeBlockIsFoundByInnerAddress){
 	// Смещение, по какому спрашиваем
 	const ptrdiff_t shift = (LARGE / 3);
 	// Разбираем адрес внутри блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block + shift);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(block + shift);
 	// Блок обязан быть узнан живым
 	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
 	// Начало блока обязано указывать на его начало, а не на спрошенный адрес
@@ -130,7 +130,7 @@ TEST_F(AllocFixture, HugeBlockSizeCoversRequest){
 	// Крупная выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Разбираем адрес выданного блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 	// Размер обязан покрывать запрошенное
 	ASSERT_GE(region.size, (LARGE + 7u));
 	/**
@@ -273,7 +273,7 @@ TEST_F(AllocFixture, HugeTableSurvivesGrowth){
 	 */
 	for(void * block : blocks){
 		// Разбираем адрес блока
-		const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+		const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 		// Если блок не узнан живым
 		if((region.origin != awh::alloc::origin_t::LIVE) || (region.begin != block))
 			// Считаем потерянный блок
@@ -299,11 +299,11 @@ TEST_F(AllocFixture, HugeTableSurvivesGrowth){
  */
 TEST_F(AllocFixture, HugeRegionIsRetainedForReuse){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём потолок придержанного с запасом под область
 	options.hugeCache = (LARGE * 2u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выдаём крупный блок
 	void * first = ::malloc(LARGE);
 	// Крупная выдача обязана состояться
@@ -311,7 +311,7 @@ TEST_F(AllocFixture, HugeRegionIsRetainedForReuse){
 	// Освобождаем крупный блок
 	::free(first);
 	// Запоминаем взятое у системы при придержанной области
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Выдаём крупный блок того же размера
 	void * second = ::malloc(LARGE);
 	// Крупная выдача обязана состояться
@@ -319,7 +319,7 @@ TEST_F(AllocFixture, HugeRegionIsRetainedForReuse){
 	// Область обязана достаться придержанная, то есть ТА ЖЕ САМАЯ
 	EXPECT_EQ(second, first);
 	// Взятое у системы обязано остаться прежним: у системы не взято ничего
-	EXPECT_EQ(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), before);
+	EXPECT_EQ(awh::alloc::allocator::property(awh::alloc::property_t::HEAP), before);
 	// Освобождаем крупный блок
 	::free(second);
 }
@@ -332,13 +332,13 @@ TEST_F(AllocFixture, HugeRegionIsRetainedForReuse){
  */
 TEST_F(AllocFixture, RetainedRegionIsGivenBackOnRequest){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём потолок придержанного с запасом под область
 	options.hugeCache = (LARGE * 2u);
 	// Задаём отдачу памяти системе по просьбе
 	options.purgeMode = awh::alloc::purge_t::MANUAL;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выдаём крупный блок
 	void * block = ::malloc(LARGE);
 	// Крупная выдача обязана состояться
@@ -346,13 +346,13 @@ TEST_F(AllocFixture, RetainedRegionIsGivenBackOnRequest){
 	// Освобождаем крупный блок
 	::free(block);
 	// Запоминаем взятое у системы при придержанной области
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Придержанная область обязана числиться взятой у системы: она у неё и взята
 	ASSERT_GE(before, LARGE);
 	// Просим отдать память системе
-	awh::alloc::Allocator::purge();
+	awh::alloc::allocator::purge();
 	// Взятое у системы обязано убыть на размер придержанной области
-	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), (before - LARGE));
+	EXPECT_LE(awh::alloc::allocator::property(awh::alloc::property_t::HEAP), (before - LARGE));
 }
 /**
  * @brief Тест отдачи крупной выдачи сверх потолка придержанного
@@ -363,25 +363,25 @@ TEST_F(AllocFixture, RetainedRegionIsGivenBackOnRequest){
  */
 TEST_F(AllocFixture, HugeBlockAboveCeilingIsGivenBackAtOnce){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём потолок придержанного заведомо меньше выдачи
 	options.hugeCache = (LARGE / 2u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Запоминаем взятое у системы до выдачи
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Выдаём крупный блок
 	void * block = ::malloc(LARGE);
 	// Крупная выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Запоминаем взятое у системы при живом блоке
-	const size_t during = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t during = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Взятое у системы обязано вырасти на размер выдачи
 	EXPECT_GE((during - before), LARGE);
 	// Освобождаем крупный блок
 	::free(block);
 	// Взятое у системы обязано вернуться к прежнему БЕЗ просьбы об отдаче
-	EXPECT_LT(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), during);
+	EXPECT_LT(awh::alloc::allocator::property(awh::alloc::property_t::HEAP), during);
 }
 /**
  * @brief Тест роста области сверх разрядов НА МЕСТЕ
@@ -411,7 +411,7 @@ TEST_F(AllocFixture, PagedBlockGrowsInPlace){
 	// Блок обязан остаться на месте: соседняя область свободна
 	EXPECT_EQ(grown, block);
 	// Размер обязан вырасти
-	EXPECT_GE(awh::alloc::Allocator::resolve(grown).size, (start * 2u));
+	EXPECT_GE(awh::alloc::allocator::resolve(grown).size, (start * 2u));
 	// Содержимое обязано уцелеть
 	EXPECT_EQ(reinterpret_cast <unsigned char *> (grown)[start - 1], 0x3Cu);
 	// Освобождаем блок
@@ -443,19 +443,19 @@ TEST_F(AllocFixture, InPlaceGrowthIsAccounted){
 	// Выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Запоминаем занятое прикладным кодом до роста
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED);
 	// Растим блок вчетверо
 	void * grown = ::realloc(block, (start * 4u));
 	// Перевыдача обязана состояться
 	ASSERT_NE(grown, nullptr);
 	// Запоминаем занятое прикладным кодом после роста
-	const size_t after = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	const size_t after = awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED);
 	// Занятое обязано вырасти не меньше, чем на прибавку
 	EXPECT_GE((after - before), (start * 3u));
 	// Освобождаем блок
 	::free(grown);
 	// Занятое обязано вернуться к тому, что было до выдачи
-	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED), before);
+	EXPECT_LE(awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED), before);
 }
 /**
  * @brief Тест правки размера у учёта мест выдачи при росте на месте
@@ -467,11 +467,11 @@ TEST_F(AllocFixture, InPlaceGrowthIsAccounted){
  */
 TEST_F(AllocFixture, InPlaceGrowthAmendsHoldings){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Берём под учёт всякую выдачу
 	options.profileRate = 1;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Размер, заведомо выходящий за разряды
 	const size_t start = (64u * 1024u);
 	// Выдаём блок сверх разрядов
@@ -500,7 +500,7 @@ TEST_F(AllocFixture, InPlaceGrowthAmendsHoldings){
 	// Размер блока, доложенный учётом
 	size_t reported = 0;
 	// Перебираем удерживаемое, разыскивая наш блок
-	awh::alloc::Allocator::holdings([grown, &reported](const awh::alloc::holding_t & holding) noexcept -> bool {
+	awh::alloc::allocator::holdings([grown, &reported](const awh::alloc::holding_t & holding) noexcept -> bool {
 		// Если запись говорит о нашем блоке
 		if(holding.block == grown)
 			// Запоминаем доложенный размер
@@ -525,13 +525,13 @@ TEST_F(AllocFixture, SecureBlockIsAllocated){
 	// Сведения о состоявшейся защите
 	awh::alloc::shelter_t shelter;
 	// Выдаём укрытую память
-	void * secret = awh::alloc::Allocator::secure(1024u, &shelter);
+	void * secret = awh::alloc::allocator::secure(1024u, &shelter);
 	// Укрытая выдача обязана состояться
 	ASSERT_NE(secret, nullptr);
 	// Заполняем выданное содержимым
 	::memset(secret, 0xC3, 1024u);
 	// Разбираем адрес выданного блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(secret);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(secret);
 	// Укрытая выдача обязана быть узнана живой
 	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
 	// Размер обязан покрывать запрошенное
@@ -542,7 +542,7 @@ TEST_F(AllocFixture, SecureBlockIsAllocated){
 	 * Совпадают они лишь там, где захват выдачи состоялся: у macOS и MS Windows без
 	 * захвата `free` принадлежит системе и нашу область не узнаёт
 	 */
-	awh::alloc::Allocator::release(secret);
+	awh::alloc::allocator::release(secret);
 }
 /**
  * @brief Тест страничной выдачи укрытой памяти
@@ -554,15 +554,15 @@ TEST_F(AllocFixture, SecureBlockIsAllocated){
  */
 TEST_F(AllocFixture, SecureBlockIsPageSized){
 	// Выдаём укрытую память под мелочь
-	void * secret = awh::alloc::Allocator::secure(16u, nullptr);
+	void * secret = awh::alloc::allocator::secure(16u, nullptr);
 	// Укрытая выдача обязана состояться
 	ASSERT_NE(secret, nullptr);
 	// Разбираем адрес выданного блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(secret);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(secret);
 	// Начало блока обязано лежать на границе страницы
 	EXPECT_EQ((reinterpret_cast <uintptr_t> (region.begin) % 4096u), static_cast <uintptr_t> (0));
 	// Возвращаем укрытую память распределителю
-	awh::alloc::Allocator::release(secret);
+	awh::alloc::allocator::release(secret);
 }
 /**
  * @brief Тест независимости укрытых выдач
@@ -581,7 +581,7 @@ TEST_F(AllocFixture, SecureBlocksDoNotSharePages){
 	 */
 	for(size_t i = 0; i < count; i++)
 		// Выдаём очередной укрытый блок
-		blocks[i] = awh::alloc::Allocator::secure(64u, nullptr);
+		blocks[i] = awh::alloc::allocator::secure(64u, nullptr);
 	// Число выдач, делящих страницу с соседом
 	size_t shared = 0;
 	/**
@@ -618,7 +618,7 @@ TEST_F(AllocFixture, SecureBlocksDoNotSharePages){
 		// Если блок выдан
 		if(blocks[i] != nullptr)
 			// Возвращаем блок распределителю
-			awh::alloc::Allocator::release(blocks[i]);
+			awh::alloc::allocator::release(blocks[i]);
 	}
 }
 
@@ -651,7 +651,7 @@ TEST_F(AllocFixture, SpanReserveWorksOnlyWhenAsked){
 	// Размер области сверх разрядов: выше границы разрядов, ниже размера куска
 	constexpr size_t SPAN = (64u * 1024u);
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	/**
 	 * Сперва спрашиваем поведение по умолчанию: область обязана уйти куче
 	 */
@@ -659,17 +659,17 @@ TEST_F(AllocFixture, SpanReserveWorksOnlyWhenAsked){
 		// Выключаем придержку областей сверх разрядов
 		options.spanCache = 0;
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Выдаём область сверх разрядов
 		void * span = ::malloc(SPAN);
 		// Выдача обязана состояться
 		ASSERT_NE(span, nullptr);
 		// Запоминаем свободное у кучи до освобождения
-		const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE);
+		const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE);
 		// Освобождаем область
 		::free(span);
 		// Свободное у кучи обязано вырасти: область ей возвращена
-		EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), (before + SPAN));
+		EXPECT_GE(awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE), (before + SPAN));
 	}
 	/**
 	 * Теперь включаем придержку и повторяем круг
@@ -678,17 +678,17 @@ TEST_F(AllocFixture, SpanReserveWorksOnlyWhenAsked){
 		// Задаём потолок придержки с запасом под область
 		options.spanCache = (SPAN * 4u);
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Выдаём область сверх разрядов
 		void * span = ::malloc(SPAN);
 		// Выдача обязана состояться
 		ASSERT_NE(span, nullptr);
 		// Запоминаем свободное у кучи до освобождения
-		const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE);
+		const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE);
 		// Освобождаем область
 		::free(span);
 		// Свободное у кучи обязано остаться прежним: область придержана, а не отдана
-		EXPECT_EQ(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), before);
+		EXPECT_EQ(awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE), before);
 		// Выдаём область того же размера
 		void * again = ::malloc(SPAN);
 		// Выдача обязана состояться
@@ -701,8 +701,8 @@ TEST_F(AllocFixture, SpanReserveWorksOnlyWhenAsked){
 	// Выключаем придержку: придержанное обязано уйти куче немедленно
 	options.spanCache = 0;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Свободное у кучи обязано вобрать отданную придержку
-	EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), SPAN);
+	EXPECT_GE(awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE), SPAN);
 	#endif
 }

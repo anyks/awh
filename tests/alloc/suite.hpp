@@ -91,7 +91,7 @@ class AllocFixture : public testing::Test {
 		 */
 		void SetUp() override {
 			// Снимаем слепок действующих настроек
-			this->_restore = awh::alloc::Allocator::options();
+			this->_restore = awh::alloc::allocator::options();
 		}
 		/**
 		 * @brief Метод очистки тестовой среды
@@ -99,6 +99,6 @@ class AllocFixture : public testing::Test {
 		 */
 		void TearDown() override {
 			// Возвращаем настройки, действовавшие до проверки
-			awh::alloc::Allocator::options(this->_restore);
+			awh::alloc::allocator::options(this->_restore);
 		}
 };

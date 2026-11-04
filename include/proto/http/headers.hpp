@@ -35,7 +35,13 @@
  */
 #if !defined(AWH_MAX_COUNT_HTTP_HEADERS)
 	/**
-	 * Устанавливаем максимальное количество заголовков в 100
+	 * \~russian
+	 * @brief Устанавливаем максимальное количество заголовков в 100
+	 *
+	 * \~english
+	 * @brief Set a maximum number of the headers as 100
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_COUNT_HTTP_HEADERS 0x64
 #endif
@@ -45,7 +51,13 @@
  */
 #if !defined(AWH_MAX_MEMORY_HTTP_HEADERS)
 	/**
-	 * Устанавливаем максимальное значение потребляемой памяти 16 КБ
+	 * \~russian
+	 * @brief Устанавливаем максимальное значение потребляемой памяти 16 КБ
+	 *
+	 * \~english
+	 * @brief Set a maximum value of the consumed memory as 16 KB
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_MEMORY_HTTP_HEADERS 0x4000
 #endif
@@ -70,7 +82,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -85,7 +96,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -114,6 +124,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Mode of the addition of a header
+				 *
 				 * @note There is no mode «not set» here deliberately: it would behave exactly
 				 *       as APPEND, promising by the name a third behaviour which does not exist.
 				 *       The mode by default is set by the value of an argument rather than by a member of the collection
@@ -151,6 +162,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Factory method of the creation of an HTTP header
+						 *
 						 * @param name  name of the HTTP header
 						 * @param value value of the HTTP header
 						 * @return      reference to the current object of the header
@@ -168,6 +180,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of a comparison
+						 *
 						 * @param other another object for the comparison
 						 * @return      result of the comparison
 						 *
@@ -178,7 +191,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
@@ -208,6 +220,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the calculation of a hash code
+						 *
 						 * @param header object for the calculation of the hash code
 						 * @return       hash code of the object
 						 *
@@ -225,6 +238,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @note There is not obliged to be the keyword explicit here: unordered_map
 						 *       creates the objects of the hash function and of the predicate of the equality by a list
 						 *       initialization, while that one does not take an explicit constructor
@@ -254,6 +268,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the calculation of a hash code
+						 *
 						 * @param name name of the header for the calculation of the hash code
 						 * @return     hash code of the name of the header
 						 *
@@ -271,6 +286,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @note There is not obliged to be the keyword explicit here: unordered_map
 						 *       creates the objects of the hash function and of the predicate of the equality by a list
 						 *       initialization, while that one does not take an explicit constructor
@@ -301,6 +317,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the names of the headers
+						 *
 						 * @param first  first name of a header
 						 * @param second second name of a header
 						 * @return       result of the comparison without the account of the case
@@ -319,6 +336,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @note There is not obliged to be the keyword explicit here: unordered_map
 						 *       creates the objects of the hash function and of the predicate of the equality by a list
 						 *       initialization, while that one does not take an explicit constructor
@@ -338,6 +356,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the list of the HTTP headers
+				 *
 				 * @details Unlike a map, a list allows to store several headers of the same name,
 				 *          which is necessary for a correct work with the protocols HTTP/1.1 and HTTP/2.
 				 *          The list also contains the pseudo headers which are used in the HTTP/2 protocol for the transmission of the service information.
@@ -355,6 +374,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the collection of the HTTP headers
+				 *
 				 * @details A collection allows to store several headers of the same name,
 				 *          which is necessary for a correct work with the protocols HTTP/1.1 and HTTP/2.
 				 *          The collection also contains the pseudo headers which are used in the HTTP/2 protocol for the transmission of the service information.
@@ -372,6 +392,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the map of the HTTP headers
+				 *
 				 * @details A map allows to store only the unique headers,
 				 *          which is necessary for a correct work with the protocols HTTP/1.1 and HTTP/2.
 				 *          The map does not contain the pseudo headers, since they are intended only for the HTTP/2 protocol.
@@ -389,6 +410,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the multimap of the HTTP headers
+				 *
 				 * @details A multimap allows to store several headers of the same name,
 				 *          which is necessary for a correct work with the protocols HTTP/1.1 and HTTP/2.
 				 *          The multimap does not contain the pseudo headers, since they are intended only for the HTTP/2 protocol.
@@ -441,6 +463,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Object of the pointer of a header
+						 *
 						 * @note The access is only for the reading: an editing of the name or of the value in place
 						 *       would violate the account of the consumed memory of the container and the canonical
 						 *       form of the case of the names, while there is nothing to restore them from the outside with.
@@ -485,6 +508,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the output of a message about an error into the log
+						 *
 						 * @param func    name of the function in which the error has occurred
 						 * @param message text of the message about the error
 						 * @param flag    flag of the importance of the message
@@ -513,16 +537,19 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the conversion into a raw iterator
+						 *
 						 * @note A raw iterator does not limit the access to a header: it exists
 						 *       for the transmission of a position into the algorithms of the standard library. An editing
 						 *       of a header through it will leave the account of the consumed memory of the container
 						 *       and the case of the name unconcordant - this is a responsibility
 						 *       of the calling side which has consciously taken a raw position
+						 *
 						 * @note The conversion is declared explicit exactly for this reason: an implicit one would issue
 						 *       a raw position by a simple assignment of the wrapper, and an editing of a header
 						 *       through it would bypass the account of the consumed memory without any
 						 *       flag of a conscious choice - whereas the pointer and the reference
 						 *       of the wrapper are deliberately declared accessible only for the reading
+						 *
 						 * @return iterator iterator for the conversion
 						 *
 						 * \~
@@ -537,6 +564,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the extraction of the pointer of a header
+						 *
 						 * @return pointer of the header
 						 *
 						 * \~
@@ -550,6 +578,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the dereferencing of a header
+						 *
 						 * @return value of the header
 						 *
 						 * \~
@@ -564,6 +593,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the displacement forward
+						 *
 						 * @return value of the current iterator
 						 *
 						 * \~
@@ -579,6 +609,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -594,6 +625,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the non-correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -610,6 +642,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the correspondence of an iterator
+						 *
 						 * @param other constant iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -625,6 +658,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the non-correspondence of an iterator
+						 *
 						 * @param other constant iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -636,11 +670,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 * @param it  итератор для установки
+						 * @param it итератор для установки
 						 *
 						 * \~english
 						 * @brief Constructor
-						 * @param it  iterator for the setting
+						 *
+						 * @param it iterator for the setting
 						 *
 						 * \~
 						 */
@@ -713,6 +748,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the output of a message about an error into the log
+						 *
 						 * @param func    name of the function in which the error has occurred
 						 * @param message text of the message about the error
 						 * @param flag    flag of the importance of the message
@@ -729,6 +765,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the conversion into a raw constant iterator
+						 *
 						 * @return const_iterator iterator for the conversion
 						 *
 						 * \~
@@ -743,6 +780,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the extraction of the pointer of a header
+						 *
 						 * @return pointer of the header
 						 *
 						 * \~
@@ -756,6 +794,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the dereferencing of a header
+						 *
 						 * @return value of the header
 						 *
 						 * \~
@@ -770,6 +809,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the displacement forward
+						 *
 						 * @return value of the current iterator
 						 *
 						 * \~
@@ -785,6 +825,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -800,6 +841,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the non-correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -816,6 +858,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -831,6 +874,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the comparison of the non-correspondence of an iterator
+						 *
 						 * @param other iterator for the comparison
 						 * @return      result of the comparison
 						 *
@@ -842,11 +886,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 * @param it  итератор для установки
+						 * @param it итератор для установки
 						 *
 						 * \~english
 						 * @brief Constructor
-						 * @param it  iterator for the setting
+						 *
+						 * @param it iterator for the setting
 						 *
 						 * \~
 						 */
@@ -873,7 +918,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -898,7 +942,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -936,6 +979,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the bringing of the names of all the headers to the canonical form of the current protocol
+				 *
 				 * @details For the protocols of the family HTTP/2 the names are brought to the lower case, for the rest -
 				 *          to a «smart» case. It is called at a change of the protocol, so that a single semantics
 				 *          of the case would be observed at any way of the access to the headers (not only at the printing).
@@ -958,10 +1002,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether a header will fit at a replacement of those of the same name
+				 *
 				 * @details A replacement consists of a removal of the previous occurrences and of an addition of a new value.
 				 *          If the new value does not fit into the limitations, the removal has already happened,
 				 *          and the header disappears from the collection entirely. The checking is performed before the removal
 				 *          by the state as it will be after it, and in such a case the replacement does not begin.
+				 *
 				 * @param name    name of the header being replaced
 				 * @param payload volume of the payload of the new value (the name and the value)
 				 * @return        result of the checking
@@ -980,6 +1026,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the bringing of the collection of the headers into a correspondence with the limitations
+				 *
 				 * @details It discards the headers from the end of the collection until it fits
 				 *          into the limitations by the number of the records and by the volume of the memory. It is called
 				 *          at a lowering of the limitations: without this a collection assembled before their
@@ -1008,15 +1055,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembly of the collection of the headers in the form suitable for the indicated protocol
+				 *
 				 * @details For the protocols of the family HTTP/2 the pseudo headers are added to the collection,
 				 *          the header of the addressee is carried over into [:authority], while the fields which
 				 *          cannot be in a message are sifted out: those controlling the connection
 				 *          (RFC 9113 §8.2.2, RFC 9114 §4.2), those listed in the value of the header
 				 *          Connection, a [TE] with an inadmissible value and the pseudo headers already
 				 *          assembled from the provider. For the rest of the protocols the collection is issued as it is.
+				 *
 				 * @note The method is single for the printing and for the operators of the conversion: a divergence between
 				 *       them would mean that the form of the collection depends on the way of its getting,
 				 *       and that assembled from one would be rejected by the check of the other
+				 *
 				 * @param proto protocol for which the collection is assembled
 				 * @return      assembled collection of the headers
 				 *
@@ -1033,6 +1083,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the addition of a new header
+				 *
 				 * @tparam Name    type of the name of the header being added
 				 * @tparam Content type of the content of the header being added
 				 *
@@ -1049,6 +1100,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition of a new header
+				 *
 				 * @param name    name of the header
 				 * @param content content of the header
 				 * @return        total number of the headers
@@ -1067,6 +1119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the output of a message about an error into the log
+				 *
 				 * @param func    name of the function in which the error has occurred
 				 * @param message text of the message about the error
 				 * @param flag    flag of the importance of the message
@@ -1110,10 +1163,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the filledness of the headers
+				 *
 				 * @note It answers about the collection of the fields and only about it: a container with a set
 				 *       provider but without the fields is considered empty. The provider describes
 				 *       the starting line or the pseudo headers rather than the fields, and the presence
 				 *       of a message is checked by the method provider()
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -1131,8 +1186,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition of the standard headers by default
+				 *
 				 * @details It adds the lacking headers: a User-Agent for a request of a client,
 				 *          a Server, an X-Powered-By and a Date for an answer of a server. The already set headers are not changed.
+				 *
 				 * @return result of the performance of the operation
 				 *
 				 * \~
@@ -1150,7 +1207,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the current date for an HTTP request
+				 *
 				 * @note A Unix Timestamp is the number of the seconds since the 1st of January 1970
+				 *
 				 * @param date date in the format Unix Timestamp
 				 * @return     time stamp in a text form
 				 *
@@ -1166,6 +1225,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the protocol of the HTTP request/answer
+				 *
 				 * @return protocol of the HTTP request/answer
 				 *
 				 * \~
@@ -1179,6 +1239,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the protocol of the HTTP request/answer
+				 *
 				 * @param proto protocol of the HTTP request/answer
 				 *
 				 * \~
@@ -1193,6 +1254,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the identification of the service
+				 *
 				 * @return formed agent
 				 *
 				 * \~
@@ -1216,6 +1278,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the identification of the service
+				 *
 				 * @details The constituents get into the value of the field entirely: at a request - into the
 				 *          User-Agent, at an answer - into the X-Powered-By. A constituent containing
 				 *          the octets inadmissible in the value of a field (the control characters and a DEL),
@@ -1223,6 +1286,7 @@ namespace awh {
 				 *          strings from the outside, while a carriage return or a line feed inside them
 				 *          would split the message into two. An empty constituent leaves
 				 *          the previous value, while one unsuitable does not cancel the rest.
+				 *
 				 * @param id      identifier of the service
 				 * @param name    name of the service
 				 * @param version version of the service
@@ -1239,6 +1303,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the object of the provider of the HTTP request/answer
+				 *
 				 * @return object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -1253,6 +1318,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the object of the provider of the HTTP request/answer
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @return         result of the performance of the operation
 				 *
@@ -1268,6 +1334,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the object of the provider of the HTTP request/answer
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -1281,6 +1348,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the object of the provider of the HTTP request/answer
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -1295,6 +1363,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the starting line of the HTTP request/answer
+				 *
 				 * @return starting line of the HTTP request/answer
 				 *
 				 * \~
@@ -1308,6 +1377,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the starting line of the HTTP request/answer
+				 *
 				 * @param startline starting line of the HTTP request/answer
 				 *
 				 * \~
@@ -1322,6 +1392,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the removal of a header
+				 *
 				 * @param name name of the header being removed
 				 *
 				 * \~
@@ -1336,6 +1407,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief erase Method of the removal of a header
+				 *
 				 * @param it iterator of the header for the removal
 				 * @return   next iterator
 				 *
@@ -1352,6 +1424,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the existence of a header
+				 *
 				 * @param name name of the header for the checking
 				 * @return     result of the performance of the checking
 				 *
@@ -1367,6 +1440,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the total number of the headers
+				 *
 				 * @return total number of the headers
 				 *
 				 * \~
@@ -1382,6 +1456,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Number of the added headers
+				 *
 				 * @param name name of the header the number of which is needed to be determined
 				 * @return     number of the added headers
 				 *
@@ -1398,6 +1473,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the content of a header
+				 *
 				 * @param name name of the header
 				 * @return     content of the header
 				 *
@@ -1413,6 +1489,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the names of the headers
+				 *
 				 * @return list of the names of the headers
 				 *
 				 * \~
@@ -1428,6 +1505,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the output of the list of the values of the identical headers
+				 *
 				 * @param name name of the header
 				 * @return     list of the values of the identical headers
 				 *
@@ -1450,9 +1528,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header
 				 * @param content content of the header
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1476,9 +1556,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (a C string)
 				 * @param content content of the header (is moved)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1502,9 +1584,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (is moved)
 				 * @param content content of the header (a C string)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1528,9 +1612,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header
 				 * @param content content of the header
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1554,9 +1640,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (is moved)
 				 * @param content content of the header (is copied)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1580,9 +1668,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (is copied)
 				 * @param content content of the header (is moved)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1606,9 +1696,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (a C string)
 				 * @param content content of the header (a C string)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1632,9 +1724,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (a C string)
 				 * @param content content of the header (is copied)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1658,9 +1752,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (is copied)
 				 * @param content content of the header (a C string)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1684,9 +1780,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the addition or of the replacement of a header
+				 *
 				 * @note In the mode REPLACE (by default) all the previous occurrences of the header with the indicated
 				 *       name are replaced by the new value. In the mode APPEND a new header is added,
 				 *       preserving the existing headers of the same name.
+				 *
 				 * @param name    name of the header (is copied)
 				 * @param content content of the header (is copied)
 				 * @param mode    mode of the addition of the header (to add/to replace)
@@ -1704,6 +1802,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the printing of the content of the headers in the format of HTTP
+				 *
 				 * @return headers in the format of HTTP
 				 *
 				 * \~
@@ -1721,9 +1820,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the printing of the content of the headers in the format of the protocol of the container
+				 *
 				 * @note The protocol is taken at the container itself rather than substituted by a value
 				 *       by default: a default of HTTP/1 would give for a container of HTTP/2
 				 *       the form of another protocol, diverging with the operator of the conversion into a string
+				 *
 				 * @return headers in the format of HTTP
 				 *
 				 * \~
@@ -1739,6 +1840,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the printing of the content of a header
+				 *
 				 * @param name  printing of the header in the format of HTTP
 				 * @param proto version of the protocol
 				 * @return      printed header
@@ -1755,6 +1857,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the printing of the content of a header in the format of the protocol of the container
+				 *
 				 * @param name name of the header being printed
 				 * @return     printed header
 				 *
@@ -1770,6 +1873,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the current size of the consumed memory
+				 *
 				 * @return current size of the consumed memory
 				 *
 				 * \~
@@ -1784,6 +1888,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the largest size of the consumption of the memory
+				 *
 				 * @return largest size of the consumption of the memory
 				 *
 				 * \~
@@ -1797,17 +1902,19 @@ namespace awh {
 				 *          отбрасываются с конца набора, а в лог записывается предупреждение
 				 *          с их количеством. Иначе ограничение не выполнялось бы на наборе,
 				 *          собранном до его установки, и контейнер оставался бы сверх предела
-				 *          вплоть до полной очистки
+				 *          вплоть до полной очистки.
 				 *
 				 * @param size максимальный размер потребления памяти
 				 *
 				 * \~english
 				 * @brief Method of setting the largest size of the consumption of the memory
+				 *
 				 * @details If the new limitation is smaller than the already occupied volume, the superfluous headers
 				 *          are discarded from the end of the collection, while into the log a warning is written
 				 *          with their number. Otherwise the limitation would not be fulfilled on a collection
 				 *          assembled before its setting, and the container would remain above the limit
-				 *          up to a full clearing
+				 *          up to a full clearing.
+				 *
 				 * @param size largest size of the consumption of the memory
 				 *
 				 * \~
@@ -1822,6 +1929,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the largest number of the headers
+				 *
 				 * @return largest number of the headers
 				 *
 				 * \~
@@ -1833,15 +1941,17 @@ namespace awh {
 				 *
 				 * @details Если новое ограничение меньше числа уже добавленных заголовков,
 				 *          лишние отбрасываются с конца набора, а в лог записывается
-				 *          предупреждение с их количеством
+				 *          предупреждение с их количеством.
 				 *
 				 * @param count максимальное количество заголовков
 				 *
 				 * \~english
 				 * @brief Method of setting the largest number of the headers
+				 *
 				 * @details If the new limitation is smaller than the number of the already added headers,
 				 *          the superfluous ones are discarded from the end of the collection, while into the log
-				 *          a warning is written with their number
+				 *          a warning is written with their number.
+				 *
 				 * @param count largest number of the headers
 				 *
 				 * \~
@@ -1856,6 +1966,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the exchange of the headers
+				 *
 				 * @param headers headers for the exchange
 				 *
 				 * \~
@@ -1869,7 +1980,7 @@ namespace awh {
 				 *          к текущему набору с сохранением одноимённых, в режиме REPLACE
 				 *          одноимённые заменяются переданными. Режим по умолчанию - APPEND:
 				 *          у полей, законно встречающихся несколько раз, замена потеряла бы
-				 *          прежние значения, а слияние по своему смыслу их сохраняет
+				 *          прежние значения, а слияние по своему смыслу их сохраняет.
 				 *
 				 * @note Полю, встречающемуся в сообщении единожды - Content-Length, Host, -
 				 *       умолчание даёт дубликат: слияние не знает, какие поля одиночные.
@@ -1880,14 +1991,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the merging of the headers
+				 *
 				 * @details In the mode APPEND the headers of the transmitted container are appended
 				 *          to the current collection with the preservation of those of the same name, in the mode REPLACE
 				 *          those of the same name are replaced by the transmitted ones. The mode by default is APPEND:
 				 *          at the fields lawfully met several times a replacement would lose
-				 *          the previous values, while a merging by its sense preserves them
+				 *          the previous values, while a merging by its sense preserves them.
+				 *
 				 * @note To a field met in a message once - a Content-Length, a Host, -
 				 *       the default gives a duplicate: the merging does not know which fields are single.
 				 *       For such fields the mode REPLACE is transmitted
+				 *
 				 * @param headers headers for the merging
 				 * @param mode    mode of the merging of the headers (to add/to replace)
 				 *
@@ -1903,6 +2017,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the final iterator
+				 *
 				 * @return final iterator
 				 *
 				 * \~
@@ -1916,6 +2031,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the final constant iterator
+				 *
 				 * @return final constant iterator
 				 *
 				 * \~
@@ -1929,6 +2045,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the final constant iterator
+				 *
 				 * @return final constant iterator
 				 *
 				 * \~
@@ -1943,6 +2060,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the initial iterator
+				 *
 				 * @return initial iterator
 				 *
 				 * \~
@@ -1956,6 +2074,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the initial constant iterator
+				 *
 				 * @return initial constant iterator
 				 *
 				 * \~
@@ -1969,6 +2088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the initial constant iterator
+				 *
 				 * @return initial constant iterator
 				 *
 				 * \~
@@ -1984,6 +2104,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search of the indicated header
+				 *
 				 * @param name name of the header for the search
 				 * @return     iterator of the indicated header
 				 *
@@ -1999,6 +2120,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search of the indicated header
+				 *
 				 * @param name name of the header for the search
 				 * @return     constant iterator of the indicated header
 				 *
@@ -2014,6 +2136,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the number of the headers
+				 *
 				 * @return number of the headers
 				 *
 				 * \~
@@ -2027,6 +2150,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the printing of the content of the headers in the format of HTTP
+				 *
 				 * @return headers in the format of HTTP
 				 *
 				 * \~
@@ -2041,6 +2165,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the protocol of the HTTP request/answer
+				 *
 				 * @return protocol of the HTTP request/answer
 				 *
 				 * \~
@@ -2055,6 +2180,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the object of the provider of the HTTP request/answer
+				 *
 				 * @return object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -2068,6 +2194,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the object of the provider of the HTTP request/answer
+				 *
 				 * @return object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -2081,7 +2208,7 @@ namespace awh {
 				 * @details Отдаёт набор таким, каким он уйдёт на провод: для протоколов
 				 *          семейства HTTP/2 добавляются псевдозаголовки, заголовок адресата
 				 *          переносится в [:authority], отсеиваются поля, которых в сообщении
-				 *          быть не может. Тот же вид даёт печать
+				 *          быть не может. Тот же вид даёт печать.
 				 *
 				 * @note Отличие от map_t и multimap_t намеренно: те отдают вид хранилища,
 				 *       содержимое как есть. Подробности и причина - в README модуля,
@@ -2091,13 +2218,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the list of the headers in the form of a message
+				 *
 				 * @details It issues the collection as it will go away onto the wire: for the protocols
 				 *          of the family HTTP/2 the pseudo headers are added, the header of the addressee
 				 *          is carried over into [:authority], the fields which cannot be in a message
-				 *          are sifted out. The same form is given by the printing
+				 *          are sifted out. The same form is given by the printing.
+				 *
 				 * @note The difference from map_t and multimap_t is deliberate: those issue the form of the storage,
 				 *       the content as it is. The details and the reason are in the README of the module,
 				 *       the section «Two forms of one container»
+				 *
 				 * @return list of the headers in the form of a message
 				 *
 				 * \~
@@ -2109,7 +2239,7 @@ namespace awh {
 				 *
 				 * @details Состав собирается тем же способом, что и список заголовков:
 				 *          с псевдозаголовками и с отсевом полей, которых в сообщении
-				 *          быть не может
+				 *          быть не может.
 				 *
 				 * @note Порядок при этом теряется: набор неупорядоченный. Для полей
 				 *       одного названия порядок несёт смысл (RFC 9110 §5.3), поэтому
@@ -2121,14 +2251,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the collection of the headers in the form of a message
+				 *
 				 * @details The composition is assembled by the same way as the list of the headers:
 				 *          with the pseudo headers and with a sifting out of the fields which cannot
-				 *          be in a message
+				 *          be in a message.
+				 *
 				 * @note The order is thereby lost: the collection is an unordered one. For the fields
 				 *       of one name the order carries a sense (RFC 9110 §5.3), therefore
 				 *       to restore a message by it is impossible - it answers the question
 				 *       about the composition and the multiplicity rather than about the sequence. The message
 				 *       as a whole is issued by the list of the fields or by the printing
+				 *
 				 * @return collection of the headers in the form of a message
 				 *
 				 * \~
@@ -2141,7 +2274,7 @@ namespace awh {
 				 *
 				 * @details Отдаёт содержимое как есть, без псевдозаголовков и без отсева:
 				 *          по нему вызывающая сторона находит то, что сама же и положила.
-				 *          Карта хранит единственное значение на название
+				 *          Карта хранит единственное значение на название.
 				 *
 				 * @note Расхождение с fields_t и entries_t намеренно - см. README модуля,
 				 *       раздел «Два вида одного контейнера»
@@ -2150,11 +2283,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the map of the headers in the form of a storage
+				 *
 				 * @details It issues the content as it is, without the pseudo headers and without a sifting out:
 				 *          by it the calling side finds that which it has itself put in.
-				 *          The map stores a single value per name
+				 *          The map stores a single value per name.
+				 *
 				 * @note The divergence with fields_t and entries_t is deliberate - see the README of the module,
 				 *       the section «Two forms of one container»
+				 *
 				 * @return map of the headers in the form of a storage
 				 *
 				 * \~
@@ -2164,7 +2300,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Оператор получения мультикарты заголовков в виде хранилища
 				 *
-				 * @details Отдаёт содержимое как есть, сохраняя одноимённые заголовки
+				 * @details Отдаёт содержимое как есть, сохраняя одноимённые заголовки.
 				 *
 				 * @note Расхождение с fields_t и entries_t намеренно - см. README модуля,
 				 *       раздел «Два вида одного контейнера»
@@ -2173,9 +2309,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting the multimap of the headers in the form of a storage
-				 * @details It issues the content as it is, preserving the headers of the same name
+				 *
+				 * @details It issues the content as it is, preserving the headers of the same name.
+				 *
 				 * @note The divergence with fields_t and entries_t is deliberate - see the README of the module,
 				 *       the section «Two forms of one container»
+				 *
 				 * @return multimap of the headers in the form of a storage
 				 *
 				 * \~
@@ -2196,10 +2335,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the extraction of the content of a header
+				 *
 				 * @details It is deliberately only for the reading: a writing through operator[] is not supported,
 				 *          since the container admits several headers with one name
 				 *          (unordered_multiset) and an unambiguous semantics of the writing is impossible.
 				 *          For an addition/a replacement use emplace().
+				 *
 				 * @param name name of the header for the extraction
 				 * @return     content of the header
 				 *
@@ -2216,6 +2357,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the merging of the headers
+				 *
 				 * @param headers headers for the merging
 				 * @return        current container of the headers
 				 *
@@ -2232,6 +2374,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the comparison of two headers
+				 *
 				 * @param headers headers for the comparison
 				 * @return        result of the comparison
 				 *
@@ -2247,6 +2390,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the non-comparison of two headers
+				 *
 				 * @param headers headers for the comparison
 				 * @return        result of the comparison
 				 *
@@ -2263,6 +2407,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the moving
+				 *
 				 * @param headers headers for the moving
 				 * @return        current container of the headers
 				 *
@@ -2278,6 +2423,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the copying
+				 *
 				 * @param headers headers for the copying
 				 * @return        current container of the headers
 				 *
@@ -2294,6 +2440,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of setting the protocol of the HTTP request/answer
+				 *
 				 * @param proto protocol of the HTTP request/answer
 				 * @return      current container of the headers
 				 *
@@ -2309,6 +2456,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of setting the object of the provider of the HTTP request/answer
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @return         current container of the headers
 				 *
@@ -2324,6 +2472,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of setting the object of the provider of the HTTP request/answer
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @return         current container of the headers
 				 *
@@ -2340,6 +2489,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the copying
+				 *
 				 * @param headers headers for the copying
 				 * @return        current container of the headers
 				 *
@@ -2355,6 +2505,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the copying
+				 *
 				 * @param headers headers for the copying
 				 * @return        current container of the headers
 				 *
@@ -2370,6 +2521,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the copying
+				 *
 				 * @param headers headers for the copying
 				 * @return        current container of the headers
 				 *
@@ -2385,6 +2537,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of the copying
+				 *
 				 * @param headers headers for the copying
 				 * @return        current container of the headers
 				 *
@@ -2411,6 +2564,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the moving
+				 *
 				 * @param headers headers for the moving
 				 *
 				 * \~
@@ -2424,6 +2578,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the copying
+				 *
 				 * @param headers headers for the copying
 				 *
 				 * \~
@@ -2438,6 +2593,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto protocol of the HTTP request/answer
 				 *
 				 * \~
@@ -2451,6 +2607,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -2464,6 +2621,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 *
 				 * \~
@@ -2478,6 +2636,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param headers list of the headers of the initialization
 				 *
 				 * \~
@@ -2491,6 +2650,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param headers list of the headers of the initialization
 				 *
 				 * \~
@@ -2504,6 +2664,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param headers list of the headers of the initialization
 				 *
 				 * \~
@@ -2517,6 +2678,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param headers list of the headers of the initialization
 				 *
 				 * \~
@@ -2532,6 +2694,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto   protocol of the HTTP request/answer
 				 * @param headers list of the headers of the initialization
 				 *
@@ -2547,6 +2710,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto   protocol of the HTTP request/answer
 				 * @param headers list of the headers of the initialization
 				 *
@@ -2562,6 +2726,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto   protocol of the HTTP request/answer
 				 * @param headers list of the headers of the initialization
 				 *
@@ -2577,6 +2742,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto   protocol of the HTTP request/answer
 				 * @param headers list of the headers of the initialization
 				 *
@@ -2593,6 +2759,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2608,6 +2775,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2623,6 +2791,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2638,6 +2807,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2654,6 +2824,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2669,6 +2840,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2684,6 +2856,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2699,6 +2872,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
 				 *
@@ -2716,6 +2890,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2733,6 +2908,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2750,6 +2926,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2767,6 +2944,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2785,6 +2963,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2802,6 +2981,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2819,6 +2999,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2836,6 +3017,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param proto    protocol of the HTTP request/answer
 				 * @param provider object of the provider of the HTTP request/answer
 				 * @param headers  list of the headers of the initialization
@@ -2847,7 +3029,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
@@ -2866,6 +3047,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Operator [<<] of the output into a stream of the buffer
+	 *
 	 * @param os      stream where it is needed to output the data
 	 * @param headers container of the headers
 	 *

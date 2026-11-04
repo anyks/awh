@@ -188,7 +188,8 @@ awh::alloc::Source::~Source() noexcept {}
  *
  */
 awh::alloc::SystemSource::SystemSource() noexcept :
- _granularity(0), _superpages(false), _superpaged(0), _ceiling(0), _taken(0) {}
+ _superpages(false), _taken(0),
+ _ceiling(0), _superpaged(0), _granularity(0) {}
 
 /**
  * @brief Метод определения размера страницы у системы

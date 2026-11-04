@@ -53,7 +53,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -68,7 +67,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -89,6 +87,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Base class of the HTTP parser
+		 *
 		 * @details Contains only the contract common for the parsers of all the versions of the protocol
 		 *          (HTTP/1.x, HTTP/2, HTTP/3): the life cycle of the parsing, the semantics of the parts
 		 *          of a message (the headers/the body/the trailers), the common core of the limits of safety
@@ -108,6 +107,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest number of the headers
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -121,6 +121,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest length of the name of a header
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -134,6 +135,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest length of the value of a header
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -147,6 +149,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Total size of all the headers
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -160,6 +163,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest size of the body
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -194,11 +198,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Phase of the parsing of a part of an HTTP message
+				 *
 				 * @details The phase relates not to the message but to the part named by the alongside
 				 *          going value part_t: END together with HEADERS means the end of the
 				 *          block of the headers, END together with BODY - the end of the body, END together
 				 *          with TRAILER - the end of the block of the trailers. The end of the message itself
 				 *          is only END together with NONE.
+				 *
 				 * @warning The phase cannot be read separately from the part. A truncated answer of which
 				 *          only the block of the headers has been accepted issues END exactly the same as
 				 *          one read to the end - the difference is entirely in the part. A flag
@@ -245,6 +251,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Resulting status of the parsing of an HTTP message
+				 *
 				 * @details For the multiplexed protocols (HTTP/2, HTTP/3) the status
 				 *          relates to the connection as a whole rather than to a separate message
 				 *
@@ -264,14 +271,15 @@ namespace awh {
 				 * @details Содержит только лимиты, осмысленные для любой версии протокола.
 				 *          Парсеры конкретных версий расширяют структуру своими лимитами
 				 *          (HTTP/1.x — чанки и стартовая строка, HTTP/2 — блоки заголовков,
-				 *          CONTINUATION-фреймы, частотные лимиты и т.д.)
+				 *          CONTINUATION-фреймы, частотные лимиты и т.д.).
 				 *
 				 * \~english
 				 * @brief Structure of the common core of the limitations of safety
+				 *
 				 * @details Contains only the limits meaningful for any version of the protocol.
 				 *          The parsers of the particular versions extend the structure by their own limits
 				 *          (HTTP/1.x — the chunks and the starting line, HTTP/2 — the blocks of the headers,
-				 *          the CONTINUATION frames, the frequency limits and so on)
+				 *          the CONTINUATION frames, the frequency limits and so on).
 				 *
 				 * \~
 				 */
@@ -290,7 +298,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -300,7 +307,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -323,6 +329,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the resulting status of the parsing
+				 *
 				 * @return resulting status of the parsing
 				 *
 				 * \~
@@ -335,13 +342,14 @@ namespace awh {
 				 *
 				 * @details Помимо сброса состояния разбора возвращает настройки парсера
 				 *          (лимиты безопасности, функции обратного вызова) к значениям
-				 *          по умолчанию — детали определяются классом-наследником
+				 *          по умолчанию — детали определяются классом-наследником.
 				 *
 				 * \~english
 				 * @brief Method of a full clearing of all the data of the parser
+				 *
 				 * @details Besides the reset of the state of the parsing it returns the settings of the parser
 				 *          (the limits of safety, the callback functions) to the values
-				 *          by default — the details are determined by the class-heir
+				 *          by default — the details are determined by the class-heir.
 				 *
 				 * \~
 				 */
@@ -353,14 +361,15 @@ namespace awh {
 				 * @details Дешёвый сброс с сохранением настроек (лимиты безопасности,
 				 *          функции обратного вызова): для HTTP/1.x — подготовка к разбору
 				 *          следующего сообщения в том же соединении (keep-alive/pipelining),
-				 *          для мультиплексируемых протоколов — полный сброс соединения
+				 *          для мультиплексируемых протоколов — полный сброс соединения.
 				 *
 				 * \~english
 				 * @brief Method of the reset of the state of the parser
+				 *
 				 * @details A cheap reset with the preservation of the settings (the limits of safety,
 				 *          the callback functions): for HTTP/1.x — the preparation for the parsing of the
 				 *          next message in the same connection (keep-alive/pipelining),
-				 *          for the multiplexed protocols — a full reset of the connection
+				 *          for the multiplexed protocols — a full reset of the connection.
 				 *
 				 * \~
 				 */
@@ -372,15 +381,17 @@ namespace awh {
 				 *
 				 * @details Каждый парсер определяет собственную систему кодов ошибок —
 				 *          типизированный доступ к коду предоставляется наследником,
-				 *          база гарантирует только текстовое представление для логов
+				 *          база гарантирует только текстовое представление для логов.
 				 *
 				 * @return название текущей ошибки разбора
 				 *
 				 * \~english
 				 * @brief Method of getting the human-readable name of the current error of the parsing
+				 *
 				 * @details Every parser determines its own system of the error codes —
 				 *          a typed access to the code is provided by the heir,
-				 *          the base guarantees only a text representation for the logs
+				 *          the base guarantees only a text representation for the logs.
+				 *
 				 * @return name of the current error of the parsing
 				 *
 				 * \~
@@ -393,15 +404,17 @@ namespace awh {
 				 *
 				 * @details Клон получает те же направление трафика, лимиты безопасности
 				 *          и функции обратного вызова, но чистое состояние разбора
-				 *          ("фабрика с теми же настройками")
+				 *          ("фабрика с теми же настройками").
 				 *
 				 * @return копия объекта парсера
 				 *
 				 * \~english
 				 * @brief Method of cloning the object of the parser
+				 *
 				 * @details The clone gets the same direction of the traffic, the limits of safety
 				 *          and the callback functions, but a clean state of the parsing
-				 *          («a factory with the same settings»)
+				 *          («a factory with the same settings»).
+				 *
 				 * @return copy of the object of the parser
 				 *
 				 * \~
@@ -415,14 +428,15 @@ namespace awh {
 				 * @details Сетевой слой обязан вызвать этот метод, когда соединение закрыто
 				 *          удалённой стороной (получен FIN/EOF сокета). Реакция определяется
 				 *          протоколом: HTTP/1.x завершает тело "до закрытия соединения" либо
-				 *          фиксирует обрыв, HTTP/2 проверяет корректность завершения сессии
+				 *          фиксирует обрыв, HTTP/2 проверяет корректность завершения сессии.
 				 *
 				 * \~english
 				 * @brief Method of notifying the parser about the completion of the stream of the data (the closing of the connection)
+				 *
 				 * @details The network layer is obliged to call this method when the connection is closed
 				 *          by the remote side (a FIN/EOF of the socket has been obtained). The reaction is determined by
 				 *          the protocol: HTTP/1.x completes the body «up to the closing of the connection» or
-				 *          fixes a break, HTTP/2 checks the correctness of the completion of the session
+				 *          fixes a break, HTTP/2 checks the correctness of the completion of the session.
 				 *
 				 * \~
 				 */
@@ -435,7 +449,7 @@ namespace awh {
 				 *          Итоговый статус необходимо контролировать методом status().
 				 *          Точная семантика границ потребления определяется протоколом:
 				 *          HTTP/1.x останавливается на границе завершённого сообщения,
-				 *          мультиплексируемые протоколы буферизуют неполные кадры внутри
+				 *          мультиплексируемые протоколы буферизуют неполные кадры внутри.
 				 *
 				 * @param buffer буфер данных для разбора
 				 * @param size   размер данных для разбора
@@ -443,11 +457,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the data
+				 *
 				 * @details Consumes as many octets as it has been able to and returns their number.
 				 *          The resulting status is necessary to control by the method status().
 				 *          The exact semantics of the boundaries of the consumption is determined by the protocol:
 				 *          HTTP/1.x stops at the boundary of a completed message,
-				 *          the multiplexed protocols buffer the incomplete frames inside
+				 *          the multiplexed protocols buffer the incomplete frames inside.
+				 *
 				 * @param buffer buffer of the data for the parsing
 				 * @param size   size of the data for the parsing
 				 * @return       number of the processed octets of the data
@@ -464,6 +480,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param direct direction of the stream of the data
 				 *
 				 * \~
@@ -472,7 +489,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

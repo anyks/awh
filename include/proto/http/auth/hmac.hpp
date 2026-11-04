@@ -40,7 +40,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -55,7 +54,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -73,6 +71,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Authorization scheme by an HMAC signature of a request (RFC 9421, HTTP Message Signatures)
+		 *
 		 * @details The scheme forms and checks the pair of the Signature-Input and Signature headers.
 		 *          The signature is computed by the HMAC method over the canonical base of the signature,
 		 *          assembled from the covered components of the request and from the parameters of the signature.
@@ -89,6 +88,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the text name of the signature algorithm
+				 *
 				 * @return name of the signature algorithm (hmac-sha256 and so on)
 				 *
 				 * \~
@@ -103,6 +103,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of a covered component by a name
+				 *
 				 * @param name name of the component
 				 * @return     value of the component (an empty string if it has not been found)
 				 *
@@ -118,6 +119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming the value of the parameters of the signature (@signature-params)
+				 *
 				 * @return value of the parameters of the signature
 				 *
 				 * \~
@@ -132,6 +134,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming the canonical base of the signature
+				 *
 				 * @param params value of the parameters of the signature (@signature-params)
 				 * @return       canonical base of the signature
 				 *
@@ -148,6 +151,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing the BASE64 signature over the canonical base
+				 *
 				 * @param base canonical base of the signature
 				 * @param key  secret key of the signature
 				 * @return     signature in the BASE64 format
@@ -166,6 +170,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming the headers of the signature (the client)
+				 *
 				 * @param input     reference for writing the value of the Signature-Input header
 				 * @param signature reference for writing the value of the Signature header
 				 * @return          result of the forming
@@ -183,6 +188,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an incoming authorization header
+				 *
 				 * @param header value of the header (Signature-Input or Signature)
 				 * @return       result of the parsing
 				 *
@@ -199,6 +205,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an incoming authorization header with an indication of the name
+				 *
 				 * @param name   name of the incoming header (Signature-Input or Signature)
 				 * @param header value of the incoming header
 				 * @return       result of the parsing
@@ -213,9 +220,9 @@ namespace awh {
 				 *
 				 * @return результат проверки
 				 *
-				 *
 				 * \~english
 				 * @brief Method of checking the credentials (for the server only)
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -226,15 +233,17 @@ namespace awh {
 				 * @brief Метод формирования исходящего заголовка авторизации
 				 *
 				 * @details При full = false возвращается значение заголовка Signature,
-				 *          при full = true возвращаются оба заголовка (Signature-Input и Signature)
+				 *          при full = true возвращаются оба заголовка (Signature-Input и Signature).
 				 *
 				 * @param full режим вывода вместе с именами заголовков
 				 * @return     значение заголовка (заголовков) авторизации
 				 *
 				 * \~english
 				 * @brief Method of forming an outgoing authorization header
+				 *
 				 * @details At full = false the value of the Signature header is returned,
-				 *          at full = true both headers are returned (Signature-Input and Signature)
+				 *          at full = true both headers are returned (Signature-Input and Signature).
+				 *
 				 * @param full mode of the output together with the names of the headers
 				 * @return     value of the authorization header (headers)
 				 *
@@ -249,6 +258,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming the set of the outgoing authorization headers
+				 *
 				 * @param result container for the set of the headers (Signature-Input and Signature)
 				 *
 				 * \~
@@ -263,9 +273,9 @@ namespace awh {
 				 * @param params общие параметры авторизации
 				 * @param crypto объект криптографии
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param owner  side of the work (client/server)
 				 * @param params common parameters of the authorization
 				 * @param crypto cryptography object
@@ -276,7 +286,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

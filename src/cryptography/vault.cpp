@@ -271,7 +271,7 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
  * @return       признак удавшейся укладки
  *
  */
-bool awh::Vault::store(const std::string & name, awh::alloc::vessel_t & vessel) noexcept {
+bool awh::Vault::store(const std::string & name, alloc::vessel_t & vessel) noexcept {
 	// Признак удавшейся укладки
 	bool result = false;
 	/**
@@ -468,7 +468,7 @@ awh::Vault & awh::Vault::shared() noexcept {
 	 * Заведение это потокобезопасно само по себе: языком положено, что статический
 	 * объект внутри хода заводится единожды, а прочие потоки ждут окончания заведения
 	 */
-	static Vault vault(awh::alloc::secrecy_t::STRICT, threading_t::SHARED);
+	static Vault vault(alloc::secrecy_t::STRICT, threading_t::SHARED);
 	// Выводим склад, общий на процесс
 	return vault;
 }
@@ -485,7 +485,7 @@ awh::Vault & awh::Vault::local() noexcept {
 	 * Память тем взята по числу потоков, обратившихся к нему, - это и есть плата за
 	 * снятие замка с горячего пути, и назначена она намеренно
 	 */
-	static thread_local Vault vault(awh::alloc::secrecy_t::STRICT, threading_t::LOCAL);
+	static thread_local Vault vault(alloc::secrecy_t::STRICT, threading_t::LOCAL);
 	// Выводим склад, свой у текущего потока
 	return vault;
 }
@@ -496,7 +496,7 @@ awh::Vault & awh::Vault::local() noexcept {
  * @param threading вид многопоточности склада
  *
  */
-awh::Vault::Vault(const awh::alloc::secrecy_t secrecy, const threading_t threading) noexcept :
+awh::Vault::Vault(const alloc::secrecy_t secrecy, const threading_t threading) noexcept :
  _secrets(), _crypto(), _ready(false), _threading(threading), _secrecy(secrecy), _mutex(), _shelter() {
 	/**
 	 * Спрашиваем у распределителя, какая защита состоялась НА ДЕЛЕ
@@ -508,11 +508,11 @@ awh::Vault::Vault(const awh::alloc::secrecy_t secrecy, const threading_t threadi
 	 */
 	{
 		// Выполняем пробную укрытую выдачу
-		void * probe = awh::alloc::Allocator::secure(KEYSIZE, &this->_shelter);
+		void * probe = alloc::allocator::secure(KEYSIZE, &this->_shelter);
 		// Если пробная выдача удалась
 		if(probe != nullptr)
 			// Возвращаем пробную выдачу распределителю
-			awh::alloc::Allocator::release(probe);
+			alloc::allocator::release(probe);
 	}
 	/**
 	 * Строгий склад отвечает отказом, не получив обещанной защиты
@@ -524,7 +524,7 @@ awh::Vault::Vault(const awh::alloc::secrecy_t secrecy, const threading_t threadi
 	 */
 	if(!this->_shelter.wired){
 		// Если склад заведён строгим
-		if(this->_secrecy == awh::alloc::secrecy_t::STRICT){
+		if(this->_secrecy == alloc::secrecy_t::STRICT){
 			// Записываем отказ заведения в журнал
 			awh::log::print("Vault is not prepared: memory locking is unavailable, strict vault refuses to hold the secrets", awh::log::flag_t::CRITICAL);
 			// Склад заведённым не отмечаем: работать он отказывается целиком

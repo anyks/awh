@@ -65,7 +65,7 @@ int32_t main(int32_t argc, char ** argv){
 	 * @note Зовётся распределитель НАПРЯМУЮ, а не через заведение ядра: заведение это
 	 *       живёт в самой библиотеке, а стенд собирается без неё - тем он и стенд
 	 */
-	awh::alloc::allocator_t::capture(awh::alloc::allocator_t::options());
+	awh::alloc::allocator::capture(awh::alloc::allocator::options());
 	// Заводим Google Test
 	::testing::InitGoogleTest(&argc, argv);
 	// Запускаем все проверки

@@ -55,12 +55,12 @@ static void consumption(const char * title) noexcept {
 	 * Занятое прикладным кодом и взятое у системы - величины РАЗНЫЕ: первое считает то,
 	 * что запросило приложение, второе - то, что распределитель взял у системы под кучу
 	 */
-	::printf("  занято прикладным кодом: %zu байт\n", alloc::Allocator::property(alloc::property_t::ALLOCATED));
-	::printf("  наибольшее за время работы: %zu байт\n", alloc::Allocator::property(alloc::property_t::PEAK));
-	::printf("  взято у системы под кучу: %zu байт\n", alloc::Allocator::property(alloc::property_t::HEAP));
-	::printf("  свободно в кэшах потоков: %zu байт\n", alloc::Allocator::property(alloc::property_t::CACHED));
-	::printf("  свободно в куче: %zu байт\n", alloc::Allocator::property(alloc::property_t::PAGEFREE));
-	::printf("  отдано системе обратно: %zu байт\n", alloc::Allocator::property(alloc::property_t::UNMAPPED));
+	::printf("  занято прикладным кодом: %zu байт\n", alloc::allocator::property(alloc::property_t::ALLOCATED));
+	::printf("  наибольшее за время работы: %zu байт\n", alloc::allocator::property(alloc::property_t::PEAK));
+	::printf("  взято у системы под кучу: %zu байт\n", alloc::allocator::property(alloc::property_t::HEAP));
+	::printf("  свободно в кэшах потоков: %zu байт\n", alloc::allocator::property(alloc::property_t::CACHED));
+	::printf("  свободно в куче: %zu байт\n", alloc::allocator::property(alloc::property_t::PAGEFREE));
+	::printf("  отдано системе обратно: %zu байт\n", alloc::allocator::property(alloc::property_t::UNMAPPED));
 }
 /**
  * @brief Метод печати разбора адреса обращения
@@ -71,7 +71,7 @@ static void consumption(const char * title) noexcept {
  */
 static void diagnose(const char * title, const void * addr) noexcept {
 	// Разбираем адрес обращения
-	const alloc::region_t region = alloc::Allocator::resolve(addr);
+	const alloc::region_t region = alloc::allocator::resolve(addr);
 	// Название происхождения адреса
 	const char * origin = "разобрать не удалось";
 	/**
@@ -131,7 +131,7 @@ int32_t main() noexcept {
 	 */
 	{
 		// Берём действующие настройки, чтобы не затереть заданное прежде
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		/**
 		 * Отдаём память системе лишь по просьбе
 		 *
@@ -156,14 +156,14 @@ int32_t main() noexcept {
 		 */
 		options.quarantine = (1024 * 1024);
 		// Задаём требуемые настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 	}
 	/**
 	 * Ставим отклик доклада о крупной выдаче
 	 *
 	 * Ищет того, кто просит помногу: адрес и размер выдачи приходят сюда
 	 */
-	alloc::Allocator::onLarge([](const void * addr, const size_t size) noexcept -> void {
+	alloc::allocator::onLarge([](const void * addr, const size_t size) noexcept -> void {
 		// Записываем доклад о крупной выдаче в журнал
 		log::print("Крупная выдача: %zu байт по адресу %p", log::flag_t::INFO, size, addr);
 	});
@@ -172,7 +172,7 @@ int32_t main() noexcept {
 	 *
 	 * Зовётся, когда куче запрещено брать у системы сверх заданного
 	 */
-	alloc::Allocator::onLimit([](const size_t taken) noexcept -> void {
+	alloc::allocator::onLimit([](const size_t taken) noexcept -> void {
 		// Записываем доклад об упоре в потолок в журнал
 		log::print("Куча упёрлась в потолок: взято %zu байт", log::flag_t::WARNING, taken);
 	});
@@ -255,7 +255,7 @@ int32_t main() noexcept {
 	 * записей, а не всех удерживаемых. Прекрати мы обход после третьей печати - метод
 	 * ответил бы «четыре», и подпись под сводом лгала бы
 	 */
-	const size_t held = alloc::Allocator::holdings([&printed](const alloc::holding_t & holding) noexcept -> bool {
+	const size_t held = alloc::allocator::holdings([&printed](const alloc::holding_t & holding) noexcept -> bool {
 		// Если печатать больше не нужно
 		if(printed < 3){
 			// Считаем напечатанную запись
@@ -290,7 +290,7 @@ int32_t main() noexcept {
 	 * Способ отдачи задан выше как `MANUAL`: без этой просьбы освобождённое осталось бы
 	 * лежать в куче нашим
 	 */
-	const size_t given = alloc::Allocator::purge();
+	const size_t given = alloc::allocator::purge();
 	// Печатаем объём отданного системе
 	::printf("\nОтдано системе по просьбе: %zu байт\n", given);
 	// Печатаем расход после отдачи

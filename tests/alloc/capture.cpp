@@ -58,7 +58,7 @@ namespace {
 				// Настройки распределителя памяти
 				awh::alloc::options_t options;
 				// Захватываем выдачу памяти процесса
-				__awh_alloc_seized__ = awh::alloc::Allocator::capture(options);
+				__awh_alloc_seized__ = awh::alloc::allocator::capture(options);
 			}
 	};
 	/**
@@ -119,9 +119,9 @@ TEST(AllocCaptureTest, AllocationGoesThroughUs){
 	 * отвечать нулём - иначе распределитель врёт о принадлежности чужой памяти
 	 */
 	#if AWH_ALLOC_SANITIZED
-		EXPECT_EQ(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (0));
+		EXPECT_EQ(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (0));
 	#else
-		EXPECT_GE(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (1000));
+		EXPECT_GE(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (1000));
 	#endif
 	// Освобождаем выданное
 	::free(block);

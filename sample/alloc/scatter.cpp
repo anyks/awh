@@ -89,7 +89,7 @@ int main(int argc, char * argv[]) noexcept {
 	static_cast <void> (argc);
 	static_cast <void> (argv);
 	// Заводим распределитель памяти
-	alloc::allocator_t::capture(alloc::allocator_t::options());
+	alloc::allocator::capture(alloc::allocator::options());
 	/**
 	 * ШАГ ЗАКРЫТОГО КОНТУРА (время сборки)
 	 *
@@ -106,7 +106,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Ёмкость носителя: запас сверх длины рассеивает секрет пошире
 	const size_t capacity = 1024;
 	// Раскладываем секрет по носителю под наложением гаммы
-	const std::vector <uint8_t> carrier = alloc::Scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, seed, capacity);
+	const std::vector <uint8_t> carrier = alloc::scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, seed, capacity);
 	// Если раскладка не удалась
 	if(carrier.empty()){
 		// Печатаем отказ раскладки
@@ -132,7 +132,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * В бою этот текст перенаправляют в заголовок закрытого контура и включают в сборку
 	 * приложения. Ни секрета, ни зерна текст не несёт — только носитель и длину
 	 */
-	const std::string source = alloc::Scatter::emit(carrier, length, "embedded_key");
+	const std::string source = alloc::scatter::emit(carrier, length, "embedded_key");
 	// Печатаем начало порождённого текста
 	::printf("\n=== Порождённый заголовок (первые строки) ===\n");
 	// Печатаем не более первых трёхсот знаков текста
@@ -148,7 +148,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Заводим приёмник тайн послабленным: пример должен идти и там, где запереть страницы нечем
 	alloc::vessel_t vessel(alloc::secrecy_t::RELAXED);
 	// Собираем секрет из носителя тем же зерном
-	if(!alloc::Scatter::gather(carrier.data(), carrier.size(), seed, length, vessel)){
+	if(!alloc::scatter::gather(carrier.data(), carrier.size(), seed, length, vessel)){
 		// Печатаем отказ сборки
 		::printf("Сборка секрета не удалась\n");
 		// Выходим с ошибкой
@@ -178,7 +178,7 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	alloc::vessel_t other(alloc::secrecy_t::RELAXED);
 	// Собираем чужим зерном
-	if(alloc::Scatter::gather(carrier.data(), carrier.size(), seed ^ 0x1ULL, length, other)){
+	if(alloc::scatter::gather(carrier.data(), carrier.size(), seed ^ 0x1ULL, length, other)){
 		// Признак совпадения собранного чужим зерном
 		bool wrong = true;
 		// Обращаемся к собранному чужим зерном
@@ -203,13 +203,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Версия ключа: боевая
 	const uint64_t version = 1;
 	// Раскладываем секрет зерном, привязанным к сумме и версии
-	const std::vector <uint8_t> bound = alloc::Scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, alloc::Scatter::anchor(seed, checksum, version), capacity);
+	const std::vector <uint8_t> bound = alloc::scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, alloc::scatter::anchor(seed, checksum, version), capacity);
 	// Собираем той же суммой и версией
 	alloc::vessel_t anchored(alloc::secrecy_t::RELAXED);
 	// Признак успешной сборки верным якорем
 	bool byRight = false;
 	// Если сборка верным якорем удалась
-	if(alloc::Scatter::gather(bound.data(), bound.size(), alloc::Scatter::anchor(seed, checksum, version), length, anchored))
+	if(alloc::scatter::gather(bound.data(), bound.size(), alloc::scatter::anchor(seed, checksum, version), length, anchored))
 		// Обращаемся к собранному верным якорем
 		anchored.apply([&](const uint8_t * data, const size_t size) noexcept {
 			// Сверяем собранное с исходным секретом
@@ -221,7 +221,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Признак сборки секрета изменённой суммой
 	bool byPatched = true;
 	// Если сборка изменённой суммой отработала
-	if(alloc::Scatter::gather(bound.data(), bound.size(), alloc::Scatter::anchor(seed, checksum ^ 0x1ULL, version), length, patched))
+	if(alloc::scatter::gather(bound.data(), bound.size(), alloc::scatter::anchor(seed, checksum ^ 0x1ULL, version), length, patched))
 		// Обращаемся к собранному изменённой суммой
 		patched.apply([&](const uint8_t * data, const size_t size) noexcept {
 			// Сверяем собранное с исходным секретом
@@ -245,7 +245,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Снимаем копию таблицы до вплетения
 	const std::vector <uint8_t> before = table;
 	// Вплетаем секрет в рабочую таблицу
-	if(alloc::Scatter::weave(table.data(), table.size(), reinterpret_cast <const uint8_t *> (secret), length, seed)){
+	if(alloc::scatter::weave(table.data(), table.size(), reinterpret_cast <const uint8_t *> (secret), length, seed)){
 		// Число изменённых мест таблицы
 		size_t changed = 0;
 		// Считаем изменённые места таблицы
@@ -256,7 +256,7 @@ int main(int argc, char * argv[]) noexcept {
 		// Признак сборки секрета из таблицы
 		bool fromTable = false;
 		// Если сборка из таблицы удалась
-		if(alloc::Scatter::gather(table.data(), table.size(), seed, length, woven))
+		if(alloc::scatter::gather(table.data(), table.size(), seed, length, woven))
 			// Обращаемся к собранному из таблицы
 			woven.apply([&](const uint8_t * data, const size_t size) noexcept {
 				// Сверяем собранное с исходным секретом

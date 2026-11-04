@@ -311,7 +311,7 @@ TEST_F(AllocFixture, DescendantSurvivesForkWhileCallbacksChange){
 			const size_t a = round, b = (round + 1), c = (round + 2), d = (round + 3);
 			const size_t e = (round + 4), f = (round + 5), g = (round + 6);
 			// Ставим отклик на крупное выделение
-			awh::alloc::Allocator::onLarge([a, b, c, d, e, f, g](const void *, const size_t) noexcept {
+			awh::alloc::allocator::onLarge([a, b, c, d, e, f, g](const void *, const size_t) noexcept {
 				// Груз обязан быть употреблён, иначе собиратель выбросит его вместе с выдачей
 				volatile size_t sum = (a + b + c + d + e + f + g);
 				// Употребляем сумму
@@ -347,7 +347,7 @@ TEST_F(AllocFixture, DescendantSurvivesForkWhileCallbacksChange){
 			 * Снятие РАЗРУШАЕТ прежний `std::function`. Достанься тот недописанным -
 			 * разрушение уйдёт по дикому адресу
 			 */
-			awh::alloc::Allocator::onLarge(nullptr);
+			awh::alloc::allocator::onLarge(nullptr);
 			// Отвечаем родителю работой с памятью
 			::_exit(::descendant());
 		}
@@ -379,7 +379,7 @@ TEST_F(AllocFixture, DescendantSurvivesForkWhileCallbacksChange){
 	// Дожидаемся потока
 	setter.join();
 	// Снимаем отклик у родителя: он ставился потоком и живёт дольше проверки
-	awh::alloc::Allocator::onLarge(nullptr);
+	awh::alloc::allocator::onLarge(nullptr);
 	// Ни один потомок пасть не обязан
 	EXPECT_EQ(broken, static_cast <size_t> (0))
 	 << "пало потомков: " << broken << " из 48; первый на обороте " << culprit
@@ -526,7 +526,7 @@ TEST_F(AllocFixture, DescendantAllocatesAfterUnannouncedFork){
  *          объявлен `noexcept`. Распределитель убивал этим процесс целиком
  *
  * @details Найдено щупом, исчерпавшим запас потоков системы: 12287 заведённых потоков,
- *          затем `Allocator::onLimit` - и `libc++abi: terminating due to uncaught
+ *          затем `allocator::onLimit` - и `libc++abi: terminating due to uncaught
  *          exception ... Resource temporarily unavailable`, код возврата 134.
  *          Распределитель памяти обязан переживать нехватку средств системы, а не
  *          гибнуть от неё: это ровно то положение, ради которого он и нужен
@@ -626,7 +626,7 @@ TEST(ForkFixture, SurvivesThreadStarvation){
 			 *
 			 * Отказ системы обязан обернуться отказом заведения, а не гибелью процесса
 			 */
-			awh::alloc::Allocator::onLimit([](const size_t){});
+			awh::alloc::allocator::onLimit([](const size_t){});
 			/**
 			 * Выдача памяти обязана работать и после отказа
 			 */

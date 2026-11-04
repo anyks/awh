@@ -276,20 +276,20 @@ namespace {
 		// Печатаем заголовок свода
 		::printf("\n%s\n", title);
 		// Печатаем занятое прикладным кодом
-		::printf("  занято прикладным кодом: %zu байт\n", alloc::Allocator::property(alloc::property_t::ALLOCATED));
+		::printf("  занято прикладным кодом: %zu байт\n", alloc::allocator::property(alloc::property_t::ALLOCATED));
 		// Печатаем взятое у источника
-		::printf("  взято у источника: %zu байт\n", alloc::Allocator::property(alloc::property_t::HEAP));
+		::printf("  взято у источника: %zu байт\n", alloc::allocator::property(alloc::property_t::HEAP));
 		// Печатаем свободное в кэшах потоков
-		::printf("  свободно в кэшах потоков: %zu байт\n", alloc::Allocator::property(alloc::property_t::CACHED));
+		::printf("  свободно в кэшах потоков: %zu байт\n", alloc::allocator::property(alloc::property_t::CACHED));
 		// Печатаем свободное в страничной куче
-		::printf("  свободно в страничной куче: %zu байт\n", alloc::Allocator::property(alloc::property_t::PAGEFREE));
+		::printf("  свободно в страничной куче: %zu байт\n", alloc::allocator::property(alloc::property_t::PAGEFREE));
 		/**
 		 * Печатаем отданное источнику
 		 *
 		 * У этого источника оно останется нулём при любой нагрузке: отдачи он не умеет и
 		 * отвечает отказом, а учёт считает лишь СОСТОЯВШУЮСЯ отдачу
 		 */
-		::printf("  отдано источнику: %zu байт\n", alloc::Allocator::property(alloc::property_t::UNMAPPED));
+		::printf("  отдано источнику: %zu байт\n", alloc::allocator::property(alloc::property_t::UNMAPPED));
 		// Печатаем занятое в самой неподвижной области
 		::printf("  занято в неподвижной области: %zu из %zu байт\n", ::__awh_source__.taken(), ARENA);
 	}
@@ -317,7 +317,7 @@ int32_t main() noexcept {
 	 * того, что успело случиться в процессе, - у части систем куча заводится ещё при
 	 * заведении переменных процесса, прежде первой строки `main`
 	 */
-	if(!alloc::Allocator::source(&::__awh_source__)){
+	if(!alloc::allocator::source(&::__awh_source__)){
 		// Сообщаем об отказе подмены
 		::printf("Подменить источник страниц не удалось: память уже бралась через нас\n");
 		/**
@@ -336,7 +336,7 @@ int32_t main() noexcept {
 	 */
 	{
 		// Берём действующие настройки, чтобы не затереть заданное прежде
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		/**
 		 * Запрещаем обращаться к системе сверх взятого
 		 *
@@ -352,7 +352,7 @@ int32_t main() noexcept {
 		 */
 		options.purgeMode = alloc::purge_t::MANUAL;
 		// Задаём требуемые настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 	}
 	/**
 	 * Захватываем выдачу памяти процесса
@@ -360,7 +360,7 @@ int32_t main() noexcept {
 	 * Журнал не задаём: образец печатает всё сам, а распределителю в замкнутом режиме
 	 * докладывать не о чем
 	 */
-	if(!alloc::Allocator::capture(alloc::Allocator::options())){
+	if(!alloc::allocator::capture(alloc::allocator::options())){
 		// Сообщаем об отказе захвата
 		::printf("Захватить выдачу памяти не удалось\n");
 		// Выводим неуспешный код выхода
@@ -436,7 +436,7 @@ int32_t main() noexcept {
 	 * Просьба эта пройдёт весь путь отдачи и не отдаст ничего: источник отвечает отказом,
 	 * а учёт считает лишь состоявшееся. Ноль здесь - честный ответ, а не пропуск
 	 */
-	::printf("\nОтдано источнику по просьбе: %zu байт\n", alloc::Allocator::purge());
+	::printf("\nОтдано источнику по просьбе: %zu байт\n", alloc::allocator::purge());
 	// Выводим успешный код выхода
 	return EXIT_SUCCESS;
 }

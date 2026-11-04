@@ -3465,7 +3465,7 @@ ssize_t awh::eth::socket::datagram(const net::socket_t sock, const void * buffer
 	// Устанавливаем адрес удалённого узла
 	message.name = const_cast <LPSOCKADDR> (addr);
 	// Устанавливаем размер адреса удалённого узла
-	message.namelen = static_cast <INT> (length);
+	message.nameSize = static_cast <INT> (length);
 	// Устанавливаем буфер отправляемых данных
 	message.lpBuffers = &data;
 	// Устанавливаем количество буферов отправляемых данных
@@ -3556,7 +3556,7 @@ ssize_t awh::eth::socket::datagram(const net::socket_t sock, const void * buffer
  * сказано прямо, а не оставлено на догадку.
  *
  * @warning Вскрыто проверкой `SocketEcnDeliveryTest`, какая до 03.09.2026 под MS Windows
- *          ПРОПУСКАЛАСЬ: посредника `msghdr` проверке не хватало, и путь этот не
+ *          ПРОПУСКАЛАСЬ: посредника `msghdr_t` проверке не хватало, и путь этот не
  *          проверялся вовсе. Снятие пропуска и вскрыло расхождение
  *
  * @param sock   сетевой сокет

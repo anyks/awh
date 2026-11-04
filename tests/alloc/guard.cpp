@@ -72,13 +72,13 @@
  */
 TEST_F(AllocFixture, GuardsAreActuallyPlaced){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём выборку заслонов: один блок из шестнадцати
 	options.guardRate = 16;
 	// Задаём объём карантина
 	options.quarantine = (256u * 1024u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выданные блоки
 	std::vector <void *> alive;
 	/**
@@ -109,7 +109,7 @@ TEST_F(AllocFixture, GuardsAreActuallyPlaced){
 	 *       и одна эта строка прежде не давала собраться ВСЕМУ набору
 	 */
 	// Получаем действующий источник страниц
-	awh::alloc::source_t * source = awh::alloc::Allocator::source();
+	awh::alloc::source_t * source = awh::alloc::allocator::source();
 	// Источник обязан быть заведён: без него сличать не с чем
 	ASSERT_NE(source, nullptr);
 	// Получаем зернистость выдачи источника
@@ -121,7 +121,7 @@ TEST_F(AllocFixture, GuardsAreActuallyPlaced){
 	 */
 	for(void * block : alive){
 		// Разбираем адрес блока
-		const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+		const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 		// Если блок не опознан
 		if(region.size == 0)
 			// Переходим к следующему блоку
@@ -159,24 +159,24 @@ TEST_F(AllocFixture, GuardsAreActuallyPlaced){
  */
 TEST_F(AllocFixture, FreedBlockIsRecognized){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём выборку заслонов
 	options.guardRate = 1;
 	// Задаём объём карантина
 	options.quarantine = (256u * 1024u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выдаём блок
 	void * block = ::malloc(512);
 	ASSERT_NE(block, nullptr);
 	// Записываем блок целиком
 	::memset(block, 0x77, 512);
 	// Живой блок обязан опознаваться живым
-	EXPECT_EQ(awh::alloc::Allocator::resolve(block).origin, awh::alloc::origin_t::LIVE);
+	EXPECT_EQ(awh::alloc::allocator::resolve(block).origin, awh::alloc::origin_t::LIVE);
 	// Освобождаем блок
 	::free(block);
 	// Освобождённый блок обязан опознаваться освобождённым
-	EXPECT_EQ(awh::alloc::Allocator::resolve(block).origin, awh::alloc::origin_t::FREED);
+	EXPECT_EQ(awh::alloc::allocator::resolve(block).origin, awh::alloc::origin_t::FREED);
 }
 /**
  * @brief Тест разбора чужих и негодных адресов
@@ -185,9 +185,9 @@ TEST_F(AllocFixture, FreedBlockIsRecognized){
 TEST_F(AllocFixture, ForeignAddressesAreTold){
 	// Место на стеке распределителю не принадлежит
 	const uint64_t anchor = 0;
-	EXPECT_EQ(awh::alloc::Allocator::resolve(&anchor).origin, awh::alloc::origin_t::FOREIGN);
+	EXPECT_EQ(awh::alloc::allocator::resolve(&anchor).origin, awh::alloc::origin_t::FOREIGN);
 	// Нулевая страница опознаётся собою: разыменование пустого указателя видно сразу
-	EXPECT_EQ(awh::alloc::Allocator::resolve(reinterpret_cast <const void *> (16)).origin, awh::alloc::origin_t::NULLPAGE);
+	EXPECT_EQ(awh::alloc::allocator::resolve(reinterpret_cast <const void *> (16)).origin, awh::alloc::origin_t::NULLPAGE);
 }
 /**
  * @brief Тест разбора адреса за концом блока
@@ -198,20 +198,20 @@ TEST_F(AllocFixture, ForeignAddressesAreTold){
  */
 TEST_F(AllocFixture, OverrunAndUnderrunAreTold){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём выборку заслонов: заслон ставится всякой выдаче
 	options.guardRate = 1;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выдаём блок
 	uint8_t * block = reinterpret_cast <uint8_t *> (::malloc(128));
 	ASSERT_NE(block, nullptr);
 	// Разбираем адрес блока
-	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+	const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 	// Если блок оказался заслонённым
 	if(region.origin == awh::alloc::origin_t::LIVE){
 		// Адрес за концом блока обязан опознаваться промахом за конец
-		const awh::alloc::region_t beyond = awh::alloc::Allocator::resolve(block + region.size + 1);
+		const awh::alloc::region_t beyond = awh::alloc::allocator::resolve(block + region.size + 1);
 		// Промах обязан быть назван: живым такой адрес быть не может
 		EXPECT_NE(beyond.origin, awh::alloc::origin_t::LIVE);
 	}
@@ -234,15 +234,15 @@ TEST_F(AllocFixture, OverrunAndUnderrunAreTold){
  */
 TEST_F(AllocFixture, WriteAfterFreeIsCaught){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём объём карантина
 	options.quarantine = (1u * 1024u * 1024u);
 	// Задаём засев освобождаемой памяти
 	options.fill = awh::alloc::fill_t::JUNK;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Запоминаем число испорченных блоков до проверки
-	const size_t before = awh::alloc::Allocator::spoiled();
+	const size_t before = awh::alloc::allocator::spoiled();
 	// Выдаём блок
 	uint8_t * block = reinterpret_cast <uint8_t *> (::malloc(128));
 	// Выдача обязана состояться
@@ -295,7 +295,7 @@ TEST_F(AllocFixture, WriteAfterFreeIsCaught){
 	// Смещение первой порчи от начала блока
 	size_t offset = 0;
 	// Испорченных блоков обязано прибавиться
-	EXPECT_GT(awh::alloc::Allocator::spoiled(&culprit, &offset), before);
+	EXPECT_GT(awh::alloc::allocator::spoiled(&culprit, &offset), before);
 	// Адрес испорченного блока обязан быть известен
 	EXPECT_NE(culprit, nullptr);
 }
@@ -308,15 +308,15 @@ TEST_F(AllocFixture, WriteAfterFreeIsCaught){
  */
 TEST_F(AllocFixture, HealthyCodeLeavesQuarantineSilent){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём объём карантина
 	options.quarantine = (1u * 1024u * 1024u);
 	// Задаём засев освобождаемой памяти
 	options.fill = awh::alloc::fill_t::JUNK;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Запоминаем число испорченных блоков до проверки
-	const size_t before = awh::alloc::Allocator::spoiled();
+	const size_t before = awh::alloc::allocator::spoiled();
 	/**
 	 * Выдаём и освобождаем блоки, ни разу не тронув освобождённое
 	 *
@@ -361,12 +361,12 @@ TEST_F(AllocFixture, HealthyCodeLeavesQuarantineSilent){
 		// Освобождаем блок: с этого мига его обязан удерживать карантин
 		::free(sink);
 		// Разбираем адрес освобождённого блока
-		const awh::alloc::region_t held = awh::alloc::Allocator::resolve(probe);
+		const awh::alloc::region_t held = awh::alloc::allocator::resolve(probe);
 		// Освобождённый блок обязан удерживаться карантином
 		ASSERT_EQ(held.origin, awh::alloc::origin_t::FREED) << "карантин не удерживает освобождённое: молчание его о находках ничего не значит";
 	}
 	// Испорченных блоков прибавиться не должно
-	EXPECT_EQ(awh::alloc::Allocator::spoiled(), before);
+	EXPECT_EQ(awh::alloc::allocator::spoiled(), before);
 }
 
 /**
@@ -389,13 +389,13 @@ TEST_F(AllocFixture, QuarantineShutdownReturnsHeldMemory){
 		GTEST_SKIP() << "захват под санитайзером не состоится";
 	#else
 		// Получаем действующие настройки
-		awh::alloc::options_t options = awh::alloc::Allocator::options();
+		awh::alloc::options_t options = awh::alloc::allocator::options();
 		// Запоминаем настройки для возврата
 		const awh::alloc::options_t restore = options;
 		// Заводим карантин объёмом в четверть мегабайта
 		options.quarantine = (256u * 1024u);
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Освобождённые блоки
 		std::vector <void *> freed;
 		/**
@@ -417,13 +417,13 @@ TEST_F(AllocFixture, QuarantineShutdownReturnsHeldMemory){
 		 */
 		for(void * block : freed)
 			// Считаем блок удержанным, если разбор зовёт его освобождённым
-			held += ((awh::alloc::Allocator::resolve(block).origin == awh::alloc::origin_t::FREED) ? 1 : 0);
+			held += ((awh::alloc::allocator::resolve(block).origin == awh::alloc::origin_t::FREED) ? 1 : 0);
 		// Карантин обязан держать хоть что-то: иначе проверять нечего
 		ASSERT_GT(held, static_cast <size_t> (0)) << "карантин не принял ни одного блока";
 		// Выключаем карантин
 		options.quarantine = 0;
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Число блоков, оставшихся у карантина после выключения
 		size_t stayed = 0;
 		/**
@@ -431,11 +431,11 @@ TEST_F(AllocFixture, QuarantineShutdownReturnsHeldMemory){
 		 */
 		for(void * block : freed)
 			// Считаем блок оставшимся, если разбор всё ещё зовёт его освобождённым
-			stayed += ((awh::alloc::Allocator::resolve(block).origin == awh::alloc::origin_t::FREED) ? 1 : 0);
+			stayed += ((awh::alloc::allocator::resolve(block).origin == awh::alloc::origin_t::FREED) ? 1 : 0);
 		// У выключенного карантина не обязано остаться ничего
 		EXPECT_EQ(stayed, static_cast <size_t> (0)) << "выключенный карантин держит " << stayed << " блок(ов) из " << held;
 		// Возвращаем прежние настройки
-		awh::alloc::Allocator::options(restore);
+		awh::alloc::allocator::options(restore);
 	#endif
 }
 
@@ -461,15 +461,15 @@ TEST_F(AllocFixture, SealedGuardRetentionIsBoundedByVolume){
 		GTEST_SKIP() << "захват под санитайзером не состоится";
 	#else
 		// Получаем действующие настройки
-		awh::alloc::options_t options = awh::alloc::Allocator::options();
+		awh::alloc::options_t options = awh::alloc::allocator::options();
 		// Запоминаем настройки для возврата
 		const awh::alloc::options_t restore = options;
 		// Заслоняем каждую выдачу
 		options.guardRate = 1;
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Запоминаем взятое у системы до нагрузки
-		const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+		const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 		// Размер заслоняемого блока: половина наибольшего, дозволенного заслонам
 		const size_t size = (512u * 1024u);
 		/**
@@ -490,7 +490,7 @@ TEST_F(AllocFixture, SealedGuardRetentionIsBoundedByVolume){
 			}
 		}
 		// Определяем взятое у системы после нагрузки
-		const size_t after = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+		const size_t after = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 		// Определяем прирост взятого у системы
 		const size_t growth = ((after > before) ? (after - before) : 0);
 		/**
@@ -502,7 +502,7 @@ TEST_F(AllocFixture, SealedGuardRetentionIsBoundedByVolume){
 		 */
 		EXPECT_LT(growth, (128u * 1024u * 1024u)) << "заслоны удержали " << (growth / (1024u * 1024u)) << " МБ";
 		// Возвращаем прежние настройки
-		awh::alloc::Allocator::options(restore);
+		awh::alloc::allocator::options(restore);
 	#endif
 }
 

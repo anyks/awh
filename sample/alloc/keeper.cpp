@@ -75,7 +75,7 @@ static void direct() noexcept {
 	 * страницы, оттого сорок восемь байт обойдутся в целую страницу. Держать здесь
 	 * мелочь россыпью расточительно - место это заведено под ключи и пароли
 	 */
-	void * secret = alloc::Allocator::secure(48, &shelter);
+	void * secret = alloc::allocator::secure(48, &shelter);
 	// Если выдать укрытую память не вышло
 	if(secret == nullptr){
 		// Сообщаем о неудаче
@@ -92,7 +92,7 @@ static void direct() noexcept {
 	 *
 	 * Укрытая выдача - такой же наш блок, как и обычный: разбор адреса узнаёт её
 	 */
-	const alloc::region_t region = alloc::Allocator::resolve(secret);
+	const alloc::region_t region = alloc::allocator::resolve(secret);
 	// Печатаем то, чем распределитель считает выданный адрес
 	::printf("  разбор адреса: %s, размер %zu байт\n",
 	 ((region.origin == alloc::origin_t::LIVE) ? "живой выданный блок" : "НЕ живой блок"), region.size);
@@ -106,7 +106,7 @@ static void direct() noexcept {
 	 * Затирать содержимое перед возвратом не нужно: затирание обещано самой укрытой
 	 * выдачей - распределитель обнуляет область прежде, чем вернуть её системе
 	 */
-	alloc::Allocator::release(secret);
+	alloc::allocator::release(secret);
 	// Сообщаем о возврате
 	::printf("  память возвращена через release, содержимое затёрто распределителем\n");
 }
@@ -153,7 +153,7 @@ static void containers() noexcept {
 	 * нём живой блок. Если бы строка оказалась короткой, разбор ответил бы «чужая
 	 * память» - содержимое лежало бы на стеке внутри самого объекта
 	 */
-	const alloc::region_t region = alloc::Allocator::resolve(password.data());
+	const alloc::region_t region = alloc::allocator::resolve(password.data());
 	// Печатаем то, чем распределитель считает содержимое строки
 	::printf("  содержимое строки: %s\n",
 	 ((region.origin == alloc::origin_t::LIVE) ? "лежит в укрытой памяти" : "лежит ВНУТРИ объекта (запас строки)"));
@@ -174,13 +174,13 @@ static void expense() noexcept {
 	// Перечень выданных блоков
 	void * blocks[count];
 	// Запоминаем расход до выдачи
-	const size_t before = alloc::Allocator::property(alloc::property_t::HEAP);
+	const size_t before = alloc::allocator::property(alloc::property_t::HEAP);
 	// Выполняем перебор выдач
 	for(size_t i = 0; i < count; i++)
 		// Просим по шестнадцать байт укрытой памяти
-		blocks[i] = alloc::Allocator::secure(16, nullptr);
+		blocks[i] = alloc::allocator::secure(16, nullptr);
 	// Запоминаем расход после выдачи
-	const size_t after = alloc::Allocator::property(alloc::property_t::HEAP);
+	const size_t after = alloc::allocator::property(alloc::property_t::HEAP);
 	/**
 	 * Печатаем цену выдачи россыпью
 	 *
@@ -195,7 +195,7 @@ static void expense() noexcept {
 		// Если блок выдан
 		if(blocks[i] != nullptr)
 			// Возвращаем блок распределителю
-			alloc::Allocator::release(blocks[i]);
+			alloc::allocator::release(blocks[i]);
 	}
 }
 /**

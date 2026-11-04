@@ -97,7 +97,7 @@ TEST_F(VaultFixture, StoredSecretIsBorrowedBack){
 	size_t held = 0;
 	static_cast <void> (handle.apply([&held](const char * data, const size_t) noexcept -> void {
 		// Запоминаем объём нашего распределителя
-		held = awh::alloc::Allocator::resolve(data).size;
+		held = awh::alloc::allocator::resolve(data).size;
 	}));
 	// Открытый текст обязан стоять в памяти нашего распределителя
 	EXPECT_GE(held, handle.size());
@@ -268,9 +268,9 @@ TEST_F(VaultFixture, VaultReportsAchievedShelter){
 	const awh::alloc::shelter_t & shelter = this->_vault->shelter();
 	// Сведения обязаны совпасть с тем, что отвечает сам распределитель
 	awh::alloc::shelter_t expected;
-	void * probe = awh::alloc::Allocator::secure(64, &expected);
+	void * probe = awh::alloc::allocator::secure(64, &expected);
 	ASSERT_NE(probe, nullptr);
-	awh::alloc::Allocator::release(probe);
+	awh::alloc::allocator::release(probe);
 	// Склад обязан отвечать то же, что и распределитель
 	EXPECT_EQ(shelter.hidden, expected.hidden);
 	EXPECT_EQ(shelter.wired, expected.wired);

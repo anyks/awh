@@ -114,7 +114,7 @@ namespace {
  */
 TEST_F(AllocFixture, ManualPurgeReturnsMemory){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём отдачу лишь по просьбе
 	options.purgeMode = awh::alloc::purge_t::MANUAL;
 	// Снимаем отсрочку: удерживать освобождённое незачем
@@ -122,17 +122,17 @@ TEST_F(AllocFixture, ManualPurgeReturnsMemory){
 	// Снимаем порог куска
 	options.purgeBlock = 0;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Набираем и освобождаем память
 	::churn(4096, 8192);
 	// Свободного в страничной куче обязано накопиться
-	EXPECT_GT(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), static_cast <size_t> (0));
+	EXPECT_GT(awh::alloc::allocator::property(awh::alloc::property_t::PAGEFREE), static_cast <size_t> (0));
 	// Запоминаем отданное системе до просьбы
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::UNMAPPED);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::UNMAPPED);
 	// Просим отдать свободное системе
-	const size_t purged = awh::alloc::Allocator::purge();
+	const size_t purged = awh::alloc::allocator::purge();
 	// Отдача обязана состояться: либо по ответу, либо по счётчику отданного
-	EXPECT_TRUE((purged > 0) || (awh::alloc::Allocator::property(awh::alloc::property_t::UNMAPPED) > before));
+	EXPECT_TRUE((purged > 0) || (awh::alloc::allocator::property(awh::alloc::property_t::UNMAPPED) > before));
 }
 /**
  * @brief Тест полного запрета отдачи
@@ -158,13 +158,13 @@ TEST_F(AllocFixture, NeverPurgeIsStrongerThanRequest){
 	// Размер блока, заведомо не помещающегося в кусок страничной кучи
 	static constexpr size_t ENORMOUS = (8u * 1024u * 1024u);
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём полный запрет отдачи
 	options.purgeMode = awh::alloc::purge_t::NEVER;
 	// Задаём потолок придержанных крупных областей с запасом на нашу
 	options.hugeCache = (ENORMOUS * 2u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выдаём крупный блок
 	void * block = ::malloc(ENORMOUS);
 	// Крупная выдача обязана состояться
@@ -172,11 +172,11 @@ TEST_F(AllocFixture, NeverPurgeIsStrongerThanRequest){
 	// Освобождаем блок: область его остаётся придержанной слоем крупных выдач
 	::free(block);
 	// Запоминаем отданное системе до просьбы
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::UNMAPPED);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::UNMAPPED);
 	// Просьба обязана остаться без последствий
-	EXPECT_EQ(awh::alloc::Allocator::purge(), static_cast <size_t> (0));
+	EXPECT_EQ(awh::alloc::allocator::purge(), static_cast <size_t> (0));
 	// Отданное системе обязано остаться прежним
-	EXPECT_EQ(awh::alloc::Allocator::property(awh::alloc::property_t::UNMAPPED), before);
+	EXPECT_EQ(awh::alloc::allocator::property(awh::alloc::property_t::UNMAPPED), before);
 	/**
 	 * Показываем, что запрет удержал НАСТОЯЩУЮ память, а не пустоту
 	 *
@@ -188,11 +188,11 @@ TEST_F(AllocFixture, NeverPurgeIsStrongerThanRequest){
 	// Задаём отдачу по просьбе приложения
 	options.purgeMode = awh::alloc::purge_t::MANUAL;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Просим отдать свободное системе
-	const size_t purged = awh::alloc::Allocator::purge();
+	const size_t purged = awh::alloc::allocator::purge();
 	// Отдача обязана состояться: иначе запрету нечего было бы удерживать
-	EXPECT_TRUE((purged > 0) || (awh::alloc::Allocator::property(awh::alloc::property_t::UNMAPPED) > before))
+	EXPECT_TRUE((purged > 0) || (awh::alloc::allocator::property(awh::alloc::property_t::UNMAPPED) > before))
 	 << "по разрешению не ушло ничего: запрет удерживал пустоту, и проверка его не доказывает";
 }
 /**
@@ -201,11 +201,11 @@ TEST_F(AllocFixture, NeverPurgeIsStrongerThanRequest){
  */
 TEST_F(AllocFixture, CacheCeilingHolds){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём потолок поток-локальных кэшей
 	options.cacheLimit = (64u * 1024u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Набираем и освобождаем память мелкими блоками: их и держат кэши
 	::churn(20000, 64);
 	/**
@@ -214,7 +214,7 @@ TEST_F(AllocFixture, CacheCeilingHolds){
 	 * Потолок этот - на кэш ПОТОКА, а не на процесс: потоков в наборе больше одного,
 	 * и требовать от суммы всех кэшей потолка одного было бы неверно
 	 */
-	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::CACHED), (options.cacheLimit * 8));
+	EXPECT_LE(awh::alloc::allocator::property(awh::alloc::property_t::CACHED), (options.cacheLimit * 8));
 }
 /**
  * @brief Тест отклика упора в потолок кучи
@@ -223,7 +223,7 @@ TEST_F(AllocFixture, CacheCeilingHolds){
  *          пустоты от `malloc`: тот приходит с числом взятого, и по нему приложение
  *          вправе освободить своё прежде, чем выдача откажет
  *
- * @note Проверка мерялась покрытием: `Allocator::onLimit` не звался набором НИ РАЗУ.
+ * @note Проверка мерялась покрытием: `allocator::onLimit` не звался набором НИ РАЗУ.
  *       Сам потолок поверялся отказом выдачи, а доклад о нём - нет
  *
  * @warning Потолок задаётся ОТ УЖЕ ВЗЯТОГО, а не числом из головы: потолок ниже взятого
@@ -242,20 +242,20 @@ TEST_F(AllocFixture, HeapLimitCallbackIsCalled){
 	// Взятое у системы, доложенное откликом
 	size_t announced = 0;
 	// Ставим отклик упора в потолок кучи
-	awh::alloc::Allocator::onLimit([&reported, &announced](const size_t taken) noexcept -> void {
+	awh::alloc::allocator::onLimit([&reported, &announced](const size_t taken) noexcept -> void {
 		// Считаем доклад об упоре в потолок
 		reported++;
 		// Запоминаем доложенное взятое у системы
 		announced = taken;
 	});
 	// Запоминаем взятое у системы до потолка
-	const size_t taken = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t taken = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём потолок кучи с запасом сверх уже взятого
 	options.heapLimit = (taken + ROOM);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Удерживаемые блоки прощупывания
 	std::vector <void *> probes;
 	// Число отказов выдачи
@@ -299,7 +299,7 @@ TEST_F(AllocFixture, HeapLimitCallbackIsCalled){
 	 * Отклик держит ссылки на местные переменные, а утверждение вправе прервать проверку:
 	 * оставленный отклик пережил бы их и сработал бы на памяти, какой уже нет
 	 */
-	awh::alloc::Allocator::onLimit(nullptr);
+	awh::alloc::allocator::onLimit(nullptr);
 	/**
 	 * Освобождаем блоки прощупывания
 	 */
@@ -331,26 +331,26 @@ TEST_F(AllocFixture, HeapLimitCallbackIsCalled){
  */
 TEST_F(AllocFixture, ZeroCacheLimitRestoresDiscretion){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём тесный потолок поток-локальных кэшей
 	options.cacheLimit = (64u * 1024u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Набираем и освобождаем память мелкими блоками: их и держат кэши
 	::churn(20000, 64);
 	// Запоминаем лежащее в кэшах при тесном потолке
-	const size_t tight = awh::alloc::Allocator::property(awh::alloc::property_t::CACHED);
+	const size_t tight = awh::alloc::allocator::property(awh::alloc::property_t::CACHED);
 	/**
 	 * Возвращаем усмотрение модуля нулём
 	 */
 	// Возвращаем потолок на усмотрение модуля
 	options.cacheLimit = 0;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Набираем и освобождаем память той же самой нагрузкой
 	::churn(20000, 64);
 	// Запоминаем лежащее в кэшах при усмотрении модуля
-	const size_t loose = awh::alloc::Allocator::property(awh::alloc::property_t::CACHED);
+	const size_t loose = awh::alloc::allocator::property(awh::alloc::property_t::CACHED);
 	/**
 	 * Усмотрение модуля обязано быть ШИРЕ тесного потолка
 	 *
@@ -411,11 +411,11 @@ TEST_F(AllocFixture, LimitsChangeWhileThreadsWork){
 		 */
 		while(running.load(std::memory_order_relaxed)){
 			// Получаем действующие настройки
-			awh::alloc::options_t options = awh::alloc::Allocator::options();
+			awh::alloc::options_t options = awh::alloc::allocator::options();
 			// Задаём потолок поток-локальных кэшей
 			options.cacheLimit = (tight ? TIGHT : LOOSE);
 			// Применяем настройки
-			awh::alloc::Allocator::options(options);
+			awh::alloc::allocator::options(options);
 			// Переходим к другому потолку
 			tight = !tight;
 		}
@@ -478,11 +478,11 @@ TEST_F(AllocFixture, LimitsChangeWhileThreadsWork){
 	 * Потолок обязан действовать и ПОСЛЕ правки на ходу
 	 */
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём тесный потолок поток-локальных кэшей
 	options.cacheLimit = TIGHT;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Набираем и освобождаем память мелкими блоками: их и держат кэши
 	::churn(20000, 64);
 	/**
@@ -491,7 +491,7 @@ TEST_F(AllocFixture, LimitsChangeWhileThreadsWork){
 	 * Потолок этот - на кэш ПОТОКА, а не на процесс: потоков в наборе больше одного,
 	 * и требовать от суммы всех кэшей потолка одного было бы неверно
 	 */
-	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::CACHED), (TIGHT * 16u))
+	EXPECT_LE(awh::alloc::allocator::property(awh::alloc::property_t::CACHED), (TIGHT * 16u))
 	 << "после правки на ходу потолок кэшей не действует";
 }
 /**
@@ -515,11 +515,11 @@ TEST_F(AllocFixture, PropertiesAreConsistent){
 	// Записываем начало блока
 	::memset(block, 0x11, 64);
 	// Занятое прикладным кодом обязано быть не меньше выданного
-	EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED), static_cast <size_t> (1u << 20));
+	EXPECT_GE(awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED), static_cast <size_t> (1u << 20));
 	// Наибольшее занятое обязано быть не меньше занятого прямо сейчас
-	EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::PEAK), awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED));
+	EXPECT_GE(awh::alloc::allocator::property(awh::alloc::property_t::PEAK), awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED));
 	// Взятое у системы обязано покрывать занятое прикладным кодом
-	EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED));
+	EXPECT_GE(awh::alloc::allocator::property(awh::alloc::property_t::HEAP), awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED));
 	// Освобождаем блок
 	::free(block);
 }
@@ -541,11 +541,11 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 	 * Возвращённые разрядами области вправе обслужить выдачу сверх разрядов без роста
 	 * кучи: без отдачи запас прошлых проверок откладывал бы упор в потолок
 	 */
-	awh::alloc::Allocator::purge();
+	awh::alloc::allocator::purge();
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Запоминаем взятое у системы прямо сейчас
-	const size_t taken = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t taken = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	/**
 	 * Задаём потолок с небольшим запасом над взятым
 	 *
@@ -554,7 +554,7 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 	 */
 	options.heapLimit = (taken + (2u * 1024u * 1024u));
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выданные блоки
 	std::vector <void *> alive;
 	// Признак состоявшегося отказа
@@ -597,7 +597,7 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 	 * заказанный запас с точностью до куска кучи
 	 */
 	// Определяем взятое у системы после упора в потолок
-	const size_t after = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	const size_t after = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 	// Прирост обязан уложиться в заказанный запас с точностью до куска кучи
 	EXPECT_LE((after - taken), ((2u * 1024u * 1024u) + (4u * 1024u * 1024u)));
 	/**
@@ -609,7 +609,7 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 	 */
 	options.heapLimit = 0;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	/**
 	 * Со снятым потолком выдача обязана вновь состояться
 	 *
@@ -628,7 +628,7 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
 		// Блок обязан быть пригоден к записи целиком
 		::memset(revived, 0x5A, (256u * 1024u));
 		// Разбор адреса обязан признать блок нашим
-		EXPECT_GE(awh::alloc::Allocator::resolve(revived).size, static_cast <size_t> (256u * 1024u));
+		EXPECT_GE(awh::alloc::allocator::resolve(revived).size, static_cast <size_t> (256u * 1024u));
 		// Освобождаем выданное
 		::free(revived);
 	}
@@ -655,17 +655,17 @@ TEST_F(AllocFixture, HeapCeilingRefusesBeyondLimit){
  */
 TEST_F(AllocFixture, LargeAllocationIsReported){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём порог доклада о крупной выдаче
 	options.reportLarge = (512u * 1024u);
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Число докладов о крупной выдаче
 	std::atomic <size_t> reported(0);
 	// Наибольший доложенный размер
 	std::atomic <size_t> largest(0);
 	// Ставим отклик на крупную выдачу
-	awh::alloc::Allocator::onLarge([&reported, &largest](const void * ptr, const size_t size) noexcept {
+	awh::alloc::allocator::onLarge([&reported, &largest](const void * ptr, const size_t size) noexcept {
 		// Адрес доложенного блока здесь не нужен
 		static_cast <void> (ptr);
 		// Считаем доклад
@@ -698,7 +698,7 @@ TEST_F(AllocFixture, LargeAllocationIsReported){
 	 * Снятый позже, он успел бы поймать выдачу, случившуюся между освобождением и
 	 * снятием, - и смотрел бы на переменные, уходящие вместе с проверкой
 	 */
-	awh::alloc::Allocator::onLarge(nullptr);
+	awh::alloc::allocator::onLarge(nullptr);
 	// Освобождаем блок
 	::free(block);
 }
@@ -715,11 +715,11 @@ TEST_F(AllocFixture, LargeAllocationIsReported){
  */
 TEST_F(AllocFixture, SuperpagesRequestKeepsAllocationWorking){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Просим у системы крупные страницы
 	options.hugePages = true;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выданные блоки
 	std::vector <void *> alive;
 	/**
@@ -733,7 +733,7 @@ TEST_F(AllocFixture, SuperpagesRequestKeepsAllocationWorking){
 		// Записываем блок целиком: страницы обязаны быть настоящими
 		::memset(block, 0x6B, size);
 		// Блок обязан быть узнан нашим
-		EXPECT_GE(awh::alloc::Allocator::resolve(block).size, size);
+		EXPECT_GE(awh::alloc::allocator::resolve(block).size, size);
 		// Запоминаем выданный блок
 		alive.push_back(block);
 	}
@@ -746,7 +746,7 @@ TEST_F(AllocFixture, SuperpagesRequestKeepsAllocationWorking){
 	// Снимаем просьбу о крупных страницах
 	options.hugePages = false;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 }
 
 
@@ -777,7 +777,7 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 		GTEST_SKIP() << "учёт расхода снят сборкой: AWH_ALLOC_NO_ACCOUNTING";
 	#endif
 	// Запоминаем занятое прикладным кодом до выдачи
-	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	const size_t before = awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED);
 	// Выданные блоки
 	std::vector <void *> alive;
 	/**
@@ -795,7 +795,7 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 		}
 	}
 	// Занятое обязано вырасти
-	EXPECT_GT(awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED), before);
+	EXPECT_GT(awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED), before);
 	/**
 	 * Перебираем выданные блоки
 	 */
@@ -809,7 +809,7 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 	 * освобождённое. Запас берётся заведомо меньше выданного - без правки расхождение
 	 * составляло мегабайты
 	 */
-	const size_t after = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	const size_t after = awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED);
 	// Разница обязана уложиться в запас
 	EXPECT_LE(((after > before) ? (after - before) : (before - after)), static_cast <size_t> (256u * 1024u));
 	/**
@@ -822,11 +822,11 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 	 */
 	{
 		// Получаем действующие настройки
-		awh::alloc::options_t options = awh::alloc::Allocator::options();
+		awh::alloc::options_t options = awh::alloc::allocator::options();
 		// Задаём потолок с небольшим запасом над взятым
-		options.heapLimit = (awh::alloc::Allocator::property(awh::alloc::property_t::HEAP) + (2u * 1024u * 1024u));
+		options.heapLimit = (awh::alloc::allocator::property(awh::alloc::property_t::HEAP) + (2u * 1024u * 1024u));
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Выданные под потолком блоки
 		std::vector <void *> jammed;
 		/**
@@ -851,7 +851,7 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 		// Снимаем потолок
 		options.heapLimit = 0;
 		// Применяем настройки
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		// Выдаём блок после всего
 		void * last = ::malloc(64u * 1024u);
 		// Выдача обязана состояться
@@ -862,7 +862,7 @@ TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
 		 * Нуль здесь означает счёт, ушедший в минус: живой блок есть, а расход
 		 * докладывается пустым
 		 */
-		EXPECT_GT(awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED), static_cast <size_t> (0));
+		EXPECT_GT(awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED), static_cast <size_t> (0));
 		// Освобождаем блок
 		::free(last);
 	}
@@ -892,7 +892,7 @@ TEST_F(AllocFixture, HeapReportMatchesSourceAccounting){
 		GTEST_SKIP() << "захват под санитайзером не состоится";
 	#else
 		// Получаем действующий источник страниц
-		awh::alloc::source_t * source = awh::alloc::Allocator::source();
+		awh::alloc::source_t * source = awh::alloc::allocator::source();
 		// Источник обязан быть заведён
 		ASSERT_NE(source, nullptr);
 		// Выданные блоки
@@ -912,7 +912,7 @@ TEST_F(AllocFixture, HeapReportMatchesSourceAccounting){
 				alive.push_back(block);
 		}
 		// Определяем взятое у системы по докладу
-		const size_t reported = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+		const size_t reported = awh::alloc::allocator::property(awh::alloc::property_t::HEAP);
 		// Определяем взятое у системы по счёту источника
 		const size_t taken = reinterpret_cast <awh::alloc::SystemSource *> (source)->taken();
 		// Доклад обязан сходиться со счётом источника точно
@@ -1897,7 +1897,7 @@ TEST_F(AllocFixture, YieldRequestIsHonouredOnFree){
 			// Уступаем время
 			std::this_thread::yield();
 		// Запоминаем лежащее в кэшах до исполнения просьбы
-		before.store(awh::alloc::Allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
+		before.store(awh::alloc::allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
 		/**
 		 * Освобождаем удерживаемые блоки, НИЧЕГО не выдавая
 		 */
@@ -1905,7 +1905,7 @@ TEST_F(AllocFixture, YieldRequestIsHonouredOnFree){
 			// Освобождаем удерживаемый блок
 			::free(block);
 		// Запоминаем лежащее в кэшах после исполнения просьбы
-		after.store(awh::alloc::Allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
+		after.store(awh::alloc::allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
 		// Отмечаем работу оконченной
 		done.store(true, std::memory_order_release);
 	});
@@ -1916,7 +1916,7 @@ TEST_F(AllocFixture, YieldRequestIsHonouredOnFree){
 		// Уступаем время
 		std::this_thread::yield();
 	// Ставим просьбу опустошиться всем чужим кэшам
-	awh::alloc::Allocator::purge();
+	awh::alloc::allocator::purge();
 	// Отмечаем просьбу поставленной
 	asked.store(true, std::memory_order_release);
 	// Дожидаемся работника
@@ -2096,7 +2096,7 @@ TEST_F(AllocFixture, CacheWorksAfterPurge){
 			// Возвращаем блок
 			::free(batch[i]);
 		// Запоминаем лежащее в кэшах
-		cached.store(awh::alloc::Allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
+		cached.store(awh::alloc::allocator::property(awh::alloc::property_t::CACHED), std::memory_order_relaxed);
 	});
 	/**
 	 * Дожидаемся набитого кэша работника
@@ -2105,7 +2105,7 @@ TEST_F(AllocFixture, CacheWorksAfterPurge){
 		// Уступаем время
 		std::this_thread::yield();
 	// Отдаём память системе: кэшу работника ставится просьба
-	awh::alloc::Allocator::purge();
+	awh::alloc::allocator::purge();
 	// Отмечаем просьбу поставленной
 	asked.store(true, std::memory_order_release);
 	// Дожидаемся работника
@@ -2167,7 +2167,7 @@ TEST(AllocSourceTest, CeilingHoldsWithUnalignedLimit){
  */
 TEST_F(AllocFixture, StartupOnlySettingsAreNotOverwritten){
 	// Снимаем действующие настройки
-	const awh::alloc::options_t before = awh::alloc::Allocator::options();
+	const awh::alloc::options_t before = awh::alloc::allocator::options();
 	// Собираем настройки, где все три задаются заново
 	awh::alloc::options_t options = before;
 	// Задаём иной размер занимаемой области
@@ -2177,9 +2177,9 @@ TEST_F(AllocFixture, StartupOnlySettingsAreNotOverwritten){
 	// Задаём иную границу разрядов
 	options.classLimit = ((before.classLimit > 0) ? (before.classLimit / 2u) : (64u * 1024u));
 	// Применяем настройки на ходу
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Снимаем настройки заново
-	const awh::alloc::options_t after = awh::alloc::Allocator::options();
+	const awh::alloc::options_t after = awh::alloc::allocator::options();
 	// Все три обязаны остаться прежними
 	EXPECT_EQ(after.arena, before.arena);
 	EXPECT_EQ(after.confined, before.confined);

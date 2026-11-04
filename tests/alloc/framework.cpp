@@ -71,13 +71,13 @@ TEST(FrameworkFixture, ConstructorSeizesAllocator){
 			// Заводим модуль ядра: захват обязан состояться его заведением
 			awh::fmk::initialize();
 			// Утверждаем состоявшийся захват
-			ASSERT_TRUE(awh::alloc::Allocator::captured())
+			ASSERT_TRUE(awh::alloc::allocator::captured())
 			 << "заведение модуля ядра не завело распределитель";
 			// Берём память средствами языка
 			void * block = ::malloc(4096);
 			ASSERT_NE(block, nullptr);
 			// Утверждаем, что выдача пришла от нас
-			const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+			const awh::alloc::region_t region = awh::alloc::allocator::resolve(block);
 			ASSERT_NE(region.origin, awh::alloc::origin_t::UNKNOWN)
 			 << "выдача памяти прошла мимо распределителя";
 			// Возвращаем взятую память

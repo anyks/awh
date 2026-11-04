@@ -1466,7 +1466,7 @@ namespace {
 		 */
 		void seize() noexcept {
 			// Заводим захват выдачи памяти процесса, оставив настройки как есть
-			alloc::allocator_t::capture(alloc::allocator_t::options());
+			alloc::allocator::capture(alloc::allocator::options());
 		}
 	#endif
 	/**

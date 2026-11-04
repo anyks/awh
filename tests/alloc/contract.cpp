@@ -206,17 +206,17 @@ TEST(AllocContractTest, ResolveKnowsOwnBlocks){
 	 * нулём - иначе распределитель врёт о принадлежности чужой памяти
 	 */
 	#if AWH_ALLOC_SANITIZED
-		EXPECT_EQ(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (0));
+		EXPECT_EQ(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (0));
 	#else
-		EXPECT_GE(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (1000));
+		EXPECT_GE(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (1000));
 	#endif
 	// Освобождаем выданное
 	::free(block);
 	// Место на стеке распределителю не принадлежит
 	const uint64_t anchor = 0;
-	EXPECT_EQ(awh::alloc::Allocator::resolve(&anchor).size, static_cast <size_t> (0));
+	EXPECT_EQ(awh::alloc::allocator::resolve(&anchor).size, static_cast <size_t> (0));
 	// Пустой указатель разбирается нулём
-	EXPECT_EQ(awh::alloc::Allocator::resolve(nullptr).size, static_cast <size_t> (0));
+	EXPECT_EQ(awh::alloc::allocator::resolve(nullptr).size, static_cast <size_t> (0));
 }
 /**
  * @brief Тест сплошного покрытия размеров разрядами
@@ -258,7 +258,7 @@ TEST(AllocContractTest, EverySizeIsServedByAClass){
 		// Выдача обязана состояться
 		ASSERT_NE(block, nullptr) << "выдача отказала на размере " << size;
 		// Определяем размер выданного блока
-		const size_t served = awh::alloc::Allocator::resolve(block).size;
+		const size_t served = awh::alloc::allocator::resolve(block).size;
 		// Выданный блок обязан вмещать запрошенное
 		ASSERT_GE(served, size) << "блок мельче запроса на размере " << size;
 		/**
@@ -462,17 +462,17 @@ TEST(ContractFixture, DirectSlotAgreesWithKey){
  */
 TEST_F(AllocFixture, ZeroFillCoversEveryAllocationPath){
 	// Если распределитель захвата не производил
-	if(!awh::alloc::Allocator::captured())
+	if(!awh::alloc::allocator::captured())
 		// Пропускаем проверку: захват под санитайзером не состоится
 		GTEST_SKIP() << "захват под санитайзером не состоится";
 	// Размер блока-источника и блока-приёмника
 	static constexpr size_t SMALL = 64, BIG = 512;
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Просим обнулять выдаваемое
 	options.fill = awh::alloc::fill_t::ZERO;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	/**
 	 * Метод пачканья разряда заданным образцом
 	 */

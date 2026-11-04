@@ -357,12 +357,12 @@ TEST(AllocVesselTest, PromptRefusesWithoutTerminal){
 	// Заводим приёмник под приём пароля
 	ASSERT_TRUE(vessel.reserve(128));
 	// Спрашиваем наличие терминала
-	const bool terminal = awh::alloc::prompt_t::available();
+	const bool terminal = awh::alloc::prompt::available();
 	// Если терминала у прогона нет
 	if(!terminal){
 		// Приём пароля обязан отвечать отсутствием терминала
-		EXPECT_EQ(awh::alloc::prompt_t::read(vessel, nullptr),
-		 awh::alloc::prompt_t::result_t::NOTERM);
+		EXPECT_EQ(awh::alloc::prompt::read(vessel, nullptr),
+		 awh::alloc::prompt::result_t::NOTERM);
 		// Приёмник при отказе остаться заведённым обязан
 		EXPECT_TRUE(vessel.exists());
 		// Содержимого в приёмнике появиться не должно
@@ -388,8 +388,8 @@ TEST(AllocVesselTest, PromptRefusesUnpreparedVessel){
 	 * Ёмкость приёмника и есть верхняя граница набора, и объявляет её зовущий: приём,
 	 * заводящий область сам, растил бы её по ходу набора - то есть перевыделял
 	 */
-	EXPECT_EQ(awh::alloc::prompt_t::read(vessel, nullptr),
-	 awh::alloc::prompt_t::result_t::FAILED);
+	EXPECT_EQ(awh::alloc::prompt::read(vessel, nullptr),
+	 awh::alloc::prompt::result_t::FAILED);
 }
 /**
  * @brief Проверка счёта раскрытий из двух потоков разом
@@ -416,13 +416,13 @@ TEST(AllocVesselTest, RevealCountSurvivesTwoThreadsAtOnce){
 	// Сведения о состоявшейся защите
 	awh::alloc::shelter_t shelter;
 	// Выдаём защищённый блок
-	void * block = awh::alloc::Allocator::secure(4096, &shelter);
+	void * block = awh::alloc::allocator::secure(4096, &shelter);
 	// Блок обязан быть выдан
 	ASSERT_NE(block, nullptr);
 	// Закрываем защищённый блок
-	if(!awh::alloc::Allocator::shield(block, false)){
+	if(!awh::alloc::allocator::shield(block, false)){
 		// Освобождаем защищённый блок
-		awh::alloc::Allocator::release(block);
+		awh::alloc::allocator::release(block);
 		// Смены доступности источник не умеет, стеречь нечего
 		GTEST_SKIP() << "Источник страниц смены доступности не умеет";
 	}
@@ -448,7 +448,7 @@ TEST(AllocVesselTest, RevealCountSurvivesTwoThreadsAtOnce){
 		 */
 		for(int32_t i = 0; i < 2048; i++){
 			// Открываем защищённый блок
-			if(!awh::alloc::Allocator::shield(block, true))
+			if(!awh::alloc::allocator::shield(block, true))
 				// Переходим к следующему обращению
 				continue;
 			/**
@@ -461,7 +461,7 @@ TEST(AllocVesselTest, RevealCountSurvivesTwoThreadsAtOnce){
 			// Считаем обращение, прошедшее по доступной памяти
 			served.fetch_add(1, std::memory_order_relaxed);
 			// Закрываем защищённый блок
-			static_cast <void> (awh::alloc::Allocator::shield(block, false));
+			static_cast <void> (awh::alloc::allocator::shield(block, false));
 		}
 	};
 	// Заводим первый поток
@@ -483,9 +483,9 @@ TEST(AllocVesselTest, RevealCountSurvivesTwoThreadsAtOnce){
 	// Все обращения обоих потоков обязаны были пройти
 	EXPECT_EQ(served.load(std::memory_order_relaxed), 4096);
 	// Открываем блок перед освобождением
-	static_cast <void> (awh::alloc::Allocator::shield(block, true));
+	static_cast <void> (awh::alloc::allocator::shield(block, true));
 	// Освобождаем защищённый блок
-	awh::alloc::Allocator::release(block);
+	awh::alloc::allocator::release(block);
 }
 /**
  * @brief Проверка смены доступности защищённого блока
@@ -495,7 +495,7 @@ TEST(AllocVesselTest, ProtectedBlockChangesItsAccessibility){
 	// Сведения о состоявшейся защите
 	awh::alloc::shelter_t shelter;
 	// Выдаём защищённый блок
-	void * block = awh::alloc::Allocator::secure(4096, &shelter);
+	void * block = awh::alloc::allocator::secure(4096, &shelter);
 	// Блок обязан быть выдан
 	ASSERT_NE(block, nullptr);
 	/**
@@ -506,13 +506,13 @@ TEST(AllocVesselTest, ProtectedBlockChangesItsAccessibility){
 	 * умеющий обязан уметь и открыть, и закрыть
 	 */
 	// Закрываем защищённый блок
-	const bool closed = awh::alloc::Allocator::shield(block, false);
+	const bool closed = awh::alloc::allocator::shield(block, false);
 	// Если блок закрыт
 	if(closed){
 		// Повторное закрытие закрытого блока обязано проходить без беды
-		EXPECT_TRUE(awh::alloc::Allocator::shield(block, false));
+		EXPECT_TRUE(awh::alloc::allocator::shield(block, false));
 		// Открываем защищённый блок обратно
-		EXPECT_TRUE(awh::alloc::Allocator::shield(block, true));
+		EXPECT_TRUE(awh::alloc::allocator::shield(block, true));
 		/**
 		 * Содержимое открытого блока обязано быть доступно
 		 *
@@ -524,9 +524,9 @@ TEST(AllocVesselTest, ProtectedBlockChangesItsAccessibility){
 		EXPECT_EQ(reinterpret_cast <uint8_t *> (block)[0], static_cast <uint8_t> (0x7E));
 	}
 	// Смена доступности чужого адреса обязана отвечать отказом
-	EXPECT_FALSE(awh::alloc::Allocator::shield(nullptr, true));
+	EXPECT_FALSE(awh::alloc::allocator::shield(nullptr, true));
 	// Открываем блок перед освобождением
-	static_cast <void> (awh::alloc::Allocator::shield(block, true));
+	static_cast <void> (awh::alloc::allocator::shield(block, true));
 	// Освобождаем защищённый блок
-	awh::alloc::Allocator::release(block);
+	awh::alloc::allocator::release(block);
 }

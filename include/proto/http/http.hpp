@@ -46,7 +46,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -61,7 +60,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -83,7 +81,6 @@ namespace awh {
 			REQUEST  = 0x01, // Запрос клиента
 			RESPONSE = 0x02  // Ответ сервера
 		};
-
 		/**
 		 * \~russian
 		 * @brief Версии HTTP-протоколов
@@ -102,7 +99,6 @@ namespace awh {
 			HTTP4   = 0x05, // Версия протокола HTTP/4
 			HTTP5   = 0x06  // Версия протокола HTTP/5
 		};
-
 		/**
 		 * \~russian
 		 * @brief Версии HTTP-протоколов соответствия
@@ -125,7 +121,6 @@ namespace awh {
 			WEBSOCKET2 = 0x09, // Протокол принадлежит Websocket over HTTP/2
 			WEBSOCKET3 = 0x0A  // Протокол принадлежит Websocket over HTTP/3
 		};
-
 		/**
 		 * \~russian
 		 * @brief Распознанный HTTP-метод
@@ -138,6 +133,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Recognized HTTP method
+		 *
 		 * @details Besides the main methods of HTTP/1.1 the WebDAV methods (RFC 4918)
 		 *          and a number of the extensions (RFC 5789, UPnP, ICAL and others) are recognized. Any unrecognized but
 		 *          syntactically correct method gives UNKNOWN, while the original
@@ -150,7 +146,13 @@ namespace awh {
 			// Метод не установлен
 			NONE = 0x00,
 			/**
-			 * Основные (RFC 7231) + PATCH (RFC 5789)
+			 * \~russian
+			 * @brief Основные (RFC 7231) + PATCH (RFC 5789)
+			 *
+			 * \~english
+			 * @brief Main (RFC 7231) + PATCH (RFC 5789)
+			 *
+			 * \~
 			 */
 			GET     = 0x01, // Метод GET (RFC 7231)
 			PUT     = 0x02, // Метод PUT (RFC 7231)
@@ -162,7 +164,13 @@ namespace awh {
 			OPTIONS = 0x08, // Метод OPTIONS (RFC 7231)
 			CONNECT = 0x09, // Метод CONNECT (RFC 7231)
 			/**
-			 * WebDAV (RFC 4918) и расширения версионирования (RFC 3253)
+			 * \~russian
+			 * @brief WebDAV (RFC 4918) и расширения версионирования (RFC 3253)
+			 *
+			 * \~english
+			 * @brief WebDAV (RFC 4918) and the extensions of the versioning (RFC 3253)
+			 *
+			 * \~
 			 */
 			ACL        = 0x0A, // Метод ACL (WebDAV)
 			COPY       = 0x0B, // Метод COPY (WebDAV)
@@ -181,7 +189,13 @@ namespace awh {
 			PROPPATCH  = 0x18, // Метод PROPPATCH (WebDAV)
 			MKACTIVITY = 0x19, // Метод MKACTIVITY (WebDAV)
 			/**
-			 * Прочие распространённые расширения
+			 * \~russian
+			 * @brief Прочие распространённые расширения
+			 *
+			 * \~english
+			 * @brief Other common extensions
+			 *
+			 * \~
 			 */
 			PRI         = 0x1A, // Метод PRI (HTTP/2)
 			LINK        = 0x1B, // Метод LINK (RFC 2068)
@@ -194,7 +208,13 @@ namespace awh {
 			MKCALENDAR  = 0x22, // Метод MKCALENDAR (RFC 4791)
 			UNSUBSCRIBE = 0x23, // Метод UNSUBSCRIBE (UPnP)
 			/**
-			 * Нераспознанные методы
+			 * \~russian
+			 * @brief Нераспознанные методы
+			 *
+			 * \~english
+			 * @brief Unrecognized methods
+			 *
+			 * \~
 			 */
 			UNKNOWN = 0x24  // Синтаксически корректный, но нераспознанный метод (оригинал в request_t::methodName)
 		};

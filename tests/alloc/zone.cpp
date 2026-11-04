@@ -158,7 +158,7 @@ TEST(AllocZoneTest, BlockIsClaimedWithRightSize){
 	// Тот же размер обязан доложить и обход зон
 	EXPECT_EQ(::malloc_size(block), (* zone->size)(zone, block));
 	// Блок обязан оставаться нашим по разбору адреса
-	EXPECT_GE(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (1024));
+	EXPECT_GE(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (1024));
 	// Освобождаем выданное
 	::free(block);
 }
@@ -180,7 +180,7 @@ TEST(AllocZoneTest, ZoneServesAllocation){
 	// Выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Выданное обязано принадлежать нашему распределителю
-	EXPECT_GE(awh::alloc::Allocator::resolve(block).size, static_cast <size_t> (300));
+	EXPECT_GE(awh::alloc::allocator::resolve(block).size, static_cast <size_t> (300));
 	// Заполняем выданное содержимым
 	::memset(block, 0x7E, 300);
 	// Перевыдаём блок самой зоной
@@ -327,7 +327,7 @@ TEST(AllocZoneTest, ZoneServesBatch){
 		// Блок обязан быть выдан
 		ASSERT_NE(blocks[i], nullptr);
 		// Блок обязан принадлежать нашему распределителю
-		EXPECT_GE(awh::alloc::Allocator::resolve(blocks[i]).size, static_cast <size_t> (128));
+		EXPECT_GE(awh::alloc::allocator::resolve(blocks[i]).size, static_cast <size_t> (128));
 	}
 	// Освобождаем память пачкой
 	::malloc_zone_batch_free(zone, blocks, served);
@@ -544,7 +544,7 @@ TEST(AllocZoneTest, ForeignBlockIsFreedWithoutRecursion){
 	// Чужая зона обязана выдать блок
 	ASSERT_NE(block, nullptr) << "чужая зона не выдала блока";
 	// Блок обязан быть нам чужим, иначе проверка мерит не то
-	ASSERT_EQ(awh::alloc::Allocator::resolve(block).origin, awh::alloc::origin_t::FOREIGN)
+	ASSERT_EQ(awh::alloc::allocator::resolve(block).origin, awh::alloc::origin_t::FOREIGN)
 	 << "блок чужой зоны признан нашим: проверка мерит не то";
 	/**
 	 * Освобождаем блок обычным именем
@@ -597,7 +597,7 @@ TEST(AllocZoneTest, ZoneOutlivesRelease){
 	// Если это потомок
 	if(pid == 0){
 		// Снимаем захват выдачи памяти процесса
-		awh::alloc::Allocator::surrender();
+		awh::alloc::allocator::surrender();
 		/**
 		 * Отвечаем родителю присутствием зоны в перечне
 		 *

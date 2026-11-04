@@ -45,7 +45,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -60,7 +59,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -89,14 +87,16 @@ namespace awh {
 				 * @brief Метод клонирования объекта провайдера
 				 *
 				 * @details Обеспечивает корректное копирование производного объекта (Request/Response)
-				 *          через указатель на базовый класс без срезки (object slicing)
+				 *          через указатель на базовый класс без срезки (object slicing).
 				 *
 				 * @return копия объекта провайдера
 				 *
 				 * \~english
 				 * @brief Method of cloning the object of the provider
+				 *
 				 * @details Ensures a correct copying of a derived object (Request/Response)
-				 *          through a pointer to the base class without a slicing (object slicing)
+				 *          through a pointer to the base class without a slicing (object slicing).
+				 *
 				 * @return copy of the object of the provider
 				 *
 				 * \~
@@ -111,6 +111,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param direct direction of the traffic (a request/an answer)
 				 *
 				 * \~
@@ -125,6 +126,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param direct  direction of the traffic (a request/an answer)
 				 * @param version version of the protocol
 				 *
@@ -135,7 +137,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
@@ -163,9 +164,17 @@ namespace awh {
 				// Оригинальное написание метода запроса (заполняется ТОЛЬКО для method_t::UNKNOWN - прозрачное проксирование экзотических методов)
 				string methodName;
 				/**
-				 * Протокол расширенного метода CONNECT (псевдо-заголовок [:protocol], RFC 8441).
-				 * Заполняется ТОЛЬКО для HTTP/2 и HTTP/3: именно так поверх CONNECT
-				 * поднимается WebSocket. Для остальных запросов остаётся пустым
+				 * \~russian
+				 * @brief Протокол расширенного метода CONNECT (псевдо-заголовок [:protocol], RFC 8441).
+				 *        Заполняется ТОЛЬКО для HTTP/2 и HTTP/3: именно так поверх CONNECT
+				 *        поднимается WebSocket. Для остальных запросов остаётся пустым
+				 *
+				 * \~english
+				 * @brief Protocol of an extended method CONNECT (a pseudo-header [:protocol], RFC 8441).
+				 *        It is filled ONLY for HTTP/2 and HTTP/3: it is this way that a WebSocket
+				 *        is raised on top of CONNECT. For the rest of the requests it stays empty
+				 *
+				 * \~
 				 */
 				string protocol;
 			public:
@@ -177,6 +186,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of cloning the object of the request
+				 *
 				 * @return copy of the object of the request
 				 *
 				 * \~
@@ -192,6 +202,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [=] of the moving of the parameters of a request of a client
+				 *
 				 * @param request object of the parameters of the request of the client
 				 * @return        current parameters of the request of the client
 				 *
@@ -207,6 +218,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [=] of the assignment of the parameters of a request of a client
+				 *
 				 * @param request object of the parameters of the request of the client
 				 * @return        current parameters of the request of the client
 				 *
@@ -223,6 +235,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [==] of a comparison
+				 *
 				 * @param request object of the parameters of the request of the client
 				 * @return        result of the comparison
 				 *
@@ -238,6 +251,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [!=] of a comparison
+				 *
 				 * @param request object of the parameters of the request of the client
 				 * @return        result of the comparison
 				 *
@@ -253,6 +267,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the moving
+				 *
 				 * @param request object of the parameters of the request of the client
 				 *
 				 * \~
@@ -266,6 +281,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the copying
+				 *
 				 * @param request object of the parameters of the request of the client
 				 *
 				 * \~
@@ -275,7 +291,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -291,6 +306,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param uri parameters of the URI request
 				 *
 				 * \~
@@ -304,6 +320,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param method method of the request of the client
 				 *
 				 * \~
@@ -317,6 +334,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 *
 				 * \~
@@ -331,6 +349,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param method method of the request of the client
 				 * @param uri    parameters of the URI request
 				 *
@@ -346,6 +365,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param uri     parameters of the URI request
 				 *
@@ -361,6 +381,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param method  method of the request of the client
 				 *
@@ -377,6 +398,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param method  method of the request of the client
 				 * @param uri     parameters of the URI request
@@ -388,7 +410,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
@@ -422,6 +443,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of cloning the object of the answer
+				 *
 				 * @return copy of the object of the answer
 				 *
 				 * \~
@@ -437,6 +459,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [=] of the moving of the parameters of an answer of a server
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 * @return         current parameters of the answer of the server
 				 *
@@ -452,6 +475,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [=] of the assignment of the parameters of an answer of a server
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 * @return         current parameters of the answer of the server
 				 *
@@ -468,6 +492,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [==] of a comparison
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 * @return         result of the comparison
 				 *
@@ -483,6 +508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator [!=] of a comparison
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 * @return         result of the comparison
 				 *
@@ -498,6 +524,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the moving
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 *
 				 * \~
@@ -511,6 +538,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor of the copying
+				 *
 				 * @param response object of the parameters of the answer of the server
 				 *
 				 * \~
@@ -520,7 +548,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -536,6 +563,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param code code of the answer of the server
 				 *
 				 * \~
@@ -549,6 +577,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param message message of the server
 				 *
 				 * \~
@@ -562,6 +591,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 *
 				 * \~
@@ -576,6 +606,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param code    code of the answer of the server
 				 * @param message message of the server
 				 *
@@ -591,6 +622,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param code    code of the answer of the server
 				 *
@@ -606,6 +638,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param message message of the server
 				 *
@@ -622,6 +655,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param version version of the protocol
 				 * @param code    code of the answer of the server
 				 * @param message message of the server
@@ -633,7 +667,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
@@ -657,10 +690,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the standard message of an HTTP answer by a code
+		 *
 		 * @details The table of the messages is stored as a local static constexpr table of the pointers to the string
 		 *          literals: the data is placed in .rodata, without the constructors at the start of the program and without
 		 *          the dynamic allocations. The function is marked inline, therefore in the whole program there exists
 		 *          a single copy of the table (without the inline variables requiring C++17).
+		 *
 		 * @param code code of the answer of the server
 		 * @return     standard message or an empty representation, if the code is unknown
 		 *
@@ -679,8 +714,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the classification of a method of a request by the value of the pseudo header [:method]
+		 *
 		 * @note Unlike HTTP/1.x the comparison is performed with the account of the case:
 		 *       the methods of HTTP are case-dependent tokens (RFC 9110 §9.1).
+		 *
 		 * @param method value of the pseudo header [:method]
 		 * @return       recognized method of the request or method_t::NONE
 		 *
@@ -696,6 +733,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the name of a method of a request for the pseudo header [:method]
+		 *
 		 * @param request provider of the request of the client
 		 * @return        name of the method of the request (for UNKNOWN - the original spelling of the method)
 		 *
@@ -722,6 +760,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of bringing the path of the target of a request to the form of the pseudo header [:path]
+		 *
 		 * @details The pseudo header of the path is never empty and is obliged to begin with '/'
 		 *          (RFC 9113 §8.3.1, RFC 9114 §4.3.1). The buffer is engaged only
 		 *          when the path requires a supplementation, that is in the rare case of a target of the form
@@ -730,6 +769,7 @@ namespace awh {
 		 *          The asterisk form of a target is issued without changes: by it the method OPTIONS
 		 *          addresses the server as a whole rather than its resource (RFC 9112 §3.2.4),
 		 *          and the pseudo header of the path in such a request is obliged to carry exactly it.
+		 *
 		 * @param path   path of the target of the request
 		 * @param buffer buffer for the supplemented path
 		 * @return       path suitable for the pseudo header
@@ -762,6 +802,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the target of a request given in the absolute form (RFC 9112 §3.2.2)
+		 *
 		 * @details The absolute form of a target is lawful in HTTP/1 and is obligatory in a request
 		 *          to a proxy, while the provider of a request is common for all the protocols. And the protocols
 		 *          working by the pseudo headers require a separated scheme,
@@ -772,6 +813,7 @@ namespace awh {
 		 *          without a path would go away inside the authority.
 		 *          The issued path may turn out to be empty or begin with the query
 		 *          string - to bring it to the form of the pseudo header is allowed by targetPath().
+		 *
 		 * @param target    target of the request
 		 * @param scheme    scheme of the target (a representation in target)
 		 * @param authority authority of the target (a representation in target)

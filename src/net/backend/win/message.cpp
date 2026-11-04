@@ -100,7 +100,7 @@ LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
  * @return      число принятых октетов, либо -1 при отказе
  *
  */
-int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg, const int32_t flags, int32_t * error) noexcept {
+int64_t awh::win::message::receive(const net::socket_t sock, msghdr_t * msg, const int32_t flags, int32_t * error) noexcept {
 	/**
 	 * Признак подсматривания расширенный вызов ПРИНИМАЕТ, прочих не принимает
 	 *
@@ -152,30 +152,30 @@ int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg
 		return -1;
 	}
 	// Набор буферов приёма в строе MS Windows
-	std::vector <WSABUF> buffers(msg->msg_iovlen);
+	std::vector <WSABUF> buffers(msg->iovecSize);
 	/**
 	 * Переносим набор буферов приёма
 	 */
-	for(size_t i = 0; i < msg->msg_iovlen; i++){
+	for(size_t i = 0; i < msg->iovecSize; i++){
 		// Устанавливаем начало буфера приёма
-		buffers[i].buf = reinterpret_cast <CHAR *> (msg->msg_iov[i].iov_base);
+		buffers[i].buf = reinterpret_cast <CHAR *> (msg->iovec[i].base);
 		// Устанавливаем размер буфера приёма
-		buffers[i].len = static_cast <ULONG> (msg->msg_iov[i].iov_len);
+		buffers[i].len = static_cast <ULONG> (msg->iovec[i].size);
 	}
 	// Описание принимаемого сообщения в строе MS Windows
 	WSAMSG message{};
 	// Устанавливаем адрес собеседника
-	message.name = reinterpret_cast <LPSOCKADDR> (msg->msg_name);
+	message.name = reinterpret_cast <LPSOCKADDR> (msg->name);
 	// Устанавливаем размер адреса собеседника
-	message.namelen = static_cast <INT> (msg->msg_namelen);
+	message.nameSize = static_cast <INT> (msg->nameSize);
 	// Устанавливаем набор буферов приёма
 	message.lpBuffers = buffers.data();
 	// Устанавливаем число буферов приёма
 	message.dwBufferCount = static_cast <ULONG> (buffers.size());
 	// Устанавливаем начало буфера служебных метаданных
-	message.Control.buf = reinterpret_cast <CHAR *> (msg->msg_control);
+	message.Control.buf = reinterpret_cast <CHAR *> (msg->control);
 	// Устанавливаем размер буфера служебных метаданных
-	message.Control.len = static_cast <ULONG> (msg->msg_controllen);
+	message.Control.len = static_cast <ULONG> (msg->controlSize);
 	/**
 	 * Устанавливаем признаки приёма
 	 *
@@ -194,11 +194,11 @@ int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg
 		return -1;
 	}
 	// Запоминаем размер принятого адреса собеседника
-	msg->msg_namelen = static_cast <socklen_t> (message.namelen);
+	msg->nameSize = static_cast <socklen_t> (message.nameSize);
 	// Запоминаем размер принятых служебных метаданных
-	msg->msg_controllen = static_cast <size_t> (message.Control.len);
+	msg->controlSize = static_cast <size_t> (message.Control.len);
 	// Запоминаем признаки принятого сообщения
-	msg->msg_flags = static_cast <int32_t> (message.dwFlags);
+	msg->flags = static_cast <int32_t> (message.dwFlags);
 	// Выводим число принятых октетов
 	return static_cast <int64_t> (received);
 }

@@ -88,7 +88,7 @@ static void origin(const alloc::holding_t & holding) noexcept {
 		 * Имени у статической функции может не быть вовсе - она не лежит в таблице имён
 		 * образа, - и тогда место называет одно лишь смещение от начала образа
 		 */
-		if(!alloc::Allocator::symbol(holding.frames[i], symbol)){
+		if(!alloc::allocator::symbol(holding.frames[i], symbol)){
 			// Печатаем неразобранный уровень
 			::printf("    #%zu %p\n", i, holding.frames[i]);
 			// Переходим к следующему уровню
@@ -183,7 +183,7 @@ int32_t main() noexcept {
 	 * ниже промолчат. Молчание это неотличимо от чистого прогона, и различить их можно
 	 * лишь здесь
 	 */
-	if(!alloc::Allocator::captured()){
+	if(!alloc::allocator::captured()){
 		// Записываем отказ захвата в журнал
 		log::print("Выдача памяти процесса не захвачена: средства разбора недоступны", log::flag_t::WARNING);
 		// Выводим успешный код выхода: это не дефект приложения
@@ -194,7 +194,7 @@ int32_t main() noexcept {
 	 */
 	{
 		// Берём действующие настройки, чтобы не затереть заданное прежде
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		/**
 		 * Удерживаем освобождённое карантином и засеваем его
 		 *
@@ -213,7 +213,7 @@ int32_t main() noexcept {
 		 */
 		options.profileRate = 1;
 		// Задаём требуемые настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 	}
 	/**
 	 * Совершаем запись по освобождённому указателю
@@ -274,7 +274,7 @@ int32_t main() noexcept {
 		// Смещение первой порчи от начала блока
 		size_t offset = 0;
 		// Опрашиваем число испорченных блоков
-		const size_t spoiled = alloc::Allocator::spoiled(&culprit, &offset);
+		const size_t spoiled = alloc::allocator::spoiled(&culprit, &offset);
 		// Печатаем заголовок свода
 		::printf("\nЗаписи по освобождённым блокам\n");
 		// Если испорченные блоки нашлись
@@ -299,7 +299,7 @@ int32_t main() noexcept {
 		 * Порядок обхода не обещан ничем, и полагаться на него нельзя: отбирает нужное
 		 * сам отклик - здесь по размеру блока
 		 */
-		const size_t held = alloc::Allocator::holdings([&printed](const alloc::holding_t & holding) noexcept -> bool {
+		const size_t held = alloc::allocator::holdings([&printed](const alloc::holding_t & holding) noexcept -> bool {
 			/**
 			 * Отбираем блоки крупнее тридцати двух килобайт
 			 *
@@ -329,11 +329,11 @@ int32_t main() noexcept {
 	 *          самому; обычный же порядок - не снимать его вовсе до конца процесса
 	 */
 	// Печатаем захваченность до снятия
-	::printf("\nЗахват выдачи памяти: %s\n", (alloc::Allocator::captured() ? "состоялся" : "снят"));
+	::printf("\nЗахват выдачи памяти: %s\n", (alloc::allocator::captured() ? "состоялся" : "снят"));
 	// Снимаем захват выдачи памяти процесса
-	alloc::Allocator::surrender();
+	alloc::allocator::surrender();
 	// Печатаем захваченность после снятия
-	::printf("Захват выдачи памяти: %s\n", (alloc::Allocator::captured() ? "состоялся" : "снят"));
+	::printf("Захват выдачи памяти: %s\n", (alloc::allocator::captured() ? "состоялся" : "снят"));
 	// Выводим успешный код выхода
 	return EXIT_SUCCESS;
 }

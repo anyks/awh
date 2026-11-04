@@ -34193,8 +34193,8 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 	 *
 	 */
 	awh::log::print("Soak alloc: live=%zu, heap=%zu", awh::log::flag_t::INFO,
-		awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED),
-		awh::alloc::Allocator::property(awh::alloc::property_t::HEAP));
+		awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED),
+		awh::alloc::allocator::property(awh::alloc::property_t::HEAP));
 }
 /**
  * Опыт исчерпания ведётся дочерним процессом с пределом `RLIMIT_NOFILE` -

@@ -835,19 +835,19 @@ namespace awh {
 			 * \~english
 			 * @brief A direct reading of a place of a thread, bypassing a call
 			 *
-			 *        A reading of a key by a call costs 1.502 nanoseconds, a direct address to a place
-			 *        of a thread - 0.351 (measured on this machine, 20 mln entries). But dearer than the
-			 *        difference itself costs a CALL as such: the live values have to be held in
-			 *        the saved registers, and a prologue of an issue saved EIGHT of them on every
-			 *        address - nine prologue commands and five epilogue ones for every issue.
+			 * @details A reading of a key by a call costs 1.502 nanoseconds, a direct address to a place
+			 *          of a thread - 0.351 (measured on this machine, 20 mln entries). But dearer than the
+			 *          difference itself costs a CALL as such: the live values have to be held in
+			 *          the saved registers, and a prologue of an issue saved EIGHT of them on every
+			 *          address - nine prologue commands and five epilogue ones for every issue.
 			 *
-			 *        The device of a place of a thread by macOS is not declared by a contract, and to rely on
-			 *        it blindly is impossible. Therefore it is CHECKED at a starting of a key: we lay
-			 *        a mark by an ordinary means, read by a direct address and compare. They diverged -
-			 *        a direct path is not started at all, and a reading goes by a call, as it went.
+			 *          The device of a place of a thread by macOS is not declared by a contract, and to rely on
+			 *          it blindly is impossible. Therefore it is CHECKED at a starting of a key: we lay
+			 *          a mark by an ordinary means, read by a direct address and compare. They diverged -
+			 *          a direct path is not started at all, and a reading goes by a call, as it went.
 			 *
-			 *        A place number is stored here, and not a sign: a comparison with `NOSLOT` at once
-			 *        answers both to a question `is it checked` and to a question `where it lies`.
+			 *          A place number is stored here, and not a sign: a comparison with `NOSLOT` at once
+			 *          answers both to a question `is it checked` and to a question `where it lies`.
 			 *
 			 * \~
 			 */

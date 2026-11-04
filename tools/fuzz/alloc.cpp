@@ -22,7 +22,7 @@
  *          оставив `malloc` санитайзеру. Учёт же самого ворошителя идёт libc и нашего
  *          состояния не трогает вовсе
  *
- * @note Кэши потоков заводит установщик настроек `Allocator::options`, а не захват:
+ * @note Кэши потоков заводит установщик настроек `allocator::options`, а не захват:
  *       без него ворошитель ходил бы вырожденным путём центральных списков и мерил
  *       не то, что нужно
  *
@@ -445,7 +445,7 @@ namespace {
 		 * указателем, а это гибель процесса
 		 */
 		#if !defined(AWH_FUZZ_SYSTEM)
-			const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block.addr);
+			const awh::alloc::region_t region = awh::alloc::allocator::resolve(block.addr);
 			// Если распределитель своего блока не признал
 			if(region.begin == nullptr)
 				// Докладываем о непризнанном блоке
@@ -632,7 +632,7 @@ namespace {
 			if((kind < 66) && purging){
 				#if !defined(AWH_FUZZ_SYSTEM)
 					// Отдаём системе свободную память
-					static_cast <void> (awh::alloc::Allocator::purge());
+					static_cast <void> (awh::alloc::allocator::purge());
 				#endif
 				// Шаг отработан
 				continue;
@@ -791,7 +791,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 * им, и уступить её нам они не могут. Ворошителю захват и не нужен - он зовёт наши
 		 * входы сам, - а нужен лишь установщик настроек, заводящий кэши потоков
 		 */
-		const bool seized = awh::alloc::Allocator::capture(options);
+		const bool seized = awh::alloc::allocator::capture(options);
 		/**
 		 * Заводим распределитель ПЕРВОЙ выдачей, прежде задания настроек
 		 *
@@ -810,7 +810,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		// Возвращаем блок заведения
 		AWH_FUZZ_FREE(kindle);
 		// Заводим кэши потоков установщиком настроек
-		awh::alloc::Allocator::options(options);
+		awh::alloc::allocator::options(options);
 		/**
 		 * Утверждаем, что кэши потоков вправду заведены
 		 *
@@ -829,7 +829,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 				// Возвращаем очередной блок
 				AWH_FUZZ_FREE(probe[i]);
 			// Читаем объём свободного в кэшах потоков
-			const size_t cached = awh::alloc::Allocator::property(awh::alloc::property_t::CACHED);
+			const size_t cached = awh::alloc::allocator::property(awh::alloc::property_t::CACHED);
 			// Если кэши потоков не заведены
 			if(cached == 0){
 				// Печатаем доклад о незаведённых кэшах
@@ -873,11 +873,11 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 */
 		while(watching.load(std::memory_order_relaxed)){
 			// Читаем объём свободного в кэшах потоков
-			static_cast <void> (awh::alloc::Allocator::property(awh::alloc::property_t::CACHED));
+			static_cast <void> (awh::alloc::allocator::property(awh::alloc::property_t::CACHED));
 			// Читаем занятое прикладным кодом прямо сейчас
-			static_cast <void> (awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED));
+			static_cast <void> (awh::alloc::allocator::property(awh::alloc::property_t::ALLOCATED));
 			// Читаем взятое у системы всего
-			static_cast <void> (awh::alloc::Allocator::property(awh::alloc::property_t::HEAP));
+			static_cast <void> (awh::alloc::allocator::property(awh::alloc::property_t::HEAP));
 			/**
 			 * Правим предел кэшей потоков через оборот
 			 *
@@ -890,7 +890,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 				// Задаём предел кэша, чередуя два значения
 				amended.cacheLimit = (((round & 2u) != 0) ? (64u * 1024u) : (1u * 1024u * 1024u));
 				// Задаём настройки распределителю
-				awh::alloc::Allocator::options(amended);
+				awh::alloc::allocator::options(amended);
 			}
 		}
 	});
@@ -915,7 +915,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	// Дожидаемся наблюдателя
 	watcher.join();
 	// Возвращаем распределителю первоначальные настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	/**
 	 * Возвращаем всё, что осталось отданным соседям
 	 */

@@ -239,7 +239,7 @@ namespace {
 		// Определяем цену одного действия
 		result.cost = ((done > 0) ? (spent / static_cast <double> (done)) : 0.0);
 		// Запоминаем взятое у системы
-		result.heap = alloc::Allocator::property(alloc::property_t::HEAP);
+		result.heap = alloc::allocator::property(alloc::property_t::HEAP);
 
 		// Выводим исход прогона
 		return result;
@@ -299,7 +299,7 @@ namespace {
 	 */
 	static void settle() noexcept {
 		// Берём действующие настройки
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		// Задаём отдачу по просьбе приложения
 		options.purgeMode = alloc::purge_t::MANUAL;
 		// Снимаем отсрочку отдачи
@@ -315,9 +315,9 @@ namespace {
 		// Возвращаем границу разрядов на усмотрение модуля
 		options.classLimit = 0;
 		// Применяем настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 		// Отдаём свободное системе
-		static_cast <void> (alloc::Allocator::purge());
+		static_cast <void> (alloc::allocator::purge());
 	}
 };
 
@@ -338,7 +338,7 @@ int32_t main() noexcept {
 	/**
 	 * Захватываем выдачу памяти процесса
 	 */
-	if(!alloc::Allocator::capture(alloc::Allocator::options())){
+	if(!alloc::allocator::capture(alloc::allocator::options())){
 		// Сообщаем об отказе захвата
 		::printf("Захватить выдачу памяти не удалось\n");
 		// Выводим неуспешный код выхода
@@ -370,11 +370,11 @@ int32_t main() noexcept {
 		// Приводим распределитель к исходному состоянию
 		::settle();
 		// Берём действующие настройки
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		// Опускаем предел кэшей потоков
 		options.cacheLimit = (256u * 1024u);
 		// Применяем настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 		// Печатаем исход прогона с опущенным пределом кэшей
 		::report("предел кэшей 256 КБ", ::measure(1));
 	}
@@ -390,11 +390,11 @@ int32_t main() noexcept {
 		// Приводим распределитель к исходному состоянию
 		::settle();
 		// Берём действующие настройки
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		// Поднимаем границу разрядов до ёмкости таблиц поиска
 		options.classLimit = (128u * 1024u);
 		// Применяем настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 		// Печатаем исход прогона с поднятой границей разрядов
 		::report("граница разрядов 128 КБ", ::measure(1));
 	}
@@ -417,11 +417,11 @@ int32_t main() noexcept {
 		// Приводим распределитель к исходному состоянию
 		::settle();
 		// Берём действующие настройки
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		// Опускаем предел кэшей потоков
 		options.cacheLimit = (256u * 1024u);
 		// Применяем настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 		// Печатаем исход многопоточного прогона с опущенным пределом кэшей
 		::report("четыре потока, предел кэшей 256 КБ", ::measure(THREADS));
 	}
@@ -451,7 +451,7 @@ int32_t main() noexcept {
 			// Приводим распределитель к исходному состоянию
 			::settle();
 			// Берём действующие настройки
-			alloc::options_t options = alloc::Allocator::options();
+			alloc::options_t options = alloc::allocator::options();
 			// Задаём способ отдачи: сперва по просьбе, затем на каждом освобождении
 			options.purgeMode = ((pass == 0) ? alloc::purge_t::MANUAL : alloc::purge_t::ONFREE);
 			/**
@@ -465,9 +465,9 @@ int32_t main() noexcept {
 			// Снимаем потолок придержанных крупных областей
 			options.hugeCache = 0;
 			// Применяем настройки
-			alloc::Allocator::options(options);
+			alloc::allocator::options(options);
 			// Запоминаем отданное системе до нагрузки
-			const size_t before = alloc::Allocator::property(alloc::property_t::UNMAPPED);
+			const size_t before = alloc::allocator::property(alloc::property_t::UNMAPPED);
 			// Запоминаем время начала нагрузки
 			const auto begin = std::chrono::steady_clock::now();
 			/**
@@ -496,7 +496,7 @@ int32_t main() noexcept {
 			const double spent = static_cast <double> (std::chrono::duration_cast <std::chrono::nanoseconds> (
 			 std::chrono::steady_clock::now() - begin).count());
 			// Определяем отданное системе за нагрузку
-			const size_t after = alloc::Allocator::property(alloc::property_t::UNMAPPED);
+			const size_t after = alloc::allocator::property(alloc::property_t::UNMAPPED);
 			/**
 			 * Действие рычага видно по СВОБОДНОМУ В КУЧЕ, а не по счётчику отданного
 			 *
@@ -512,7 +512,7 @@ int32_t main() noexcept {
 			::printf("    %-22s %9.0f нс на оборот, свободно в куче %zu КБ\n",
 			 ((pass == 0) ? "по просьбе (MANUAL)" : "на каждом (ONFREE)"),
 			 (spent / static_cast <double> (BULK)),
-			 (alloc::Allocator::property(alloc::property_t::PAGEFREE) / 1024u));
+			 (alloc::allocator::property(alloc::property_t::PAGEFREE) / 1024u));
 		}
 	}
 	/**
@@ -530,9 +530,9 @@ int32_t main() noexcept {
 		// Запас, какой потолок оставляет сверх уже взятого
 		static constexpr size_t ROOM = (8u * 1024u * 1024u);
 		// Запоминаем взятое у системы до потолка
-		const size_t taken = alloc::Allocator::property(alloc::property_t::HEAP);
+		const size_t taken = alloc::allocator::property(alloc::property_t::HEAP);
 		// Берём действующие настройки
-		alloc::options_t options = alloc::Allocator::options();
+		alloc::options_t options = alloc::allocator::options();
 		/**
 		 * Потолок задаётся ОТ УЖЕ ВЗЯТОГО, а не числом из головы
 		 *
@@ -544,7 +544,7 @@ int32_t main() noexcept {
 		// Задаём потолок кучи с запасом сверх уже взятого
 		options.heapLimit = (taken + ROOM);
 		// Применяем настройки
-		alloc::Allocator::options(options);
+		alloc::allocator::options(options);
 		// Удерживаемые блоки прощупывания
 		std::vector <void *> probes;
 		// Число отказов выдачи
@@ -572,7 +572,7 @@ int32_t main() noexcept {
 		// Печатаем исход прощупывания
 		::printf("    выдано %zu блоков по %zu КБ, отказов %zu, куча %zu КБ\n",
 		 probes.size(), (PROBE / 1024u), refused,
-		 (alloc::Allocator::property(alloc::property_t::HEAP) / 1024u));
+		 (alloc::allocator::property(alloc::property_t::HEAP) / 1024u));
 		/**
 		 * Освобождаем блоки прощупывания
 		 */

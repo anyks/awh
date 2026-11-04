@@ -67,11 +67,11 @@
  */
 TEST_F(AllocFixture, ProfileCollectsHoldings){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём учёту мест выдачи долю выборки
 	options.profileRate = 64;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выданные блоки
 	std::vector <void *> alive;
 	/**
@@ -92,7 +92,7 @@ TEST_F(AllocFixture, ProfileCollectsHoldings){
 	// Объём учтённого
 	size_t bytes = 0;
 	// Опрашиваем учёт мест выдачи
-	awh::alloc::Allocator::holdings([&seen, &deep, &bytes](const awh::alloc::holding_t & holding) noexcept -> bool {
+	awh::alloc::allocator::holdings([&seen, &deep, &bytes](const awh::alloc::holding_t & holding) noexcept -> bool {
 		// Считаем учтённое место выдачи
 		seen++;
 		// Копим объём учтённого
@@ -132,11 +132,11 @@ TEST_F(AllocFixture, ProfileCollectsHoldings){
  */
 TEST_F(AllocFixture, HoldingsWalkStopsOnRequest){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём учёту мест выдачи долю выборки
 	options.profileRate = 1;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Выданные блоки
 	std::vector <void *> alive;
 	/**
@@ -153,7 +153,7 @@ TEST_F(AllocFixture, HoldingsWalkStopsOnRequest){
 	// Число обойдённых мест выдачи
 	size_t seen = 0;
 	// Опрашиваем учёт, прекращая обход на первой же записи
-	awh::alloc::Allocator::holdings([&seen](const awh::alloc::holding_t &) noexcept -> bool {
+	awh::alloc::allocator::holdings([&seen](const awh::alloc::holding_t &) noexcept -> bool {
 		// Считаем обойдённое место выдачи
 		seen++;
 		// Прекращаем обход
@@ -199,7 +199,7 @@ TEST_F(AllocFixture, HoldingsWalkStopsOnRequest){
  * @details Обращение это - половина пользы от учёта мест выдачи: без имён приложение
  *          получает столбец адресов, а не место, откуда пришёл запрос
  *
- * @note Проверка мерялась покрытием: `Allocator::symbol` и `Trace::resolve` не звались
+ * @note Проверка мерялась покрытием: `allocator::symbol` и `Trace::resolve` не звались
  *       набором НИ РАЗУ. Сам учёт мест выдачи поверялся, а обращение адреса в имя -
  *       нет, хотя оно выставлено наружу и приложение зовёт именно его
  *
@@ -222,7 +222,7 @@ TEST_F(AllocFixture, SymbolResolutionIsHonest){
 	// Определяем адрес разбираемой функции
 	void * frame = reinterpret_cast <void *> (&::malloc);
 	// Разбираем адрес обращения
-	const bool resolved = awh::alloc::Allocator::symbol(frame, symbol);
+	const bool resolved = awh::alloc::allocator::symbol(frame, symbol);
 	// Если разбор состоялся
 	if(resolved){
 		/**
@@ -257,7 +257,7 @@ TEST_F(AllocFixture, SymbolResolutionIsHonest){
 	// Сведения о негодном адресе
 	awh::alloc::symbol_t nothing;
 	// Разбираем заведомо негодный адрес
-	EXPECT_FALSE(awh::alloc::Allocator::symbol(reinterpret_cast <const void *> (0x20), nothing));
+	EXPECT_FALSE(awh::alloc::allocator::symbol(reinterpret_cast <const void *> (0x20), nothing));
 }
 
 /**
@@ -276,11 +276,11 @@ TEST_F(AllocFixture, TraceSurvivesHighNumberedKeys){
 		// Заводим ключ, съедающий место
 		ASSERT_EQ(::pthread_key_create(&eaten[i], nullptr), 0) << "ключ " << i << " не заведён";
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём учёту мест выдачи долю выборки
 	options.profileRate = 1;
 	// Применяем настройки: ключ съёма заведётся ПОСЛЕ съеденных
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Признак прохождения нагрузки свежим потоком
 	std::atomic <bool> passed(false);
 	/**
@@ -308,7 +308,7 @@ TEST_F(AllocFixture, TraceSurvivesHighNumberedKeys){
 	// Выключаем учёт мест выдачи
 	options.profileRate = 0;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	/**
 	 * Перебираем заведённые ключи
 	 */
@@ -396,11 +396,11 @@ TEST(AllocProfileTest, RepeatedEnrollmentReplacesRecord){
  */
 TEST_F(AllocFixture, AlignedAllocationEntersProfile){
 	// Получаем действующие настройки
-	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	awh::alloc::options_t options = awh::alloc::allocator::options();
 	// Задаём учёту мест выдачи долю выборки
 	options.profileRate = 1;
 	// Применяем настройки
-	awh::alloc::Allocator::options(options);
+	awh::alloc::allocator::options(options);
 	// Блок, выданный страничной кучей: выравнивание в страницу кучи при малом размере
 	void * paged = nullptr;
 	// Блок, выданный слоем крупных выдач: выравнивание сверх страницы кучи
@@ -448,7 +448,7 @@ TEST_F(AllocFixture, AlignedAllocationEntersProfile){
 		 * Молчаливого пропуска здесь нет: встань наш отклик - начало совпадёт с
 		 * выданным адресом, и проверка дойдёт до утверждений об учёте
 		 */
-		if(awh::alloc::Allocator::resolve(paged).begin != paged){
+		if(awh::alloc::allocator::resolve(paged).begin != paged){
 			// Освобождаем выданное прежним распределителем
 			::_aligned_free(paged);
 			// Освобождаем выданное прежним распределителем
@@ -466,7 +466,7 @@ TEST_F(AllocFixture, AlignedAllocationEntersProfile){
 	// Признаки найденных под учётом блоков
 	bool seenPaged = false, seenEnormous = false;
 	// Опрашиваем учёт мест выдачи
-	awh::alloc::Allocator::holdings([&](const awh::alloc::holding_t & holding) noexcept -> bool {
+	awh::alloc::allocator::holdings([&](const awh::alloc::holding_t & holding) noexcept -> bool {
 		// Отмечаем найденный блок страничной кучи
 		if(holding.block == paged)
 			// Блок страничной кучи под учётом

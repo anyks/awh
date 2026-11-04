@@ -170,14 +170,15 @@ namespace awh {
 				 * @details Шифротекст выдаётся сетевому движку вытягивающей моделью: движок
 				 *          забирает его ровно тогда, когда готов отправить, поэтому при
 				 *          переполнении очереди отправки записи TLS не теряются. Потеря даже
-				 *          одной записи рвёт поток шифрования и обрывает соединение
+				 *          одной записи рвёт поток шифрования и обрывает соединение.
 				 *
 				 * \~english
 				 * @brief Structure of the TLS ciphertext of a client awaiting the sending
+				 *
 				 * @details The ciphertext is given out to the network engine by the pull model: the engine
 				 *          takes it exactly when it is ready to send it, so at an overflow of the queue
 				 *          of the sending the TLS records are not lost. A loss of even a single record
-				 *          breaks the stream of the encryption and terminates the connection
+				 *          breaks the stream of the encryption and terminates the connection.
 				 *
 				 * \~
 				 */
@@ -833,6 +834,7 @@ namespace awh {
 			 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
 			 *       тогда, когда готов их отправить, поэтому записи TLS при переполнении
 			 *       очереди отправки не теряются
+			 *
 			 * @param eid    идентификатор клиента
 			 * @param buffer адрес указателя на буфер выдаваемых данных
 			 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
@@ -840,9 +842,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of giving out the TLS ciphertext of a client to the network engine
+			 *
 			 * @note Source function of the pull model: the engine asks for the data exactly
 			 *       when it is ready to send them, so the TLS records are not lost at an
 			 *       overflow of the queue of the sending
+			 *
 			 * @param eid    client identifier
 			 * @param buffer address of the pointer to the buffer of the given out data
 			 * @param size   capacity of the request at the input and size of the given out data at the output

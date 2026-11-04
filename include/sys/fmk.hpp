@@ -710,6 +710,7 @@ namespace awh {
 		 * fmk::size <uint64_t> (0);      // 0
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t size(const T num) noexcept;
 		/**
@@ -783,6 +784,7 @@ namespace awh {
 		 * fmk::rome2arabic("mcmxc"); // 1990
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint16_t rome2arabic(string_view word) noexcept;
 		/**
@@ -838,6 +840,7 @@ namespace awh {
 		 * fmk::arabic2rome(1990);  // «MCMXC»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ wstring arabic2rome(const uint32_t number) noexcept;
 		/**
@@ -1021,6 +1024,7 @@ namespace awh {
 		 * fmk::flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool isBit(const T pos, const T num) noexcept;
 		/**
@@ -1094,6 +1098,7 @@ namespace awh {
 		 * fmk::bpsSize("100Mbps");  // 12500000
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t bpsSize(const string_view str) noexcept;
 		/**
@@ -1175,6 +1180,7 @@ namespace awh {
 		 * fmk::bytes("1024 bytes"); // 1024
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ double bytes(const string_view str) noexcept;
 		/**
@@ -1224,6 +1230,7 @@ namespace awh {
 		 * fmk::bytes(0.);        // «0 bytes»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string bytes(const double value, const bool onlyNum = false) noexcept;
 		/**
@@ -1307,6 +1314,7 @@ namespace awh {
 		 * fmk::is("https://anyks.com", awh::fmk::check_t::URL); // true
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool is(string_view text, const check_t flag) noexcept;
 		/**
@@ -1414,6 +1422,7 @@ namespace awh {
 		 * fmk::compare("Привет", "ПРИВЕТ");              // false
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool compare(string_view first, string_view second) noexcept;
 		/**
@@ -1633,6 +1642,7 @@ namespace awh {
 		 * fmk::is("http://server.local", awh::fmk::check_t::URL);  // true
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void domainZone(const string_view zone) noexcept;
 		/**
@@ -1690,6 +1700,7 @@ namespace awh {
 		 *     const string url = text.substr(item.first, item.second - item.first);
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ unordered_map <size_t, size_t> urls(string_view text) noexcept;
 		/**
@@ -1733,6 +1744,7 @@ namespace awh {
 		 * fmk::codepage("koi8-r");        // codepage_t::KOI8_R
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ codepage_t codepage(string_view name) noexcept;
 		/**
@@ -1792,6 +1804,7 @@ namespace awh {
 		 * fmk::detect("\xCF\xF0\xE8\xE2\xE5\xF2"); // codepage_t::CP1251
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ codepage_t detect(string_view text, const codepage_t fallback = codepage_t::CP1251) noexcept;
 		/**
@@ -1847,6 +1860,7 @@ namespace awh {
 		 *               awh::fmk::replace_t::REPLACE);           // «??????»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace = replace_t::STRICT) noexcept;
 		/**
@@ -1876,6 +1890,7 @@ namespace awh {
 		 * fmk::countLetter("example.com", L'.');  // 1
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t countLetter(string_view word, const wchar_t letter) noexcept;
 		/**
@@ -1977,6 +1992,7 @@ namespace awh {
 		 * fmk::transform(text, awh::fmk::transform_t::SMART_CASE);  // «Hello-World»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string & transform(string & text, const transform_t flag) noexcept;
 		/**
@@ -2106,6 +2122,7 @@ namespace awh {
 		 * fmk::join({"gzip", "deflate", "br"}, ", ");  // «gzip, deflate, br»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string join(const vector <string> & items, string_view delim) noexcept;
 		/**
@@ -2167,6 +2184,7 @@ namespace awh {
 		 * fmk::split("gzip, deflate, br", ", ", items);  // {"gzip", "deflate", "br"}
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ vector <string> & split(string_view text, string_view delim, vector <string> & container) noexcept;
 		/**
@@ -2224,6 +2242,7 @@ namespace awh {
 		 * fmk::rate(50.f, 100.f);   // -50
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ float rate(const float a, const float b) noexcept;
 		/**
@@ -2265,6 +2284,7 @@ namespace awh {
 		 * fmk::floor(3.999, 2);    // 3.99
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ double floor(const double x, const uint8_t n) noexcept;
 		/**
@@ -2295,6 +2315,7 @@ namespace awh {
 		 * @warning Знак числа записью не сохраняется: число со знаком записывается
 		 *          так, как лежит в памяти, отчего значение -42 типа int32_t даёт
 		 *          запись «4294967254»
+		 *
 		 * @see atoi
 		 *
 		 * @param value число для конвертации
@@ -2333,6 +2354,7 @@ namespace awh {
 		 * fmk::itoa <uint32_t> (255, 2);   // «00000000000000000000000011111111»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string itoa(const T value, const uint8_t radix) noexcept;
 		/**
@@ -2434,6 +2456,7 @@ namespace awh {
 		 * fmk::atoi <uint32_t> (string_view{text.data() + begin, length});
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ T atoi(string_view value) noexcept;
 		/**
@@ -2621,6 +2644,7 @@ namespace awh {
 		 * fmk::noexp(2986., static_cast <uint8_t> (4));        // «2986»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string noexp(const double number, const uint8_t step) noexcept;
 		/**
@@ -2686,6 +2710,7 @@ namespace awh {
 		 * fmk::noexp(-2986.808299);          // «-2986.808299»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string noexp(const double number, const bool onlyNum = false) noexcept;
 		/**
@@ -2706,6 +2731,7 @@ namespace awh {
 		 *          не состоянием, и приложение вправе ставить себе любую местность.
 		 *
 		 * @note Приложению, которому разделение не нужно, вызывать функцию незачем:
+		 *
 		 *       @c noexp() разделителей не ставит и не ставил
 		 *
 		 * @param number    записываемое число
@@ -2740,6 +2766,7 @@ namespace awh {
 		 *          not by a state, and the application is free to set itself any locale.
 		 *
 		 * @note An application that does not need the separation has no reason to call the function:
+		 *
 		 *       @c noexp() does not place separators and never did
 		 *
 		 * @param number    number being written
@@ -2758,6 +2785,7 @@ namespace awh {
 		 * fmk::grouped(-9876.5, 1);                  // «-9,876.5»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string grouped(const double number, const int32_t precision = -1, const char separator = ',', const uint8_t size = 3) noexcept;
 		/**
@@ -2771,6 +2799,7 @@ namespace awh {
 		 *
 		 * @tparam T type of the integer number being written
 		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
@@ -2808,6 +2837,7 @@ namespace awh {
 		 * fmk::grouped <int32_t> (-1234567);                  // «-1,234,567»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string grouped(const T number, const char separator = ',', const uint8_t size = 3) noexcept;
 		/**
@@ -2859,6 +2889,7 @@ namespace awh {
 		 * fmk::format("%s:%u", "127.0.0.1", 8080);  // «127.0.0.1:8080»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		printable_t <char, Args...> format(const char * format, Args... args) noexcept {
 			// Выполняем формирование строки по записи «printf»
@@ -2961,6 +2992,7 @@ namespace awh {
 		 * // «a -> b (a)»
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string format(string_view format, const vector <string> & items) noexcept;
 		/**
@@ -3020,6 +3052,7 @@ namespace awh {
 		 * fmk::replace(text, "/");       // "abc", the word is omitted
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string & replace(string & text, const string & word, const string & alt = "") noexcept;
 		/**
@@ -3131,6 +3164,7 @@ namespace awh {
 		 * // {"cs1": "a", "cs2": "b", "cs3": ""}
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ unordered_multimap <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = detail::escapingText()) noexcept;
 		/**
@@ -3200,6 +3234,7 @@ namespace awh {
 		 * });
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void kv(const uint64_t sid, string_view text, string_view delim, function <void (const uint64_t, const string_view, const string_view)> callback, string_view separator = "=", const vector <string> & escaping = detail::escapingText()) noexcept;
 		/**

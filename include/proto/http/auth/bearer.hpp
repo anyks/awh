@@ -40,7 +40,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -55,7 +54,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -80,9 +78,9 @@ namespace awh {
 				 *
 				 * @return результат проверки
 				 *
-				 *
 				 * \~english
 				 * @brief Method of checking the credentials (for the server only)
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -95,9 +93,9 @@ namespace awh {
 				 * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
 				 * @return       результат разбора
 				 *
-				 *
 				 * \~english
 				 * @brief Method of parsing an incoming authorization header
+				 *
 				 * @param header value of the header (client: the challenge, server: the credentials)
 				 * @return       result of the parsing
 				 *
@@ -111,9 +109,9 @@ namespace awh {
 				 * @param full режим вывода вместе с именем заголовка
 				 * @return     значение заголовка авторизации
 				 *
-				 *
 				 * \~english
 				 * @brief Method of forming an outgoing authorization header
+				 *
 				 * @param full mode of the output together with the name of the header
 				 * @return     value of the authorization header
 				 *
@@ -129,9 +127,9 @@ namespace awh {
 				 * @param params общие параметры авторизации
 				 * @param crypto объект криптографии
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param owner  side of the work (client/server)
 				 * @param params common parameters of the authorization
 				 * @param crypto cryptography object
@@ -142,7 +140,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

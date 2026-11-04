@@ -69,13 +69,13 @@ TEST(AllocScatterTest, RoundTripRestoresTheSecret){
 	// Зерно раскладки
 	const uint64_t seed = 0x0123456789ABCDEFULL;
 	// Раскладываем секрет по носителю с запасом
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), seed, 256);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), seed, 256);
 	// Носитель обязан быть заведён заданной ёмкости
 	ASSERT_EQ(carrier.size(), static_cast <size_t> (256));
 	// Заводим приёмник под собранный секрет
 	awh::alloc::vessel_t vessel = ::relaxed();
 	// Собираем секрет из носителя тем же зерном
-	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), seed, sizeof(secret), vessel));
+	ASSERT_TRUE(awh::alloc::scatter::gather(carrier.data(), carrier.size(), seed, sizeof(secret), vessel));
 	// Занятое обязано совпасть с длиной секрета
 	EXPECT_EQ(vessel.size(), sizeof(secret));
 	// Признак совпадения собранного с исходным
@@ -99,13 +99,13 @@ TEST(AllocScatterTest, WrongSeedGathersGarbage){
 	// Раскладываемый секрет
 	const uint8_t secret[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE};
 	// Раскладываем секрет своим зерном
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), 0xAAAAAAAAAAAAAAAAULL, 128);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), 0xAAAAAAAAAAAAAAAAULL, 128);
 	// Носитель обязан быть заведён
 	ASSERT_FALSE(carrier.empty());
 	// Заводим приёмник под собранное
 	awh::alloc::vessel_t vessel = ::relaxed();
 	// Собираем чужим зерном
-	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), 0xBBBBBBBBBBBBBBBBULL, sizeof(secret), vessel));
+	ASSERT_TRUE(awh::alloc::scatter::gather(carrier.data(), carrier.size(), 0xBBBBBBBBBBBBBBBBULL, sizeof(secret), vessel));
 	// Признак совпадения собранного с исходным
 	bool matched = true;
 	// Обращаемся к собранному содержимому
@@ -129,7 +129,7 @@ TEST(AllocScatterTest, CarrierHoldsNoPlaintextRun){
 	// Длина секрета без завершающего нуля
 	const size_t length = sizeof(text) - 1;
 	// Раскладываем секрет по носителю
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(reinterpret_cast <const uint8_t *> (text), length, 0x1122334455667788ULL, 512);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(reinterpret_cast <const uint8_t *> (text), length, 0x1122334455667788ULL, 512);
 	// Носитель обязан быть заведён
 	ASSERT_EQ(carrier.size(), static_cast <size_t> (512));
 	// Признак присутствия подстроки секрета в носителе
@@ -167,8 +167,8 @@ TEST(AllocScatterTest, OneSecretByteChangesOneCarrierPlace){
 	// Зерно раскладки
 	const uint64_t seed = 0xCAFEBABEDEADBEEFULL;
 	// Раскладываем оба секрета одним зерном по носителю одной ёмкости
-	const std::vector <uint8_t> left = awh::alloc::Scatter::lay(first, sizeof(first), seed, 64);
-	const std::vector <uint8_t> right = awh::alloc::Scatter::lay(second, sizeof(second), seed, 64);
+	const std::vector <uint8_t> left = awh::alloc::scatter::lay(first, sizeof(first), seed, 64);
+	const std::vector <uint8_t> right = awh::alloc::scatter::lay(second, sizeof(second), seed, 64);
 	// Носители обязаны быть одной ёмкости
 	ASSERT_EQ(left.size(), right.size());
 	// Число разошедшихся мест носителя
@@ -196,8 +196,8 @@ TEST(AllocScatterTest, LayoutDependsOnSeed){
 	// Раскладываемый секрет
 	const uint8_t secret[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 	// Раскладываем секрет двумя разными зёрнами по носителю одной ёмкости
-	const std::vector <uint8_t> left = awh::alloc::Scatter::lay(secret, sizeof(secret), 0x1111111111111111ULL, 96);
-	const std::vector <uint8_t> right = awh::alloc::Scatter::lay(secret, sizeof(secret), 0x2222222222222222ULL, 96);
+	const std::vector <uint8_t> left = awh::alloc::scatter::lay(secret, sizeof(secret), 0x1111111111111111ULL, 96);
+	const std::vector <uint8_t> right = awh::alloc::scatter::lay(secret, sizeof(secret), 0x2222222222222222ULL, 96);
 	// Носители обязаны быть заведены одной ёмкости
 	ASSERT_EQ(left.size(), right.size());
 	// Носители под разными зёрнами обязаны разойтись
@@ -214,15 +214,15 @@ TEST(AllocScatterTest, RefusesCarrierSmallerThanSecret){
 	// Раскладываемый секрет
 	const uint8_t secret[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A};
 	// Раскладка в тесный носитель обязана вернуть пустой носитель
-	EXPECT_TRUE(awh::alloc::Scatter::lay(secret, sizeof(secret), 0x99ULL, sizeof(secret) - 1).empty());
+	EXPECT_TRUE(awh::alloc::scatter::lay(secret, sizeof(secret), 0x99ULL, sizeof(secret) - 1).empty());
 	// Носитель на границе годен: ёмкость равна длине секрета
-	EXPECT_EQ(awh::alloc::Scatter::lay(secret, sizeof(secret), 0x99ULL, sizeof(secret)).size(), sizeof(secret));
+	EXPECT_EQ(awh::alloc::scatter::lay(secret, sizeof(secret), 0x99ULL, sizeof(secret)).size(), sizeof(secret));
 	// Заводим приёмник под сбор
 	awh::alloc::vessel_t vessel = ::relaxed();
 	// Место под мнимый носитель
 	const uint8_t stub[8] = {0};
 	// Сбор из носителя теснее секрета обязан отвечать отказом
-	EXPECT_FALSE(awh::alloc::Scatter::gather(stub, sizeof(stub), 0x99ULL, sizeof(stub) + 1, vessel));
+	EXPECT_FALSE(awh::alloc::scatter::gather(stub, sizeof(stub), 0x99ULL, sizeof(stub) + 1, vessel));
 }
 /**
  * @brief Проверка порождения исходного текста с носителем
@@ -235,11 +235,11 @@ TEST(AllocScatterTest, EmitProducesCarrierAndLength){
 	// Раскладываемый секрет
 	const uint8_t secret[] = {0xAB, 0xCD, 0xEF, 0x01};
 	// Раскладываем секрет по носителю
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), 0x5A5A5A5AULL, 32);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), 0x5A5A5A5AULL, 32);
 	// Носитель обязан быть заведён
 	ASSERT_EQ(carrier.size(), static_cast <size_t> (32));
 	// Порождаем исходный текст с носителем
-	const std::string source = awh::alloc::Scatter::emit(carrier, sizeof(secret), "embedded_carrier");
+	const std::string source = awh::alloc::scatter::emit(carrier, sizeof(secret), "embedded_carrier");
 	// Текст обязан быть порождён
 	ASSERT_FALSE(source.empty());
 	// Текст обязан нести имя массива носителя
@@ -247,7 +247,7 @@ TEST(AllocScatterTest, EmitProducesCarrierAndLength){
 	// Текст обязан нести длину секрета
 	EXPECT_NE(source.find("embedded_carrier_length = 4"), std::string::npos);
 	// Порождение с пустым носителем обязано вернуть пустой текст
-	EXPECT_TRUE(awh::alloc::Scatter::emit(std::vector <uint8_t> (), sizeof(secret), "empty").empty());
+	EXPECT_TRUE(awh::alloc::scatter::emit(std::vector <uint8_t> (), sizeof(secret), "empty").empty());
 }
 /**
  * @brief Проверка наложения гаммы: повтор байтов секрета не повторяется в носителе
@@ -264,7 +264,7 @@ TEST(AllocScatterTest, GammaMasksRepeatedBytes){
 	// Заполняем секрет одним и тем же байтом
 	::memset(secret, 0xAA, sizeof(secret));
 	// Раскладываем секрет по носителю впритык, без запаса
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), 0x7788990011223344ULL, sizeof(secret));
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), 0x7788990011223344ULL, sizeof(secret));
 	// Носитель обязан быть заведён впритык
 	ASSERT_EQ(carrier.size(), sizeof(secret));
 	// Число мест носителя, несущих исходный байт секрета открытым
@@ -312,13 +312,13 @@ TEST(AllocScatterTest, AnchorBindsLayoutToChecksum){
 	// Контрольная сумма кода при сборке
 	const uint64_t checksum = 0xABCDEF0123456789ULL;
 	// Раскладываем секрет зерном, привязанным к контрольной сумме
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), awh::alloc::Scatter::anchor(seed, checksum), 128);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), awh::alloc::scatter::anchor(seed, checksum), 128);
 	// Носитель обязан быть заведён
 	ASSERT_FALSE(carrier.empty());
 	// Заводим приёмник под сбор верной суммой
 	awh::alloc::vessel_t right = ::relaxed();
 	// Собираем той же контрольной суммой
-	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum), sizeof(secret), right));
+	ASSERT_TRUE(awh::alloc::scatter::gather(carrier.data(), carrier.size(), awh::alloc::scatter::anchor(seed, checksum), sizeof(secret), right));
 	// Признак совпадения собранного верной суммой с исходным
 	bool matched = false;
 	// Обращаемся к собранному верной суммой
@@ -331,7 +331,7 @@ TEST(AllocScatterTest, AnchorBindsLayoutToChecksum){
 	// Заводим приёмник под сбор изменённой суммой
 	awh::alloc::vessel_t wrong = ::relaxed();
 	// Собираем изменённой суммой - имитируем патч кода на один разряд
-	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum ^ 0x1ULL), sizeof(secret), wrong));
+	ASSERT_TRUE(awh::alloc::scatter::gather(carrier.data(), carrier.size(), awh::alloc::scatter::anchor(seed, checksum ^ 0x1ULL), sizeof(secret), wrong));
 	// Признак совпадения собранного изменённой суммой с исходным
 	bool patched = true;
 	// Обращаемся к собранному изменённой суммой
@@ -358,13 +358,13 @@ TEST(AllocScatterTest, AnchorVersionSeparatesBuilds){
 	// Контрольная сумма кода
 	const uint64_t checksum = 0x00FF00FF00FF00FFULL;
 	// Раскладываем секрет боевой версией ключа
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), awh::alloc::Scatter::anchor(seed, checksum, 1), 128);
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(secret, sizeof(secret), awh::alloc::scatter::anchor(seed, checksum, 1), 128);
 	// Носитель обязан быть заведён
 	ASSERT_FALSE(carrier.empty());
 	// Заводим приёмник под сбор отладочной версией
 	awh::alloc::vessel_t vessel = ::relaxed();
 	// Собираем отладочной версией того же ключа
-	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum, 2), sizeof(secret), vessel));
+	ASSERT_TRUE(awh::alloc::scatter::gather(carrier.data(), carrier.size(), awh::alloc::scatter::anchor(seed, checksum, 2), sizeof(secret), vessel));
 	// Признак совпадения собранного иной версией с исходным
 	bool crossed = true;
 	// Обращаемся к собранному иной версией
@@ -384,11 +384,11 @@ TEST(AllocScatterTest, AnchorVersionSeparatesBuilds){
  */
 TEST(AllocScatterTest, AnchorIsDeterministic){
 	// Одинаковый вход обязан давать одинаковое привязанное зерно
-	EXPECT_EQ(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3));
+	EXPECT_EQ(awh::alloc::scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::scatter::anchor(0x11ULL, 0x22ULL, 3));
 	// Смена суммы обязана менять привязанное зерно
-	EXPECT_NE(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x23ULL, 3));
+	EXPECT_NE(awh::alloc::scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::scatter::anchor(0x11ULL, 0x23ULL, 3));
 	// Смена версии обязана менять привязанное зерно
-	EXPECT_NE(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 4));
+	EXPECT_NE(awh::alloc::scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::scatter::anchor(0x11ULL, 0x22ULL, 4));
 }
 /**
  * @brief Проверка вплетения секрета в рабочую таблицу без порчи прочих данных
@@ -416,7 +416,7 @@ TEST(AllocScatterTest, WeaveKeepsWorkingDataIntact){
 	// Снимаем копию таблицы до вплетения
 	const std::vector <uint8_t> before = table;
 	// Вплетаем секрет в рабочую таблицу
-	ASSERT_TRUE(awh::alloc::Scatter::weave(table.data(), table.size(), secret, sizeof(secret), seed));
+	ASSERT_TRUE(awh::alloc::scatter::weave(table.data(), table.size(), secret, sizeof(secret), seed));
 	// Число изменённых мест таблицы
 	size_t changed = 0;
 	/**
@@ -433,7 +433,7 @@ TEST(AllocScatterTest, WeaveKeepsWorkingDataIntact){
 	// Заводим приёмник под сбор из вплетённой таблицы
 	awh::alloc::vessel_t vessel = ::relaxed();
 	// Собираем секрет из вплетённой таблицы тем же зерном
-	ASSERT_TRUE(awh::alloc::Scatter::gather(table.data(), table.size(), seed, sizeof(secret), vessel));
+	ASSERT_TRUE(awh::alloc::scatter::gather(table.data(), table.size(), seed, sizeof(secret), vessel));
 	// Признак совпадения собранного с исходным
 	bool matched = false;
 	// Обращаемся к собранному секрету
@@ -470,11 +470,11 @@ TEST(AllocScatterTest, CarrierMatchesGoldenVector){
 	// Зерно эталона
 	const uint64_t seed = 0x0123456789ABCDEFULL;
 	// Раскладываем известный секрет известным зерном
-	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, seed, sizeof(golden));
+	const std::vector <uint8_t> carrier = awh::alloc::scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, seed, sizeof(golden));
 	// Носитель обязан быть заведён размером эталона
 	ASSERT_EQ(carrier.size(), sizeof(golden));
 	// Носитель обязан совпасть с эталоном байт в байт
 	EXPECT_EQ(::memcmp(carrier.data(), golden, sizeof(golden)), 0);
 	// Якорь обязан давать одно значение на всякой системе
-	EXPECT_EQ(awh::alloc::Scatter::anchor(seed, 0xABCDULL, 1), static_cast <uint64_t> (0x1C52017B87888DF7ULL));
+	EXPECT_EQ(awh::alloc::scatter::anchor(seed, 0xABCDULL, 1), static_cast <uint64_t> (0x1C52017B87888DF7ULL));
 }
