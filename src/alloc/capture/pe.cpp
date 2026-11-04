@@ -46,10 +46,11 @@ namespace {
 	/**
 	 * Имена подменяемых функций в порядке полей набора functions_t
 	 */
-	static const char * const NAMES[] = {
+	static constexpr const char * const NAMES[] = {
 		"malloc", "free", "calloc", "realloc", "_msize",
 		"_aligned_malloc", "_aligned_free", "_aligned_realloc", "_aligned_msize"
 	};
+
 	// Прежние функции каждой библиотеки, заведённые постоянным выражением
 	static awh::alloc::functions_t __awh_pe_originals__[2];
 	// Отклики распределителя, общие для обеих библиотек
@@ -58,97 +59,133 @@ namespace {
 	static const awh::alloc::PECapture * __awh_pe_owner__ = nullptr;
 	// Пустой набор: владелец блока неизвестен и отдавать его некому
 	static const awh::alloc::functions_t __awh_pe_nobody__;
+
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шабон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr адрес освобождаемого блока
 	 *
 	 */
 	template <size_t Index>
-	static void __awh_pe_free__(void * ptr) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr адрес освобождаемого блока
+	 *
+	 */
+	static __AWH_INLINE__ void __awh_pe_free__(void * ptr) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		(* __awh_pe_hooks__.freeFrom)(ptr, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шаблон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr адрес изменяемого блока
-	 * @param size требуемый размер
-	 * @return адрес выданной памяти либо nullptr
 	 *
 	 */
 	template <size_t Index>
-	static void * __awh_pe_realloc__(void * ptr, size_t size) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr  адрес изменяемого блока
+	 * @param size требуемый размер
+	 * @return     адрес выданной памяти либо nullptr
+	 *
+	 */
+	static __AWH_INLINE__ void * __awh_pe_realloc__(void * ptr, size_t size) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.reallocFrom)(ptr, size, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шаблон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr разбираемый адрес
-	 * @return размер блока в байтах
 	 *
 	 */
 	template <size_t Index>
-	static size_t __awh_pe_msize__(const void * ptr) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr разбираемый адрес
+	 * @return    размер блока в байтах
+	 *
+	 */
+	static __AWH_INLINE__ size_t __awh_pe_msize__(const void * ptr) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.msizeFrom)(ptr, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шаблон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr адрес освобождаемого блока
 	 *
 	 */
 	template <size_t Index>
-	static void __awh_pe_alignedFree__(void * ptr) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr адрес освобождаемого блока
+	 *
+	 */
+	static __AWH_INLINE__ void __awh_pe_alignedFree__(void * ptr) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		(* __awh_pe_hooks__.alignedFreeFrom)(ptr, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шаблон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr адрес изменяемого блока
-	 * @param size требуемый размер
-	 * @param alignment выравнивание блока
-	 * @return адрес выданной памяти либо nullptr
 	 *
 	 */
 	template <size_t Index>
-	static void * __awh_pe_alignedRealloc__(void * ptr, size_t size, size_t alignment) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr       адрес изменяемого блока
+	 * @param size      требуемый размер
+	 * @param alignment выравнивание блока
+	 * @return          адрес выданной памяти либо nullptr
+	 *
+	 */
+	static __AWH_INLINE__ void * __awh_pe_alignedRealloc__(void * ptr, size_t size, size_t alignment) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.alignedReallocFrom)(ptr, size, alignment, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 * @brief Шаблон функции передачи вызова с сохранением исходной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
-	 * @param ptr разбираемый адрес
-	 * @param alignment выравнивание блока
-	 * @param offset смещение блока
-	 * @return размер блока в байтах
 	 *
 	 */
 	template <size_t Index>
-	static size_t __awh_pe_alignedMsize__(void * ptr, size_t alignment, size_t offset) {
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @param ptr       разбираемый адрес
+	 * @param alignment выравнивание блока
+	 * @param offset    смещение блока
+	 * @return          размер блока в байтах
+	 *
+	 */
+	static __AWH_INLINE__ size_t __awh_pe_alignedMsize__(void * ptr, size_t alignment, size_t offset) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.alignedMsizeFrom)(ptr, alignment, offset, __awh_pe_originals__[Index]);
 	}
 	/**
-	 * @brief Функция построения набора подмен для одной CRT
+	 * @brief Шаблон функции построения набора подмен для одной CRT
 	 *
 	 * @tparam Index номер библиотеки времени исполнения
+	 *
+	 */
+	template <size_t Index>
+	/**
+	 * @brief Функция построения набора подмен для одной CRT
+	 *
 	 * @param hooks общие отклики распределителя
 	 * @return      отклики с сохранением исходной библиотеки
 	 *
 	 */
-	template <size_t Index>
-	static awh::alloc::functions_t __awh_pe_targets__(const awh::alloc::functions_t & hooks) noexcept {
+	static __AWH_INLINE__ awh::alloc::functions_t __awh_pe_targets__(const awh::alloc::functions_t & hooks) noexcept {
 		// Сохраняем общие функции выдачи
 		awh::alloc::functions_t result = hooks;
 		// Назначаем отклик с номером исходной библиотеки
@@ -174,7 +211,7 @@ namespace {
 	 * @return          адрес функции из требуемого поля
 	 *
 	 */
-	static const void * pick(const awh::alloc::functions_t & functions, const size_t index) noexcept {
+	static __AWH_INLINE__ const void * pick(const awh::alloc::functions_t & functions, const size_t index) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -209,7 +246,7 @@ namespace {
 	 * @param addr      записываемый адрес
 	 *
 	 */
-	static void put(awh::alloc::functions_t & functions, const size_t index, void * addr) noexcept {
+	static __AWH_INLINE__ void put(awh::alloc::functions_t & functions, const size_t index, void * addr) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -234,63 +271,62 @@ namespace {
 			case 8: functions.alignedMsize = reinterpret_cast <size_t (*)(void *, size_t, size_t)> (addr); break;
 		}
 	}
-
-/**
- * Для набора команд x86-64
- */
-#if defined(_M_X64) || defined(__x86_64__)
 	/**
-	 * @brief Измерение длины поля адресации команды x86-64 (ModRM + SIB + смещение)
-	 *
-	 * @param field адрес байта ModRM
-	 * @return      число байт поля адресации, либо нуль при адресации от счётчика команд
-	 *
-	 * @note Собрано из трёх повторявшихся разборов в одно: там терялось четырёхоктетное
-	 *       смещение у формы `mod=00` с основанием 101 в байте масштаба (`[index*scale +
-	 *       disp32]`). Команда мерилась на четыре октета короче, и мостик вставал в
-	 *       середину команды - молчаливая порча кода библиотеки, а не безопасный отказ
-	 *
+	 * Для набора команд x86-64
 	 */
-	static size_t __awh_pe_operand__(const uint8_t * field) noexcept {
-		// Извлекаем поле вида адресации
-		const uint8_t mod = static_cast <uint8_t> ((field[0] >> 6) & 0x03u);
-		// Извлекаем поле регистра-основания
-		const uint8_t rm = static_cast <uint8_t> (field[0] & 0x07u);
-		// Длина поля начинается с самого байта ModRM
-		size_t length = 1;
-		// Регистровая адресация: ни байта масштаба, ни смещения
-		if(mod == 0x03u)
-			// Поле измерено
+	#if defined(_M_X64) || defined(__x86_64__)
+		/**
+		 * @brief Измерение длины поля адресации команды x86-64 (ModRM + SIB + смещение)
+		 *
+		 * @note Собрано из трёх повторявшихся разборов в одно: там терялось четырёхоктетное
+		 *       смещение у формы `mod=00` с основанием 101 в байте масштаба (`[index*scale +
+		 *       disp32]`). Команда мерилась на четыре октета короче, и мостик вставал в
+		 *       середину команды - молчаливая порча кода библиотеки, а не безопасный отказ
+		 *
+		 * @param field адрес байта ModRM
+		 * @return      число байт поля адресации, либо нуль при адресации от счётчика команд
+		 *
+		 */
+		static __AWH_INLINE__ size_t __awh_pe_operand__(const uint8_t * field) noexcept {
+			// Извлекаем поле вида адресации
+			const uint8_t mod = static_cast <uint8_t> ((field[0] >> 6) & 0x03u);
+			// Извлекаем поле регистра-основания
+			const uint8_t rm = static_cast <uint8_t> (field[0] & 0x07u);
+			// Длина поля начинается с самого байта ModRM
+			size_t length = 1;
+			// Регистровая адресация: ни байта масштаба, ни смещения
+			if(mod == 0x03u)
+				// Поле измерено
+				return length;
+			// Адресация от счётчика команд: перенос в мостик увёл бы обращение мимо
+			if((mod == 0x00u) && (rm == 0x05u))
+				// Отвечаем отказом
+				return 0;
+			// Основание адресации: у формы с байтом масштаба берётся из него
+			uint8_t base = rm;
+			// Если адресация идёт через байт масштаба
+			if(rm == 0x04u){
+				// Основание берём из байта масштаба
+				base = static_cast <uint8_t> (field[1] & 0x07u);
+				// Учитываем байт масштаба
+				length++;
+			}
+			// Если у команды однобайтовое смещение
+			if(mod == 0x01u)
+				// Учитываем однобайтовое смещение
+				length++;
+			// Если у команды четырёхбайтовое смещение
+			else if(mod == 0x02u)
+				// Учитываем четырёхбайтовое смещение
+				length += 4;
+			// Форма mod=00 с основанием 101 несёт четырёхбайтовое смещение без основания
+			else if((mod == 0x00u) && (base == 0x05u))
+				// Учитываем четырёхбайтовое смещение
+				length += 4;
+			// Выводим длину поля адресации
 			return length;
-		// Адресация от счётчика команд: перенос в мостик увёл бы обращение мимо
-		if((mod == 0x00u) && (rm == 0x05u))
-			// Отвечаем отказом
-			return 0;
-		// Основание адресации: у формы с байтом масштаба берётся из него
-		uint8_t base = rm;
-		// Если адресация идёт через байт масштаба
-		if(rm == 0x04u){
-			// Основание берём из байта масштаба
-			base = static_cast <uint8_t> (field[1] & 0x07u);
-			// Учитываем байт масштаба
-			length++;
 		}
-		// Если у команды однобайтовое смещение
-		if(mod == 0x01u)
-			// Учитываем однобайтовое смещение
-			length++;
-		// Если у команды четырёхбайтовое смещение
-		else if(mod == 0x02u)
-			// Учитываем четырёхбайтовое смещение
-			length += 4;
-		// Форма mod=00 с основанием 101 несёт четырёхбайтовое смещение без основания
-		else if((mod == 0x00u) && (base == 0x05u))
-			// Учитываем четырёхбайтовое смещение
-			length += 4;
-		// Выводим длину поля адресации
-		return length;
-	}
-#endif
+	#endif
 };
 
 /**
@@ -1395,7 +1431,7 @@ awh::alloc::PECapture::PECapture() noexcept :
  *          порядком связывания, оттого беда эта то видна, то нет: отдельный стенд
  *          проверок валился, а тот же набор в дереве проходил.
  *
- *          Снять захват можно лишь ЯВНО, вызовом `Allocator::surrender`, - и звавший
+ *          Снять захват можно лишь ЯВНО, вызовом `allocator::surrender`, - и звавший
  *          берёт на себя обязанность не освобождать выданное нами после этого.
  *          Распределители третьей стороны поступают так же: память при выходе процесса
  *          намеренно не возвращается вовсе.

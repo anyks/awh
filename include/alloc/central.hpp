@@ -811,7 +811,7 @@ namespace awh {
 				 * @brief Метод поиска области кучи, которой принадлежит адрес
 				 *
 				 * @note Ходит к куче ПОД ЗАМКОМ, и в том вся суть метода. Прежде разбор
-				 *       адреса (`Allocator::resolve`) обращался к куче напрямую, минуя
+				 *       адреса (`allocator::resolve`) обращался к куче напрямую, минуя
 				 *       замок, - а куча в это же время правила список кусков в `Pages::grow`.
 				 *       ThreadSanitizer называл гонку прямо: запись в pages.cpp:457 против
 				 *       чтения в pages.cpp:972
@@ -829,7 +829,7 @@ namespace awh {
 				 * @brief Method of locating the heap region an address belongs to
 				 *
 				 * @note Goes to the heap UNDER LOCK, and that is the whole point of the method.
-				 *       Previously address resolution (Allocator::resolve) went to the heap directly,
+				 *       Previously address resolution (allocator::resolve) went to the heap directly,
 				 *       bypassing the lock, while the heap was editing the chunk list in Pages::grow.
 				 *       ThreadSanitizer named the race directly: write in pages.cpp:457 against read
 				 *       in pages.cpp:972

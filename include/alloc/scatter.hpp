@@ -193,222 +193,221 @@ namespace awh {
 	namespace alloc {
 		/**
 		 * \~russian
-		 * @brief Класс рассеяния ключевого материала по образу
+		 * @brief Пространство имён рассеяния ключевого материала по образу
 		 *
 		 * \~english
-		 * @brief Class of scattering the key material across the image
+		 * @brief Namespace of scattering the key material across the image
 		 *
 		 * \~
 		 */
-		typedef class __AWH_SHARED_EXPORT__ Scatter {
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод подмешивания якоря в зерно раскладки
-				 *
-				 * @note Привязывает раскладку к якорю - контрольной сумме собственного кода
-				 *       и версии ключа. Обе стороны договора зовут его ОДИНАКОВО до `lay` и
-				 *       `gather`, подавая одно зерно, один якорь, одну версию: иначе поток
-				 *       разойдётся и секрет не соберётся
-				 *
-				 * @note Патч образа - снятие проверки, вставка точки останова - меняет
-				 *       контрольную сумму, а с ней зерно и весь поток: секрет собирается
-				 *       неверным. Защита становится неотделима от расшифровки - не
-				 *       «приложение обнаружило взлом», а «контейнер не открылся»
-				 *
-				 * @note Саму контрольную сумму и участок образа, по какому она берётся,
-				 *       подаёт зовущий: участок у macOS и MS Windows подпись правит ПОСЛЕ
-				 *       сборки, и выбирать его надо со стендами каждой системы
-				 *
-				 * @param seed     зерно раскладки из закрытого контура
-				 * @param checksum контрольная сумма кода либо иной якорь, либо нуль
-				 * @param version  версия ключа, разводящая контуры сборок
-				 * @return         зерно, привязанное к якорю и версии
-				 *
-				 * \~english
-				 * @brief Method of blending an anchor into the layout seed
-				 *
-				 * @note Binds the layout to an anchor - the checksum of its own code and
-				 *       the key version. Both sides of the contract call it IDENTICALLY
-				 *       before `lay` and `gather`, passing one seed, one anchor, one
-				 *       version: otherwise the stream diverges and the secret is not
-				 *       assembled
-				 *
-				 * @note An image patch - removing a check, inserting a breakpoint -
-				 *       changes the checksum, and with it the seed and the whole stream:
-				 *       the secret is assembled incorrectly. The protection becomes
-				 *       inseparable from decryption - not "the application detected a
-				 *       breach" but "the container did not open"
-				 *
-				 * @note The checksum itself and the image region it is taken from are
-				 *       supplied by the caller: on macOS and MS Windows the signature
-				 *       fixes the region AFTER build, and it must be chosen with the
-				 *       stands of each system
-				 *
-				 * @param seed     layout seed from the closed loop
-				 * @param checksum code checksum or another anchor, or zero
-				 * @param version  key version separating build loops
-				 * @return         seed bound to the anchor and the version
-				 *
-				 * \~
-				 */
-				static uint64_t anchor(const uint64_t seed, const uint64_t checksum, const uint64_t version = 0) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод раскладки секрета по носителю (время сборки)
-				 *
-				 * @note Работает при сборке на закрытой машине: секрет наружу образа не
-				 *       уходит, в образ уходит лишь носитель. В приложении не зовётся
-				 *
-				 * @note Ёмкость носителя обязана быть НЕ меньше длины секрета: иначе
-				 *       части секрета некуда лечь, и метод отвечает пустым носителем
-				 *
-				 * @param secret   адрес секрета
-				 * @param length   длина секрета в байтах
-				 * @param seed     зерно раскладки из закрытого контура
-				 * @param capacity ёмкость носителя в байтах, не меньше длины секрета
-				 * @return         носитель с рассеянным секретом либо пустой при отказе
-				 *
-				 * \~english
-				 * @brief Method of laying the secret out across the carrier (build time)
-				 *
-				 * @note Works at build time on a closed machine: the secret does not
-				 *       leave the image, only the carrier goes into the image. Not called
-				 *       in the application
-				 *
-				 * @note The carrier capacity must be NOT less than the secret length:
-				 *       otherwise there is nowhere for the secret parts to lie, and the
-				 *       method answers with an empty carrier
-				 *
-				 * @param secret   address of the secret
-				 * @param length   length of the secret in bytes
-				 * @param seed     layout seed from the closed loop
-				 * @param capacity capacity of the carrier in bytes, not less than the length
-				 * @return         carrier with the scattered secret, or empty on refusal
-				 *
-				 * \~
-				 */
-				static std::vector <uint8_t> lay(const uint8_t * secret, const size_t length, const uint64_t seed, const size_t capacity) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод вплетения секрета в предоставленную рабочую таблицу (время сборки)
-				 *
-				 * @note В отличие от `lay`, носитель СВОЙ не заводит и прочих мест не
-				 *       заполняет: на местах секрета правит поданную таблицу, прочие её места
-				 *       - настоящие рабочие данные - оставляет нетронутыми. Так секрет
-				 *       сливается с осмысленными данными, а не образует свой участок высокой
-				 *       неопределённости, какой сканер нашёл бы целиком
-				 *
-				 * @note Таблица обязана годиться носителем, и это ответственность зовущего:
-				 *       её правка на местах секрета допустима (места отданы под секрет и
-				 *       рабочего значения там больше нет), а собственная неопределённость её
-				 *       достаточна, чтобы вкрапления секрета в ней не выделялись. Таблица из
-				 *       нулей либо связного текста носителем не годится
-				 *
-				 * @param table  адрес рабочей таблицы, правимой на местах секрета
-				 * @param size   размер рабочей таблицы в байтах, не меньше длины секрета
-				 * @param secret адрес секрета
-				 * @param length длина секрета в байтах
-				 * @param seed   зерно раскладки из закрытого контура
-				 * @return       признак выполнения операции
-				 *
-				 * \~english
-				 * @brief Method of weaving the secret into a provided working table (build time)
-				 *
-				 * @note Unlike `lay`, it does not create its own carrier and does not fill
-				 *       other places: it edits the provided table at the secret places and
-				 *       leaves the rest - real working data - untouched. This way the
-				 *       secret blends with meaningful data instead of forming its own
-				 *       region of high entropy that a scanner would find whole
-				 *
-				 * @note The table must be suitable as a carrier, and this is the caller's
-				 *       responsibility: editing it at the secret places is allowed (those
-				 *       places are given to the secret and no working value remains there),
-				 *       and its own entropy is sufficient that the secret's grains do not
-				 *       stand out. A table of zeros or coherent text is not suitable as a
-				 *       carrier
-				 *
-				 * @param table  address of the working table edited at the secret places
-				 * @param size   size of the working table in bytes, not less than the length
-				 * @param secret address of the secret
-				 * @param length length of the secret in bytes
-				 * @param seed   layout seed from the closed loop
-				 * @return       flag of the operation performed
-				 *
-				 * \~
-				 */
-				static bool weave(uint8_t * table, const size_t size, const uint8_t * secret, const size_t length, const uint64_t seed) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод порождения исходного текста с носителем (время сборки)
-				 *
-				 * @note Работает при сборке: отдаёт готовый к включению текст на C++ с
-				 *       носителем в виде массива. Ни секрета, ни зерна текст не несёт -
-				 *       только носитель, длину секрета и ёмкость
-				 *
-				 * @param carrier носитель, полученный от `lay`
-				 * @param length  длина секрета в байтах
-				 * @param name    имя порождаемого массива носителя
-				 * @return        исходный текст на C++ либо пустая строка при отказе
-				 *
-				 * \~english
-				 * @brief Method of emitting the source text with the carrier (build time)
-				 *
-				 * @note Works at build time: returns ready-to-include C++ source text with
-				 *       the carrier as an array. The text carries neither the secret nor
-				 *       the seed - only the carrier, the secret length, and the capacity
-				 *
-				 * @param carrier carrier obtained from `lay`
-				 * @param length  length of the secret in bytes
-				 * @param name    name of the emitted carrier array
-				 * @return        C++ source text, or an empty string on refusal
-				 *
-				 * \~
-				 */
-				static std::string emit(const std::vector <uint8_t> & carrier, const size_t length, const std::string & name) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод сборки секрета из носителя в приёмник тайн (запуск)
-				 *
-				 * @note Работает на запуске в образе: снимает наложение и льёт секрет
-				 *       ПОБАЙТНО прямо в приёмник, минуя кучу. Промежуточного сбора нет
-				 *
-				 * @note Зерно обязано совпадать с тем, каким велась раскладка: чужое
-				 *       зерно соберёт из носителя мусор, а не секрет
-				 *
-				 * @note Приёмник заводится ЗДЕСЬ на длину секрета: прежнее его содержимое
-				 *       снимается
-				 *
-				 * @param carrier  адрес носителя в образе
-				 * @param capacity ёмкость носителя в байтах
-				 * @param seed     то же зерно, каким велась раскладка
-				 * @param length   длина секрета в байтах
-				 * @param vessel   приёмник, куда ложится собранный секрет
-				 * @return         признак выполнения операции
-				 *
-				 * \~english
-				 * @brief Method of gathering the secret from the carrier into the vessel (run time)
-				 *
-				 * @note Works at startup in the image: removes the overlay and pours the
-				 *       secret BYTE BY BYTE straight into the vessel, bypassing the heap.
-				 *       There is no intermediate assembly
-				 *
-				 * @note The seed must match the one used for the layout: a foreign seed
-				 *       will gather garbage from the carrier, not the secret
-				 *
-				 * @note The vessel is created HERE for the secret length: its previous
-				 *       content is removed
-				 *
-				 * @param carrier  address of the carrier in the image
-				 * @param capacity capacity of the carrier in bytes
-				 * @param seed     the same seed the layout was made with
-				 * @param length   length of the secret in bytes
-				 * @param vessel   vessel the gathered secret is put into
-				 * @return         flag of the operation performed
-				 *
-				 * \~
-				 */
-				static bool gather(const uint8_t * carrier, const size_t capacity, const uint64_t seed, const size_t length, vessel_t & vessel) noexcept;
-		} scatter_t;
+		namespace scatter {
+			/**
+			 * \~russian
+			 * @brief Функция подмешивания якоря в зерно раскладки
+			 *
+			 * @note Привязывает раскладку к якорю - контрольной сумме собственного кода
+			 *       и версии ключа. Обе стороны договора зовут его ОДИНАКОВО до `lay` и
+			 *       `gather`, подавая одно зерно, один якорь, одну версию: иначе поток
+			 *       разойдётся и секрет не соберётся
+			 *
+			 * @note Патч образа - снятие проверки, вставка точки останова - меняет
+			 *       контрольную сумму, а с ней зерно и весь поток: секрет собирается
+			 *       неверным. Защита становится неотделима от расшифровки - не
+			 *       «приложение обнаружило взлом», а «контейнер не открылся»
+			 *
+			 * @note Саму контрольную сумму и участок образа, по какому она берётся,
+			 *       подаёт зовущий: участок у macOS и MS Windows подпись правит ПОСЛЕ
+			 *       сборки, и выбирать его надо со стендами каждой системы
+			 *
+			 * @param seed     зерно раскладки из закрытого контура
+			 * @param checksum контрольная сумма кода либо иной якорь, либо нуль
+			 * @param version  версия ключа, разводящая контуры сборок
+			 * @return         зерно, привязанное к якорю и версии
+			 *
+			 * \~english
+			 * @brief Function of blending an anchor into the layout seed
+			 *
+			 * @note Binds the layout to an anchor - the checksum of its own code and
+			 *       the key version. Both sides of the contract call it IDENTICALLY
+			 *       before `lay` and `gather`, passing one seed, one anchor, one
+			 *       version: otherwise the stream diverges and the secret is not
+			 *       assembled
+			 *
+			 * @note An image patch - removing a check, inserting a breakpoint -
+			 *       changes the checksum, and with it the seed and the whole stream:
+			 *       the secret is assembled incorrectly. The protection becomes
+			 *       inseparable from decryption - not "the application detected a
+			 *       breach" but "the container did not open"
+			 *
+			 * @note The checksum itself and the image region it is taken from are
+			 *       supplied by the caller: on macOS and MS Windows the signature
+			 *       fixes the region AFTER build, and it must be chosen with the
+			 *       stands of each system
+			 *
+			 * @param seed     layout seed from the closed loop
+			 * @param checksum code checksum or another anchor, or zero
+			 * @param version  key version separating build loops
+			 * @return         seed bound to the anchor and the version
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ uint64_t anchor(const uint64_t seed, const uint64_t checksum, const uint64_t version = 0) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция раскладки секрета по носителю (время сборки)
+			 *
+			 * @note Работает при сборке на закрытой машине: секрет наружу образа не
+			 *       уходит, в образ уходит лишь носитель. В приложении не зовётся
+			 *
+			 * @note Ёмкость носителя обязана быть НЕ меньше длины секрета: иначе
+			 *       части секрета некуда лечь, и функция отвечает пустым носителем
+			 *
+			 * @param secret   адрес секрета
+			 * @param length   длина секрета в байтах
+			 * @param seed     зерно раскладки из закрытого контура
+			 * @param capacity ёмкость носителя в байтах, не меньше длины секрета
+			 * @return         носитель с рассеянным секретом либо пустой при отказе
+			 *
+			 * \~english
+			 * @brief Function of laying the secret out across the carrier (build time)
+			 *
+			 * @note Works at build time on a closed machine: the secret does not
+			 *       leave the image, only the carrier goes into the image. Not called
+			 *       in the application
+			 *
+			 * @note The carrier capacity must be NOT less than the secret length:
+			 *       otherwise there is nowhere for the secret parts to lie, and the
+			 *       function answers with an empty carrier
+			 *
+			 * @param secret   address of the secret
+			 * @param length   length of the secret in bytes
+			 * @param seed     layout seed from the closed loop
+			 * @param capacity capacity of the carrier in bytes, not less than the length
+			 * @return         carrier with the scattered secret, or empty on refusal
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ std::vector <uint8_t> lay(const uint8_t * secret, const size_t length, const uint64_t seed, const size_t capacity) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция вплетения секрета в предоставленную рабочую таблицу (время сборки)
+			 *
+			 * @note В отличие от `lay`, носитель СВОЙ не заводит и прочих мест не
+			 *       заполняет: на местах секрета правит поданную таблицу, прочие её места
+			 *       - настоящие рабочие данные - оставляет нетронутыми. Так секрет
+			 *       сливается с осмысленными данными, а не образует свой участок высокой
+			 *       неопределённости, какой сканер нашёл бы целиком
+			 *
+			 * @note Таблица обязана годиться носителем, и это ответственность зовущего:
+			 *       её правка на местах секрета допустима (места отданы под секрет и
+			 *       рабочего значения там больше нет), а собственная неопределённость её
+			 *       достаточна, чтобы вкрапления секрета в ней не выделялись. Таблица из
+			 *       нулей либо связного текста носителем не годится
+			 *
+			 * @param table  адрес рабочей таблицы, правимой на местах секрета
+			 * @param size   размер рабочей таблицы в байтах, не меньше длины секрета
+			 * @param secret адрес секрета
+			 * @param length длина секрета в байтах
+			 * @param seed   зерно раскладки из закрытого контура
+			 * @return       признак выполнения операции
+			 *
+			 * \~english
+			 * @brief Function of weaving the secret into a provided working table (build time)
+			 *
+			 * @note Unlike `lay`, it does not create its own carrier and does not fill
+			 *       other places: it edits the provided table at the secret places and
+			 *       leaves the rest - real working data - untouched. This way the
+			 *       secret blends with meaningful data instead of forming its own
+			 *       region of high entropy that a scanner would find whole
+			 *
+			 * @note The table must be suitable as a carrier, and this is the caller's
+			 *       responsibility: editing it at the secret places is allowed (those
+			 *       places are given to the secret and no working value remains there),
+			 *       and its own entropy is sufficient that the secret's grains do not
+			 *       stand out. A table of zeros or coherent text is not suitable as a
+			 *       carrier
+			 *
+			 * @param table  address of the working table edited at the secret places
+			 * @param size   size of the working table in bytes, not less than the length
+			 * @param secret address of the secret
+			 * @param length length of the secret in bytes
+			 * @param seed   layout seed from the closed loop
+			 * @return       flag of the operation performed
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool weave(uint8_t * table, const size_t size, const uint8_t * secret, const size_t length, const uint64_t seed) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция порождения исходного текста с носителем (время сборки)
+			 *
+			 * @note Работает при сборке: отдаёт готовый к включению текст на C++ с
+			 *       носителем в виде массива. Ни секрета, ни зерна текст не несёт -
+			 *       только носитель, длину секрета и ёмкость
+			 *
+			 * @param carrier носитель, полученный от `lay`
+			 * @param length  длина секрета в байтах
+			 * @param name    имя порождаемого массива носителя
+			 * @return        исходный текст на C++ либо пустая строка при отказе
+			 *
+			 * \~english
+			 * @brief Function of emitting the source text with the carrier (build time)
+			 *
+			 * @note Works at build time: returns ready-to-include C++ source text with
+			 *       the carrier as an array. The text carries neither the secret nor
+			 *       the seed - only the carrier, the secret length, and the capacity
+			 *
+			 * @param carrier carrier obtained from `lay`
+			 * @param length  length of the secret in bytes
+			 * @param name    name of the emitted carrier array
+			 * @return        C++ source text, or an empty string on refusal
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ std::string emit(const std::vector <uint8_t> & carrier, const size_t length, const std::string & name) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция сборки секрета из носителя в приёмник тайн (запуск)
+			 *
+			 * @note Работает на запуске в образе: снимает наложение и льёт секрет
+			 *       ПОБАЙТНО прямо в приёмник, минуя кучу. Промежуточного сбора нет
+			 *
+			 * @note Зерно обязано совпадать с тем, каким велась раскладка: чужое
+			 *       зерно соберёт из носителя мусор, а не секрет
+			 *
+			 * @note Приёмник заводится ЗДЕСЬ на длину секрета: прежнее его содержимое
+			 *       снимается
+			 *
+			 * @param carrier  адрес носителя в образе
+			 * @param capacity ёмкость носителя в байтах
+			 * @param seed     то же зерно, каким велась раскладка
+			 * @param length   длина секрета в байтах
+			 * @param vessel   приёмник, куда ложится собранный секрет
+			 * @return         признак выполнения операции
+			 *
+			 * \~english
+			 * @brief Function of gathering the secret from the carrier into the vessel (run time)
+			 *
+			 * @note Works at startup in the image: removes the overlay and pours the
+			 *       secret BYTE BY BYTE straight into the vessel, bypassing the heap.
+			 *       There is no intermediate assembly
+			 *
+			 * @note The seed must match the one used for the layout: a foreign seed
+			 *       will gather garbage from the carrier, not the secret
+			 *
+			 * @note The vessel is created HERE for the secret length: its previous
+			 *       content is removed
+			 *
+			 * @param carrier  address of the carrier in the image
+			 * @param capacity capacity of the carrier in bytes
+			 * @param seed     the same seed the layout was made with
+			 * @param length   length of the secret in bytes
+			 * @param vessel   vessel the gathered secret is put into
+			 * @return         flag of the operation performed
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool gather(const uint8_t * carrier, const size_t capacity, const uint64_t seed, const size_t length, vessel_t & vessel) noexcept;
+		}
 	};
 };

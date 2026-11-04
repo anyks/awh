@@ -1862,7 +1862,7 @@ namespace {
 					 * Потолок сторожит счёт источника - его и докладываем, тем же путём,
 					 * каким отвечает опрос `property_t::HEAP`
 					 */
-					limit(alloc::Allocator::property(alloc::property_t::HEAP));
+					limit(alloc::allocator::property(alloc::property_t::HEAP));
 				/**
 				 * Докладываем о записи по освобождённому блоку
 				 *
@@ -3923,14 +3923,14 @@ void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, 
 	return result;
 }
 /**
- * @brief Метод выдачи защищённой памяти
+ * @brief Функция выдачи защищённой памяти
  *
  * @param size    требуемый размер в байтах
  * @param shelter сведения о состоявшейся защите либо nullptr
  * @return        адрес выданной памяти либо nullptr
  *
  */
-void * awh::alloc::Allocator::secure(const size_t size, shelter_t * shelter) noexcept {
+void * awh::alloc::allocator::secure(const size_t size, shelter_t * shelter) noexcept {
 	// Признак состоявшегося укрытия от снимков памяти
 	bool hidden = false;
 	// Признак состоявшегося запрета уходить в подкачку
@@ -3953,14 +3953,14 @@ void * awh::alloc::Allocator::secure(const size_t size, shelter_t * shelter) noe
 	return result;
 }
 /**
- * @brief Метод смены доступности защищённого блока
+ * @brief Функция смены доступности защищённого блока
  *
  * @param addr   адрес защищённого блока
  * @param opened признак открываемого блока
  * @return       признак выполнения операции
  *
  */
-bool awh::alloc::Allocator::shield(const void * addr, const bool opened) noexcept {
+bool awh::alloc::allocator::shield(const void * addr, const bool opened) noexcept {
 	// Если блок не задан
 	if(addr == nullptr)
 		// Менять доступность нечему
@@ -3980,12 +3980,12 @@ bool awh::alloc::Allocator::shield(const void * addr, const bool opened) noexcep
 	return ::machinery->huge.shield(addr, opened);
 }
 /**
- * @brief Метод возврата выданной памяти
+ * @brief Функция возврата выданной памяти
  *
  * @param addr адрес возвращаемой памяти
  *
  */
-void awh::alloc::Allocator::release(void * addr) noexcept {
+void awh::alloc::allocator::release(void * addr) noexcept {
 	/**
 	 * Возврат идёт к НАМ всегда
 	 *
@@ -3997,14 +3997,13 @@ void awh::alloc::Allocator::release(void * addr) noexcept {
 	::discard(addr);
 }
 /**
- * @brief Метод захвата выделения памяти процесса
+ * @brief Функция захвата выделения памяти процесса
  *
  * @param options настройки распределителя
  * @return        признак состоявшегося захвата
  *
  */
-bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
-	// Запоминаем объект журнала
+bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 	/**
 	 * Отказываем сразу, если подмена запрещена сборкой
 	 *
@@ -4042,21 +4041,12 @@ bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 	 * стендах ELF: при `profileRate = 1` учёт не брал ни одного блока, тогда как у macOS
 	 * и MS Windows брал все - там наши функции до захвата не зовутся, и заведение идёт
 	 * уже с заданными настройками
-	 * @brief Метод изменения настроек в работе
+	 * @brief Функция изменения настроек в работе
 	 *
 	 * @param options требуемые настройки
 	 *
 	 */
-	Allocator::options(options);
-	/**
-	 * Занимаем область и ставим запрет обращаться к системе
-	 *
-	 * Настройки эти действуют при заведении, и `Allocator::options` их намеренно не
-	 * трогает: менять их В РАБОТЕ нельзя - вернуть уже занятое приложению, её не
-	 * просившему, невозможно. Но захват - не изменение в работе, а ПЕРВАЯ настройка, и
-	 * у систем ELF она приходит уже к заведённой куче: там заведение идёт с первой
-	 * выдачи стандартной библиотеки. Занять область задним числом при этом можно вполне
-	 */
+	allocator::options(options);
 	/**
 	 * Заводим поток обслуживания, если отдача идёт по сроку
 	 *
@@ -4075,6 +4065,15 @@ bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 	if(::settings.hugePages && (::substitute == nullptr))
 		// Просим у системы крупные страницы
 		::machinery->system.superpages(true);
+	/**
+	 * Занимаем область и ставим запрет обращаться к системе
+	 *
+	 * Настройки эти действуют при заведении, и `allocator::options` их намеренно не
+	 * трогает: менять их В РАБОТЕ нельзя - вернуть уже занятое приложению, её не
+	 * просившему, невозможно. Но захват - не изменение в работе, а ПЕРВАЯ настройка, и
+	 * у систем ELF она приходит уже к заведённой куче: там заведение идёт с первой
+	 * выдачи стандартной библиотеки. Занять область задним числом при этом можно вполне
+	 */
 	if((::settings.arena > 0) || ::settings.confined)
 		// Занимаем требуемую область у кучи
 		::machinery->central.occupy(::settings.arena, ::settings.confined);
@@ -4149,7 +4148,7 @@ bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 	// Захватываем выделение памяти процесса
 	if(!::seizing()->acquire(hooks, ::originals)){
 		/**
-		 * Отказ захвата снимает заведённое ЭТИМ ЖЕ вызовом
+		 * Останавливаем поток обслуживания, заведённый выше
 		 *
 		 * Поток обслуживания заводится ВЫШЕ захвата - по настройке отдачи по времени, -
 		 * и при отказе оставался работать до конца процесса. Снять его звавшему было
@@ -4157,7 +4156,6 @@ bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 		 * вызов его в ответ на отказ не делал ровно ничего. Поток же ходит по кучам и
 		 * отдаёт память системе - у распределителя, каким приложение не пользуется
 		 */
-		// Останавливаем поток обслуживания, заведённый выше
 		::slumber();
 		// Записываем отказ захвата в журнал
 		log::print("Memory allocation capture failed: %s", log::flag_t::WARNING, ::seizing()->name());
@@ -4170,33 +4168,32 @@ bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 	return true;
 }
 /**
- * @brief Метод снятия захвата выделения памяти процесса
+ * @brief Функция снятия захвата выделения памяти процесса
  *
  */
-void awh::alloc::Allocator::surrender() noexcept {
+void awh::alloc::allocator::surrender() noexcept {
 	// Если захват не состоялся
 	if(!::seized.load(std::memory_order_acquire))
 		// Снимать нечего
 		return;
 	/**
-	 * Гасим поток доклада прежде снятия захвата
+	 * @brief Останавливаем поток обслуживания
 	 *
-	 * Поток этот ходит в состояние распределителя и зовёт отклики приложения: оставь мы
-	 * его жить после снятия - он звал бы отклики о распределителе, каким уже никто не
-	 * пользуется
-	 */
-	/**
-	 * Гасим поток ПОД ЗАМКОМ ЗАВЕДЕНИЯ
+	 * @details Поток этот ходит в состояние распределителя и зовёт отклики приложения: оставь мы
+	 *          его жить после снятия - он звал бы отклики о распределителе, каким уже никто не
+	 *          пользуется.
 	 *
-	 * Заведение ставит признак работы ПРЕЖДЕ самого потока, а указатель на него - лишь
-	 * после: между тем и другим лежит обращение к системе за потоком, окно немалое.
-	 * Гаси мы вне замка - гашение, пришедшее в это окно, увидело бы признак взведённым,
-	 * а указатель пустым: поток оно погасило бы признаком, но не дождалось и не снесло,
-	 * а заведение следом записало бы указатель на уже вышедший поток. Приложение при
-	 * этом осталось бы БЕЗ доклада, поставив отклик и получив от заведения успех, - и
-	 * узнать о том ему неоткуда
+	 * @par Гасим поток ПОД ЗАМКОМ ЗАВЕДЕНИЯ
+	 *
+	 * @note Заведение ставит признак работы ПРЕЖДЕ самого потока, а указатель на него - лишь
+	 *       после: между тем и другим лежит обращение к системе за потоком, окно немалое.
+	 *       Гаси мы вне замка - гашение, пришедшее в это окно, увидело бы признак взведённым,
+	 *       а указатель пустым: поток оно погасило бы признаком, но не дождалось и не снесло,
+	 *       а заведение следом записало бы указатель на уже вышедший поток. Приложение при
+	 *       этом осталось бы БЕЗ доклада, поставив отклик и получив от заведения успех, - и
+	 *       узнать о том ему неоткуда
+	 *
 	 */
-	// Останавливаем поток обслуживания
 	::slumber();
 	// Снимаем захват выделения памяти процесса
 	::seizing()->release();
@@ -4204,47 +4201,49 @@ void awh::alloc::Allocator::surrender() noexcept {
 	::seized.store(false, std::memory_order_release);
 }
 /**
- * @brief Метод определения захваченности выделения памяти процесса
+ * @brief Функция определения захваченности выделения памяти процесса
  *
  * @return признак захвата
  *
  */
-bool awh::alloc::Allocator::captured() noexcept {
+bool awh::alloc::allocator::captured() noexcept {
 	// Выводим признак состоявшегося захвата
 	return ::seized.load(std::memory_order_acquire);
 }
 /**
- * @brief Метод получения действующих настроек
+ * @brief Функция получения действующих настроек
  *
  * @return действующие настройки
  *
  */
-const awh::alloc::options_t & awh::alloc::Allocator::options() noexcept {
+const awh::alloc::options_t & awh::alloc::allocator::options() noexcept {
 	// Выводим действующие настройки
 	return ::settings;
 }
 /**
- * @brief Метод изменения настроек в работе
+ * @brief Функция изменения настроек в работе
  *
  * @param options требуемые настройки
  *
  */
-void awh::alloc::Allocator::options(const options_t & options) noexcept {
+void awh::alloc::allocator::options(const options_t & options) noexcept {
 	/**
-	 * Размер занимаемой области, запрет обращаться к системе и граница разрядов не меняются
+	 * @brief Запоминаем размер занимаемой области прежним
 	 *
-	 * Все трое действуют лишь при заведении: занять область задним числом ещё можно
-	 * было бы, а вот вернуть уже занятое приложению, её не просившему, - нельзя. Разряды
-	 * же строятся однажды, вместе с таблицами поиска, и граница их задним числом не
-	 * двигается вовсе
+	 * @note Размер занимаемой области, запрет обращаться к системе и граница разрядов не меняются
 	 *
-	 * Возвращаются они на место не ради самих слоёв - те новых значений и не спросят, -
-	 * а ради ЧЕСТНОСТИ ОТВЕТА: `options()` отдаёт действующие настройки, и приложение,
-	 * задавшее границу разрядов после захвата, читало бы своё число, тогда как
-	 * действует прежнее. Граница разрядов оставалась единственной из трёх, кому такой
-	 * защиты не досталось
+	 * @details Все трое действуют лишь при заведении: занять область задним числом ещё можно
+	 *          было бы, а вот вернуть уже занятое приложению, её не просившему, - нельзя. Разряды
+	 *          же строятся однажды, вместе с таблицами поиска, и граница их задним числом не
+	 *          двигается вовсе.
+	 *
+	 * @note Возвращаются они на место не ради самих слоёв - те новых значений и не спросят, -
+	 *       а ради ЧЕСТНОСТИ ОТВЕТА: `options()` отдаёт действующие настройки, и приложение,
+	 *       задавшее границу разрядов после захвата, читало бы своё число, тогда как
+	 *       действует прежнее. Граница разрядов оставалась единственной из трёх, кому такой
+	 *       защиты не досталось
+	 *
 	 */
-	// Запоминаем размер занимаемой области прежним
 	const size_t arena = ::settings.arena;
 	// Запоминаем запрет обращаться к системе прежним
 	const bool confined = ::settings.confined;
@@ -4281,17 +4280,19 @@ void awh::alloc::Allocator::options(const options_t & options) noexcept {
 			// Задаём источнику потолок взятого у системы
 			::machinery->system.ceiling(::settings.heapLimit);
 		/**
-		 * Потолок кэшей задаётся ВСЕГДА, а не только отличный от нуля
+		 * @brief Задаём потолок поток-локальных кэшей
 		 *
-		 * Нуль означает «по усмотрению модуля», и усмотрение это управляющий кэшами
-		 * умеет: он раздаёт долю общего запаса. Прежде нуль здесь ОТБРАСЫВАЛСЯ, и
-		 * приложение, задавшее предел однажды, вернуть усмотрение уже не могло - прежний
-		 * предел оставался за кэшами навсегда. Найдено образцом `sample/alloc/tuning.cpp`:
-		 * тот меряет рычаги по очереди, приводя настройки к исходным между замерами, и
-		 * все замеры после первого вышли на одно число - они шли с пределом, оставшимся
-		 * от замера рычага кэшей
+		 * @note Потолок кэшей задаётся ВСЕГДА, а не только отличный от нуля
+		 *
+		 * @details Нуль означает «по усмотрению модуля», и усмотрение это управляющий кэшами
+		 *          умеет: он раздаёт долю общего запаса. Прежде нуль здесь ОТБРАСЫВАЛСЯ, и
+		 *          приложение, задавшее предел однажды, вернуть усмотрение уже не могло - прежний
+		 *          предел оставался за кэшами навсегда. Найдено образцом `sample/alloc/tuning.cpp`:
+		 *          тот меряет рычаги по очереди, приводя настройки к исходным между замерами, и
+		 *          все замеры после первого вышли на одно число - они шли с пределом, оставшимся
+		 *          от замера рычага кэшей.
+		 *
 		 */
-		// Задаём потолок поток-локальных кэшей
 		::machinery->caches.limit(::settings.cacheLimit);
 		// Задаём потолок придержанных крупных областей
 		::machinery->huge.ceiling(::settings.hugeCache);
@@ -4387,13 +4388,13 @@ void awh::alloc::Allocator::options(const options_t & options) noexcept {
 	}
 }
 /**
- * @brief Метод опроса расхода памяти
+ * @brief Функция опроса расхода памяти
  *
  * @param property требуемое свойство
  * @return         величина свойства в байтах
  *
  */
-size_t awh::alloc::Allocator::property(const property_t property) noexcept {
+size_t awh::alloc::allocator::property(const property_t property) noexcept {
 	// Если распределитель не заведён
 	if(::stage.load(std::memory_order_acquire) != STAGE_READY)
 		// Опрашивать нечего
@@ -4403,63 +4404,47 @@ size_t awh::alloc::Allocator::property(const property_t property) noexcept {
 	 */
 	switch(static_cast <uint8_t> (property)){
 		// Если требуется занятое прикладным кодом прямо сейчас
-		case static_cast <uint8_t> (property_t::ALLOCATED):
+		case static_cast <uint8_t> (property_t::ALLOCATED):{
+			/**
+			 * @brief Определяем занятое прикладным кодом
+			 *
+			 * @note Складываем отданное потоками с накопленным у них
+			 *
+			 * @details Потоки копят своё в кэшах и отдают общему счётчику пачками: спроси мы
+			 *          один счётчик - ответ отставал бы на величину накопленного всеми.
+			 *
+			 */
+			const int64_t taken = (::occupied.load(std::memory_order_relaxed) + ::machinery->caches.pending());
 			// Выводим занятое прикладным кодом
-			{
-				/**
-				 * Складываем отданное потоками с накопленным у них
-				 *
-				 * Потоки копят своё в кэшах и отдают общему счётчику пачками: спроси мы
-				 * один счётчик - ответ отставал бы на величину накопленного всеми
-				 */
-				// Определяем занятое прикладным кодом
-				const int64_t taken = (::occupied.load(std::memory_order_relaxed) + ::machinery->caches.pending());
-				// Выводим занятое прикладным кодом
-				return ((taken > 0) ? static_cast <size_t> (taken) : 0);
-			}
+			return ((taken > 0) ? static_cast <size_t> (taken) : 0);
+		}
 		// Если требуется наибольшее занятое за время работы
-		case static_cast <uint8_t> (property_t::PEAK):
-			// Выводим наибольшее занятое
-			{
-				// Читаем наибольшее занятое за время работы
-				const int64_t highest = ::summit.load(std::memory_order_relaxed);
-				/**
-				 * Сличаем с занятым ПРЯМО СЕЙЧАС и берём большее
-				 *
-				 * Наибольшее поднимается лишь тогда, когда поток отдаёт накопленное общему
-				 * счётчику пачкой, - а занятое считается вместе с накопленным у потоков.
-				 * Оттого наибольшее выходило МЕНЬШЕ занятого прямо сейчас, чего быть не
-				 * должно вовсе: замечено семплом `sample/alloc/alloc.cpp` сразу за
-				 * заведением фреймворка - 297 376 против 313 792
-				 *
-				 * Правим ОПРОСОМ, а не учётом: поднимать наибольшее на каждой выдаче
-				 * значило бы гонять общую строку памяти между ядрами, ради чего счёт и
-				 * вынесен к потокам. Огрубление остаётся - вершина, случившаяся между
-				 * двумя опросами и не отданная общему счётчику, ими не поймается, - о чём
-				 * сказано у самого счётчика
-				 */
-				const int64_t taken = (::occupied.load(std::memory_order_relaxed) + ::machinery->caches.pending());
-				// Берём большее из наибольшего и занятого прямо сейчас
-				const int64_t result = ((taken > highest) ? taken : highest);
-				// Выводим наибольшее занятое за время работы
-				return ((result > 0) ? static_cast <size_t> (result) : 0);
-			}
+		case static_cast <uint8_t> (property_t::PEAK): {
+			// Читаем наибольшее занятое за время работы
+			const int64_t highest = ::summit.load(std::memory_order_relaxed);
+			/**
+			 * Сличаем с занятым ПРЯМО СЕЙЧАС и берём большее
+			 *
+			 * Наибольшее поднимается лишь тогда, когда поток отдаёт накопленное общему
+			 * счётчику пачкой, - а занятое считается вместе с накопленным у потоков.
+			 * Оттого наибольшее выходило МЕНЬШЕ занятого прямо сейчас, чего быть не
+			 * должно вовсе: замечено семплом `sample/alloc/alloc.cpp` сразу за
+			 * заведением фреймворка - 297 376 против 313 792
+			 *
+			 * Правим ОПРОСОМ, а не учётом: поднимать наибольшее на каждой выдаче
+			 * значило бы гонять общую строку памяти между ядрами, ради чего счёт и
+			 * вынесен к потокам. Огрубление остаётся - вершина, случившаяся между
+			 * двумя опросами и не отданная общему счётчику, ими не поймается, - о чём
+			 * сказано у самого счётчика
+			 */
+			const int64_t taken = (::occupied.load(std::memory_order_relaxed) + ::machinery->caches.pending());
+			// Берём большее из наибольшего и занятого прямо сейчас
+			const int64_t result = ((taken > highest) ? taken : highest);
+			// Выводим наибольшее занятое за время работы
+			return ((result > 0) ? static_cast <size_t> (result) : 0);
+		}
 		// Если требуется взятое у системы под кучу
-		case static_cast <uint8_t> (property_t::HEAP):
-			/**
-			 * Выводим взятое у системы кучей вместе со взятым под крупные выдачи
-			 *
-			 * Крупные области у кучи не числятся вовсе - взяты они у источника напрямую;
-			 * не сложи мы их здесь, взятое у системы отставало бы от истины ровно на них
-			 */
-			/**
-			 * Складываем и взятое под заслоны
-			 *
-			 * Заслонённый блок берёт страницы у источника напрямую, минуя кучу, и стоит
-			 * не меньше трёх страниц: две закрытые по краям и хотя бы одна под данные.
-			 * Не сложи мы их здесь - приложение с включёнными заслонами видело бы взятое
-			 * у системы МЕНЬШЕ истинного, и тем сильнее, чем гуще выборка заслонов
-			 */
+		case static_cast <uint8_t> (property_t::HEAP): {
 			/**
 			 * Спрашиваем СВОЙ источник напрямую, а не складываем слои
 			 *
@@ -4484,8 +4469,8 @@ size_t awh::alloc::Allocator::property(const property_t property) noexcept {
 			 * вовсе. Складываем то, что знаем сами, - слои; собственный учёт кучи при
 			 * этом остаётся недоложенным, зато число не выдумано
 			 */
-			return (::machinery->central.heap().total + ::machinery->huge.state().taken +
-			 ::machinery->guard.state().taken);
+			return (::machinery->central.heap().total + ::machinery->huge.state().taken + ::machinery->guard.state().taken);
+		}
 		// Если требуется свободное в поток-локальных кэшах
 		case static_cast <uint8_t> (property_t::CACHED):
 			// Выводим свободное в кэшах
@@ -4510,12 +4495,12 @@ size_t awh::alloc::Allocator::property(const property_t property) noexcept {
  */
 #if defined(AWH_ALLOC_COUNTING)
 /**
- * @brief Метод управления счётчиком выдач языка C++
+ * @brief Функция управления счётчиком выдач языка C++
  *
  * @param mode режим счёта: истина включает счёт и обнуляет накопленное
  *
  */
-void awh::alloc::Allocator::counting(const bool mode) noexcept {
+void awh::alloc::allocator::counting(const bool mode) noexcept {
 	// Если счёт включается
 	if(mode){
 		// Обнуляем количество выполненных выдач
@@ -4527,13 +4512,13 @@ void awh::alloc::Allocator::counting(const bool mode) noexcept {
 	::__awh_counting__.store(mode, std::memory_order_relaxed);
 }
 /**
- * @brief Метод опроса счётчика выдач языка C++
+ * @brief Функция опроса счётчика выдач языка C++
  *
  * @param count количество выполненных выдач
  * @param bytes суммарный объём выданного в байтах
  *
  */
-void awh::alloc::Allocator::allocations(size_t & count, size_t & bytes) noexcept {
+void awh::alloc::allocator::allocations(size_t & count, size_t & bytes) noexcept {
 	// Выводим количество выполненных выдач
 	count = ::__awh_counted__.load(std::memory_order_relaxed);
 	// Выводим суммарный объём выданного
@@ -4541,12 +4526,12 @@ void awh::alloc::Allocator::allocations(size_t & count, size_t & bytes) noexcept
 }
 #endif
 /**
- * @brief Метод возврата системе свободной памяти
+ * @brief Функция возврата системе свободной памяти
  *
  * @return объём возвращённой системе памяти в байтах
  *
  */
-size_t awh::alloc::Allocator::purge() noexcept {
+size_t awh::alloc::allocator::purge() noexcept {
 	// Если распределитель не заведён
 	if(::stage.load(std::memory_order_acquire) != STAGE_READY)
 		// Возвращать нечего
@@ -4558,7 +4543,6 @@ size_t awh::alloc::Allocator::purge() noexcept {
 	 * страницы, покуда в области разряда лежит хоть один занятый блок
 	 */
 	::machinery->caches.flush();
-	// Выводим объём отданной системе памяти
 	/**
 	 * Полный запрет отдачи не отменяется и просьбой
 	 *
@@ -4581,13 +4565,13 @@ size_t awh::alloc::Allocator::purge() noexcept {
 	return (huge + ::machinery->central.purge(::now(), true));
 }
 /**
- * @brief Метод подмены источника страниц
+ * @brief Функция подмены источника страниц
  *
  * @param source требуемый источник страниц
  * @return       признак состоявшейся подмены
  *
  */
-bool awh::alloc::Allocator::source(source_t * source) noexcept {
+bool awh::alloc::allocator::source(source_t * source) noexcept {
 	// Если распределитель уже заведён
 	if(::stage.load(std::memory_order_acquire) != STAGE_COLD)
 		/**
@@ -4603,12 +4587,12 @@ bool awh::alloc::Allocator::source(source_t * source) noexcept {
 	return true;
 }
 /**
- * @brief Метод получения действующего источника страниц
+ * @brief Функция получения действующего источника страниц
  *
  * @return действующий источник страниц
  *
  */
-awh::alloc::source_t * awh::alloc::Allocator::source() noexcept {
+awh::alloc::source_t * awh::alloc::allocator::source() noexcept {
 	// Если источник подменён
 	if(::substitute != nullptr)
 		// Выводим подменённый источник страниц
@@ -4621,13 +4605,13 @@ awh::alloc::source_t * awh::alloc::Allocator::source() noexcept {
 	return &::machinery->system;
 }
 /**
- * @brief Метод разбора адреса обращения
+ * @brief Функция разбора адреса обращения
  *
  * @param addr разбираемый адрес
  * @return     сведения о разобранном адресе
  *
  */
-awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept {
+awh::alloc::region_t awh::alloc::allocator::resolve(const void * addr) noexcept {
 	// Сведения о разобранном адресе
 	region_t result;
 	// Если разбирать нечего
@@ -4677,13 +4661,14 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 			// Записываем смещение разбираемого адреса от начала блока
 			result.offset = offset;
 			/**
-			 * Определяем, чем оказался адрес
+			 * @brief Если адрес лежит перед началом блока
 			 *
-			 * Заслон на то и ставится, чтобы край обращения был известен точно:
-			 * смещение ниже нуля означает недобор, смещение за концом - переполнение,
-			 * а закрытая область - обращение по освобождённому блоку
+			 * @note Определяем, чем оказался адрес
+			 *
+			 * @details Заслон на то и ставится, чтобы край обращения был известен точно:
+			 *          смещение ниже нуля означает недобор, смещение за концом - переполнение,
+			 *          а закрытая область - обращение по освобождённому блоку.
 			 */
-			// Если адрес лежит перед началом блока
 			if(offset < 0)
 				// Отмечаем адрес недобором
 				result.origin = origin_t::UNDERRUN;
@@ -4762,13 +4747,15 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 	size_t pages = 0;
 	// Признак выданной наружу области
 	bool live = false;
-	// Если адрес куче не принадлежит
 	/**
-	 * Спрашиваем кучу ЧЕРЕЗ центральные списки, а не напрямую
+	 * @brief Если адрес куче не принадлежит
 	 *
-	 * Замок кучи держат они, и всякое обращение к ней идёт под ним. Прежде здесь стоял
-	 * прямой вызов, и он читал список кусков, покуда куча правила его в `Pages::grow`;
-	 * ThreadSanitizer называл эту гонку каждым прогоном ворошителя
+	 * @note Спрашиваем кучу ЧЕРЕЗ центральные списки, а не напрямую
+	 *
+	 * @details Замок кучи держат они, и всякое обращение к ней идёт под ним. Прежде здесь стоял
+	 *          прямой вызов, и он читал список кусков, покуда куча правила его в `Pages::grow`;
+	 *          ThreadSanitizer называл эту гонку каждым прогоном ворошителя.
+	 *
 	 */
 	if(!::machinery->central.locate(addr, &begin, &pages, &live)){
 		// Отмечаем память нам не принадлежащей
@@ -4818,14 +4805,14 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 	return result;
 }
 /**
- * @brief Метод опроса записей по освобождённым блокам
+ * @brief Функция опроса записей по освобождённым блокам
  *
  * @param culprit адрес первого испорченного блока, либо nullptr
  * @param offset  смещение первой порчи от начала блока, либо nullptr
  * @return        число блоков, испорченных записью после освобождения
  *
  */
-size_t awh::alloc::Allocator::spoiled(const void ** culprit, size_t * offset) noexcept {
+size_t awh::alloc::allocator::spoiled(const void ** culprit, size_t * offset) noexcept {
 	// Если распределитель не заведён
 	if(::stage.load(std::memory_order_acquire) != STAGE_READY){
 		// Если требуется адрес испорченного блока
@@ -4853,13 +4840,13 @@ size_t awh::alloc::Allocator::spoiled(const void ** culprit, size_t * offset) no
 	return state.spoiled;
 }
 /**
- * @brief Метод перебора удерживаемой прикладным кодом памяти
+ * @brief Функция перебора удерживаемой прикладным кодом памяти
  *
  * @param callback отклик перебора
  * @return         число перебранных блоков
  *
  */
-size_t awh::alloc::Allocator::holdings(function <bool (const holding_t &)> callback) noexcept {
+size_t awh::alloc::allocator::holdings(function <bool (const holding_t &)> callback) noexcept {
 	// Если распределитель не заведён либо перебирать нечем
 	if((::stage.load(std::memory_order_acquire) != STAGE_READY) || (callback == nullptr))
 		// Перебирать нечего
@@ -4876,14 +4863,14 @@ size_t awh::alloc::Allocator::holdings(function <bool (const holding_t &)> callb
 	}, &callback);
 }
 /**
- * @brief Метод обращения адреса стека вызовов в имя
+ * @brief Функция обращения адреса стека вызовов в имя
  *
  * @param frame  разбираемый адрес
  * @param symbol сведения о разобранном адресе
  * @return       признак разбора адреса
  *
  */
-bool awh::alloc::Allocator::symbol(const void * frame, symbol_t & symbol) noexcept {
+bool awh::alloc::allocator::symbol(const void * frame, symbol_t & symbol) noexcept {
 	// Если распределитель не заведён
 	if(::stage.load(std::memory_order_acquire) != STAGE_READY)
 		// Разбирать нечем
@@ -4892,12 +4879,12 @@ bool awh::alloc::Allocator::symbol(const void * frame, symbol_t & symbol) noexce
 	return ::machinery->trace.resolve(frame, symbol);
 }
 /**
- * @brief Метод установки отклика на крупное выделение
+ * @brief Функция установки отклика на крупное выделение
  *
  * @param callback функция обратного вызова
  *
  */
-void awh::alloc::Allocator::onLarge(function <void (const void *, const size_t)> callback) noexcept {
+void awh::alloc::allocator::onLarge(function <void (const void *, const size_t)> callback) noexcept {
 	{
 		// Захватываем замок откликов доклада
 		hold_t hold(::callbackLock);
@@ -4913,12 +4900,12 @@ void awh::alloc::Allocator::onLarge(function <void (const void *, const size_t)>
 	::awaken();
 }
 /**
- * @brief Метод установки отклика на достижение потолка кучи
+ * @brief Функция установки отклика на достижение потолка кучи
  *
  * @param callback функция обратного вызова
  *
  */
-void awh::alloc::Allocator::onLimit(function <void (const size_t)> callback) noexcept {
+void awh::alloc::allocator::onLimit(function <void (const size_t)> callback) noexcept {
 	{
 		// Захватываем замок откликов доклада
 		hold_t hold(::callbackLock);

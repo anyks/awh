@@ -447,7 +447,7 @@ namespace awh {
 				 * @details Кэш потока НЕ ЗАЩИЩЁН замком, и в том весь его смысл: обращается
 				 *          к нему лишь свой поток, и обращение стоит считанных команд.
 				 *          Оттого трогать чужой кэш нельзя ВОВСЕ - а прежде это делалось:
-				 *          отдача памяти системе (`Allocator::purge`) опустошала кэши всех
+				 *          отдача памяти системе (`allocator::purge`) опустошала кэши всех
 				 *          потоков подряд, включая работающие прямо сейчас.
 				 *
 				 * @details Порча от этого выглядела так: живой блок, которым владеет
@@ -479,7 +479,7 @@ namespace awh {
 				 *          point: only the owning thread accesses it, and access costs a few
 				 *          instructions. Hence touching a foreign cache is forbidden AT ALL -
 				 *          and it was done before: returning memory to the system
-				 *          (Allocator::purge) emptied all thread caches in a row, including
+				 *          (allocator::purge) emptied all thread caches in a row, including
 				 *          those working right now.
 				 *
 				 * @details The corruption looked like this: a live block owned by the

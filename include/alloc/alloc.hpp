@@ -188,7 +188,7 @@ namespace awh {
 		 */
 		enum class purge_t : uint8_t {
 			NEVER  = 0x00, // Не отдавать вовсе, даже по просьбе: память занята навсегда
-			MANUAL = 0x01, // Отдавать лишь по просьбе: Allocator::purge()
+			MANUAL = 0x01, // Отдавать лишь по просьбе: allocator::purge()
 			ONFREE = 0x02, // Смотреть при освобождении: порог решает, отдавать ли
 			TIMED  = 0x03  // Смотреть потоком обслуживания по отсрочке purgeDelay
 		};
@@ -342,7 +342,7 @@ namespace awh {
 				 *          крупных выдач отдавал системе всё сверх потолка, никого не спрашивая. Два
 				 *          слоя одного распределителя жили по противоположным укладам, и обещание
 				 *          настройки нарушалось молча. Просьба же опустошает придержку и сегодня -
-				 *          `Allocator::purge()` зовёт `Huge::drain()` первым делом.
+				 *          `allocator::purge()` зовёт `Huge::drain()` первым делом.
 				 *
 				 * @details Цена того расхождения измерена на наборе замеров ABC (macOS ARM64): работа
 				 *          брала у системы 44 897 МБ крупными областями и отдавала их обратно, платя
@@ -394,7 +394,7 @@ namespace awh {
 				 *          the huge allocation layer returned everything beyond the ceiling to the
 				 *          system without asking anyone. Two layers of one allocator lived by opposite
 				 *          rules, and the setting promise was violated silently. The request empties
-				 *          the retention to this day - Allocator::purge() calls Huge::drain() first.
+				 *          the retention to this day - allocator::purge() calls Huge::drain() first.
 				 *
 				 * @details The price of that discrepancy was measured on the ABC benchmark set
 				 *          (macOS ARM64): the work took 44,897 MB from the system in huge regions and
@@ -581,7 +581,7 @@ namespace awh {
 				 *   - `NEVER`  - не отдавать вовсе, даже по просьбе. Для машин с постоянной
 				 *                нагрузкой и для работы в реальном времени, где вызов системы
 				 *                посреди работы дороже любой сэкономленной страницы
-				 *   - `MANUAL` - отдавать лишь по просьбе `Allocator::purge()`. Приложение
+				 *   - `MANUAL` - отдавать лишь по просьбе `allocator::purge()`. Приложение
 				 *                само знает свои затишья: конец запроса, выгрузка набора
 				 *   - `ONFREE` - смотреть при каждом освобождении. С нулевой отсрочкой и без
 				 *                порога отдаёт сразу, ничего не накапливая - для слабых машин,
@@ -607,7 +607,7 @@ namespace awh {
 				 *    - NEVER  - never return, not even on request. For machines with constant load
 				 *               and for real-time work, where a system call amid work costs more than
 				 *               any saved page
-				 *    - MANUAL - return only on request of Allocator::purge(). The application knows
+				 *    - MANUAL - return only on request of allocator::purge(). The application knows
 				 *               its own quiet times: end of request, dataset unload
 				 *    - ONFREE - look at every free. With zero delay and no threshold it returns at
 				 *               once, accumulating nothing - for weak machines where memory costs
@@ -687,604 +687,599 @@ namespace awh {
 		static_assert((Options().purgeMode == purge_t::MANUAL), "Settings must be initialized with a constant value");
 		/**
 		 * \~russian
-		 * @brief Класс распределителя памяти
+		 * @brief Пространство имён распределителя памяти
 		 *
-		 * @note Методы объявлены статическими намеренно: распределитель заслоняет собою
+		 * @note Функции объявлены свободными намеренно: распределитель заслоняет собою
 		 *       выделение памяти всего процесса, и второго такого в процессе быть не
-		 *       может. Заводить объект значило бы обещать возможность, какой нет
+		 *       может. Состояния у пространства имён нет, и объект здесь заводить
+		 *       было бы обещанием возможности, какой нет
 		 *
 		 * \~english
-		 * @brief Memory allocator class
+		 * @brief Namespace of the memory allocator
 		 *
-		 * @note The methods are deliberately declared static: the allocator shadows memory
+		 * @note The functions are deliberately free: the allocator shadows memory
 		 *       allocation for the whole process, and a second one cannot exist in a
-		 *       process. Creating an object would promise a possibility that does not exist
+		 *       process. The namespace carries no state, and an object here would
+		 *       promise a possibility that does not exist
 		 *
 		 * \~
 		 */
-		typedef class __AWH_SHARED_EXPORT__ Allocator {
-			public:
+		namespace allocator {
+			/**
+			 * \~russian
+			 * @brief Функция захвата выделения памяти процесса
+			 *
+			 * @note Звать до порождения потоков. Захват переписыванием переписывает
+			 *       начала функций уже загруженной библиотеки времени исполнения, и
+			 *       поток, исполняющий их в этот миг, получил бы половину прежнего
+			 *       кода и половину нового
+			 *
+			 * @note У систем ELF захват НЕ выборочен: там подмена идёт именами и
+			 *       случается САМИМ СВЯЗЫВАНИЕМ - распределитель встаёт на место
+			 *       системного с первой выдачи, звал кто эту функцию или нет. Здесь
+			 *       он лишь применяет настройки к уже заведённой куче, а release
+			 *       снимает только отметку. Выборочность есть у macOS и MS Windows:
+			 *       там имена наших функций частные, и до захвата они не зовутся
+			 *
+			 * @note Отключается ключом сборки: cmake -DCMAKE_BUILD_ALLOCATOR=OFF ..
+			 *       Признак AWH_ALLOC_DISABLED обращает наши функции в частные, и
+			 *       функция эта отвечает отказом на всех системах. Ключ - подпорка на
+			 *       время доводки модуля
+			 *
+			 * @param options настройки распределителя
+			 * @return        признак состоявшегося захвата
+			 *
+			 * \~english
+			 * @brief Function of capturing process memory allocation
+			 *
+			 * @note Call before spawning threads. Rewriting capture rewrites the entries of
+			 *       functions of an already loaded runtime library, and a thread executing
+			 *       them at that instant would get half of the old code and half of the new
+			 *
+			 * @note On ELF systems capture is NOT selective: there substitution goes by names
+			 *       and happens BY THE LINKER ITSELF - the allocator takes the place of the
+			 *       system one from the first allocation, whether anyone called this function
+			 *       or not. Here it merely applies settings to an already established heap,
+			 *       and release only removes the mark. Selectivity exists on macOS and MS
+			 *       Windows: there our function names are private and are not called before
+			 *       capture
+			 *
+			 * @note Disabled by the build key: cmake -DCMAKE_BUILD_ALLOCATOR=OFF .. The flag
+			 *       AWH_ALLOC_DISABLED makes our functions private, and this function answers
+			 *       with refusal on all systems. The key is a crutch during module tuning
+			 *
+			 * @param options allocator settings
+			 * @return        flag of the capture having taken place
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool capture(const options_t & options) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция снятия захвата выделения памяти процесса
+			 *
+			 * @note Выданная память остаётся годной: снятие возвращает прежние
+			 *       функции, а освобождение выданного нами по-прежнему идёт к нам
+			 *
+			 * \~english
+			 * @brief Function of releasing the capture of process memory allocation
+			 *
+			 * @note Allocated memory remains valid: release returns the previous functions,
+			 *       and freeing what we allocated still comes to us
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void surrender() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция определения захваченности выделения памяти процесса
+			 *
+			 * @return признак захвата
+			 *
+			 * \~english
+			 * @brief Function of determining whether process memory allocation is captured
+			 *
+			 * @return capture flag
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool captured() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения действующих настроек
+			 *
+			 * @return действующие настройки
+			 *
+			 * \~english
+			 * @brief Function of getting the effective settings
+			 *
+			 * @return effective settings
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ const options_t & options() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция изменения настроек в работе
+			 *
+			 * @note Меняются лишь те настройки, какие в работе изменимы: отсрочка
+			 *       возврата, потолки, выборка заслонов, карантин и способ
+			 *       заполнения. Размер занимаемой при заведении области значение
+			 *       имеет лишь при захвате и здесь не действует
+			 *
+			 * @param options требуемые настройки
+			 *
+			 * \~english
+			 * @brief Function of changing settings at runtime
+			 *
+			 * @note Only those settings that are changeable at runtime are changed: return
+			 *       delay, ceilings, guard sampling, quarantine and fill method. The size of
+			 *       the area taken at establishment matters only at capture and does not act
+			 *       here
+			 *
+			 * @param options required settings
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void options(const options_t & options) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция опроса расхода памяти
+			 *
+			 * @param property требуемое свойство
+			 * @return         величина свойства в байтах
+			 *
+			 * \~english
+			 * @brief Function of querying memory consumption
+			 *
+			 * @param property required property
+			 * @return         property value in bytes
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t property(const property_t property) noexcept;
+			/**
+			 * Счётчик выдач языка C++ заводится только ключом стенда замера
+			 */
+			#if defined(AWH_ALLOC_COUNTING)
 				/**
 				 * \~russian
-				 * @brief Метод захвата выделения памяти процесса
+				 * @brief Функция управления счётчиком выдач языка C++
 				 *
-				 * @note Звать до порождения потоков. Захват переписыванием переписывает
-				 *       начала функций уже загруженной библиотеки времени исполнения, и
-				 *       поток, исполняющий их в этот миг, получил бы половину прежнего
-				 *       кода и половину нового
+				 * @note Ключ сборки `AWH_ALLOC_COUNTING` заводит счётчик лишь для стендов
+				 *       замера: в обычной сборке ни счётчика, ни функции нет
 				 *
-				 * @note У систем ELF захват НЕ выборочен: там подмена идёт именами и
-				 *       случается САМИМ СВЯЗЫВАНИЕМ - распределитель встаёт на место
-				 *       системного с первой выдачи, звал кто этот метод или нет. Здесь
-				 *       он лишь применяет настройки к уже заведённой куче, а release
-				 *       снимает только отметку. Выборочность есть у macOS и MS Windows:
-				 *       там имена наших функций частные, и до захвата они не зовутся
-				 *
-				 * @note Отключается ключом сборки: cmake -DCMAKE_BUILD_ALLOCATOR=OFF ..
-				 *       Признак AWH_ALLOC_DISABLED обращает наши функции в частные, и
-				 *       метод этот отвечает отказом на всех системах. Ключ - подпорка на
-				 *       время доводки модуля
-				 *
-				 * @param options настройки распределителя
-				 * @return        признак состоявшегося захвата
+				 * @param mode режим счёта: истина включает счёт и обнуляет накопленное
 				 *
 				 * \~english
-				 * @brief Method of capturing process memory allocation
+				 * @brief Function of controlling the C++ allocation counter
 				 *
-				 * @note Call before spawning threads. Rewriting capture rewrites the entries of
-				 *       functions of an already loaded runtime library, and a thread executing
-				 *       them at that instant would get half of the old code and half of the new
+				 * @note The `AWH_ALLOC_COUNTING` build key creates the counter for benchmark
+				 *       stands only: a regular build has neither the counter nor the function
 				 *
-				 * @note On ELF systems capture is NOT selective: there substitution goes by names
-				 *       and happens BY THE LINKER ITSELF - the allocator takes the place of the
-				 *       system one from the first allocation, whether anyone called this method
-				 *       or not. Here it merely applies settings to an already established heap,
-				 *       and release only removes the mark. Selectivity exists on macOS and MS
-				 *       Windows: there our function names are private and are not called before
-				 *       capture
-				 *
-				 * @note Disabled by the build key: cmake -DCMAKE_BUILD_ALLOCATOR=OFF .. The flag
-				 *       AWH_ALLOC_DISABLED makes our functions private, and this method answers
-				 *       with refusal on all systems. The key is a crutch during module tuning
-				 *
-				 * @param options allocator settings
-				 * @return        flag of the capture having taken place
+				 * @param mode counting mode: true enables counting and zeroes the accumulated values
 				 *
 				 * \~
 				 */
-				static bool capture(const options_t & options) noexcept;
+				__AWH_SHARED_EXPORT__ void counting(const bool mode) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод снятия захвата выделения памяти процесса
+				 * @brief Функция опроса счётчика выдач языка C++
 				 *
-				 * @note Выданная память остаётся годной: снятие возвращает прежние
-				 *       функции, а освобождение выданного нами по-прежнему идёт к нам
+				 * @param count количество выполненных выдач
+				 * @param bytes суммарный объём выданного в байтах
 				 *
 				 * \~english
-				 * @brief Method of releasing the capture of process memory allocation
+				 * @brief Function of querying the C++ allocation counter
 				 *
-				 * @note Allocated memory remains valid: release returns the previous functions,
-				 *       and freeing what we allocated still comes to us
+				 * @param count number of allocations performed
+				 * @param bytes total volume allocated in bytes
 				 *
 				 * \~
 				 */
-				static void surrender() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод определения захваченности выделения памяти процесса
-				 *
-				 * @return признак захвата
-				 *
-				 * \~english
-				 * @brief Method of determining whether process memory allocation is captured
-				 *
-				 * @return capture flag
-				 *
-				 * \~
-				 */
-				static bool captured() noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения действующих настроек
-				 *
-				 * @return действующие настройки
-				 *
-				 * \~english
-				 * @brief Method of getting the effective settings
-				 *
-				 * @return effective settings
-				 *
-				 * \~
-				 */
-				static const options_t & options() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод изменения настроек в работе
-				 *
-				 * @note Меняются лишь те настройки, какие в работе изменимы: отсрочка
-				 *       возврата, потолки, выборка заслонов, карантин и способ
-				 *       заполнения. Размер занимаемой при заведении области значение
-				 *       имеет лишь при захвате и здесь не действует
-				 *
-				 * @param options требуемые настройки
-				 *
-				 * \~english
-				 * @brief Method of changing settings at runtime
-				 *
-				 * @note Only those settings that are changeable at runtime are changed: return
-				 *       delay, ceilings, guard sampling, quarantine and fill method. The size of
-				 *       the area taken at establishment matters only at capture and does not act
-				 *       here
-				 *
-				 * @param options required settings
-				 *
-				 * \~
-				 */
-				static void options(const options_t & options) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод опроса расхода памяти
-				 *
-				 * @param property требуемое свойство
-				 * @return         величина свойства в байтах
-				 *
-				 * \~english
-				 * @brief Method of querying memory consumption
-				 *
-				 * @param property required property
-				 * @return         property value in bytes
-				 *
-				 * \~
-				 */
-				static size_t property(const property_t property) noexcept;
-				/**
-				 * Счётчик выдач языка C++ заводится только ключом стенда замера
-				 */
-				#if defined(AWH_ALLOC_COUNTING)
-					/**
-					 * \~russian
-					 * @brief Метод управления счётчиком выдач языка C++
-					 *
-					 * @note Ключ сборки `AWH_ALLOC_COUNTING` заводит счётчик лишь для стендов
-					 *       замера: в обычной сборке ни счётчика, ни метода нет
-					 *
-					 * @param mode режим счёта: истина включает счёт и обнуляет накопленное
-					 *
-					 * \~english
-					 * @brief Method of controlling the C++ allocation counter
-					 *
-					 * @note The `AWH_ALLOC_COUNTING` build key creates the counter for benchmark
-					 *       stands only: a regular build has neither the counter nor the method
-					 *
-					 * @param mode counting mode: true enables counting and zeroes the accumulated values
-					 *
-					 * \~
-					 */
-					static void counting(const bool mode) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод опроса счётчика выдач языка C++
-					 *
-					 * @param count количество выполненных выдач
-					 * @param bytes суммарный объём выданного в байтах
-					 *
-					 * \~english
-					 * @brief Method of querying the C++ allocation counter
-					 *
-					 * @param count number of allocations performed
-					 * @param bytes total volume allocated in bytes
-					 *
-					 * \~
-					 */
-					static void allocations(size_t & count, size_t & bytes) noexcept;
-				#endif
-				/**
-				 * \~russian
-				 * @brief Метод возврата системе свободной памяти
-				 *
-				 * @note Отсрочка возврата при этом не отменяется: метод возвращает то,
-				 *       что свободно сейчас, а установленный порядок остаётся прежним
-				 *
-				 * @note Кэш опустошается лишь у ЗВАВШЕГО потока: кэш потока замком не
-				 *       защищён, и править его чужими руками нельзя - прочим потокам
-				 *       ставится просьба, какую они исполняют сами на ближайшем
-				 *       освобождении. Оттого у многопоточного приложения ответ бывает
-				 *       заметно меньше свободного: остальное лежит в кэшах, какие
-				 *       опустеют следом
-				 *
-				 * @note При запрете отдачи (`purge_t::NEVER`) ответом идёт нуль, но кэши
-				 *       всё равно опустошаются: запрет касается ОТДАЧИ СИСТЕМЕ, а не
-				 *       возврата блоков центральным спискам
-				 *
-				 * @return объём возвращённой системе памяти в байтах
-				 *
-				 * \~english
-				 * @brief Method of returning free memory to the system
-				 *
-				 * @note The return delay is not cancelled: the method returns what is free now,
-				 *       and the established order remains unchanged
-				 *
-				 * @note The cache is emptied only for the CALLING thread: the thread cache is not
-				 *       protected by a lock, and it cannot be edited by foreign hands - other
-				 *       threads are sent a request they execute themselves on the nearest free.
-				 *       Hence in a multithreaded application the answer may be noticeably less
-				 *       than free: the rest lies in caches that will empty shortly
-				 *
-				 * @note With returning forbidden (purge_t::NEVER) the answer is zero, but caches
-				 *       are still emptied: the prohibition concerns RETURNING TO THE SYSTEM, not
-				 *       the return of blocks to central lists
-				 *
-				 * @return amount of memory returned to the system in bytes
-				 *
-				 * \~
-				 */
-				static size_t purge() noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод подмены источника страниц
-				 *
-				 * @note Звать до захвата: заменять источник у кучи, уже раздавшей страницы,
-				 *       значило бы отдавать их потом не тому, кто выдавал
-				 *
-				 * @note Подмена состоится лишь тогда, когда до неё НИКТО не просил памяти
-				 *       через нас, и это зависит не от системы, а от того, что успело
-				 *       случиться в процессе. У систем ELF и у macOS подмена именами
-				 *       работает с самого запуска, и куча там обыкновенно заводится ещё при
-				 *       заведении переменных процесса - прежде, чем прикладной код получит
-				 *       управление; тогда подмена отвечает отказом. Но зависит это от
-				 *       библиотеки времени исполнения и от самой программы: у OpenBSD,
-				 *       скажем, до `main` не выделяется ничего, и подмена там проходит.
-				 *       Оттого ответ метода обязан быть ПРОВЕРЕН, а не предположен: отказ -
-				 *       обычный исход
-				 *
-				 * @param source требуемый источник страниц
-				 * @return       признак состоявшейся подмены
-				 *
-				 * \~english
-				 * @brief Method of substituting the page source
-				 *
-				 * @note Call before capture: replacing the source in a heap that has already
-				 *       handed out pages would mean returning them later to the wrong allocator
-				 *
-				 * @note The substitution happens only when NOBODY has asked for memory through us
-				 *       before it, and that depends not on the system but on what has managed to
-				 *       happen in the process. On ELF systems and macOS name substitution works
-				 *       from startup, and the heap there is usually established during process
-				 *       variable initialization - before the application code gets control; then
-				 *       substitution answers with refusal. But it depends on the runtime library
-				 *       and the program itself: on OpenBSD, for instance, nothing is allocated
-				 *       before main, and substitution passes there. Hence the method answer must
-				 *       be CHECKED, not assumed: refusal is a normal outcome
-				 *
-				 * @param source required page source
-				 * @return       flag of the substitution having taken place
-				 *
-				 * \~
-				 */
-				static bool source(source_t * source) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения действующего источника страниц
-				 *
-				 * @return действующий источник страниц
-				 *
-				 * \~english
-				 * @brief Method of getting the effective page source
-				 *
-				 * @return effective page source
-				 *
-				 * \~
-				 */
-				static source_t * source() noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод разбора адреса обращения
-				 *
-				 * @note Метод зовётся из разбора сбоя обращения, а не из обработчика
-				 *       сигнала: внутри берутся замки, а обработчику того нельзя
-				 *
-				 * @param addr разбираемый адрес
-				 * @return     сведения о разобранном адресе
-				 *
-				 * \~english
-				 * @brief Method of resolving an access address
-				 *
-				 * @note The method is called from fault address resolution, not from the signal
-				 *       handler: locks are taken inside, and the handler must not do that
-				 *
-				 * @param addr address being resolved
-				 * @return     information about the resolved address
-				 *
-				 * \~
-				 */
-				static region_t resolve(const void * addr) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод выдачи защищённой памяти
-				 *
-				 * @note Защита состоит из трёх обещаний: область не попадает в снимок
-				 *       памяти при падении, ей запрещено уходить в подкачку, а содержимое
-				 *       затирается при освобождении. Первые два умеет не всякая система, и
-				 *       ответ `shelter` говорит, что состоялось НА ДЕЛЕ. Затирание же
-				 *       обещано всегда
-				 *
-				 * @note Защита эта - НЕ шифрование: живую память шифровать нечем, к ней
-				 *       обращается сам процессор. Она защищает от снимков - подкачки,
-				 *       снимка при падении, спящего режима, - а не от того, кто читает
-				 *       память процесса: такой прочтёт и ключ
-				 *
-				 * @note Блок берётся у системы отдельной областью, а не из кучи: цена его
-				 *       - целая страница даже под малый запрос. Место таких блоков -
-				 *       ключи и пароли, а не рабочие буферы
-				 *
-				 * @note Освобождается методом `release`, а НЕ обычным `free`. Совпадают
-				 *       они лишь там, где захват выдачи памяти процесса состоялся: у
-				 *       систем ELF наш `free` стоит в двоичном файле с самого
-				 *       связывания, а у macOS и MS Windows без захвата `free` -
-				 *       СИСТЕМНЫЙ, и наша область валит его. Проверено тестом склада
-				 *       тайн: `pointer being freed was not allocated`
-				 *
-				 * @param size    требуемый размер в байтах
-				 * @param shelter сведения о состоявшейся защите либо nullptr
-				 * @return        адрес выданной памяти либо nullptr
-				 *
-				 * \~english
-				 * @brief Method of allocating protected memory
-				 *
-				 * @note Protection consists of three promises: the area does not appear in a
-				 *       crash memory dump, it is forbidden to swap out, and the content is wiped
-				 *       on free. Not every system can do the first two, and the shelter answer
-				 *       tells what happened IN FACT. Wiping, however, is always promised
-				 *
-				 * @note This protection is NOT encryption: live memory cannot be encrypted, the
-				 *       processor itself accesses it. It protects from snapshots - swapping,
-				 *       crash dump, hibernation - not from one who reads process memory: such a
-				 *       one reads the key as well
-				 *
-				 * @note The block is taken from the system as a separate area, not from the heap:
-				 *       its cost is a whole page even for a small request. The place for such
-				 *       blocks is keys and passwords, not working buffers
-				 *
-				 * @note Freed by the release method, NOT by ordinary free. They coincide only
-				 *       where process memory allocation capture succeeded: on ELF systems our
-				 *       free is in the binary from linking onward, while on macOS and MS Windows
-				 *       without capture free is the SYSTEM one, and our area crashes it. Verified
-				 *       by the secret storage test: pointer being freed was not allocated
-				 *
-				 * @param size    required size in bytes
-				 * @param shelter information about the protection achieved or nullptr
-				 * @return        address of the allocated memory or nullptr
-				 *
-				 * \~
-				 */
-				static void * secure(const size_t size, shelter_t * shelter = nullptr) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод смены доступности защищённого блока
-				 *
-				 * @details Закрытый блок отвечает на чтение ОТКАЗОМ, а не байтами:
-				 *          отладчик, читающий чужую память, спотыкается, а переполнение
-				 *          соседнего буфера упирается в недоступную страницу вместо того,
-				 *          чтобы вычитать содержимое. Место такого блока - ключи и пароли
-				 *          между обращениями к ним.
-				 *
-				 * @note Границы блока правятся САМИ: начало опускается к границе
-				 *       страницы, длина поднимается к ней же. Смена доступности идёт
-				 *       страницами, и невыровненное начало система вправе отвергнуть -
-				 *       отказ этот читался бы как «не умею»
-				 *
-				 * @note Отказ означает «не умею»: источник, страницами системы не
-				 *       владеющий, доступности не меняет вовсе. Отличать его от «не
-				 *       вышло» обязан звавший
-				 *
-				 * @note Закрытый блок обязан быть открыт ПРЕЖДЕ освобождения: затирание
-				 *       при возврате пишет в него, а запись в недоступную страницу валит
-				 *       программу
-				 *
-				 * @param addr   адрес защищённого блока
-				 * @param opened признак открываемого блока
-				 * @return       признак выполнения операции
-				 *
-				 * \~english
-				 * @brief Method of changing the accessibility of a protected block
-				 *
-				 * @details A closed block answers reads with a REFUSAL, not bytes: a debugger reading
-				 *          foreign memory stumbles, and a neighbouring buffer overflow hits an
-				 *          inaccessible page instead of reading out the content. The place for such a
-				 *          block is keys and passwords between accesses to them.
-				 *
-				 * @note Block boundaries are adjusted THEMSELVES: the start is lowered to the page
-				 *       boundary, the length is raised to it. Accessibility changes go by pages, and
-				 *       the system may reject an unaligned start - that rejection would read as
-				 *       cannot do
-				 *
-				 * @note Refusal means cannot do: a source not owning system pages does not
-				 *       change accessibility at all. The caller must distinguish it from did not
-				 *       work out
-				 *
-				 * @note A closed block must be opened BEFORE freeing: wiping on return writes to it,
-				 *       and writing to an inaccessible page crashes the program
-				 *
-				 * @param addr   address of the protected block
-				 * @param opened flag of the block being opened
-				 * @return       flag of the operation having been performed
-				 *
-				 * \~
-				 */
-				static bool shield(const void * addr, const bool opened) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод возврата выданной памяти
-				 *
-				 * @note Возврат этот идёт к НАМ всегда, состоялся захват выдачи памяти
-				 *       процесса или нет. Обычный `free` там, где захвата не было,
-				 *       принадлежит системе и нашу область не узнаёт
-				 *
-				 * @param addr адрес возвращаемой памяти
-				 *
-				 * \~english
-				 * @brief Method of releasing the allocated memory
-				 *
-				 * @note This return goes to US always, whether process memory allocation capture
-				 *       succeeded or not. The ordinary free where there was no capture belongs to
-				 *       the system and does not recognise our area
-				 *
-				 * @param addr address of the memory being released
-				 *
-				 * \~
-				 */
-				static void release(void * addr) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод перебора удерживаемой прикладным кодом памяти
-				 *
-				 * @note Отвечает он о том, что выдано и до сих пор не освобождено, а НЕ
-				 *       об утечках: намерений прикладного кода распределитель не знает, и
-				 *       блок, живущий до конца процесса, бывает и утечкой, и намеренным
-				 *       кэшем. Называть найденное утечкой волен лишь тот, кто писал код
-				 *
-				 * @note Перебираются лишь блоки, попавшие под выборку `profileRate`: без
-				 *       неё перебор отвечает нулём, а не пустотой знания
-				 *
-				 * @note Перебор идёт с взятым замком учёта: отклику нельзя ни выделять
-				 *       память, ни звать распределитель. Возврат лжи прекращает перебор
-				 *
-				 * @param callback отклик перебора
-				 * @return         число перебранных блоков
-				 *
-				 * \~english
-				 * @brief Method of enumerating the memory held by the application
-				 *
-				 * @note It reports what has been allocated and not yet freed, NOT about leaks: the
-				 *       allocator does not know the application's intentions, and a block living
-				 *       until the end of the process may be both a leak and a deliberate cache.
-				 *       Calling a find a leak is the prerogative of whoever wrote the code
-				 *
-				 * @note Only blocks that fell under the profileRate sampling are enumerated: without
-				 *       it the enumeration answers with zero, not with empty knowledge
-				 *
-				 * @note Enumeration runs with the accounting lock held: the callback must neither
-				 *       allocate memory nor call the allocator. Returning false stops the enumeration
-				 *
-				 * @param callback enumeration callback
-				 * @return         number of blocks enumerated
-				 *
-				 * \~
-				 */
-				static size_t holdings(function <bool (const holding_t &)> callback) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод опроса записей по освобождённым блокам
-				 *
-				 * @details Карантин держит освобождённое засеянным и сличает засев при
-				 *          изъятии блока: не сохранившийся засев означает запись по
-				 *          указателю, освобождённому прежде, - тот самый дефект, ради
-				 *          какого карантин и заведён
-				 *
-				 * @note Находка эта прежде уходила ТОЛЬКО в журнал, и то потоком
-				 *       обслуживания: приложение, журнала не заведшее либо потока не
-				 *       имеющее, о дефекте своего кода не узнавало вовсе. Опрос
-				 *       заведён затем, чтобы находку можно было спросить
-				 *
-				 * @warning Ловится запись лишь в блок, ЛЕЖАЩИЙ в карантине, и лишь при
-				 *          засеве `fill_t::JUNK`: без засева сличать нечего, а блок,
-				 *          карантин уже покинувший, вправе быть выдан вновь
-				 *
-				 * @param culprit адрес первого испорченного блока, либо nullptr
-				 * @param offset  смещение первой порчи от начала блока, либо nullptr
-				 * @return        число блоков, испорченных записью после освобождения
-				 *
-				 * \~english
-				 * @brief Method of querying writes to freed blocks
-				 *
-				 * @details Quarantine keeps freed memory seeded and compares the seed when a block is
-				 *          taken: a seed that did not survive means a write through a pointer freed
-				 *          earlier - the very defect the quarantine was built for
-				 *
-				 * @note This find previously went ONLY to the log, and then by the service thread:
-				 *       an application without a log or without a thread did not learn about its own
-				 *       code defect at all. The query was built so that the find could be asked for
-				 *
-				 * @warning Only a write into a block LYING in quarantine is caught, and only with
-				 *          fill_t::JUNK seeding: without seeding there is nothing to compare, and a
-				 *          block that has already left quarantine may be allocated anew
-				 *
-				 * @param culprit address of the first corrupted block, or nullptr
-				 * @param offset  offset of the first corruption from the block start, or nullptr
-				 * @return        number of blocks corrupted by writes after free
-				 *
-				 * \~
-				 */
-				static size_t spoiled(const void ** culprit = nullptr, size_t * offset = nullptr) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод обращения адреса стека вызовов в имя
-				 *
-				 * @note Имена функций самой ПРОГРАММЫ видны лишь тогда, когда та связана
-				 *       с выносом имён в динамическую таблицу (`-rdynamic` у систем ELF):
-				 *       иначе разбор назовёт образ и смещение, но не функцию. Имена
-				 *       разделяемых библиотек видны всегда
-				 *
-				 * @param frame  разбираемый адрес
-				 * @param symbol сведения о разобранном адресе
-				 * @return       признак разбора адреса
-				 *
-				 * \~english
-				 * @brief Method of resolving a call stack address into a name
-				 *
-				 * @note Function names of the PROGRAM itself are visible only when it is linked
-				 *       with names exported to the dynamic table (-rdynamic on ELF systems):
-				 *       otherwise the resolution names the image and offset but not the function.
-				 *       Shared library names are always visible
-				 *
-				 * @param frame  address being resolved
-				 * @param symbol information about the resolved address
-				 * @return       resolution flag
-				 *
-				 * \~
-				 */
-				static bool symbol(const void * frame, symbol_t & symbol) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод установки отклика на крупное выделение
-				 *
-				 * @note Отклик зовётся вне выдачи памяти, отдельным потоком: звать его
-				 *       изнутри выдачи значило бы уйти в возвратность через ту же выдачу
-				 *
-				 * @param callback функция обратного вызова
-				 *
-				 * \~english
-				 * @brief Method of setting the callback for a large allocation
-				 *
-				 * @note The callback is called outside memory allocation, by a separate thread:
-				 *       calling it from inside allocation would mean going into recursion through
-				 *       the same allocation
-				 *
-				 * @param callback callback function
-				 *
-				 * \~
-				 */
-				static void onLarge(function <void (const void *, const size_t)> callback) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод установки отклика на достижение потолка кучи
-				 *
-				 * @param callback функция обратного вызова
-				 *
-				 * \~english
-				 * @brief Method of setting the callback for reaching the heap limit
-				 *
-				 * @param callback callback function
-				 *
-				 * \~
-				 */
-				static void onLimit(function <void (const size_t)> callback) noexcept;
-		} allocator_t;
+				__AWH_SHARED_EXPORT__ void allocations(size_t & count, size_t & bytes) noexcept;
+			#endif
+			/**
+			 * \~russian
+			 * @brief Функция возврата системе свободной памяти
+			 *
+			 * @note Отсрочка возврата при этом не отменяется: функция возвращает то,
+			 *       что свободно сейчас, а установленный порядок остаётся прежним
+			 *
+			 * @note Кэш опустошается лишь у ЗВАВШЕГО потока: кэш потока замком не
+			 *       защищён, и править его чужими руками нельзя - прочим потокам
+			 *       ставится просьба, какую они исполняют сами на ближайшем
+			 *       освобождении. Оттого у многопоточного приложения ответ бывает
+			 *       заметно меньше свободного: остальное лежит в кэшах, какие
+			 *       опустеют следом
+			 *
+			 * @note При запрете отдачи (`purge_t::NEVER`) ответом идёт нуль, но кэши
+			 *       всё равно опустошаются: запрет касается ОТДАЧИ СИСТЕМЕ, а не
+			 *       возврата блоков центральным спискам
+			 *
+			 * @return объём возвращённой системе памяти в байтах
+			 *
+			 * \~english
+			 * @brief Function of returning free memory to the system
+			 *
+			 * @note The return delay is not cancelled: the function returns what is free now,
+			 *       and the established order remains unchanged
+			 *
+			 * @note The cache is emptied only for the CALLING thread: the thread cache is not
+			 *       protected by a lock, and it cannot be edited by foreign hands - other
+			 *       threads are sent a request they execute themselves on the nearest free.
+			 *       Hence in a multithreaded application the answer may be noticeably less
+			 *       than free: the rest lies in caches that will empty shortly
+			 *
+			 * @note With returning forbidden (purge_t::NEVER) the answer is zero, but caches
+			 *       are still emptied: the prohibition concerns RETURNING TO THE SYSTEM, not
+			 *       the return of blocks to central lists
+			 *
+			 * @return amount of memory returned to the system in bytes
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t purge() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция подмены источника страниц
+			 *
+			 * @note Звать до захвата: заменять источник у кучи, уже раздавшей страницы,
+			 *       значило бы отдавать их потом не тому, кто выдавал
+			 *
+			 * @note Подмена состоится лишь тогда, когда до неё НИКТО не просил памяти
+			 *       через нас, и это зависит не от системы, а от того, что успело
+			 *       случиться в процессе. У систем ELF и у macOS подмена именами
+			 *       работает с самого запуска, и куча там обыкновенно заводится ещё при
+			 *       заведении переменных процесса - прежде, чем прикладной код получит
+			 *       управление; тогда подмена отвечает отказом. Но зависит это от
+			 *       библиотеки времени исполнения и от самой программы: у OpenBSD,
+			 *       скажем, до `main` не выделяется ничего, и подмена там проходит.
+			 *       Оттого ответ функции обязан быть ПРОВЕРЕН, а не предположен: отказ -
+			 *       обычный исход
+			 *
+			 * @param source требуемый источник страниц
+			 * @return       признак состоявшейся подмены
+			 *
+			 * \~english
+			 * @brief Function of substituting the page source
+			 *
+			 * @note Call before capture: replacing the source in a heap that has already
+			 *       handed out pages would mean returning them later to the wrong allocator
+			 *
+			 * @note The substitution happens only when NOBODY has asked for memory through us
+			 *       before it, and that depends not on the system but on what has managed to
+			 *       happen in the process. On ELF systems and macOS name substitution works
+			 *       from startup, and the heap there is usually established during process
+			 *       variable initialization - before the application code gets control; then
+			 *       substitution answers with refusal. But it depends on the runtime library
+			 *       and the program itself: on OpenBSD, for instance, nothing is allocated
+			 *       before main, and substitution passes there. Hence the function answer must
+			 *       be CHECKED, not assumed: refusal is a normal outcome
+			 *
+			 * @param source required page source
+			 * @return       flag of the substitution having taken place
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool source(source_t * source) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения действующего источника страниц
+			 *
+			 * @return действующий источник страниц
+			 *
+			 * \~english
+			 * @brief Function of getting the effective page source
+			 *
+			 * @return effective page source
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ source_t * source() noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция разбора адреса обращения
+			 *
+			 * @note Функция зовётся из разбора сбоя обращения, а не из обработчика
+			 *       сигнала: внутри берутся замки, а обработчику того нельзя
+			 *
+			 * @param addr разбираемый адрес
+			 * @return     сведения о разобранном адресе
+			 *
+			 * \~english
+			 * @brief Function of resolving an access address
+			 *
+			 * @note The function is called from fault address resolution, not from the signal
+			 *       handler: locks are taken inside, and the handler must not do that
+			 *
+			 * @param addr address being resolved
+			 * @return     information about the resolved address
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ region_t resolve(const void * addr) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция выдачи защищённой памяти
+			 *
+			 * @note Защита состоит из трёх обещаний: область не попадает в снимок
+			 *       памяти при падении, ей запрещено уходить в подкачку, а содержимое
+			 *       затирается при освобождении. Первые два умеет не всякая система, и
+			 *       ответ `shelter` говорит, что состоялось НА ДЕЛЕ. Затирание же
+			 *       обещано всегда
+			 *
+			 * @note Защита эта - НЕ шифрование: живую память шифровать нечем, к ней
+			 *       обращается сам процессор. Она защищает от снимков - подкачки,
+			 *       снимка при падении, спящего режима, - а не от того, кто читает
+			 *       память процесса: такой прочтёт и ключ
+			 *
+			 * @note Блок берётся у системы отдельной областью, а не из кучи: цена его
+			 *       - целая страница даже под малый запрос. Место таких блоков -
+			 *       ключи и пароли, а не рабочие буферы
+			 *
+			 * @note Освобождается функцией `release`, а НЕ обычным `free`. Совпадают
+			 *       они лишь там, где захват выдачи памяти процесса состоялся: у
+			 *       систем ELF наш `free` стоит в двоичном файле с самого
+			 *       связывания, а у macOS и MS Windows без захвата `free` -
+			 *       СИСТЕМНЫЙ, и наша область валит его. Проверено тестом склада
+			 *       тайн: `pointer being freed was not allocated`
+			 *
+			 * @param size    требуемый размер в байтах
+			 * @param shelter сведения о состоявшейся защите либо nullptr
+			 * @return        адрес выданной памяти либо nullptr
+			 *
+			 * \~english
+			 * @brief Function of allocating protected memory
+			 *
+			 * @note Protection consists of three promises: the area does not appear in a
+			 *       crash memory dump, it is forbidden to swap out, and the content is wiped
+			 *       on free. Not every system can do the first two, and the shelter answer
+			 *       tells what happened IN FACT. Wiping, however, is always promised
+			 *
+			 * @note This protection is NOT encryption: live memory cannot be encrypted, the
+			 *       processor itself accesses it. It protects from snapshots - swapping,
+			 *       crash dump, hibernation - not from one who reads process memory: such a
+			 *       one reads the key as well
+			 *
+			 * @note The block is taken from the system as a separate area, not from the heap:
+			 *       its cost is a whole page even for a small request. The place for such
+			 *       blocks is keys and passwords, not working buffers
+			 *
+			 * @note Freed by the release function, NOT by ordinary free. They coincide only
+			 *       where process memory allocation capture succeeded: on ELF systems our
+			 *       free is in the binary from linking onward, while on macOS and MS Windows
+			 *       without capture free is the SYSTEM one, and our area crashes it. Verified
+			 *       by the secret storage test: pointer being freed was not allocated
+			 *
+			 * @param size    required size in bytes
+			 * @param shelter information about the protection achieved or nullptr
+			 * @return        address of the allocated memory or nullptr
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void * secure(const size_t size, shelter_t * shelter = nullptr) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция смены доступности защищённого блока
+			 *
+			 * @details Закрытый блок отвечает на чтение ОТКАЗОМ, а не байтами:
+			 *          отладчик, читающий чужую память, спотыкается, а переполнение
+			 *          соседнего буфера упирается в недоступную страницу вместо того,
+			 *          чтобы вычитать содержимое. Место такого блока - ключи и пароли
+			 *          между обращениями к ним.
+			 *
+			 * @note Границы блока правятся САМИ: начало опускается к границе
+			 *       страницы, длина поднимается к ней же. Смена доступности идёт
+			 *       страницами, и невыровненное начало система вправе отвергнуть -
+			 *       отказ этот читался бы как «не умею»
+			 *
+			 * @note Отказ означает «не умею»: источник, страницами системы не
+			 *       владеющий, доступности не меняет вовсе. Отличать его от «не
+			 *       вышло» обязан звавший
+			 *
+			 * @note Закрытый блок обязан быть открыт ПРЕЖДЕ освобождения: затирание
+			 *       при возврате пишет в него, а запись в недоступную страницу валит
+			 *       программу
+			 *
+			 * @param addr   адрес защищённого блока
+			 * @param opened признак открываемого блока
+			 * @return       признак выполнения операции
+			 *
+			 * \~english
+			 * @brief Function of changing the accessibility of a protected block
+			 *
+			 * @details A closed block answers reads with a REFUSAL, not bytes: a debugger reading
+			 *          foreign memory stumbles, and a neighbouring buffer overflow hits an
+			 *          inaccessible page instead of reading out the content. The place for such a
+			 *          block is keys and passwords between accesses to them.
+			 *
+			 * @note Block boundaries are adjusted THEMSELVES: the start is lowered to the page
+			 *       boundary, the length is raised to it. Accessibility changes go by pages, and
+			 *       the system may reject an unaligned start - that rejection would read as
+			 *       cannot do
+			 *
+			 * @note Refusal means cannot do: a source not owning system pages does not
+			 *       change accessibility at all. The caller must distinguish it from did not
+			 *       work out
+			 *
+			 * @note A closed block must be opened BEFORE freeing: wiping on return writes to it,
+			 *       and writing to an inaccessible page crashes the program
+			 *
+			 * @param addr   address of the protected block
+			 * @param opened flag of the block being opened
+			 * @return       flag of the operation having been performed
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool shield(const void * addr, const bool opened) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция возврата выданной памяти
+			 *
+			 * @note Возврат этот идёт к НАМ всегда, состоялся захват выдачи памяти
+			 *       процесса или нет. Обычный `free` там, где захвата не было,
+			 *       принадлежит системе и нашу область не узнаёт
+			 *
+			 * @param addr адрес возвращаемой памяти
+			 *
+			 * \~english
+			 * @brief Function of releasing the allocated memory
+			 *
+			 * @note This return goes to US always, whether process memory allocation capture
+			 *       succeeded or not. The ordinary free where there was no capture belongs to
+			 *       the system and does not recognise our area
+			 *
+			 * @param addr address of the memory being released
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void release(void * addr) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция перебора удерживаемой прикладным кодом памяти
+			 *
+			 * @note Отвечает он о том, что выдано и до сих пор не освобождено, а НЕ
+			 *       об утечках: намерений прикладного кода распределитель не знает, и
+			 *       блок, живущий до конца процесса, бывает и утечкой, и намеренным
+			 *       кэшем. Называть найденное утечкой волен лишь тот, кто писал код
+			 *
+			 * @note Перебираются лишь блоки, попавшие под выборку `profileRate`: без
+			 *       неё перебор отвечает нулём, а не пустотой знания
+			 *
+			 * @note Перебор идёт с взятым замком учёта: отклику нельзя ни выделять
+			 *       память, ни звать распределитель. Возврат лжи прекращает перебор
+			 *
+			 * @param callback отклик перебора
+			 * @return         число перебранных блоков
+			 *
+			 * \~english
+			 * @brief Function of enumerating the memory held by the application
+			 *
+			 * @note It reports what has been allocated and not yet freed, NOT about leaks: the
+			 *       allocator does not know the application's intentions, and a block living
+			 *       until the end of the process may be both a leak and a deliberate cache.
+			 *       Calling a find a leak is the prerogative of whoever wrote the code
+			 *
+			 * @note Only blocks that fell under the profileRate sampling are enumerated: without
+			 *       it the enumeration answers with zero, not with empty knowledge
+			 *
+			 * @note Enumeration runs with the accounting lock held: the callback must neither
+			 *       allocate memory nor call the allocator. Returning false stops the enumeration
+			 *
+			 * @param callback enumeration callback
+			 * @return         number of blocks enumerated
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t holdings(function <bool (const holding_t &)> callback) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция опроса записей по освобождённым блокам
+			 *
+			 * @details Карантин держит освобождённое засеянным и сличает засев при
+			 *          изъятии блока: не сохранившийся засев означает запись по
+			 *          указателю, освобождённому прежде, - тот самый дефект, ради
+			 *          какого карантин и заведён
+			 *
+			 * @note Находка эта прежде уходила ТОЛЬКО в журнал, и то потоком
+			 *       обслуживания: приложение, журнала не заведшее либо потока не
+			 *       имеющее, о дефекте своего кода не узнавало вовсе. Опрос
+			 *       заведён затем, чтобы находку можно было спросить
+			 *
+			 * @warning Ловится запись лишь в блок, ЛЕЖАЩИЙ в карантине, и лишь при
+			 *          засеве `fill_t::JUNK`: без засева сличать нечего, а блок,
+			 *          карантин уже покинувший, вправе быть выдан вновь
+			 *
+			 * @param culprit адрес первого испорченного блока, либо nullptr
+			 * @param offset  смещение первой порчи от начала блока, либо nullptr
+			 * @return        число блоков, испорченных записью после освобождения
+			 *
+			 * \~english
+			 * @brief Function of querying writes to freed blocks
+			 *
+			 * @details Quarantine keeps freed memory seeded and compares the seed when a block is
+			 *          taken: a seed that did not survive means a write through a pointer freed
+			 *          earlier - the very defect the quarantine was built for
+			 *
+			 * @note This find previously went ONLY to the log, and then by the service thread:
+			 *       an application without a log or without a thread did not learn about its own
+			 *       code defect at all. The query was built so that the find could be asked for
+			 *
+			 * @warning Only a write into a block LYING in quarantine is caught, and only with
+			 *          fill_t::JUNK seeding: without seeding there is nothing to compare, and a
+			 *          block that has already left quarantine may be allocated anew
+			 *
+			 * @param culprit address of the first corrupted block, or nullptr
+			 * @param offset  offset of the first corruption from the block start, or nullptr
+			 * @return        number of blocks corrupted by writes after free
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t spoiled(const void ** culprit = nullptr, size_t * offset = nullptr) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция обращения адреса стека вызовов в имя
+			 *
+			 * @note Имена функций самой ПРОГРАММЫ видны лишь тогда, когда та связана
+			 *       с выносом имён в динамическую таблицу (`-rdynamic` у систем ELF):
+			 *       иначе разбор назовёт образ и смещение, но не функцию. Имена
+			 *       разделяемых библиотек видны всегда
+			 *
+			 * @param frame  разбираемый адрес
+			 * @param symbol сведения о разобранном адресе
+			 * @return       признак разбора адреса
+			 *
+			 * \~english
+			 * @brief Function of resolving a call stack address into a name
+			 *
+			 * @note Function names of the PROGRAM itself are visible only when it is linked
+			 *       with names exported to the dynamic table (-rdynamic on ELF systems):
+			 *       otherwise the resolution names the image and offset but not the function.
+			 *       Shared library names are always visible
+			 *
+			 * @param frame  address being resolved
+			 * @param symbol information about the resolved address
+			 * @return       resolution flag
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool symbol(const void * frame, symbol_t & symbol) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки отклика на крупное выделение
+			 *
+			 * @note Отклик зовётся вне выдачи памяти, отдельным потоком: звать его
+			 *       изнутри выдачи значило бы уйти в возвратность через ту же выдачу
+			 *
+			 * @param callback функция обратного вызова
+			 *
+			 * \~english
+			 * @brief Function of setting the callback for a large allocation
+			 *
+			 * @note The callback is called outside memory allocation, by a separate thread:
+			 *       calling it from inside allocation would mean going into recursion through
+			 *       the same allocation
+			 *
+			 * @param callback callback function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void onLarge(function <void (const void *, const size_t)> callback) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция установки отклика на достижение потолка кучи
+			 *
+			 * @param callback функция обратного вызова
+			 *
+			 * \~english
+			 * @brief Function of setting the callback for reaching the heap limit
+			 *
+			 * @param callback callback function
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void onLimit(function <void (const size_t)> callback) noexcept;
+		}
 	};
 };

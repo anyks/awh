@@ -19,16 +19,16 @@
  */
 
 /**
- * Подключаем заголовочный файл
- */
-#include <alloc/prompt.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
+
+/**
+ * Подключаем заголовочный файл
+ */
+#include <alloc/prompt.hpp>
 
 /**
  * Если операционной системой является MS Windows
@@ -103,10 +103,10 @@ namespace {
 		 *       сессию человека, а не только наше приложение
 		 *
 		 */
-		class silence_t {
+		typedef class Silence {
 			private:
 				// Описатель терминала
-				int _tty;
+				int32_t _tty;
 				// Прежние настройки терминала
 				struct termios _saved;
 				// Признак снятого эха
@@ -118,7 +118,7 @@ namespace {
 				 * @return описатель терминала
 				 *
 				 */
-				int tty() const noexcept {
+				int32_t tty() const noexcept {
 					// Выводим описатель терминала
 					return this->_tty;
 				}
@@ -137,7 +137,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 */
-				silence_t() noexcept : _tty(-1), _saved(), _muted(false) {
+				explicit Silence() noexcept : _tty(-1), _saved(), _muted(false) {
 					/**
 					 * Открываем ТЕРМИНАЛ, а не поток ввода
 					 *
@@ -159,14 +159,16 @@ namespace {
 					// Снимаем эхо набираемого
 					muted.c_lflag = static_cast <tcflag_t> (muted.c_lflag & ~static_cast <tcflag_t> (ECHO));
 					/**
-					 * Строчный разбор оставляем системе, а знаки набора берём сами
+					 * @brief Применяем новые настройки терминала, дождавшись опустошения очереди
 					 *
-					 * Снятие `ICANON` дало бы нам знаки поштучно, но вместе с ним ушла бы
-					 * и обработка прерывания: нажатие отмены перестало бы убивать
-					 * приложение, и человек лишился бы обычного выхода. Оттого канонический
-					 * разбор остаётся, а строка приходит целиком
+					 * @note Строчный разбор оставляем системе, а знаки набора берём сами
+					 *
+					 * @details Снятие `ICANON` дало бы нам знаки поштучно, но вместе с ним ушла бы
+					 *          и обработка прерывания: нажатие отмены перестало бы убивать
+					 *          приложение, и человек лишился бы обычного выхода. Оттого канонический
+					 *          разбор остаётся, а строка приходит целиком.
+					 *
 					 */
-					// Применяем новые настройки терминала, дождавшись опустошения очереди
 					if(::tcsetattr(this->_tty, TCSAFLUSH, &muted) != 0)
 						// Эхо снять не удалось
 						return;
@@ -177,7 +179,7 @@ namespace {
 				 * @brief Деструктор
 				 *
 				 */
-				~silence_t() noexcept {
+				~Silence() noexcept {
 					// Если эхо было снято
 					if(this->_muted)
 						// Возвращаем прежние настройки терминала
@@ -194,24 +196,24 @@ namespace {
 				 * Копия вернула бы настройки дважды, а второй возврат пришёлся бы уже на
 				 * закрытый описатель
 				 */
-				silence_t(const silence_t &) = delete;
+				explicit Silence(const Silence &) = delete;
 				/**
 				 * Присваиванию снятие эха не подлежит
 				 *
 				 * Присваивание вернуло бы настройки дважды по той же причине
 				 */
-				silence_t & operator = (const silence_t &) = delete;
-		};
+				Silence & operator = (const Silence &) = delete;
+		} Silence;
 	#endif
 };
 
 /**
- * @brief Метод проверки наличия терминала
+ * @brief Функция проверки наличия терминала
  *
  * @return признак доступного терминала
  *
  */
-bool awh::alloc::Prompt::available() noexcept {
+bool awh::alloc::prompt::available() noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -236,7 +238,7 @@ bool awh::alloc::Prompt::available() noexcept {
 	 */
 	#else
 		// Открываем терминал
-		const int tty = ::open("/dev/tty", O_RDWR | O_NOCTTY);
+		const int32_t tty = ::open("/dev/tty", O_RDWR | O_NOCTTY);
 		// Если терминал не открыт
 		if(tty < 0)
 			// Терминала нет
@@ -248,14 +250,14 @@ bool awh::alloc::Prompt::available() noexcept {
 	#endif
 }
 /**
- * @brief Метод приёма пароля с терминала без эха
+ * @brief Функция приёма пароля с терминала без эха
  *
  * @param vessel приёмник, куда ложится пароль
  * @param hint   подсказка, печатаемая человеку, либо nullptr
  * @return       исход приёма пароля
  *
  */
-awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const char * hint) noexcept {
+awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const char * hint) noexcept {
 	// Если приёмник не заведён
 	if(!vessel.exists())
 		// Принимать некуда

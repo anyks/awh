@@ -19,14 +19,14 @@
  */
 
 /**
- * Подключаем заголовочный файл
- */
-#include <alloc/vessel.hpp>
-
-/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <alloc/vessel.hpp>
 
 /**
  * @brief Безымянное пространство имён
@@ -44,7 +44,7 @@ namespace {
 	 * @param size размер затираемой области в байтах
 	 *
 	 */
-	static void erase(void * addr, const size_t size) noexcept {
+	static __AWH_INLINE__ void erase(void * addr, const size_t size) noexcept {
 		// Если затирать нечего
 		if((addr == nullptr) || (size == 0))
 			// Выходим из функции
@@ -115,7 +115,7 @@ bool awh::alloc::Vessel::reserve(const size_t capacity) noexcept {
 		// Отвечаем отказом
 		return false;
 	// Выдаём защищённую область под приёмник
-	this->_area = awh::alloc::Allocator::secure(capacity, &this->_shelter);
+	this->_area = allocator::secure(capacity, &this->_shelter);
 	// Если область не выдана
 	if(this->_area == nullptr){
 		// Записываем отказ выдачи в журнал
@@ -152,7 +152,7 @@ bool awh::alloc::Vessel::reserve(const size_t capacity) noexcept {
 	// Затираем содержимое приёмника
 	::erase(this->_area, capacity);
 	// Закрываем область приёмника
-	static_cast <void> (awh::alloc::Allocator::shield(this->_area, false));
+	static_cast <void> (allocator::shield(this->_area, false));
 	// Выводим результат выполнения операции
 	return true;
 }
@@ -179,13 +179,13 @@ bool awh::alloc::Vessel::pour(const uint8_t byte) noexcept {
 		// Отвечаем отказом
 		return false;
 	// Открываем область приёмника
-	static_cast <void> (awh::alloc::Allocator::shield(this->_area, true));
+	static_cast <void> (allocator::shield(this->_area, true));
 	// Записываем принимаемый байт в приёмник
 	reinterpret_cast <uint8_t *> (this->_area)[this->_length] = byte;
 	// Увеличиваем занятое в приёмнике
 	this->_length++;
 	// Закрываем область приёмника
-	static_cast <void> (awh::alloc::Allocator::shield(this->_area, false));
+	static_cast <void> (allocator::shield(this->_area, false));
 	// Выводим результат выполнения операции
 	return true;
 }
@@ -201,7 +201,7 @@ bool awh::alloc::Vessel::drop() noexcept {
 		// Отвечаем отказом
 		return false;
 	// Открываем область приёмника
-	static_cast <void> (awh::alloc::Allocator::shield(this->_area, true));
+	static_cast <void> (allocator::shield(this->_area, true));
 	// Уменьшаем занятое в приёмнике
 	this->_length--;
 	/**
@@ -213,7 +213,7 @@ bool awh::alloc::Vessel::drop() noexcept {
 	 */
 	::erase((reinterpret_cast <uint8_t *> (this->_area) + this->_length), 1);
 	// Закрываем область приёмника
-	static_cast <void> (awh::alloc::Allocator::shield(this->_area, false));
+	static_cast <void> (allocator::shield(this->_area, false));
 	// Выводим результат выполнения операции
 	return true;
 }
@@ -231,11 +231,11 @@ void awh::alloc::Vessel::wipe() noexcept {
 		 * Открытие это к тому же снимает всякий незакрытый счёт раскрытий: считать их
 		 * до нуля здесь некому, а область всё равно уходит
 		 */
-		static_cast <void> (awh::alloc::Allocator::shield(this->_area, true));
+		static_cast <void> (allocator::shield(this->_area, true));
 		// Затираем содержимое приёмника
 		::erase(this->_area, this->_capacity);
 		// Освобождаем область приёмника
-		awh::alloc::Allocator::release(this->_area);
+		allocator::release(this->_area);
 		// Сбрасываем адрес области приёмника
 		this->_area = nullptr;
 	}

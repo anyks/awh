@@ -141,96 +141,94 @@ namespace awh {
 	namespace alloc {
 		/**
 		 * \~russian
-		 * @brief Класс приёма пароля с терминала
+		 * @brief Пространство имён приёма пароля с терминала
 		 *
 		 * \~english
-		 * @brief Class of the password intake from the terminal
+		 * @brief Namespace of the password intake from the terminal
 		 *
 		 * \~
 		 */
-		typedef class __AWH_SHARED_EXPORT__ Prompt {
-			public:
+		namespace prompt {
+			/**
+			 * \~russian
+			 * @brief Исход приёма пароля
+			 *
+			 * \~english
+			 * @brief Outcome of the password intake
+			 *
+			 * \~
+			 */
+			enum class result_t : uint8_t {
+				ACCEPTED = 0x00, // Пароль набран и принят
 				/**
 				 * \~russian
-				 * @brief Исход приёма пароля
+				 * @brief Набор превысил ёмкость приёмника
+				 *
+				 * @details Имя взято ТОЛЬКО не `OVERFLOW`: тот занят макросом у `<math.h>`, и
+				 *          перечисление с таким именем не собирается вовсе - собиратель видит
+				 *          на его месте число три. Наш сличатель имён ловит ровно этот разряд.
 				 *
 				 * \~english
-				 * @brief Outcome of the password intake
+				 * @brief A set exceeded a capacity of a vessel
+				 *
+				 * @details A name is taken ONLY not `OVERFLOW`: that one is occupied by a macro at `<math.h>`, and
+				 *          an enumeration with such a name does not build at all - a builder sees
+				 *          a number three at its place. Our name comparator catches exactly this kind.
 				 *
 				 * \~
 				 */
-				enum class result_t : uint8_t {
-					ACCEPTED = 0x00, // Пароль набран и принят
-					/**
-					 * \~russian
-					 * @brief Набор превысил ёмкость приёмника
-					 *
-					 * @details Имя взято ТОЛЬКО не `OVERFLOW`: тот занят макросом у `<math.h>`, и
-					 *          перечисление с таким именем не собирается вовсе - собиратель видит
-					 *          на его месте число три. Наш сличатель имён ловит ровно этот разряд.
-					 *
-					 * \~english
-					 * @brief A set exceeded a capacity of a vessel
-					 *
-					 * @details A name is taken ONLY not `OVERFLOW`: that one is occupied by a macro at `<math.h>`, and
-					 *          an enumeration with such a name does not build at all - a builder sees
-					 *          a number three at its place. Our name comparator catches exactly this kind.
-					 *
-					 * \~
-					 */
-					TOOLONG = 0x01,
-					NOTERM  = 0x02, // Терминала нет: читать неоткуда
-					FAILED  = 0x03  // Приём не удался по вине окружения
-				};
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод приёма пароля с терминала без эха
-				 *
-				 * @note Приёмник обязан быть заведён ЗАРАНЕЕ: ёмкость его и есть верхняя
-				 *       граница набора, и знает её зовущий, а не мы
-				 *
-				 * @note Прежнее содержимое приёмника снимается: приём идёт с начала
-				 *
-				 * @param vessel приёмник, куда ложится пароль
-				 * @param hint   подсказка, печатаемая человеку, либо nullptr
-				 * @return       исход приёма пароля
-				 *
-				 * \~english
-				 * @brief Method of accepting a password from the terminal with the echo off
-				 *
-				 * @note The vessel must be created IN ADVANCE: its capacity is the upper bound of
-				 *       input, and it is known to the caller, not to us
-				 *
-				 * @note The previous content of the vessel is removed: the intake starts from the beginning
-				 *
-				 * @param vessel vessel the password is put into
-				 * @param hint   hint printed to the human, or nullptr
-				 * @return       outcome of the password intake
-				 *
-				 * \~
-				 */
-				static result_t read(vessel_t & vessel, const char * hint = nullptr) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод проверки наличия терминала
-				 *
-				 * @note Спрашивать полезно ДО заведения приёмника: нет терминала - нет и
-				 *       смысла занимать защищённую память
-				 *
-				 * @return признак доступного терминала
-				 *
-				 * \~english
-				 * @brief Method of checking whether a terminal is available
-				 *
-				 * @note It is useful to ask BEFORE creating the vessel: no terminal - no point
-				 *       in taking protected memory
-				 *
-				 * @return flag of an available terminal
-				 *
-				 * \~
-				 */
-				static bool available() noexcept;
-		} prompt_t;
+				TOOLONG = 0x01,
+				NOTERM  = 0x02, // Терминала нет: читать неоткуда
+				FAILED  = 0x03  // Приём не удался по вине окружения
+			};
+			/**
+			 * \~russian
+			 * @brief Функция приёма пароля с терминала без эха
+			 *
+			 * @note Приёмник обязан быть заведён ЗАРАНЕЕ: ёмкость его и есть верхняя
+			 *       граница набора, и знает её зовущий, а не мы
+			 *
+			 * @note Прежнее содержимое приёмника снимается: приём идёт с начала
+			 *
+			 * @param vessel приёмник, куда ложится пароль
+			 * @param hint   подсказка, печатаемая человеку, либо nullptr
+			 * @return       исход приёма пароля
+			 *
+			 * \~english
+			 * @brief Function of accepting a password from the terminal with the echo off
+			 *
+			 * @note The vessel must be created IN ADVANCE: its capacity is the upper bound of
+			 *       input, and it is known to the caller, not to us
+			 *
+			 * @note The previous content of the vessel is removed: the intake starts from the beginning
+			 *
+			 * @param vessel vessel the password is put into
+			 * @param hint   hint printed to the human, or nullptr
+			 * @return       outcome of the password intake
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ result_t read(vessel_t & vessel, const char * hint = nullptr) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция проверки наличия терминала
+			 *
+			 * @note Спрашивать полезно ДО заведения приёмника: нет терминала - нет и
+			 *       смысла занимать защищённую память
+			 *
+			 * @return признак доступного терминала
+			 *
+			 * \~english
+			 * @brief Function of checking whether a terminal is available
+			 *
+			 * @note It is useful to ask BEFORE creating the vessel: no terminal - no point
+			 *       in taking protected memory
+			 *
+			 * @return flag of an available terminal
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool available() noexcept;
+		}
 	};
 };

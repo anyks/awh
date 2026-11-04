@@ -45,7 +45,7 @@
  *          изображал просадку кодека впятеро.
  *
  *          Оттого область теперь придерживается готовой к повторной выдаче, а
- *          отдаётся - по просьбе `Allocator::purge()` либо сверх потолка
+ *          отдаётся - по просьбе `allocator::purge()` либо сверх потолка
  *          `options.hugeCache`. Потолок этот и есть плата за скорость, заданная
  *          числом: нуль возвращает прежнее поведение дословно. Укрытая область не
  *          придерживается никогда - договор её обещает отдачу системе.
@@ -89,7 +89,7 @@
  *          looked like a fivefold codec slowdown.
  *
  *          Hence the region is now retained ready for reuse, and returned — on request
- *          of `Allocator::purge()` or beyond the `options.hugeCache` ceiling. That
+ *          of `allocator::purge()` or beyond the `options.hugeCache` ceiling. That
  *          ceiling is the price for speed, given as a number: zero restores the
  *          previous behaviour verbatim. A concealed region is never retained — the
  *          contract promises its return to the system.

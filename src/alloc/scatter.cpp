@@ -19,14 +19,14 @@
  */
 
 /**
+ * Стандартный заголовочный файл
+ */
+#include <cstdio>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <alloc/scatter.hpp>
-
-/**
- * Стандартные заголовочные файлы
- */
-#include <cstdio>
 
 /**
  * @brief Безымянное пространство имён
@@ -41,7 +41,7 @@ namespace {
 	 *       это и нужно - раскладчик и сборщик обязаны считать одну раскладку
 	 *
 	 */
-	class stream_t {
+	typedef class Stream {
 		private:
 			// Состояние потока
 			uint64_t _state;
@@ -79,8 +79,9 @@ namespace {
 			 * @param seed зерно потока
 			 *
 			 */
-			explicit stream_t(const uint64_t seed) noexcept : _state(seed) {}
-	};
+			explicit Stream(const uint64_t seed) noexcept : _state(seed) {}
+	} stream_t;
+
 	/**
 	 * @brief Функция построения перестановки мест носителя
 	 *
@@ -96,9 +97,9 @@ namespace {
 	 * @return         перестановка мест носителя
 	 *
 	 */
-	static std::vector <uint32_t> shuffle(stream_t & stream, const size_t capacity) noexcept {
+	static __AWH_INLINE__ vector <uint32_t> shuffle(stream_t & stream, const size_t capacity) noexcept {
 		// Заводим перестановку мест носителя
-		std::vector <uint32_t> places(capacity);
+		vector <uint32_t> places(capacity);
 		/**
 		 * Заполняем перестановку местами по порядку
 		 */
@@ -124,7 +125,7 @@ namespace {
 };
 
 /**
- * @brief Метод подмешивания якоря в зерно раскладки
+ * @brief Функция подмешивания якоря в зерно раскладки
  *
  * @param seed     зерно раскладки из закрытого контура
  * @param checksum контрольная сумма кода либо иной якорь, либо нуль
@@ -132,23 +133,24 @@ namespace {
  * @return          зерно, привязанное к якорю и версии
  *
  */
-uint64_t awh::alloc::Scatter::anchor(const uint64_t seed, const uint64_t checksum, const uint64_t version) noexcept {
+uint64_t awh::alloc::scatter::anchor(const uint64_t seed, const uint64_t checksum, const uint64_t version) noexcept {
 	/**
-	 * Подмешиваем якорь тем же ходом splitmix64, каким выводится поток
+	 * @brief Заводим поток на исходном зерне
 	 *
-	 * Смена одного разряда контрольной суммы либо версии рассеивается по всему зерну, а
-	 * зерно задаёт весь поток: изменившись, оно даёт иную перестановку и иную гамму
+	 * @note Подмешиваем якорь тем же ходом splitmix64, каким выводится поток
+	 *
+	 * @details Смена одного разряда контрольной суммы либо версии рассеивается по всему зерну, а
+	 *          зерно задаёт весь поток: изменившись, оно даёт иную перестановку и иную гамму.
+	 *
 	 */
-	// Заводим поток на исходном зерне
 	stream_t stream(seed);
 	// Подмешиваем контрольную сумму кода
 	stream_t bound(stream.next() ^ checksum);
 	// Подмешиваем версию ключа и выводим привязанное зерно
 	return (bound.next() ^ (version + 0x9E3779B97F4A7C15ULL));
 }
-
 /**
- * @brief Метод раскладки секрета по носителю (время сборки)
+ * @brief Функция раскладки секрета по носителю (время сборки)
  *
  * @param secret   адрес секрета
  * @param length   длина секрета в байтах
@@ -157,21 +159,21 @@ uint64_t awh::alloc::Scatter::anchor(const uint64_t seed, const uint64_t checksu
  * @return          носитель с рассеянным секретом либо пустой при отказе
  *
  */
-std::vector <uint8_t> awh::alloc::Scatter::lay(const uint8_t * secret, const size_t length, const uint64_t seed, const size_t capacity) noexcept {
+vector <uint8_t> awh::alloc::scatter::lay(const uint8_t * secret, const size_t length, const uint64_t seed, const size_t capacity) noexcept {
 	// Если раскладывать нечего либо носителю негде вместить секрет
 	if((secret == nullptr) || (length == 0) || (capacity < length))
 		// Отвечаем пустым носителем
-		return std::vector <uint8_t> ();
+		return vector <uint8_t> ();
 	// Если ёмкость носителя не умещается в разрядность места
 	if(capacity > static_cast <size_t> (UINT32_MAX))
 		// Отвечаем пустым носителем
-		return std::vector <uint8_t> ();
+		return vector <uint8_t> ();
 	// Заводим поток по зерну раскладки
 	stream_t stream(seed);
 	// Строим перестановку мест носителя
-	const std::vector <uint32_t> places = ::shuffle(stream, capacity);
+	const vector <uint32_t> places = ::shuffle(stream, capacity);
 	// Заводим носитель заданной ёмкости
-	std::vector <uint8_t> carrier(capacity);
+	vector <uint8_t> carrier(capacity);
 	/**
 	 * Кладём секрет на первые места перестановки под наложением гаммы
 	 *
@@ -196,7 +198,7 @@ std::vector <uint8_t> awh::alloc::Scatter::lay(const uint8_t * secret, const siz
 	return carrier;
 }
 /**
- * @brief Метод вплетения секрета в предоставленную рабочую таблицу (время сборки)
+ * @brief Функция вплетения секрета в предоставленную рабочую таблицу (время сборки)
  *
  * @param table  адрес рабочей таблицы, правимой на местах секрета
  * @param size   размер рабочей таблицы в байтах, не меньше длины секрета
@@ -206,7 +208,7 @@ std::vector <uint8_t> awh::alloc::Scatter::lay(const uint8_t * secret, const siz
  * @return        признак выполнения операции
  *
  */
-bool awh::alloc::Scatter::weave(uint8_t * table, const size_t size, const uint8_t * secret, const size_t length, const uint64_t seed) noexcept {
+bool awh::alloc::scatter::weave(uint8_t * table, const size_t size, const uint8_t * secret, const size_t length, const uint64_t seed) noexcept {
 	// Если вплетать нечего либо таблице негде вместить секрет
 	if((table == nullptr) || (secret == nullptr) || (length == 0) || (size < length))
 		// Отвечаем отказом
@@ -218,7 +220,7 @@ bool awh::alloc::Scatter::weave(uint8_t * table, const size_t size, const uint8_
 	// Заводим поток по зерну раскладки
 	stream_t stream(seed);
 	// Строим перестановку мест таблицы
-	const std::vector <uint32_t> places = ::shuffle(stream, size);
+	const vector <uint32_t> places = ::shuffle(stream, size);
 	/**
 	 * Правим секретом лишь его места под наложением гаммы
 	 *
@@ -232,9 +234,8 @@ bool awh::alloc::Scatter::weave(uint8_t * table, const size_t size, const uint8_
 	// Выводим результат выполнения операции
 	return true;
 }
-
 /**
- * @brief Метод порождения исходного текста с носителем (время сборки)
+ * @brief Функция порождения исходного текста с носителем (время сборки)
  *
  * @param carrier носитель, полученный от `lay`
  * @param length  длина секрета в байтах
@@ -242,18 +243,18 @@ bool awh::alloc::Scatter::weave(uint8_t * table, const size_t size, const uint8_
  * @return         исходный текст на C++ либо пустая строка при отказе
  *
  */
-std::string awh::alloc::Scatter::emit(const std::vector <uint8_t> & carrier, const size_t length, const std::string & name) noexcept {
+string awh::alloc::scatter::emit(const vector <uint8_t> & carrier, const size_t length, const string & name) noexcept {
 	// Если порождать нечего
 	if(carrier.empty() || (length == 0) || (length > carrier.size()) || name.empty())
 		// Отвечаем пустой строкой
-		return std::string();
+		return string();
 	// Заводим порождаемый текст
-	std::string result;
+	string result;
 	// Заранее отводим место под текст с запасом
 	result.reserve(carrier.size() * 6 + 256);
 	// Дописываем шапку порождённого текста
 	result.append("/**\n");
-	result.append(" * Порождено awh::alloc::Scatter. Ни секрета, ни зерна здесь нет:\n");
+	result.append(" * Порождено awh::alloc::scatter. Ни секрета, ни зерна здесь нет:\n");
 	result.append(" * в носителе лежит наложение секрета на гамму, снять его нечем без зерна.\n");
 	result.append(" */\n");
 	// Место под строку разряда: хватает и на "0x%02X", и на "%zu" 64-разрядного (до 20 цифр)
@@ -293,7 +294,7 @@ std::string awh::alloc::Scatter::emit(const std::vector <uint8_t> & carrier, con
 	return result;
 }
 /**
- * @brief Метод сборки секрета из носителя в приёмник тайн (запуск)
+ * @brief Функция сборки секрета из носителя в приёмник тайн (запуск)
  *
  * @param carrier  адрес носителя в образе
  * @param capacity ёмкость носителя в байтах
@@ -303,7 +304,7 @@ std::string awh::alloc::Scatter::emit(const std::vector <uint8_t> & carrier, con
  * @return          признак выполнения операции
  *
  */
-bool awh::alloc::Scatter::gather(const uint8_t * carrier, const size_t capacity, const uint64_t seed, const size_t length, vessel_t & vessel) noexcept {
+bool awh::alloc::scatter::gather(const uint8_t * carrier, const size_t capacity, const uint64_t seed, const size_t length, vessel_t & vessel) noexcept {
 	// Если собирать нечего либо носитель не вмещает секрета
 	if((carrier == nullptr) || (length == 0) || (capacity < length))
 		// Отвечаем отказом
@@ -319,7 +320,7 @@ bool awh::alloc::Scatter::gather(const uint8_t * carrier, const size_t capacity,
 	// Заводим поток по тому же зерну
 	stream_t stream(seed);
 	// Строим ту же перестановку мест носителя
-	const std::vector <uint32_t> places = ::shuffle(stream, capacity);
+	const vector <uint32_t> places = ::shuffle(stream, capacity);
 	/**
 	 * Собираем секрет с первых мест перестановки, снимая наложение
 	 *

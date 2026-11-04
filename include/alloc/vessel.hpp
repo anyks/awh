@@ -369,7 +369,7 @@ namespace awh {
 						// Отвечаем отказом
 						return false;
 					// Открываем область приёмника
-					if(!awh::alloc::Allocator::shield(this->_area, true))
+					if(!allocator::shield(this->_area, true))
 						/**
 						 * Отказ здесь означает «не умею»
 						 *
@@ -385,7 +385,7 @@ namespace awh {
 					 * Ручного закрытия здесь нет вовсе: его забывают, а выход из
 					 * обработчика бывает и ранним, и по исключению
 					 */
-					struct sealer_t {
+					struct Sealer {
 						// Приёмник, подлежащий запечатыванию
 						Vessel * vessel;
 						/**
@@ -397,9 +397,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						~sealer_t() noexcept {
+						~Sealer() noexcept {
 							// Закрываем область приёмника
-							static_cast <void> (awh::alloc::Allocator::shield(this->vessel->_area, false));
+							static_cast <void> (allocator::shield(this->vessel->_area, false));
 						}
 					} sealer{this};
 					// Обходим неиспользуемую переменную запечатывания

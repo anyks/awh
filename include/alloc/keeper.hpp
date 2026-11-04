@@ -43,7 +43,7 @@
  *          следом за ним, и оттого прежде не пробовалось вовсе - запись эта числила
  *          Linux неумеющим, тогда как средство стоит в ядре с версии 3.4. Замерено на
  *          Debian 12: до правки `hidden` отвечал ложью, после - истиной. Что состоялось
- *          НА ДЕЛЕ, говорит `shelter_t` у `Allocator::secure`; хранилищу языка
+ *          НА ДЕЛЕ, говорит `shelter_t` у `allocator::secure`; хранилищу языка
  *          спросить об этом неоткуда, оттого спрашивать положено тому, кто хранилище
  *          заводит, - молчаливого понижения обещания здесь нет, но и уведомить
  *          хранилище само себя не может.
@@ -81,7 +81,7 @@
  *          and hence was never tried before - the record listed Linux as incapable,
  *          while the facility has been in the kernel since version 3.4. Measured on
  *          Debian 12: before the fix `hidden` answered false, after - true. What
- *          actually took effect is told by `shelter_t` at `Allocator::secure`; the
+ *          actually took effect is told by `shelter_t` at `allocator::secure`; the
  *          language container has nowhere to ask, so the one who creates the container
  *          is supposed to ask, - there is no silent promise downgrade here, but the
  *          container cannot notify itself either.
@@ -209,7 +209,7 @@ namespace awh {
 						// Отвечаем отказом языку
 						throw std::bad_alloc();
 					// Выдаём укрытую память
-					void * result = awh::alloc::Allocator::secure(count * sizeof(T), nullptr);
+					void * result = allocator::secure(count * sizeof(T), nullptr);
 					// Если выдать память не вышло
 					if(result == nullptr)
 						// Отвечаем отказом языку
@@ -240,7 +240,7 @@ namespace awh {
 					// Число значений здесь не нужно: размер выдачи распределитель помнит сам
 					static_cast <void> (count);
 					// Возвращаем память распределителю: возврат идёт к нам и без захвата
-					awh::alloc::Allocator::release(addr);
+					allocator::release(addr);
 				}
 			public:
 				/**
