@@ -93,6 +93,18 @@ namespace awh {
 		 *          Both inputs — the set of the launch and a text stream — are parsed by one and the same code:
 		 *          the text is at first cut into the words, and further the parsing goes word by word.
 		 *
+		 *
+		 * @par Deliberate decisions
+		 *
+		 * @li **A word begun by a dash is not taken as a next value - except a number.**
+		 *     A record `--count -5` submits a value `-5`, and a record `--verbose --debug` -
+		 *     two parameters without values. Otherwise every sign would eat the following
+		 *     behind it parameter, and a set would change a meaning from a rearrangement
+		 *
+		 * @li **A parsing is not interrupted by a refusal.** A failed lexeme is passed,
+		 *     and a code of a refusal with a position goes to a callback: a launch set is parsed wholly,
+		 *     so that an application showed at once all the flaws of a set, and not a first of them
+		 *
 		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Lexer {
@@ -204,6 +216,22 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the cutting of a text into the words
+				 *
+				 *
+				 * @details The quotes of both kinds - single and double - join a word wholly, and a backslash
+				 *          removes a special meaning from the sign following behind it.
+				 *
+				 * @note The rules are taken from the POSIX shells: inside a SINGLE quote a slash has no
+				 *       special meaning and is taken as a sign as it is, for this quote is put exactly
+				 *       to keep the slashes - the paths of MS Windows and the regular expressions. Inside a DOUBLE
+				 *       quote a slash works, otherwise to enter the double quote itself would be by nothing
+				 *
+				 * @note The special sequences a slash does not parse at all: a record
+				 *       `\n` gives a sign `n`, and not a line feed. Only a special
+				 *       meaning of a sign is removed, and nothing is substituted instead
+				 *
+				 * @note The empty quotes give an EMPTY word, and not an absence of a word: otherwise
+				 *       to submit an empty argument would be by nothing
 				 *
 				 * @param text    text for the cutting
 				 * @param result  container of the assembled words

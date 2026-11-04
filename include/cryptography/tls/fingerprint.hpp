@@ -54,7 +54,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -69,7 +68,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief пространство имён работы с TLS
-	 *
 	 *
 	 * \~english
 	 * @brief namespace of working with TLS
@@ -109,6 +107,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure
+				 *
 				 * @details A TLS extension is additional information that can be included in the TLS connection establishment process.
 				 *          It allows the client and the server to exchange extra data that can be used to improve the security,
 				 *          compatibility and functionality of the connection.
@@ -126,6 +125,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param type Extension type
 					 *
 					 * \~
@@ -134,7 +134,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -153,6 +152,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for GREASE values
+				 *
 				 * @details GREASE (Generate Random Extensions And Sustain Extensibility) is a mechanism
 				 *          used in the TLS protocol to ensure compatibility and prevent problems with extensions.
 				 *
@@ -163,7 +163,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -173,7 +172,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -191,6 +189,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for the channel identifier (Channel ID)
+				 *
 				 * @details Channel ID is a mechanism used in the TLS protocol to uniquely identify the communication channel between the client and the server.
 				 *
 				 * \~
@@ -199,7 +198,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -210,7 +208,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -229,6 +226,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for OID filters (OID Filters)
+				 *
 				 * @details OID Filters is a mechanism used in the TLS protocol to filter and manage object identifiers (Object Identifiers, OID),
 				 *          which are unique identifiers of various objects and algorithms in cryptography and security.
 				 *
@@ -239,7 +237,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -249,7 +246,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -268,6 +264,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for trust anchors (Trust Anchors)
+				 *
 				 * @details Trust Anchors are trusted root certificates or public keys
 				 *          used to verify the authenticity of and trust in digital certificates in the TLS protocol.
 				 *
@@ -278,7 +275,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -288,7 +284,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -308,6 +303,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for encryption before MAC (Encrypt-Then-MAC)
+				 *
 				 * @details Encrypt-Then-MAC is a mechanism used in the TLS protocol to ensure the integrity and authenticity of the data
 				 *          transmitted over a secure communication channel. It implies that the data is encrypted first
 				 *          and only then an integrity check mechanism (MAC — Message Authentication Code) is applied to it.
@@ -319,7 +315,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -329,7 +324,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -349,6 +343,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for transparency information (Transparency Info)
+				 *
 				 * @details Transparency Info is a mechanism used in the TLS protocol to ensure the transparency and traceability of the certificates and keys
 				 *          used during connection establishment. It allows the client and the server to exchange transparency information,
 				 *          such as certificate and key logs, which increases trust in and the security of the connection.
@@ -360,7 +355,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -370,7 +364,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -388,6 +381,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for post-handshake authentication support (Post-Handshake Authentication)
+				 *
 				 * @details Post-Handshake Authentication is a mechanism used in the TLS protocol to provide additional authentication after the handshake has completed.
 				 *
 				 * \~
@@ -396,7 +390,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -407,7 +400,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -425,6 +417,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the client certificate type (Client Certificate Type)
+				 *
 				 * @details Client Certificate Type is a mechanism used in the TLS protocol to specify the type of certificate the client must present to the server for authentication.
 				 *
 				 * \~
@@ -433,7 +426,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -444,7 +436,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -462,6 +453,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the server certificate type (Server Certificate Type)
+				 *
 				 * @details Server Certificate Type is a mechanism used in the TLS protocol to specify the type of certificate the server must present to the client for authentication.
 				 *
 				 * \~
@@ -470,7 +462,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -481,7 +472,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -500,6 +490,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the server name (SNI)
+				 *
 				 * @details Server Name Indication (SNI) is a TLS protocol extension that allows the client to specify the name of the server
 				 *          it is trying to connect to during connection establishment.
 				 *
@@ -512,7 +503,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -522,7 +512,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -542,6 +531,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for a certificate status request (OCSP)
+				 *
 				 * @details Certificate Status Request is a TLS protocol extension that allows the client to ask the server for information about the certificate status,
 				 *          for example by means of the OCSP protocol (Online Certificate Status Protocol). This extension lets the client check
 				 *          whether the server certificate is valid and prevents the use of invalid or revoked certificates.
@@ -559,7 +549,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -569,7 +558,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -591,6 +579,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the supported groups (Supported Groups)
+				 *
 				 * @details Supported Groups is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported elliptic curve groups (Elliptic Curve Groups)
 				 *          used for cryptographic operations such as key exchange and digital signing.
@@ -606,7 +595,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -616,7 +604,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -638,6 +625,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the elliptic curve point formats (EC Point Formats)
+				 *
 				 * @details EC Point Formats is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported elliptic curve point formats (Elliptic Curve Point Formats)
 				 *          used for cryptographic operations such as key exchange and digital signing.
@@ -653,7 +641,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -663,7 +650,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -682,6 +668,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for application-layer protocol negotiation (ALPN)
+				 *
 				 * @details Application-Layer Protocol Negotiation (ALPN) is a TLS protocol extension
 				 *          that allows the client and the server to negotiate the application-layer protocol (for example HTTP/2, HTTP/3) during connection establishment.
 				 *
@@ -694,7 +681,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -704,7 +690,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -725,6 +710,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing application settings (Application Settings)
+				 *
 				 * @details Application Settings is a TLS protocol extension
 				 *          that allows the client and the server to exchange additional application-related settings and parameters during connection establishment.
 				 *          This extension can be used to convey information about supported features, configuration and other aspects of the application,
@@ -739,7 +725,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -749,7 +734,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -769,6 +753,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing the old application settings (Application Settings Old)
+				 *
 				 * @details Application Settings Old is a deprecated TLS protocol extension
 				 *          that was used to pass application settings and parameters during connection establishment.
 				 *          It was superseded by the new Application Settings extension, which provides a more modern and secure way of exchanging application settings between the client and the server.
@@ -782,7 +767,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -792,7 +776,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -813,6 +796,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for next protocol negotiation (Next Protocol Negotiation)
+				 *
 				 * @details Next Protocol Negotiation (NPN) is a deprecated TLS protocol extension
 				 *          that allowed the client and the server to negotiate the application-layer protocol (for example HTTP/2) during connection establishment.
 				 *          It was superseded by the new Application-Layer Protocol Negotiation (ALPN) extension,
@@ -827,7 +811,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -837,7 +820,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -859,6 +841,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing signed certificate timestamps (Signed Certificate Timestamp)
+				 *
 				 * @details Signed Certificate Timestamp (SCT) is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about signed certificate timestamps (SCT)
 				 *          used in the Certificate Transparency (CT) mechanism.
@@ -872,7 +855,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -882,7 +864,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -904,6 +885,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for adding an arbitrary number of padding bytes (Padding)
+				 *
 				 * @details Padding is a TLS protocol extension
 				 *          that allows the client and the server to add an arbitrary number of padding bytes during connection establishment.
 				 *          This extension can be used to increase the length of messages
@@ -919,7 +901,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -929,7 +910,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -951,6 +931,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for using the extended master secret (Extended Master Secret)
+				 *
 				 * @details Extended Master Secret (EMS) is a TLS protocol extension
 				 *          that provides an additional level of security for connection establishment.
 				 *          It prevents certain types of attacks, such as master secret replay attacks and length extension attacks.
@@ -968,7 +949,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -978,7 +958,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -999,6 +978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for certificate compression (Compress Certificate)
+				 *
 				 * @details Compress Certificate is a TLS protocol extension
 				 *          that allows the client and the server to use compression algorithms to reduce the size of the certificates transmitted during connection establishment.
 				 *          This extension can improve performance and reduce latency when transmitting certificates, especially when the certificates are large or the connection runs over slow networks.
@@ -1013,7 +993,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1023,7 +1002,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1042,6 +1020,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for using a session ticket (Session Ticket)
+				 *
 				 * @details Session Ticket is a TLS protocol extension
 				 *          that allows the client and the server to use session tickets to resume previously established connections without performing the full handshake again.
 				 *
@@ -1054,7 +1033,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1064,7 +1042,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1084,6 +1061,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the supported versions (Supported Versions)
+				 *
 				 * @details Supported Versions is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported versions of the TLS protocol during connection establishment.
 				 *          This extension lets the parties agree on which version of the TLS protocol they will use to establish a secure connection, ensuring compatibility and improving the security of the connection.
@@ -1097,7 +1075,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1107,7 +1084,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1127,6 +1103,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the PSK key exchange modes (PSK Key Exchange Modes)
+				 *
 				 * @details PSK Key Exchange Modes is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported key exchange modes using a pre-shared key (Pre-Shared Key, PSK) during connection establishment.
 				 *          This extension lets the parties agree on which PSK key exchange mode they will use to establish a secure connection, ensuring compatibility and improving the security of the connection.
@@ -1140,7 +1117,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1150,7 +1126,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1172,6 +1147,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for early data support (Early Data)
+				 *
 				 * @details Early Data is a TLS protocol extension
 				 *          that allows the client to send data to the server before the handshake has completed.
 				 *          This extension can improve performance and reduce connection establishment latency, especially when
@@ -1187,7 +1163,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1197,7 +1172,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1219,6 +1193,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for key exchange (Key Share)
+				 *
 				 * @details Key Share is a TLS protocol extension
 				 *          that allows the client and the server to exchange key information in order to establish a secure connection using key exchange algorithms
 				 *          such as Diffie-Hellman or elliptic curves (Elliptic Curve Cryptography, ECC).
@@ -1234,7 +1209,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1244,7 +1218,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1263,6 +1236,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing an encrypted ClientHello (Encrypted ClientHello)
+				 *
 				 * @details Encrypted ClientHello is a TLS protocol extension
 				 *          that allows the client to send an encrypted ClientHello to the server for additional confidentiality and protection against traffic analysis attacks.
 				 *
@@ -1275,7 +1249,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1285,7 +1258,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1308,6 +1280,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing renegotiation information (Renegotiation Info)
+				 *
 				 * @details Renegotiation Info is a TLS protocol extension
 				 *          that allows the client and the server to exchange renegotiation information during connection establishment.
 				 *          This extension provides protection against renegotiation-based attacks,
@@ -1324,7 +1297,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1334,7 +1306,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1355,6 +1326,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the maximum record size (Record Size Limit)
+				 *
 				 * @details Record Size Limit is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the maximum record size during connection establishment.
 				 *          This extension lets the parties agree on which maximum record size they will use to establish a secure connection,
@@ -1369,7 +1341,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1379,7 +1350,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1400,6 +1370,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief DTLS extension structure for passing a cookie (Cookie)
+				 *
 				 * @details Cookie is an extension of the DTLS protocol (Datagram Transport Layer Security)
 				 *          that allows the client and the server to exchange a cookie during connection establishment.
 				 *          The cookie is used to protect against IP address spoofing attacks and to prevent session replay attacks.
@@ -1414,7 +1385,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1424,7 +1394,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1447,6 +1416,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for using a pre-shared key (Pre-Shared Key)
+				 *
 				 * @details Pre-Shared Key (PSK) is a TLS protocol extension
 				 *          that allows the client and the server to use a pre-shared key (PSK) to establish a secure connection.
 				 *          PSK provides an additional level of security and confidentiality
@@ -1475,7 +1445,6 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
@@ -1489,7 +1458,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1499,7 +1467,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1518,6 +1485,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the trusted certificate authorities (Certificate Authorities)
+				 *
 				 * @details Certificate Authorities (CAs) is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the trusted certificate authorities (Certificate Authorities, CAs) during connection establishment.
 				 *
@@ -1530,7 +1498,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1540,7 +1507,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1561,6 +1527,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the maximum fragment length (Max Fragment Length)
+				 *
 				 * @details Max Fragment Length is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the maximum fragment length during connection establishment.
 				 *          This extension lets the parties agree on which maximum fragment size they will use to establish a secure connection,
@@ -1575,7 +1542,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1585,7 +1551,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1604,6 +1569,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for using SRTP (Use SRTP)
+				 *
 				 * @details Use SRTP is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported Secure Real-time Transport Protocol (SRTP) profiles during connection establishment.
 				 *
@@ -1618,7 +1584,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1628,7 +1593,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1651,6 +1615,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for heartbeat support (Heartbeat)
+				 *
 				 * @details Heartbeat is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about heartbeat support during connection establishment.
 				 *          The heartbeat mechanism is used to check availability and keep the connection between the client and the server alive,
@@ -1667,7 +1632,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1677,7 +1641,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1698,6 +1661,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the supported signature algorithms (Signature Algorithms)
+				 *
 				 * @details Signature Algorithms is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported signature algorithms during connection establishment.
 				 *          This extension lets the parties agree on which signature algorithms they will use to establish a secure connection,
@@ -1712,7 +1676,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1722,7 +1685,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1741,6 +1703,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for using delegated credentials (Delegated Credential)
+				 *
 				 * @details Delegated Credential is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported signature algorithms for delegated credentials during connection establishment.
 				 *
@@ -1753,7 +1716,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1763,7 +1725,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1783,6 +1744,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for specifying the supported signature algorithms for certificates (Signature Algorithms for Certificates)
+				 *
 				 * @details Signature Algorithms for Certificates is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the supported signature algorithms for certificates during connection establishment.
 				 *          This extension lets the parties agree on which signature algorithms they will use to verify the authenticity of certificates, ensuring compatibility and improving the security of the connection.
@@ -1796,7 +1758,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1806,7 +1767,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1827,6 +1787,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing transparency information (Transparency Info)
+				 *
 				 * @details Transparency Info is a TLS protocol extension
 				 *          that allows the client and the server to exchange transparency information during connection establishment.
 				 *          This extension can be used to convey information about the supported transparency mechanisms,
@@ -1841,7 +1802,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1851,7 +1811,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1872,6 +1831,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing the QUIC transport parameters (QUIC Transport Parameters)
+				 *
 				 * @details QUIC Transport Parameters is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the QUIC transport parameters during connection establishment.
 				 *          These parameters can include information about the supported QUIC versions, maximum packet sizes, timeouts and other settings
@@ -1902,7 +1862,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1912,7 +1871,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1935,6 +1893,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing the QUIC transport parameters (QUIC Transport Parameters Legacy)
+				 *
 				 * @details QUIC Transport Parameters Legacy is a deprecated TLS protocol extension
 				 *          that allowed the client and the server to exchange information about the QUIC transport parameters during connection establishment.
 				 *          These parameters can include information about the supported QUIC versions, maximum packet sizes,
@@ -1967,7 +1926,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1977,7 +1935,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -2000,6 +1957,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS extension structure for passing the ECH outer extensions (ECH Outer Extensions)
+				 *
 				 * @details ECH Outer Extensions is a TLS protocol extension
 				 *          that allows the client and the server to exchange information about the Encrypted ClientHello (ECH) outer extensions during connection establishment.
 				 *          These extensions can include information about the supported ECH versions, encryption algorithms, key exchange parameters and other settings
@@ -2016,7 +1974,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2026,7 +1983,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -2046,6 +2002,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS version structure
+				 *
 				 * @details The structure holds information about the version of the TLS protocol
 				 *          used at the record layer and about the negotiated TLS version
 				 *          that was chosen during the handshake.
@@ -2060,7 +2017,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2081,6 +2037,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the computed fingerprints of a TLS connection (JA3, JA4, PeetPrint and others)
+				 *
 				 * @details The structure holds information about the computed fingerprints of a TLS connection,
 				 *          such as JA3, JA4, PeetPrint and others, which are used to identify and analyse TLS connections.
 				 *          These fingerprints make it possible to determine the characteristics of a TLS connection, including the supported protocol versions,
@@ -2113,7 +2070,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2132,6 +2088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS record structure
+				 *
 				 * @details The structure holds information about a TLS record, including the DTLS record epoch, the TLS record length,
 				 *          the record sequence number, the version of the TLS protocol supported by the browser,
 				 *          and other parameters used to identify and analyse TLS connections.
@@ -2152,7 +2109,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2171,6 +2127,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS fragment structure
+				 *
 				 * @details The structure holds information about a TLS fragment,
 				 *          including the offset of the fragment within the TLS record and the length of the TLS fragment.
 				 *
@@ -2185,7 +2142,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2206,6 +2162,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS handshake structure
+				 *
 				 * @details The structure holds information about a TLS handshake,
 				 *          including the handshake length, the handshake sequence number and the TLS handshake fragment,
 				 *          which are used to identify and analyse TLS connections.
@@ -2223,7 +2180,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2244,6 +2200,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief TLS ClientHello structure
+				 *
 				 * @details The structure holds information about the TLS ClientHello,
 				 *          including the version of the TLS protocol supported by the browser in the handshake,
 				 *          and the random bytes used to identify and analyse TLS connections.
@@ -2258,7 +2215,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2281,6 +2237,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Browser fingerprint class
+				 *
 				 * @details The class holds information about a browser fingerprint,
 				 *          including the GREASE usage flag, the TLS handshake metadata record, the TLS handshake object,
 				 *          the TLS ClientHello object, the DTLS handshake cookie, the TLS session identifier, the list of supported ciphers,
@@ -2320,6 +2277,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Comparison operator of two browser fingerprints
+						 *
 						 * @param browser browser fingerprint object to compare with
 						 * @return        comparison result
 						 *
@@ -2336,6 +2294,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Move operator
+						 *
 						 * @param browser browser fingerprint object to move
 						 * @return        the current object after the move
 						 *
@@ -2351,6 +2310,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Copy operator
+						 *
 						 * @param browser browser fingerprint object to copy
 						 * @return        the current object after the copy
 						 *
@@ -2366,6 +2326,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Move constructor
+						 *
 						 * @param browser browser fingerprint object to move
 						 *
 						 * \~
@@ -2379,6 +2340,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Copy constructor
+						 *
 						 * @param browser browser fingerprint object to copy
 						 *
 						 * \~
@@ -2388,7 +2350,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
@@ -2410,6 +2371,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief A single SETTINGS parameter entry from an HTTP/2 connection (RFC 7540 §6.5)
+				 *
 				 * @details The structure holds information about a SETTINGS parameter of an HTTP/2 connection,
 				 *          including the parameter identifier and its value, which are used to configure the behaviour of the HTTP/2 connection.
 				 *          These parameters can carry information about the header table size, push notification support,
@@ -2443,6 +2405,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param i parameter identifier
 					 * @param v parameter value
 					 *
@@ -2462,6 +2425,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Data of an HTTP/2 PRIORITY frame (RFC 7540 §6.3)
+				 *
 				 * @details The structure holds information about an HTTP/2 PRIORITY frame,
 				 *          including the exclusive dependency flag, the priority weight,
 				 *          the identifier of the stream being prioritised and the identifier of the stream it depends on.
@@ -2482,7 +2446,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2502,6 +2465,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Data of the client HTTP/2 connection collected from the connection preface
+				 *
 				 * @details Holds the parameters required to compute the Akamai HTTP/2 fingerprint:
 				 *          the SETTINGS frame, the connection-level WINDOW_UPDATE, the PRIORITY frames
 				 *          and the order of the pseudo-headers from the first HEADERS frame.
@@ -2520,7 +2484,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2542,6 +2505,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Iterator as a nested class
+				 *
 				 * @details The iterator is used to traverse the elements of the unordered_map <uint8_t, browser_t> container
 				 *          that stores the browser fingerprints. The iterator provides an interface for accessing the container elements,
 				 *          including the dereference, comparison and increment operations.
@@ -2568,14 +2532,18 @@ namespace awh {
 						using iterator_category = std::bidirectional_iterator_tag;
 					public:
 						/**
-						 * Создаём тип данных итератора
+						 * \~russian
+						 * @brief Создаём тип данных итератора
+						 *
+						 * \~english
+						 * @brief Create a type of data of an iterator
+						 *
+						 * \~
 						 */
 						using iterator = unordered_map <uint8_t, browser_t>::iterator;
 					private:
 						// Текущее значение итератора
 						iterator _it;
-					private:
-						// Объект фреймворка
 					public:
 						/**
 						 * \~russian
@@ -2585,6 +2553,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Conversion operator to a raw iterator
+						 *
 						 * @return iterator iterator to convert
 						 *
 						 * \~
@@ -2599,6 +2568,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Header pointer extraction operator
+						 *
 						 * @return header pointer
 						 *
 						 * \~
@@ -2612,6 +2582,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Header dereference operator
+						 *
 						 * @return header value
 						 *
 						 * \~
@@ -2626,6 +2597,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Forward shift operator
+						 *
 						 * @return value of the current iterator
 						 *
 						 * \~
@@ -2641,6 +2613,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Iterator equality comparison operator
+						 *
 						 * @param other iterator to compare with
 						 * @return      comparison result
 						 *
@@ -2656,6 +2629,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Iterator inequality comparison operator
+						 *
 						 * @param other iterator to compare with
 						 * @return      comparison result
 						 *
@@ -2671,6 +2645,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param it  iterator to set
 						 *
 						 * \~
@@ -2683,8 +2658,6 @@ namespace awh {
 			private:
 				// Мьютекс для потокобезопасного доступа к хранилищу отпечатков
 				mutable lock_state_t <std::shared_mutex> _mtx;
-			private:
-				// Объект фреймворка
 			public:
 				/**
 				 * \~russian
@@ -2699,9 +2672,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of formatted output of all browser fingerprint data
+				 *
 				 * @details Prints in a readable text form all the fields of browser_t (Record Layer,
 				 *          Handshake, ClientHello, Cipher Suites, Compressors, Extensions), and also
 				 *          computes and prints all the imprint_t fingerprints (JA3, JA4, JA4_r, PeetPrint).
+				 *
 				 * @param browser object with the parsed ClientHello data
 				 * @return        formatted string with the full description of the fingerprint
 				 *
@@ -2724,11 +2699,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing the Akamai HTTP/2 fingerprint
+				 *
 				 * @details Format: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
 				 *           - settings:      id:value pairs separated by ';' in wire order
 				 *           - windowUpdate:  decimal WINDOW_UPDATE increment (stream 0)
 				 *           - priorities:    streamId:exclusive:dependency:weight separated by ',' (weight = raw+1)
 				 *           - pseudoHeaders: m/p/s/a separated by ','
+				 *
 				 * @param h2 object with the parsed HTTP/2 connection data (from parseH2())
 				 * @return   Akamai fingerprint string, an empty string if h2.settings is empty
 				 *
@@ -2741,12 +2718,13 @@ namespace awh {
 				 * @brief Метод проверки, соответствует ли цифровой отпечаток шаблону, характерному для браузера
 				 *
 				 * @param imp объект цифрового отпечатка для проверки
-				 * @return     результат проверки, принадлежит ли цифровой отпечаток реальному браузеру
+				 * @return    результат проверки, принадлежит ли цифровой отпечаток реальному браузеру
 				 *
 				 * \~english
 				 * @brief Method of checking whether the fingerprint matches a pattern typical of a browser
+				 *
 				 * @param imp fingerprint object to check
-				 * @return     result of the check whether the fingerprint belongs to a real browser
+				 * @return    result of the check whether the fingerprint belongs to a real browser
 				 *
 				 * \~
 				 */
@@ -2762,6 +2740,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing the fingerprints from the parsed ClientHello
+				 *
 				 * @param browser object with the parsed ClientHello data
 				 * @param result  object for storing all the computed fingerprints
 				 * @return        result of computing the fingerprints
@@ -2780,6 +2759,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the fingerprint data
+				 *
 				 * @param buffer  binary buffer of the fingerprint data
 				 * @param size    size of the binary buffer of the fingerprint data
 				 * @param browser object for storing the parsed fingerprint data
@@ -2803,9 +2783,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the connection preface and the initial frames of an HTTP/2 connection
+				 *
 				 * @details Parses a binary buffer holding the HTTP/2 client connection preface (magic + initial frames).
 				 *          Extracts SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY frames and the order of the pseudo-headers
 				 *          from the first HEADERS frame in order to build the Akamai HTTP/2 fingerprint.
+				 *
 				 * @param buffer binary buffer with the HTTP/2 connection data
 				 * @param size   size of the buffer in bytes
 				 * @param h2     object for storing the parsed data
@@ -2819,28 +2801,30 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод применения данных цифрового отпечатка на запрос ClientHello
 				 *
-				 * @param buffer  буфер с данными цифрового отпечатка для применения к запросу ClientHello
-				 * @param size    размер буфера в байтах
-				 * @param browser объект с распарсенными данными ClientHello
-				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
-				 *
 				 * @note Возвращаемый буфер — временный объект. Указатель на его данные
 				 *       действителен только до конца полного выражения вызова (до возврата
 				 *       из синхронного read_callback). Callback обязан скопировать данные.
 				 * @note buffer должен содержать полный TLS/DTLS record layer; при неполной
 				 *       записи метод возвращает пустой vector.
 				 *
+				 * @param buffer  буфер с данными цифрового отпечатка для применения к запросу ClientHello
+				 * @param size    размер буфера в байтах
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
+				 *
 				 * \~english
 				 * @brief Method of applying the fingerprint data to a ClientHello request
-				 * @param buffer  buffer with the fingerprint data to apply to the ClientHello request
-				 * @param size    size of the buffer in bytes
-				 * @param browser object with the parsed ClientHello data
-				 * @return        buffer with the ClientHello data modified according to the fingerprint
+				 *
 				 * @note The returned buffer is a temporary object. The pointer to its data
 				 *       is valid only until the end of the full call expression (until the return
 				 *       from the synchronous read_callback). The callback must copy the data.
 				 * @note buffer must hold a complete TLS/DTLS record layer; on an incomplete
 				 *       record the method returns an empty vector.
+				 *
+				 * @param buffer  buffer with the fingerprint data to apply to the ClientHello request
+				 * @param size    size of the buffer in bytes
+				 * @param browser object with the parsed ClientHello data
+				 * @return        buffer with the ClientHello data modified according to the fingerprint
 				 *
 				 * \~
 				 */
@@ -2865,6 +2849,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the browser fingerprint storage is empty
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -2879,6 +2864,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of browser fingerprints held in the storage
+				 *
 				 * @return number of browser fingerprints
 				 *
 				 * \~
@@ -2893,6 +2879,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of identifiers of all browser fingerprints held in the storage
+				 *
 				 * @return list of browser fingerprint identifiers
 				 *
 				 * \~
@@ -2907,6 +2894,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the thread-safety mode of the fingerprint storage
+				 *
 				 * @param mode thread-safety mode flag
 				 *
 				 * \~
@@ -2922,6 +2910,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing a browser fingerprint from the storage by identifier
+				 *
 				 * @param id fingerprint identifier
 				 * @return   result of removing the fingerprint
 				 *
@@ -2938,6 +2927,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the browser fingerprint data by identifier
+				 *
 				 * @param id fingerprint identifier
 				 * @return   browser fingerprint object matching the specified identifier
 				 *
@@ -2954,6 +2944,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding a browser fingerprint to the storage
+				 *
 				 * @param browser object with the parsed ClientHello data
 				 * @return        identifier of the added fingerprint
 				 *
@@ -2970,6 +2961,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding a browser fingerprint to the storage in binary form (fingerprint dump)
+				 *
 				 * @param buffer binary buffer with the fingerprint data
 				 * @param size   size of the binary buffer in bytes
 				 * @return       identifier of the added fingerprint
@@ -2986,6 +2978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building a binary dump of all browser fingerprints
+				 *
 				 * @return binary buffer holding the dump of all browser fingerprints
 				 *
 				 * \~
@@ -3000,6 +2993,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of loading a binary dump of all browser fingerprints
+				 *
 				 * @param buffer binary buffer to load the fingerprint data from
 				 * @return       result of loading the binary dump
 				 *
@@ -3017,6 +3011,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of loading a binary dump of a fingerprint
+				 *
 				 * @param input   binary buffer with the fingerprint data
 				 * @param browser object for storing the fingerprint data
 				 * @return        result of loading the binary dump of the fingerprint
@@ -3034,6 +3029,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building a binary dump of a browser fingerprint
+				 *
 				 * @param browser object with the parsed ClientHello data
 				 * @param output  buffer to write the binary dump of the fingerprint to
 				 * @return        result of building the binary dump of the fingerprint
@@ -3050,6 +3046,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of swapping the headers
+				 *
 				 * @param fgp Fingerprint object to exchange the data with
 				 *
 				 * \~
@@ -3064,6 +3061,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the end iterator
+				 *
 				 * @return end iterator
 				 *
 				 * \~
@@ -3077,6 +3075,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the begin iterator
+				 *
 				 * @return begin iterator
 				 *
 				 * \~
@@ -3092,6 +3091,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of searching for the specified header
+				 *
 				 * @param id identifier of the header to search for
 				 * @return   iterator of the specified header
 				 *
@@ -3108,6 +3108,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Browser fingerprint extraction operator
+				 *
 				 * @param id fingerprint identifier
 				 * @return   browser fingerprint
 				 *
@@ -3123,6 +3124,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Check whether the browser fingerprint storage is empty
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -3136,6 +3138,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Getting the number of browser fingerprints held in the storage
+				 *
 				 * @return number of browser fingerprints
 				 *
 				 * \~
@@ -3149,6 +3152,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Getting the binary data of the dump of all browser fingerprints
+				 *
 				 * @return binary data of the dump buffer of all browser fingerprints
 				 *
 				 * \~
@@ -3164,6 +3168,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Comparison operator of two browser fingerprint containers
+				 *
 				 * @param fgp browser fingerprints to compare with
 				 * @return    comparison result
 				 *
@@ -3180,6 +3185,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Browser fingerprint dump assignment operator
+				 *
 				 * @param buffer binary buffer to load the fingerprint data from
 				 * @return       the current browser fingerprint container
 				 *
@@ -3196,6 +3202,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Move operator
+				 *
 				 * @param fgp Fingerprint object to move
 				 * @return    the current browser fingerprint container
 				 *
@@ -3211,6 +3218,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Copy operator
+				 *
 				 * @param fgp Fingerprint object to copy
 				 * @return    the current browser fingerprint container
 				 *
@@ -3221,7 +3229,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor
@@ -3243,7 +3250,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

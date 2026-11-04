@@ -147,7 +147,6 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 	// Сообщаем, что слово видом схоже с числом
 	return true;
 }
-
 /**
  * @brief Метод разреза текста на слова
  *
@@ -276,7 +275,6 @@ bool awh::args::Lexer::split(const string_view text, vector <string> & result, c
 	// Сообщаем, что разрез текста выполнен
 	return true;
 }
-
 /**
  * @brief Метод разбора набора доводов запуска
  *
@@ -471,7 +469,6 @@ bool awh::args::Lexer::parse(const vector <string> & items, const callback_t & c
 	// Сообщаем, что разбор набора выполнен
 	return true;
 }
-
 /**
  * @brief Метод разбора текстового потока
  *
@@ -491,7 +488,6 @@ bool awh::args::Lexer::parse(const string_view text, const callback_t & callback
 	// Выполняем разбор собранных слов тем же разборщиком
 	return this->parse(items, callback, failure);
 }
-
 /**
  * @brief Метод извлечения настроек разбора параметров
  *
@@ -502,7 +498,6 @@ auto awh::args::Lexer::settings() const noexcept -> const settings_t & {
 	// Выводим настройки разбора параметров
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек разбора параметров
  *
@@ -522,4 +517,4 @@ void awh::args::Lexer::settings(const settings_t & settings) noexcept {
  *
  * \~
  */
-awh::args::Lexer::Lexer() noexcept {}
+awh::args::Lexer::Lexer() noexcept = default;

@@ -38,7 +38,13 @@
  */
 #if !defined(AWH_MAX_MEMORY_BUFFER)
 	/**
+	 * \~russian
 	 * Устанавливаем максимальное значение потребляемой памяти
+	 *
+	 * \~english
+	 * Set a maximum value of the consumed memory
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_MEMORY_BUFFER AWH_MAX_BODY_SIZE
 #endif
@@ -1359,13 +1365,13 @@ namespace awh {
 			 * @brief Метод добавления числа в буфер
 			 *
 			 * @param value значение для добавления
-			 * @return       результат добавления данных
+			 * @return      результат добавления данных
 			 *
 			 * \~english
 			 * @brief Method adding a number into the buffer
 			 *
 			 * @param value value to add
-			 * @return       result of adding the data
+			 * @return      result of adding the data
 			 *
 			 * \~
 			 */

@@ -54,6 +54,7 @@
  * @brief Header file of the substitution of the system calls of the work with the sockets under Linux —
  *        the mediators dividing the addresses between the kernel and the bypassing stacks
  *        working in the user space
+ *
  * @details The stacks like DPDK through F-Stack take the handling of the packets out of the kernel into
  *          the user space, and they cannot be addressed by the system calls:
  *          their sockets do not belong to the kernel at all. In exchange their own set of
@@ -63,6 +64,7 @@
  *          `gnu::socket`, and what it will unfold into — into a system call or into a bypassing
  *          stack — is decided at the build. The branch is chosen **for the whole build**, and not
  *          per connection: mixing the stacks in one application is not allowed
+ *
  * @par Deliberate decisions
  *      **Mediators, and not macros.** In the draft the substitution was made by the macros of the kind
  *      `#define socket_compat(...)`. Here it is made by inlined functions:
@@ -74,8 +76,10 @@
  *      written. What was built with it silently received not a single declaration, and
  *      the build fell apart with a hundred of unintelligible refusals in the foreign modules. Here such
  *      a build is rejected at once and in essence
+ *
  * @note The set of the mediators answers what the modules of the network actually use.
  *       It is not a full replacement of POSIX and must not be considered as one
+ *
  * @warning The bypassing stacks give out **their own** handles, and not the handles of the kernel. Mixing
  *          them with the ordinary ones is not allowed: a handle obtained from `gnu::socket` should be closed
  *          only through `gnu::close`, and passing it into the system calls
@@ -100,6 +104,9 @@
 /**
  * Стандартная библиотека
  */
+#include <poll.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -108,9 +115,6 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <sys/select.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
 
 /**
  * \~russian
@@ -120,15 +124,16 @@
  *          Коды операций и признаки движок объявляет своими числами: заголовок
  *          дистрибутива отстаёт от ядра, и опираться на него значило бы молча
  *          потерять возможности, которые ядро даёт. Подробности - в
- *          src/net/backend/gnu/IO_URING.md
+ *          src/net/backend/gnu/IO_URING.md.
  *
  * \~english
  * If the io_uring engine is being built
+ *
  * @details The header of the kernel is needed exclusively for the sake of the layout of the structures of the rings.
  *          The codes of the operations and the signs the engine declares by its own numbers: the header
  *          of the distribution lags behind the kernel, and to rely on it would mean silently
  *          losing the possibilities the kernel gives. The details are in
- *          src/net/backend/gnu/IO_URING.md
+ *          src/net/backend/gnu/IO_URING.md.
  *
  * \~
  */
@@ -177,13 +182,14 @@ namespace awh {
 	 *
 	 * @details Обращения записываются с явным указанием пространства -
 	 *          `gnu::socket`, `gnu::sendto`, - и потому никогда не путаются с
-	 *          одноимёнными вызовами системы
+	 *          одноимёнными вызовами системы.
 	 *
 	 * \~english
 	 * @brief Namespace of the means of the Linux operating system
+	 *
 	 * @details The addresses are written with the namespace specified explicitly —
 	 *          `gnu::socket`, `gnu::sendto`, — and therefore are never confused with
-	 *          the calls of the system of the same name
+	 *          the calls of the system of the same name.
 	 *
 	 * \~
 	 */
@@ -212,6 +218,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of creating a socket
+		 *
 		 * @param domain   family of the protocols
 		 * @param type     type of the socket
 		 * @param protocol protocol of the socket
@@ -243,6 +250,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of binding a socket to an address
+		 *
 		 * @param sock network socket
 		 * @param addr address to bind to
 		 * @param size size of the address
@@ -273,6 +281,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of putting a socket into the mode of the waiting for the connections
+		 *
 		 * @param sock    network socket
 		 * @param backlog size of the queue of the connections
 		 * @return        result of the work of the function
@@ -303,6 +312,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of accepting an incoming connection
+		 *
 		 * @param sock network socket
 		 * @param addr address of the connected client
 		 * @param size size of the address
@@ -334,6 +344,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of establishing a connection
+		 *
 		 * @param sock network socket
 		 * @param addr address of the connection
 		 * @param size size of the address
@@ -363,6 +374,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of closing a socket
+		 *
 		 * @param sock network socket
 		 * @return     result of the work of the function
 		 *
@@ -391,6 +403,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of stopping the exchange over a socket
+		 *
 		 * @param sock network socket
 		 * @param how  direction of the stopping of the exchange
 		 * @return     result of the work of the function
@@ -422,6 +435,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of reading the data from a socket
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -455,6 +469,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of sending the data into a socket
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to send
 		 * @param size   size of the buffer
@@ -490,6 +505,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of reading the data from a socket with the getting of the address of the sender
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -527,6 +543,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of sending the data into a socket to the specified address
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to send
 		 * @param size   size of the buffer
@@ -556,7 +573,7 @@ namespace awh {
 		 *
 		 * @details Через сообщение приходят и служебные сведения: метки перегрузки
 		 *          сети, адрес назначения, признак усечения. Протоколу QUIC они нужны
-		 *          напрямую, и обойтись простым чтением там нельзя
+		 *          напрямую, и обойтись простым чтением там нельзя.
 		 *
 		 * @param sock    сетевой сокет
 		 * @param message сообщение для чтения данных
@@ -565,9 +582,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of reading the data from a socket as a single message
+		 *
 		 * @details Through a message the service information comes as well: the marks of the congestion of
 		 *          the network, the address of the destination, the sign of the truncation. The QUIC protocol needs them
-		 *          directly, and getting by with a simple reading there is not possible
+		 *          directly, and getting by with a simple reading there is not possible.
+		 *
 		 * @param sock    network socket
 		 * @param message message to read the data into
 		 * @param flags   signs of the reading
@@ -599,6 +618,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of sending the data into a socket as a single message
+		 *
 		 * @param sock    network socket
 		 * @param message message to send the data from
 		 * @param flags   signs of the sending
@@ -630,6 +650,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of reading the data from a handle
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer to read the data into
 		 * @param size   size of the buffer
@@ -661,6 +682,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of writing the data into a handle
+		 *
 		 * @param sock   network socket
 		 * @param buffer buffer of the data to write
 		 * @param size   size of the buffer
@@ -692,6 +714,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of reading the data from a handle by a set of buffers
+		 *
 		 * @param sock   network socket
 		 * @param buffer set of the buffers to read the data into
 		 * @param count  number of the buffers in the set
@@ -723,6 +746,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of writing the data into a handle by a set of buffers
+		 *
 		 * @param sock   network socket
 		 * @param buffer set of the buffers of the data to write
 		 * @param count  number of the buffers in the set
@@ -756,6 +780,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting a setting of a socket
+		 *
 		 * @param sock   network socket
 		 * @param level  level of the setting
 		 * @param name   name of the setting
@@ -791,6 +816,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting a setting of a socket
+		 *
 		 * @param sock   network socket
 		 * @param level  level of the setting
 		 * @param name   name of the setting
@@ -824,6 +850,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the own address of a socket
+		 *
 		 * @param sock   network socket
 		 * @param addr   address of the socket
 		 * @param length size of the address
@@ -855,6 +882,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the address of the other end of a connection
+		 *
 		 * @param sock   network socket
 		 * @param addr   address of the other end of the connection
 		 * @param length size of the address
@@ -889,8 +917,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the control of the handle of a socket
+		 *
 		 * @details The argument here is passed as a set of a variable length: at different requests
 		 *          it is of a different kind, and at a part of them it is absent at all
+		 *
 		 * @param sock    network socket
 		 * @param request request of the control
 		 * @param args    additional arguments of the request
@@ -923,6 +953,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the control of a device through a socket
+		 *
 		 * @param sock    network socket
 		 * @param request request of the control
 		 * @param data    data of the request
@@ -954,6 +985,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of waiting for the events on a set of handles
+		 *
 		 * @param fds     set of the handles
 		 * @param count   number of the handles in the set
 		 * @param timeout limit of the waiting in milliseconds
@@ -988,10 +1020,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of creating a set of the waiting for the events
+		 *
 		 * @details The signs of the creation are passed directly, and this address always
 		 *          uses `epoll_create1`: the obsolete `epoll_create` cannot
 		 *          close the handle at the start of another program, and therefore it
 		 *          leaks into the spawned processes
+		 *
 		 * @param flags signs of the creation of the set
 		 * @return      handle of the set of the waiting or a sign of an error
 		 *
@@ -1022,6 +1056,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the control of a set of the waiting for the events
+		 *
 		 * @param epfd  handle of the set of the waiting
 		 * @param op    action over the handle
 		 * @param sock  network socket
@@ -1055,6 +1090,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of waiting for the events on a set
+		 *
 		 * @param epfd    handle of the set of the waiting
 		 * @param events  set of the happened events
 		 * @param count   size of the set of the events
@@ -1086,7 +1122,7 @@ namespace awh {
 			 *
 			 * @details Обходного стека здесь нет и быть не может: io_uring - средство
 			 *          ядра, а DPDK ядро как раз обходит. Оттого посредник в отличие от
-			 *          соседних ветвления не имеет
+			 *          соседних ветвления не имеет.
 			 *
 			 * @note Библиотека liburing намеренно не используется: на стендах её нет
 			 *       ни на одном, а обращений к ядру у io_uring всего три, и обходятся
@@ -1098,12 +1134,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the setup of the io_uring rings
+			 *
 			 * @details There is no bypassing stack here and there cannot be one: io_uring is a means
 			 *          of the kernel, and DPDK bypasses the kernel exactly. Therefore the mediator, unlike
-			 *          the neighbouring ones, has no branching
+			 *          the neighbouring ones, has no branching.
+			 *
 			 * @note The liburing library is deliberately not used: it is present on none
 			 *       of the stands, and io_uring has only three addresses to the kernel, and they
 			 *       get by on their own without an external dependency
+			 *
 			 * @param entries number of the records of the ring of the submission
 			 * @param params  layout of the rings, is filled by the kernel
 			 * @return        descriptor of the rings or a sign of an error
@@ -1120,7 +1159,7 @@ namespace awh {
 			 * @details Одним обращением выполняются оба действия сразу: подаётся всё,
 			 *          что положено в кольцо подачи, и ожидается указанное число
 			 *          завершений. Этим io_uring и отличается от epoll, где подписка и
-			 *          ожидание - два разных обращения
+			 *          ожидание - два разных обращения.
 			 *
 			 * @param fd        дескриптор колец
 			 * @param submitted количество поданных записей
@@ -1132,10 +1171,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the submission of the operations and of the waiting for the completions of io_uring
+			 *
 			 * @details By one address both actions are performed at once: everything that is put into
 			 *          the ring of the submission is submitted, and the specified number of the completions
 			 *          is waited for. That is how io_uring differs from epoll, where the subscription and
-			 *          the waiting are two different addresses
+			 *          the waiting are two different addresses.
+			 *
 			 * @param fd        descriptor of the rings
 			 * @param submitted number of the submitted records
 			 * @param waiting   number of the awaited completions, zero — do not wait
@@ -1154,7 +1195,7 @@ namespace awh {
 			 * @brief Функция закрепления ресурсов за кольцами io_uring
 			 *
 			 * @details Через него выполняется и проба возможностей ядра, и закрепление
-			 *          колец буферов приёма, и закрепление дескрипторов
+			 *          колец буферов приёма, и закрепление дескрипторов.
 			 *
 			 * @param fd    дескриптор колец
 			 * @param op    действие закрепления
@@ -1164,8 +1205,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the registration of the resources with the io_uring rings
+			 *
 			 * @details Through it both the probing of the possibilities of the kernel is performed, and the registration of
-			 *          the rings of the buffers of the reception, and the registration of the descriptors
+			 *          the rings of the buffers of the reception, and the registration of the descriptors.
+			 *
 			 * @param fd    descriptor of the rings
 			 * @param op    action of the registration
 			 * @param arg   argument of the action

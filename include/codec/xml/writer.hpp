@@ -202,7 +202,7 @@ namespace awh {
 						uint8_t indent;
 						/**
 						 * \~russian
-						 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
+						 * @brief Наибольшая допустимая глубина вложенности узлов, ноль - без предела
 						 *
 						 * @details Предела по умолчанию нет: обход дерева ведётся собственным
 						 *          стеком, а не рекурсией, и стеку задачи глубина записи не грозит. Держи
@@ -214,7 +214,7 @@ namespace awh {
 						 *       не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
 						 *
 						 * \~english
-						 * Largest admissible depth of the nesting of the nodes, zero — without a limit
+						 * @brief Largest admissible depth of the nesting of the nodes, zero — without a limit
 						 *
 						 * @details There is no limit by default: the traversal of the tree is conducted by an own
 						 *          stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
@@ -260,14 +260,14 @@ namespace awh {
 						bool pending;
 						/**
 						 * \~russian
-						 * Признак записи содержимого узла в одну строку без отступов
+						 * @brief Признак записи содержимого узла в одну строку без отступов
 						 *
 						 * @note Взводится узлам со смешанным содержимым и узлам, требующим
 						 *       сохранения пробельного содержимого: отступ внутри них - не украшение
 						 *       записи, а перемена самого содержимого
 						 *
 						 * \~english
-						 * Flag of the writing of the content of a node in a single line without the indents
+						 * @brief Flag of the writing of the content of a node in a single line without the indents
 						 *
 						 * @note Raised for the nodes with a mixed content and for the nodes requiring
 						 *       a preservation of the whitespace content: an indent inside them is not an adornment
@@ -283,11 +283,21 @@ namespace awh {
 						// Имя узла в записи, принятой в исходном тексте
 						string name;
 						/**
-						 * Записанные имена атрибутов узла в том виде, в каком они попали
-						 * в текст. Договор не допускает повторного имени атрибута у одного
-						 * узла, а объявление пространства имён является таким же атрибутом:
-						 * без учёта записанного запись собирала бы текст, который её же
-						 * собственное чтение принять не может
+						 * \~russian
+						 * @brief Записанные имена атрибутов узла в том виде, в каком они попали
+						 *        в текст. Договор не допускает повторного имени атрибута у одного
+						 *        узла, а объявление пространства имён является таким же атрибутом:
+						 *        без учёта записанного запись собирала бы текст, который её же
+						 *        собственное чтение принять не может
+						 *
+						 * \~english
+						 * @brief The written names of the attributes of a node in that very shape in which they got
+						 *        into the text. A contract does not allow a repeated name of an attribute at one
+						 *        node, and a declaration of a namespace is such an attribute already:
+						 *        without an account of the written a writing would assemble a text, which its own
+						 *        reading can not accept
+						 *
+						 * \~
 						 */
 						vector <string> names;
 						/**
@@ -334,7 +344,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Счётчик самостоятельно назначенных префиксов пространств имён
+					 * @brief Счётчик самостоятельно назначенных префиксов пространств имён
 					 *
 					 * @note Разрядности его хватает с большим запасом, и сторожа при нём нет
 					 *       НАРОЧНО. Заворот требует 2^32 самочинных префиксов в ОДНОМ тексте,
@@ -353,7 +363,7 @@ namespace awh {
 					 *          общей таблицей, - сторожа надо будет завести
 					 *
 					 * \~english
-					 * Counter of the independently assigned prefixes of the namespaces
+					 * @brief Counter of the independently assigned prefixes of the namespaces
 					 *
 					 * @note Its bit width suffices with a large reserve, and there is DELIBERATELY no guard
 					 *       on it: a wraparound demands 2^32 self-assigned prefixes within a SINGLE text, and
@@ -377,7 +387,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Глубина стека открытых узлов разметки
+					 * @brief Глубина стека открытых узлов разметки
 					 *
 					 * @details Записи открытых узлов со стека не снимаются, а
 					 *          переиспользуются: глубина хранится отдельно, и всё, что
@@ -394,7 +404,7 @@ namespace awh {
 					 *          закрытого узла
 					 *
 					 * \~english
-					 * Depth of the stack of the open markup nodes
+					 * @brief Depth of the stack of the open markup nodes
 					 *
 					 * @details The records of the open nodes are not popped off the stack but are
 					 *          reused: the depth is stored separately, and everything that
@@ -415,7 +425,7 @@ namespace awh {
 					size_t _depth;
 					/**
 					 * \~russian
-					 * Число действующих связываний префиксов
+					 * @brief Число действующих связываний префиксов
 					 *
 					 * @note Держится отдельно от размера хранилища намеренно: снятое
 					 *       связывание из хранилища не удаляется, а лишь перестаёт считаться
@@ -424,7 +434,7 @@ namespace awh {
 					 *       открытых узлов, и по тому же доводу
 					 *
 					 * \~english
-					 * Number of the effective bindings of the prefixes
+					 * @brief Number of the effective bindings of the prefixes
 					 *
 					 * @note It is kept separately from the size of the storage deliberately: a removed
 					 *       binding is not deleted from the storage but only ceases to be considered

@@ -191,22 +191,22 @@ namespace awh {
 		 * \~russian
 		 * @brief Функция перекодировки текста из одной кодировки в другую
 		 *
-		 * @param text     перекодируемый текст
-		 * @param from     кодировка, в которой записан текст
-		 * @param to       кодировка, в которую записывается результат
-		 * @param result   результат перекодировки текста
-		 * @param replace  порядок обращения с непредставимыми символами
-		 * @return         результат выполнения перекодировки текста
+		 * @param text    перекодируемый текст
+		 * @param from    кодировка, в которой записан текст
+		 * @param to      кодировка, в которую записывается результат
+		 * @param result  результат перекодировки текста
+		 * @param replace порядок обращения с непредставимыми символами
+		 * @return        результат выполнения перекодировки текста
 		 *
 		 * \~english
 		 * @brief Function transcoding a text from one encoding into another
 		 *
-		 * @param text     text being transcoded
-		 * @param from     encoding the text is recorded in
-		 * @param to       encoding the result is recorded into
-		 * @param result   result of transcoding the text
-		 * @param replace  manner of handling unrepresentable characters
-		 * @return         result of performing the text transcoding
+		 * @param text    text being transcoded
+		 * @param from    encoding the text is recorded in
+		 * @param to      encoding the result is recorded into
+		 * @param result  result of transcoding the text
+		 * @param replace manner of handling unrepresentable characters
+		 * @return        result of performing the text transcoding
 		 *
 		 * \~
 		 */
@@ -219,11 +219,11 @@ namespace awh {
 		 *          которой требуется отличить от пустого исходного текста, выполняется
 		 *          одноимённой функцией, выводящей результат выполнения отдельно.
 		 *
-		 * @param text     перекодируемый текст
-		 * @param from     кодировка, в которой записан текст
-		 * @param to       кодировка, в которую записывается результат
-		 * @param replace  порядок обращения с непредставимыми символами
-		 * @return         получившийся в результате текст
+		 * @param text    перекодируемый текст
+		 * @param from    кодировка, в которой записан текст
+		 * @param to      кодировка, в которую записывается результат
+		 * @param replace порядок обращения с непредставимыми символами
+		 * @return        получившийся в результате текст
 		 *
 		 * \~english
 		 * @brief Function transcoding a text from one encoding into another
@@ -232,11 +232,11 @@ namespace awh {
 		 *          is required to be told apart from an empty source text is performed by the function of
 		 *          the same name, which outputs the result of the performance separately.
 		 *
-		 * @param text     text being transcoded
-		 * @param from     encoding the text is recorded in
-		 * @param to       encoding the result is recorded into
-		 * @param replace  manner of handling unrepresentable characters
-		 * @return         text obtained as the result
+		 * @param text    text being transcoded
+		 * @param from    encoding the text is recorded in
+		 * @param to      encoding the result is recorded into
+		 * @param replace manner of handling unrepresentable characters
+		 * @return        text obtained as the result
 		 *
 		 * \~
 		 */
@@ -249,9 +249,9 @@ namespace awh {
 		 *          в кодировке UTF-8: текст, ей отвечающий, признаётся записанным
 		 *          в UTF-8, а не отвечающий — записанным в заданной кодировке.
 		 *
-		 * @param text      текст, кодировку которого требуется определить
-		 * @param fallback  кодировка, предполагаемая для текста, записью UTF-8 не являющегося
-		 * @return          обозначение определённой кодировки текста
+		 * @param text     текст, кодировку которого требуется определить
+		 * @param fallback кодировка, предполагаемая для текста, записью UTF-8 не являющегося
+		 * @return         обозначение определённой кодировки текста
 		 *
 		 * \~english
 		 * @brief Text encoding detection function
@@ -260,9 +260,9 @@ namespace awh {
 		 *          UTF-8 encoding: a text conforming to it is recognized as recorded in UTF-8, and one
 		 *          not conforming — as recorded in the given encoding.
 		 *
-		 * @param text      text whose encoding is required to be detected
-		 * @param fallback  encoding assumed for a text that is not a UTF-8 record
-		 * @return          designation of the detected text encoding
+		 * @param text     text whose encoding is required to be detected
+		 * @param fallback encoding assumed for a text that is not a UTF-8 record
+		 * @return         designation of the detected text encoding
 		 *
 		 * \~
 		 */

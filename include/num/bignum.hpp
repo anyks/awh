@@ -78,6 +78,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Namespace of the long number module
+	 *
 	 * @details The namespace holds the size-independent computation engine,
 	 *          which performs all the arithmetic operations over raw byte buffers.
 	 *          The buffer of a number is always kept in the order from the low byte to the high one
@@ -173,6 +174,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of zeroing the buffer of a number
+		 *
 		 * @param value buffer of the number to zero
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -189,6 +191,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking the buffer of a number for a zero value
+		 *
 		 * @param value buffer of the number to check
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      result of the check
@@ -206,6 +209,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the number of significant bits of a number
+		 *
 		 * @param value buffer of the number to count over
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      position of the highest set bit increased by one
@@ -224,6 +228,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the value of a bit of a number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @param index index of the bit to get
@@ -243,6 +248,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting the value of a bit of a number
+		 *
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param index index of the bit to set
@@ -261,6 +267,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking a number for a negative value
+		 *
 		 * @param value buffer of the number to check
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      result of checking the highest bit of the number
@@ -279,6 +286,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding two integers
+		 *
 		 * @param result buffer of the destination number and of the first addend
 		 * @param value  buffer of the number of the second addend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -298,6 +306,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of subtracting two integers
+		 *
 		 * @param result buffer of the destination number and of the minuend
 		 * @param value  buffer of the number of the subtrahend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -318,7 +327,9 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying two integers
+		 *
 		 * @details The result of the multiplication is truncated to the size of the bit grid.
+		 *
 		 * @param result buffer of the destination number and of the multiplicand
 		 * @param value  buffer of the number of the multiplier
 		 * @param size   size of the buffers of the numbers in bytes
@@ -346,6 +357,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of dividing two unsigned integers with getting the remainder
+		 *
 		 * @details On division by zero the quotient and the remainder are zeroed, the function yields
 		 *          a negative result. The buffer of the remainder is allowed to coincide with the buffer
 		 *          of the divisor, but not with the buffer of the quotient: the quotient and the remainder are two
@@ -353,6 +365,7 @@ namespace awh {
 		 *          coinciding buffers the division is not performed and the function yields a negative
 		 *          result, leaving the passed buffers unchanged. The buffer of the remainder
 		 *          is allowed not to be passed, by specifying a null pointer.
+		 *
 		 * @param result buffer of the destination number of the quotient and of the dividend
 		 * @param value  buffer of the number of the divisor
 		 * @param mod    buffer of the destination number of the remainder of the division
@@ -371,6 +384,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of changing the sign of an integer in two's complement
+		 *
 		 * @param value buffer of the number to change the sign of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -386,6 +400,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the bitwise inversion of an integer
+		 *
 		 * @param value buffer of the number to invert
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -402,6 +417,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the bitwise multiplication of two integers
+		 *
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -419,6 +435,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the bitwise addition of two integers
+		 *
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -436,6 +453,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the bitwise exclusive addition of two integers
+		 *
 		 * @param result buffer of the destination number and of the first operand
 		 * @param value  buffer of the number of the second operand
 		 * @param size   size of the buffers of the numbers in bytes
@@ -453,6 +471,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of shifting an integer left
+		 *
 		 * @param value buffer of the number to shift
 		 * @param size  size of the buffer of the number in bytes
 		 * @param count number of bits of the shift
@@ -471,6 +490,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of shifting an integer right
+		 *
 		 * @param value buffer of the number to shift
 		 * @param size  size of the buffer of the number in bytes
 		 * @param count number of bits of the shift
@@ -490,6 +510,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of comparing two unsigned integers
+		 *
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -509,6 +530,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of comparing two signed integers
+		 *
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -526,6 +548,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of taking the integer square root of an unsigned number
+		 *
 		 * @param value buffer of the number to take the root of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -542,6 +565,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of raising an integer to a power
+		 *
 		 * @param value    buffer of the number to raise to a power
 		 * @param size     size of the buffer of the number in bytes
 		 * @param exponent exponent of the power
@@ -560,6 +584,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting the value of an integer
+		 *
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   value being set by modulus
@@ -578,6 +603,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the unsigned integer value of a number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained value of the low limbs of the number
@@ -595,6 +621,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the signed integer value of a number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained value of the low limbs of the number
@@ -613,6 +640,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the real value of an integer
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of the signed representation of the number
@@ -637,10 +665,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting the real value of an integer
+		 *
 		 * @details The fractional part of the value being set is discarded. When the value goes
 		 *          beyond the bounds of the bit grid of the number it is saturated with the limiting
 		 *          value, when the flag of the signed representation is cleared a negative value
 		 *          is saturated with zero, and a value that is not a number zeroes the number.
+		 *
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   real value being set
@@ -661,6 +691,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building the string representation of an integer
+		 *
 		 * @param value  buffer of the number to build from
 		 * @param size   size of the buffer of the number in bytes
 		 * @param sign   flag of the signed representation of the number
@@ -689,11 +720,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the string representation of an integer
+		 *
 		 * @details The parsing stops at the first character not belonging to the number, while the already
 		 *          parsed part is kept. When the flag of the signed representation is cleared the
 		 *          leading minus is not considered a part of the number: a negative value is not expressed by an unsigned
 		 *          representation, therefore the parsing ends in a failure and the number
 		 *          stays zero, as the std::from_chars function does.
+		 *
 		 * @param value  buffer of the number to set the result of the parsing in
 		 * @param size   size of the buffer of the number in bytes
 		 * @param text   string of the number being parsed
@@ -720,9 +753,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding an integer to the specified decimal place
+		 *
 		 * @details A non-negative number of digits leaves an integer unchanged,
 		 *          a negative one rounds it to the corresponding power of ten: the value
 		 *          -3 rounds the number to thousands.
+		 *
 		 * @param value  buffer of the number to round
 		 * @param size   size of the buffer of the number in bytes
 		 * @param sign   flag of the signed representation of the number
@@ -756,9 +791,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the bit width of the exponent of a real number
+		 *
 		 * @details For the standard bit widths of 16, 32, 64 and 128 bits the exponent
 		 *          bit width defined by the IEEE-754 standard is used, for the
 		 *          other bit widths the formula round(4 * log2(N)) - 13 is applied.
+		 *
 		 * @param bits bit width of the real number in bits
 		 * @return     bit width of the exponent of the real number in bits
 		 *
@@ -775,6 +812,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of determining the class of a real number
+		 *
 		 * @param value buffer of the number to determine for
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      class of the value of the real number
@@ -792,6 +830,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building the infinity of a real number
+		 *
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of building a negative infinity
@@ -808,6 +847,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building a value that is not a number
+		 *
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -823,6 +863,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building the machine epsilon of a real number
+		 *
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -839,6 +880,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building the maximum finite real number
+		 *
 		 * @param value buffer of the number to build in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param sign  flag of building the minimum negative number
@@ -855,6 +897,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of changing the sign of a real number
+		 *
 		 * @param value buffer of the number to change the sign of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -870,6 +913,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of taking the modulus of a real number
+		 *
 		 * @param value buffer of the number to take the modulus of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -886,6 +930,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding two real numbers
+		 *
 		 * @param result buffer of the destination number and of the first addend
 		 * @param value  buffer of the number of the second addend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -903,6 +948,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of subtracting two real numbers
+		 *
 		 * @param result buffer of the destination number and of the minuend
 		 * @param value  buffer of the number of the subtrahend
 		 * @param size   size of the buffers of the numbers in bytes
@@ -920,6 +966,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying two real numbers
+		 *
 		 * @param result buffer of the destination number and of the multiplicand
 		 * @param value  buffer of the number of the multiplier
 		 * @param size   size of the buffers of the numbers in bytes
@@ -937,6 +984,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of dividing two real numbers
+		 *
 		 * @param result buffer of the destination number and of the dividend
 		 * @param value  buffer of the number of the divisor
 		 * @param size   size of the buffers of the numbers in bytes
@@ -954,6 +1002,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the remainder of the division of two real numbers
+		 *
 		 * @param result buffer of the destination number and of the dividend
 		 * @param value  buffer of the number of the divisor
 		 * @param size   size of the buffers of the numbers in bytes
@@ -970,6 +1019,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of taking the square root of a real number
+		 *
 		 * @param value buffer of the number to take the root of
 		 * @param size  size of the buffer of the number in bytes
 		 *
@@ -986,6 +1036,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of raising a real number to an integer power
+		 *
 		 * @param value    buffer of the number to raise to a power
 		 * @param size     size of the buffer of the number in bytes
 		 * @param exponent exponent of the power
@@ -1004,6 +1055,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of comparing two real numbers
+		 *
 		 * @param value1 buffer of the first number to compare
 		 * @param value2 buffer of the second number to compare
 		 * @param size   size of the buffers of the numbers in bytes
@@ -1023,6 +1075,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting the integer value of a real number
+		 *
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   value being set by modulus
@@ -1041,6 +1094,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of setting the real value of a number
+		 *
 		 * @param value buffer of the number to set in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param num   real value being set
@@ -1058,6 +1112,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the unsigned integer value of a real number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained integer value of the number
@@ -1075,6 +1130,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the signed integer value of a real number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained integer value of the number
@@ -1092,6 +1148,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the real value of a number
+		 *
 		 * @param value buffer of the number to get from
 		 * @param size  size of the buffer of the number in bytes
 		 * @return      the obtained real value of the number
@@ -1110,6 +1167,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of transferring a real number into a buffer of another bit width
+		 *
 		 * @param result buffer of the destination number
 		 * @param size1  size of the buffer of the destination number in bytes
 		 * @param value  buffer of the source number
@@ -1130,6 +1188,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building the string representation of a real number
+		 *
 		 * @param value     buffer of the number to build from
 		 * @param size      size of the buffer of the number in bytes
 		 * @param format    format of the representation of the number
@@ -1150,6 +1209,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the string representation of a real number
+		 *
 		 * @param value buffer of the number to set the result of the parsing in
 		 * @param size  size of the buffer of the number in bytes
 		 * @param text  string of the number being parsed
@@ -1169,11 +1229,11 @@ namespace awh {
 		 *          возникающее при наивном умножении на степень десяти, поскольку степени
 		 *          десяти в двоичном формате точно не представимы.
 		 *
-		 * @note    Результат округления является ближайшим представимым к десятичному
-		 *          значением: само десятичное значение вида 0.33 в двоичном формате точно
-		 *          не представимо, поэтому дробная часть остаётся бесконечной по устройству
-		 *          формата. Точное количество знаков гарантируется при выводе числа методом
-		 *          формирования строкового представления с указанной точностью.
+		 * @note Результат округления является ближайшим представимым к десятичному
+		 *       значением: само десятичное значение вида 0.33 в двоичном формате точно
+		 *       не представимо, поэтому дробная часть остаётся бесконечной по устройству
+		 *       формата. Точное количество знаков гарантируется при выводе числа методом
+		 *       формирования строкового представления с указанной точностью.
 		 *
 		 * @param value  буфер числа для округления
 		 * @param size   размер буфера числа в байтах
@@ -1182,17 +1242,20 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding a real number to the specified number of digits after the decimal point
+		 *
 		 * @details The rounding is performed in the decimal numeral system: an exact
 		 *          decimal representation of the number is built, the low digits are discarded by the specified
 		 *          rule, after which the result is converted back into the binary format with
 		 *          correct rounding. Such an order rules out the double rounding
 		 *          arising from a naive multiplication by a power of ten, since the powers of
 		 *          ten are not exactly representable in the binary format.
-		 * @note    The result of the rounding is the value nearest representable to the decimal
-		 *          one: the decimal value 0.33 itself is not exactly representable in the binary format,
-		 *          therefore the fractional part stays infinite by the arrangement
-		 *          of the format. The exact number of digits is guaranteed when the number is output by the method
-		 *          building the string representation with the specified precision.
+		 *
+		 * @note The result of the rounding is the value nearest representable to the decimal
+		 *       one: the decimal value 0.33 itself is not exactly representable in the binary format,
+		 *       therefore the fractional part stays infinite by the arrangement
+		 *       of the format. The exact number of digits is guaranteed when the number is output by the method
+		 *       building the string representation with the specified precision.
+		 *
 		 * @param value  buffer of the number to round
 		 * @param size   size of the buffer of the number in bytes
 		 * @param digits number of digits after the decimal point
@@ -1209,9 +1272,9 @@ namespace awh {
 	 * @tparam BYTES размер числа в байтах
 	 * @tparam TYPE  тип хранимого числа
 	 *
-	 *
 	 * \~english
 	 * @brief Template of the bit width and of the type of the long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 * @tparam TYPE  type of the kept number
 	 *
@@ -1229,111 +1292,120 @@ namespace awh {
 	 *          типа выполняется неявно, преобразование во встроенный тип — явно, что
 	 *          исключает неоднозначность разрешения перегрузок арифметических операторов.
 	 *
-	 * @note    Целочисленная арифметика выполняется по модулю разрядной сетки: переполнение
-	 *          отбрасывает старшие разряды, деление на нуль даёт нулевое частное и нулевой
-	 *          остаток, остаток от деления принимает знак делимого.
+	 * @note Целочисленная арифметика выполняется по модулю разрядной сетки: переполнение
+	 *       отбрасывает старшие разряды, деление на нуль даёт нулевое частное и нулевой
+	 *       остаток, остаток от деления принимает знак делимого.
 	 *
-	 * @note    Преобразование вещественного числа в целое отбрасывает дробную часть, а при
-	 *          выходе значения за пределы разрядной сетки приёмника выполняет насыщение
-	 *          предельным значением. Преобразование бесконечности выполняет насыщение,
-	 *          преобразование значения не являющегося числом даёт нуль.
+	 * @note Преобразование вещественного числа в целое отбрасывает дробную часть, а при
+	 *       выходе значения за пределы разрядной сетки приёмника выполняет насыщение
+	 *       предельным значением. Преобразование бесконечности выполняет насыщение,
+	 *       преобразование значения не являющегося числом даёт нуль.
 	 *
-	 * @note    Правила сужения зависят от вида числа источника и намеренно различаются:
-	 *          преобразование между целыми выполняется по модулю разрядной сетки приёмника,
-	 *          то есть отбрасывает старшие разряды, как это делает язык, а преобразование из
-	 *          вещественного числа выполняет насыщение. Поэтому запись отрицательного целого
-	 *          в беззнаковое число даёт значение в дополнительном коде, а запись отрицательного
-	 *          вещественного числа даёт нуль.
+	 * @note Правила сужения зависят от вида числа источника и намеренно различаются:
+	 *       преобразование между целыми выполняется по модулю разрядной сетки приёмника,
+	 *       то есть отбрасывает старшие разряды, как это делает язык, а преобразование из
+	 *       вещественного числа выполняет насыщение. Поэтому запись отрицательного целого
+	 *       в беззнаковое число даёт значение в дополнительном коде, а запись отрицательного
+	 *       вещественного числа даёт нуль.
 	 *
-	 * @note    Побитовые операции над вещественным числом выполняются над его двоичным
-	 *          представлением по стандарту IEEE-754, а не над значением числа, поэтому их
-	 *          результат следует трактовать как работу с кодировкой: выражение [~num] для
-	 *          единицы даёт около минус четырёх, а не значение не являющееся числом. Операции
-	 *          сдвига являются исключением и выполняют масштабирование значения степенью двойки.
+	 * @note Побитовые операции над вещественным числом выполняются над его двоичным
+	 *       представлением по стандарту IEEE-754, а не над значением числа, поэтому их
+	 *       результат следует трактовать как работу с кодировкой: выражение [~num] для
+	 *       единицы даёт около минус четырёх, а не значение не являющееся числом. Операции
+	 *       сдвига являются исключением и выполняют масштабирование значения степенью двойки.
 	 *
-	 * @note    Реализация класса вынесена в исходный файл, поэтому доступны только те
-	 *          разрядности, для которых объявлены прототипы в конце файла src/num/bignum.cpp.
-	 *          Для добавления собственной разрядности достаточно дописать туда вызов макроса
-	 *          AWH_BIGNUM_INSTANTIATE_INTEGER либо AWH_BIGNUM_INSTANTIATE_REAL с требуемым
-	 *          размером числа в байтах. Использование необъявленной разрядности приводит к
-	 *          ошибке компоновки с указанием отсутствующей специализации. Вычислительный
-	 *          движок пространства имён bignum работает с любым размером числа без
-	 *          объявления прототипов.
+	 * @note Реализация класса вынесена в исходный файл, поэтому доступны только те
+	 *       разрядности, для которых объявлены прототипы в конце файла src/num/bignum.cpp.
+	 *       Для добавления собственной разрядности достаточно дописать туда вызов макроса
+	 *       AWH_BIGNUM_INSTANTIATE_INTEGER либо AWH_BIGNUM_INSTANTIATE_REAL с требуемым
+	 *       размером числа в байтах. Использование необъявленной разрядности приводит к
+	 *       ошибке компоновки с указанием отсутствующей специализации. Вычислительный
+	 *       движок пространства имён bignum работает с любым размером числа без
+	 *       объявления прототипов.
 	 *
-	 * @note    В операциях целочисленного длинного числа со встроенным вещественным числом
-	 *          вещественный операнд предварительно преобразуется в длинное целое с
-	 *          отбрасыванием дробной части, поэтому выражение вида [num < 5.5] сравнивает
-	 *          число с пятёркой. Для сравнения с учётом дробной части следует использовать
-	 *          вещественное длинное число либо явное приведение длинного числа к double.
+	 * @note В операциях целочисленного длинного числа со встроенным вещественным числом
+	 *       вещественный операнд предварительно преобразуется в длинное целое с
+	 *       отбрасыванием дробной части, поэтому выражение вида [num < 5.5] сравнивает
+	 *       число с пятёркой. Для сравнения с учётом дробной части следует использовать
+	 *       вещественное длинное число либо явное приведение длинного числа к double.
 	 *
-	 * @note    Поведение модуля, которое со стороны выглядит ошибочным, но принято намеренно,
-	 *          сведено в файл include/num/BIGNUM.md вместе с основаниями каждого решения:
-	 *          различие правил сужения целых и вещественных чисел, побитовые операции над
-	 *          кодировкой вещественного числа, тихий нуль при делении на нуль, кратчайшая
-	 *          обратимая запись при выводе, разбор приставок nan и inf, отсутствие
-	 *          идемпотентности направленного округления, запрет совпадения приёмников в
-	 *          divmod, отличие формата real80_t от расширенной точности x87 и отказ от
-	 *          алгоритма Карацубы. Перед правкой перечисленного следует прочитать основание.
+	 * @note Поведение модуля, которое со стороны выглядит ошибочным, но принято намеренно,
+	 *       сведено в файл include/num/BIGNUM.md вместе с основаниями каждого решения:
+	 *       различие правил сужения целых и вещественных чисел, побитовые операции над
+	 *       кодировкой вещественного числа, тихий нуль при делении на нуль, кратчайшая
+	 *       обратимая запись при выводе, разбор приставок nan и inf, отсутствие
+	 *       идемпотентности направленного округления, запрет совпадения приёмников в
+	 *       divmod, отличие формата real80_t от расширенной точности x87 и отказ от
+	 *       алгоритма Карацубы. Перед правкой перечисленного следует прочитать основание.
 	 *
 	 * \~english
 	 * @brief Class of a long number of an arbitrary bit width
+	 *
 	 * @details The class keeps the number in an array of bytes of a fixed size in the order
 	 *          from the low byte to the high one and provides a full set of arithmetic,
 	 *          bitwise and comparison operations. The number is fully compatible with
 	 *          the built-in numeric types in both directions: the conversion from a built-in
 	 *          type is performed implicitly, the conversion into a built-in type explicitly, which
 	 *          rules out the ambiguity of the overload resolution of the arithmetic operators.
-	 * @note    Integer arithmetic is performed modulo the bit grid: an overflow
-	 *          discards the high limbs, a division by zero gives a zero quotient and a zero
-	 *          remainder, the remainder of a division takes the sign of the dividend.
-	 * @note    The conversion of a real number into an integer discards the fractional part, and when
-	 *          the value goes beyond the bounds of the bit grid of the destination it saturates with the
-	 *          limiting value. The conversion of infinity performs a saturation,
-	 *          the conversion of a value that is not a number gives zero.
-	 * @note    The narrowing rules depend on the kind of the source number and differ deliberately:
-	 *          the conversion between integers is performed modulo the bit grid of the destination,
-	 *          that is, it discards the high limbs, as the language does, whereas the conversion from
-	 *          a real number performs a saturation. Therefore writing a negative integer
-	 *          into an unsigned number gives a value in two's complement, and writing a negative
-	 *          real number gives zero.
-	 * @note    Bitwise operations over a real number are performed over its binary
-	 *          representation by the IEEE-754 standard rather than over the value of the number, therefore their
-	 *          result should be treated as work with the encoding: the expression [~num] for
-	 *          one gives about minus four rather than a value that is not a number. The shift
-	 *          operations are an exception and scale the value by a power of two.
-	 * @note    The implementation of the class is moved into a source file, therefore only those
-	 *          bit widths are available for which prototypes are declared at the end of the src/num/bignum.cpp file.
-	 *          To add a bit width of your own it is enough to append there a call of the
-	 *          AWH_BIGNUM_INSTANTIATE_INTEGER or AWH_BIGNUM_INSTANTIATE_REAL macro with the required
-	 *          size of the number in bytes. Using an undeclared bit width leads to a
-	 *          link error stating the missing specialisation. The computation
-	 *          engine of the bignum namespace works with any size of a number without
-	 *          declaring prototypes.
-	 * @note    In the operations of an integer long number with a built-in real number
-	 *          the real operand is beforehand converted into a long integer with the
-	 *          fractional part discarded, therefore an expression of the [num < 5.5] form compares
-	 *          the number with five. To compare taking the fractional part into account one should use
-	 *          a real long number or an explicit cast of the long number to double.
-	 * @note    The behaviour of the module that looks erroneous from the outside but is adopted deliberately
-	 *          is collected in the include/num/BIGNUM.md file together with the grounds for every decision:
-	 *          the difference of the narrowing rules of integer and real numbers, bitwise operations over
-	 *          the encoding of a real number, the quiet zero on division by zero, the shortest
-	 *          round-trip record on output, the parsing of the nan and inf prefixes, the absence of
-	 *          idempotence of directed rounding, the prohibition of coinciding destinations in
-	 *          divmod, the difference of the real80_t format from the x87 extended precision and the rejection of
-	 *          the Karatsuba algorithm. Before changing what is listed one should read the ground.
+	 *
+	 * @note Integer arithmetic is performed modulo the bit grid: an overflow
+	 *       discards the high limbs, a division by zero gives a zero quotient and a zero
+	 *       remainder, the remainder of a division takes the sign of the dividend.
+	 *
+	 * @note The conversion of a real number into an integer discards the fractional part, and when
+	 *       the value goes beyond the bounds of the bit grid of the destination it saturates with the
+	 *       limiting value. The conversion of infinity performs a saturation,
+	 *       the conversion of a value that is not a number gives zero.
+	 *
+	 * @note The narrowing rules depend on the kind of the source number and differ deliberately:
+	 *       the conversion between integers is performed modulo the bit grid of the destination,
+	 *       that is, it discards the high limbs, as the language does, whereas the conversion from
+	 *       a real number performs a saturation. Therefore writing a negative integer
+	 *       into an unsigned number gives a value in two's complement, and writing a negative
+	 *       real number gives zero.
+	 *
+	 * @note Bitwise operations over a real number are performed over its binary
+	 *       representation by the IEEE-754 standard rather than over the value of the number, therefore their
+	 *       result should be treated as work with the encoding: the expression [~num] for
+	 *       one gives about minus four rather than a value that is not a number. The shift
+	 *       operations are an exception and scale the value by a power of two.
+	 *
+	 * @note The implementation of the class is moved into a source file, therefore only those
+	 *       bit widths are available for which prototypes are declared at the end of the src/num/bignum.cpp file.
+	 *       To add a bit width of your own it is enough to append there a call of the
+	 *       AWH_BIGNUM_INSTANTIATE_INTEGER or AWH_BIGNUM_INSTANTIATE_REAL macro with the required
+	 *       size of the number in bytes. Using an undeclared bit width leads to a
+	 *       link error stating the missing specialisation. The computation
+	 *       engine of the bignum namespace works with any size of a number without
+	 *       declaring prototypes.
+	 *
+	 * @note In the operations of an integer long number with a built-in real number
+	 *       the real operand is beforehand converted into a long integer with the
+	 *       fractional part discarded, therefore an expression of the [num < 5.5] form compares
+	 *       the number with five. To compare taking the fractional part into account one should use
+	 *       a real long number or an explicit cast of the long number to double.
+	 *
+	 * @note The behaviour of the module that looks erroneous from the outside but is adopted deliberately
+	 *       is collected in the include/num/BIGNUM.md file together with the grounds for every decision:
+	 *       the difference of the narrowing rules of integer and real numbers, bitwise operations over
+	 *       the encoding of a real number, the quiet zero on division by zero, the shortest
+	 *       round-trip record on output, the parsing of the nan and inf prefixes, the absence of
+	 *       idempotence of directed rounding, the prohibition of coinciding destinations in
+	 *       divmod, the difference of the real80_t format from the x87 extended precision and the rejection of
+	 *       the Karatsuba algorithm. Before changing what is listed one should read the ground.
 	 *
 	 * \~
 	 */
 	class __AWH_SHARED_EXPORT__ BigNum {
-		/**
-		 * Проверяем корректность разрядности длинного числа
-		 */
-		static_assert(BYTES >= 2, "AWH bignum: the number size must be at least 2 bytes");
-		/**
-		 * Проверяем корректность типа длинного числа
-		 */
-		static_assert(TYPE != bignum::type_t::NONE, "AWH bignum: the number type must be specified");
+		private:
+			/**
+			 * Проверяем корректность разрядности длинного числа
+			 */
+			static_assert(BYTES >= 2, "AWH bignum: the number size must be at least 2 bytes");
+			/**
+			 * Проверяем корректность типа длинного числа
+			 */
+			static_assert(TYPE != bignum::type_t::NONE, "AWH bignum: the number type must be specified");
 		public:
 			/**
 			 * \~russian
@@ -1387,6 +1459,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the size of the number in bytes
+			 *
 			 * @return size of the number in bytes
 			 *
 			 * \~
@@ -1403,6 +1476,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the bit width of the number in bits
+			 *
 			 * @return bit width of the number in bits
 			 *
 			 * \~
@@ -1419,6 +1493,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the type of the kept number
+			 *
 			 * @return type of the kept number
 			 *
 			 * \~
@@ -1436,6 +1511,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the minimum possible value of the number
+			 *
 			 * @return minimum possible value of the number
 			 *
 			 * \~
@@ -1449,6 +1525,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the maximum possible value of the number
+			 *
 			 * @return maximum possible value of the number
 			 *
 			 * \~
@@ -1464,7 +1541,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the machine epsilon of the number
+			 *
 			 * @details For the integer types the method returns one.
+			 *
 			 * @return machine epsilon of the number
 			 *
 			 * \~
@@ -1480,7 +1559,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the value of infinity
+			 *
 			 * @details For the integer types the method returns the maximum possible value.
+			 *
 			 * @return value of infinity
 			 *
 			 * \~
@@ -1496,7 +1577,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a value that is not a number
+			 *
 			 * @details For the integer types the method returns a zero value.
+			 *
 			 * @return value that is not a number
 			 *
 			 * \~
@@ -1514,6 +1597,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of dividing two numbers with getting the quotient and the remainder
+			 *
 			 * @param num1      dividend number
 			 * @param num2      divisor of the number
 			 * @param quotient  reference to the quotient of the division
@@ -1541,6 +1625,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of swapping the values of two numbers
+			 *
 			 * @param num number to swap values with
 			 *
 			 * \~
@@ -1555,6 +1640,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the number for a zero value
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -1568,6 +1654,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the number for a negative value
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -1577,23 +1664,25 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод проверки числа на нечётное значение
 			 *
-			 * @note   Проверка вещественного числа выполняется над его целой частью, то есть
-			 *         совпадает с проверкой результата приведения числа к целому: значение
-			 *         3.5 является нечётным, а значение 2.5 чётным. Правило согласовано с
-			 *         преобразованием вещественного числа в целое, которое отбрасывает
-			 *         дробную часть. Бесконечность и значение не являющееся числом чётностью
-			 *         не обладают, поэтому нечётными не считаются.
+			 * @note Проверка вещественного числа выполняется над его целой частью, то есть
+			 *       совпадает с проверкой результата приведения числа к целому: значение
+			 *       3.5 является нечётным, а значение 2.5 чётным. Правило согласовано с
+			 *       преобразованием вещественного числа в целое, которое отбрасывает
+			 *       дробную часть. Бесконечность и значение не являющееся числом чётностью
+			 *       не обладают, поэтому нечётными не считаются.
 			 *
 			 * @return результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking the number for an odd value
-			 * @note   The check of a real number is performed over its integer part, that is, it
-			 *         coincides with the check of the result of casting the number to an integer: the value
-			 *         3.5 is odd, and the value 2.5 even. The rule is agreed with
-			 *         the conversion of a real number into an integer, which discards the
-			 *         fractional part. Infinity and a value that is not a number possess no parity,
-			 *         therefore they are not considered odd.
+			 *
+			 * @note The check of a real number is performed over its integer part, that is, it
+			 *       coincides with the check of the result of casting the number to an integer: the value
+			 *       3.5 is odd, and the value 2.5 even. The rule is agreed with
+			 *       the conversion of a real number into an integer, which discards the
+			 *       fractional part. Infinity and a value that is not a number possess no parity,
+			 *       therefore they are not considered odd.
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -1603,17 +1692,19 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод проверки числа на чётное значение
 			 *
-			 * @note   Проверка вещественного числа выполняется над его целой частью, поэтому
-			 *         бесконечность и значение не являющееся числом считаются чётными как
-			 *         отрицание проверки на нечётность. Подробности указаны у метода odd.
+			 * @note Проверка вещественного числа выполняется над его целой частью, поэтому
+			 *       бесконечность и значение не являющееся числом считаются чётными как
+			 *       отрицание проверки на нечётность. Подробности указаны у метода odd.
 			 *
 			 * @return результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking the number for an even value
-			 * @note   The check of a real number is performed over its integer part, therefore
-			 *         infinity and a value that is not a number are considered even as
-			 *         the negation of the check for oddness. The details are given at the odd method.
+			 *
+			 * @note The check of a real number is performed over its integer part, therefore
+			 *       infinity and a value that is not a number are considered even as
+			 *       the negation of the check for oddness. The details are given at the odd method.
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -1628,6 +1719,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining the class of the value of the number
+			 *
 			 * @return class of the value of the number
 			 *
 			 * \~
@@ -1641,6 +1733,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the number of significant bits of the number
+			 *
 			 * @return number of significant bits of the number
 			 *
 			 * \~
@@ -1656,6 +1749,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the value of a bit of the number
+			 *
 			 * @param index index of the bit to get
 			 * @return      value of the specified bit
 			 *
@@ -1671,6 +1765,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the value of a bit of the number
+			 *
 			 * @param index index of the bit to set
 			 * @param mode  value of the bit being set
 			 *
@@ -1686,6 +1781,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the buffer of the number
+			 *
 			 * @return storage buffer of the number
 			 *
 			 * \~
@@ -1699,6 +1795,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the buffer of the number
+			 *
 			 * @return storage buffer of the number
 			 *
 			 * \~
@@ -1712,6 +1809,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the byte array of the number
+			 *
 			 * @return storage byte array of the number
 			 *
 			 * \~
@@ -1730,7 +1828,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the value of the number from an external buffer
+			 *
 			 * @details The method performs the conversion of the bit width and of the type of the number.
+			 *
 			 * @param buffer buffer of the source number in the order from the low byte to the high one
 			 * @param size   size of the buffer of the source number in bytes
 			 * @param type   type of the source number
@@ -1750,7 +1850,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the value of the number into an external buffer
+			 *
 			 * @details The method performs the conversion of the bit width and of the type of the number.
+			 *
 			 * @param buffer buffer of the destination number in the order from the low byte to the high one
 			 * @param size   size of the buffer of the destination number in bytes
 			 * @param type   type of the destination number
@@ -1768,6 +1870,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of comparing two numbers
+			 *
 			 * @param num number to compare with
 			 * @return    result of the comparison (-1, 0, 1 or 2 for incomparable values)
 			 *
@@ -1783,6 +1886,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of taking the modulus of the number
+			 *
 			 * @return modulus of the current number
 			 *
 			 * \~
@@ -1801,10 +1905,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of taking the square root of the number
+			 *
 			 * @details For the integer types the method takes the integer root,
 			 *          and the root is taken of the modulus of the number. For the real types the method
 			 *          follows the IEEE-754 standard: the root of a negative value is not a
 			 *          number, and the sign of zero is preserved.
+			 *
 			 * @return square root of the current number
 			 *
 			 * \~
@@ -1819,6 +1925,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of raising the number to a power
+			 *
 			 * @param exponent exponent of the power
 			 * @return         result of the raising to a power
 			 *
@@ -1836,17 +1943,17 @@ namespace awh {
 			 *          изменений, а отрицательное округляет до соответствующей степени
 			 *          десяти: значение -3 округляет число до тысяч.
 			 *
-			 * @note    Дробная часть вещественного числа по устройству формата остаётся
-			 *          бесконечной: результат округления является ближайшим представимым
-			 *          к десятичному значением. Точное количество знаков после запятой
-			 *          гарантируется при выводе методом print с указанной точностью.
+			 * @note Дробная часть вещественного числа по устройству формата остаётся
+			 *       бесконечной: результат округления является ближайшим представимым
+			 *       к десятичному значением. Точное количество знаков после запятой
+			 *       гарантируется при выводе методом print с указанной точностью.
 			 *
-			 * @note    Повторное округление вещественного числа возвращает тот же результат
-			 *          только для правил NEAREST и EVEN. Направленные правила DOWN, UP и ZERO
-			 *          идемпотентностью не обладают, поскольку ближайшее представимое значение
-			 *          лежит либо чуть ниже, либо чуть выше требуемой десятичной записи и
-			 *          каждое следующее применение правила сдвигает результат ещё на один шаг.
-			 *          Для целых чисел округление идемпотентно при любом правиле.
+			 * @note Повторное округление вещественного числа возвращает тот же результат
+			 *       только для правил NEAREST и EVEN. Направленные правила DOWN, UP и ZERO
+			 *       идемпотентностью не обладают, поскольку ближайшее представимое значение
+			 *       лежит либо чуть ниже, либо чуть выше требуемой десятичной записи и
+			 *       каждое следующее применение правила сдвигает результат ещё на один шаг.
+			 *       Для целых чисел округление идемпотентно при любом правиле.
 			 *
 			 * @param digits количество знаков после запятой
 			 * @param mode   правило округления числа
@@ -1854,21 +1961,25 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of rounding the number to the specified number of digits after the decimal point
+			 *
 			 * @details The rounding is performed in the decimal numeral system, therefore
 			 *          no double rounding through a power of ten arises. For integer
 			 *          numbers a non-negative number of digits leaves the value unchanged,
 			 *          and a negative one rounds to the corresponding power of
 			 *          ten: the value -3 rounds the number to thousands.
-			 * @note    The fractional part of a real number stays infinite by the arrangement of the format:
-			 *          the result of the rounding is the value nearest representable
-			 *          to the decimal one. The exact number of digits after the decimal point
-			 *          is guaranteed on output by the print method with the specified precision.
-			 * @note    A repeated rounding of a real number returns the same result
-			 *          only for the NEAREST and EVEN rules. The directed DOWN, UP and ZERO rules
-			 *          possess no idempotence, since the nearest representable value
-			 *          lies either slightly below or slightly above the required decimal record and
-			 *          every next application of the rule shifts the result by one more step.
-			 *          For integer numbers the rounding is idempotent under any rule.
+			 *
+			 * @note The fractional part of a real number stays infinite by the arrangement of the format:
+			 *       the result of the rounding is the value nearest representable
+			 *       to the decimal one. The exact number of digits after the decimal point
+			 *       is guaranteed on output by the print method with the specified precision.
+			 *
+			 * @note A repeated rounding of a real number returns the same result
+			 *       only for the NEAREST and EVEN rules. The directed DOWN, UP and ZERO rules
+			 *       possess no idempotence, since the nearest representable value
+			 *       lies either slightly below or slightly above the required decimal record and
+			 *       every next application of the rule shifts the result by one more step.
+			 *       For integer numbers the rounding is idempotent under any rule.
+			 *
 			 * @param digits number of digits after the decimal point
 			 * @param mode   rounding rule of the number
 			 * @return       rounded value of the number
@@ -1881,12 +1992,13 @@ namespace awh {
 			 * @brief Метод отбрасывания знаков числа после указанной позиции
 			 *
 			 * @param digits количество сохраняемых знаков после запятой
-			 * @return        значение числа с отброшенными младшими знаками
+			 * @return       значение числа с отброшенными младшими знаками
 			 *
 			 * \~english
 			 * @brief Method of discarding the digits of the number after the specified position
+			 *
 			 * @param digits number of kept digits after the decimal point
-			 * @return        value of the number with the low digits discarded
+			 * @return       value of the number with the low digits discarded
 			 *
 			 * \~
 			 */
@@ -1896,12 +2008,13 @@ namespace awh {
 			 * @brief Метод округления числа в сторону минус бесконечности
 			 *
 			 * @param digits количество сохраняемых знаков после запятой
-			 * @return        округлённое значение числа
+			 * @return       округлённое значение числа
 			 *
 			 * \~english
 			 * @brief Method of rounding the number towards minus infinity
+			 *
 			 * @param digits number of kept digits after the decimal point
-			 * @return        rounded value of the number
+			 * @return       rounded value of the number
 			 *
 			 * \~
 			 */
@@ -1911,12 +2024,13 @@ namespace awh {
 			 * @brief Метод округления числа в сторону плюс бесконечности
 			 *
 			 * @param digits количество сохраняемых знаков после запятой
-			 * @return        округлённое значение числа
+			 * @return       округлённое значение числа
 			 *
 			 * \~english
 			 * @brief Method of rounding the number towards plus infinity
+			 *
 			 * @param digits number of kept digits after the decimal point
-			 * @return        rounded value of the number
+			 * @return       rounded value of the number
 			 *
 			 * \~
 			 */
@@ -1926,12 +2040,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод формирования строкового представления числа
 			 *
-			 * @note   Знак минус выводится только в десятичном формате. Двоичный,
-			 *         восьмеричный и шестнадцатеричный форматы выводят двоичное
-			 *         представление числа, то есть отрицательное целое печатается
-			 *         в дополнительном коде, а не как модуль со знаком. Разбор такой
-			 *         записи возвращает исходное значение, поэтому обратимость
-			 *         сохраняется во всех форматах.
+			 * @note Знак минус выводится только в десятичном формате. Двоичный,
+			 *       восьмеричный и шестнадцатеричный форматы выводят двоичное
+			 *       представление числа, то есть отрицательное целое печатается
+			 *       в дополнительном коде, а не как модуль со знаком. Разбор такой
+			 *       записи возвращает исходное значение, поэтому обратимость
+			 *       сохраняется во всех форматах.
 			 *
 			 * @param format    формат представления числа
 			 * @param precision количество знаков после запятой (отрицательное значение - автоматически)
@@ -1939,12 +2053,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the string representation of the number
-			 * @note   The minus sign is output only in the decimal format. The binary,
-			 *         octal and hexadecimal formats output the binary
-			 *         representation of the number, that is, a negative integer is printed
-			 *         in two's complement rather than as a magnitude with a sign. Parsing such
-			 *         a record returns the source value, therefore the round trip
-			 *         is preserved in all the formats.
+			 *
+			 * @note The minus sign is output only in the decimal format. The binary,
+			 *       octal and hexadecimal formats output the binary
+			 *       representation of the number, that is, a negative integer is printed
+			 *       in two's complement rather than as a magnitude with a sign. Parsing such
+			 *       a record returns the source value, therefore the round trip
+			 *       is preserved in all the formats.
+			 *
 			 * @param format    format of the representation of the number
 			 * @param precision number of digits after the decimal point (a negative value means automatic)
 			 * @return          the built string of the number
@@ -1956,13 +2072,13 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод разбора строкового представления числа
 			 *
-			 * @note   Формат по умолчанию определяется по приставке записи: 0x, 0b и 0o
-			 *         задают шестнадцатеричную, двоичную и восьмеричную системы счисления,
-			 *         запись без приставки считается десятичной. Метод print приставку не
-			 *         выводит, поэтому запись в системе счисления отличной от десятичной
-			 *         следует разбирать с явным указанием формата, иначе она будет прочтена
-			 *         как десятичная. Приставка, соответствующая явно указанному формату,
-			 *         принимается и пропускается.
+			 * @note Формат по умолчанию определяется по приставке записи: 0x, 0b и 0o
+			 *       задают шестнадцатеричную, двоичную и восьмеричную системы счисления,
+			 *       запись без приставки считается десятичной. Метод print приставку не
+			 *       выводит, поэтому запись в системе счисления отличной от десятичной
+			 *       следует разбирать с явным указанием формата, иначе она будет прочтена
+			 *       как десятичная. Приставка, соответствующая явно указанному формату,
+			 *       принимается и пропускается.
 			 *
 			 * @param text   разбираемая строка числа
 			 * @param format формат представления числа
@@ -1970,13 +2086,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing the string representation of the number
-			 * @note   The default format is determined by the prefix of the record: 0x, 0b and 0o
-			 *         set the hexadecimal, the binary and the octal numeral systems,
-			 *         a record without a prefix is considered decimal. The print method outputs no
-			 *         prefix, therefore a record in a numeral system other than the decimal one
-			 *         should be parsed with an explicit statement of the format, otherwise it will be read
-			 *         as a decimal one. A prefix corresponding to the explicitly stated format
-			 *         is accepted and skipped.
+			 *
+			 * @note The default format is determined by the prefix of the record: 0x, 0b and 0o
+			 *       set the hexadecimal, the binary and the octal numeral systems,
+			 *       a record without a prefix is considered decimal. The print method outputs no
+			 *       prefix, therefore a record in a numeral system other than the decimal one
+			 *       should be parsed with an explicit statement of the format, otherwise it will be read
+			 *       as a decimal one. A prefix corresponding to the explicitly stated format
+			 *       is accepted and skipped.
+			 *
 			 * @param text   string of the number being parsed
 			 * @param format format of the representation of the number
 			 * @return       result of performing the parsing
@@ -1993,6 +2111,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of outputting the number as a string
+			 *
 			 * @return the number as a string
 			 *
 			 * \~
@@ -2007,6 +2126,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the boolean type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2020,6 +2140,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the character type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2033,6 +2154,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the signed character type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2046,6 +2168,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the unsigned character type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2059,6 +2182,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the short integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2072,6 +2196,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the short unsigned integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2085,6 +2210,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2098,6 +2224,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the unsigned integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2111,6 +2238,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the long integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2124,6 +2252,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the long unsigned integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2137,6 +2266,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the long long integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2150,6 +2280,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the long long unsigned integer type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2163,6 +2294,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the single-precision real type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2176,6 +2308,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the double-precision real type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2189,6 +2322,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Cast operator to the extended-precision real type
+			 *
 			 * @return result of the cast
 			 *
 			 * \~
@@ -2204,6 +2338,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of getting a byte of the number
+			 *
 			 * @param index index of the byte to get
 			 * @return      value of the specified byte
 			 *
@@ -2219,6 +2354,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of checking the number for a zero value
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -2232,6 +2368,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Unary plus operator
+			 *
 			 * @return copy of the current number
 			 *
 			 * \~
@@ -2245,6 +2382,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Unary minus operator
+			 *
 			 * @return number with the opposite sign
 			 *
 			 * \~
@@ -2258,6 +2396,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Bitwise inversion operator of the number
+			 *
 			 * @return bitwise inverted number
 			 *
 			 * \~
@@ -2272,6 +2411,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Prefix increment operator
+			 *
 			 * @return the current object
 			 *
 			 * \~
@@ -2285,6 +2425,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Postfix increment operator
+			 *
 			 * @return value of the number before the increment
 			 *
 			 * \~
@@ -2298,6 +2439,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Prefix decrement operator
+			 *
 			 * @return the current object
 			 *
 			 * \~
@@ -2311,6 +2453,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Postfix decrement operator
+			 *
 			 * @return value of the number before the decrement
 			 *
 			 * \~
@@ -2326,6 +2469,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Addition with assignment operator
+			 *
 			 * @param num number to add
 			 * @return    the current object
 			 *
@@ -2341,6 +2485,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Subtraction with assignment operator
+			 *
 			 * @param num number to subtract
 			 * @return    the current object
 			 *
@@ -2356,6 +2501,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Multiplication with assignment operator
+			 *
 			 * @param num number to multiply by
 			 * @return    the current object
 			 *
@@ -2371,6 +2517,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Division with assignment operator
+			 *
 			 * @param num number to divide by
 			 * @return    the current object
 			 *
@@ -2386,6 +2533,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Remainder of division with assignment operator
+			 *
 			 * @param num number to divide by
 			 * @return    the current object
 			 *
@@ -2402,6 +2550,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Bitwise multiplication with assignment operator
+			 *
 			 * @param num number for the bitwise multiplication
 			 * @return    the current object
 			 *
@@ -2417,6 +2566,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Bitwise addition with assignment operator
+			 *
 			 * @param num number for the bitwise addition
 			 * @return    the current object
 			 *
@@ -2432,6 +2582,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Bitwise exclusive addition with assignment operator
+			 *
 			 * @param num number for the bitwise exclusive addition
 			 * @return    the current object
 			 *
@@ -2447,6 +2598,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Left shift with assignment operator
+			 *
 			 * @param count number of bits of the shift
 			 * @return      the current object
 			 *
@@ -2462,6 +2614,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Right shift with assignment operator
+			 *
 			 * @param count number of bits of the shift
 			 * @return      the current object
 			 *
@@ -2478,6 +2631,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Copy assignment operator
+			 *
 			 * @param num number to assign
 			 * @return    the current object
 			 *
@@ -2493,6 +2647,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Move assignment operator
+			 *
 			 * @param num number to assign
 			 * @return    the current object
 			 *
@@ -2510,6 +2665,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a string value
+			 *
 			 * @param text string of the number to assign
 			 * @return     the current object
 			 *
@@ -2526,6 +2682,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a string value
+			 *
 			 * @param text string of the number to assign
 			 * @return     the current object
 			 *
@@ -2542,6 +2699,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a string value
+			 *
 			 * @param text string of the number to assign
 			 * @return     the current object
 			 *
@@ -2558,6 +2716,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a boolean value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2573,6 +2732,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a character value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2588,6 +2748,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a signed character value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2603,6 +2764,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of an unsigned character value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2618,6 +2780,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a short integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2633,6 +2796,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a short unsigned integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2648,6 +2812,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of an integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2663,6 +2828,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of an unsigned integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2678,6 +2844,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a long integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2693,6 +2860,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a long unsigned integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2708,6 +2876,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a long long integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2723,6 +2892,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a long long unsigned integer value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2738,6 +2908,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a single-precision real value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2753,6 +2924,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a double-precision real value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2768,6 +2940,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of an extended-precision real value
+			 *
 			 * @param num value to assign
 			 * @return    the current object
 			 *
@@ -2784,6 +2957,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the bit width and of the type of the assigned long number
+			 *
 			 * @tparam SIZE size of the assigned number in bytes
 			 * @tparam KIND type of the assigned number
 			 *
@@ -2799,6 +2973,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of a long number of another bit width
+			 *
 			 * @param num number to assign
 			 * @return    the current object
 			 *
@@ -2821,6 +2996,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [+] of the addition of two numbers
+			 *
 			 * @param num1 first addend
 			 * @param num2 second addend
 			 * @return     result of the addition
@@ -2841,6 +3017,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [-] of the subtraction of two numbers
+			 *
 			 * @param num1 minuend number
 			 * @param num2 subtrahend number
 			 * @return     result of the subtraction
@@ -2861,6 +3038,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [*] of the multiplication of two numbers
+			 *
 			 * @param num1 multiplicand number
 			 * @param num2 multiplier of the number
 			 * @return     result of the multiplication
@@ -2881,6 +3059,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [/] of the division of two numbers
+			 *
 			 * @param num1 dividend number
 			 * @param num2 divisor of the number
 			 * @return     result of the division
@@ -2901,6 +3080,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [%] of getting the remainder of the division of two numbers
+			 *
 			 * @param num1 dividend number
 			 * @param num2 divisor of the number
 			 * @return     remainder of the division
@@ -2922,6 +3102,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [&] of the bitwise multiplication of two numbers
+			 *
 			 * @param num1 first operand
 			 * @param num2 second operand
 			 * @return     result of the bitwise multiplication
@@ -2942,6 +3123,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [|] of the bitwise addition of two numbers
+			 *
 			 * @param num1 first operand
 			 * @param num2 second operand
 			 * @return     result of the bitwise addition
@@ -2962,6 +3144,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [^] of the bitwise exclusive addition of two numbers
+			 *
 			 * @param num1 first operand
 			 * @param num2 second operand
 			 * @return     result of the bitwise exclusive addition
@@ -2982,6 +3165,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [<<] of shifting a number left
+			 *
 			 * @param num   number being shifted
 			 * @param count number of bits of the shift
 			 * @return      result of the shift
@@ -3002,6 +3186,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [>>] of shifting a number right
+			 *
 			 * @param num   number being shifted
 			 * @param count number of bits of the shift
 			 * @return      result of the shift
@@ -3023,6 +3208,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [==] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3043,6 +3229,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [!=] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3063,6 +3250,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [<] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3083,6 +3271,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [>] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3103,6 +3292,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [<=] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3125,6 +3315,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [>=] of the comparison of two numbers
+			 *
 			 * @param num1 first number to compare
 			 * @param num2 second number to compare
 			 * @return     result of the comparison
@@ -3142,7 +3333,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
@@ -3155,9 +3345,9 @@ namespace awh {
 			 *
 			 * @param num число для копирования
 			 *
-			 *
 			 * \~english
 			 * @brief Copy constructor
+			 *
 			 * @param num number to copy
 			 *
 			 * \~
@@ -3169,9 +3359,9 @@ namespace awh {
 			 *
 			 * @param num число для перемещения
 			 *
-			 *
 			 * \~english
 			 * @brief Move constructor
+			 *
 			 * @param num number to move
 			 *
 			 * \~
@@ -3189,8 +3379,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @details The constructor is declared explicit so that a string is never cast
 			 *          to a number implicitly and does not take part in the overload resolution of the operators.
+			 *
 			 * @param text string of the number to set
 			 *
 			 * \~
@@ -3202,9 +3394,9 @@ namespace awh {
 			 *
 			 * @param text строка числа для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param text string of the number to set
 			 *
 			 * \~
@@ -3216,9 +3408,9 @@ namespace awh {
 			 *
 			 * @param text строка числа для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param text string of the number to set
 			 *
 			 * \~
@@ -3231,9 +3423,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3256,15 +3448,16 @@ namespace awh {
 			 *
 			 * \~
 			 */
+		public:
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3276,9 +3469,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3290,9 +3483,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3304,9 +3497,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3318,9 +3511,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3332,9 +3525,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3346,9 +3539,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3360,9 +3553,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3374,9 +3567,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3388,9 +3581,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3402,9 +3595,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3416,9 +3609,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3430,9 +3623,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3444,9 +3637,9 @@ namespace awh {
 			 *
 			 * @param num значение для установки
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param num value to set
 			 *
 			 * \~
@@ -3460,9 +3653,9 @@ namespace awh {
 			 * @tparam SIZE размер исходного числа в байтах
 			 * @tparam KIND тип исходного числа
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the bit width and of the type of the source long number
+			 *
 			 * @tparam SIZE size of the source number in bytes
 			 * @tparam KIND type of the source number
 			 *
@@ -3480,8 +3673,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor of the widening of the bit width of a long number
+			 *
 			 * @details The widening of the bit width of a number of the same type is performed without a loss
 			 *          of the value, therefore the constructor admits an implicit conversion.
+			 *
 			 * @param num number to convert
 			 *
 			 * \~
@@ -3497,9 +3692,9 @@ namespace awh {
 			 * @tparam SIZE размер исходного числа в байтах
 			 * @tparam KIND тип исходного числа
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the bit width and of the type of the source long number
+			 *
 			 * @tparam SIZE size of the source number in bytes
 			 * @tparam KIND type of the source number
 			 *
@@ -3517,8 +3712,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor of the narrowing of the bit width or of the change of the type of a long number
+			 *
 			 * @details The conversion is able to lead to a loss of the value or of the precision,
 			 *          therefore the constructor is declared explicit and requires an explicit cast.
+			 *
 			 * @param num number to convert
 			 *
 			 * \~
@@ -3531,7 +3728,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor
@@ -3547,9 +3743,9 @@ namespace awh {
 	 * @tparam BYTES размер числа в байтах
 	 * @tparam TYPE  тип хранимого числа
 	 *
-	 *
 	 * \~english
 	 * @brief Template of the bit width and of the type of the long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 * @tparam TYPE  type of the kept number
 	 *
@@ -3566,6 +3762,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Operator [>>] of reading a long number from a stream
+	 *
 	 * @param is  stream to read from
 	 * @param num number to assign
 	 * @return    the stream to read from
@@ -3580,9 +3777,9 @@ namespace awh {
 	 * @tparam BYTES размер числа в байтах
 	 * @tparam TYPE  тип хранимого числа
 	 *
-	 *
 	 * \~english
 	 * @brief Template of the bit width and of the type of the long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 * @tparam TYPE  type of the kept number
 	 *
@@ -3599,6 +3796,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Operator [<<] of outputting a long number to a stream
+	 *
 	 * @param os  stream to output the data to
 	 * @param num number to output
 	 * @return    the stream to write to
@@ -3614,6 +3812,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the bit width of a signed long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 *
 	 * \~
@@ -3637,6 +3836,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the bit width of an unsigned long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 *
 	 * \~
@@ -3660,6 +3860,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the bit width of a real long number
+	 *
 	 * @tparam BYTES size of the number in bytes
 	 *
 	 * \~
@@ -3685,6 +3886,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Create the ready data types of signed long numbers
+	 *
 	 * @details Besides the standard bit widths the module provides intermediate
 	 *          non-standard bit widths, which allow choosing the minimally sufficient
 	 *          size of a number for a particular task and not spending memory in vain.
@@ -3754,26 +3956,28 @@ namespace awh {
 	 *          C++23 имена float16_t, float32_t, float64_t и float128_t объявлены в
 	 *          пространстве имён std и привели бы к неоднозначности разрешения имён.
 	 *
-	 * @note    Разрядность порядка нестандартных форматов рассчитывается по общей формуле
-	 *          стандарта IEEE-754, поэтому такие типы не совпадают с одноимёнными аппаратными
-	 *          форматами. В частности, real80_t это binary80 с двенадцатиразрядным порядком и
-	 *          неявным старшим разрядом мантиссы, тогда как расширенный формат x87, которым на
-	 *          архитектуре x86 представлен long double, имеет пятнадцатиразрядный порядок и
-	 *          явный старший разряд мантиссы. Взаимно однозначного соответствия между ними нет,
-	 *          и побитовый перенос значения из одного формата в другой недопустим.
+	 * @note Разрядность порядка нестандартных форматов рассчитывается по общей формуле
+	 *       стандарта IEEE-754, поэтому такие типы не совпадают с одноимёнными аппаратными
+	 *       форматами. В частности, real80_t это binary80 с двенадцатиразрядным порядком и
+	 *       неявным старшим разрядом мантиссы, тогда как расширенный формат x87, которым на
+	 *       архитектуре x86 представлен long double, имеет пятнадцатиразрядный порядок и
+	 *       явный старший разряд мантиссы. Взаимно однозначного соответствия между ними нет,
+	 *       и побитовый перенос значения из одного формата в другой недопустим.
 	 *
 	 * \~english
 	 * @brief Create the ready data types of real long numbers
+	 *
 	 * @details The types are deliberately named real instead of float, since starting with the
 	 *          C++23 standard the names float16_t, float32_t, float64_t and float128_t are declared in
 	 *          the std namespace and would lead to an ambiguity of the name resolution.
-	 * @note    The bit width of the exponent of the non-standard formats is computed by the common formula
-	 *          of the IEEE-754 standard, therefore such types do not coincide with the same-named hardware
-	 *          formats. In particular, real80_t is binary80 with a twelve-bit exponent and
-	 *          an implicit high bit of the mantissa, whereas the extended x87 format, by which on
-	 *          the x86 architecture long double is represented, has a fifteen-bit exponent and
-	 *          an explicit high bit of the mantissa. There is no one-to-one correspondence between them,
-	 *          and a bitwise transfer of a value from one format into the other is inadmissible.
+	 *
+	 * @note The bit width of the exponent of the non-standard formats is computed by the common formula
+	 *       of the IEEE-754 standard, therefore such types do not coincide with the same-named hardware
+	 *       formats. In particular, real80_t is binary80 with a twelve-bit exponent and
+	 *       an implicit high bit of the mantissa, whereas the extended x87 format, by which on
+	 *       the x86 architecture long double is represented, has a fifteen-bit exponent and
+	 *       an explicit high bit of the mantissa. There is no one-to-one correspondence between them,
+	 *       and a bitwise transfer of a value from one format into the other is inadmissible.
 	 *
 	 * \~
 	 */

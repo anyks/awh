@@ -463,7 +463,7 @@ int main(){
 		// Настройки распределителя памяти
 		awh::alloc::options_t options;
 		// Захватываем выдачу памяти процесса
-		if(!awh::alloc::Allocator::capture(options)){
+		if(!awh::alloc::allocator::capture(options)){
 			// Печатаем отказ захвата
 			printf("ЗАХВАТ НЕ СОСТОЯЛСЯ: замерять нечего\n");
 			// Выходим с признаком отказа

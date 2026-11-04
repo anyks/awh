@@ -103,6 +103,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Callback function triggered at the receipt of the informational messages of SCTP
+					 *
 					 * @param id   identifier of the event
 					 * @param info object of the informational metadata of SCTP
 					 *
@@ -118,6 +119,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Callback function triggered at the receipt of the events of SCTP
+					 *
 					 * @param id    identifier of the event
 					 * @param event object of the event of SCTP
 					 *
@@ -130,7 +132,7 @@ namespace awh {
 					 *
 					 * @details Отклик этот необязателен и заменяет собой общий отклик чтения:
 					 *          установивший его получает данные и метаданные сообщения одним
-					 *          вызовом, а не двумя, и потому не сшивает их по порядку прихода
+					 *          вызовом, а не двумя, и потому не сшивает их по порядку прихода.
 					 *
 					 * @note Пока отклик не установлен, подписка на метаданные ядру не выдаётся
 					 *       вовсе, и приём метаданных ничего не стоит
@@ -142,11 +144,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Callback function triggered at the reading of the data of SCTP together with the metadata
+					 *
 					 * @details This callback is optional and replaces the common callback of the reading:
 					 *          the one who has set it gets the data and the metadata of a message by one
-					 *          call, and not by two, and therefore does not sew them by the order of the arrival
+					 *          call, and not by two, and therefore does not sew them by the order of the arrival.
+					 *
 					 * @note While the callback is not set, the subscription to the metadata is not given out to the kernel
 					 *       at all, and the reception of the metadata costs nothing
+					 *
 					 * @param id     identifier of the event
 					 * @param buffer buffer of the read data
 					 * @param size   size of the read data
@@ -166,6 +171,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the connection of an event
+			 *
 			 * @param id identifier of the event
 			 * @param ok result of the connection of the event (true — connected, false — an error)
 			 *
@@ -181,6 +187,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the writing into an event
+			 *
 			 * @param id   identifier of the event
 			 * @param size size of the written data
 			 *
@@ -196,6 +203,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the accepting of an event
+			 *
 			 * @param id   identifier of the event
 			 * @param peer identifier of the connected event
 			 *
@@ -211,6 +219,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at a common event
+			 *
 			 * @param id     identifier of the event
 			 * @param action type of the event
 			 *
@@ -226,6 +235,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the change of the status of an event
+			 *
 			 * @param id     identifier of the event
 			 * @param status new status of the event
 			 *
@@ -241,6 +251,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the receipt of the informational metadata about a datagram packet
+			 *
 			 * @param id   identifier of the event
 			 * @param info object of the informational metadata of the datagram packet
 			 *
@@ -257,6 +268,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the reading from an event
+			 *
 			 * @param id     identifier of the event
 			 * @param buffer buffer of the read data
 			 * @param size   size of the read data
@@ -279,9 +291,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function of the injection of the joined data into an event (splice)
+			 *
 			 * @note Allows a transport encrypting the data at the level of the connection (QUIC)
 			 *       to accept the bytes redirected from the source event and to send them
 			 *       by its own stream, and not to write them raw into the socket
+			 *
 			 * @param id     identifier of the receiver event
 			 * @param buffer buffer of the redirected data
 			 * @param size   size of the redirected data
@@ -297,7 +311,7 @@ namespace awh {
 			 * @details Разновидность отправки, обратная методу send(): не приложение кладёт данные
 			 *          в очередь события, а движок сам просит их у источника ровно тогда, когда
 			 *          сокет готов к записи и в очереди есть свободное место. Приложению не нужно
-			 *          держать в памяти всё тело - оно выдаёт данные по мере их ухода в сеть
+			 *          держать в памяти всё тело - оно выдаёт данные по мере их ухода в сеть.
 			 *
 			 * @note Источник НЕ копирует данные никуда: он отдаёт указатель на свой буфер, а
 			 *       движок пишет в сокет прямо оттуда. Отдать больше size байт нельзя
@@ -326,22 +340,34 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function of the source of the data for the pull model of the sending
+			 *
+			 *
+			 * @details A kind of a sending, reverse to a send() method: not an application lays the data
+			 *         into a queue of an event, but an engine itself asks them from a source exactly then, when
+			 *         a socket is ready for a writing and there is a free place in a queue. An application does not need
+			 *         to keep in the memory the whole body - it gives out the data as they go into a network.
+			 *
 			 * @note The source does NOT copy the data anywhere: it gives out a pointer to its own buffer,
 			 *       and the engine writes into the socket directly from there. It is not possible to give
 			 *       out more than size bytes
+			 *
 			 * @note The given out data are obliged to remain unchanged until the return from the call: the
 			 *       engine manages for this time to write them into the socket, and to place the remainder
 			 *       not accepted by the socket into the queue. Further the buffer belongs to the source again
+			 *
 			 * @note The given out data are accepted ENTIRELY: the capacity of the request is taken by the
 			 *       engine by the free place of the queue, therefore the remainder after the socket always
 			 *       is placed into it. So the source is entitled to consider the given out as sent and to
 			 *       move its cursor at once
+			 *
 			 * @note The pulling is driven ONLY by the returned value: `false` means "there is nothing
 			 *       more to give", and only the application is able to start the sending again by the
 			 *       call of `send(id, nullptr, 0)`
+			 *
 			 * @note The return of `true` with the ZERO of the written bytes means "there is no data yet
 			 *       or the given capacity is too small": the engine stops the round of the requests, but
 			 *       does not forget the source and returns to it at the nearest release of the queue
+			 *
 			 * @param id     identifier of the event
 			 * @param buffer pointer where the source places the address of its data
 			 * @param size   at the input — capacity of the request in the bytes, at the output — amount of the given out bytes
@@ -360,6 +386,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at an error of an event
+			 *
 			 * @param id    identifier of the event
 			 * @param error code of the error of the event
 			 * @param text  text description of the error of the event
@@ -377,6 +404,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the availability of the queue for the sending of the data
+			 *
 			 * @param id     identifier of the event
 			 * @param status status of the event
 			 * @param size   size of the available data for the sending
@@ -391,7 +419,7 @@ namespace awh {
 			 * @details Сообщает, что истёк срок, заданный через `setTimeout()`: соединение
 			 *          не приняло данных (READ), не смогло их отправить (WRITE), не
 			 *          установилось (CONNECT) или подошла пора повторить попытку
-			 *          (RECONNECT)
+			 *          (RECONNECT).
 			 *
 			 * @warning Смысл возвращаемого признака **зависит от действия**. Для READ,
 			 *          WRITE и CONNECT положительный признак узел уничтожает, а
@@ -415,21 +443,26 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the expiration of the timer of an event
+			 *
 			 * @details Reports that the term set through `setTimeout()` has expired: the connection
 			 *          has not accepted the data (READ), has not managed to send it (WRITE), has not
 			 *          been established (CONNECT) or the time has come to repeat the attempt
-			 *          (RECONNECT)
+			 *          (RECONNECT).
+			 *
 			 * @warning The meaning of the returned sign **depends on the action**. For READ,
 			 *          WRITE and CONNECT a positive sign destroys the node, and
 			 *          a negative one leaves it alive. For RECONNECT everything is the other way round:
 			 *          a positive one means «reconnect», and the attempt should be interrupted
 			 *          exactly by a negative one. One and the same function serving
 			 *          all the actions at once is obliged to tell these cases apart
+			 *
 			 * @note If the function is not set, the node at the expiration of the term of READ, WRITE or
 			 *       CONNECT is destroyed **unconditionally**. That is the subscription is needed exactly
 			 *       in order to prevent the break or to surround it with one's own actions
+			 *
 			 * @note At the expiration of the term of CONNECT `connect_t` is additionally called with
 			 *       a negative outcome, and this happens **before** the call of this function
+			 *
 			 * @param id     identifier of the event
 			 * @param action on what the term has expired: READ, WRITE, CONNECT or RECONNECT
 			 * @param delay  the set term in milliseconds
@@ -456,10 +489,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the determination of the session of a datagram packet
+			 *
 			 * @note Is called before the routing of the datagram and allows the protocols with
 			 *       their own addressing of the sessions to set the key of the routing themselves.
 			 *       A negative result means that the datagram does not belong to the protocol
 			 *       and is subject to the discarding without the creation of a session
+			 *
 			 * @param id     identifier of the event
 			 * @param buffer buffer of the received datagram
 			 * @param size   size of the received datagram
@@ -477,7 +512,7 @@ namespace awh {
 			 *          переполнена, соединение оборвано или запись отклонена. Байты
 			 *          возвращаются вызывающей стороне, чтобы та решила их судьбу сама -
 			 *          повторить отправку позже, отложить в свой буфер или отбросить.
-			 *          Движок их не сохраняет и после возврата из функции освобождает
+			 *          Движок их не сохраняет и после возврата из функции освобождает.
 			 *
 			 * @note Буфер действителен ТОЛЬКО на время вызова функции обратного вызова.
 			 *       Данные, нужные после выхода, следует скопировать
@@ -490,13 +525,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function returning the unsent data of an event
+			 *
 			 * @details Is called when the data could not be sent: the queue of the event
 			 *          is overflowed, the connection is broken or the writing is rejected. The bytes
 			 *          are returned to the calling side so that it would decide their fate itself —
 			 *          to repeat the sending later, to put them aside into its own buffer or to discard them.
-			 *          The engine does not save them and after the return from the function releases them
+			 *          The engine does not save them and after the return from the function releases them.
+			 *
 			 * @note The buffer is valid ONLY for the time of the call of the callback function.
 			 *       The data needed after the exit should be copied
+			 *
 			 * @param id     identifier of the event
 			 * @param error  where the data is returned from: from the event itself (IO_EVENT) or
 			 *               from its queue of the sending (IO_QUEUE)
@@ -519,7 +557,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the change of a directory
+			 *
 			 * @note The name parameter is valid ONLY for the time of the call of the callback function
+			 *
 			 * @param id     identifier of the event
 			 * @param action type of the event
 			 * @param vnode  virtual node of the event
@@ -539,6 +579,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function triggered at the receipt of the information about the packets in a tunnel interface
+			 *
 			 * @param id     identifier of the event
 			 * @param peer   identifier of the remote node
 			 * @param action type of the event

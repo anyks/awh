@@ -71,36 +71,57 @@ namespace awh {
 	 * @brief Пространство имён параметров запуска приложения
 	 *
 	 * @details Разбор параметров запуска, переменных окружения и текстовых потоков с
-	 * укладкою разобранного в единое дерево значений. Осью хранения служит контейнер
-	 * ABC: система видов его вмещает виды всех текстовых кодеков разом, оттого выдача
-	 * настроек любым из них не требует ни второго дерева, ни вторых правил приведения
+	 *          укладкою разобранного в единое дерево значений. Осью хранения служит контейнер
+	 *          ABC: система видов его вмещает виды всех текстовых кодеков разом, оттого выдача
+	 *          настроек любым из них не требует ни второго дерева, ни вторых правил приведения.
 	 *
 	 * @par Намеренные решения
 	 *
-	 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-	 * задачи, и каждое из решений закреплено проверочным испытанием
+	 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+	 *      задачи, и каждое из решений закреплено проверочным испытанием
 	 *
 	 * @li **Записи параметров равноправны.** Формы «--name=VALUE», «--name VALUE»,
-	 * «-name=VALUE» и «-name VALUE» разбираются одинаково, и положение параметра в
-	 * наборе значения не имеет: набор обходится целиком, а порядок сохраняется лишь
-	 * у позиционных доводов
+	 *     «-name=VALUE» и «-name VALUE» разбираются одинаково, и положение параметра в
+	 *     наборе значения не имеет: набор обходится целиком, а порядок сохраняется лишь
+	 *     у позиционных доводов
 	 *
 	 * @li **Склейка коротких имён по умолчанию выключена.** Запись «-abc» при
-	 * поддержанной форме «-name VALUE» неотличима от длинного имени под одним тире,
-	 * и угадывание здесь молча меняло бы смысл набора. Разбор её тремя признаками
-	 * включается настройкой и требует описания ожидаемых параметров
+	 *     поддержанной форме «-name VALUE» неотличима от длинного имени под одним тире,
+	 *     и угадывание здесь молча меняло бы смысл набора. Разбор её тремя признаками
+	 *     включается настройкой и требует описания ожидаемых параметров
 	 *
 	 * @li **Разбор текста и разбор набора ведёт один и тот же код.** Поданный текст
-	 * режется на слова с учётом кавычек и обратной косой, после чего подаётся тому же
-	 * разборщику, что и набор запуска. Совпадение поведения обоих входов держится
-	 * устройством, а не сличением двух реализаций
+	 *     режется на слова с учётом кавычек и обратной косой, после чего подаётся тому же
+	 *     разборщику, что и набор запуска. Совпадение поведения обоих входов держится
+	 *     устройством, а не сличением двух реализаций
 	 *
 	 * \~english
 	 * @brief Namespace of the parameters of the launch of an application
+	 *
 	 * @details The parsing of the parameters of the launch, of the variables of the environment and of the text streams with
-	 * the laying of the parsed into a single tree of the values. The container ABC serves as the axis of the storage:
-	 * its system of the kinds encompasses the kinds of all the text codecs at once, whereby the issuance
-	 * of the settings by any of them requires neither a second tree nor second rules of the conversion
+	 *          the laying of the parsed into a single tree of the values. The container ABC serves as the axis of the storage:
+	 *          its system of the kinds encompasses the kinds of all the text codecs at once, whereby the issuance
+	 *          of the settings by any of them requires neither a second tree nor second rules of the conversion.
+	 *
+	 * @par Deliberate decisions
+	 *
+	 *      Listed below is not a gap of the implementation: these are the outlined bounds
+	 *      of the task, and each of the decisions is fixed by a verification test
+	 *
+	 * @li **The records of the parameters are equal in rights.** The forms `--name=VALUE`, `--name VALUE`,
+	 *     `-name=VALUE` and `-name VALUE` are parsed alike, and a position of a parameter in
+	 *     a set means nothing: a set is walked wholly, and an order is kept only
+	 *     at the positional arguments
+	 *
+	 * @li **A gluing of the short names is off by default.** A record `-abc` at
+	 *     a supported form `-name VALUE` is indistinguishable from a long name under one dash,
+	 *     and a guessing here would silently change a meaning of a set. A parsing of it by three signs
+	 *     is turned on by a setting and requires a description of the expected parameters
+	 *
+	 * @li **A parsing of a text and a parsing of a set are led by the same code.** A submitted text
+	 *     is cut into the words with a regard to the quotes and a backslash, after which it is submitted to the same
+	 *     parser as a launch set. A coincidence of the behaviours of both inputs is held
+	 *     by the device, and not by a comparing of two implementations
 	 *
 	 * \~
 	 */
@@ -110,12 +131,13 @@ namespace awh {
 		 * @brief Коды ошибок разбора параметров
 		 *
 		 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-		 * вместе с положением в поданном наборе, где отказ произошёл
+		 *          вместе с положением в поданном наборе, где отказ произошёл.
 		 *
 		 * \~english
 		 * @brief Error codes of the parsing of the parameters
+		 *
 		 * @details The parsing does not throw exceptions: the error code together with the position
-		 * in the submitted set where the refusal has occurred serves as the sign of a refusal
+		 *          in the submitted set where the refusal has occurred serves as the sign of a refusal.
 		 *
 		 * \~
 		 */
@@ -146,16 +168,18 @@ namespace awh {
 		 * @brief Источники значений дерева настроек
 		 *
 		 * @details Источник хранится у каждого уложенного значения и служит двум делам:
-		 * разрешению старшинства при слиянии и отладке настроек. Без него ответ на
-		 * вопрос «откуда взялось это значение» неотличим от догадки
+		 *          разрешению старшинства при слиянии и отладке настроек. Без него ответ на
+		 *          вопрос «откуда взялось это значение» неотличим от догадки.
 		 *
 		 * @note Порядок членов задаёт старшинство: младший источник уступает старшему
 		 *
 		 * \~english
 		 * @brief Sources of the values of the tree of the settings
+		 *
 		 * @details The source is stored at every laid value and serves two matters:
-		 * the resolution of the seniority at the merging and the debugging of the settings. Without it the answer to
-		 * the question «whence has this value come» is indistinguishable from a guess
+		 *          the resolution of the seniority at the merging and the debugging of the settings. Without it the answer to
+		 *          the question «whence has this value come» is indistinguishable from a guess.
+		 *
 		 * @note The order of the members sets the seniority: a junior source yields to a senior one
 		 *
 		 * \~
@@ -174,14 +198,15 @@ namespace awh {
 		 * @brief Виды лексем разбора
 		 *
 		 * @details Лексема - единица выдачи разборщика. Разбор значения от разбора
-		 * имени отделён намеренно: имя вместе со значением приходит одной лексемой
-		 * вида PARAM, а довод без имени - лексемой вида OPERAND
+		 *          имени отделён намеренно: имя вместе со значением приходит одной лексемой
+		 *          вида PARAM, а довод без имени - лексемой вида OPERAND.
 		 *
 		 * \~english
 		 * @brief Kinds of the lexemes of the parsing
+		 *
 		 * @details A lexeme is a unit of the issuance of the parser. The parsing of a value is separated from the parsing
-		 * of a name deliberately: a name together with a value comes by one lexeme
-		 * of the kind PARAM, and an argument without a name by a lexeme of the kind OPERAND
+		 *          of a name deliberately: a name together with a value comes by one lexeme
+		 *          of the kind PARAM, and an argument without a name by a lexeme of the kind OPERAND.
 		 *
 		 * \~
 		 */
@@ -197,14 +222,15 @@ namespace awh {
 		 * @brief Положение лексемы в поданном наборе
 		 *
 		 * @details Служит указанию места отказа. У набора запуска строк и столбцов нет,
-		 * оттого положение задаётся порядковым номером довода вместе со смещением
-		 * внутри него; у текстового потока номер довода считается по словам разреза
+		 *          оттого положение задаётся порядковым номером довода вместе со смещением
+		 *          внутри него; у текстового потока номер довода считается по словам разреза.
 		 *
 		 * \~english
 		 * @brief Position of a lexeme in the submitted set
+		 *
 		 * @details Serves the indication of the place of a refusal. The set of the launch has no lines and columns,
-		 * whereby the position is set by the ordinal number of an argument together with the offset
-		 * inside it; at a text stream the number of an argument is counted by the words of the cut
+		 *          whereby the position is set by the ordinal number of an argument together with the offset
+		 *          inside it; at a text stream the number of an argument is counted by the words of the cut.
 		 *
 		 * \~
 		 */
@@ -233,7 +259,8 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param index ordinal number of an argument in the submitted set
+			 *
+			 * @param index  ordinal number of an argument in the submitted set
 			 * @param offset offset from the beginning of an argument in octets
 			 *
 			 * \~
@@ -246,8 +273,8 @@ namespace awh {
 		 * @brief Лексема разбора параметров
 		 *
 		 * @details Содержимое лексемы взято ссылками и живёт ровно столько, сколько
-		 * длится отзыв её выдачи: своих копий лексема не держит. Укладка в дерево
-		 * копирует содержимое сама
+		 *          длится отзыв её выдачи: своих копий лексема не держит. Укладка в дерево
+		 *          копирует содержимое сама.
 		 *
 		 * @note У набора запуска ссылки ведут на сам поданный набор, у текстового же
 		 *       потока - на слова его разреза, живущие внутри разборщика. Обещание
@@ -256,14 +283,22 @@ namespace awh {
 		 *       текста слова копирует
 		 *
 		 * @note Признак наличия значения от пустоты значения отличен: запись «--name=»
-		 * подаёт значение пустым, а запись «--name» не подаёт его вовсе
+		 *       подаёт значение пустым, а запись «--name» не подаёт его вовсе
 		 *
 		 * \~english
 		 * @brief Lexeme of the parsing of the parameters
+		 *
 		 * @details The content of a lexeme is taken by references to the submitted set and lives no longer than
-		 * it: the parsing makes no copies at all. The laying into the tree copies the content itself
-		 * @note The sign of the presence of a value differs from the emptiness of a value: the record «--name=»
-		 * submits an empty value, and the record «--name» does not submit it at all
+		 *          it: the parsing makes no copies at all. The laying into the tree copies the content itself.
+		 *
+		 * @note The links of a launch set lead to the very submitted set, and the links of a text
+		 *       stream - to the words of its cut, living inside a parser. A promise to a consumer
+		 *       does not change from this: both there and there the content is live all
+		 *       the time of a callback, - but `no copies are made at all` would be untrue, for a cut
+		 *       of a text copies the words
+		 *
+		 * @note The sign of the presence of a value differs from an emptiness of a value: a record `--name=`
+		 *       submits an empty value, and a record `--name` does not submit it at all
 		 *
 		 * \~
 		 */
@@ -296,21 +331,25 @@ namespace awh {
 		 * @brief Функция извлечения описания кода ошибки разбора
 		 *
 		 * @details Описание отведено каждому коду по отдельности; коду неизвестному
-		 * выдаётся общее описание, а не пустота
+		 *          выдаётся общее описание, а не пустота.
 		 *
 		 * @param error код ошибки разбора
 		 * @return      описание кода ошибки разбора
 		 *
 		 * \~english
 		 * @brief Function of the extraction of the description of an error code of the parsing
+		 *
+		 * @details A description is allotted to each code separately; to an unknown code
+		 *          a general description is issued, and not an emptiness.
+		 *
 		 * @param error error code of the parsing
-		 * @return description of the error code of the parsing
+		 * @return      description of the error code of the parsing
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 	}
-}
+};
 
 /**
  * Возвращаем подавленные системные макросы

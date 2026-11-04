@@ -38,7 +38,13 @@
  */
 #if !defined(AWH_MAX_RECORDS_QUEUE)
 	/**
-	 * Устанавливаем максимальное количество записей очереди 1000
+	 * \~russian
+	 * @brief Устанавливаем максимальное количество записей очереди 1000
+	 *
+	 * \~english
+	 * @brief Set a maximum number of the queue records as 1000
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_RECORDS_QUEUE 0x3E8
 #endif
@@ -48,7 +54,13 @@
  */
 #if !defined(AWH_MAX_MEMORY_QUEUE)
 	/**
-	 * Устанавливаем максимальное значение потребляемой памяти
+	 * \~russian
+	 * @brief Устанавливаем максимальное значение потребляемой памяти
+	 *
+	 * \~english
+	 * @brief Set a maximum value of the consumed memory
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_MEMORY_QUEUE AWH_MAX_BODY_SIZE
 #endif
@@ -157,7 +169,13 @@ namespace awh {
 			__AWH_PACK_END__
 		public:
 			/**
-			 * Создаём тип данных добавляемой записи
+			 * \~russian
+			 * @brief Создаём тип данных добавляемой записи
+			 *
+			 * \~english
+			 * @brief Create a type of data of an added record
+			 *
+			 * \~
 			 */
 			typedef pair <const void *, size_t> record_t;
 			/**

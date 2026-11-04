@@ -200,7 +200,7 @@ namespace {
 void awh::benchmark::counting(const bool mode) noexcept {
 	#if !defined(AWH_ALLOC_DISABLED) && defined(AWH_ALLOC_COUNTING)
 		// Передаём управление счётчику распределителя
-		awh::alloc::Allocator::counting(mode);
+		awh::alloc::allocator::counting(mode);
 	#else
 		// Если учёт выделений памяти включается
 		if(mode){
@@ -223,7 +223,7 @@ void awh::benchmark::counting(const bool mode) noexcept {
 void awh::benchmark::allocations(size_t & count, size_t & bytes) noexcept {
 	#if !defined(AWH_ALLOC_DISABLED) && defined(AWH_ALLOC_COUNTING)
 		// Опрашиваем счётчик распределителя
-		awh::alloc::Allocator::allocations(count, bytes);
+		awh::alloc::allocator::allocations(count, bytes);
 	#else
 		// Устанавливаем количество выполненных выделений памяти
 		count = gCount;

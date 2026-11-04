@@ -127,7 +127,13 @@ namespace awh {
 					using iterator_category = std::bidirectional_iterator_tag;
 				public:
 					/**
-					 * Создаём тип данных итератора
+					 * \~russian
+					 * @brief Создаём тип данных итератора
+					 *
+					 * \~english
+					 * @brief Create a type of data of an iterator
+					 *
+					 * \~
 					 */
 					using iterator = unordered_map <uint64_t, record_t>::iterator;
 				private:
@@ -252,7 +258,13 @@ namespace awh {
 			shared_ptr <crypto_t> _crypto;
 		private:
 			/**
-			 * Контейнер для хранения бинарных данных
+			 * \~russian
+			 * @brief Контейнер для хранения бинарных данных
+			 *
+			 * \~english
+			 * @brief A container for a storage of the binary data
+			 *
+			 * \~
 			 */
 			unordered_map <uint64_t, record_t> _records;
 		public:
@@ -945,13 +957,13 @@ namespace awh {
 			 * @brief Метод поиска записи по ключу
 			 *
 			 * @param key ключ для поиска записи
-			 * @return     итератор указанного ключа
+			 * @return    итератор указанного ключа
 			 *
 			 * \~english
 			 * @brief Method searching for a record by key
 			 *
 			 * @param key key for searching the record
-			 * @return     iterator of the specified key
+			 * @return    iterator of the specified key
 			 *
 			 * \~
 			 */

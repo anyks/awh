@@ -245,7 +245,6 @@ namespace awh {
 		 * @param code   кодовое значение символа
 		 * @param output набор номеров письменностей символа
 		 * @param size   размер набора номеров письменностей
-		 *
 		 * @return       количество письменностей, в набор выведенных
 		 *
 		 * \~english
@@ -260,7 +259,6 @@ namespace awh {
 		 * @param code   character code value
 		 * @param output set of the numbers of the scripts of the character
 		 * @param size   size of the set of the numbers of the scripts
-		 *
 		 * @return       number of scripts output into the set
 		 *
 		 * \~

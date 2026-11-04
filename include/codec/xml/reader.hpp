@@ -258,7 +258,7 @@ namespace awh {
 						bool entities;
 						/**
 						 * \~russian
-						 * Флаг склеивания подряд идущих кусков текстового содержимого в одно событие
+						 * @brief Флаг склеивания подряд идущих кусков текстового содержимого в одно событие
 						 *
 						 * @note Склеиваются лишь куски одного и того же вида, идущие подряд.
 						 *       Раздел дословного текста, примечание и указание обработчику текстовое
@@ -300,7 +300,7 @@ namespace awh {
 						 *       пределами настроек, а у разметки текстовый узел не ограничен вовсе
 						 *
 						 * \~english
-						 * Flag of the gluing of the consecutive chunks of a text content into a single event
+						 * @brief Flag of the gluing of the consecutive chunks of a text content into a single event
 						 *
 						 * @note Only the chunks of one and the same kind going in a row are glued.
 						 *       A literal text section, a comment and a processing instruction break a text
@@ -341,6 +341,8 @@ namespace awh {
 						bool mergeText;
 						/**
 						 * \~russian
+						 * @brief Флаг подстановки внешних сущностей
+						 *
 						 * @note Умолчание это (`false` - внешние ссылки НЕ отвергаются, а распознаются и
 						 *       пропускаются) закреплено косвенно: подмена его на `true` роняет ЧЕТЫРЕ
 						 *       проверки. Замерено 31.08.2026 порчей умолчания в конструкторе `Settings`
@@ -353,6 +355,8 @@ namespace awh {
 						 *          разбором внешних ссылок
 						 *
 						 * \~english
+						 * @brief Flag of the substitution of the external entities
+						 *
 						 * @note This default (`false` - the external references are NOT refused, but recognized
 						 *       and skipped) is fixed indirectly: replacing it with `true` drops FOUR
 						 *       checks. Measured on 2026-08-31 by a spoiling of the default in the `Settings`
@@ -368,15 +372,55 @@ namespace awh {
 						 * \~
 						 */
 						bool externals;
-						// Флаг разрешения префиксов по договору о пространствах имён
+						/**
+						 * \~russian
+						 * @brief Флаг разрешения префиксов по договору о пространствах имён
+						 *
+						 * \~english
+						 * @brief Flag of the permission of the prefixes by the agreement on the namespaces
+						 *
+						 * \~
+						 */
 						bool namespaces;
-						// Флаг выдачи примечаний отдельным событием
+						/**
+						 * \~russian
+						 * @brief Флаг выдачи примечаний отдельным событием
+						 *
+						 * \~english
+						 * @brief Flag of the emission of the comments as a separate event
+						 *
+						 * \~
+						 */
 						bool emitComments;
-						// Флаг выдачи указаний обработчику отдельным событием
+						/**
+						 * \~russian
+						 * @brief Флаг выдачи указаний обработчику отдельным событием
+						 *
+						 * \~english
+						 * @brief Flag of the emission of the processing instructions as a separate event
+						 *
+						 * \~
+						 */
 						bool emitProcessing;
-						// Флаг отделения незначимого пробельного содержимого от текстового
+						/**
+						 * \~russian
+						 * @brief Флаг отделения незначимого пробельного содержимого от текстового
+						 *
+						 * \~english
+						 * @brief Flag of the separation of the insignificant whitespace content from the text content
+						 *
+						 * \~
+						 */
 						bool separateSpaces;
-						// Наибольшая допустимая длина имени в знаках, ноль - без предела; отказ кодом NAME_TOO_LONG
+						/**
+						 * \~russian
+						 * @brief Наибольшая допустимая длина имени в знаках, ноль - без предела; отказ кодом NAME_TOO_LONG
+						 *
+						 * \~english
+						 * @brief Largest admissible length of the name in characters, zero — without a limit; a refusal by the code NAME_TOO_LONG
+						 *
+						 * \~
+						 */
 						uint32_t maxName;
 						/**
 						 * \~russian
@@ -408,7 +452,7 @@ namespace awh {
 						uint32_t maxDepth;
 						/**
 						 * \~russian
-						 * Наибольшее количество ОБЪЯВЛЕННЫХ сущностей, ноль - без предела; отказ кодом ENTITY_COUNT_EXCEEDED
+						 * @brief Наибольшее количество ОБЪЯВЛЕННЫХ сущностей, ноль - без предела; отказ кодом ENTITY_COUNT_EXCEEDED
 						 *
 						 * @warning Считаются сущности, объявленные описанием типа документа, и
 						 *          ТОЛЬКО они. Встроенных сущностей разметки («&amp;lt;» и прочих)
@@ -416,8 +460,7 @@ namespace awh {
 						 *          никогда, сколько бы их ни было
 						 *
 						 * \~english
-						 * Largest number of the DECLARED entities, zero - without a limit; a refusal by the
-						 * code ENTITY_COUNT_EXCEEDED
+						 * @brief Largest number of the DECLARED entities, zero - without a limit; a refusal by the code ENTITY_COUNT_EXCEEDED
 						 *
 						 * @warning The entities declared by a document type definition are counted, and
 						 *          ONLY they. The built-in entities of the markup («&amp;lt;» and the rest)
@@ -427,11 +470,19 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxEntities;
-						// Наибольшее допустимое количество атрибутов у одного узла, ноль - без предела; отказ кодом TOO_MANY_ATTRIBUTES
+						/**
+						 * \~russian
+						 * @brief Наибольшее допустимое количество атрибутов у одного узла, ноль - без предела; отказ кодом TOO_MANY_ATTRIBUTES
+						 *
+						 * \~english
+						 * @brief Largest admissible number of the attributes of one node, zero - without a limit; a refusal by the code TOO_MANY_ATTRIBUTES
+						 *
+						 * \~
+						 */
 						uint32_t maxAttributes;
 						/**
 						 * \~russian
-						 * Наибольший допустимый объём одного события в байтах, ноль снимает предел
+						 * @brief Наибольший допустимый объём одного события в байтах, ноль снимает предел
 						 *
 						 * @warning Предел этот - ЕДИНСТВЕННЫЙ из одиннадцати пределов разбора трёх
 						 *          текстовых кодеков, у какого нет своего кода отказа: он отвечает общим
@@ -456,7 +507,7 @@ namespace awh {
 						 *          самого события
 						 *
 						 * \~english
-						 * Largest admissible volume of a single event in bytes, zero removes the limit
+						 * @brief Largest admissible volume of a single event in bytes, zero removes the limit
 						 *
 						 * @warning This limit is the ONLY ONE of the eleven limits of the parsing of the three
 						 *          text codecs which has no code of its own: it answers with the common
@@ -485,7 +536,7 @@ namespace awh {
 						uint64_t maxEvent;
 						/**
 						 * \~russian
-						 * Наибольший допустимый общий объём подстановки сущностей в байтах
+						 * @brief Наибольший допустимый общий объём подстановки сущностей в байтах
 						 *
 						 * @warning Поднятие этого предела выше четырёх гигабайт упирается в
 						 *          разрядность отрезка хранилища: места значений записаны 32 разрядами,
@@ -502,7 +553,7 @@ namespace awh {
 						 *       соседнего кодека, валила разбор целиком
 						 *
 						 * \~english
-						 * Largest admissible total volume of the substitution of the entities in bytes
+						 * @brief Largest admissible total volume of the substitution of the entities in bytes
 						 *
 						 * @warning A raising of this limit above four gigabytes runs into the
 						 *          width of a segment of the storage: the places of the values are written with 32 bits,
@@ -521,7 +572,15 @@ namespace awh {
 						 * \~
 						 */
 						uint64_t maxExpansion;
-						// Кодировка, навязанная извне вопреки объявленной в тексте
+						/**
+						 * \~russian
+						 * @brief Кодировка, навязанная извне вопреки объявленной в тексте
+						 *
+						 * \~english
+						 * @brief Encoding, imposed from outside against the declared in the text
+						 *
+						 * \~
+						 */
 						encoding_t encoding;
 						/**
 						 * \~russian
@@ -545,20 +604,36 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Entity {
-						// Флаг того, что подстановка сущности выполняется в текущий миг
+						/**
+						 * \~russian
+						 * @brief Флаг того, что подстановка сущности выполняется в текущий миг
+						 *
+						 * \~english
+						 * @brief A flag indicating that the entity substitution is performed in the current moment
+						 *
+						 * \~
+						 */
 						bool active;
-						// Флаг того, что значение сущности содержит разметку
+						/**
+						 * \~russian
+						 * @brief Флаг того, что значение сущности содержит разметку
+						 *
+						 * \~english
+						 * @brief A flag indicating that the entity value contains markup
+						 *
+						 * \~
+						 */
 						bool markup;
 						/**
 						 * \~russian
-						 * Признак сущности, объявленной НЕРАЗБИРАЕМОЙ (словом «NDATA»)
+						 * @brief Признак сущности, объявленной НЕРАЗБИРАЕМОЙ (словом «NDATA»)
 						 *
 						 * @note Ссылка на такую сущность в содержимом запрещена договором прямо
 						 *       и является ошибкой ВСЕГДА - в отличие от ссылки на обычную внешнюю
 						 *       сущность, какую разбору, её не читающему, велено пропускать
 						 *
 						 * \~english
-						 * A sign of an entity declared UNPARSEABLE (by the word "NDATA")
+						 * @brief A sign of an entity declared UNPARSEABLE (by the word "NDATA")
 						 *
 						 * @note A reference to such an entity in a content is forbidden by the protocol
 						 *       outright and is an error ALWAYS - in distinction from a reference to an
@@ -567,9 +642,25 @@ namespace awh {
 						 * \~
 						 */
 						bool unparsed;
-						// Флаг того, что сущность объявлена внешней
+						/**
+						 * \~russian
+						 * @brief Флаг того, что сущность объявлена внешней
+						 *
+						 * \~english
+						 * @brief A flag indicating that the entity is declared external
+						 *
+						 * \~
+						 */
 						bool external;
-						// Подставляемое значение сущности
+						/**
+						 * \~russian
+						 * @brief Подставляемое значение сущности
+						 *
+						 * \~english
+						 * @brief The value to be substituted for the entity
+						 *
+						 * \~
+						 */
 						string value;
 						/**
 						 * \~russian
@@ -600,7 +691,7 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Default {
 						/**
 						 * \~russian
-						 * Признак объявления атрибута видом, отличным от «CDATA»
+						 * @brief Признак объявления атрибута видом, отличным от «CDATA»
 						 *
 						 * @details Договор велит приводить значение такого атрибута: снимать
 						 *          пробельные знаки по краям и сводить всякую их вереницу к одному
@@ -608,7 +699,7 @@ namespace awh {
 						 *          относится и выполняется независимо от неё.
 						 *
 						 * \~english
-						 * A sign of an attribute declared by a kind other than "CDATA"
+						 * @brief A sign of an attribute declared by a kind other than "CDATA"
 						 *
 						 * @details The protocol orders a value of such an attribute to be converted: the
 						 *          whitespace characters at the edges are stripped and every their run is
@@ -620,13 +711,13 @@ namespace awh {
 						bool tokenized;
 						/**
 						 * \~russian
-						 * Признак объявления атрибуту значения по умолчанию
+						 * @brief Признак объявления атрибуту значения по умолчанию
 						 *
 						 * @note Объявление удерживается и без значения: вид атрибута нужен
 						 *       для приведения значения, записанного в самом тексте
 						 *
 						 * \~english
-						 * A sign of a default value being declared for an attribute
+						 * @brief A sign of a default value being declared for an attribute
 						 *
 						 * @note A declaration is kept even without a value: the kind of an attribute is
 						 *       needed for the conversion of a value written in the text itself
@@ -770,10 +861,19 @@ namespace awh {
 						// Положение ссылки на сущность в исходном тексте
 						location_t location;
 						/**
-						 * Место разбора, каким оно было бы, будь ссылка на сущность пройдена
-						 * без подстановки. Подстановка замещает ссылку значением прямо в
-						 * разбираемом тексте, отчего и смещение, и номер строки перестают
-						 * отвечать исходному тексту: восстанавливаются они по закрытии области
+						 * \~russian
+						 * @brief Место разбора, каким оно было бы, будь ссылка на сущность пройдена
+						 *        без подстановки. Подстановка замещает ссылку значением прямо в
+						 *        разбираемом тексте, отчего и смещение, и номер строки перестают
+						 *        отвечать исходному тексту: восстанавливаются они по закрытии области
+						 *
+						 * \~english
+						 * @brief A place of a parsing as it would be, were a link to an entity passed
+						 *        without a substitution. A substitution replaces a link by a value right in the
+						 *        parsed text, from which both an offset and a line number stop
+						 *        answering the source text: they are restored on a closing of an area
+						 *
+						 * \~
 						 */
 						location_t resume;
 						// Имя подставленной сущности
@@ -920,7 +1020,7 @@ namespace awh {
 					bool _empty;
 					/**
 					 * \~russian
-					 * Признак того, что текущее содержимое узла уже выдано непробельной частью
+					 * @brief Признак того, что текущее содержимое узла уже выдано непробельной частью
 					 *
 					 * @note Незначимым пробельным содержимое считается лишь тогда, когда пробельным
 					 *       оказалось оно целиком, а выдаётся оно частями по мере поступления кусков
@@ -929,7 +1029,7 @@ namespace awh {
 					 *       записаны: иначе вид события зависел бы от того, где легла граница куска
 					 *
 					 * \~english
-					 * Flag of the current content of a node having already been issued by a non-whitespace part
+					 * @brief Flag of the current content of a node having already been issued by a non-whitespace part
 					 *
 					 * @note A content is considered an insignificant whitespace one only when it has turned out to be
 					 *       a whitespace one in full, while it is issued by parts as the chunks of the source text
@@ -942,7 +1042,7 @@ namespace awh {
 					bool _dirty;
 					/**
 					 * \~russian
-					 * Признак того, что объявления могут приходить извне разобранного
+					 * @brief Признак того, что объявления могут приходить извне разобранного
 					 *
 					 * @note Взводится внешним подмножеством описания типа документа и ссылкой
 					 *       на параметрическую сущность внутри него: ни того, ни другого разбор не
@@ -951,7 +1051,7 @@ namespace awh {
 					 *       относит её к действительности, которую разбор не проверяет
 					 *
 					 * \~english
-					 * Flag of the declarations being able to come from outside what has been parsed
+					 * @brief Flag of the declarations being able to come from outside what has been parsed
 					 *
 					 * @note Raised by an external subset of a document type definition and by a reference
 					 *       to a parameter entity inside it: the parsing expands neither the one nor the other,
@@ -968,7 +1068,7 @@ namespace awh {
 					bool _closing;
 					/**
 					 * \~russian
-					 * Признак того, что часть текущего раздела дословного текста уже выдана
+					 * @brief Признак того, что часть текущего раздела дословного текста уже выдана
 					 *
 					 * @note Раздел, разорванный границами кусков, выдаётся частями, и последняя
 					 *       из них оказывается пустой всякий раз, когда граница легла прямо перед
@@ -979,7 +1079,7 @@ namespace awh {
 					 *       своё единственное событие выдаёт наравне с прочими
 					 *
 					 * \~english
-					 * Flag of a part of the current literal text section having already been issued
+					 * @brief Flag of a part of the current literal text section having already been issued
 					 *
 					 * @note A section broken by the boundaries of the chunks is issued by parts, and the last
 					 *       of them turns out empty every time the boundary has fallen right before
@@ -994,7 +1094,7 @@ namespace awh {
 					bool _partial;
 					/**
 					 * \~russian
-					 * Признак того, что начало содержимого перенесено с пропущенного шага
+					 * @brief Признак того, что начало содержимого перенесено с пропущенного шага
 					 *
 					 * @note Содержимое, целиком составленное ссылками на пустые сущности,
 					 *       события не выдаёт, а место разбора проходит вперёд. Начало содержимого
@@ -1004,7 +1104,7 @@ namespace awh {
 					 *       начало своей непустой части
 					 *
 					 * \~english
-					 * Flag of the beginning of a content having been carried over from a skipped step
+					 * @brief Flag of the beginning of a content having been carried over from a skipped step
 					 *
 					 * @note A content composed entirely of the references to empty entities
 					 *       issues no event, while the place of the parsing moves forward. The beginning of the content
@@ -1020,7 +1120,7 @@ namespace awh {
 					bool _declared;
 					/**
 					 * \~russian
-					 * Признак того, что разобранное имя превысило предел, заданный настройками
+					 * @brief Признак того, что разобранное имя превысило предел, заданный настройками
 					 *
 					 * @details Отказ разбора имени выходит из двух разных поводов: имя построено
 					 *          ошибочно либо длина его превысила предел настроек. Поводы эти вызывающему
@@ -1031,7 +1131,7 @@ namespace awh {
 					 *       ровно до выдачи отказа и на следующее имя не переходит
 					 *
 					 * \~english
-					 * Flag of the parsed name having exceeded the limit given by the settings
+					 * @brief Flag of the parsed name having exceeded the limit given by the settings
 					 *
 					 * @details A refusal of the parsing of a name comes out of two different causes: the name is constructed
 					 *          erroneously or its length has exceeded the limit of the settings. The caller should
@@ -1046,7 +1146,7 @@ namespace awh {
 					bool _overlong;
 					/**
 					 * \~russian
-					 * Признак объявления хотя бы одного атрибута видом, приведению подлежащим
+					 * @brief Признак объявления хотя бы одного атрибута видом, приведению подлежащим
 					 *
 					 * @details Приведение значений обходится в четверть скорости чтения документа
 					 *          с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
@@ -1054,7 +1154,7 @@ namespace awh {
 					 *          объявлений на всякий узел, и перебор их по всякому атрибуту.
 					 *
 					 * \~english
-					 * Flag of a declaration of at least one attribute by a kind subject to the normalization
+					 * @brief Flag of a declaration of at least one attribute by a kind subject to the normalization
 					 *
 					 * @details The normalization of the values costs a quarter of the speed of the reading
 					 *          of a document with a document type definition, while a definition declaring only
@@ -1067,7 +1167,7 @@ namespace awh {
 					bool _tokenized;
 					/**
 					 * \~russian
-					 * Признак встреченной ссылки на непрочитанную параметрическую сущность
+					 * @brief Признак встреченной ссылки на непрочитанную параметрическую сущность
 					 *
 					 * @details Договор велит разбору, внешних сущностей не читающему, обрабатывать
 					 *          объявления лишь ДО первой такой ссылки: объявления за нею вправе быть
@@ -1079,7 +1179,7 @@ namespace awh {
 					 *       подмножества не отменяет
 					 *
 					 * \~english
-					 * Flag of an encountered reference to an unread parameter entity
+					 * @brief Flag of an encountered reference to an unread parameter entity
 					 *
 					 * @details The standard orders a parser not reading external entities to process
 					 *          the declarations only UP TO the first such reference: the declarations after it
@@ -1111,14 +1211,14 @@ namespace awh {
 					size_t _offset;
 					/**
 					 * \~russian
-					 * Положение начала раздела дословного текста в приведённом тексте
+					 * @brief Положение начала раздела дословного текста в приведённом тексте
 					 *
 					 * @note Держится ради проверки границы подстановки: раздел, начатый внутри
 					 *       подставленной сущности, обязан внутри неё и закончиться, а разбор его
 					 *       растянут по кускам исходного текста - начало к концу разбора уже пройдено
 					 *
 					 * \~english
-					 * Position of the beginning of a literal text section in the converted text
+					 * @brief Position of the beginning of a literal text section in the converted text
 					 *
 					 * @note It is kept for the sake of the check of the boundary of a substitution: a section begun inside
 					 *       a substituted entity is obliged to end inside it as well, while its parsing
@@ -1162,7 +1262,7 @@ namespace awh {
 					error_t _error;
 					/**
 					 * \~russian
-					 * Отказ разбора, отложенный до выдачи накопленного содержимого
+					 * @brief Отказ разбора, отложенный до выдачи накопленного содержимого
 					 *
 					 * @details Ссылка на необъявленную сущность стоит посреди содержимого, и
 					 *          содержимое, разобранное до неё, отказом не отменяется: подача кусками
@@ -1171,7 +1271,7 @@ namespace awh {
 					 *          выдаётся событием, и лишь следом за ним разбор отвечает отказом.
 					 *
 					 * \~english
-					 * Refusal of the parsing deferred until the issuing of the accumulated content
+					 * @brief Refusal of the parsing deferred until the issuing of the accumulated content
 					 *
 					 * @details A reference to an undeclared entity stands in the middle of a content, and the
 					 *          content parsed before it is not cancelled by the refusal: the feeding by chunks
@@ -1184,7 +1284,7 @@ namespace awh {
 					error_t _deferred;
 					/**
 					 * \~russian
-					 * Отложенный код ошибки приведения исходного текста к кодировке UTF-8
+					 * @brief Отложенный код ошибки приведения исходного текста к кодировке UTF-8
 					 *
 					 * @note Приведение переносит в хранилище всё, что успело проверить, и
 					 *       лишь затем отвечает отказом. Отказ выдаётся не сразу, а по
@@ -1192,7 +1292,7 @@ namespace awh {
 					 *       того же текста целиком и кусками расходился бы событиями
 					 *
 					 * \~english
-					 * Postponed error code of the conversion of the source text to the UTF-8 encoding
+					 * @brief Postponed error code of the conversion of the source text to the UTF-8 encoding
 					 *
 					 * @note The conversion transfers into the storage everything it has managed to check, and
 					 *       only then answers with a refusal. The refusal is issued not at once but upon
@@ -1207,7 +1307,7 @@ namespace awh {
 					location_t _resumed;
 					/**
 					 * \~russian
-					 * Место начала раздела дословного текста в исходном тексте
+					 * @brief Место начала раздела дословного текста в исходном тексте
 					 *
 					 * @note Место события считается по ходу разбора и вперёд, а начало раздела
 					 *       к мигу его выдачи остаётся позади: раздел дочитывается следующими кусками.
@@ -1215,7 +1315,7 @@ namespace awh {
 					 *       иначе оно зависело бы от того, где легла граница куска
 					 *
 					 * \~english
-					 * Place of the beginning of a literal text section in the source text
+					 * @brief Place of the beginning of a literal text section in the source text
 					 *
 					 * @note The place of an event is counted in the course of the parsing and forwards, while the beginning of a section
 					 *       by the moment of its issuance remains behind: the section is read up by the following chunks.
@@ -1242,7 +1342,7 @@ namespace awh {
 					string _version;
 					/**
 					 * \~russian
-					 * Буфер ключа отыскания в хранилищах объявлений описания типа документа
+					 * @brief Буфер ключа отыскания в хранилищах объявлений описания типа документа
 					 *
 					 * @details Хранилища объявлений ведутся по имени в записи, принятой в исходном
 					 *          тексте, а разбор отыскивает их по отрезку разбираемого текста. Отдельный тип
@@ -1256,7 +1356,7 @@ namespace awh {
 					 *       отношения не имеет - он живёт лишь на время самого отыскания
 					 *
 					 * \~english
-					 * Buffer of the search key in the storages of the declarations of a document type definition
+					 * @brief Buffer of the search key in the storages of the declarations of a document type definition
 					 *
 					 * @details The storages of the declarations are kept by the name in the notation accepted in the source
 					 *          text, while the parsing searches for them by a segment of the text being parsed. A separate type

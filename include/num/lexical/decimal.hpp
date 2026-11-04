@@ -46,7 +46,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -82,10 +81,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of computing the binary exponent offset for a power of ten
+		 *
 		 * @details For an exponent in the (0, 350) range the expression
 		 *          ((152170 + 65536) * power) >> 16 equals floor(p) + power,
 		 *          where p = log(5^power) / log(2). For the (-400, 0) range
 		 *          the same expression equals -ceil(p) + power.
+		 *
 		 * @param power exponent of the power of ten
 		 * @return      binary exponent offset
 		 *
@@ -95,7 +96,6 @@ namespace awh {
 			// Выводим приближение произведения показателя степени на двоичный логарифм пяти
 			return ((((152170 + 65536) * power) >> 16) + 63);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон требуемой точности приближения
@@ -104,6 +104,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the required precision of the approximation
+		 *
 		 * @tparam PRECISION required precision of the approximation in bits
 		 *
 		 * \~
@@ -124,10 +125,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the approximate computation of the product of the mantissa by a power of five
+		 *
 		 * @details For small exponents the result is exact,
 		 *          since the product fits into 128 bits without losses.
 		 *          The exponent must belong to the range of the table:
 		 *          the check is performed by the calling side.
+		 *
 		 * @param power    exponent of the power of five
 		 * @param mantissa normalised value of the mantissa
 		 * @return         approximate 128-bit product
@@ -161,7 +164,6 @@ namespace awh {
 			// Выводим приближённое произведение
 			return result;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
@@ -170,6 +172,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the type of the binary format parameters
+		 *
 		 * @tparam BINARY binary format parameters of the result
 		 *
 		 * \~
@@ -189,8 +192,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of computing the mantissa with a deliberately invalid exponent
+		 *
 		 * @details The exponent is offset by INVALID_BIAS, which marks
 		 *          the result as requiring refinement by long arithmetic.
+		 *
 		 * @param power    exponent of the power of ten
 		 * @param mantissa normalised value of the mantissa
 		 * @param zeros    number of leading zero bits of the source mantissa
@@ -209,7 +214,6 @@ namespace awh {
 				(powerExponent(static_cast <int32_t> (power)) + bias - shift - zeros - 62 + INVALID_BIAS)
 			);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
@@ -218,6 +222,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the type of the binary format parameters
+		 *
 		 * @tparam BINARY binary format parameters of the result
 		 *
 		 * \~
@@ -236,8 +241,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of computing the product of the mantissa by a power of ten without rounding
+		 *
 		 * @details The result is always marked with an invalid exponent and
 		 *          is subject to refinement by long arithmetic.
+		 *
 		 * @param power    exponent of the power of ten
 		 * @param mantissa value of the mantissa
 		 * @return         corrected mantissa with an invalid exponent
@@ -258,7 +265,6 @@ namespace awh {
 			// Выводим скорректированную мантиссу с невалидным показателем степени
 			return computeErrorScaled <BINARY> (power, product.high, zeros);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
@@ -267,6 +273,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the type of the binary format parameters
+		 *
 		 * @tparam BINARY binary format parameters of the result
 		 *
 		 * \~
@@ -287,10 +294,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of computing the product of the mantissa by a power of ten
+		 *
 		 * @details In the overwhelming majority of cases the function gives a correctly rounded
 		 *          binary representation of the number. In rare cases an unambiguous rounding
 		 *          is impossible: then the exponent of the result is negative and
 		 *          the calling side must refine the result by long arithmetic.
+		 *
 		 * @param power    exponent of the power of ten
 		 * @param mantissa value of the mantissa
 		 * @return         corrected mantissa of the binary representation

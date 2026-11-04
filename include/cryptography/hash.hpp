@@ -365,8 +365,13 @@ namespace awh {
 		 */
 		__AWH_INLINE__ typename enable_if <is_integral <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
 			/**
-			 * Создаём тип данных беззнакового представления результата хэширования
+			 * \~russian
+			 * @brief Создаём тип данных беззнакового представления результата хэширования
 			 *
+			 * \~english
+			 * @brief Create a type of data of an unsigned representation of a hashing result
+			 *
+			 * \~
 			 */
 			using value_t = typename make_unsigned <T>::type;
 			// Собираемое из потока октетов число
@@ -428,18 +433,33 @@ namespace awh {
 			static_assert(numeric_limits <T>::is_iec559 && (sizeof(T) <= sizeof(uint64_t)),
 			 "AWH hash: the floating point result must be an IEEE-754 binary32 or binary64 number, use bigreal_t for wider ones");
 			/**
-			 * Создаём тип данных битового представления результата хэширования
+			 * \~russian
+			 * @brief Создаём тип данных битового представления результата хэширования
 			 *
+			 * \~english
+			 * @brief Create a type of data of a bit representation of a hashing result
+			 *
+			 * \~
 			 */
 			using value_t = typename conditional <sizeof(T) == sizeof(uint32_t), uint32_t, uint64_t>::type;
 			/**
-			 * Определяем разрядность мантиссы вещественного числа
+			 * \~russian
+			 * @brief Определяем разрядность мантиссы вещественного числа
 			 *
+			 * \~english
+			 * @brief Define a bitness of a mantissa of a real number
+			 *
+			 * \~
 			 */
 			constexpr uint8_t mantissa = static_cast <uint8_t> (numeric_limits <T>::digits - 1);
 			/**
-			 * Определяем маску порядка вещественного числа
+			 * \~russian
+			 * @brief Определяем маску порядка вещественного числа
 			 *
+			 * \~english
+			 * @brief Define a mask of an order of a real number
+			 *
+			 * \~
 			 */
 			constexpr value_t exponent = ((static_cast <value_t> (1) << ((sizeof(T) * 8) - mantissa - 1)) - 1);
 			// Собираемое из потока октетов число
@@ -622,9 +642,9 @@ namespace awh {
 	 *          Результат выводится во встроенные числовые типы, в массивы байтов и
 	 *          в длинные числа модуля BigNum любой объявленной разрядности.
 	 *
-	 * @note    Хэш-функция криптографической стойкостью не обладает и для проверки
-	 *          подлинности данных не предназначена. Для таких задач следует
-	 *          использовать хэш-суммы и подписи модуля Crypto.
+	 * @note Хэш-функция криптографической стойкостью не обладает и для проверки
+	 *       подлинности данных не предназначена. Для таких задач следует
+	 *       использовать хэш-суммы и подписи модуля Crypto.
 	 *
 	 * \~english
 	 * @brief Class of fast non-cryptographic hashing
@@ -641,9 +661,9 @@ namespace awh {
 	 *          The result is output into the built-in numeric types, into byte arrays and
 	 *          into long numbers of the BigNum module of any declared width.
 	 *
-	 * @note    The hash function possesses no cryptographic strength and is not intended
-	 *          for verifying the authenticity of data. For such tasks the hash sums
-	 *          and signatures of the Crypto module should be used.
+	 * @note The hash function possesses no cryptographic strength and is not intended
+	 *       for verifying the authenticity of data. For such tasks the hash sums
+	 *       and signatures of the Crypto module should be used.
 	 *
 	 * \~
 	 */

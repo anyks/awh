@@ -48,7 +48,13 @@
  */
 #if !defined(AWH_CRYPTO_AES_ROUNDS)
 	/**
-	 * Устанавливаем количество итераций PBKDF2 по умолчанию для вывода ключа AES из пароля
+	 * \~russian
+	 * @brief Устанавливаем количество итераций PBKDF2 по умолчанию для вывода ключа AES из пароля
+	 *
+	 * \~english
+	 * @brief Set a number of the PBKDF2 iterations by default for a derivation of an AES key from a password
+	 *
+	 * \~
 	 */
 	#define AWH_CRYPTO_AES_ROUNDS 0x186A0
 #endif
@@ -433,13 +439,25 @@ namespace awh {
 			params_rsa_t _params;
 		private:
 			/**
-			 * Связка ключей подписи, заведённая отдельно от ключа RSA
+			 * \~russian
+			 * @brief Связка ключей подписи, заведённая отдельно от ключа RSA
 			 *
-			 * Ключей на объекте держится несколько и всякий зовётся своим именем: один
-			 * контейнер подписывают владелец и заверитель, а проверяющая сторона сличает
-			 * с несколькими открытыми ключами подряд. Заводить объект работы на всякий
-			 * ключ негодно - у него внутри стейт шифрования, к подписи отношения не
-			 * имеющий вовсе
+			 * @details Ключей на объекте держится несколько и всякий зовётся своим именем: один
+			 *          контейнер подписывают владелец и заверитель, а проверяющая сторона сличает
+			 *          с несколькими открытыми ключами подряд. Заводить объект работы на всякий
+			 *          ключ негодно - у него внутри стейт шифрования, к подписи отношения не
+			 *          имеющий вовсе.
+			 *
+			 * \~english
+			 * @brief A bundle of the keys of a signature, started separately from an RSA key
+			 *
+			 * @details Several keys are held on an object and every one is called by its own name: one
+			 *          container is signed by an owner and a verifier, and a checking side compares
+			 *          with several public keys in a row. To start a work object for every
+			 *          key is unfit - inside it there is an encryption state, having no
+			 *          relation to a signature at all.
+			 *
+			 * \~
 			 */
 			keyring_t * _keyring;
 		private:
@@ -454,7 +472,7 @@ namespace awh {
 			 *          неопределённое, и потому всякий открытый метод спрашивает
 			 *          готовность прежде работы. Отказ записывается в лог: причина у него
 			 *          одна - нехватка памяти при сборке, - и вызывающей стороне о ней
-			 *          иначе не узнать
+			 *          иначе не узнать.
 			 *
 			 * @return результат проверки готовности
 			 *
@@ -468,7 +486,7 @@ namespace awh {
 			 *          behaviour, and therefore every public method asks for the
 			 *          readiness before the work. The failure is recorded into the log: it has one
 			 *          reason - a shortage of memory during the assembly, - and the calling side has
-			 *          no other way to learn of it
+			 *          no other way to learn of it.
 			 *
 			 * @return result of the readiness check
 			 *
@@ -1263,8 +1281,10 @@ namespace awh {
 			 * @note Успех работы судится возвращаемым признаком, а не длиной результата:
 			 *       пустая порция - законный успех, покуда набирается вектор инициализации
 			 *       либо удерживается имитовставка
+			 *
 			 * @param buffer буфер куда следует положить результат
 			 * @return       результат финализации
+			 *
 			 * @see initialize
 			 *
 			 * @code{.cpp}
@@ -1310,6 +1330,7 @@ namespace awh {
 			 * crypto.finalize(encoded);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			bool finalize(T & buffer) noexcept;
 			/**
@@ -1496,7 +1517,6 @@ namespace awh {
 			 *          удаче нельзя. Перегрузки, выводящие один лишь буфер,
 			 *          оставлены для работ, которым различать это не нужно.
 			 *
-			 * @param buffer буфер данных для шифрования
 			 * @details Поверх заведённого потока метод выдаёт одну лишь очередную порцию
 			 *          выхода и буфер результата <b>перезаписывает</b>: накопление потока
 			 *          целиком лежит на вызывающей стороне, а завершает поток finalize,
@@ -1509,6 +1529,7 @@ namespace awh {
 			 *       либо удерживается имитовставка. Перегрузки, выдающие один лишь буфер,
 			 *       этого различить не дают, и в потоке следует пользоваться этой
 			 *
+			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param result буфер, куда следует положить результат
 			 * @param hash   тип хэш-суммы
@@ -1526,7 +1547,6 @@ namespace awh {
 			 *          by it. The overloads outputting the buffer alone
 			 *          have been left for the works that need not distinguish this.
 			 *
-			 * @param buffer data buffer for the encryption
 			 * @details On top of a started stream the method gives out only the next portion
 			 *          of the output and <b>overwrites</b> the result buffer: the accumulation of the whole
 			 *          stream lies upon the calling side, and the stream is terminated by finalize,
@@ -1539,6 +1559,7 @@ namespace awh {
 			 *       or the message authentication code is being held. The overloads giving out the buffer alone
 			 *       do not allow distinguishing this, and within a stream this one should be used
 			 *
+			 * @param buffer data buffer for the encryption
 			 * @param size   size of the data for the encryption
 			 * @param result buffer the result should be placed into
 			 * @param hash   type of the hash sum
@@ -1683,6 +1704,7 @@ namespace awh {
 			 *          оставлены для работ, которым различать это не нужно.
 			 *
 			 * @param buffer буфер данных для шифрования
+			 *
 			 * @details Поверх заведённого потока метод выдаёт одну лишь очередную порцию
 			 *          выхода и буфер результата <b>перезаписывает</b>: накопление потока
 			 *          целиком лежит на вызывающей стороне, а завершает поток finalize,
@@ -1713,6 +1735,7 @@ namespace awh {
 			 *          have been left for the works that need not distinguish this.
 			 *
 			 * @param buffer data buffer for the encryption
+			 *
 			 * @details On top of a started stream the method gives out only the next portion
 			 *          of the output and <b>overwrites</b> the result buffer: the accumulation of the whole
 			 *          stream lies upon the calling side, and the stream is terminated by finalize,
@@ -2277,6 +2300,7 @@ namespace awh {
 			 *
 			 * @param name имя ключа в связке
 			 * @return     точная длина подписи в октетах, либо ноль если длина непостоянна
+			 *
 			 * @see limit
 			 *
 			 * \~english
@@ -2295,6 +2319,7 @@ namespace awh {
 			 *
 			 * @param name name of the key in the keyring
 			 * @return     exact length of the signature in octets, or zero if the length is not constant
+			 *
 			 * @see limit
 			 *
 			 * \~
@@ -2309,6 +2334,7 @@ namespace awh {
 			 *
 			 * @param name имя ключа в связке
 			 * @return     верхний предел длины подписи в октетах
+			 *
 			 * @see length
 			 *
 			 * \~english
@@ -2319,6 +2345,7 @@ namespace awh {
 			 *
 			 * @param name name of the key in the keyring
 			 * @return     upper limit of the length of the signature in octets
+			 *
 			 * @see length
 			 *
 			 * \~
@@ -2478,6 +2505,7 @@ namespace awh {
 			 * @param name имя ключа в связке
 			 * @param hash тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @return     признак успешно выполненной работы
+			 *
 			 * @see streamable
 			 *
 			 * \~english
@@ -2496,6 +2524,7 @@ namespace awh {
 			 * @param name name of the key in the keyring
 			 * @param hash type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @return     sign of the successfully performed work
+			 *
 			 * @see streamable
 			 *
 			 * \~
@@ -2562,6 +2591,7 @@ namespace awh {
 			 * @param name имя ключа в связке
 			 * @param hash тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @return     признак успешно выполненной работы
+			 *
 			 * @see streamable
 			 *
 			 * \~english
@@ -2579,6 +2609,7 @@ namespace awh {
 			 * @param name name of the key in the keyring
 			 * @param hash type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @return     sign of the successfully performed work
+			 *
 			 * @see streamable
 			 *
 			 * \~

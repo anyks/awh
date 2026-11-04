@@ -56,7 +56,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -71,7 +70,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
-	 *
 	 *
 	 * \~english
 	 * @brief Namespace of the number parsing module
@@ -117,9 +115,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -133,6 +131,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting a packed block of zero decimal digits
+		 *
 		 * @return packed block of zero characters
 		 *
 		 * \~
@@ -147,16 +146,15 @@ namespace awh {
 					? ((uint64_t(UC('0')) << 48) | (uint64_t(UC('0')) << 32) | (uint64_t(UC('0')) << 16) | uint64_t(UC('0')))
 					: ((uint64_t(UC('0')) << 32) | uint64_t(UC('0')))));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -170,6 +168,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the number of characters in a packed block
+		 *
 		 * @return number of characters in the packed block
 		 *
 		 * \~
@@ -178,7 +177,6 @@ namespace awh {
 			// Выводим количество символов, помещающихся в 64-битное слово
 			return (sizeof(uint64_t) / sizeof(UC));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция вычисления показателя степени в научной записи
@@ -193,9 +191,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of computing the exponent in scientific notation
+		 *
 		 * @details The function is deliberately not optimised: speeding it up would require
 		 *          slowing down the fast parsing paths, while the current variant is called
 		 *          only on the rare refining path.
+		 *
 		 * @param mantissa value of the mantissa
 		 * @param exponent source exponent
 		 * @return         exponent in scientific notation
@@ -233,7 +233,6 @@ namespace awh {
 			// Выводим показатель степени в научной записи
 			return exponent;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа обработчика решения об округлении
@@ -242,6 +241,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the type of the rounding decision handler
+		 *
 		 * @tparam CALLBACK type of the rounding decision handler
 		 *
 		 * \~
@@ -257,6 +257,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding the mantissa to nearest with ties resolved to even
+		 *
 		 * @param mantissa reference to the rounded mantissa
 		 * @param shift    number of discarded low bits
 		 * @param callback handler of the decision to round up
@@ -287,7 +288,6 @@ namespace awh {
 			// Выполняем округление по решению обработчика
 			mantissa.mantissa += static_cast <uint64_t> (callback(isOdd, isHalfway, isAbove));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция округления мантиссы вниз
@@ -297,6 +297,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding the mantissa down
+		 *
 		 * @param mantissa reference to the rounded mantissa
 		 * @param shift    number of discarded low bits
 		 *
@@ -312,7 +313,6 @@ namespace awh {
 			// Компенсируем сдвиг показателем степени
 			mantissa.power2 += shift;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа результата и обработчика округления
@@ -322,6 +322,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the result type and of the rounding handler
+		 *
 		 * @tparam T        floating-point type
 		 * @tparam CALLBACK type of the shift and rounding handler
 		 *
@@ -337,6 +338,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of bringing an extended-precision mantissa to the machine format
+		 *
 		 * @param mantissa reference to the mantissa being brought
 		 * @param callback handler of the shift and rounding of the mantissa
 		 *
@@ -373,16 +375,15 @@ namespace awh {
 				mantissa.mantissa = 0;
 			}
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -397,6 +398,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of skipping the leading zero digits
+		 *
 		 * @param first reference to the beginning of the range of characters
 		 * @param last  end of the range of characters
 		 *
@@ -430,16 +432,15 @@ namespace awh {
 				++first;
 			}
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -457,7 +458,9 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking the presence of discarded significant digits
+		 *
 		 * @details All the characters of the range must be decimal digits.
+		 *
 		 * @param first beginning of the range of characters
 		 * @param last  end of the range of characters
 		 * @return      result of the check
@@ -494,16 +497,15 @@ namespace awh {
 			// Сообщаем об отсутствии отброшенных значащих цифр
 			return false;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -518,6 +520,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking the presence of discarded significant digits in a range
+		 *
 		 * @param range range of characters to check
 		 * @return      result of the check
 		 *
@@ -527,7 +530,6 @@ namespace awh {
 			// Выполняем проверку диапазона символов
 			return isTruncated(range.ptr, range.ptr + range.len());
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция умножения значения длинной арифметики с добавлением скаляра
@@ -539,6 +541,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying a long arithmetic value with the addition of a scalar
+		 *
 		 * @param value    long arithmetic value
 		 * @param power    multiplier in the form of a power of ten
 		 * @param addition added value
@@ -554,16 +557,15 @@ namespace awh {
 			// Выполняем добавление накопленного значения
 			return value.add(addition);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -585,9 +587,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the significant digits into a long arithmetic value
+		 *
 		 * @details The parsing is done in blocks of eight digits with a subsequent multiplication
 		 *          by the largest power of ten that fits into one limb, which
 		 *          minimises the number of long arithmetic operations.
+		 *
 		 * @param result    reference to the result of the parsing
 		 * @param number    parsed number string
 		 * @param maxDigits maximum number of significant digits
@@ -596,7 +600,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool parseMantissa(bigint_t & result, const parsedNumber_t <UC> & number, const size_t maxDigits, size_t & digits) noexcept {
+		__AWH_INLINE__ bool parseMantissa(bigint_t & result, const parsedNumber_t <UC> & number, const size_t maxDigits, size_t & digits) noexcept {
 			// Количество цифр, накопленных в текущем блоке
 			size_t counter = 0;
 			// Накопленное значение текущего блока
@@ -762,16 +766,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the floating-point type
+		 *
 		 * @tparam T floating-point type
 		 *
 		 * \~
@@ -788,6 +791,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding at a non-negative decimal exponent
+		 *
 		 * @param digits   significant digits as a long arithmetic value
 		 * @param exponent non-negative decimal exponent
 		 * @param result   reference to the result of the rounding
@@ -795,7 +799,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool positiveDigitComp(bigint_t & digits, const int32_t exponent, mantissa_t & result) noexcept {
+		__AWH_INLINE__ bool positiveDigitComp(bigint_t & digits, const int32_t exponent, mantissa_t & result) noexcept {
 			// Выполняем умножение значащих цифр на степень десятки
 			if(!digits.pow10(static_cast <uint32_t> (exponent)))
 				// Сообщаем, что операция не выполнена
@@ -819,16 +823,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the floating-point type
+		 *
 		 * @tparam T floating-point type
 		 *
 		 * \~
@@ -851,10 +854,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of rounding at a negative decimal exponent
+		 *
 		 * @details The actual digits are representable as m * 10^e, and the theoretical
 		 *          value of the middle of the interval as n * 2^f. Since the exponent
 		 *          is negative, both quantities are brought to a common power
 		 *          and compared exactly.
+		 *
 		 * @param digits   significant digits as a long arithmetic value
 		 * @param source   source corrected mantissa
 		 * @param exponent negative decimal exponent
@@ -863,7 +868,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool negativeDigitComp(bigint_t & digits, const mantissa_t & source, const int32_t exponent, mantissa_t & result) noexcept {
+		__AWH_INLINE__ bool negativeDigitComp(bigint_t & digits, const mantissa_t & source, const int32_t exponent, mantissa_t & result) noexcept {
 			// Копия исходной мантиссы для округления вниз
 			mantissa_t lower = source;
 			// Выполняем округление исходной мантиссы вниз
@@ -926,7 +931,6 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
@@ -934,9 +938,9 @@ namespace awh {
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the result type and of the character type of the source string
+		 *
 		 * @tparam T  floating-point type
 		 * @tparam UC character type of the source string
 		 *
@@ -960,19 +964,21 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the exact rounding of the significant digits by long arithmetic
+		 *
 		 * @details At a non-negative exponent relative to the significant digits
 		 *          the high 64 bits of the long arithmetic value are taken, taking into account
 		 *          the discarded digits. At a negative exponent an exact
 		 *          comparison of the actual digits with the theoretical middle of the interval is performed.
 		 *          On exhausting the capacity of the long arithmetic the source
 		 *          approximation is yielded, since refining it more precisely is impossible.
+		 *
 		 * @param number parsed number string
 		 * @param source source corrected mantissa with an invalid exponent
 		 * @return       corrected mantissa of the binary representation
 		 *
 		 * \~
 		 */
-		inline mantissa_t digitComp(const parsedNumber_t <UC> & number, mantissa_t source) noexcept {
+		__AWH_INLINE__ mantissa_t digitComp(const parsedNumber_t <UC> & number, mantissa_t source) noexcept {
 			// Выполняем снятие смещения невалидного показателя степени
 			source.power2 -= INVALID_BIAS;
 			// Показатель степени разбираемого числа в научной записи

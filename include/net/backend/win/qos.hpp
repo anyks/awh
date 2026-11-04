@@ -21,12 +21,12 @@
  *          MS Windows настройки эти держит, но не исполняет: с версии Windows XP SP2
  *          запись отвечает согласием, а в заголовок не попадает ничего. Сделано это
  *          намеренно - отметка чужим приложением чужого трафика позволяла бы всякому
- *          объявить себя важнее прочих
+ *          объявить себя важнее прочих.
  *
  *          Отмечать пакеты система даёт подсистемой качества обслуживания qWAVE.
  *          Устроена она иначе: отметка ставится не сокету, а **потоку** - связке
  *          сокета с назначением, заводимой отдельно. Поток этот держит собственный
- *          описатель, и хранить его приходится модулю
+ *          описатель, и хранить его приходится модулю.
  *
  * @par Намеренные решения
  *
@@ -51,28 +51,35 @@
  * \~english
  * @brief Header file of the module of marking the outgoing packets with a class of the service
  *        for MS Windows
+ *
  * @details At the POSIX systems the class of the service is set by a setting of a socket: IP_TOS at
  *          IPv4, IPV6_TCLASS at IPv6, — one wrote an octet, and it went into the header of the packet.
  *          MS Windows holds these settings, but does not execute them: since the version Windows XP SP2
  *          the writing answers with an agreement, and nothing gets into the header. This is done
  *          deliberately — the marking of a foreign traffic by a foreign application would allow anyone
- *          to declare himself more important than the others
+ *          to declare himself more important than the others.
+ *
  *          The system gives the marking of the packets by the qWAVE quality of service subsystem.
  *          It is arranged otherwise: the mark is set not on a socket, but on a **flow** — a bundle of
  *          a socket with a destination, started separately. That flow holds its own
- *          handle, and the module has to keep it
+ *          handle, and the module has to keep it.
+ *
  * @par Deliberate decisions
+ *
  *      **A registry of the intentions, and not of the handles alone.** A qWAVE flow requires to know where
  *      the traffic will go: `QOSAddSocketToFlow` takes either an already connected socket, or
  *      the destination as an argument. The mark, though, is set out whenever, including before
  *      the connection, — and then there is nowhere else to remember it. A remembered mark
- *      is applied later, when the destination becomes known
+ *      is applied later, when the destination becomes known.
+ *
  *      **What is given back is what was requested, and not the reading of the system.** qWAVE gives no reverse reading of the mark
  *      at all, and what is yielded is what was requested. This reservation is essential:
- *      this value is an intention, and not a testimony of what went into the network
+ *      this value is an intention, and not a testimony of what went into the network.
+ *
  *      **The library is linked in the course of the work.** A machine is free to get by without
  *      qwave.dll — on the cut-down editions of the server it is absent, — and its absence is obliged
- *      to answer with an intelligible refusal, and not with a breakdown of the startup of the whole application
+ *      to answer with an intelligible refusal, and not with a breakdown of the startup of the whole application.
+ *
  * @warning A flow is obliged to be removed before the closing of the socket. A closing bypassing the removal
  *          leaves the flow hanging in the subsystem until the restart of the service — that is why
  *          the closing of the socket is obliged to go through a single wrapper, where that removal stands
@@ -113,7 +120,6 @@
 namespace awh {
 	/**
 	 * Активируем пространство имён следующего уровня
-	 *
 	 */
 	using namespace std;
 	/**
@@ -142,7 +148,7 @@ namespace awh {
 			 *
 			 * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток -
 			 *          обычный расклад, и платить за захват на каждом обращении
-			 *          незачем. Включаются они этим обращением
+			 *          незачем. Включаются они этим обращением.
 			 *
 			 * @param mode устанавливаемый режим безопасной работы с потоками
 			 *
@@ -151,7 +157,7 @@ namespace awh {
 			 *
 			 * @details The locks of the module are MUTED by default: the work in a
 			 *          single thread is the usual case, and there is no reason to pay
-			 *          for the capture at every call. They are enabled by this call
+			 *          for the capture at every call. They are enabled by this call.
 			 *
 			 * @param mode the mode of the thread-safe work to set
 			 *
@@ -164,7 +170,7 @@ namespace awh {
 			 *
 			 * @details Если назначение сокету уже известно - он соединён, - отметка
 			 *          ставится сразу. Иначе она запоминается и будет применена
-			 *          применением, когда назначение станет известно
+			 *          применением, когда назначение станет известно.
 			 *
 			 * @param sock отмечаемый сокет
 			 * @param dscp устанавливаемый класс обслуживания
@@ -172,9 +178,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of setting the class of the service on a socket
+			 *
 			 * @details If the destination of the socket is already known — it is connected, — the mark
 			 *          is set at once. Otherwise it is remembered and will be applied by the application,
-			 *          when the destination becomes known
+			 *          when the destination becomes known.
+			 *
 			 * @param sock marked socket
 			 * @param dscp the set class of the service
 			 * @return     result of the performance of the setting
@@ -191,6 +199,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of getting the requested class of the service
+			 *
 			 * @param sock polled socket
 			 * @return     the requested class of the service
 			 *
@@ -202,15 +211,17 @@ namespace awh {
 			 * @brief Функция применения запомненной отметки к соединённому сокету
 			 *
 			 * @details Звать её надлежит движку, едва сокет соединён: до того
-			 *          назначение неизвестно, и поток завести нельзя
+			 *          назначение неизвестно, и поток завести нельзя.
 			 *
 			 * @param sock применяемый сокет
 			 * @return     результат выполнения применения
 			 *
 			 * \~english
 			 * @brief Function of applying a remembered mark to a connected socket
+			 *
 			 * @details It is to be called by the engine as soon as the socket is connected: before that
-			 *          the destination is unknown, and a flow cannot be started
+			 *          the destination is unknown, and a flow cannot be started.
+			 *
 			 * @param sock applied socket
 			 * @return     result of the performance of the application
 			 *
@@ -222,15 +233,17 @@ namespace awh {
 			 * @brief Функция снятия потока с сокета
 			 *
 			 * @details Звать её надлежит прежде закрытия сокета - иначе поток
-			 *          останется висеть в подсистеме
+			 *          останется висеть в подсистеме.
 			 *
 			 * @param sock освобождаемый сокет
 			 * @return     результат выполнения снятия
 			 *
 			 * \~english
 			 * @brief Function of removing a flow from a socket
+			 *
 			 * @details It is to be called before the closing of the socket — otherwise the flow
-			 *          will remain hanging in the subsystem
+			 *          will remain hanging in the subsystem.
+			 *
 			 * @param sock released socket
 			 * @return     result of the performance of the removal
 			 *

@@ -65,7 +65,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -80,7 +79,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
-	 *
 	 *
 	 * \~english
 	 * @brief Namespace of the number parsing module
@@ -98,7 +96,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t DIGITS_PER_BLOCK = 8;
-
 		/**
 		 * \~russian
 		 * @brief Наименьшее девятнадцатизначное десятичное число
@@ -116,9 +113,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -135,8 +132,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking the availability of vector parsing for a character type
+		 *
 		 * @details The vector path is used only for two-byte characters:
 		 *          for one-byte ones the scalar parsing of a block is faster than the vector one.
+		 *
 		 * @return result of the check
 		 *
 		 * \~
@@ -156,7 +155,6 @@ namespace awh {
 				return false;
 			#endif
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция изменения порядка байт 64-битного значения
@@ -166,6 +164,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of changing the byte order of a 64-bit value
+		 *
 		 * @param value source value
 		 * @return      value with the reversed byte order
 		 *
@@ -184,16 +183,15 @@ namespace awh {
 				((value & 0x00000000000000FFULL) << 56)
 			);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -211,8 +209,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of packing a block of characters into a 64-bit value
+		 *
 		 * @details Characters wider than one byte are truncated to the low byte.
 		 *          The result is always built in the order from the low to the high one.
+		 *
 		 * @param chars pointer to the beginning of the block of characters
 		 * @return      packed 64-bit value
 		 *
@@ -260,6 +260,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of packing a block of characters from a vector register
+			 *
 			 * @param data loaded vector register
 			 * @return     packed 64-bit value
 			 *
@@ -299,6 +300,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of packing a block of two-byte characters by vector instructions
+			 *
 			 * @param chars pointer to the beginning of the block of characters
 			 * @return      packed 64-bit value
 			 *
@@ -325,6 +327,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of packing a block of characters from a vector register
+			 *
 			 * @param data loaded vector register
 			 * @return     packed 64-bit value
 			 *
@@ -349,6 +352,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of packing a block of two-byte characters by vector instructions
+			 *
 			 * @param chars pointer to the beginning of the block of characters
 			 * @return      packed 64-bit value
 			 *
@@ -370,9 +374,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -386,15 +390,15 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of packing a block of characters for the types without vector support
+		 *
 		 * @return always a zero value
 		 *
 		 * \~
 		 */
-		inline uint64_t readBlockSimd(const UC *) noexcept {
+		__AWH_INLINE__ uint64_t readBlockSimd(const UC *) noexcept {
 			// Векторный разбор для данного типа символа недоступен
 			return 0;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция разбора упакованного блока десятичных цифр
@@ -404,6 +408,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing a packed block of decimal digits
+		 *
 		 * @param value packed ASCII codes of eight decimal digits
 		 * @return      numeric value of the block of digits
 		 *
@@ -425,16 +430,15 @@ namespace awh {
 			// Выводим числовое значение блока цифр
 			return static_cast <uint32_t> (value);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -449,6 +453,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing a block of eight decimal digits
+		 *
 		 * @param chars pointer to the beginning of the block of digits
 		 * @return      numeric value of the block of digits
 		 *
@@ -462,7 +467,6 @@ namespace awh {
 			// Выполняем векторный разбор упакованного блока
 			return parseBlock(readBlockSimd(chars));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция проверки упакованного блока на состав из десятичных цифр
@@ -472,6 +476,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether a packed block consists of decimal digits
+		 *
 		 * @param value packed block of characters
 		 * @return      result of the check
 		 *
@@ -496,6 +501,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the vector parsing of a block of two-byte decimal digits
+			 *
 			 * @param chars pointer to the beginning of the block of characters
 			 * @param value reference to the accumulator of the numeric value
 			 * @return      result of parsing the block
@@ -563,9 +569,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -579,24 +585,24 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the vector parsing of a block for the types without vector support
+		 *
 		 * @return always a negative result
 		 *
 		 * \~
 		 */
-		inline bool parseBlockSimd(const UC *, uint64_t &) noexcept {
+		__AWH_INLINE__ bool parseBlockSimd(const UC *, uint64_t &) noexcept {
 			// Векторный разбор для данного типа символа недоступен
 			return false;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -615,8 +621,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the block parsing of a sequence of decimal digits
+		 *
 		 * @details The accumulator may overflow: the overflow control is performed
 		 *          by the calling side by the number of parsed digits.
+		 *
 		 * @param p     reference to the current position in the string
 		 * @param pend  end of the string
 		 * @param value reference to the accumulator of the numeric value
@@ -635,7 +643,6 @@ namespace awh {
 				// Выполняем смещение позиции на размер разобранного блока
 				p += DIGITS_PER_BLOCK;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция блочного разбора последовательности десятичных цифр
@@ -649,8 +656,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the block parsing of a sequence of decimal digits
+		 *
 		 * @details The accumulator may overflow: the overflow control is performed
 		 *          by the calling side by the number of parsed digits.
+		 *
 		 * @param p     reference to the current position in the string
 		 * @param pend  end of the string
 		 * @param value reference to the accumulator of the numeric value
@@ -668,7 +677,6 @@ namespace awh {
 				p += DIGITS_PER_BLOCK;
 			}
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция умножения с добавлением и контролем переполнения
@@ -680,6 +688,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplication with addition and overflow control
+		 *
 		 * @param value reference to the accumulated value
 		 * @param base  base of the numeral system
 		 * @param digit added digit
@@ -721,9 +730,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -738,7 +747,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		struct parsedNumber_t {
+		struct Parsed_Number {
 			// Признак успешного разбора
 			bool valid;
 			// Признак отрицательного числа
@@ -761,13 +770,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			parsedNumber_t() noexcept :
+			explicit Parsed_Number() noexcept :
 			 valid(false),
 			 negative(false),
 			 tooManyDigits(false),
@@ -776,6 +784,30 @@ namespace awh {
 			 integer(), fraction(),
 			 lastmatch(nullptr) {}
 		};
+		/**
+		 * \~russian
+		 * @brief Шаблон типа символа исходной строки
+		 *
+		 * @tparam UC тип символа исходной строки
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 *
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
+		 */
+		template <typename UC>
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных результата разбора числовой строки
+		 *
+		 * \~english
+		 * @brief Defining a data type for the result of parsing a numeric string
+		 *
+		 * \~
+		 */
+		using parsedNumber_t = Parsed_Number <UC>;
 
 		/**
 		 * \~russian
@@ -783,9 +815,9 @@ namespace awh {
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the character type of the source string
+		 *
 		 * @tparam UC character type of the source string
 		 *
 		 * \~
@@ -801,6 +833,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of building a parsing result with an error
+		 *
 		 * @param p     position where the error was found
 		 * @param error failure reason code of the parsing
 		 * @return      result of parsing the number string
@@ -819,7 +852,6 @@ namespace awh {
 			// Выводим результат разбора числовой строки
 			return result;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон строгого режима разбора и типа символа исходной строки
@@ -829,6 +861,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the strict parsing mode and of the character type of the source string
+		 *
 		 * @tparam JSON enabling of the strict rules of the RFC 8259 format
 		 * @tparam UC   character type of the source string
 		 *
@@ -848,7 +881,9 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the number string of a floating-point number
+		 *
 		 * @details The range of characters must be non-empty: the check is performed by the calling side.
+		 *
 		 * @param p       beginning of the parsed string
 		 * @param pend    end of the parsed string
 		 * @param options parsing options of the number string
@@ -856,7 +891,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline parsedNumber_t <UC> parseNumberString(const UC * p, const UC * const pend, const options_t <UC> options) noexcept {
+		__AWH_INLINE__ parsedNumber_t <UC> parseNumberString(const UC * p, const UC * const pend, const options_t <UC> options) noexcept {
 			// Символ десятичной точки
 			const UC decimalPoint = options.decimalPoint;
 			// Результат разбора числовой строки
@@ -1087,7 +1122,6 @@ namespace awh {
 			// Выводим результат разбора числовой строки
 			return result;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон типа целого результата и типа символа исходной строки
@@ -1097,6 +1131,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of the integer result type and of the character type of the source string
+		 *
 		 * @tparam T  integer result type of the parsing
 		 * @tparam UC character type of the source string
 		 *
@@ -1118,8 +1153,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of parsing the number string of an integer
+		 *
 		 * @details The range of characters must be non-empty,
 		 *          and the base of the numeral system checked: the checks are performed by the calling side.
+		 *
 		 * @param p       beginning of the parsed string
 		 * @param pend    end of the parsed string
 		 * @param value   reference to the result of the parsing
@@ -1128,7 +1165,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline result_t <UC> parseIntString(const UC * p, const UC * const pend, T & value, const options_t <UC> options) noexcept {
+		__AWH_INLINE__ result_t <UC> parseIntString(const UC * p, const UC * const pend, T & value, const options_t <UC> options) noexcept {
 			// Основание системы счисления
 			const int32_t base = options.base;
 			// Запоминаем начало разбираемой строки

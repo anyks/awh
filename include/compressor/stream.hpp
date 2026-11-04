@@ -121,10 +121,19 @@ namespace awh {
 				unique_ptr <coder_t> _coder;
 			private:
 				/**
-				 * Переиспользуемый буфер готового выхода.
+				 * \~russian
+				 * @brief Переиспользуемый буфер готового выхода.
 				 *
-				 * Заведён затем, чтобы подача порции не выделяла память заново: кодер пишет
-				 * сюда, а наружу выход переносится либо копируется по типу контейнера
+				 * @details Заведён затем, чтобы подача порции не выделяла память заново: кодер пишет
+				 *          сюда, а наружу выход переносится либо копируется по типу контейнера.
+				 *
+				 * \~english
+				 * @brief A reusable buffer of a ready exit.
+				 *
+				 * @details It is started so that a giving of a portion did not allocate memory anew: a coder writes
+				 *          here, and outward an exit is either moved or copied by a type of a container.
+				 *
+				 * \~
 				 */
 				mutable vector <char> _out;
 			public:
@@ -219,7 +228,7 @@ namespace awh {
 				 *          дожидаясь конца потока. Свойство это принадлежит самой библиотеке
 				 *          и обойти его силами модуля нечем, поэтому обмен сообщениями,
 				 *          опирающийся на выдавливание, BZip2 вести не может — для такого
-				 *          обмена берётся любой из восьми остальных движков
+				 *          обмена берётся любой из восьми остальных движков.
 				 *
 				 * @param result контейнер, куда помещается готовый выход
 				 *
@@ -233,7 +242,7 @@ namespace awh {
 				 *          waiting for the end of the stream. This property belongs to the library itself
 				 *          and there is no way for the module to work around it, therefore a message exchange
 				 *          relying on forcing out cannot be conducted by BZip2 — for such an exchange any of
-				 *          the eight remaining engines is taken
+				 *          the eight remaining engines is taken.
 				 *
 				 * @param result container the ready output is placed into
 				 *

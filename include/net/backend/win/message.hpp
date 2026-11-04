@@ -17,7 +17,7 @@
  *        служебные метаданные и приём сообщения вместе с ними
  *
  * @details Строй этот у MS Windows есть весь, но зовётся своими именами: `WSAMSG`
- *          взамен `msghdr`, `WSABUF` взамен `iovec`, `WSA_CMSG_*` взамен `CMSG_*`, а
+ *          взамен `msghdr_t`, `WSABUF` взамен `iovec_t`, `WSA_CMSG_*` взамен `CMSG_*`, а
  *          сам приём с метаданными - расширенным вызовом `WSARecvMsg`, какой берётся
  *          у сокета управляющим запросом, а не объявлен наперёд
  *
@@ -29,7 +29,7 @@
  *      **Вынесено из движка НЕ ради красоты.** Прежде строй этот жил внутри единицы
  *      трансляции `iocp.cpp`, и следствий у того было два, оба вскрылись в один день
  *      03.09.2026. Первое: проверка доставки метки перегрузки на датаграмму
- *      (`SocketEcnDeliveryTest`) пропускалась под MS Windows с доводом «нет `msghdr`,
+ *      (`SocketEcnDeliveryTest`) пропускалась под MS Windows с доводом «нет `msghdr_t`,
  *      доступного проверке», - движок метку доносил, а убедиться в том было нечем.
  *      Второе: щуп чтения каталога довести до движка не удалось по той же причине, и
  *      сличать пришлось дословно вынесенный текст двух редакций вместо работы самого
@@ -49,32 +49,34 @@
  *      переносит его в `errno` своей же таблицей, проверке довольно самого кода
  *
  *      **Типы остаются в общем пространстве имён, а функции - в своём.** Имена
- *      `msghdr`, `iovec` и `cmsghdr` движки пишут без всякого пространства, ровно как
+ *      `msghdr_t`, `iovec_t` и `cmsghdr_t` движки пишут без всякого пространства, ровно как
  *      у POSIX, и уводить их значило бы разводить код там, где довод общий. Функции же
  *      зовутся с явным указанием - `win::message::receive`, - и с одноимёнными
  *      вызовами системы не путаются никогда
  *
  * @warning Обход служебных метаданных ведётся макросами `CMSG_*`, и прежние их
  *          определения снимаются ЯВНО, а не переопределяются поверх: у MS Windows
- *          имена эти заняты (`mswsock.h`), и работают там с `WSAMSG`, а не с `msghdr`.
+ *          имена эти заняты (`mswsock.h`), и работают там с `WSAMSG`, а не с `msghdr_t`.
  *          Подмена намеренная, и написана она так, чтобы это было видно
  *
  * \~english
  * @brief Header file of the POSIX message layout for MS Windows — the scattered buffers,
  *        the control metadata and the reception of a message together with them
+ *
  * @details MS Windows has this whole layout, but it is called by its own names: `WSAMSG`
- *          instead of `msghdr`, `WSABUF` instead of `iovec`, `WSA_CMSG_*` instead of `CMSG_*`,
+ *          instead of `msghdr_t`, `WSABUF` instead of `iovec_t`, `WSA_CMSG_*` instead of `CMSG_*`,
  *          and the reception with the metadata itself — by the extended call `WSARecvMsg`,
  *          which is taken from a socket by a control request, and is not declared beforehand
  *          The composition of the fields at the twins differs from the POSIX one, and one
  *          redeclaration of a name is not enough here: the transfer of the composition is
  *          performed in the mediators themselves
+ *
  * @par Deliberate decisions
  *      **Taken out of the engine NOT for the beauty.** Formerly this layout lived inside the
  *      translation unit `iocp.cpp`, and there were two consequences of that, both of which came
  *      to light in one day, 03.09.2026. The first one: the test of the delivery of the congestion
  *      mark on a datagram (`SocketEcnDeliveryTest`) was being skipped under MS Windows with the
- *      argument «there is no `msghdr` available to the test» — the engine was delivering the mark,
+ *      argument «there is no `msghdr_t` available to the test» — the engine was delivering the mark,
  *      but there was nothing to make sure of it with. The second one: a probe of the reading of a
  *      directory could not be brought to the engine for the same reason, and what had to be compared
  *      was the literally taken out text of two editions instead of the work of the engine itself.
@@ -93,13 +95,14 @@
  *      of it itself: the engine transfers it into `errno` by its own table, for a test the code itself
  *      is enough
  *      **The types remain in the common namespace, and the functions — in their own one.** The names
- *      `msghdr`, `iovec` and `cmsghdr` the engines write without any namespace, exactly as at POSIX,
+ *      `msghdr_t`, `iovec_t` and `cmsghdr_t` the engines write without any namespace, exactly as at POSIX,
  *      and taking them away would mean spreading the code apart where the argument is a common one.
  *      The functions, though, are called with an explicit indication — `win::message::receive`, — and
  *      are never confused with the calls of the system of the same name
+ *
  * @warning The walk of the control metadata is performed by the `CMSG_*` macros, and their former
  *          definitions are removed EXPLICITLY, and not redefined on top: at MS Windows these names are
- *          occupied (`mswsock.h`), and they work there with `WSAMSG`, and not with `msghdr`. The
+ *          occupied (`mswsock.h`), and they work there with `WSAMSG`, and not with `msghdr_t`. The
  *          substitution is a deliberate one, and it is written so that this would be visible
  *
  * \~
@@ -136,16 +139,16 @@
  *
  * \~english
  * @brief Description of an exchange buffer in the POSIX layout
+ *
  * @note It lies in the common namespace deliberately: the engines write this name without any
  *       indication, exactly as at POSIX
  *
  * \~
  */
-struct iovec {
-	void * iov_base;                  // Начало буфера обмена
-	size_t iov_len;                   // Размер буфера обмена
-};
-
+typedef struct Windows_IO_Vector  {
+	void * base; // Начало буфера обмена
+	size_t size; // Размер буфера обмена
+} iovec_t;
 /**
  * \~russian
  * @brief Описание сообщения в строе POSIX
@@ -155,15 +158,15 @@ struct iovec {
  *
  * \~
  */
-struct msghdr {
-	void * msg_name;                  // Адрес собеседника
-	socklen_t msg_namelen;            // Размер адреса собеседника
-	struct iovec * msg_iov;           // Набор буферов обмена
-	size_t msg_iovlen;                // Число буферов обмена
-	void * msg_control;               // Буфер служебных метаданных
-	size_t msg_controllen;            // Размер буфера служебных метаданных
-	int32_t msg_flags;                // Признаки сообщения
-};
+typedef struct Windows_Message_Header {
+	void * name;        // Адрес собеседника
+	socklen_t nameSize; // Размер адреса собеседника
+	iovec_t * iovec;    // Набор буферов обмена
+	size_t iovecSize;   // Число буферов обмена
+	void * control;     // Буфер служебных метаданных
+	size_t controlSize; // Размер буфера служебных метаданных
+	int32_t flags;      // Признаки сообщения
+} msghdr_t;
 
 /**
  * \~russian
@@ -174,12 +177,13 @@ struct msghdr {
  *
  * \~english
  * @brief Header of a control metadatum
+ *
  * @note Its composition at MS Windows coincides with the POSIX one by the names, hence a
  *       redeclaration of the name is enough here
  *
  * \~
  */
-typedef WSACMSGHDR cmsghdr;
+typedef WSACMSGHDR cmsghdr_t;
 
 /**
  * \~russian
@@ -220,6 +224,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the alignment of the size of a control metadatum
+			 *
 			 * @param size aligned size
 			 * @return     aligned size
 			 *
@@ -238,18 +243,19 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the first control metadatum of a message
+			 *
 			 * @param msg description of the message
 			 * @return    first control metadatum, or an empty value
 			 *
 			 * \~
 			 */
-			__AWH_INLINE__ cmsghdr * first(const struct msghdr * msg) noexcept {
+			__AWH_INLINE__ cmsghdr_t * first(const msghdr_t * msg) noexcept {
 				// Если буфера служебных метаданных нет либо он меньше заголовка
-				if((msg == nullptr) || (msg->msg_control == nullptr) || (msg->msg_controllen < sizeof(cmsghdr)))
+				if((msg == nullptr) || (msg->control == nullptr) || (msg->controlSize < sizeof(cmsghdr_t)))
 					// Выводим пустое значение
 					return nullptr;
 				// Выводим первое служебное метаданное
-				return reinterpret_cast <cmsghdr *> (msg->msg_control);
+				return reinterpret_cast <cmsghdr_t *> (msg->control);
 			}
 			/**
 			 * \~russian
@@ -261,27 +267,28 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the next control metadatum of a message
+			 *
 			 * @param msg  description of the message
 			 * @param cmsg current control metadatum
 			 * @return     next control metadatum, or an empty value
 			 *
 			 * \~
 			 */
-			__AWH_INLINE__ cmsghdr * next(const struct msghdr * msg, cmsghdr * cmsg) noexcept {
+			__AWH_INLINE__ cmsghdr_t * next(const msghdr_t * msg, cmsghdr_t * cmsg) noexcept {
 				// Если обход окончен либо заголовок неполон
-				if((msg == nullptr) || (cmsg == nullptr) || (cmsg->cmsg_len < sizeof(cmsghdr)))
+				if((msg == nullptr) || (cmsg == nullptr) || (cmsg->cmsg_len < sizeof(cmsghdr_t)))
 					// Выводим пустое значение
 					return nullptr;
 				// Получаем начало буфера служебных метаданных
-				uint8_t * const begin = reinterpret_cast <uint8_t *> (msg->msg_control);
+				uint8_t * const begin = reinterpret_cast <uint8_t *> (msg->control);
 				// Получаем следующее служебное метаданное
 				uint8_t * const value = (reinterpret_cast <uint8_t *> (cmsg) + align(static_cast <size_t> (cmsg->cmsg_len)));
 				// Если следующее метаданное за пределами буфера
-				if(static_cast <size_t> ((value + sizeof(cmsghdr)) - begin) > msg->msg_controllen)
+				if(static_cast <size_t> ((value + sizeof(cmsghdr_t)) - begin) > msg->controlSize)
 					// Выводим пустое значение
 					return nullptr;
 				// Выводим следующее служебное метаданное
-				return reinterpret_cast <cmsghdr *> (value);
+				return reinterpret_cast <cmsghdr_t *> (value);
 			}
 			/**
 			 * \~russian
@@ -293,7 +300,7 @@ namespace awh {
 			 *          Второй раз - КРИПТОГРАФИЧЕСКИМИ: `wincrypt.h:2910` объявляет
 			 *          `CMSG_DATA` числом 1, видом криптографического сообщения, и
 			 *          приходит он через `windows.h` во всякую единицу трансляции, где
-			 *          есть хоть что-то от криптографии
+			 *          есть хоть что-то от криптографии.
 			 *
 			 * @warning Подмена макроса от второго столкновения НЕ спасает: заголовок
 			 *          криптографии приходит ПОЗЖЕ и переопределяет имя числом. Разбор
@@ -311,29 +318,33 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the data of a control metadatum
+			 *
 			 * @details It answers the `CMSG_DATA` macro and is started because this name at MS
 			 *          Windows is occupied TWICE. The first time — by the network headers
 			 *          (`WSA_CMSG_DATA` at `mswsock.h`), and that one is dealt with by the substitution
 			 *          below. The second time — by the CRYPTOGRAPHIC ones: `wincrypt.h:2910` declares
 			 *          `CMSG_DATA` as the number 1, a kind of a cryptographic message, and it comes
 			 *          through `windows.h` into every translation unit where there is at least
-			 *          something of the cryptography
+			 *          something of the cryptography.
+			 *
 			 * @warning The substitution of the macro does NOT save from the second collision: the header
 			 *          of the cryptography comes LATER and redefines the name by a number. The parsing
 			 *          then answers «called object type 'int' is not a function», and it is not possible
 			 *          to understand the reason by it in any way. Established on 03.09.2026 at the test
 			 *          of the delivery of the congestion mark, where the cryptography comes by a roundabout way
+			 *
 			 * @note Hence the consumers, apart from the engine itself, should call EXACTLY this
 			 *       function: there is nothing to occupy its name with, and the macro remains for the sake
 			 *       of the code written in the POSIX notions
+			 *
 			 * @param cmsg control metadatum
 			 * @return     beginning of the data of the control metadatum
 			 *
 			 * \~
 			 */
-			__AWH_INLINE__ uint8_t * data(const cmsghdr * cmsg) noexcept {
+			__AWH_INLINE__ uint8_t * data(const cmsghdr_t * cmsg) noexcept {
 				// Выводим начало данных служебного метаданного
-				return (reinterpret_cast <uint8_t *> (const_cast <cmsghdr *> (cmsg)) + align(sizeof(cmsghdr)));
+				return (reinterpret_cast <uint8_t *> (const_cast <cmsghdr_t *> (cmsg)) + align(sizeof(cmsghdr_t)));
 			}
 			/**
 			 * \~russian
@@ -342,7 +353,7 @@ namespace awh {
 			 * @details Приём этот ПРОСТОЙ: он идёт прямо к системе расширенным вызовом
 			 *          `WSARecvMsg` и о пуле родного приёма движка не знает ничего.
 			 *          Движок держит поверх него свой `recvmsg`, и утверждения у них
-			 *          разные - подробности при описании файла
+			 *          разные - подробности при описании файла.
 			 *
 			 * @warning Расширенный вызов берётся у самого сокета управляющим запросом и
 			 *          запоминается: адрес его общий на всю библиотеку сокетов
@@ -355,12 +366,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the reception of a message with the control metadata
+			 *
 			 * @details This reception is a PLAIN one: it goes straight to the system by the extended
 			 *          call `WSARecvMsg` and knows nothing about the pool of the native reception of
 			 *          the engine. The engine keeps its own `recvmsg` on top of it, and their
-			 *          statements are different ones — the details are at the description of the file
+			 *          statements are different ones — the details are at the description of the file.
+			 *
 			 * @warning The extended call is taken from the socket itself by a control request and is
 			 *          remembered: its address is a common one for the whole library of the sockets
+			 *
 			 * @param sock  socket the reception is performed from
 			 * @param msg   description of the received message
 			 * @param flags reception flags: only an empty set is supported
@@ -369,14 +383,14 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			int64_t receive(const net::socket_t sock, struct msghdr * msg, const int32_t flags = 0, int32_t * error = nullptr) noexcept;
+			int64_t receive(const net::socket_t sock, msghdr_t * msg, const int32_t flags = 0, int32_t * error = nullptr) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения расширенного вызова приёма сообщения
 			 *
 			 * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у
 			 *          самого сокета управляющим запросом. Берётся он однажды и
-			 *          запоминается - адрес общий для всех сокетов библиотеки
+			 *          запоминается - адрес общий для всех сокетов библиотеки.
 			 *
 			 * @note Наружу выведен ради движка: подача НАЛОЖЕННОГО приёма ведётся им
 			 *       самим, порту завершений, и простым приёмом отсюда не выражается.
@@ -388,13 +402,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the extended call of the reception of a message
+			 *
 			 * @details This call at MS Windows is not declared beforehand: its address is taken from
 			 *          the socket itself by a control request. It is taken once and is remembered —
-			 *          its address is a common one for all the sockets of the library
+			 *          its address is a common one for all the sockets of the library.
+			 *
 			 * @note It is brought out for the sake of the engine: the submission of an OVERLAPPED
 			 *       reception is performed by it itself, to the completion port, and is not expressed
 			 *       by a plain reception from here. Formerly this obtaining was started in two places,
 			 *       and there turned out to be two remembered addresses instead of one
+			 *
 			 * @param sock socket the call is asked from
 			 * @return     address of the extended call, or an empty value
 			 *
@@ -410,19 +427,21 @@ namespace awh {
  * Обход служебных метаданных сообщения
  *
  * @details Имена эти у MS Windows заняты макросами `WSA_CMSG_*` (`mswsock.h`), и
- *          работают те с `WSAMSG`, а не с `msghdr`. Оттого прежние определения
+ *          работают те с `WSAMSG`, а не с `msghdr_t`. Оттого прежние определения
  *          снимаются ЯВНО, а не переопределяются поверх: подмена намеренная, и написана
- *          она так, чтобы это было видно
+ *          она так, чтобы это было видно.
  *
  * @note Найдено разбором предупреждений 25.08.2026: переопределение поверх давало пять
  *       предупреждений `redefined`, и намерение в них не читалось никак
  *
  * \~english
  * The walk of the control metadata of a message
+ *
  * @details These names at MS Windows are occupied by the `WSA_CMSG_*` macros (`mswsock.h`), and
- *          they work with `WSAMSG`, and not with `msghdr`. Hence the former definitions are
+ *          they work with `WSAMSG`, and not with `msghdr_t`. Hence the former definitions are
  *          removed EXPLICITLY, and not redefined on top: the substitution is a deliberate one,
- *          and it is written so that this would be visible
+ *          and it is written so that this would be visible.
+ *
  * @note Found by the analysis of the warnings on 25.08.2026: the redefinition on top gave five
  *       `redefined` warnings, and the intention was not read in them in any way
  *
@@ -436,5 +455,5 @@ namespace awh {
 #define CMSG_FIRSTHDR(msg) win::message::first(msg)
 #define CMSG_NXTHDR(msg, cmsg) win::message::next(msg, cmsg)
 #define CMSG_DATA(cmsg) win::message::data(cmsg)
-#define CMSG_LEN(size) (win::message::align(sizeof(cmsghdr)) + (size))
-#define CMSG_SPACE(size) (win::message::align(sizeof(cmsghdr)) + win::message::align(size))
+#define CMSG_LEN(size) (win::message::align(sizeof(cmsghdr_t)) + (size))
+#define CMSG_SPACE(size) (win::message::align(sizeof(cmsghdr_t)) + win::message::align(size))

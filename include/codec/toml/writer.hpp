@@ -207,13 +207,13 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
 						/**
 						 * \~russian
-						 * Флаг записи отступа перед парами объявленной таблицы
+						 * @brief Флаг записи отступа перед парами объявленной таблицы
 						 *
 						 * @note Отступ этот украшающий: описание пробельную обвязку строки
 						 *       отбрасывает, и на разбор он не влияет
 						 *
 						 * \~english
-						 * Flag of the writing of an indent before the pairs of a declared table
+						 * @brief Flag of the writing of an indent before the pairs of a declared table
 						 *
 						 * @note This indent is an adorning one: the specification discards the whitespace padding of a line,
 						 *       and it does not affect the parsing
@@ -221,11 +221,19 @@ namespace awh {
 						 * \~
 						 */
 						bool indent;
-						// Флаг записи пробелов вокруг знака равенства
+						/**
+						 * \~russian
+						 * @brief Флаг записи пробелов вокруг знака равенства
+						 *
+						 * \~english
+						 * @brief Flag of the writing of spaces around the equality sign
+						 *
+						 * \~
+						 */
 						bool spaces;
 						/**
 						 * \~russian
-						 * Признак дозволения смены записи строки, содержимого не несущей
+						 * @brief Признак дозволения смены записи строки, содержимого не несущей
 						 *
 						 * @note Дословная строка управляющих последовательностей не
 						 *       признаёт, и одинарную кавычку записать ею нечем. При взведённом
@@ -234,7 +242,7 @@ namespace awh {
 						 *       том, ни в другом случае: меняется лишь выбранная человеком ограда
 						 *
 						 * \~english
-						 * Flag of the permission of a change of the notation of a string that does not carry the content
+						 * @brief Flag of the permission of a change of the notation of a string that does not carry the content
 						 *
 						 * @note A literal string does not recognize the escape sequences,
 						 *       and there is nothing to write a single quote with it. When the flag is
@@ -247,7 +255,7 @@ namespace awh {
 						bool promote;
 						/**
 						 * \~russian
-						 * Признак того, что читающий признаёт знаки Юникода в имени без кавычек
+						 * @brief Признак того, что читающий признаёт знаки Юникода в имени без кавычек
 						 *
 						 * @note Описание версии 1.0.0 отводит имени без кавычек лишь знаки
 						 *       US-ASCII, и умолчанием признак снят: имя с прочими знаками
@@ -255,7 +263,7 @@ namespace awh {
 						 *       желанию пишущего - иначе собранный текст читающему не прочесть
 						 *
 						 * \~english
-						 * Flag of the reader recognizing the Unicode characters in a name without quotes
+						 * @brief Flag of the reader recognizing the Unicode characters in a name without quotes
 						 *
 						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to a name without quotes,
 						 *       and by default the flag is not set: a name with the other characters
@@ -268,21 +276,24 @@ namespace awh {
 						// Флаг записи пустой строки перед объявлением таблицы
 						bool separated;
 						/**
-						 * Наибольшая допустимая длина составной части имени ключа в байтах,
-						 * ноль - без предела
+						 * \~russian
+						 * @brief Наибольшая допустимая длина составной части имени ключа в байтах, ноль - без предела
+						 *
+						 * \~english
+						 * @brief The greatest admissible length of a compound part of a name of a key in bytes, zero - without a limit
+						 *
+						 * \~
 						 */
 						uint32_t maxKey;
 						/**
 						 * \~russian
-						 * Наибольшая допустимая длина логической строки в байтах,
-						 * ноль - без предела
+						 * @brief Наибольшая допустимая длина логической строки в байтах, ноль - без предела
 						 *
 						 * @note Предел тот же, что и у разбора: строку длиннее записать
 						 *       значило бы собрать текст, который читающий отвергнет
 						 *
 						 * \~english
-						 * Largest admissible length of a logical line in bytes,
-						 * zero — without a limit
+						 * @brief Largest admissible length of a logical line in bytes, zero — without a limit
 						 *
 						 * @note The limit is the same as that of the parsing: to write a longer line would
 						 *       mean to assemble a text which the reader will reject
@@ -292,7 +303,7 @@ namespace awh {
 						uint32_t maxLine;
 						/**
 						 * \~russian
-						 * Наибольшая допустимая глубина вложенности значений
+						 * @brief Наибольшая допустимая глубина вложенности значений
 						 *
 						 * @note Смысл тот же, что и у разбора: считается вложенностью
 						 *       перечней и встроенных таблиц друг в друга, а ноль запрещает
@@ -301,7 +312,7 @@ namespace awh {
 						 *       который читающий отвергнет
 						 *
 						 * \~english
-						 * Largest admissible depth of the nesting of the values
+						 * @brief Largest admissible depth of the nesting of the values
 						 *
 						 * @note The meaning is the same as that of the parsing: it is counted by the nesting of the
 						 *       arrays and of the inline tables into one another, while zero prohibits the
@@ -313,20 +324,26 @@ namespace awh {
 						 */
 						uint32_t maxDepth;
 						/**
-						 * Наибольшее допустимое количество составных частей имени ключа, ноль - без предела
+						 * \~russian
+						 * @brief Наибольшее допустимое количество составных частей имени ключа, ноль - без предела
+						 *
+						 * \~english
+						 * @brief The greatest admissible number of the compound parts of a name of a key, zero - without a limit
+						 *
+						 * \~
 						 */
 						uint32_t maxParts;
 						// Вид знака конца строки собираемого текста
 						newline_t newline;
 						/**
 						 * \~russian
-						 * Правило обхождения с негодной последовательностью UTF-8
+						 * @brief Правило обхождения с негодной последовательностью UTF-8
 						 *
 						 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD, `REFUSE`
 						 *       отвергает запись целиком, а `PASS` пропускает байты как есть
 						 *
 						 * \~english
-						 * Rule of the treatment of a malformed UTF-8 sequence
+						 * @brief Rule of the treatment of a malformed UTF-8 sequence
 						 *
 						 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character, `REFUSE`
 						 *       refuses the writing entirely, while `PASS` passes the bytes through as they are
@@ -374,14 +391,14 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Level {
 						/**
 						 * \~russian
-						 * Признак того, что на уровне записано примечание
+						 * @brief Признак того, что на уровне записано примечание
 						 *
 						 * @note Держится ради закрывающей скобки перечня: примечание длится
 						 *       до конца строки, и скобка, за ним записанная, досталась бы
 						 *       содержимому его
 						 *
 						 * \~english
-						 * Flag of a comment having been written at the level
+						 * @brief Flag of a comment having been written at the level
 						 *
 						 * @note It is kept for the sake of the closing bracket of an array: a comment lasts
 						 *       until the end of the line, and the bracket written after it would go
@@ -392,13 +409,13 @@ namespace awh {
 						bool remarked;
 						/**
 						 * \~russian
-						 * Признак многострочной записи перечня
+						 * @brief Признак многострочной записи перечня
 						 *
 						 * @note У встроенной таблицы признак этот всегда снят: описание
 						 *       переноса строки внутри неё не дозволяет
 						 *
 						 * \~english
-						 * Flag of the multiline notation of an array
+						 * @brief Flag of the multiline notation of an array
 						 *
 						 * @note For an inline table this flag is always unset: the specification does not permit
 						 *       a line break inside it
@@ -408,14 +425,14 @@ namespace awh {
 						bool multiline;
 						/**
 						 * \~russian
-						 * Признак того, что разделитель очередного значения уже записан
+						 * @brief Признак того, что разделитель очередного значения уже записан
 						 *
 						 * @note Взводится примечанием, дописанным к значению перечня:
 						 *       запятая ставится перед примечанием, а не после него, и
 						 *       записать её второй раз значило бы собрать пустое значение
 						 *
 						 * \~english
-						 * Flag of the separator of the next value having already been written
+						 * @brief Flag of the separator of the next value having already been written
 						 *
 						 * @note Raised by a comment appended to a value of an array:
 						 *       the comma is put before the comment rather than after it, and
@@ -448,7 +465,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Признак текста, отказом оборванного
+					 * @brief Признак текста, отказом оборванного
 					 *
 					 * @details Отказ, случившийся после того, как операция уже дописала начало
 					 *          своё, оставляет строку оборванной, и выдавать собранный текст после него
@@ -457,7 +474,7 @@ namespace awh {
 					 *          рваность после того неразличима.
 					 *
 					 * \~english
-					 * Flag of a text cut off by a refusal
+					 * @brief Flag of a text cut off by a refusal
 					 *
 					 * @details A refusal that occurred after the operation had already appended its own
 					 *          beginning leaves the line cut off, and the assembled text must not be issued after
@@ -472,14 +489,14 @@ namespace awh {
 					bool _tabled;
 					/**
 					 * \~russian
-					 * Признак того, что к последней записанной строке можно дописать примечание
+					 * @brief Признак того, что к последней записанной строке можно дописать примечание
 					 *
 					 * @details Дописывается примечание к строке пары либо объявления таблицы:
 					 *          пустая строка примечанием перестала бы быть пустой, а к строке
 					 *          примечания дописывать нечего - оно и так примечание.
 					 *
 					 * \~english
-					 * Flag of a comment being appendable to the last written line
+					 * @brief Flag of a comment being appendable to the last written line
 					 *
 					 * @details A comment is appended to the line of a pair or of a table declaration:
 					 *          an empty line would cease to be an empty one from a comment, while to the line of
@@ -493,7 +510,7 @@ namespace awh {
 					size_t _length;
 					/**
 					 * \~russian
-					 * Длина записи, знаком конца строки завершённой
+					 * @brief Длина записи, знаком конца строки завершённой
 					 *
 					 * @details Примечание, дописываемое к готовой строке, снимает знак её
 					 *          конца и дописывает содержимое к той же записи: длина записи ей
@@ -504,7 +521,7 @@ namespace awh {
 					 *       многострочного значения, - а по тексту видна лишь последняя из них
 					 *
 					 * \~english
-					 * Length of a record completed by a line ending character
+					 * @brief Length of a record completed by a line ending character
 					 *
 					 * @details A comment appended to a ready line removes the character of its
 					 *          end and appends the content to the same record: the length of the record is

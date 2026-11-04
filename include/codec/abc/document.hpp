@@ -1050,10 +1050,19 @@ namespace awh {
 					} value_t;
 				private:
 					/**
-					 * Правило обращения с повторяющимся именем поля отображения
+					 * \~russian
+					 * @brief Правило обращения с повторяющимся именем поля отображения
 					 *
-					 * Правило это живёт состоянием сборки, а не документом: применяется оно в миг
-					 * закрытия отображения, а собранному документу знать о нём уже незачем
+					 * @details Правило это живёт состоянием сборки, а не документом: применяется оно в миг
+					 *          закрытия отображения, а собранному документу знать о нём уже незачем.
+					 *
+					 * \~english
+					 * @brief Rule of the treatment of a repeated name of a field of a mapping
+					 *
+					 * @details This rule lives by a state of an assembling, and not by a document: it is applied at a moment
+					 *          of a closing of a mapping, and to an assembled document it is already of no use to know about it.
+					 *
+					 * \~
 					 */
 					duplicate_t _duplicates;
 				private:
@@ -1073,13 +1082,13 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Место, где отказ разбора произошёл
+					 * @brief Место, где отказ разбора произошёл
 					 *
 					 * @details Место снимается у разбирателя при отказе: разбиратель заводится
 					 *          разбором и им же разрушается, и без переноса место его пропадало бы.
 					 *
 					 * \~english
-					 * Location where the failure of the parsing has occurred
+					 * @brief Location where the failure of the parsing has occurred
 					 *
 					 * @details The location is taken from the parser upon a failure: the parser is created by the
 					 *          parsing and destroyed by it too, and without a transfer its location would be lost.

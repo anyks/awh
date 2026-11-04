@@ -59,6 +59,7 @@
 	 *
 	 * \~english
 	 * Set the size of the buffer for the network queue (64 KB by default)
+	 *
 	 * @note This is the capacity of one block of the buffer of the queue and at the same time the upper boundary of the volume of the data,
 	 *       which the queue is capable of holding.
 	 *       May be redefined at the stage of the build through -D.
@@ -82,6 +83,7 @@
  *
  * \~english
  * The alignment of a separate queue on the boundary of a cache line for the prevention of the false sharing
+ *
  * @note The alignment is placed at the place of the declaration of the queue, and not on the class itself.
  *       The queue almost always lies inside a node of an event and is served by the same
  *       thread as the neighbouring fields of the node: there is nobody to share a cache line with there, and
@@ -114,28 +116,27 @@ namespace awh {
 	 * \~russian
 	 * @brief Класс для работы с сетевыми очередями (буфер исходящих данных соединения)
 	 *
-	 * @details
-	 * Очередь используется как буфер обратного давления (backpressure) на стороне отправки: пока
-	 * сокет/ограничитель скорости не готовы принять данные, они хранятся здесь, а приложение получает
-	 * сигналы доступности места (см. QUEUE_OVERFLOW / QUEUE_AVAILABLE и метод available()).
+	 * @details Очередь используется как буфер обратного давления (backpressure) на стороне отправки: пока
+	 *          сокет/ограничитель скорости не готовы принять данные, они хранятся здесь, а приложение получает
+	 *          сигналы доступности места (см. QUEUE_OVERFLOW / QUEUE_AVAILABLE и метод available()).
 	 *
-	 * Внутри объединены две стратегии хранения, выбираемые по типу очереди (type_t):
-	 *  - TCP (поток): bip-buffer (bipartite buffer) - два непрерывных региона A/B без сдвигов памяти
-	 *    (memmove). front() отдаёт непрерывный прогон (потребитель дочитывает остаток следующим вызовом
-	 *    после pop). available() возвращает наибольший непрерывный свободный регион - гарантированный
-	 *    максимум одной записи. push() помещает СКОЛЬКО ВЛЕЗАЕТ и возвращает принятое: поток делится где
-	 *    угодно, поэтому отказ целиком заставлял бы отправителя терять всю порцию вместо её остатка.
-	 *  - UDP (границы сообщений): линейный буфер с заголовком размера (size_t) перед каждой записью и
-	 *    дефрагментацией compact() при нехватке места в хвосте. Запись неделима (всё-или-ничего).
+	 *          Внутри объединены две стратегии хранения, выбираемые по типу очереди (type_t):
+	 *           - TCP (поток): bip-buffer (bipartite buffer) - два непрерывных региона A/B без сдвигов памяти
+	 *             (memmove). front() отдаёт непрерывный прогон (потребитель дочитывает остаток следующим вызовом
+	 *             после pop). available() возвращает наибольший непрерывный свободный регион - гарантированный
+	 *             максимум одной записи. push() помещает СКОЛЬКО ВЛЕЗАЕТ и возвращает принятое: поток делится где
+	 *             угодно, поэтому отказ целиком заставлял бы отправителя терять всю порцию вместо её остатка.
+	 *           - UDP (границы сообщений): линейный буфер с заголовком размера (size_t) перед каждой записью и
+	 *             дефрагментацией compact() при нехватке места в хвосте. Запись неделима (всё-или-ничего).
 	 *
-	 * Буфер выделяется лениво из потоко-локального пула блоков при первой записи и возвращается в пул
-	 * при опустошении очереди (модель «один поток на воркер-процесс», пул без блокировок). Благодаря
-	 * этому простаивающие соединения не удерживают память под буфер.
+	 *          Буфер выделяется лениво из потоко-локального пула блоков при первой записи и возвращается в пул
+	 *          при опустошении очереди (модель «один поток на воркер-процесс», пул без блокировок). Благодаря
+	 *          этому простаивающие соединения не удерживают память под буфер.
 	 *
 	 * @par Замеры (Apple Silicon, буфер 64 КБ, блок 1024 Б)
-	 * Экономия памяти (RSS), 100 000 соединений, 5% под backpressure:
-	 * Латентность push() под фрагментацией, 500 000 итераций (наносекунды):
-	 * Воспроизведение бенчмарков:
+	 *      Экономия памяти (RSS), 100 000 соединений, 5% под backpressure:
+	 *      Латентность push() под фрагментацией, 500 000 итераций (наносекунды):
+	 *      Воспроизведение бенчмарков:
 	 *
 	 * @code
 	 *   sizeof(Network_Queue):             128 байт (буфер вынесен в кучу)
@@ -158,25 +159,28 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Class for working with the network queues (buffer of the outgoing data of a connection)
-	 * @details
-	 * The queue is used as a buffer of the backpressure at the side of the sending: while the
-	 * socket/the limiter of the speed are not ready to accept the data, it is stored here, and the application receives
-	 * the signals of the availability of the room (see QUEUE_OVERFLOW / QUEUE_AVAILABLE and the available() method).
-	 * Inside two strategies of the storage are united, chosen by the type of the queue (type_t):
-	 *  - TCP (a stream): a bip-buffer (bipartite buffer) — two continuous regions A/B without the shifts of the memory
-	 *    (memmove). front() gives back a continuous run (the consumer reads the remainder by the next call
-	 *    after pop). available() returns the largest continuous free region — the guaranteed
-	 *    maximum of one record. push() places AS MUCH AS FITS and returns the accepted amount: a stream is divisible
-	 *    anywhere, so a refusal in whole would force the sender to lose the entire portion instead of its remainder.
-	 *  - UDP (the boundaries of the messages): a linear buffer with a header of the size (size_t) before every record and
-	 *    a defragmentation compact() at a shortage of the room in the tail. A record is atomic (all-or-nothing).
-	 * The buffer is allocated lazily from a thread-local pool of the blocks at the first writing and is returned into the pool
-	 * at the emptying of the queue (the model «one thread per worker process», a pool without locks). Thanks to
-	 * this the idling connections do not hold the memory for a buffer.
+	 *
+	 * @details The queue is used as a buffer of the backpressure at the side of the sending: while the
+	 *          socket/the limiter of the speed are not ready to accept the data, it is stored here, and the application receives
+	 *          the signals of the availability of the room (see QUEUE_OVERFLOW / QUEUE_AVAILABLE and the available() method).
+	 *
+	 *          Inside two strategies of the storage are united, chosen by the type of the queue (type_t):
+	 *           - TCP (a stream): a bip-buffer (bipartite buffer) — two continuous regions A/B without the shifts of the memory
+	 *             (memmove). front() gives back a continuous run (the consumer reads the remainder by the next call
+	 *             after pop). available() returns the largest continuous free region — the guaranteed
+	 *             maximum of one record. push() places AS MUCH AS FITS and returns the accepted amount: a stream is divisible
+	 *             anywhere, so a refusal in whole would force the sender to lose the entire portion instead of its remainder.
+	 *           - UDP (the boundaries of the messages): a linear buffer with a header of the size (size_t) before every record and
+	 *             a defragmentation compact() at a shortage of the room in the tail. A record is atomic (all-or-nothing).
+	 *
+	 *           The buffer is allocated lazily from a thread-local pool of the blocks at the first writing and is returned into the pool
+	 *           at the emptying of the queue (the model «one thread per worker process», a pool without locks). Thanks to
+	 *           this the idling connections do not hold the memory for a buffer.
+	 *
 	 * @par Measurements (Apple Silicon, a buffer of 64 KB, a block of 1024 B)
-	 * The economy of the memory (RSS), 100 000 connections, 5% under the backpressure:
-	 * The latency of push() under the fragmentation, 500 000 iterations (nanoseconds):
-	 * The reproduction of the benchmarks:
+	 *      The economy of the memory (RSS), 100 000 connections, 5% under the backpressure:
+	 *      The latency of push() under the fragmentation, 500 000 iterations (nanoseconds):
+	 *      The reproduction of the benchmarks:
 	 *
 	 * @code
 	 *   sizeof(Network_Queue):             128 bytes (the buffer is taken out to the heap)
@@ -197,6 +201,7 @@ namespace awh {
 	 *   ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*LatencyBenchmark*'
 	 * @endcode
 	 *
+	 * \~
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Network_Queue {
 		public:
@@ -251,6 +256,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the lazy allocation of the buffer of the queue from the pool (if it is not allocated yet)
+			 *
 			 * @return result of the allocation of the buffer (false at a shortage of the memory)
 			 *
 			 * \~
@@ -275,6 +281,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the fast getting of the size of a record (without the checks — is called only for the valid positions)
+			 *
 			 * @return size of the data in the queue
 			 *
 			 * \~
@@ -289,6 +296,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the size of a record (a direct access)
+			 *
 			 * @param pos  position of the record to update the size of
 			 * @param size new size of the data in the queue
 			 *
@@ -315,17 +323,19 @@ namespace awh {
 			 *          поля с нулём, а вызов её из другой единицы трансляции встроить
 			 *          нельзя. Отправка спрашивает очередь на каждом обращении, и
 			 *          обмен короткими сообщениями платил за это обращением к чужому
-			 *          модулю там, где хватает одного сравнения
+			 *          модулю там, где хватает одного сравнения.
 			 *
 			 * @return результат проверки на пустоту очереди
 			 *
 			 * \~english
 			 * @brief Method of checking the queue for emptiness
+			 *
 			 * @details Is defined in the header deliberately: the check comes down to a comparison of
 			 *          a field with zero, and a call of it from another translation unit cannot be
 			 *          inlined. The sending asks the queue at every address, and
 			 *          the exchange of short messages paid for this by an address to a foreign
-			 *          module where one comparison is enough
+			 *          module where one comparison is enough.
+			 *
 			 * @return result of the check of the queue for emptiness
 			 *
 			 * \~
@@ -343,6 +353,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the total size of the useful data in the queue (without the metadata taken into account)
+			 *
 			 * @return size of the data in the queue
 			 *
 			 * \~
@@ -360,6 +371,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the number of the records in the queue
+			 *
 			 * @return number of the records in the queue
 			 *
 			 * \~
@@ -371,11 +383,14 @@ namespace awh {
 			 * @brief Метод определения доступного пространства для новых данных (в байтах полезной нагрузки)
 			 *
 			 * @note   Возвращает размер наибольшего непрерывного свободного региона: для TCP (bip) это гарантированный максимум одной записи, для UDP - свободное место за вычетом заголовка.
+			 *
 			 * @return доступное пространство для новых данных в очереди
 			 *
 			 * \~english
 			 * @brief Method of the determination of the available room for the new data (in the bytes of the payload)
+			 *
 			 * @note   Returns the size of the largest continuous free region: for TCP (bip) this is the guaranteed maximum of one record, for UDP — the free room minus the header.
+			 *
 			 * @return available room for the new data in the queue
 			 *
 			 * \~
@@ -390,6 +405,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the type of the network queue
+			 *
 			 * @return type of the network queue
 			 *
 			 * \~
@@ -415,6 +431,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of removing the top record from the queue
+			 *
 			 * @param size size of the data to remove from the queue
 			 * @return     result of the removal of the top record from the queue (true at a success, false if the queue is empty)
 			 *
@@ -432,6 +449,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding the data into the queue
+			 *
 			 * @param data data to add into the queue
 			 * @param size size of the data to add into the queue
 			 * @return     amount of the data successfully added into the queue (0 at a failure, when there is not enough room)
@@ -447,7 +465,7 @@ namespace awh {
 			 *          порознь - собирать их во временный буфер незачем. Нужно это тем
 			 *          потребителям, кто переносит очередью не одни данные, но и настройки
 			 *          их отправки: держать настройки рядом с очередью нельзя, ибо пишет
-			 *          в неё не один лишь отправитель
+			 *          в неё не один лишь отправитель.
 			 *
 			 * @param head   голова записи
 			 * @param length размер головы записи
@@ -463,16 +481,19 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding the data into the queue by one record of two parts
+			 *
 			 * @details The head and the data lie into the queue by **one** record, but are copied
 			 *          separately — there is no need to assemble them into a temporary buffer. This is needed by those
 			 *          consumers who carry by the queue not only the data, but also the settings
 			 *          of their sending: keeping the settings beside the queue is impossible, for
-			 *          not only the sender writes into it
+			 *          not only the sender writes into it.
+			 *
 			 * @param head   head of the record
 			 * @param length size of the head of the record
 			 * @param data   data to add into the queue
 			 * @param size   size of the data to add into the queue
 			 * @return       amount of the DATA successfully added into the queue, without the account of the head
+			 *
 			 * @warning The record is laid entirely or is not laid at all: a head torn away
 			 *          from its data would make the consumer read the settings of one message
 			 *          together with the data of another. Therefore at a stream queue the rule
@@ -493,6 +514,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the data from the queue (without the removal — for the reading)
+			 *
 			 * @param data data to get from the queue (a pointer to the data in the queue is set)
 			 * @param size size of the data to get from the queue
 			 * @return     result (true at a success, false if the queue is empty)
@@ -556,7 +578,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor

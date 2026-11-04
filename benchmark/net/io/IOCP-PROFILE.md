@@ -2044,7 +2044,7 @@ EXE/DLL/ETL в этот архив не включены; оригиналы о�
 Сохранённый `awh-flags.txt` предыдущего AWH/libuv сравнения имеет пустой
 `CXX_DEFINES`, без `AWH_ALLOC_DISABLED`. Его SHA-256 совпадает с прежним
 manifest: `bd99582b7358193b3b61838bf1aca4611d3f742674eff75ae3417153cdc53928`.
-В старом повторном ETW есть inclusive samples `Allocator::capture` (3),
+В старом повторном ETW есть inclusive samples `allocator::capture` (3),
 `PECapture::apply` (2), `PECapture::acquire` (2): исполнялась попытка захвата.
 Эти samples сами по себе не доказывают успешное возвращаемое значение.
 Прежние числа сохраняются как исторические; они не переименованы в OFF.
@@ -2145,7 +2145,7 @@ IOCP сохранил SHA `933b95bfa7952e15fcf723fce94381d3037ea1ccfa4d10eb159cb
 `218d88cfa488c7d3226229a523b60600a3419ba6fd8562ea30ddb1dcbfdf89db`.
 Link response benchmark указывает на эту библиотеку; сохранены хеши
 объектов, флаги, response-файлы, символы и дизассемблирование. В объекте
-`fmk.cpp` нет ссылки на `Allocator::capture`; в `capture()` OFF-объекта
+`fmk.cpp` нет ссылки на `allocator::capture`; в `capture()` OFF-объекта
 подтверждён возврат false.
 
 Проверка исполнения выполнена отдельным диагностическим EXE с той же

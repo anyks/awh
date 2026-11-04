@@ -83,7 +83,8 @@ namespace awh {
 		 * \~english
 		 * @brief Function representing a set of code values by a Punycode record
 		 *
-		 * @details The prefix designating a label record is not appended to the result.
+		 * @details The prefix, by which a label record is designated, to a result
+		 *          is not joined.
 		 *
 		 * @param text   set of code values of the text being represented
 		 * @param result resulting record of characters of the ASCII set
@@ -106,7 +107,8 @@ namespace awh {
 		 * \~english
 		 * @brief Punycode record parsing function
 		 *
-		 * @details The prefix designating a label record is subject neither to parsing nor to passing in.
+		 * @details The prefix, by which a label record is designated, is not subject
+		 *          neither to a parsing nor to a passing in.
 		 *
 		 * @param text   record of characters of the ASCII set being parsed
 		 * @param result set of code values of the parsed text

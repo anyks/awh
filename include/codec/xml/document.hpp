@@ -206,7 +206,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Клеймо поколения дерева, при котором узел снят
+					 * @brief Клеймо поколения дерева, при котором узел снят
 					 *
 					 * @details Узел хранит опознаватель, а перестроение дерева - разбор, чтение,
 					 *          очистка, прививка - нумерацию меняет. Узел, перестроение переживший,
@@ -225,7 +225,7 @@ namespace awh {
 					 *          JSON по сходству устройства дерева, а не по общему правилу
 					 *
 					 * \~english
-					 * Stamp of the generation of the tree at which the node was taken
+					 * @brief Stamp of the generation of the tree at which the node was taken
 					 *
 					 * @details The node holds an identifier, while a rebuilding of the tree - the parsing,
 					 *          the reading, the clearing, the grafting - changes the numbering. A node that
@@ -249,7 +249,15 @@ namespace awh {
 					 */
 					uint32_t _stamp;
 				private:
-					// Дерево разметки, которому принадлежит узел
+					/**
+					 * \~russian
+					 * @brief Дерево разметки, которому принадлежит узел
+					 *
+					 * \~english
+					 * @brief Markup tree to which the node belongs
+					 *
+					 * \~
+					 */
 					const Document * _document;
 				private:
 					/**
@@ -1192,13 +1200,19 @@ namespace awh {
 					} settings_t;
 				private:
 					/**
-					 * Узел дерева обращается к арене и хранилищу знаков напрямую
+					 * \~russian
+					 * @brief Узел дерева обращается к арене и хранилищу знаков напрямую
+					 *
+					 * \~english
+					 * @brief A node of a tree addresses an arena and a store of the signs directly
+					 *
+					 * \~
 					 */
 					friend class Node;
 				private:
 					/**
 					 * \~russian
-					 * Клеймо поколения дерева разметки
+					 * @brief Клеймо поколения дерева разметки
 					 *
 					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
 					 *          чтением, очисткой и прививкой. Узлы хранят клеймо своего поколения и по
@@ -1206,7 +1220,7 @@ namespace awh {
 					 *          обращается в честный отказ.
 					 *
 					 * \~english
-					 * Stamp of the generation of the markup tree
+					 * @brief Stamp of the generation of the markup tree
 					 *
 					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing, the
 					 *          reading, the clearing and the grafting. The nodes hold the stamp of their
@@ -1249,14 +1263,14 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Код ошибки последней операции разбора
+					 * @brief Код ошибки последней операции разбора
 					 *
 					 * @note Изменяемым он объявлен ради записи: `dump()` есть ход постоянный -
 					 *       дерева он не меняет, - однако отказ записи обязан лечь в дерево,
 					 *       и спрашивается он тем же ходом `error()`, что и отказ разбора
 					 *
 					 * \~english
-					 * Code of the error of the last operation of the parsing
+					 * @brief Code of the error of the last operation of the parsing
 					 *
 					 * @note It is declared mutable for the sake of the writing: `dump()` is a constant
 					 *       step - it does not change the tree, - yet a refusal of the writing must lie
@@ -1268,14 +1282,14 @@ namespace awh {
 					mutable error_t _error;
 					/**
 					 * \~russian
-					 * Положение обнаруженной ошибки в исходном тексте
+					 * @brief Положение обнаруженной ошибки в исходном тексте
 					 *
 					 * @note Изменчиво оно намеренно: запись дерева константна, а сброс положения
 					 *       прежней работы обязателен и ей - код от новой работы складывался бы
 					 *       со старым местом в донесение стройное, но ложное
 					 *
 					 * \~english
-					 * Position of the detected error in the source text
+					 * @brief Position of the detected error in the source text
 					 *
 					 * @note Its variability is deliberate: the writing of a tree is constant, while the
 					 *       reset of the position of the former work is mandatory for it too - a code
@@ -1298,7 +1312,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Таблица размещённых имён для сведения повторов
+					 * @brief Таблица размещённых имён для сведения повторов
 					 *
 					 * @details Обозначение пространства имён повторяется у каждого узла области
 					 *          видимости, а хранилище знаков размещало бы каждое его вхождение отдельно.
@@ -1313,7 +1327,7 @@ namespace awh {
 					 *       узлов сверх того берёт шестую часть скорости разбора за двадцатую часть памяти
 					 *
 					 * \~english
-					 * Table of the placed names for the reduction of the repetitions
+					 * @brief Table of the placed names for the reduction of the repetitions
 					 *
 					 * @details The designation of a namespace is repeated at every node of the scope, while
 					 *          the storage of the characters would place every occurrence of it
@@ -1333,14 +1347,14 @@ namespace awh {
 					unordered_map <string, span_t> _interned;
 					/**
 					 * \~russian
-					 * Отрезки хранилища связываний, объявленных узлами дерева
+					 * @brief Отрезки хранилища связываний, объявленных узлами дерева
 					 *
 					 * @note Объявляет пространства имён считанное число узлов - обыкновенно один
 					 *       корневой, - и отводить место под отрезок в записи каждого узла незачем:
 					 *       отрезок отыскивается по узлу лишь тогда, когда объявления запрошены
 					 *
 					 * \~english
-					 * Segments of the storage of the bindings declared by the nodes of the tree
+					 * @brief Segments of the storage of the bindings declared by the nodes of the tree
 					 *
 					 * @note A mere few nodes declare the namespaces — ordinarily one
 					 *       root node — and there is no point in allotting a place for a segment in the record of every node:
@@ -1351,7 +1365,7 @@ namespace awh {
 					unordered_map <node_id_t, span_t> _scoped;
 					/**
 					 * \~russian
-					 * Отображения местных имён вложенных узлов на их номера по родительским узлам
+					 * @brief Отображения местных имён вложенных узлов на их номера по родительским узлам
 					 *
 					 * @details Заводится при первом же розыске у родителя, детей у какого больше
 					 *          `INDEX_THRESHOLD`. Узкие родители, а таковых подавляющее большинство, не
@@ -1373,7 +1387,7 @@ namespace awh {
 					 *       дерева да прививка, перевязывающая цепочку детей
 					 *
 					 * \~english
-					 * Mappings of the local names of the nested nodes onto their numbers by the parent nodes
+					 * @brief Mappings of the local names of the nested nodes onto their numbers by the parent nodes
 					 *
 					 * @details It is created at the first search at a parent having more children than
 					 *          `INDEX_THRESHOLD`. The narrow parents, and those are the overwhelming

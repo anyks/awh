@@ -49,7 +49,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
-	 *
 	 * \~english
 	 * @brief Namespace of the number parsing module
 	 *
@@ -74,7 +72,7 @@ namespace awh {
 	namespace lexical {
 		/**
 		 * \~russian
-		 * Определяем разрядность разряда длинной арифметики
+		 * @brief Определяем разрядность разряда длинной арифметики
 		 *
 		 * @details На 64-битных платформах, кроме SPARC, используется 64-битный
 		 *          разряд, что позволяет эффективно получать старшую и младшую
@@ -82,7 +80,8 @@ namespace awh {
 		 *          32-битный разряд.
 		 *
 		 * \~english
-		 * Determine the bit width of a limb of the long arithmetic
+		 * @brief Determine the bit width of a limb of the long arithmetic
+		 *
 		 * @details On 64-bit platforms, except SPARC, a 64-bit limb is used,
 		 *          which allows getting the high and the low parts of a product
 		 *          efficiently. On the other platforms a
@@ -92,13 +91,18 @@ namespace awh {
 		 */
 		#if defined(AWH_LEXICAL_64BIT) && !defined(__sparc)
 			/**
-			 * Разряд длинной арифметики является 64-битным
+			 * \~russian
+			 * @brief Разряд длинной арифметики является 64-битным
+			 *
+			 * \~english
+			 * @brief A limb of the long arithmetic is 64-bit
+			 *
+			 * \~
 			 */
 			#define AWH_LEXICAL_64BIT_LIMB 1
 			/**
 			 * \~russian
 			 * @brief Создаём тип данных разряда длинной арифметики
-			 *
 			 *
 			 * \~english
 			 * @brief Create the data type of a limb of the long arithmetic
@@ -110,7 +114,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Разрядность одного разряда длинной арифметики
 			 *
-			 *
 			 * \~english
 			 * @brief Bit width of one limb of the long arithmetic
 			 *
@@ -119,13 +122,18 @@ namespace awh {
 			constexpr size_t LIMB_BITS = 64;
 		#else
 			/**
-			 * Разряд длинной арифметики является 32-битным
+			 * \~russian
+			 * @brief Разряд длинной арифметики является 32-битным
+			 *
+			 * \~english
+			 * @brief A limb of the long arithmetic is 32-bit
+			 *
+			 * \~
 			 */
 			#define AWH_LEXICAL_32BIT_LIMB 1
 			/**
 			 * \~russian
 			 * @brief Создаём тип данных разряда длинной арифметики
-			 *
 			 *
 			 * \~english
 			 * @brief Create the data type of a limb of the long arithmetic
@@ -136,7 +144,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Разрядность одного разряда длинной арифметики
-			 *
 			 *
 			 * \~english
 			 * @brief Bit width of one limb of the long arithmetic
@@ -166,6 +173,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Maximum bit width of a long arithmetic value
+		 *
 		 * @details Exact rounding requires no less than log2(10^(769 + 342)) ≈ 3700 bits,
 		 *          the requirement is rounded up to 4000 bits.
 		 *
@@ -190,9 +198,9 @@ namespace awh {
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -207,12 +215,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Structure of a limb vector of a fixed capacity on the stack
+		 *
 		 * @details The limb buffer is deliberately not initialised: only the first
 		 *          length elements are considered significant.
 		 *
 		 * \~
 		 */
-		struct limbs_t {
+		struct Limbs {
 			// Буфер разрядов длинной арифметики
 			limb_t data[SIZE];
 			// Текущее количество значимых разрядов
@@ -221,57 +230,52 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			limbs_t() noexcept : length(0) {}
+			Limbs() noexcept : length(0) {}
 			/**
 			 * \~russian
 			 * @brief Конструктор копирования
-			 *
 			 *
 			 * \~english
 			 * @brief Copy constructor
 			 *
 			 * \~
 			 */
-			limbs_t(const limbs_t &) = delete;
+			Limbs(const Limbs &) = delete;
 			/**
 			 * \~russian
 			 * @brief Конструктор перемещения
-			 *
 			 *
 			 * \~english
 			 * @brief Move constructor
 			 *
 			 * \~
 			 */
-			limbs_t(limbs_t &&) = delete;
+			Limbs(Limbs &&) = delete;
 			/**
 			 * \~russian
 			 * @brief Оператор присваивания копированием
-			 *
 			 *
 			 * \~english
 			 * @brief Copy assignment operator
 			 *
 			 * \~
 			 */
-			limbs_t & operator = (const limbs_t &) = delete;
+			Limbs & operator = (const Limbs &) = delete;
 			/**
 			 * \~russian
 			 * @brief Оператор присваивания перемещением
-			 *
 			 *
 			 * \~english
 			 * @brief Move assignment operator
 			 *
 			 * \~
 			 */
-			limbs_t & operator = (limbs_t &&) = delete;
+			Limbs & operator = (Limbs &&) = delete;
 			/**
 			 * \~russian
 			 * @brief Метод получения количества значимых разрядов
@@ -280,6 +284,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the number of significant limbs
+			 *
 			 * @return number of significant limbs
 			 *
 			 * \~
@@ -296,6 +301,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the capacity of the limb vector
+			 *
 			 * @return maximum number of limbs
 			 *
 			 * \~
@@ -312,6 +318,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the limb vector for emptiness
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -328,6 +335,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the number of significant limbs
+			 *
 			 * @param count number of significant limbs to set
 			 *
 			 * \~
@@ -347,6 +355,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of accessing a limb by index
+			 *
 			 * @param index index of the requested limb
 			 * @return      reference to the requested limb
 			 *
@@ -367,6 +376,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of accessing a limb by index
+			 *
 			 * @param index index of the requested limb
 			 * @return      constant reference to the requested limb
 			 *
@@ -387,6 +397,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of accessing a limb by index from the high end
+			 *
 			 * @param index index of the requested limb from the high end
 			 * @return      constant reference to the requested limb
 			 *
@@ -407,6 +418,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of appending a limb to the end of the vector
+			 *
 			 * @param value appended limb
 			 * @return      result of performing the operation
 			 *
@@ -433,6 +445,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of appending a range of limbs to the end of the vector
+			 *
 			 * @param values appended range of limbs
 			 * @return       result of performing the operation
 			 *
@@ -460,6 +473,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of changing the number of significant limbs
+			 *
 			 * @param count number of significant limbs to set
 			 * @param value value to fill the added limbs with
 			 * @return      result of performing the operation
@@ -489,6 +503,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the presence of non-zero limbs from the high end
+			 *
 			 * @param index index where the check starts from the high end
 			 * @return      result of the check
 			 *
@@ -527,6 +542,30 @@ namespace awh {
 					--this->length;
 			}
 		};
+		/**
+		 * \~russian
+		 * @brief Шаблон ёмкости вектора разрядов
+		 *
+		 * @tparam SIZE максимальное количество разрядов
+		 *
+		 * \~english
+		 * @brief Template of the capacity of the limb vector
+		 *
+		 * @tparam SIZE maximum number of limbs
+		 *
+		 * \~
+		 */
+		template <uint16_t SIZE>
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных вектора разрядов фиксированной ёмкости на стеке
+		 *
+		 * \~english
+		 * @brief Creating a fixed-capacity bit-vector data type on the stack
+		 *
+		 * \~
+		 */
+		using limbs_t = Limbs <SIZE>;
 
 		/**
 		 * \~russian
@@ -538,6 +577,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of normalising one 64-bit word to the high 64 bits
+		 *
 		 * @param value     value being normalised
 		 * @param truncated reference to the indication of discarded significant bits
 		 * @return          normalised high 64 bits
@@ -554,7 +594,6 @@ namespace awh {
 			// Выводим значение, сдвинутое до старшего бита
 			return (value << leadingZeros(value));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция сборки старших 64 бит из двух 64-битных слов
@@ -566,6 +605,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of assembling the high 64 bits from two 64-bit words
+		 *
 		 * @param high      high word
 		 * @param low       low word
 		 * @param truncated reference to the indication of discarded significant bits
@@ -595,7 +635,6 @@ namespace awh {
 			// Выводим собранные старшие 64 бита
 			return ((high << shl) | (low >> shr));
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция сборки старших 64 бит из двух 32-битных слов
@@ -607,6 +646,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of assembling the high 64 bits from two 32-bit words
+		 *
 		 * @param high      high word
 		 * @param low       low word
 		 * @param truncated reference to the indication of discarded significant bits
@@ -618,7 +658,6 @@ namespace awh {
 			// Выводим результат нормализации объединённого значения
 			return toHigh64((static_cast <uint64_t> (high) << 32) | static_cast <uint64_t> (low), truncated);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция сборки старших 64 бит из трёх 32-битных слов
@@ -631,6 +670,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of assembling the high 64 bits from three 32-bit words
+		 *
 		 * @param high      high word
 		 * @param middle    middle word
 		 * @param low       low word
@@ -647,7 +687,6 @@ namespace awh {
 				truncated
 			);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция сложения двух разрядов с контролем переполнения
@@ -659,6 +698,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding two limbs with overflow control
+		 *
 		 * @param x        first addend
 		 * @param y        second addend
 		 * @param overflow reference to the indication of a limb overflow
@@ -687,7 +727,6 @@ namespace awh {
 			// Выводим результат сложения
 			return result;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция умножения двух разрядов с накоплением переноса
@@ -699,6 +738,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying two limbs with the accumulation of the carry
+		 *
 		 * @param x     first multiplier
 		 * @param y     second multiplier
 		 * @param carry reference to the incoming and the outgoing carry
@@ -756,16 +796,15 @@ namespace awh {
 				return static_cast <limb_t> (result);
 			#endif
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -782,6 +821,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding a scalar to a long arithmetic value with an offset
+		 *
 		 * @param limbs target limb vector
 		 * @param value added value
 		 * @param start index of the limb the addition starts from
@@ -789,7 +829,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool smallAddFrom(limbs_t <SIZE> & limbs, const limb_t value, const size_t start) noexcept {
+		__AWH_INLINE__ bool smallAddFrom(limbs_t <SIZE> & limbs, const limb_t value, const size_t start) noexcept {
 			// Текущий индекс обрабатываемого разряда
 			size_t index = start;
 			// Текущее значение переноса
@@ -814,16 +854,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -839,6 +878,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding a scalar to a long arithmetic value
+		 *
 		 * @param limbs target limb vector
 		 * @param value added value
 		 * @return      result of performing the operation
@@ -849,16 +889,15 @@ namespace awh {
 			// Выполняем добавление скаляра с нулевого разряда
 			return smallAddFrom(limbs, value, 0);
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -874,13 +913,14 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying a long arithmetic value by a scalar
+		 *
 		 * @param limbs target limb vector
 		 * @param value multiplier
 		 * @return      result of performing the operation
 		 *
 		 * \~
 		 */
-		inline bool smallMul(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
+		__AWH_INLINE__ bool smallMul(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
 			// Текущее значение переноса
 			limb_t carry = 0;
 			/**
@@ -896,16 +936,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -922,6 +961,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of adding a range of limbs with an offset
+		 *
 		 * @param limbs  target limb vector
 		 * @param values added range of limbs
 		 * @param start  index of the limb the addition starts from
@@ -929,7 +969,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		inline bool largeAddFrom(limbs_t <SIZE> & limbs, const limbSpan_t values, const size_t start) noexcept {
+		__AWH_INLINE__ bool largeAddFrom(limbs_t <SIZE> & limbs, const limbSpan_t values, const size_t start) noexcept {
 			// Если текущей длины вектора недостаточно для добавления диапазона
 			if((limbs.len() < start) || (values.len() > (limbs.len() - start))){
 				// Выполняем расширение вектора нулевыми разрядами
@@ -967,16 +1007,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -995,15 +1034,17 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying a long arithmetic value by a range of limbs
+		 *
 		 * @details The schoolbook multiplication algorithm is used: with a small number of
 		 *          limbs it is faster than asymptotically more efficient methods.
+		 *
 		 * @param limbs  target limb vector
 		 * @param values multiplier
 		 * @return       result of performing the operation
 		 *
 		 * \~
 		 */
-		inline bool longMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
+		__AWH_INLINE__ bool longMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Копия исходного значения для формирования частичных произведений
 			limbs_t <SIZE> source;
 			// Выполняем сохранение исходного значения
@@ -1046,16 +1087,15 @@ namespace awh {
 			// Сообщаем, что операция выполнена успешно
 			return true;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
 		 *
-		 *
 		 * \~english
 		 * @brief Template of the capacity of the limb vector
+		 *
 		 * @tparam SIZE maximum number of limbs
 		 *
 		 * \~
@@ -1071,13 +1111,14 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of multiplying a long arithmetic value by a range of limbs
+		 *
 		 * @param limbs  target limb vector
 		 * @param values multiplier
 		 * @return       result of performing the operation
 		 *
 		 * \~
 		 */
-		inline bool largeMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
+		__AWH_INLINE__ bool largeMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Если множитель состоит из одного разряда
 			if(values.len() == 1)
 				// Выполняем умножение на скаляр
@@ -1094,6 +1135,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Template of a dummy substitution type
+		 *
 		 * @tparam U dummy parameter for the substitution at specialisation
 		 *
 		 * \~
@@ -1108,7 +1150,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		struct pow5_t {
+		struct Pow5 {
 			/**
 			 * \~russian
 			 * @brief Показатель степени, покрываемый таблицей крупного шага
@@ -1178,6 +1220,30 @@ namespace awh {
 				};
 			#endif
 		};
+		/**
+		 * \~russian
+		 * @brief Шаблон фиктивного типа подстановки
+		 *
+		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
+		 * \~english
+		 * @brief Template of a dummy substitution type
+		 *
+		 * @tparam U dummy parameter for the substitution at specialisation
+		 *
+		 * \~
+		 */
+		template <typename U = void>
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных таблиц степеней пятёрки для длинной арифметики
+		 *
+		 * \~english
+		 * @brief Creating a power-of-five table data type for long arithmetic
+		 *
+		 * \~
+		 */
+		using pow5_t = Pow5 <U>;
 
 		/**
 		 * \~russian
@@ -1189,6 +1255,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Structure of a long arithmetic value for exact rounding
+		 *
 		 * @details The limbs are kept in the order from the low to the high one. All the operations
 		 *          return an indication of success: a failure means the exhaustion of the capacity
 		 *          of the buffer and must be handled by the calling side.
@@ -1261,6 +1328,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param value source 64-bit value
 			 *
 			 * \~
@@ -1293,6 +1361,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the high 64 bits of the value
+			 *
 			 * @param truncated reference to the indication of discarded significant bits
 			 * @return          high 64 bits of the value
 			 *
@@ -1354,7 +1423,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of comparing with another long arithmetic value
+			 *
 			 * @details Both values must be normalised.
+			 *
 			 * @param other long arithmetic value being compared with
 			 * @return      result of the comparison
 			 *
@@ -1393,6 +1464,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the number of leading zero bits of the high limb
+			 *
 			 * @return number of leading zero bits
 			 *
 			 * \~
@@ -1425,6 +1497,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the number of significant bits of the value
+			 *
 			 * @return number of significant bits
 			 *
 			 * \~
@@ -1442,6 +1515,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of multiplying the value by a scalar
+			 *
 			 * @param value multiplier
 			 * @return      result of performing the operation
 			 *
@@ -1460,6 +1534,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding a scalar to the value
+			 *
 			 * @param value addend
 			 * @return      result of performing the operation
 			 *
@@ -1478,6 +1553,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of shifting the value left by a number of bits within a limb
+			 *
 			 * @param count shift amount in the range from 1 to LIMB_BITS - 1
 			 * @return      result of performing the operation
 			 *
@@ -1519,6 +1595,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of shifting the value left by a number of limbs
+			 *
 			 * @param count number of limbs of the shift
 			 * @return      result of performing the operation
 			 *
@@ -1552,6 +1629,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of shifting the value left by a number of bits
+			 *
 			 * @param count shift amount in bits
 			 * @return      result of performing the operation
 			 *
@@ -1585,6 +1663,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of multiplying the value by a power of two
+			 *
 			 * @param exponent exponent of the power of two
 			 * @return         result of performing the operation
 			 *
@@ -1603,6 +1682,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of multiplying the value by a power of five
+			 *
 			 * @param exponent exponent of the power of five
 			 * @return         result of performing the operation
 			 *
@@ -1666,6 +1746,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of multiplying the value by a power of ten
+			 *
 			 * @param exponent exponent of the power of ten
 			 * @return         result of performing the operation
 			 *

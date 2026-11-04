@@ -125,6 +125,43 @@ namespace awh {
 		 *          of the storage: its system of the kinds encompasses the kinds of all the text codecs
 		 *          at once, whereby the issuance of the settings by any of them requires no second tree.
 		 *
+		 *
+		 * @par Deliberate decisions
+		 *
+		 *      Listed below is not a gap of the implementation: these are the outlined bounds
+		 *      of the task, and each of the decisions is fixed by a verification test
+		 *
+		 * @li **The seniority of the sources is set by an order of the members of a list.** A value from
+		 *     a launch set overrides an environment variable, that one - a settings file, and that one -
+		 *     a default value. A reverse overriding, however, is not performed at all: a value
+		 *     of a junior source does not lie above a senior one, in whatever order the sources
+		 *     were submitted. Otherwise a parsing of a settings file, submitted after a launch set,
+		 *     would silently cancel what was submitted from the set
+		 *
+		 *     A priority is also checked between a parent and a descendant: a file with a field
+		 *     `net` does not replace `net.port` from a CLI. At a replacing of a junior scalar by a descendant
+		 *     a scalar frees a place for a sub-tree. The sources of the displaced values
+		 *     are removed; at a gathering of the repeats by an array the paths of the kept descendants are moved
+		 *
+		 * @li **A source is stored at each value.** Without it an answer to a question
+		 *     `where this value came from` is indistinguishable from a guess, and a debugging of the settings is blind
+		 *
+		 * @li **A nested empty mapping is a value.** On a loading it
+		 *     is kept together with a source and is checked by a strict schema. An empty
+		 *     root document adds no parameters and does not clear the former settings
+		 *
+		 * @li **A kind of a value is inferred from a record, and this is a setting.** The records `true`,
+		 *     `17` and `1.5`, submitted by a launch set, lie as a logical value and numbers,
+		 *     and not as sequences of signs. An argument to this is a match with a settings
+		 *     file: without an inference of a kind the same key came as a number from a file and
+		 *     as signs from a set, and a consumer had to know a source. A reverse laying
+		 *     is allotted by a setting to those, for whom an inference of a kind hinders
+		 *
+		 * @li **A separator of a path in a name of a parameter is a dot, and inside an axis is a slash.**
+		 *     A record `--net.port=80` lies by a path `net/port` of an axis of the storage. A dot
+		 *     is chosen as usual for a record of the settings, and its turning into a slash is done by a parsing,
+		 *     and not by a consumer
+		 *
 		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Args {
@@ -162,6 +199,19 @@ namespace awh {
 					 * \~english
 					 * Sign of a refusal of a parameter unknown to the schema of the expected ones
 					 *
+					 *
+					 * @note A strictness is asked by EVERY source - a set of the arguments of a launch,
+					 *       a text stream, an environment, a settings file and a default value, - for it
+					 *       is a property of a parsing, and not of one of its roads. Fixed by a check
+					 *       `Args.TheStrictnessIsAskedByEverySource`
+					 *
+					 * @note A fit name is counted not only a name of a described parameter, but also
+					 *       every name UNDER it: having described a name `host`, a consumer has a right
+					 *       to submit to it a sub-tree by a settings file
+					 *
+					 * @note At an EMPTY description a strictness is not asked at all:
+					 *       there is nothing to compare a submitted one with, and a parsing accepts every name
+					 *
 					 * \~
 					 */
 					bool strict;
@@ -189,6 +239,25 @@ namespace awh {
 					 *
 					 * \~english
 					 * Sign of the laying of a repeatedly submitted parameter as an array
+					 *
+					 *
+					 * @details This sign is SENIOR to the homonymous sign at a description
+					 *          of a parameter, and this seniority was decided on 2026-09-15: a description
+					 *          says whether a repeat is ALLOWED at all, and a setting - whether it is gathered
+					 *          by an array. Ordering not to gather, a setting forbids a gathering to ALL parameters,
+					 *          including those whose description allows a repeat.
+					 *
+					 * @note A combination `a description allows, a setting does not order` is therefore
+					 *       lawful: a repeat is accepted without a refusal, and a last submitted
+					 *       value wins. A refusal `DUPLICATE` here would be a lie - it
+					 *       means `a repeat is forbidden`, while only a gathering by an array is forbidden
+					 *
+					 * @warning A former value at this LEAVES, and its leaving is announced
+					 *          by a line of the journal: a record `--порт=1 --порт=2` at a setting without
+					 *          the arrays keeps a two, and a unit before was lost
+					 *          WITHOUT A TRACE - neither a refusal nor a line. A silent loss here
+					 *          can not be kept, and it is fixed by a check
+					 *          `Args.TheRepeatWithoutArraysKeepsTheLastValue`
 					 *
 					 * \~
 					 */
@@ -261,6 +330,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the inference of a value from its record
 				 *
+				 *
+				 * @details A kind is inferred only at an armed setting; otherwise a record
+				 *          lies as a sequence of signs as it is.
+				 *
 				 * @param text record of a value
 				 * @return     inferred value of the axis of the storage
 				 *
@@ -315,6 +388,11 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the merging of a tree of the values with the tree of the settings
 				 *
+				 *
+				 * @details The mappings are merged in depth, and the container and single values
+				 *          lie wholly: to merge them element by element would mean to mix a list,
+				 *          submitted by a settings file, with a list submitted by a launch set.
+				 *
 				 * @param value  merged tree of the values
 				 * @param path   path by the links of the axis of the storage already passed by the merging
 				 * @param source source of the merged values
@@ -337,6 +415,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the laying of a parsed lexeme by the description of the expected
+				 *
+				 *
+				 * @details Without a description a lexeme lies as it is. With a description, however, a name
+				 *          is compared with the expected ones, a gluing of the short names is parsed, and a necessity
+				 *          of a value is checked.
 				 *
 				 * @param lexeme parsed lexeme
 				 * @param source source of the submitted value
@@ -388,6 +471,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the parsing of a set of the arguments of the launch by the wide characters
 				 *
+				 *
+				 * @details It is allotted to MS Windows, where a launch set comes by wide signs.
+				 *
 				 * @param count number of the arguments of the set of the launch
 				 * @param items set of the arguments of the launch
 				 * @return      result of the parsing
@@ -424,6 +510,9 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the parsing of a text stream
 				 *
+				 *
+				 * @details It is allotted to an input from a keyboard and to a submission of the settings by one line.
+				 *
 				 * @param text text for the parsing
 				 * @return     result of the parsing
 				 *
@@ -442,6 +531,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembling of the variables of the environment
+				 *
+				 *
+				 * @details The variables are gathered, whose name is begun by a beginning allotted to an
+				 *          application. A name `PREFIX_NET_PORT` lies by a path `net/port` of an axis of the storage.
 				 *
 				 * @return result of the assembling
 				 *
@@ -508,6 +601,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the check of the assembled by the description of the expected
 				 *
+				 *
+				 * @details A submission of the obligatory parameters is checked, and the default values, set by
+				 *          a description, are laid for the missing ones
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -526,6 +623,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a record of the settings by a codec
+				 *
+				 *
+				 * @details A parsed one is merged with a tree of the settings by a source of a file:
+				 *          the values of a launch set, a text stream and an environment override it.
 				 *
 				 * @param text record of the settings for the parsing
 				 * @return     result of the parsing
@@ -566,6 +667,15 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reading of a file of the settings with the deduction of the kind of the record from its name
+				 *
+				 *
+				 * @details A kind of a record is taken by an EXTENSION of a file name: `.json`, `.yaml`
+				 *          or `.yml`, `.toml`, `.ini` or `.conf`, `.xml`. An unknown extension
+				 *          answers by a refusal, and not by a guess on a contents: a guess on a record,
+				 *          fit for two kinds at once, would choose silently.
+				 *
+				 * @note This move is ADDED to the former, and does not replace it: a consumer,
+				 *       knowing a kind of a record, sets it by himself, and a file name is not an order to him
 				 *
 				 * @param filename path to the file of the settings
 				 * @return         result of the reading
@@ -618,6 +728,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the bridge between the container ABC and the text codecs
+				 *
+				 *
+				 * @details It is issued outward to the settings of a translation: a rule of the treatment of the kinds,
+				 *          unknown to a record of a codec, and a kind of a formatting are set by it.
 				 *
 				 * @return bridge between the container ABC and the text codecs
 				 *
