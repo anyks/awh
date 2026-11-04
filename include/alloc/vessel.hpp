@@ -183,7 +183,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the capacity of the vessel
 				 *
-				 *
 				 * @return capacity of the vessel in bytes
 				 *
 				 * \~
@@ -197,7 +196,6 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the length of the content
-				 *
 				 *
 				 * @return occupied length in the vessel in bytes
 				 *
@@ -216,7 +214,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting information about the protection achieved
 				 *
-				 *
 				 * @note Reports what happened IN FACT, not what was asked for: silent downgrade
 				 *       of protection is worse than an honest refusal
 				 *
@@ -233,7 +230,6 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the vessel is established
-				 *
 				 *
 				 * @return sign of an established vessel
 				 *
@@ -274,7 +270,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of accepting the next byte of the content
 				 *
-				 *
 				 * @param byte the byte being accepted
 				 * @return     sign of successful operation
 				 *
@@ -294,7 +289,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of dropping the last accepted byte
 				 *
-				 *
 				 * @note Built for terminal input: without it fixing a typo in a password is
 				 *       impossible at all, and the person has to start typing over. The dropped
 				 *       byte is wiped in place
@@ -307,17 +301,38 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Шаблон метода обращения к содержимому приёмника
+				 *
+				 * @tparam T тип обработчика содержимого
+				 *
+				 * \~english
+				 * @brief Template method of accessing the content of the vessel
+				 *
+				 * @tparam T type of the content handler
+				 *
+				 * \~
+				 */
+				template <typename T>
+				/**
+				 * \~russian
 				 * @brief Метод обращения к содержимому приёмника
 				 *
 				 * @note Содержимое раскрыто лишь на время вызова обработчика: выход из
-				 *       него - обычный, ранний либо исключением - запечатывает приёмник
-				 *       сам
+				 *       него - обычный, ранний либо исключением - запечатывает приёмник сам
 				 *
 				 * @note Обработчик НЕ вправе запоминать поданный адрес: за пределами
 				 *       вызова область закрыта, и обращение по нему валит программу
 				 *
 				 * @note Уход из обработчика исключением ЗАКОНЕН: приёмник запечатывается
 				 *       и при нём, а само исключение уходит наружу нетронутым
+				 *
+				 * @note Пометки `noexcept` здесь НЕТ намеренно
+				 *
+				 *       Обработчик волен уйти исключением, и запечатывание деструктором
+				 *       заведено ровно ради этого случая. Пометка же обращала бы такой уход
+				 *       в аварийный останов процесса - то есть отменяла бы то самое, чего
+				 *       добивались. Замерено проверкой `VesselIsSealedBackWhenHandlerThrows`:
+				 *       с пометкой набор валился с `terminating due to uncaught exception`.
 				 *
 				 * @param callback обработчик содержимого
 				 * @return         признак выполнения операции
@@ -335,22 +350,20 @@ namespace awh {
 				 * @note Leaving the handler by exception is LEGAL: the vessel is sealed under it
 				 *       as well, and the exception itself goes outward untouched
 				 *
+				 * @note There is NO `noexcept` mark here on purpose
+				 *
+				 *       A handler is free to leave by an exception, and a sealing by a destructor
+				 *       is started exactly for the sake of this case. A mark, however, would turn such a leaving
+				 *       into an emergency stop of a process - that is, would cancel that very thing, what
+				 *       was aimed at. It is measured by a check `VesselIsSealedBackWhenHandlerThrows`:
+				 *       with a mark the suite fell down with `terminating due to uncaught exception`.
+				 *
 				 * @param callback content handler
 				 * @return         sign of successful operation
 				 *
 				 * \~
 				 */
-				/**
-				 * Пометки `noexcept` здесь НЕТ намеренно
-				 *
-				 * Обработчик волен уйти исключением, и запечатывание деструктором
-				 * заведено ровно ради этого случая. Пометка же обращала бы такой уход
-				 * в аварийный останов процесса - то есть отменяла бы то самое, чего
-				 * добивались. Замерено проверкой `VesselIsSealedBackWhenHandlerThrows`:
-				 * с пометкой набор валился с `terminating due to uncaught exception`
-				 */
-				template <typename T>
-				bool apply(T callback) {
+				bool apply(T callback){
 					// Если приёмник не заведён
 					if(!this->exists())
 						// Отвечаем отказом
@@ -431,11 +444,20 @@ namespace awh {
 				explicit Vessel(const secrecy_t secrecy = secrecy_t::STRICT) noexcept;
 			public:
 				/**
-				 * Копированию приёмник не подлежит
+				 * \~russian
+				 * @brief Копированию приёмник не подлежит
 				 *
-				 * Копия означала бы второе место, где лежит та же тайна, и второе место,
-				 * какое кто-то обязан затереть. Перемещение же допустимо: оно места не
-				 * удваивает
+				 * @details Копия означала бы второе место, где лежит та же тайна, и второе место,
+				 *          какое кто-то обязан затереть. Перемещение же допустимо: оно места не удваивает.
+				 *
+				 * \~english
+				 * @brief A vessel is not liable to a copying
+				 *
+				 * @details A copy would mean a second place where the same secret lies, and a second place,
+				 *          which somebody is obliged to wipe. A moving, however, is admissible: it does not
+				 *          double a place.
+				 *
+				 * \~
 				 */
 				Vessel(const Vessel &) = delete;
 				// Запрещаем оператор копирования

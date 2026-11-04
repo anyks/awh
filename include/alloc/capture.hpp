@@ -492,7 +492,7 @@ namespace awh {
 				 *          исполнения, и блок, выданный до захвата, принадлежит одной из
 				 *          них: освобождать его обязан её же набор функций, иной - порча
 				 *          чужой кучи. Звавший без контекста библиотеки (оператор языка,
-				 *          общий хук) спрашивает владельца здесь
+				 *          общий хук) спрашивает владельца здесь.
 				 *
 				 * @note Пустой набор означает «владелец неизвестен»: блок отдаётся
 				 *       никому и утекает молча - так безопаснее, чем унести чужой блок
@@ -511,7 +511,7 @@ namespace awh {
 				 *          before the capture belongs to one of them: it must be freed
 				 *          by that library's own function set - any other one corrupts
 				 *          a foreign heap. The caller without library context (a language
-				 *          operator, the generic hook) asks for the owner here
+				 *          operator, the generic hook) asks for the owner here.
 				 *
 				 * @note An empty set means the owner is unknown: the block goes to
 				 *       nobody and leaks silently - safer than carrying a foreign block

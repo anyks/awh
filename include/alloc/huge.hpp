@@ -162,7 +162,6 @@ namespace awh {
 				 * настоящим разрядом не сходится ни при какой настройке. Заслоны
 				 * отмечаются самим @c Classes::LIMIT, оттого здесь взято следующее число
 				 */
-				// Номер разряда, которым отмечается крупная выдача
 				static constexpr size_t INDEX = (awh::alloc::Classes::LIMIT + 1u);
 			public:
 				/**
@@ -174,7 +173,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Число живых крупных выдач
 					size_t live;
 					// Взято у источника под крупные выдачи в байтах
@@ -190,7 +189,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 			private:
 				/**
@@ -202,21 +201,40 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct Record {
+				typedef struct __AWH_SHARED_EXPORT__ Record {
 					/**
-					 * Признак закрытого блока
+					 * \~russian
+					 * @brief Признак закрытого блока
 					 *
-					 * Счёта одного мало: выданный блок ДОСТУПЕН, а держателей раскрытия
-					 * у него нет, и по одному лишь счёту первое закрытие читалось бы как
-					 * лишнее. Признак отвечает «каков блок сейчас», а счёт - «сколько
-					 * рук его держат»
+					 * @details Счёта одного мало: выданный блок ДОСТУПЕН, а держателей раскрытия
+					 *          у него нет, и по одному лишь счёту первое закрытие читалось бы как
+					 *          лишнее. Признак отвечает «каков блок сейчас», а счёт - «сколько рук его держат».
+					 *
+					 * \~english
+					 * @brief Sign of a sealed block
+					 *
+					 * @details A count alone is not enough: an issued block is ACCESSIBLE,
+					 *          and there are no holders of an unsealing at it, and by one
+					 *          only count a first sealing would be read as an extra one.
+					 *          A sign answers `what is a block now`, and a count - `how many hands hold it`.
+					 *
+					 * \~
 					 */
 					bool sealed;
 					/**
-					 * Признак блока, укрытого от снимков памяти
+					 * \~russian
+					 * @brief Признак блока, укрытого от снимков памяти
 					 *
-					 * Такой блок обязан затираться при освобождении: договор укрытой
-					 * выдачи обещает это наравне с самим укрытием
+					 * @details Такой блок обязан затираться при освобождении: договор укрытой
+					 *          выдачи обещает это наравне с самим укрытием.
+					 *
+					 * \~english
+					 * @brief Sign of a block hidden from the memory snapshots
+					 *
+					 * @details Such a block is obliged to be wiped on a release: a contract of a hidden
+					 *          issue promises this on a par with the hiding itself.
+					 *
+					 * \~
 					 */
 					bool hidden;
 					// Размер взятой у источника области в байтах
@@ -224,13 +242,25 @@ namespace awh {
 					// Затребованный прикладным кодом размер в байтах
 					size_t size;
 					/**
-					 * Счёт раскрытий закрытого блока
+					 * \~russian
+					 * @brief Счёт раскрытий закрытого блока
 					 *
-					 * Не признак, а именно СЧЁТ: при общем хранилище на процесс два
-					 * потока раскрывают одну область, и тот, кто закончит первым,
-					 * закрыл бы память под ногами второго - отказ доступа посреди
-					 * чужой работы, то есть падение, и притом плавающее. Область
-					 * запирается на нуле, и только на нуле
+					 * @details Не признак, а именно СЧЁТ: при общем хранилище на процесс два
+					 *          потока раскрывают одну область, и тот, кто закончит первым,
+					 *          закрыл бы память под ногами второго - отказ доступа посреди
+					 *          чужой работы, то есть падение, и притом плавающее. Область
+					 *          запирается на нуле, и только на нуле.
+					 *
+					 * \~english
+					 * @brief A count of the unsealings of a sealed block
+					 *
+					 * @details Not a sign, but exactly a COUNT: at a common storage per process two
+					 *          threads unseal one region, and the one that finishes first
+					 *          would seal the memory under the feet of the second - an access failure in the middle
+					 *          of an alien work, that is a crash, and a floating one. A region
+					 *          is sealed at a zero, and only at a zero.
+					 *
+					 * \~
 					 */
 					uint32_t opened;
 					// Адрес начала взятой у источника области
@@ -270,21 +300,41 @@ namespace awh {
 				// Остаток текущего куска памяти под учётные записи
 				size_t _metaLeft;
 				/**
-				 * Общий список кусков памяти под учётные записи
+				 * \~russian
+				 * @brief Общий список кусков памяти под учётные записи
 				 *
-				 * Связь лежит в первых восьми байтах самого куска, оттого списку не нужно
-				 * собственной памяти. Устроен он так же, как у страничной кучи, и по той
-				 * же причине: без него куски эти отдать нечем, и снятие захвата оставляло
-				 * бы их занятыми у системы
+				 * @details Связь лежит в первых восьми байтах самого куска, оттого списку не нужно
+				 *          собственной памяти. Устроен он так же, как у страничной кучи, и по той
+				 *          же причине: без него куски эти отдать нечем, и снятие захвата оставляло
+				 *          бы их занятыми у системы.
+				 *
+				 * \~english
+				 * @brief A common list of the memory chunks under the account records
+				 *
+				 * @details A linkage lies in the first eight bytes of a chunk itself, therefore a list needs no
+				 *          own memory. It is arranged the same as at a page heap, and by the
+				 *          same reason: without it there is nothing to give these chunks back, and a removal of a capture would leave
+				 *          them occupied at the system.
+				 *
+				 * \~
 				 */
 				void * _metaChunks;
 				// Список повторно используемых учётных записей
 				record_t * _spare;
 				/**
-				 * Список придержанных областей, готовых к повторной выдаче
+				 * \~russian
+				 * @brief Список придержанных областей, готовых к повторной выдаче
 				 *
-				 * Записи в нём несут `base` и `span`, а `block` и `size` не значат
-				 * ничего: область снята с учёта и прикладному коду не принадлежит
+				 * @details Записи в нём несут `base` и `span`, а `block` и `size` не значат
+				 *          ничего: область снята с учёта и прикладному коду не принадлежит.
+				 *
+				 * \~english
+				 * @brief A list of the held regions, ready for a repeated issue
+				 *
+				 * @details The records in it carry `base` and `span`, while `block` and `size` mean
+				 *          nothing: a region is taken off the account and does not belong to an application code.
+				 *
+				 * \~
 				 */
 				record_t * _cached;
 				// Придержано областей в байтах

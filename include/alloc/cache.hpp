@@ -149,9 +149,9 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <atomic>
 
 /**
  * Стандартные заголовочные файлы систем Unix
@@ -210,10 +210,9 @@ namespace awh {
 				 * и кэш начинает без толку сновать к центральным спискам. Платится за
 				 * это ареной: каждая ступень стоит примерно своей же величины
 				 */
-				// Предел кэша потока по умолчанию в байтах
 				static constexpr size_t LIMIT = (4u * 1024u * 1024u);
 				/**
-				 * Порог мёртвого запаса разряда в кэше
+				 * Порог мёртвого запаса разряда в кэше в байтах
 				 *
 				 * Освобождение чужим потоком ложится в кэш потока-освободителя, и разряд,
 				 * который тот сам не выдаёт, копится без пользы: центральные списки пусты,
@@ -224,7 +223,6 @@ namespace awh {
 				 * наблюдения IDLE_WINDOW, отдаётся центральным спискам ЦЕЛИКОМ;
 				 * горячий запас, из которого идут выдачи, не трогается вовсе
 				 */
-				// Порог мёртвого запаса разряда в кэше в байтах
 				static constexpr size_t IDLE = (1u * 1024u * 1024u);
 				/**
 				 * Окно наблюдения за ростом списка в миллисекундах
@@ -234,7 +232,6 @@ namespace awh {
 				 * (его единственный слив за круг стоит ничтожно), а список, копимый
 				 * часами, сливается каждое окно и держится в пределах IDLE
 				 */
-				// Окно наблюдения за ростом списка в миллисекундах
 				static constexpr uint64_t IDLE_WINDOW = 60000;
 			private:
 				/**
@@ -306,13 +303,12 @@ namespace awh {
 				} list_t;
 			private:
 				/**
-				 * Наблюдение за ростом списка разряда
+				 * Наблюдаемый разряд плюс единица, нуль если наблюдения нет
 				 *
 				 * Наблюдается ОДИН разряд за раз: слив мёртвого запаса - случай
 				 * редкий, и держать по метке на каждый разряд незачем. Метка
 				 * снимается пробуждением кэша - освобождением в наблюдаемый список
 				 */
-				// Наблюдаемый разряд плюс единица, нуль если наблюдения нет
 				size_t _watch;
 				// Миг начала наблюдения в миллисекундах
 				uint64_t _watched;
@@ -327,39 +323,66 @@ namespace awh {
 				 * поток-локальный указатель на управляющего к тому времени обнулён.
 				 * Проверено опытом на macOS
 				 */
-				// Управляющий, заведший кэш
 				class Caches * _owner;
 				// Центральные списки
 				central_t * _central;
 				// Разряды размеров
 				classes_t * _classes;
 			private:
-				// Лежит в кэше в байтах
 				/**
-				 * Лежащее в кэше НЕДЕЛИМО по той же причине, что и накопленное
+				 * \~russian
+				 * @brief Лежащее в кэше НЕДЕЛИМО по той же причине, что и накопленное
 				 *
-				 * Складывает его чужой поток - опрос лежащего в кэшах и отдача излишка
-				 * центральным спискам, - а пишет хозяин на каждой выдаче и каждом
-				 * освобождении: доложено ThreadSanitizer'ом в `Caches::cached`. Правится
-				 * загрузкой и записью порознь: пишет один поток, и неделимая правка со
-				 * своим запретом стоила бы на быстром пути ни за что
+				 * @details Складывает его чужой поток - опрос лежащего в кэшах и отдача излишка
+				 *          центральным спискам, - а пишет хозяин на каждой выдаче и каждом
+				 *          освобождении: доложено ThreadSanitizer'ом в `Caches::cached`. Правится
+				 *          загрузкой и записью порознь: пишет один поток, и неделимая правка со
+				 *          своим запретом стоила бы на быстром пути ни за что.
+				 *
+				 * \~english
+				 * @brief The LYING IN THE CACHE is INDIVISIBLE for the same reason as the accumulated
+				 *
+				 * @details An alien thread adds to it - a polling of the lying in the caches and a giving of the excess
+				 *          to the central lists, - and the owner writes it on every issue and every
+				 *          osvobozhdenii: dolozheno ThreadSanitizer'om v `Caches::cached`. Pравится
+				 *          zagruzkoj i zapiskoj porozn: pishet odin potok, i nedelimaya pravka so
+				 *          svoim zapretom stoila by na bystrom pute ni za chto.
+				 *
+				 * \~
 				 */
 				std::atomic <size_t> _bytes;
-				// Предел кэша в байтах
 				/**
-				 * Предел кэша НЕДЕЛИМ по той же причине, что и лежащее в кэше
+				 * \~russian
+				 * @brief Предел кэша НЕДЕЛИМ по той же причине, что и лежащее в кэше
 				 *
-				 * Пишет его ЧУЖОЙ поток - установщик настроек обходит все заведённые кэши
-				 * и правит предел каждому, - а читает хозяин на каждом освобождении, и
-				 * читает БЕЗ замка. Замок установщика хозяина не сдерживает, состязание
-				 * налицо. Прежде предел лежал обычным числом: на наших системах чтение и
-				 * запись выровненного слова и так неделимы, оттого беда наружу не выходила,
-				 * - но по стандарту это состязание, и ThreadSanitizer его назовёт. Разбор
-				 * лежащего в кэше двумя строками выше говорит ровно то же, а предел под
-				 * него не подвели
+				 * @details Пишет его ЧУЖОЙ поток - установщик настроек обходит все заведённые кэши
+				 *          и правит предел каждому, - а читает хозяин на каждом освобождении, и
+				 *          читает БЕЗ замка. Замок установщика хозяина не сдерживает, состязание
+				 *          налицо. Прежде предел лежал обычным числом: на наших системах чтение и
+				 *          запись выровненного слова и так неделимы, оттого беда наружу не выходила,
+				 *          - но по стандарту это состязание, и ThreadSanitizer его назовёт. Разбор
+				 *          лежащего в кэше двумя строками выше говорит ровно то же, а предел под
+				 *          него не подвели.
 				 *
-				 * Быстрый путь от этого не дорожает: чтение без порядка складывается в ту
-				 * же одну команду, что и чтение обычного числа
+				 *          Быстрый путь от этого не дорожает: чтение без порядка складывается в ту
+				 *          же одну команду, что и чтение обычного числа.
+				 *
+				 * \~english
+				 * @brief A cache limit is INDIVISIBLE for the same reason as the lying in the cache
+				 *
+				 * @details An ALIEN thread writes it - an installer of the settings walks over all the started caches
+				 *          and edits a limit for each, - and the owner reads it on every release, and
+				 *          reads WITHOUT a lock. A lock of the installer does not hold the owner back, a race is
+				 *          on the face. Before, a limit lay as an ordinary number: on our systems a reading and a
+				 *          writing of an aligned word are indivisible as well, so the trouble did not come out,
+				 *          - but by the standard it is a race, and ThreadSanitizer will name it. The parsing
+				 *          of the lying in the cache two lines above says exactly the same, and a limit was not brought
+				 *          under it.
+				 *
+				 *          A fast path does not grow dearer from this: a reading without an order folds into the
+				 *          same one command as a reading of an ordinary number.
+				 *
+				 * \~
 				 */
 				std::atomic <size_t> _limit;
 				/**
@@ -374,28 +397,45 @@ namespace awh {
 				 * Заведено взамен чтения просьбы на быстром пути: то стоило около пяти
 				 * сотых на трёх сценариях замера, а это не стоит ничего
 				 */
-				// Предел, заданный приложением
 				std::atomic <size_t> _kept;
 			private:
 				/**
-				 * Учёт занятого прикладным кодом, накопленный этим потоком
+				 * \~russian
+				 * @brief Учёт занятого прикладным кодом, накопленный этим потоком
 				 *
-				 * Общий счётчик, правимый на КАЖДОЙ выдаче и КАЖДОМ освобождении, обращает
-				 * восемь потоков в очередь за одной строкой памяти: замеры дали 87
-				 * наносекунд на действие против 5 без него. Оттого счёт идёт здесь, у
-				 * потока, а общему достаётся лишь накопленное пачкой
-				 */
-				/**
-				 * Накопитель НЕДЕЛИМЫЙ, хотя хозяин у него один
+				 * @details Общий счётчик, правимый на КАЖДОЙ выдаче и КАЖДОМ освобождении, обращает
+				 *          восемь потоков в очередь за одной строкой памяти: замеры дали 87
+				 *          наносекунд на действие против 5 без него. Оттого счёт идёт здесь, у
+				 *          потока, а общему достаётся лишь накопленное пачкой.
 				 *
-				 * Читает его чужой поток - опрос расхода складывает накопленное всеми
-				 * кэшами, - и обычное поле давало бы состязание по стандарту: доложено
-				 * ThreadSanitizer'ом, чтение в `Caches::pending` против записи хозяина.
-				 * Правится он ЗАГРУЗКОЙ И ЗАПИСЬЮ порознь, а не чтением-правкой-записью:
-				 * писать в него вправе один поток, и неделимая правка со своим запретом
-				 * стоила бы на быстром пути ни за что
+				 * @note Накопитель НЕДЕЛИМЫЙ, хотя хозяин у него один
+				 *
+				 * @details Читает его чужой поток - опрос расхода складывает накопленное всеми
+				 *          кэшами, - и обычное поле давало бы состязание по стандарту: доложено
+				 *          ThreadSanitizer'ом, чтение в `Caches::pending` против записи хозяина.
+				 *          Правится он ЗАГРУЗКОЙ И ЗАПИСЬЮ порознь, а не чтением-правкой-записью:
+				 *          писать в него вправе один поток, и неделимая правка со своим запретом
+				 *          стоила бы на быстром пути ни за что.
+				 *
+				 * \~english
+				 * @brief Accounting of the occupied by the application, accumulated by this thread
+				 *
+				 * @details A shared counter, edited on EVERY issue and EVERY free, turns eight threads
+				 *          into a queue for one line of memory: measurements gave 87 nanoseconds per action
+				 *          versus 5 without it. Hence the counting goes here, at the thread, and the shared
+				 *          one gets only the accumulated in a batch.
+				 *
+				 * @note The accumulator is INDIVISIBLE, though it has only one owner
+				 *
+				 * @details An alien thread reads it - a consumption query sums the accumulated across all
+				 *          caches, - and a plain field would give a race by the standard: reported
+				 *          by ThreadSanitizer, a read in `Caches::pending` versus a write by the owner.
+				 *          It is fixed by a LOAD AND STORE separately, not a read-modify-write: only one
+				 *          thread may write to it, and an indivisible edit with its own prohibition would
+				 *          cost on the fast path for nothing.
+				 *
+				 * \~
 				 */
-				// Занятое прикладным кодом, накопленное этим потоком
 				std::atomic <int64_t> _tally;
 				// Освобождено этим потоком с последней проверки порога отдачи
 				size_t _freed;
@@ -408,17 +448,17 @@ namespace awh {
 				 *          к нему лишь свой поток, и обращение стоит считанных команд.
 				 *          Оттого трогать чужой кэш нельзя ВОВСЕ - а прежде это делалось:
 				 *          отдача памяти системе (`Allocator::purge`) опустошала кэши всех
-				 *          потоков подряд, включая работающие прямо сейчас
+				 *          потоков подряд, включая работающие прямо сейчас.
 				 *
 				 * @details Порча от этого выглядела так: живой блок, которым владеет
 				 *          приложение, оказывался в списке свободных, и разбор списка
 				 *          утыкался в данные приложения вместо указателя. Найдено
 				 *          ворошителем `tools/fuzz/alloc.cpp` 23.08.2026, доказано
 				 *          ThreadSanitizer: `Caches::flush` правила списки чужого кэша
-				 *          (cache.cpp:255-265), пока хозяин писал их в `Cache::refill`
+				 *          (cache.cpp:255-265), пока хозяин писал их в `Cache::refill`.
 				 *
 				 * @details Взамен чужому кэшу ставится просьба, и хозяин опустошает его САМ,
-				 *          когда в следующий раз пойдёт холодным путём
+				 *          когда в следующий раз пойдёт холодным путём.
 				 *
 				 * @warning Кэш потока, заснувшего надолго, по чужой просьбе теперь НЕ
 				 *          опустошится: снять с него память некому, пока он не проснётся.
@@ -440,17 +480,17 @@ namespace awh {
 				 *          instructions. Hence touching a foreign cache is forbidden AT ALL -
 				 *          and it was done before: returning memory to the system
 				 *          (Allocator::purge) emptied all thread caches in a row, including
-				 *          those working right now
+				 *          those working right now.
 				 *
 				 * @details The corruption looked like this: a live block owned by the
 				 *          application ended up in the free list, and list traversal hit
 				 *          application data instead of a pointer. Found by the fuzzer
 				 *          tools/fuzz/alloc.cpp on 23.08.2026, proven by ThreadSanitizer:
 				 *          Caches::flush edited the lists of a foreign cache (cache.cpp:255-265)
-				 *          while the owner was writing them in Cache::refill
+				 *          while the owner was writing them in Cache::refill.
 				 *
 				 * @details Instead a request is set on the foreign cache, and the owner
-				 *          empties it THEMSELVES next time they go the cold path
+				 *          empties it THEMSELVES next time they go the cold path.
 				 *
 				 * @warning A thread cache that has slept for long will NOT be emptied by a
 				 *          foreign request: nobody can take memory from it until it wakes up.
@@ -480,7 +520,6 @@ namespace awh {
 				 * Вид её непрозрачен НАМЕРЕННО: устройство куска знает страничная куча, и
 				 * кэшу знать его незачем
 				 */
-				// Подсказка поиска куска по адресу
 				void * _hint;
 			private:
 				// Списки свободных блоков по разрядам
@@ -725,7 +764,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -733,7 +771,13 @@ namespace awh {
 				 */
 				Cache() noexcept;
 			/**
-			 * Управляющий кэшами имеет доступ к связи и занятости
+			 * \~russian
+			 * @brief Управляющий кэшами имеет доступ к связи и занятости
+			 *
+			 * \~english
+			 * @brief A manager of the caches has an access to a linkage and an occupancy
+			 *
+			 * \~
 			 */
 			friend class Caches;
 		} cache_t;
@@ -757,7 +801,13 @@ namespace awh {
 		 */
 		#if defined(__APPLE__) || defined(__MACH__)
 			/**
-			 * Место потока хранится ключом системы
+			 * \~russian
+			 * @brief Место потока хранится ключом системы
+			 *
+			 * \~english
+			 * @brief A place of a thread is stored by a key of the system
+			 *
+			 * \~
 			 */
 			#define AWH_ALLOC_TSD 1
 			// Ключ места потока
@@ -765,21 +815,41 @@ namespace awh {
 			// Признак готовности захвата
 			extern std::atomic <bool> __awh_alloc_armed__;
 			/**
-			 * Прямое чтение места потока, минуя вызов
+			 * \~russian
+			 * @brief Прямое чтение места потока, минуя вызов
 			 *
-			 * Чтение ключа вызовом стоит 1.502 наносекунды, прямое обращение к месту
-			 * потока - 0.351 (замерено на этой машине, 20 млн заходов). Но дороже самой
-			 * разницы обходится ВЫЗОВ как таковой: живые значения приходится держать в
-			 * сохраняемых регистрах, и пролог выдачи сохранял их ВОСЕМЬ на каждом
-			 * обращении - девять команд пролога и пять эпилога на всякую выдачу
+			 * @details Чтение ключа вызовом стоит 1.502 наносекунды, прямое обращение к месту
+			 *          потока - 0.351 (замерено на этой машине, 20 млн заходов). Но дороже самой
+			 *          разницы обходится ВЫЗОВ как таковой: живые значения приходится держать в
+			 *          сохраняемых регистрах, и пролог выдачи сохранял их ВОСЕМЬ на каждом
+			 *          обращении - девять команд пролога и пять эпилога на всякую выдачу.
 			 *
-			 * Устройство места потока у macOS договором не объявлено, и полагаться на
-			 * него вслепую нельзя. Оттого оно ПРОВЕРЯЕТСЯ при заведении ключа: кладём
-			 * метку обычным средством, читаем прямым обращением и сличаем. Разошлось -
-			 * прямой путь не заводится вовсе, и чтение идёт вызовом, как и шло
+			 *          Устройство места потока у macOS договором не объявлено, и полагаться на
+			 *          него вслепую нельзя. Оттого оно ПРОВЕРЯЕТСЯ при заведении ключа: кладём
+			 *          метку обычным средством, читаем прямым обращением и сличаем. Разошлось -
+			 *          прямой путь не заводится вовсе, и чтение идёт вызовом, как и шло.
 			 *
-			 * Хранится здесь номер места, а не признак: сличение с `NOSLOT` разом
-			 * отвечает и на вопрос «проверено ли», и на вопрос «где лежит»
+			 *          Хранится здесь номер места, а не признак: сличение с `NOSLOT` разом
+			 *          отвечает и на вопрос «проверено ли», и на вопрос «где лежит».
+			 *
+			 * \~english
+			 * @brief A direct reading of a place of a thread, bypassing a call
+			 *
+			 *        A reading of a key by a call costs 1.502 nanoseconds, a direct address to a place
+			 *        of a thread - 0.351 (measured on this machine, 20 mln entries). But dearer than the
+			 *        difference itself costs a CALL as such: the live values have to be held in
+			 *        the saved registers, and a prologue of an issue saved EIGHT of them on every
+			 *        address - nine prologue commands and five epilogue ones for every issue.
+			 *
+			 *        The device of a place of a thread by macOS is not declared by a contract, and to rely on
+			 *        it blindly is impossible. Therefore it is CHECKED at a starting of a key: we lay
+			 *        a mark by an ordinary means, read by a direct address and compare. They diverged -
+			 *        a direct path is not started at all, and a reading goes by a call, as it went.
+			 *
+			 *        A place number is stored here, and not a sign: a comparison with `NOSLOT` at once
+			 *        answers both to a question `is it checked` and to a question `where it lies`.
+			 *
+			 * \~
 			 */
 			static constexpr size_t AWH_ALLOC_NOSLOT = static_cast <size_t> (-1);
 			// Номер места потока для прямого чтения, либо AWH_ALLOC_NOSLOT
@@ -810,7 +880,13 @@ namespace awh {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64) && !defined(__APPLE__) && !defined(__MACH__) && !defined(__OpenBSD__)
 			/**
-			 * Зеркало места потока хранится переменной TLS
+			 * \~russian
+			 * @brief Зеркало места потока хранится переменной TLS
+			 *
+			 * \~english
+			 * @brief A mirror of a place of a thread is stored by a TLS variable
+			 *
+			 * \~
 			 */
 			#define AWH_ALLOC_MIRROR 1
 			// Зеркало места потока
@@ -839,53 +915,104 @@ namespace awh {
 				// Число заведённых кэшей
 				size_t _count;
 				/**
-				 * Общий на процесс запас кэшей потоков в байтах
+				 * \~russian
+				 * @brief Общий на процесс запас кэшей потоков в байтах
 				 *
-				 * Предел кэша ЗАДАННЫЙ приложением - предел каждого кэша порознь, и
-				 * расход при нём растёт числом потоков без всякой границы: сто потоков
-				 * при пределе в четыре мегабайта держат четыреста. Запас же общий: доля
-				 * потока выводится из него делением на число заведённых кэшей, и расход
-				 * ограничен запасом, сколько бы потоков ни было
+				 * @details Предел кэша ЗАДАННЫЙ приложением - предел каждого кэша порознь, и
+				 *          расход при нём растёт числом потоков без всякой границы: сто потоков
+				 *          при пределе в четыре мегабайта держат четыреста. Запас же общий: доля
+				 *          потока выводится из него делением на число заведённых кэшей, и расход
+				 *          ограничен запасом, сколько бы потоков ни было.
 				 *
-				 * Оттого же он и БЫСТРЕЕ постоянного предела. Замер удержания шестидесяти
-				 * пяти тысяч блоков вразбивку - рабочий набор в девять мегабайт - при
-				 * разных пределах: 1 МБ дал 18.32 нс/оп, 2 МБ - 17.45, 4 МБ - 16.06,
-				 * 8 МБ - 12.68, 16 МБ - 9.97, 64 МБ - 9.66. Постоянные четыре мегабайта
-				 * оказывались вдвое меньше рабочего набора, и кэш сновал к центральным
-				 * спискам всю дорогу. Однопоточному приложению теперь достаётся весь
-				 * запас, а шестнадцати потокам - те же четыре мегабайта на каждый
+				 *          Оттого же он и БЫСТРЕЕ постоянного предела. Замер удержания шестидесяти
+				 *          пяти тысяч блоков вразбивку - рабочий набор в девять мегабайт - при
+				 *          разных пределах: 1 МБ дал 18.32 нс/оп, 2 МБ - 17.45, 4 МБ - 16.06,
+				 *          8 МБ - 12.68, 16 МБ - 9.97, 64 МБ - 9.66. Постоянные четыре мегабайта
+				 *          оказывались вдвое меньше рабочего набора, и кэш сновал к центральным
+				 *          спискам всю дорогу. Однопоточному приложению теперь достаётся весь
+				 *          запас, а шестнадцати потокам - те же четыре мегабайта на каждый.
 				 *
-				 * Величина запаса взята у tcmalloc: там общий запас кэшей потоков тоже
-				 * задан на процесс и по умолчанию того же порядка
+				 *          Величина запаса взята у tcmalloc: там общий запас кэшей потоков тоже
+				 *          задан на процесс и по умолчанию того же порядка.
 				 *
-				 * Прежние 64 МБ сняты на девятимегабайтном рабочем наборе и для него же
-				 * запасны. Кодеки строят и рушат дерево в сотни мегабайт: при 64 МБ кэш
-				 * перебирает запас всю дорогу и снуёт к центральным спискам. Поднятие до
-				 * 256 МБ вернуло на освобождении крупной кучи подряд более чем вдвое
-				 * (50 против 21 нс на действие)
+				 *          Прежние 64 МБ сняты на девятимегабайтном рабочем наборе и для него же
+				 *          запасны. Кодеки строят и рушат дерево в сотни мегабайт: при 64 МБ кэш
+				 *          перебирает запас всю дорогу и снуёт к центральным спискам. Поднятие до
+				 *          256 МБ вернуло на освобождении крупной кучи подряд более чем вдвое
+				 *          (50 против 21 нс на действие).
+				 *
+				 * \~english
+				 * @brief A common per process reserve of the caches of the threads in bytes
+				 *
+				 * @details A cache limit SET by an application is a limit of each cache separately, and
+				 *          a consumption at it grows by a number of the threads without any bound: a hundred threads
+				 *          at a limit of four megabytes hold four hundred. A reserve, however, is common: a share
+				 *          of a thread is derived from it by a division by a number of the started caches, and a consumption
+				 *          is limited by a reserve, however many threads there were.
+				 *
+				 *          By the same it is FASTER than a constant limit. A measurement of the holding of sixty
+				 *          five thousand blocks in pieces - a working set of nine megabytes - at
+				 *          different limits: 1 MB gave 18.32 ns/op, 2 MB - 17.45, 4 MB - 16.06,
+				 *          8 MB - 12.68, 16 MB - 9.97, 64 MB - 9.66. A constant four megabytes
+				 *          turned out to be twice less than a working set, and a cache went darting to the central
+				 *          lists all the way. A single-threaded application now gets the whole
+				 *          reserve, and sixteen threads - the same four megabytes for each.
+				 *
+				 *          A value of the reserve is taken from tcmalloc: there a common reserve of the caches of the threads is also
+				 *          set per process and by default is of the same order.
+				 *
+				 *          The former 64 MB are removed on a nine-megabyte working set and are reserved for it as
+				 *          well. The codecs build and ruin a tree of hundreds of megabytes: at 64 MB a cache
+				 *          overspends the reserve all the way and darts to the central lists. A raising to
+				 *          256 MB returned on a release of a large heap in a row more than twice
+				 *          (50 against 21 ns per action).
+				 *
+				 * \~
 				 */
 				static constexpr size_t BUDGET = (256u * 1024u * 1024u);
 				/**
-				 * Наименьшая доля запаса, отводимая кэшу потока
+				 * \~russian
+				 * @brief Наименьшая доля запаса, отводимая кэшу потока
 				 *
-				 * Доля, делённая на многие сотни потоков, обратилась бы в ничто, и кэш
-				 * перестал бы работать кэшем вовсе: расход упёрся бы в запас, а скорость
-				 * - в общий замок центральных списков. Ниже этой границы доля не идёт, и
-				 * запас при многих потоках честно перебирается
+				 * @details Доля, делённая на многие сотни потоков, обратилась бы в ничто, и кэш
+				 *          перестал бы работать кэшем вовсе: расход упёрся бы в запас, а скорость
+				 *          - в общий замок центральных списков. Ниже этой границы доля не идёт, и
+				 *          запас при многих потоках честно перебирается
+				 *
+				 * \~english
+				 * @brief The least share of a reserve, allotted to a cache of a thread
+				 *
+				 * @details A share, divided by many hundreds of threads, would turn into a nothing, and a cache
+				 *          would stop working as a cache at all: a consumption would run into a reserve, and a speed
+				 *          - into a common lock of the central lists. Below this bound a share does not go, and a
+				 *          reserve at many threads is honestly overspent.
+				 *
+				 * \~
 				 */
 				static constexpr size_t SHARE = (1u * 1024u * 1024u);
 			private:
 				// Общий на процесс запас кэшей потоков в байтах
 				std::atomic <size_t> _budget;
-				// Предел кэша потока в байтах
 				/**
-				 * Предел кэша потока НЕДЕЛИМ: читается он не только под замком
+				 * \~russian
+				 * @brief Предел кэша потока НЕДЕЛИМ: читается он не только под замком
 				 *
-				 * Пишет его установщик настроек под замком общего списка, а `Caches::create`
-				 * читает ПОСЛЕ выхода из-под замка - заведение кэша идёт вне него намеренно.
-				 * Названо ThreadSanitizer'ом на щупе, где чужой поток правит предел, пока
-				 * работники заводят себе кэши; разбор мой прежде говорил, будто поле это
-				 * всюду под замком, и был неверен
+				 * @details Пишет его установщик настроек под замком общего списка, а `Caches::create`
+				 *          читает ПОСЛЕ выхода из-под замка - заведение кэша идёт вне него намеренно.
+				 *          Названо ThreadSanitizer'ом на щупе, где чужой поток правит предел, пока
+				 *          работники заводят себе кэши; разбор мой прежде говорил, будто поле это
+				 *          всюду под замком, и был неверен.
+				 *
+				 * \~english
+				 * @brief A limit of a cache of a thread is INDIVISIBLE: it is read not only under a lock
+				 *
+				 * @details An installer of the settings writes it under a lock of a common list, and `Caches::create`
+				 *          reads it AFTER leaving the lock - a starting of a cache goes outside of it on purpose.
+				 *          It was named by ThreadSanitizer on a probe, where an alien thread edits a limit while
+				 *          the workers start their caches; my parsing before said as if this field was
+				 *          everywhere under a lock, and was wrong.
+				 *
+				 * \~
 				 */
 				std::atomic <size_t> _limit;
 			private:
@@ -1159,13 +1286,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Caches() noexcept;
+				explicit Caches() noexcept;
 		} caches_t;
 	};
 };

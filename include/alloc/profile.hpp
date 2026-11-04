@@ -138,7 +138,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		typedef struct Holding {
+		typedef struct __AWH_SHARED_EXPORT__ Holding {
 			// Адрес удерживаемого блока
 			const void * block;
 			// Затребованный размер блока в байтах
@@ -158,7 +158,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Holding() noexcept;
+			explicit Holding() noexcept;
 		} holding_t;
 		/**
 		 * \~russian
@@ -185,7 +185,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Число учитываемых живых блоков
 					size_t live;
 					// Объём учитываемых живых блоков в байтах
@@ -203,7 +203,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 				/**
 				 * \~russian
@@ -232,7 +232,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct Record {
+				typedef struct __AWH_SHARED_EXPORT__ Record {
 					// Адрес выданного блока
 					const void * block;
 					// Затребованный размер блока в байтах
@@ -284,10 +284,10 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Метка снесённого места таблицы учёта
+				 * @brief Метка снесённого места таблицы учёта
 				 *
 				 * \~english
-				 * Tombstone marker of a removed accounting table slot
+				 * @brief Tombstone marker of a removed accounting table slot
 				 *
 				 * \~
 				 */
@@ -418,26 +418,6 @@ namespace awh {
 				 */
 				void reset() noexcept;
 			public:
-				/**
-				 * \~russian
-				 * @brief Метод определения надобности учёта очередной выдаче
-				 *
-				 * @note Метод меняет счётчик выборки и оттого зовётся ровно однажды на
-				 *       выдачу
-				 *
-				 * @return признак надобности учёта
-				 *
-				 * \~english
-				 * @brief Method of determining whether the next allocation is accounted
-				 *
-				 *
-				 * @note The method changes the sampling counter and is therefore called exactly once
-				 *       per allocation
-				 *
-				 * @return sign of accounting being needed
-				 *
-				 * \~
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод выборки выдачи под учёт места
@@ -571,7 +551,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of removing a block from the accounting
 				 *
-				 *
 				 * @param block address of the block being freed
 				 * @return      sign of the block being removed from the accounting
 				 *
@@ -590,7 +569,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of enumerating the blocks held by the application
 				 *
-				 *
 				 * @param callback enumeration callback
 				 * @param context  item passed to the callback
 				 * @return         number of enumerated blocks
@@ -608,7 +586,6 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the sampling rate
 				 *
-				 *
 				 * @param rate one allocation out of how many: zero means accounting off
 				 *
 				 * \~
@@ -622,7 +599,6 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the allocation site accounting state
-				 *
 				 *
 				 * @return state of the allocation site accounting
 				 *
@@ -670,7 +646,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Profile() noexcept;
+				explicit Profile() noexcept;
 		} profile_t;
 	};
 };

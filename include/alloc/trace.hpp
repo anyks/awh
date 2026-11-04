@@ -145,7 +145,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		typedef struct Symbol {
+		typedef struct __AWH_SHARED_EXPORT__ Symbol {
 			// Название образа, которому принадлежит адрес
 			const char * image;
 			// Название функции, которой принадлежит адрес
@@ -163,7 +163,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Symbol() noexcept;
+			explicit Symbol() noexcept;
 		} symbol_t;
 		/**
 		 * \~russian
@@ -186,18 +186,29 @@ namespace awh {
 				 * на всяком потоке, идущем путём разбора мест выдачи. Обычное поле давало
 				 * бы состязание по стандарту
 				 */
-				// Признак прогретого съёма
 				std::atomic <bool> _warmed;
-				// Признак заведённого ключа признака съёма
 				/**
-				 * Признак заведённого ключа - НЕДЕЛИМЫЙ
+				 * \~russian
+				 * @brief Признак заведённого ключа - НЕДЕЛИМЫЙ
 				 *
-				 * Заведение съёма зовётся из настроек, а те приложение вправе менять из
-				 * любого потока. Два потока, вошедшие в заведение разом, оба видели
-				 * признак снятым и оба заводили ключ: второй затирал первый, тот утекал,
-				 * а поток, отметившийся внутри съёма ПЕРВЫМ ключом, читался вторым как
-				 * не отметившийся - и вложенный съём становился возможен, ровно тот, ради
-				 * запрета которого отметка и заведена
+				 * @details Заведение съёма зовётся из настроек, а те приложение вправе менять из
+				 *          любого потока. Два потока, вошедшие в заведение разом, оба видели
+				 *          признак снятым и оба заводили ключ: второй затирал первый, тот утекал,
+				 *          а поток, отметившийся внутри съёма ПЕРВЫМ ключом, читался вторым как
+				 *          не отметившийся - и вложенный съём становился возможен, ровно тот, ради
+				 *          запрета которого отметка и заведена.
+				 *
+				 * \~english
+				 * @brief Sign of a started key - INDIVISIBLE
+				 *
+				 * @details A starting of a capture is called from the settings, and those an application has a right to change from
+				 *          any thread. Two threads, entered the starting at once, both saw
+				 *          a sign removed and both started a key: the second wiped the first, it leaked, and
+				 *          a thread marked inside a capture BY THE FIRST key was read by the second as
+				 *          unmarked - and a nested capture became possible, exactly the one for the sake
+				 *          of a forbid of which a mark is started.
+				 *
+				 * \~
 				 */
 				std::atomic <bool> _keyed;
 			public:
@@ -350,7 +361,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Trace() noexcept;
+				explicit Trace() noexcept;
 		} trace_t;
 	};
 };

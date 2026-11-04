@@ -167,26 +167,53 @@ namespace awh {
 				// Наибольший размер, выдаваемый под заслонами, в байтах
 				static constexpr size_t MAXIMUM = (1u * 1024u * 1024u);
 				/**
-				 * Наибольшее число закрытых областей, удерживаемых от отдачи
+				 * \~russian
+				 * @brief Наибольшее число закрытых областей, удерживаемых от отдачи
 				 *
-				 * Закрытая область не отдаётся системе затем, чтобы обращение по
-				 * освобождённому адресу валило, а не проходило молча. Удерживать их без
-				 * счёта нельзя: у долгой работы кончится не память, так место под адреса
+				 * @details Закрытая область не отдаётся системе затем, чтобы обращение по
+				 *          освобождённому адресу валило, а не проходило молча. Удерживать их без
+				 *          счёта нельзя: у долгой работы кончится не память, так место под адреса.
+				 *
+				 * \~english
+				 * @brief The greatest number of the sealed regions, held back from a giving
+				 *
+				 * @details A sealed region is not given back to the system so that an address to a released
+				 *          address crashed, and not passed silently. To hold them without a count is
+				 *          impossible: at a long work it is not the memory that ends, but a place under the addresses.
+				 *
+				 * \~
 				 */
 				static constexpr size_t SEALED = 4096;
 				/**
-				 * Наибольший ОБЪЁМ закрытых областей, удерживаемых от отдачи
+				 * \~russian
+				 * @brief Наибольший ОБЪЁМ закрытых областей, удерживаемых от отдачи
 				 *
-				 * Счёт областей объёма не ограничивает: под заслонами выдаётся до
-				 * мегабайта, и четыре тысячи закрытых областей держали бы до четырёх
-				 * гигабайт - закрытых, но взятых у системы и однажды тронутых. Замерено
-				 * щупом на кругах настройка-нагрузка-выключение: на блоках до
-				 * шестнадцати килобайт заслоны держали 201 мегабайт при НУЛЕВОМ занятом,
-				 * и рост встал не оттого, что память вернулась, а оттого, что счёт
-				 * областей упёрся в предел
+				 * @details Счёт областей объёма не ограничивает: под заслонами выдаётся до
+				 *          мегабайта, и четыре тысячи закрытых областей держали бы до четырёх
+				 *          гигабайт - закрытых, но взятых у системы и однажды тронутых. Замерено
+				 *          щупом на кругах настройка-нагрузка-выключение: на блоках до
+				 *          шестнадцати килобайт заслоны держали 201 мегабайт при НУЛЕВОМ занятом,
+				 *          и рост встал не оттого, что память вернулась, а оттого, что счёт
+				 *          областей упёрся в предел.
 				 *
-				 * Границы нужны обе: счёт бережёт место под адреса у мелких блоков,
-				 * объём - саму память у крупных
+				 *          Границы нужны обе: счёт бережёт место под адреса у мелких блоков,
+				 *          объём - саму память у крупных.
+				 *
+				 * \~english
+				 * @brief The greatest VOLUME of the sealed regions, held back from a giving
+				 *
+				 * @details A count of the regions does not limit a volume: under the barriers an issue goes up to
+				 *          a megabyte, and four thousand sealed regions would hold up to four
+				 *          gigabytes - sealed, but taken from the system and once touched. It was measured
+				 *          by a probe on the rounds setting-load-shutdown: on the blocks up to
+				 *          sixteen kilobytes the barriers held 201 megabytes at a ZERO occupied,
+				 *          and a growth stopped not because the memory returned, but because a count
+				 *          of the regions ran into a limit.
+				 *
+				 *          Both bounds are needed: a count spares a place under the addresses at the small blocks,
+				 *          a volume - the memory itself at the large ones.
+				 *
+				 * \~
 				 */
 				static constexpr size_t RETAINED = (64u * 1024u * 1024u);
 			public:
@@ -199,7 +226,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Число живых заслонённых блоков
 					size_t live;
 					// Число закрытых заслонённых блоков, ожидающих отдачи
@@ -210,33 +237,26 @@ namespace awh {
 					size_t given;
 					/**
 					 * \~russian
-					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 			private:
 				/**
 				 * \~russian
 				 * @brief Учётная запись заслонённого блока
 				 *
-				 *
 				 * \~english
 				 * @brief Accounting record of a guarded block
 				 *
 				 * \~
 				 */
-				typedef struct Record {
+				typedef struct __AWH_SHARED_EXPORT__ Record {
 					// Адрес выданного прикладному коду блока
 					uint8_t * block;
 					// Адрес начала взятой у источника области
@@ -251,20 +271,14 @@ namespace awh {
 					struct Record * queue;
 					/**
 					 * \~russian
-					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 */
-					Record() noexcept;
+					explicit Record() noexcept;
 				} record_t;
 			private:
 				// Источник страниц
@@ -272,13 +286,12 @@ namespace awh {
 				// Замок заслонов
 				spin_t _lock;
 				/**
-				 * Таблица поиска заслонённого блока
+				 * Таблица поиска заслонённого блока по адресу
 				 *
 				 * Открытая адресация с удвоением: заслонённых блоков немного по самому
 				 * устройству выборки, а искать их приходится на каждом освобождении -
 				 * перебор списка для того негоден
 				 */
-				// Таблица поиска заслонённого блока по адресу
 				record_t ** _table;
 				// Длина таблицы поиска в местах
 				size_t _length;
@@ -318,7 +331,6 @@ namespace awh {
 				 * области. Источник же за жизнь распределителя не меняется, и приговор
 				 * ему выносится один раз
 				 */
-				// Признак источника, не умеющего закрывать страницы
 				std::atomic <bool> _unable;
 				// Счётчик выдач для выборки
 				std::atomic <size_t> _counter;
@@ -326,12 +338,23 @@ namespace awh {
 				state_t _state;
 			private:
 				/**
-				 * Метка снесённого места таблицы поиска
+				 * \~russian
+				 * @brief Метка снесённого места таблицы поиска
 				 *
-				 * Открытая адресация не терпит пустоты на месте снесённой записи: перебор
-				 * мест идёт подряд и остановился бы на ней, не дойдя до записи, попавшей
-				 * дальше по перебору. Оттого снесённое место метится особым знаком -
-				 * занятым для перебора и свободным для записи
+				 * @details Открытая адресация не терпит пустоты на месте снесённой записи: перебор
+				 *          мест идёт подряд и остановился бы на ней, не дойдя до записи, попавшей
+				 *          дальше по перебору. Оттого снесённое место метится особым знаком -
+				 *          занятым для перебора и свободным для записи.
+				 *
+				 * \~english
+				 * @brief A marker of a removed place of a search table
+				 *
+				 * @details An open addressing does not endure an emptiness at a place of a removed record: a sweep
+				 *          of the places goes in a row and would stop on it, not reaching a record that got
+				 *          further by a sweep. Therefore a removed place is marked by an especial sign -
+				 *          occupied for a sweep and free for a record.
+				 *
+				 * \~
 				 */
 				static record_t * const _tomb;
 			private:
@@ -340,7 +363,6 @@ namespace awh {
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
 				 * @return адрес выданной памяти либо nullptr
-				 *
 				 *
 				 * \~english
 				 * @brief Method of allocating memory for an accounting record
@@ -356,7 +378,6 @@ namespace awh {
 				 *
 				 * @param length требуемая длина таблицы в местах
 				 * @return       признак перестроения таблицы
-				 *
 				 *
 				 * \~english
 				 * @brief Method of rebuilding the lookup table
@@ -374,7 +395,6 @@ namespace awh {
 				 * @param record вносимая запись
 				 * @return       признак внесения записи
 				 *
-				 *
 				 * \~english
 				 * @brief Method of enrolling a record into the lookup table
 				 *
@@ -391,7 +411,6 @@ namespace awh {
 				 * @param addr  разбираемый адрес
 				 * @param exact признак поиска ровно по началу блока
 				 * @return      найденная запись либо nullptr
-				 *
 				 *
 				 * \~english
 				 * @brief Method of finding a record by block address
@@ -431,27 +450,6 @@ namespace awh {
 				 */
 				void reset() noexcept;
 			public:
-				/**
-				 * \~russian
-				 * @brief Метод определения надобности заслона очередной выдаче
-				 *
-				 * @note Метод меняет счётчик выборки и оттого зовётся ровно однажды на
-				 *       выдачу; повторный вопрос о том же запросе ответит иначе
-				 *
-				 * @param size требуемый размер в байтах
-				 * @return     признак надобности заслона
-				 *
-				 * \~english
-				 * @brief Method of determining whether the next allocation needs a guard
-				 *
-				 * @note The method changes the sampling counter and is therefore called exactly once
-				 *       per allocation; asking again about the same request will answer differently
-				 *
-				 * @param size required size in bytes
-				 * @return     sign of a guard being needed
-				 *
-				 * \~
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод выборки выдачи под заслоны
@@ -656,13 +654,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Guard() noexcept;
+				explicit Guard() noexcept;
 		} guard_t;
 		/**
 		 * \~russian
@@ -675,14 +672,14 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Quarantine {
 			public:
+				// Доля объёма карантина, приходящаяся на одно место кольца, в байтах
+				static constexpr size_t SHARE = 512;
 				// Знак засева освобождаемой памяти
 				static constexpr uint8_t JUNK = 0xDE;
 				// Наименьшее число мест в кольце карантина
 				static constexpr size_t MINIMUM = 256;
 				// Наибольшее число мест в кольце карантина
 				static constexpr size_t LIMIT = 65536;
-				// Доля объёма карантина, приходящаяся на одно место кольца, в байтах
-				static constexpr size_t SHARE = 512;
 			public:
 				/**
 				 * \~russian
@@ -693,7 +690,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Число блоков, удерживаемых карантином
 					size_t held;
 					// Объём удерживаемой карантином памяти в байтах
@@ -715,20 +712,19 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 			private:
 				/**
 				 * \~russian
 				 * @brief Место кольца карантина
 				 *
-				 *
 				 * \~english
 				 * @brief Quarantine ring slot
 				 *
 				 * \~
 				 */
-				typedef struct Slot {
+				typedef struct __AWH_SHARED_EXPORT__ Slot {
 					// Адрес удерживаемого блока
 					void * block;
 					// Размер удерживаемого блока в байтах
@@ -769,7 +765,6 @@ namespace awh {
 				 * @param block разбираемый блок
 				 * @param size  размер блока в байтах
 				 * @return      признак сохранности засева
-				 *
 				 *
 				 * \~english
 				 * @brief Method of comparing the seed of a held block
@@ -973,7 +968,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Quarantine() noexcept;
+				explicit Quarantine() noexcept;
 		} quarantine_t;
 	};
 };

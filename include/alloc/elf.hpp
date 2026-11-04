@@ -267,7 +267,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				ELFCapture() noexcept;
+				explicit ELFCapture() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

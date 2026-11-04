@@ -155,6 +155,8 @@ namespace awh {
 				// Число обязательных подменяемых функций
 				static constexpr size_t PATCH_COUNT = 5;
 				/**
+				 * Номер первой функции выровненной семьи
+				 *
 				 * Выровненная семья идёт группой НЕОБЯЗАТЕЛЬНОЙ
 				 *
 				 * Обязательная пятёрка перехватывается по правилу «всё или ничего»:
@@ -167,17 +169,19 @@ namespace awh {
 				 * `_aligned_free` отдал бы наш блок чужому распределителю. Оттого
 				 * семья берётся вся либо не берётся вовсе
 				 */
-				// Номер первой функции выровненной семьи
 				static constexpr size_t ALIGNED_FIRST = 5;
 				/**
+				 * Число обязательных функций выровненной семьи
+				 *
 				 * Ядро семьи - выдача, освобождение и смена размера
 				 *
 				 * Эти три обязаны лечь вместе: `_aligned_malloc` без `_aligned_free`
 				 * отдал бы наш блок чужому распределителю
 				 */
-				// Число обязательных функций выровненной семьи
 				static constexpr size_t ALIGNED_CORE = 3;
 				/**
+				 * Число функций выровненной семьи
+				 *
 				 * Измерение идёт СВЕРХ ядра и обязательным не считается
 				 *
 				 * `_aligned_msize` экспортируется не всякой библиотекой: `msvcrt.dll`
@@ -186,7 +190,6 @@ namespace awh {
 				 * выровненная семья не бралась бы на x86-64 из-за имени, какого там
 				 * нет: не экспортированного никто и не позовёт
 				 */
-				// Число функций выровненной семьи
 				static constexpr size_t ALIGNED_COUNT = 4;
 				// Общее число подменяемых функций
 				static constexpr size_t PATCH_TOTAL = (PATCH_COUNT + ALIGNED_COUNT);
@@ -200,7 +203,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct Patch {
+				typedef struct __AWH_SHARED_EXPORT__ Patch {
 					// Адрес входа подменяемой функции
 					void * entry;
 					// Адрес настоящего тела, куда вёл переход входа
@@ -215,7 +218,6 @@ namespace awh {
 					 * заплатки нет вовсе, и подмена вытесняет НАСТОЯЩИЕ команды входа -
 					 * столько, сколько их укладывается в пять байт перехода
 					 */
-					// Число байт, вытесненных подменой
 					size_t moved;
 					// Признак наложенной подмены
 					bool applied;
@@ -228,7 +230,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Patch() noexcept;
+					explicit Patch() noexcept;
 				} patch_t;
 			private:
 				// Число поддерживаемых библиотек времени исполнения
@@ -245,7 +247,6 @@ namespace awh {
 				 * времени исполнения это семь гигабайт и более. Оттого вход прыгает на
 				 * переходник ПОБЛИЗОСТИ, а тот уже - абсолютным переходом к нам
 				 */
-				// Область под переходники
 				void * _arena[LIBRARY_COUNT];
 				// Занято в области под переходники
 				size_t _arenaUsed[LIBRARY_COUNT];
@@ -457,7 +458,7 @@ namespace awh {
 				 *          держат разные кучи, а перебор их проверкой на чужом указателе
 				 *          валит процесс. Перехваченные входы отдают владельцу наборами с
 				 *          номером библиотеки, а generic-путь без контекста отвечает пустым
-				 *          набором: блок молча утекает - безопаснее, чем не в ту кучу
+				 *          набором: блок молча утекает - безопаснее, чем не в ту кучу.
 				 *
 				 * @param ptr разбираемый указатель
 				 * @return    пустой набор: владелец неизвестен и отдавать некому
@@ -470,7 +471,7 @@ namespace awh {
 				 *          foreign pointer crashes the process. Patched entries return
 				 *          blocks to the owner through per-library sets, while the
 				 *          generic path answers an empty set: the block leaks silently -
-				 *          safer than into the wrong heap
+				 *          safer than into the wrong heap.
 				 *
 				 * @param ptr pointer being resolved
 				 * @return    empty set: the owner is unknown and there is nobody to pay

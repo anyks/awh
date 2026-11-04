@@ -124,8 +124,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of allocating a region of pages
 				 *
-				 * @note The source does not guarantee any alignment beyond what the system
-				 *       gives
+				 * @note The source does not guarantee any alignment beyond what the system gives
 				 *
 				 * @param size      required size in bytes
 				 * @param alignment required alignment in bytes
@@ -340,7 +339,6 @@ namespace awh {
 				 * РАЗНЫЕ. Двое могут узнавать размер страницы разом, а обычное поле
 				 * давало бы при этом состязание в глазах средств проверки
 				 */
-				// Размер страницы, узнаваемый у системы однажды
 				std::atomic <size_t> _granularity;
 				/**
 				 * Признак просьбы о крупных страницах
@@ -354,7 +352,6 @@ namespace awh {
 				 * всякого потока, и обычное поле давало бы состязание по стандарту - то же
 				 * самое, ради чего неделимы и соседние поля источника
 				 */
-				// Признак просьбы о крупных страницах
 				std::atomic <bool> _superpages;
 				/**
 				 * Число областей, доставшихся крупными страницами
@@ -362,7 +359,6 @@ namespace awh {
 				 * Вид неделимый по той же причине: счётчик правится на пути выдачи, а
 				 * путь этот у трёх слоёв идёт под разными замками
 				 */
-				// Число областей, доставшихся крупными страницами
 				std::atomic <size_t> _superpaged;
 				/**
 				 * Потолок взятого у системы в байтах: нуль - без потолка
@@ -374,7 +370,6 @@ namespace awh {
 				 * то есть по ВСЕМУ взятому. Проверено замером: при потолке в два
 				 * мегабайта сверх занятого куча брала ещё двенадцать
 				 */
-				// Потолок взятого у системы в байтах
 				std::atomic <size_t> _ceiling;
 				// Взято у системы в байтах
 				std::atomic <size_t> _taken;
@@ -384,7 +379,6 @@ namespace awh {
 				 * @brief Метод определения размера страницы у системы
 				 *
 				 * @return размер страницы в байтах
-				 *
 				 *
 				 * \~english
 				 * @brief Method of detecting the system page size
@@ -580,7 +574,6 @@ namespace awh {
 				 * @param opened признак открытой области: ложь закрывает её вовсе
 				 * @return       признак выполнения операции
 				 *
-				 *
 				 * \~english
 				 * @brief Method of changing region accessibility
 				 *
@@ -618,7 +611,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				SystemSource() noexcept;
+				explicit SystemSource() noexcept;
 		} system_source_t;
 	};
 };

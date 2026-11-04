@@ -163,7 +163,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Взято у источника всего
 					size_t total;
 					// Выдано наружу прямо сейчас
@@ -176,27 +176,31 @@ namespace awh {
 					size_t chunks;
 					/**
 					 * \~russian
-					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 				/**
-				 * Предварительное объявление вложенных видов
+				 * \~russian
+				 * @brief Предварительное объявление вложенных видов
 				 *
-				 * Объявление вида прямо в поле («struct Chunk * chunk;») завело бы вид в
-				 * объемлющем пространстве имён, а не в классе, и обращение к его полям
-				 * оказалось бы обращением к незавершённому виду
+				 * @details Объявление вида прямо в поле («struct Chunk * chunk;») завело бы вид в
+				 *          объемлющем пространстве имён, а не в классе, и обращение к его полям
+				 *          оказалось бы обращением к незавершённому виду.
+				 *
+				 * \~english
+				 * @brief A preliminary declaration of the nested views
+				 *
+				 * @details A declaration of a view right in a field (`struct Chunk * chunk;`) would start a view in
+				 *          an enclosing namespace, and not in a class, and an address to its fields
+				 *          would turn into an address to an unfinished view.
+				 *
+				 * \~
 				 */
 				struct Chunk;
 				struct Span;
@@ -205,13 +209,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Учётная запись области страниц
 				 *
-				 *
 				 * \~english
 				 * @brief Accounting record of a page span
 				 *
 				 * \~
 				 */
-				typedef struct Span {
+				typedef struct __AWH_SHARED_EXPORT__ Span {
 					// Адрес начала области
 					uint8_t * base;
 					// Размер области в страницах кучи
@@ -228,7 +231,6 @@ namespace awh {
 					 * сбоя отвечает о ней верно. Слияние же обязано её обходить: изъятую
 					 * область нельзя изъять вторично
 					 */
-					// Признак изъятости области на время отдачи
 					bool pending;
 					// Отметка времени освобождения в миллисекундах
 					uint64_t stamp;
@@ -244,7 +246,6 @@ namespace awh {
 					 * числится занятой и не возвращается: оттого повторная выдача не может
 					 * наложить чужой блок на живой
 					 */
-					// Голова стопки свободных блоков области
 					void * stack;
 					// Число блоков в стопке области
 					size_t held;
@@ -263,13 +264,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Учётная запись куска, взятого у источника
 				 *
-				 *
 				 * \~english
 				 * @brief Accounting record of a chunk taken from the source
 				 *
 				 * \~
 				 */
-				typedef struct Chunk {
+				typedef struct __AWH_SHARED_EXPORT__ Chunk {
 					// Адрес начала куска
 					uint8_t * base;
 					// Размер куска в байтах, каким он размечен
@@ -288,7 +288,6 @@ namespace awh {
 					 * глазах средств проверки, даже когда живая область никем не
 					 * переписывается
 					 */
-					// Указатели областей по номеру страницы куска
 					std::atomic <span_t *> index[PAGES];
 				} chunk_t;
 				/**
@@ -317,7 +316,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Средний ярус радикс-карты: места, держащие листы
 				 *
-				 *
 				 * \~english
 				 * @brief Radix map middle tier: slots holding leaves
 				 *
@@ -327,7 +325,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Корень радикс-карты: места, держащие средние ярусы
-				 *
 				 *
 				 * \~english
 				 * @brief Radix map root: slots holding middle tiers
@@ -339,40 +336,83 @@ namespace awh {
 				 * \~russian
 				 * @brief Запись таблицы поиска куска по адресу
 				 *
-				 *
 				 * \~english
 				 * @brief Chunk lookup table record by address
 				 *
 				 * \~
 				 */
-				typedef struct Registry {
+				typedef struct __AWH_SHARED_EXPORT__ Registry {
 					/**
-					 * Места таблицы поиска
+					 * \~russian
+					 * @brief Места таблицы поиска
 					 *
-					 * Читаются БЕЗ замка кучи - разбором адреса на пути освобождения
-					 * (`discover`), пока `enroll` под замком вносит новый кусок ПРЯМО в
-					 * действующую таблицу. Оттого места неделимы, как `index`/`tags`
-					 * куска: обычный указатель дал бы состязание в глазах средств
-					 * проверки, а на слабоупорядоченной ARM64 читатель застал бы
-					 * опубликованный слот с ещё невидимыми полями куска. Запись живого
-					 * слота идёт релизом, чтение - захватом; перенос при перестроении
-					 * идёт в НЕ опубликованную таблицу и виден через релиз самой записи
+					 * @details Читаются БЕЗ замка кучи - разбором адреса на пути освобождения
+					 *          (`discover`), пока `enroll` под замком вносит новый кусок ПРЯМО в
+					 *          действующую таблицу. Оттого места неделимы, как `index`/`tags`
+					 *          куска: обычный указатель дал бы состязание в глазах средств
+					 *          проверки, а на слабоупорядоченной ARM64 читатель застал бы
+					 *          опубликованный слот с ещё невидимыми полями куска. Запись живого
+					 *          слота идёт релизом, чтение - захватом; перенос при перестроении
+					 *          идёт в НЕ опубликованную таблицу и виден через релиз самой записи.
+					 *
+					 * \~english
+					 * @brief Places of a search table
+					 *
+					 * @details They are read WITHOUT a lock of a heap - by a parsing of an address on a release path
+					 *          (`discover`), while `enroll` under a lock enters a new chunk RIGHT into
+					 *          an acting table. Therefore the places are indivisible, as `index`/`tags`
+					 *          of a chunk: an ordinary pointer would give a race in the eyes of the check
+					 *          means, and on a weakly ordered ARM64 a reader would catch
+					 *          a published slot with the fields of a chunk still invisible. A writing of a live
+					 *          slot goes by a release, a reading - by an acquire; a transfer at a rebuilding
+					 *          goes into a NOT published table and is seen through a release of the record itself.
+					 *
+					 * \~
 					 */
 					std::atomic <chunk_t *> * table;
-					// Длина таблицы поиска в местах
+					/**
+					 * \~russian
+					 * @brief Длина таблицы поиска в местах
+					 *
+					 * \~english
+					 * @brief Length of a search table in places
+					 *
+					 * \~
+					 */
 					size_t length;
 					/**
-					 * Размер взятой под таблицу области в байтах
+					 * \~russian
+					 * @brief Размер взятой под таблицу области в байтах
 					 *
-					 * Хранится ВЫДАННЫЙ источником размер, а не запрошенный: источник
-					 * округляет запрос по своему зерну, и таблица в 1024 места просит
-					 * 8192 байта, а у систем со страницей в 16384 получает вдвое больше.
-					 * Отдай мы её запрошенным размером - счёт взятого у системы уползал
-					 * бы вверх на каждом перестроении, и заказанный приложением потолок
-					 * закрывал бы выдачу тем раньше, чем дольше работа
+					 * @details Хранится ВЫДАННЫЙ источником размер, а не запрошенный: источник
+					 *          округляет запрос по своему зерну, и таблица в 1024 места просит
+					 *          8192 байта, а у систем со страницей в 16384 получает вдвое больше.
+					 *          Отдай мы её запрошенным размером - счёт взятого у системы уползал
+					 *          бы вверх на каждом перестроении, и заказанный приложением потолок
+					 *          закрывал бы выдачу тем раньше, чем дольше работа.
+					 *
+					 * \~english
+					 * @brief A size of a region taken under a table in bytes
+					 *
+					 * @details A size ISSUED by a source is stored, and not a requested one: a source
+					 *          rounds a request by its own grain, and a table of 1024 places asks
+					 *          8192 bytes, and at the systems with a page of 16384 gets twice more.
+					 *          Had we given it a requested size - a count of what was taken from the system would creep
+					 *          up on every rebuilding, and a ceiling ordered by an application
+					 *          would close an issue the earlier, the longer a work.
+					 *
+					 * \~
 					 */
 					size_t region;
-					// Предыдущая запись таблицы, оставленная перестроением
+					/**
+					 * \~russian
+					 * @brief Предыдущая запись таблицы, оставленная перестроением
+					 *
+					 * \~english
+					 * @brief The previous record of the table, left by rebuilding
+					 *
+					 * \~
+					 */
 					struct Registry * previous;
 				} registry_t;
 			private:
@@ -395,7 +435,6 @@ namespace awh {
 				 * на этом менее половины действующей таблицы: длина удваивается, и все
 				 * прежние вместе короче нынешней
 				 */
-				// Запись таблицы поиска куска по адресу
 				std::atomic <registry_t *> _registry;
 				// Корень радикс-карты разрядов по страницам
 				std::atomic <root_t *> _root;
@@ -436,7 +475,6 @@ namespace awh {
 				 * лежит изъятой и вот-вот вернётся. Оттого число это и считается: по нему
 				 * слой выше отличает настоящую нехватку от мимолётной
 				 */
-				// Число областей, изъятых из списков на время отдачи системе
 				size_t _pending;
 				// Состояние кучи
 				state_t _state;
@@ -446,7 +484,6 @@ namespace awh {
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
 				 * @return адрес выданной памяти либо nullptr
-				 *
 				 *
 				 * \~english
 				 * @brief Method of allocating memory for an accounting record
@@ -462,7 +499,6 @@ namespace awh {
 				 *
 				 * @return взятый кусок либо nullptr
 				 *
-				 *
 				 * \~english
 				 * @brief Method of taking a new chunk from the source
 				 *
@@ -477,7 +513,6 @@ namespace awh {
 				 *
 				 * @param span вносимая область
 				 *
-				 *
 				 * \~english
 				 * @brief Method of inserting a span into the free list
 				 *
@@ -491,7 +526,6 @@ namespace awh {
 				 * @brief Метод изъятия области из списка свободных
 				 *
 				 * @param span изымаемая область
-				 *
 				 *
 				 * \~english
 				 * @brief Method of removing a span from the free list
@@ -508,7 +542,6 @@ namespace awh {
 				 * @param pages требуемое число страниц
 				 * @return      найденная область либо nullptr
 				 *
-				 *
 				 * \~english
 				 * @brief Method of finding a free span of the required size
 				 *
@@ -524,7 +557,6 @@ namespace awh {
 				 *
 				 * @param span сливаемая область
 				 * @return     область после слияния
-				 *
 				 *
 				 * \~english
 				 * @brief Method of merging a span with its neighbours in a chunk
@@ -565,7 +597,6 @@ namespace awh {
 				 * @brief Метод записи области в указатели куска
 				 *
 				 * @param span записываемая область
-				 *
 				 *
 				 * \~english
 				 * @brief Method of writing a span into the chunk pointers
@@ -747,23 +778,16 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод выдачи области страниц
 				 *
-				 * @param pages требуемое число страниц кучи
-				 * @return      адрес выданной области либо nullptr
+				 * @param pages  требуемое число страниц кучи
+				 * @param served действительно выданное число страниц, либо nullptr
+				 * @return       адрес выданной области либо nullptr
 				 *
 				 * \~english
 				 * @brief Method of allocating a region of pages
 				 *
-				 * @param pages required number of heap pages
-				 * @return      address of the allocated region or nullptr
-				 *
-				 * \~
-				 */
-				/**
-				 * \~russian
-				 * @param served действительно выданное число страниц, либо nullptr
-				 *
-				 * \~english
+				 * @param pages  required number of heap pages
 				 * @param served actually allocated number of pages, or nullptr
+				 * @return       address of the allocated region or nullptr
 				 *
 				 * \~
 				 */
@@ -801,7 +825,7 @@ namespace awh {
 				 * @details Растит область за счёт СОСЕДНЕЙ свободной, лежащей сразу за
 				 *          нею в том же куске. Удаётся это не всегда - сосед вправе быть
 				 *          занят, мал или отсутствовать вовсе, - и отказ здесь не
-				 *          ошибка: звавший переносит содержимое обычным путём
+				 *          ошибка: звавший переносит содержимое обычным путём.
 				 *
 				 * @note Ради этого метод и заведён: перенос содержимого при росте стоит
 				 *       копирования всего блока, и на цепочке удвоений цена его выходит
@@ -821,7 +845,7 @@ namespace awh {
 				 *          right behind it in the same chunk. This does not always work -
 				 *          the neighbour may be occupied, small, or absent entirely - and
 				 *          refusal here is not an error: the caller moves the content by
-				 *          ordinary means
+				 *          ordinary means.
 				 *
 				 * @note This is why the method exists: moving the content while growing costs a
 				 *       copy of the whole block, and on a doubling chain its price becomes
@@ -901,12 +925,10 @@ namespace awh {
 				 * @brief Метод получения метки разряда по адресу
 				 *
 				 * @details Быстрый путь освобождения: отвечает меткой разряда одним
-				 *          чтением, не трогая ни указателей страниц, ни учётной записи
-				 *          области
+				 *          чтением, не трогая ни указателей страниц, ни учётной записи области.
 				 *
 				 * @note Нуль означает «ответить меткой нельзя»: адрес не наш, либо
-				 *       страница разряду не отдана. Тогда разбор идёт полным путём -
-				 *       через `describe`
+				 *       страница разряду не отдана. Тогда разбор идёт полным путём - через `describe`
 				 *
 				 * @param addr разбираемый адрес
 				 * @param hint место хранения подсказки поиска
@@ -916,11 +938,10 @@ namespace awh {
 				 * @brief Method of getting the size class tag by address
 				 *
 				 * @details The fast free path: answers with the class tag in a single read,
-				 *          touching neither page pointers nor the span record
+				 *          touching neither page pointers nor the span record.
 				 *
 				 * @note Zero means the tag cannot be answered: the address is not ours, or the
-				 *       page is not given to a class. Then resolution goes the full way through
-				 *       `describe`
+				 *       page is not given to a class. Then resolution goes the full way through `describe`
 				 *
 				 * @param addr address being resolved
 				 * @param hint lookup hint storage location
@@ -934,7 +955,7 @@ namespace awh {
 				 * @brief Метод получения записи области по адресу блока
 				 *
 				 * @details Разбор для холодных путей слоя выше: возврат блока в стопку
-				 *          области и решение о возврате области куче
+				 *          области и решение о возврате области куче.
 				 *
 				 * @param addr разбираемый адрес
 				 * @return     запись области страницы адреса, либо nullptr
@@ -943,7 +964,7 @@ namespace awh {
 				 * @brief Method of getting the span record of a block address
 				 *
 				 * @details Resolution for the cold paths of the layer above: returning a
-				 *          block to its span stack and deciding on returning the span
+				 *          block to its span stack and deciding on returning the span.
 				 *
 				 * @param addr address being resolved
 				 * @return     span record of the address page, or nullptr
@@ -1225,7 +1246,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Pages() noexcept;
+				explicit Pages() noexcept;
 		} pages_t;
 	};
 };

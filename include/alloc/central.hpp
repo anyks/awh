@@ -226,7 +226,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef struct State {
+				typedef struct __AWH_SHARED_EXPORT__ State {
 					// Выдано кэшам потоков в байтах
 					size_t live;
 					// Лежит в центральных списках в байтах
@@ -235,13 +235,7 @@ namespace awh {
 					size_t regions;
 					/**
 					 * \~russian
-					 * \~russian
 					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -255,13 +249,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Структура центрального списка одного разряда
 				 *
-				 *
 				 * \~english
 				 * @brief Structure of a central free list of one size class
 				 *
 				 * \~
 				 */
-				typedef struct List {
+				typedef struct __AWH_SHARED_EXPORT__ List {
 					// Замок разряда
 					spin_t lock;
 					// Число блоков, выданных кэшам потоков
@@ -294,7 +287,6 @@ namespace awh {
 				 * @details Кладётся в САМУ придержанную область: та свободна, а держать под
 				 *          неё отдельную память значило бы просить память у распределителя
 				 *          изнутри его же освобождени.
-				 *
 				 *
 				 * \~english
 				 * @brief Structure of a retained region record beyond the size classes

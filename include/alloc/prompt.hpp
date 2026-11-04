@@ -160,17 +160,27 @@ namespace awh {
 				 * \~
 				 */
 				enum class result_t : uint8_t {
-					ACCEPTED  = 0x00, // Пароль набран и принят
+					ACCEPTED = 0x00, // Пароль набран и принят
 					/**
-					 * Набор превысил ёмкость приёмника
+					 * \~russian
+					 * @brief Набор превысил ёмкость приёмника
 					 *
-					 * Имя взято ТОЛЬКО не `OVERFLOW`: тот занят макросом у `<math.h>`, и
-					 * перечисление с таким именем не собирается вовсе - собиратель видит
-					 * на его месте число три. Наш сличатель имён ловит ровно этот разряд
+					 * @details Имя взято ТОЛЬКО не `OVERFLOW`: тот занят макросом у `<math.h>`, и
+					 *          перечисление с таким именем не собирается вовсе - собиратель видит
+					 *          на его месте число три. Наш сличатель имён ловит ровно этот разряд.
+					 *
+					 * \~english
+					 * @brief A set exceeded a capacity of a vessel
+					 *
+					 * @details A name is taken ONLY not `OVERFLOW`: that one is occupied by a macro at `<math.h>`, and
+					 *          an enumeration with such a name does not build at all - a builder sees
+					 *          a number three at its place. Our name comparator catches exactly this kind.
+					 *
+					 * \~
 					 */
-					TOOLONG   = 0x01,
-					NOTERM    = 0x02, // Терминала нет: читать неоткуда
-					FAILED    = 0x03  // Приём не удался по вине окружения
+					TOOLONG = 0x01,
+					NOTERM  = 0x02, // Терминала нет: читать неоткуда
+					FAILED  = 0x03  // Приём не удался по вине окружения
 				};
 			public:
 				/**
@@ -192,8 +202,7 @@ namespace awh {
 				 * @note The vessel must be created IN ADVANCE: its capacity is the upper bound of
 				 *       input, and it is known to the caller, not to us
 				 *
-				 * @note The previous content of the vessel is removed: the intake starts from the
-				 *       beginning
+				 * @note The previous content of the vessel is removed: the intake starts from the beginning
 				 *
 				 * @param vessel vessel the password is put into
 				 * @param hint   hint printed to the human, or nullptr
