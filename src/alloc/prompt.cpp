@@ -105,12 +105,13 @@ namespace {
 		 */
 		typedef class Silence {
 			private:
+				// Признак снятого эха
+				bool _muted;
+			private:
 				// Описатель терминала
 				int32_t _tty;
 				// Прежние настройки терминала
 				struct termios _saved;
-				// Признак снятого эха
-				bool _muted;
 			public:
 				/**
 				 * @brief Метод получения описателя терминала
@@ -137,7 +138,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Silence() noexcept : _tty(-1), _saved(), _muted(false) {
+				explicit Silence() noexcept : _muted(false), _tty(-1) {
 					/**
 					 * Открываем ТЕРМИНАЛ, а не поток ввода
 					 *
@@ -203,7 +204,7 @@ namespace {
 				 * Присваивание вернуло бы настройки дважды по той же причине
 				 */
 				Silence & operator = (const Silence &) = delete;
-		} Silence;
+		} silence_t;
 	#endif
 };
 
